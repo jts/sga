@@ -51,8 +51,10 @@ void IVertex::writeEdges(ostream& out) const
 	for(; iter != m_edges.end(); ++iter)
 	{
 		string color = (iter->getEdgeDir() == ED_SENSE) ? "black" : "red";
+		string label = (iter->getEdgeComp() == EC_NATURAL) ? "0" : "1";
 		out << "\"" << getID() << "\" -> \"" << iter->getEndpoint();
-		out << "\" [color=\"" << color << "\"];\n";
+		out << "\" [color=\"" << color << "\" ";
+		out << "label=\"" << label << "\"];\n";
 	}
 }
 
