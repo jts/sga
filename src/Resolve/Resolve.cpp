@@ -31,6 +31,8 @@ int main(int argv, char** argc)
 	sg.addEdge(pV2->getID(), pV4->getID(), ED_SENSE, EC_NATURAL);
 	sg.addEdge(pV4->getID(), pV2->getID(), ED_ANTISENSE, EC_NATURAL);
 
+	sg.mergeVertices(0,2);
+	sg.mergeVertices(1,2);
 
 	sg.writeDot("blah");
 }

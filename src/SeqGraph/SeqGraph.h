@@ -31,12 +31,19 @@ class SeqGraph
 		// Remove an edge
 		void removeEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp);
 
+		// Merge vertices
+		void mergeVertices(VertexID id1, VertexID id2);
+
 		// Dump the graph to a dot file
-		void writeDot(string filename);
+		void writeDot(string filename) const;
 
 
 	private:
 
+		// Merge two vertices along a specified edge
+		void mergeAlongEdge(Vertex* pV1, Vertex* pV2, const Edge& edge);
+
+		// Vertex collection
 		VertexPtrVec m_vertices;
 };
 
