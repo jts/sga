@@ -4,11 +4,11 @@
 #include <string>
 #include <stdio.h>
 #include <vector>
-#include "IVertex.h"
+#include "Vertex.h"
 
 using namespace std;
 
-typedef vector<IVertex*> VertexPtrVec;
+typedef vector<Vertex*> VertexPtrVec;
 
 class SeqGraph
 {
@@ -17,13 +17,13 @@ class SeqGraph
 		~SeqGraph();
 
 		// Add a vertex
-		void addVertex(IVertex* pVert);
+		void addVertex(Vertex* pVert);
 		
 		// Remove a vertex
 		void removeVertex(VertexID id);
 
 		// Get a vertex
-		IVertex* getVertex(VertexID id);
+		Vertex* getVertex(VertexID id);
 
 		// Add an edge
 		void addEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp);

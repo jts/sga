@@ -18,7 +18,7 @@ SeqGraph::~SeqGraph()
 //
 // Add a vertex
 //
-void SeqGraph::addVertex(IVertex* pVert)
+void SeqGraph::addVertex(Vertex* pVert)
 {
 	// Make sure the id is correct
 	assert(pVert->getID() == m_vertices.size());
@@ -37,10 +37,10 @@ void SeqGraph::removeVertex(VertexID id)
 //
 // Get a vertex
 //
-IVertex* SeqGraph::getVertex(VertexID id)
+Vertex* SeqGraph::getVertex(VertexID id)
 {
 	assert(id < m_vertices.size());
-	IVertex* pVert = m_vertices[id];
+	Vertex* pVert = m_vertices[id];
 	assert(pVert != NULL);
 	return pVert;
 }
@@ -50,7 +50,7 @@ IVertex* SeqGraph::getVertex(VertexID id)
 //
 void SeqGraph::addEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp)
 {
-	IVertex* pVert1 = getVertex(id1);
+	Vertex* pVert1 = getVertex(id1);
 	pVert1->addEdge(id2, dir, comp);
 }
 
@@ -59,7 +59,7 @@ void SeqGraph::addEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp)
 //
 void SeqGraph::removeEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp)
 {
-	IVertex* pVert1 = getVertex(id1);
+	Vertex* pVert1 = getVertex(id1);
 	pVert1->removeEdge(id2, dir, comp);
 
 }

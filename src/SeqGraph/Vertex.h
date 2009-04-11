@@ -16,11 +16,11 @@ using namespace std;
 // Typedefs
 typedef set<Edge> EdgeSet;
 
-class IVertex
+class Vertex
 {
 	public:
-		IVertex(VertexID id) : m_id(id) {}
-		virtual ~IVertex();
+		Vertex(VertexID id) : m_id(id) {}
+		virtual ~Vertex();
 
 		// Add an edge
 		void addEdge(VertexID ep, EdgeDir dir, EdgeComp comp);
@@ -32,7 +32,7 @@ class IVertex
 		VertexID getID() const { return m_id; }
 
 		// Output
-		friend ostream& operator<<(std::ostream& out, const IVertex& obj);
+		friend ostream& operator<<(std::ostream& out, const Vertex& obj);
 
 		// Output edges in graphviz format
 		void writeEdges(ostream& out) const;

@@ -1,9 +1,9 @@
-#include "IVertex.h"
+#include "Vertex.h"
 
 //
 //
 //
-IVertex::~IVertex()
+Vertex::~Vertex()
 {
 
 }
@@ -11,7 +11,7 @@ IVertex::~IVertex()
 //
 // Add an edge
 //
-void IVertex::addEdge(VertexID ep, EdgeDir dir, EdgeComp comp)
+void Vertex::addEdge(VertexID ep, EdgeDir dir, EdgeComp comp)
 {
 	// Construct the edge
 	Edge e(ep, dir, comp);
@@ -21,7 +21,7 @@ void IVertex::addEdge(VertexID ep, EdgeDir dir, EdgeComp comp)
 //
 // Remove an edge
 //
-void IVertex::removeEdge(VertexID ep, EdgeDir dir, EdgeComp comp)
+void Vertex::removeEdge(VertexID ep, EdgeDir dir, EdgeComp comp)
 {
 	// Create the edge that should be removed
 	Edge e(ep, dir, comp);
@@ -35,7 +35,7 @@ void IVertex::removeEdge(VertexID ep, EdgeDir dir, EdgeComp comp)
 //
 // Output
 // 
-ostream& operator<<(std::ostream& out, const IVertex& obj)
+ostream& operator<<(std::ostream& out, const Vertex& obj)
 {
 	out << obj.m_id << " Edges: \n";
 	copy(obj.m_edges.begin(), obj.m_edges.end(), ostream_iterator<Edge>(out, "\n"));
@@ -45,7 +45,7 @@ ostream& operator<<(std::ostream& out, const IVertex& obj)
 //
 // Output edges in graphviz format
 //
-void IVertex::writeEdges(ostream& out) const
+void Vertex::writeEdges(ostream& out) const
 {
 	EdgeSet::const_iterator iter = m_edges.begin();
 	for(; iter != m_edges.end(); ++iter)

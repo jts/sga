@@ -8,11 +8,11 @@ int main(int argv, char** argc)
 	
 	SeqGraph sg;
 
-	IVertex* pV0 = new IVertex(0);
-	IVertex* pV1 = new IVertex(1);
-	IVertex* pV2 = new IVertex(2);
-	IVertex* pV3 = new IVertex(3);
-	IVertex* pV4 = new IVertex(4);
+	Vertex* pV0 = new Vertex(0);
+	Vertex* pV1 = new Vertex(1);
+	Vertex* pV2 = new Vertex(2);
+	Vertex* pV3 = new Vertex(3);
+	Vertex* pV4 = new Vertex(4);
 	sg.addVertex(pV0);
 	sg.addVertex(pV1);
 	sg.addVertex(pV2);
