@@ -75,7 +75,7 @@ EdgeVec Vertex::findEdgesTo(VertexID id) const
 //
 // Find edges in a particular direction
 //
-EdgeVec Vertex::getEdgesInDir(EdgeDir dir) const
+EdgeVec Vertex::getEdges(EdgeDir dir) const
 {
 	EdgeSet::const_iterator iter = m_edges.begin();
 	EdgeVec outEdges;
@@ -101,12 +101,11 @@ EdgeVec Vertex::getEdges() const
 //
 // Count the edges in a particular direction
 // 
-size_t Vertex::countEdgesInDir(EdgeDir dir) const
+size_t Vertex::countEdges(EdgeDir dir) const
 {
-	EdgeVec ev = getEdgesInDir(dir);
+	EdgeVec ev = getEdges(dir);
 	return ev.size();
 }
-
 
 //
 // Output

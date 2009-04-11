@@ -9,6 +9,7 @@
 using namespace std;
 
 typedef vector<Vertex*> VertexPtrVec;
+typedef VertexPtrVec::iterator VertexPtrVecIter;
 
 class SeqGraph
 {
@@ -33,6 +34,15 @@ class SeqGraph
 
 		// Merge vertices
 		void mergeVertices(VertexID id1, VertexID id2);
+
+		// Simplify the graph by removing transitive edges
+		void simplify();
+
+		// Validate that the graph is sane
+		void validate();
+
+		// Flip a given vertex
+		void flip(VertexID id);
 
 		// Dump the graph to a dot file
 		void writeDot(string filename) const;

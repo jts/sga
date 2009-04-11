@@ -8,15 +8,18 @@ using namespace std;
 
 enum EdgeDir
 {	
-	ED_SENSE,
-	ED_ANTISENSE
+	ED_SENSE = 0,
+	ED_ANTISENSE,
+	ED_COUNT
 };
 
 enum EdgeComp
 {
-	EC_NATURAL,
+	EC_NATURAL = 0,
 	EC_REVERSE
 };
+
+const EdgeDir EDGE_DIRECTIONS[ED_COUNT] = { ED_SENSE, ED_ANTISENSE };
 
 inline EdgeDir operator!(const EdgeDir& dir)
 {

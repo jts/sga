@@ -43,13 +43,13 @@ class Vertex
 		EdgeVec findEdgesTo(VertexID id) const;
 
 		// Get the edges in a particular direction
-		EdgeVec getEdgesInDir(EdgeDir dir) const;
+		EdgeVec getEdges(EdgeDir dir) const;
 
 		// Get the edges
 		EdgeVec getEdges() const;
 
 		// Count the edges in a particular direction
-		size_t countEdgesInDir(EdgeDir dir) const;
+		size_t countEdges(EdgeDir dir) const;
 
 		// Return the vert's id
 		VertexID getID() const { return m_id; }

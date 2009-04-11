@@ -119,7 +119,7 @@ void SeqGraph::mergeAlongEdge(Vertex* pV1, Vertex* pV2, const Edge& edge)
 	assert(pV2->hasEdge(twinEdge));
 
 	// Get the edge set opposite of the twin edge
-	EdgeVec transEdges = pV2->getEdgesInDir(!twinEdge.getDir());
+	EdgeVec transEdges = pV2->getEdges(!twinEdge.getDir());
 
 	// Should the edges be flipped?
 	bool doFlip = (edge.getComp() == EC_REVERSE);
@@ -150,10 +150,93 @@ void SeqGraph::mergeAlongEdge(Vertex* pV1, Vertex* pV2, const Edge& edge)
 	pV2->removeEdge(twinEdge);
 
 	// Check if V2 should be completely deleted
-	size_t edgeCount = pV2->countEdgesInDir(twinEdge.getDir());
+	size_t edgeCount = pV2->countEdges(twinEdge.getDir());
 	if(edgeCount == 0)
 	{
 		removeVertex(pV2->getID());
+	}
+}
+
+//
+//	Simplify the graph by removing transitive edges
+//
+void SeqGraph::simplify()
+{
+	VertexPtrVecIter iter = m_vertices.begin();
+	for(; iter != m_vertices.end(); ++iter)
+	{
+		// Skip deleted nodes
+		if(*iter == NULL)
+			continue;
+
+		for(int d = 0; d < ED_COUNT; ++d)
+		{
+			EdgeDir dir = EDGE_DIRECTIONS[d];
+			
+			// Get the edges for this direction
+			EdgeVec edges = (*iter)->getEdges(dir);
+
+			// If there is a single edge in this direction, merge the vertices
+			if(edges.size() == 1)
+			{
+				Edge single = edges.front();
+				mergeAlongEdge(*iter, getVertex(single.getEnd()), single);
+			}
+		}
+	}
+}
+
+//
+// Validate that the graph is sane
+//
+void SeqGraph::validate()
+{
+	VertexPtrVecIter iter = m_vertices.begin();
+	for(; iter != m_vertices.end(); ++iter)
+	{
+		// Skip deleted nodes
+		if(*iter == NULL)
+			continue;
+
+		// Ensure the twin edge exists for every edge
+		EdgeVec edges = (*iter)->getEdges();
+		for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+		{
+			Vertex* pV2 = getVertex(iter->getEnd());
+			if(!pV2->hasEdge(iter->getTwin()))
+			{
+				cerr << "Warning, twin edge does not exist for " << iter->getStart() 
+						<< "," << iter->getEnd() << endl;
+			}
+		}
+	}
+
+}
+
+//
+// Flip a vertex
+//
+void SeqGraph::flip(VertexID id)
+{
+	Vertex* pVertex = getVertex(id);
+	EdgeVec edges = pVertex->getEdges();
+
+	for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+	{
+		// Get the old twin
+		Edge twin = iter->getTwin();
+		
+		Edge flipped = *iter; 
+		flipped.flip();
+
+		// Remove the edge from the source ver
+		pVertex->removeEdge(*iter);
+		pVertex->addEdge(flipped);
+
+		// Update the partner by deleting the old twin and 
+		Vertex* pV2 = getVertex(twin.getStart());
+		pV2->removeEdge(twin);
+		pV2->addEdge(flipped.getTwin());
 	}
 }
 
