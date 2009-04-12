@@ -39,6 +39,12 @@ class Vertex
 		// Check for the precense of an edge
 		bool hasEdge(Edge e) const;
 
+		// Merge the data of another vertex into this vertex
+		virtual void merge(const Vertex* pV2, const Edge& e);
+
+		// Get the cost of travelling through this node
+		virtual int cost() const { return 1; }
+
 		// Find edges to the specified vertex
 		EdgeVec findEdgesTo(VertexID id) const;
 
@@ -48,7 +54,8 @@ class Vertex
 		// Get the edges
 		EdgeVec getEdges() const;
 
-		// Count the edges in a particular direction
+		// Count the edges
+		size_t countEdges() const { return m_edges.size(); }
 		size_t countEdges(EdgeDir dir) const;
 
 		// Return the vert's id
@@ -62,6 +69,7 @@ class Vertex
 
 	private:
 
+		EdgeVec m_mergeRec;
 		VertexID m_id;
 		EdgeSet m_edges;
 };

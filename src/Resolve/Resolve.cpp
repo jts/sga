@@ -1,13 +1,65 @@
 #include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <cassert>
 #include "SeqGraph.h"
+#include "SeqVertex.h"
 
-int main(int argv, char** argc)
+// Input objects
+struct Contig
+{
+	VertexID id;
+	int length;
+	double coverage;
+	std::string seq;
+
+	friend std::istream& operator>> (std::istream& in, Contig& c)
+	{
+		in.ignore(1); // skip ">"
+		in >> c.id >> c.length >> c.coverage; // read header
+		in.ignore(1); // skip newline
+		in >> c.seq; // read seq
+		in.ignore(1); // place the ifstream at the next line
+		return in;
+	}
+};
+
+
+void loadContigVertices(SeqGraph& graph, int kmer, std::string filename)
+{
+	std::ifstream file(filename.c_str());
+	assert(file.is_open());
+	Contig c;
+	while(file >> c)
+	{
+		SeqVertex* pSV = new SeqVertex(c.id, kmer, c.coverage, c.seq);
+		graph.addVertex(pSV);
+	}
+}
+
+
+int main(int argc, char** argv)
 {
 	(void)argv;
 	(void)argc;
 	
 	SeqGraph sg;
 
+	int argID = 1;
+	int kmer = atoi(argv[argID++]);
+	std::string contigFile(argv[argID++]);
+	std::string adjFile(argv[argID++]);
+
+	// Load contigs
+	loadContigVertices(sg, kmer, contigFile);
+
+	sg.stats();
+}
+
+
+void test()
+{
+	SeqGraph sg;
 	Vertex* pV0 = new Vertex(0);
 	Vertex* pV1 = new Vertex(1);
 	Vertex* pV2 = new Vertex(2);

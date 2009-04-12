@@ -1,0 +1,7 @@
+Resolve - take abyss output and resolve ambiguity between contigs
+
+Designed to be replace SimpleGraph and MergeContigs from the original (1.0.x) abyss pipeline
+Does not use abyss code but some ideas that were originally in abyss are re-implemented (http://www.bcgsc.ca/platform/bioinfo/software/abyss and http://www.ncbi.nlm.nih.gov/pubmed/19251739)
+
+Written by Jared Simpson
+Sanger Institute, 2009

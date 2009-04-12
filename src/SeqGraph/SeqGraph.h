@@ -44,6 +44,9 @@ class SeqGraph
 		// Flip a given vertex
 		void flip(VertexID id);
 
+		// Print simple summary statistics to stdout
+		void stats() const;
+		
 		// Dump the graph to a dot file
 		void writeDot(string filename) const;
 

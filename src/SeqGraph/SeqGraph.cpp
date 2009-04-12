@@ -241,6 +241,28 @@ void SeqGraph::flip(VertexID id)
 }
 
 //
+// Output simple stats
+//
+void SeqGraph::stats() const
+{
+	int numVerts = 0;
+	int numEdges = 0;
+
+	VertexPtrVec::const_iterator iter = m_vertices.begin(); 
+	for(; iter != m_vertices.end(); ++iter)
+	{
+		// If the edge has been deleted, skip
+		if(*iter == NULL)
+			continue;
+
+		numEdges += (*iter)->countEdges();
+		++numVerts;
+	}
+
+	std::cout << "Graph has " << numVerts << " vertices and " << numEdges << " edges\n";
+}
+
+//
 // Dump the graph to a dot file
 //
 void SeqGraph::writeDot(string filename) const

@@ -48,6 +48,14 @@ void Vertex::removeEdge(Edge e)
 }
 
 //
+// Merge data
+//
+void Vertex::merge(const Vertex* /*pV2*/, const Edge& e)
+{
+	m_mergeRec.push_back(e);
+}
+
+//
 // Check for the precense of a particular edge
 //
 bool Vertex::hasEdge(Edge e) const
