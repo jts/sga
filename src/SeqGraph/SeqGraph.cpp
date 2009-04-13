@@ -68,6 +68,14 @@ void SeqGraph::addEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp)
 }
 
 //
+// Add an edge
+//
+void SeqGraph::addEdge(const Edge& e)
+{
+	addEdge(e.getStart(), e.getEnd(), e.getDir(), e.getComp());
+}
+
+//
 // Remove an edge
 //
 void SeqGraph::removeEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp)

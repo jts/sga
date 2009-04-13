@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <cassert>
+#include <sstream>
 #include "SeqGraph.h"
 #include "SeqVertex.h"
 
@@ -24,6 +25,70 @@ struct Contig
 	}
 };
 
+struct AdjInfo
+{
+	EdgeVec edges;
+
+	friend std::istream& operator>>(std::istream& in, AdjInfo& a)
+	{
+		VertexID root;
+		std::string line;
+		getline(in, line);
+
+		// return if we've hit the end
+		if(line == "")
+			return in;
+		
+		std::stringstream parser(line);
+		std::string bracket;
+		std::string record;
+		
+		parser >> root; // parse the root
+		parser >> bracket; // extract the opening bracket
+
+		EdgeDir ed = ED_SENSE; // the first record is the sense record
+		bool finished = false;
+
+		while(!finished)
+		{
+			// Read the record
+			parser >> record;
+
+			if(record == "]")
+			{
+				if(ed == ED_SENSE)
+				{
+					ed = !ed;
+
+					// extract the next bracket
+					parser >> bracket;
+				}
+				else
+				{
+					finished = true;
+				}
+			}
+			else
+			{
+				// Parse the record
+				std::stringstream ss(record);
+				
+				VertexID id;
+				int comp = -1;
+				ss >> id;
+				ss.ignore(1);
+				ss >> comp;
+
+				// Build the edge
+				Edge e(root, id, ed, (EdgeComp)comp);
+				a.edges.push_back(e);
+			}
+		}
+		in.peek();
+		return in;
+	}
+};
+
 
 void loadContigVertices(SeqGraph& graph, int kmer, std::string filename)
 {
@@ -37,6 +102,21 @@ void loadContigVertices(SeqGraph& graph, int kmer, std::string filename)
 	}
 }
 
+void loadContigEdges(SeqGraph& graph, std::string filename)
+{
+	std::ifstream file(filename.c_str());
+	assert(file.is_open());
+	AdjInfo a;
+	while(file >> a)
+	{
+		EdgeVecIter iter = a.edges.begin();
+		for(; iter != a.edges.end(); ++iter)
+		{
+			graph.addEdge(*iter);
+		}
+	}
+	(void)graph;
+}
 
 int main(int argc, char** argv)
 {
@@ -50,10 +130,12 @@ int main(int argc, char** argv)
 	std::string contigFile(argv[argID++]);
 	std::string adjFile(argv[argID++]);
 
-	// Load contigs
+	// Load verts and edges
 	loadContigVertices(sg, kmer, contigFile);
+	loadContigEdges(sg, adjFile);
 
 	sg.stats();
+	sg.validate();
 }
 
 
