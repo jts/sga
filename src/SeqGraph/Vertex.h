@@ -27,7 +27,6 @@ class Vertex
 		virtual ~Vertex();
 
 		// Add an edge
-		void addEdge(VertexID ep, EdgeDir dir, EdgeComp comp);
 		void addEdge(Edge e);
 
 		// Add edges in a set

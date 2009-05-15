@@ -27,11 +27,7 @@ class SeqGraph
 		Vertex* getVertex(VertexID id);
 
 		// Add an edge
-		void addEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp);
 		void addEdge(const Edge& e);
-
-		// Remove an edge
-		void removeEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp);
 
 		// Merge vertices
 		void mergeVertices(VertexID id1, VertexID id2);

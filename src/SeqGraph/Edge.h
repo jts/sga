@@ -15,7 +15,7 @@ enum EdgeDir
 
 enum EdgeComp
 {
-	EC_NATURAL = 0,
+	EC_SAME = 0,
 	EC_REVERSE
 };
 
@@ -28,26 +28,26 @@ inline EdgeDir operator!(const EdgeDir& dir)
 
 inline EdgeComp operator!(const EdgeComp& comp)
 {
-	return (comp == EC_NATURAL) ? EC_REVERSE : EC_NATURAL;
+	return (comp == EC_SAME) ? EC_REVERSE : EC_SAME;
 }
 
 
 class Edge
 {
 	public:
-		Edge(VertexID start, VertexID end, EdgeDir dir, EdgeComp comp) : 
-				m_start(start), m_end(end), m_dir(dir), m_comp(comp) {}
+		Edge(VertexID start, VertexID end, EdgeDir dir, EdgeComp comp, int overlap) : 
+				m_start(start), m_end(end), m_dir(dir), m_comp(comp), m_overlap(overlap) {}
 
 		// Generate the twin edge, the edge from the end node back to the start node
 		Edge getTwin() const
 		{
-			return Edge(m_end, m_start, getTwinDir(), m_comp);
+			return Edge(m_end, m_start, getTwinDir(), m_comp, m_overlap);
 		}
 
 		// Make the direction of the edge that its twin should point along 
 		EdgeDir getTwinDir() const
 		{
-			return (m_comp == EC_NATURAL) ? !m_dir : m_dir;
+			return (m_comp == EC_SAME) ? !m_dir : m_dir;
 		}
 
 		// Flip the edge
@@ -62,6 +62,8 @@ class Edge
 		VertexID getEnd() const { return m_end; }
 		EdgeDir getDir() const { return m_dir; }
 		EdgeComp getComp() const { return m_comp; }
+		int getOverlap() const { return m_overlap; }
+		bool isSelf() const { return m_start == m_end; }
 
 		// Equality operator
 		bool operator==(const Edge& obj) const
@@ -104,7 +106,7 @@ class Edge
 		VertexID m_end;
 		EdgeDir m_dir;
 		EdgeComp m_comp;
-
+		int m_overlap;
 
 };
 

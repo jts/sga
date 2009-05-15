@@ -5,28 +5,12 @@
 #include <sstream>
 #include "SeqGraph.h"
 #include "SeqVertex.h"
-
-// Input objects
-struct Contig
-{
-	VertexID id;
-	int length;
-	double coverage;
-	std::string seq;
-
-	friend std::istream& operator>> (std::istream& in, Contig& c)
-	{
-		in.ignore(1); // skip ">"
-		in >> c.id >> c.length >> c.coverage; // read header
-		in.ignore(1); // skip newline
-		in >> c.seq; // read seq
-		in.ignore(1); // place the ifstream at the next line
-		return in;
-	}
-};
+#include "Util.h"
 
 struct AdjInfo
 {
+	AdjInfo(int o) : overlap(o) {}
+	int overlap;
 	EdgeVec edges;
 
 	friend std::istream& operator>>(std::istream& in, AdjInfo& a)
@@ -80,7 +64,7 @@ struct AdjInfo
 				ss >> comp;
 
 				// Build the edge
-				Edge e(root, id, ed, (EdgeComp)comp);
+				Edge e(root, id, ed, (EdgeComp)comp, a.overlap);
 				a.edges.push_back(e);
 			}
 		}
@@ -102,11 +86,11 @@ void loadContigVertices(SeqGraph& graph, int kmer, std::string filename)
 	}
 }
 
-void loadContigEdges(SeqGraph& graph, std::string filename)
+void loadContigEdges(int overlap, SeqGraph& graph, std::string filename)
 {
 	std::ifstream file(filename.c_str());
 	assert(file.is_open());
-	AdjInfo a;
+	AdjInfo a(overlap);
 	while(file >> a)
 	{
 		EdgeVecIter iter = a.edges.begin();
@@ -132,8 +116,11 @@ int main(int argc, char** argv)
 
 	// Load verts and edges
 	loadContigVertices(sg, kmer, contigFile);
-	loadContigEdges(sg, adjFile);
+	loadContigEdges(kmer - 1, sg, adjFile);
 
+	sg.stats();
+	sg.validate();
+	sg.simplify();
 	sg.stats();
 	sg.validate();
 }
@@ -152,18 +139,6 @@ void test()
 	sg.addVertex(pV2);
 	sg.addVertex(pV3);
 	sg.addVertex(pV4);
-
-	sg.addEdge(pV0->getID(), pV2->getID(), ED_SENSE, EC_NATURAL);
-	sg.addEdge(pV2->getID(), pV0->getID(), ED_ANTISENSE, EC_NATURAL);
-
-	sg.addEdge(pV1->getID(), pV2->getID(), ED_SENSE, EC_NATURAL);
-	sg.addEdge(pV2->getID(), pV1->getID(), ED_ANTISENSE, EC_NATURAL);
-
-	sg.addEdge(pV2->getID(), pV3->getID(), ED_SENSE, EC_NATURAL);
-	sg.addEdge(pV3->getID(), pV2->getID(), ED_ANTISENSE, EC_NATURAL);
-
-	sg.addEdge(pV2->getID(), pV4->getID(), ED_SENSE, EC_NATURAL);
-	sg.addEdge(pV4->getID(), pV2->getID(), ED_ANTISENSE, EC_NATURAL);
 
 	sg.flip(4);
 	sg.simplify();

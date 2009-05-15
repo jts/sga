@@ -61,28 +61,10 @@ Vertex* SeqGraph::getVertex(VertexID id)
 //
 // Add an edge
 //
-void SeqGraph::addEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp)
-{
-	Vertex* pVert1 = getVertex(id1);
-	pVert1->addEdge(id2, dir, comp);
-}
-
-//
-// Add an edge
-//
 void SeqGraph::addEdge(const Edge& e)
 {
-	addEdge(e.getStart(), e.getEnd(), e.getDir(), e.getComp());
-}
-
-//
-// Remove an edge
-//
-void SeqGraph::removeEdge(VertexID id1, VertexID id2, EdgeDir dir, EdgeComp comp)
-{
-	Vertex* pVert1 = getVertex(id1);
-	Edge e(id1, id2, dir, comp);
-	pVert1->removeEdge(e);
+	Vertex* pVert1 = getVertex(e.getStart());
+	pVert1->addEdge(e);
 }
 
 //
@@ -120,6 +102,9 @@ void SeqGraph::mergeVertices(VertexID id1, VertexID id2)
 //
 void SeqGraph::mergeAlongEdge(Vertex* pV1, Vertex* pV2, const Edge& edge)
 {
+	// Merge the data
+	pV1->merge(pV2, edge);
+
 	// Construct the twin edge (the edge in v2 that points to v1)
 	Edge twinEdge = edge.getTwin();
 
@@ -142,7 +127,7 @@ void SeqGraph::mergeAlongEdge(Vertex* pV1, Vertex* pV2, const Edge& edge)
 		assert(iter->getDir() == edge.getDir());
 
 		// Build the new edge and add it to V1
-		Edge e(pV1->getID(), iter->getEnd(), iter->getDir(), iter->getComp());
+		Edge e(pV1->getID(), iter->getEnd(), iter->getDir(), iter->getComp(), iter->getOverlap());
 		pV1->addEdge(e);
 
 		// Add the twin edge to the new partner node
@@ -185,7 +170,8 @@ void SeqGraph::simplify()
 			EdgeVec edges = (*iter)->getEdges(dir);
 
 			// If there is a single edge in this direction, merge the vertices
-			if(edges.size() == 1)
+			// Don't merge singular self edges though
+			if(edges.size() == 1 && !edges.front().isSelf())
 			{
 				Edge single = edges.front();
 				mergeAlongEdge(*iter, getVertex(single.getEnd()), single);

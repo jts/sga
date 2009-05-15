@@ -25,5 +25,7 @@ AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 
 AC_CONFIG_FILES([Makefile
                  Resolve/Makefile
-                 SeqGraph/Makefile])
+                 SeqGraph/Makefile
+				 Util/Makefile
+				 UniEst/Makefile])
 AC_OUTPUT

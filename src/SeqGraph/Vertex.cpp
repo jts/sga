@@ -1,3 +1,4 @@
+#include <cassert>
 #include "Vertex.h"
 
 //
@@ -6,16 +7,6 @@
 Vertex::~Vertex()
 {
 
-}
-
-//
-// Add an edge
-//
-void Vertex::addEdge(VertexID ep, EdgeDir dir, EdgeComp comp)
-{
-	// Construct the edge
-	Edge e(getID(), ep, dir, comp);
-	addEdge(e);
 }
 
 //
@@ -42,7 +33,8 @@ void Vertex::removeEdge(Edge e)
 	// Check if the edge exists
 	if(!hasEdge(e))
 	{
-		cerr << "removeEdge:: edge not found " << e << endl;
+		cerr << "removeEdge:: edge not found " << e << " in vertex " << *this <<  endl;
+		assert(false);
 	}
 	m_edges.erase(e);
 }
@@ -134,7 +126,7 @@ void Vertex::writeEdges(ostream& out) const
 	for(; iter != m_edges.end(); ++iter)
 	{
 		string color = (iter->getDir() == ED_SENSE) ? "black" : "red";
-		string label = (iter->getComp() == EC_NATURAL) ? "0" : "1";
+		string label = (iter->getComp() == EC_SAME) ? "0" : "1";
 		out << "\"" << iter->getStart() << "\" -> \"" << iter->getEnd();
 		out << "\" [color=\"" << color << "\" ";
 		out << "label=\"" << label << "\"];\n";

@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = SeqGraph Resolve
+SUBDIRS = Util SeqGraph Resolve UniEst

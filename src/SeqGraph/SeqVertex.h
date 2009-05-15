@@ -10,6 +10,7 @@
 #include <iterator>
 #include "Common.h"
 #include "Vertex.h"
+#include "Util.h"
 
 // Namespace
 using namespace std;
@@ -30,6 +31,8 @@ class SeqVertex : public Vertex
 												
 		virtual ~SeqVertex() {}; 
 
+		// Get sequence
+		Sequence getSeq() const { return m_sequence; }
 		// The cost of traversing this node
 		virtual int cost() const { return m_sequence.length() - m_overlap; }
 		virtual void merge(const Vertex* pV2, const Edge& e);
@@ -38,7 +41,7 @@ class SeqVertex : public Vertex
 		int m_kmer;
 		int m_overlap;
 		double m_coverage;
-		std::string m_sequence;
+		Sequence m_sequence;
 };
 
 #endif

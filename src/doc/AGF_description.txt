@@ -1,0 +1,54 @@
+#
+# Assembly graph format specification version 0.1
+#
+
+Motivation
+
+The dominant paradigms for sequence assembly are overlap/string graphs (see Myers) and de Bruijn graphs (see Pevzner). Here we define a common file format to unify work in the field of sequence assembly and allow developers to work on algorithms within a common framework. 
+
+A sequence graph is described by a set of vertices {V} and edges {E}. Here we use Myer's formulation of a string graph as the basis for this format. 
+
+==================
+File specification
+==================
+
+An assembly graph format file is an ascii-encoded text file similar to a fasta file. The file is split into two sections, a VERTEX specification section followed by an EDGE specification section.
+
+-------
+Header
+-------
+-optional
+
+Type:
+HD - header
+	VN	File format version
+	VT	Number of vertices?
+	ED	Number of edges?
+	TP	Graph type (stringgraph? debruijn?)
+
+PG - program
+	ID	Program name
+	VN	Program version
+	CL	Command line
+
+--------
+Vertex section
+--------
+
+V - vertex
+	ID	Vertex name (must be unique)
+	LN	Sequence length
+	CV	Total read (kmer?) coverage of the vertex
+	1 to n sequence lines follow
+
+-----
+Edge section
+-----
+
+E <ID1> <ID2> <ID1.START ID1.END> <ID2.START ID2.END>
+
+deBruijn edges are a specialization of this were (END - START + 1) = k for all edges
+and either START = 0 or END = |v_i| ("extreme" - myers)
+
+string graph - are the edges req'd to be extreme?
+It is convenient to describe the relative direction 
