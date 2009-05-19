@@ -6,4 +6,4 @@ UniEst_CPPFLAGS = \
 UniEst_LDADD = \
 	$(top_builddir)/Util/libutil.a
 
-UniEst_SOURCES = UniEst.cpp
+UniEst_SOURCES = UniEst.cpp UniData.cpp

@@ -47,7 +47,7 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_UniEst_OBJECTS = UniEst-UniEst.$(OBJEXT)
+am_UniEst_OBJECTS = UniEst-UniEst.$(OBJEXT) UniEst-UniData.$(OBJEXT)
 UniEst_OBJECTS = $(am_UniEst_OBJECTS)
 UniEst_DEPENDENCIES = $(top_builddir)/Util/libutil.a
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
@@ -152,7 +152,7 @@ UniEst_CPPFLAGS = \
 UniEst_LDADD = \
 	$(top_builddir)/Util/libutil.a
 
-UniEst_SOURCES = UniEst.cpp
+UniEst_SOURCES = UniEst.cpp UniData.cpp
 all: all-am
 
 .SUFFIXES:
@@ -219,6 +219,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UniEst-UniData.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UniEst-UniEst.Po@am__quote@
 
 .cpp.o:
@@ -248,6 +249,20 @@ UniEst-UniEst.obj: UniEst.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='UniEst.cpp' object='UniEst-UniEst.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UniEst_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UniEst-UniEst.obj `if test -f 'UniEst.cpp'; then $(CYGPATH_W) 'UniEst.cpp'; else $(CYGPATH_W) '$(srcdir)/UniEst.cpp'; fi`
+
+UniEst-UniData.o: UniData.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UniEst_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UniEst-UniData.o -MD -MP -MF "$(DEPDIR)/UniEst-UniData.Tpo" -c -o UniEst-UniData.o `test -f 'UniData.cpp' || echo '$(srcdir)/'`UniData.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/UniEst-UniData.Tpo" "$(DEPDIR)/UniEst-UniData.Po"; else rm -f "$(DEPDIR)/UniEst-UniData.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='UniData.cpp' object='UniEst-UniData.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UniEst_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UniEst-UniData.o `test -f 'UniData.cpp' || echo '$(srcdir)/'`UniData.cpp
+
+UniEst-UniData.obj: UniData.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UniEst_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UniEst-UniData.obj -MD -MP -MF "$(DEPDIR)/UniEst-UniData.Tpo" -c -o UniEst-UniData.obj `if test -f 'UniData.cpp'; then $(CYGPATH_W) 'UniData.cpp'; else $(CYGPATH_W) '$(srcdir)/UniData.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/UniEst-UniData.Tpo" "$(DEPDIR)/UniEst-UniData.Po"; else rm -f "$(DEPDIR)/UniEst-UniData.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='UniData.cpp' object='UniEst-UniData.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UniEst_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UniEst-UniData.obj `if test -f 'UniData.cpp'; then $(CYGPATH_W) 'UniData.cpp'; else $(CYGPATH_W) '$(srcdir)/UniData.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

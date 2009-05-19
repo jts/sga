@@ -2,6 +2,8 @@
 #define UNIEST_H
 
 #include "Util.h"
+#include "UniData.h"
+#include "Contig.h"
 #include <cassert>
 #include <cerrno>
 #include <cstring>
@@ -18,57 +20,17 @@
 //
 // Typedefs
 //
-typedef std::vector<int> IntVec;
-typedef std::vector<double> DoubleVec;
 typedef std::set<std::string> StringSet;
-
-struct LenMean
-{
-	size_t length;
-	double mean;
-
-	static bool sortByLen(const LenMean& lm1, const LenMean& lm2)
-	{
-		return lm1.length < lm2.length;
-	}
-
-	static bool sortByMean(const LenMean& lm1, const LenMean& lm2)
-	{
-		return lm1.mean < lm2.mean;
-	}
-	
-
-	friend std::ostream& operator<< (std::ostream& out, LenMean& lm)
-	{
-		out << lm.length << "\t" << lm.mean;
-		return out;
-	}
-};
-
-struct UniData
-{
-	IntVec kmerCoverage;
-	StringSet pairedCoverage[2];
-};
-
 typedef std::map<ContigID, UniData> CoverageMap;
 
 
 //
 // Functions
 //
-void addCoverage(CoverageMap& cov_map, const KAlignment ka);
-void addOverhangCoverage(CoverageMap& covMap, const KAlignment& ka1, const KAlignment& ka2);
-double getMeanCoverage(const IntVec& iVec);
-
 double estimateGlobalMeanCoverage(CoverageMap& cov_map);
 void estimateUniquenessByDepth(CoverageMap& cov_map, double mean_param);
-void estimateUniquenessByOverhang(CoverageMap& covMap);
 
 void parseOptions(int argc, char** argv);
-void printCoverage(CoverageMap& cov_map, ContigID id);
-double log_poisson(int k, double m);
-double log_factorial(int k);
 
 
 //

@@ -48,7 +48,7 @@ AR = ar
 ARFLAGS = cru
 libutil_a_AR = $(AR) $(ARFLAGS)
 libutil_a_LIBADD =
-am_libutil_a_OBJECTS = Util.$(OBJEXT)
+am_libutil_a_OBJECTS = Util.$(OBJEXT) Contig.$(OBJEXT)
 libutil_a_OBJECTS = $(am_libutil_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -152,7 +152,8 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 noinst_LIBRARIES = libutil.a
 libutil_a_SOURCES = \
-	Util.cpp Util.h
+	Util.cpp Util.h \
+	Contig.h Contig.cpp
 
 all: all-am
 
@@ -201,6 +202,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Contig.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Util.Po@am__quote@
 
 .cpp.o:

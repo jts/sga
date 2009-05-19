@@ -1,31 +1,21 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <vector>
 #include <string>
 #include <istream>
 #include <cassert>
+#include <sstream>
+
+#define CAF_SEP ':'
 
 //
-// Contig description
+// Typedef
 //
-typedef uint32_t ContigID;
-struct Contig
-{
-	ContigID id;
-	int length;
-	double coverage;
-	std::string seq;
-
-	friend std::istream& operator>> (std::istream& in, Contig& c)
-	{
-		in.ignore(1); // skip ">"
-		in >> c.id >> c.length >> c.coverage; // read header
-		in.ignore(1); // skip newline
-		in >> c.seq; // read seq
-		in.ignore(1); // place the ifstream at the next line
-		return in;
-	}
-};
+typedef std::vector<int> IntVec;
+typedef std::vector<double> DoubleVec;
+typedef std::string Sequence;
+typedef std::string ContigID;
 
 //
 // Alignment
@@ -48,10 +38,36 @@ struct KAlignment
 	}
 };
 
+//
+// Functions
+//
 
-typedef std::string Sequence;
+//
+// Key-value operations
+//
+template <class C>
+std::string makeKeyValue(std::string key, C value)
+{
+	std::stringstream ss;
+	ss << key << CAF_SEP << value;
+	return ss.str();
+}
+
+//
+// Sequence operations
+//
 Sequence reverseComplement(Sequence seq);
 char complement(char base);
+
+
+//
+// Probability
+//
+double poisson(int k, double m);
+int factorial(int k);
+
+double log_poisson(int k, double m);
+double log_factorial(int k);
 
 #endif
 

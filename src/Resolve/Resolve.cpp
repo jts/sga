@@ -6,6 +6,7 @@
 #include "SeqGraph.h"
 #include "SeqVertex.h"
 #include "Util.h"
+#include "Contig.h"
 
 struct AdjInfo
 {
@@ -81,7 +82,7 @@ void loadContigVertices(SeqGraph& graph, int kmer, std::string filename)
 	Contig c;
 	while(file >> c)
 	{
-		SeqVertex* pSV = new SeqVertex(c.id, kmer, c.coverage, c.seq);
+		SeqVertex* pSV = new SeqVertex(c.getID(), kmer, c.getCoverage(), c.getSequence());
 		graph.addVertex(pSV);
 	}
 }
