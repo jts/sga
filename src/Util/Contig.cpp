@@ -13,6 +13,9 @@ Contig::Contig() :	m_length(0),
 					m_coverage(0.0f), 
 					m_uniqueFlag(UF_UNKNOWN) {}
 
+//
+//
+//
 std::istream& readFasta(std::istream& in, Contig& c)
 {
 	in.ignore(1); // skip ">"
@@ -23,6 +26,28 @@ std::istream& readFasta(std::istream& in, Contig& c)
 	return in;
 }
 
+std::istream& readCAF(std::istream& in, Contig& c)
+{
+	std::string line;
+	getline(in, line);
+	std::stringstream tokenizer(line);
+
+	std::string token;
+	while(tokenizer >> token)
+	{
+		std::string key;
+		std::string value;
+		splitKeyValue(token, key, value);
+		c.setFromKeyValue(key, value);
+	}
+	assert(c.getSequence().size() == c.getLength());
+	return in;
+}
+
+
+//
+//
+//
 std::ostream& writeCAF(std::ostream& out, Contig& c)
 {
 	std::vector<std::string> fields;
@@ -37,4 +62,26 @@ std::ostream& writeCAF(std::ostream& out, Contig& c)
 	return out;
 }
 
-
+//
+// Set a field based on a key/value pair
+//
+void Contig::setFromKeyValue(std::string& key, std::string& value)
+{
+	std::stringstream parser(value);
+	if(key == IDFIELD)
+		parser >> m_id;
+	else if(key == LENFIELD)
+		parser >> m_length;
+	else if(key == COVFIELD)
+		parser >> m_coverage;
+	else if(key == SEQFIELD)
+		parser >> m_seq;
+	else if(key == UNQFIELD)
+	{
+		int v;
+		parser >> v;
+		m_uniqueFlag = (UniqueFlag)v;
+	}
+	else
+		assert(false && "Unknown token found while parsing contig");
+}

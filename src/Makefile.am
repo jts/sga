@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = Util UniEst
+SUBDIRS = Util UniEst SeqGraph Scaffold

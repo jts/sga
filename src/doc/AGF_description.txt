@@ -52,3 +52,15 @@ and either START = 0 or END = |v_i| ("extreme" - myers)
 
 string graph - are the edges req'd to be extreme?
 It is convenient to describe the relative direction 
+
+
+===================
+Scaffold data
+===================
+
+SF
+	ID	Scaffold ID
+	CM	Number of components
+		CI	Contig ID
+		DS	Distance from last
+		OR	Orientation wrt last	

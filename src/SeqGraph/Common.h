@@ -2,6 +2,6 @@
 #define COMMON_H
 
 // Typedefs
-typedef uint32_t VertexID;
+typedef std::string VertexID;
 
 #endif

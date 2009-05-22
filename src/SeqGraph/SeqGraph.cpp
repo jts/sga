@@ -13,6 +13,12 @@ SeqGraph::SeqGraph()
 //
 SeqGraph::~SeqGraph()
 {
+	VertexPtrMap::iterator iter = m_vertices.begin(); 
+	for(; iter != m_vertices.end(); ++iter)
+	{
+		delete iter->second;
+		iter->second = NULL;
+	}
 }
 
 //
@@ -21,8 +27,7 @@ SeqGraph::~SeqGraph()
 void SeqGraph::addVertex(Vertex* pVert)
 {
 	// Make sure the id is correct
-	assert(pVert->getID() == m_vertices.size());
-	m_vertices.push_back(pVert);
+	m_vertices.insert(std::make_pair(pVert->getID(), pVert));
 }
 
 //
@@ -30,8 +35,6 @@ void SeqGraph::addVertex(Vertex* pVert)
 //
 void SeqGraph::removeVertex(VertexID id)
 {
-	assert(id < m_vertices.size());
-
 	// Remove the edges pointing to this Vertex
 	Vertex* pVertex = getVertex(id);
 	EdgeVec ev = pVertex->getEdges();
@@ -44,7 +47,16 @@ void SeqGraph::removeVertex(VertexID id)
 
 	// Remove the vertex from the collection
 	delete pVertex;
-	m_vertices[id] = NULL;
+	m_vertices.erase(id);
+}
+
+//
+// Check for the existance of a vertex
+//
+bool SeqGraph::hasVertex(VertexID id)
+{
+	VertexPtrMap::iterator iter = m_vertices.find(id);
+	return iter != m_vertices.end();
 }
 
 //
@@ -52,10 +64,9 @@ void SeqGraph::removeVertex(VertexID id)
 //
 Vertex* SeqGraph::getVertex(VertexID id)
 {
-	assert(id < m_vertices.size());
-	Vertex* pVert = m_vertices[id];
-	assert(pVert != NULL);
-	return pVert;
+	VertexPtrMap::iterator iter = m_vertices.find(id);
+	assert(iter != m_vertices.end());
+	return iter->second;
 }
 
 //
@@ -155,26 +166,22 @@ void SeqGraph::mergeAlongEdge(Vertex* pV1, Vertex* pV2, const Edge& edge)
 //
 void SeqGraph::simplify()
 {
-	VertexPtrVecIter iter = m_vertices.begin();
+	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
 	{
-		// Skip deleted nodes
-		if(*iter == NULL)
-			continue;
-
 		for(int d = 0; d < ED_COUNT; ++d)
 		{
 			EdgeDir dir = EDGE_DIRECTIONS[d];
 			
 			// Get the edges for this direction
-			EdgeVec edges = (*iter)->getEdges(dir);
+			EdgeVec edges = iter->second->getEdges(dir);
 
 			// If there is a single edge in this direction, merge the vertices
 			// Don't merge singular self edges though
 			if(edges.size() == 1 && !edges.front().isSelf())
 			{
 				Edge single = edges.front();
-				mergeAlongEdge(*iter, getVertex(single.getEnd()), single);
+				mergeAlongEdge(iter->second, getVertex(single.getEnd()), single);
 			}
 		}
 	}
@@ -185,15 +192,11 @@ void SeqGraph::simplify()
 //
 void SeqGraph::validate()
 {
-	VertexPtrVecIter iter = m_vertices.begin();
+	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
 	{
-		// Skip deleted nodes
-		if(*iter == NULL)
-			continue;
-
 		// Ensure the twin edge exists for every edge
-		EdgeVec edges = (*iter)->getEdges();
+		EdgeVec edges = iter->second->getEdges();
 		for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 		{
 			Vertex* pV2 = getVertex(iter->getEnd());
@@ -242,14 +245,10 @@ void SeqGraph::stats() const
 	int numVerts = 0;
 	int numEdges = 0;
 
-	VertexPtrVec::const_iterator iter = m_vertices.begin(); 
+	VertexPtrMap::const_iterator iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
 	{
-		// If the edge has been deleted, skip
-		if(*iter == NULL)
-			continue;
-
-		numEdges += (*iter)->countEdges();
+		numEdges += iter->second->countEdges();
 		++numVerts;
 	}
 
@@ -263,16 +262,12 @@ void SeqGraph::writeDot(string filename) const
 {
 	(void)filename;
 	cout << "digraph G\n{\n";
-	VertexPtrVec::const_iterator iter = m_vertices.begin(); 
+	VertexPtrMap::const_iterator iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
 	{
-		// If the edge has been deleted, skip
-		if(*iter == NULL)
-			continue;
-
-		VertexID id = (*iter)->getID();
+		VertexID id = iter->second->getID();
 		cout << id << " [ label =\"" << id << "\"];\n";
-		(*iter)->writeEdges(cout);
+		iter->second->writeEdges(cout);
 	}
 	cout << "}\n";
 }

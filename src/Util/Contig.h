@@ -13,7 +13,7 @@
 //
 enum UniqueFlag
 {
-	UF_UNKNOWN,
+	UF_UNKNOWN = 0,
 	UF_UNIQUE,
 	UF_REPEAT,
 	UF_NOCALL
@@ -36,11 +36,12 @@ class Contig
 		UniqueFlag getUniqueFlag() const { return m_uniqueFlag; }
 		size_t getLength() const { return m_length; }
 		Sequence getSequence() const { return m_seq; }
-
+		bool isUnique() const { return m_uniqueFlag == UF_UNIQUE; }
 		//
 		// Setters
 		//
 		void setUniqueFlag(UniqueFlag uf) { m_uniqueFlag = uf; }
+		void setFromKeyValue(std::string& key, std::string& value);
 
 		//
 		// Operators
@@ -54,7 +55,7 @@ class Contig
 		// Readers
 		//
 		friend std::istream& readFasta(std::istream& in, Contig& c);
-		friend std::istream& readCAF(std::ostream& out, Contig& c);
+		friend std::istream& readCAF(std::istream& in, Contig& c);
 		
 		//
 		// Writers

@@ -2,35 +2,10 @@
 #define EDGE_H
 
 #include <ostream>
+#include "Util.h"
 #include "Common.h"
 
 using namespace std;
-
-enum EdgeDir
-{	
-	ED_SENSE = 0,
-	ED_ANTISENSE,
-	ED_COUNT
-};
-
-enum EdgeComp
-{
-	EC_SAME = 0,
-	EC_REVERSE
-};
-
-const EdgeDir EDGE_DIRECTIONS[ED_COUNT] = { ED_SENSE, ED_ANTISENSE };
-
-inline EdgeDir operator!(const EdgeDir& dir)
-{
-	return (dir == ED_SENSE) ? ED_ANTISENSE : ED_SENSE;
-}
-
-inline EdgeComp operator!(const EdgeComp& comp)
-{
-	return (comp == EC_SAME) ? EC_REVERSE : EC_SAME;
-}
-
 
 class Edge
 {
@@ -64,6 +39,10 @@ class Edge
 		EdgeComp getComp() const { return m_comp; }
 		int getOverlap() const { return m_overlap; }
 		bool isSelf() const { return m_start == m_end; }
+		double getWeight() const { return m_weight; }
+
+		// Setters
+		void setWeight(double w) { m_weight = w; }
 
 		// Equality operator
 		bool operator==(const Edge& obj) const
@@ -107,6 +86,7 @@ class Edge
 		EdgeDir m_dir;
 		EdgeComp m_comp;
 		int m_overlap;
+		double m_weight;
 
 };
 

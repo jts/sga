@@ -4,12 +4,13 @@
 #include <string>
 #include <stdio.h>
 #include <vector>
+#include <map>
 #include "Vertex.h"
 
 using namespace std;
 
-typedef vector<Vertex*> VertexPtrVec;
-typedef VertexPtrVec::iterator VertexPtrVecIter;
+typedef map<VertexID, Vertex*> VertexPtrMap;
+typedef VertexPtrMap::iterator VertexPtrMapIter;
 
 class SeqGraph
 {
@@ -22,6 +23,9 @@ class SeqGraph
 		
 		// Remove a vertex
 		void removeVertex(VertexID id);
+
+		// Check if a vertex exists
+		bool hasVertex(VertexID id);
 
 		// Get a vertex
 		Vertex* getVertex(VertexID id);
@@ -54,7 +58,7 @@ class SeqGraph
 		void mergeAlongEdge(Vertex* pV1, Vertex* pV2, const Edge& edge);
 
 		// Vertex collection
-		VertexPtrVec m_vertices;
+		VertexPtrMap m_vertices;
 };
 
 #endif
