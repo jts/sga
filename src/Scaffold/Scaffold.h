@@ -4,7 +4,6 @@
 #include "Util.h"
 #include "Contig.h"
 #include "ScaffoldData.h"
-#include "Chain.h"
 #include "SeqGraph.h"
 #include <cassert>
 #include <cerrno>
@@ -22,29 +21,53 @@
 //
 // Structs
 //
+struct LinearScaffoldLink
+{
+	LinearScaffoldLink(Edge e, Range r) : edge(e), range(r) {}
+	Edge edge;
+	Range range;
 
+	friend std::ostream& operator<<(std::ostream& out, const LinearScaffoldLink& lsl)
+	{
+		out << lsl.edge.getEnd() << " " << lsl.range;
+		return out;
+	}
+
+	static bool sortStarts(const LinearScaffoldLink& lsl1, const LinearScaffoldLink& lsl2)
+	{
+		return lsl1.range.start < lsl2.range.start;
+	}
+};
 
 //
 // Typedefs
 //
 typedef std::map<ContigID, ScaffoldData> SDMap;
 typedef std::vector<Range> RangeVec;
+typedef std::vector<LinearScaffoldLink> LSLVec;
 typedef std::vector<ContigPosition> ContigPositionVector;
 
 //
 // Functions
 //
 
-void buildChains(SDMap& sdMap);
+void buildGraph(SDMap& sdMap);
+bool cutAmbigious(SeqGraph* pGraph, Vertex* pVertex);
+bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex);
 Contig& getContig(SDMap& sdMap, ContigID cid);
+Range convertEdgeToRange(const SeqGraph* sg, const Edge& e);
 
 // Graph building
-void addVertexToScaffoldGraph(SeqGraph& graph, ContigID id);
+void addVertexToScaffoldGraph(SeqGraph& graph, SDMap& sdMap, ContigID id);
 void addEdgeToScaffoldGraph(SeqGraph& graph, ContigID id1, ContigID id2, EdgeDir dir, EdgeComp comp, int dist);
 
 // Parsing
 void parseLinks(std::string filename, SDMap& sdMap);
 void parseOptions(int argc, char** argv);
+
+// Writing
+void writeScaffold(ostream& out, int idNum, const Path& path);
+void writeScaffoldNode(ostream& out, VertexID id, int dist, bool orientation);
 
 //
 // Getopt

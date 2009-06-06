@@ -125,6 +125,12 @@ inline EdgeComp operator!(const EdgeComp& comp)
         return (comp == EC_SAME) ? EC_REVERSE : EC_SAME;
 }
 
+// Correct an edges direction, given the relationship between the nodes
+inline EdgeDir correctDir(EdgeDir dir, EdgeComp comp)
+{
+	return (comp == EC_SAME) ? dir : !dir;
+}
+
 //
 // Probability
 //

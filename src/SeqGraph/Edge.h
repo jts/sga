@@ -10,6 +10,7 @@ using namespace std;
 class Edge
 {
 	public:
+		Edge() {};
 		Edge(VertexID start, VertexID end, EdgeDir dir, EdgeComp comp, int overlap) : 
 				m_start(start), m_end(end), m_dir(dir), m_comp(comp), m_overlap(overlap) {}
 

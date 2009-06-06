@@ -58,7 +58,7 @@ int main(int argc, char** argv)
 void estimateUniquenessByDepth(CoverageMap& covMap, double mean_param)
 {
 	int high_cn = 10;
-	double threshold = 500;
+	double threshold = 50;
 	for(CoverageMap::iterator iter = covMap.begin(); iter != covMap.end(); ++iter)
 	{
 		DoubleVec pVec;
@@ -102,10 +102,10 @@ void estimateUniquenessByDepth(CoverageMap& covMap, double mean_param)
 				data.getContig().setUniqueFlag(UF_REPEAT);
 		}
 
-		/*
-		std::cout << iter->first << "\t" << data.getContigLen() << "\t" << best << "\t" << second << "\t" 
-				<< ratio << "\t" << ustr << "\t" << best_cn << std::endl;
-		*/
+		
+		std::cerr << iter->first << "\t" << data.getContigLen() << "\t" << best << "\t" << second << "\t" 
+					<< ratio << "\t" << "COPYNUM: " << "\t" << best_cn << std::endl;
+		
 	}
 }
 

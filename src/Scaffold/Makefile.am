@@ -8,4 +8,4 @@ Scaffold_LDADD = \
 	$(top_builddir)/Util/libutil.a \
 	$(top_builddir)/SeqGraph/libseqgraph.a
 
-Scaffold_SOURCES = Scaffold.cpp ScaffoldData.cpp Chain.cpp
+Scaffold_SOURCES = Scaffold.cpp ScaffoldData.cpp

@@ -14,6 +14,16 @@
 // Namespace
 using namespace std;
 
+// Enums
+
+// Arbitrary colors that can be used to indicate the state of a vertex
+enum VertexColor
+{
+	VC_WHITE,
+	VC_GRAY,
+	VC_BLACK
+};
+
 // Typedefs
 typedef set<Edge> EdgeSet;
 typedef vector<Edge> EdgeVec;
@@ -23,7 +33,7 @@ typedef EdgeVec::iterator EdgeVecIter;
 class Vertex
 {
 	public:
-		Vertex(VertexID id) : m_id(id) {}
+		Vertex(VertexID id) : m_id(id), m_color(VC_WHITE) {}
 		virtual ~Vertex();
 
 		// Add an edge
@@ -43,6 +53,12 @@ class Vertex
 
 		// Get the cost of travelling through this node
 		virtual int cost() const { return 1; }
+
+		// Set the color of the vertex
+		void setColor(VertexColor c) { m_color = c; }
+
+		// Get the color
+		VertexColor getColor() const { return m_color; }
 
 		// Find edges to the specified vertex
 		EdgeVec findEdgesTo(VertexID id) const;
@@ -71,6 +87,7 @@ class Vertex
 		EdgeVec m_mergeRec;
 		VertexID m_id;
 		EdgeSet m_edges;
+		VertexColor m_color;
 };
 
 #endif

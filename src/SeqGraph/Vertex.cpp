@@ -14,7 +14,11 @@ Vertex::~Vertex()
 //
 void Vertex::addEdge(Edge e)
 {
-	m_edges.insert(e);
+	std::pair<EdgeSet::iterator, bool> result = m_edges.insert(e);
+	if(!result.second)
+	{
+		std::cerr << "Warning, added duplicate edge " << e << std::endl;
+	}
 }
 
 //
@@ -126,7 +130,11 @@ void Vertex::writeEdges(ostream& out) const
 	for(; iter != m_edges.end(); ++iter)
 	{
 		string color = (iter->getDir() == ED_SENSE) ? "black" : "red";
-		string label = (iter->getComp() == EC_SAME) ? "0" : "1";
+		string label = (iter->getComp() == EC_SAME) ? "S" : "F";
+		stringstream label2;
+		label2 << iter->getOverlap();
+		label += ",";
+		label += label2.str();
 		out << "\"" << iter->getStart() << "\" -> \"" << iter->getEnd();
 		out << "\" [color=\"" << color << "\" ";
 		out << "label=\"" << label << "\"];\n";
