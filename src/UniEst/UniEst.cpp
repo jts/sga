@@ -9,12 +9,26 @@ int main(int argc, char** argv)
 	std::string contigFile(argv[optind++]);
 	std::string alignFile(argv[optind++]);
 
+	if(opt::verbose >= 1)
+	{
+		std::cerr << "Reading contigs from " << contigFile << "\n";
+		std::cerr << "Reading alignments from " << alignFile << "\n";
+		std::cerr << "Threshold: " << opt::threshold << "\n";
+		std::cerr << "Kmer: " << opt::k << "\n";
+		std::cerr << "Writing results to: " << opt::outfile << "\n";
+	}
+
 	// Coverage map
 	CoverageMap covMap;
 
 	// Read the contigs and create the coverage map
 	std::ifstream contigReader(contigFile.c_str());
-	assert(contigReader.is_open());
+	if(!contigReader.is_open())
+	{
+		std::cerr << "Cannot open " << contigFile << std::endl;
+		exit(1);
+	}
+
 	Contig c;
 	while(readFasta(contigReader,c))
 	{
@@ -44,27 +58,32 @@ int main(int argc, char** argv)
 	alignReader.close();
 	
 	double mean_parameter = estimateGlobalMeanCoverage(covMap);
-	std::cerr << "Mean coverage estimated to be: " << mean_parameter << std::endl;
+	if(opt::verbose >= 1)
+	{
+		std::cerr << "Mean coverage estimated to be: " << mean_parameter << std::endl;
+	}
 	estimateUniquenessByDepth(covMap, mean_parameter);
 
 	// Output contigs
+	std::ofstream outContigs(opt::outfile.c_str());
 	for(CoverageMap::iterator iter = covMap.begin(); iter != covMap.end(); ++iter)
 	{
 		UniData& data = iter->second;
-		writeCAF(std::cout, data.getContig()) << std::endl;
+		writeCAF(outContigs, data.getContig()) << std::endl;
 	}
+	outContigs.close();
 }
 
 void estimateUniquenessByDepth(CoverageMap& covMap, double mean_param)
 {
 	int high_cn = 10;
-	double threshold = 50;
 	for(CoverageMap::iterator iter = covMap.begin(); iter != covMap.end(); ++iter)
 	{
 		DoubleVec pVec;
 		UniData& data = iter->second;
 		for(int cn = 1; cn < high_cn; ++cn)
 		{
+			//double expect = cn * mean_param * data.getContigLen();
 			double p1 = log_poisson(data.getNumReads(), cn * mean_param * data.getContigLen());
 			//std::cout << mean_param << " " << data.getContigLen() << " " << data.getNumReads() << "\n";
 			//double p = mean_param * data.getContigLen() - data.getNumReads() * log(2);
@@ -80,31 +99,41 @@ void estimateUniquenessByDepth(CoverageMap& covMap, double mean_param)
 			if(best_cn == pVec.size() || pVec[i] > best_p)
 			{
 				best_cn = i + 1;
+				best_p = pVec[i];
 			}
 		}
 
 		sort(pVec.begin(), pVec.end());
 		double best = pVec[pVec.size() - 1];
 		double second = pVec[pVec.size() - 2];
-
 		double ratio = best - second;
 		
-		
-		if(data.getContigLen() <= 50 || ratio < threshold)
+		UniqueFlag uf;
+		if(data.getContigLen() <= 50 || ratio < opt::threshold)
 		{
-			data.getContig().setUniqueFlag(UF_NOCALL);
+			uf = UF_NOCALL;
 		}
 		else
 		{
 			if(best_cn == 1)
-				data.getContig().setUniqueFlag(UF_UNIQUE);
+				uf = UF_UNIQUE;
 			else
-				data.getContig().setUniqueFlag(UF_REPEAT);
+				uf = UF_REPEAT;
 		}
+		data.getContig().setUniqueFlag(uf);
 
-		
-		std::cerr << iter->first << "\t" << data.getContigLen() << "\t" << best << "\t" << second << "\t" 
-					<< ratio << "\t" << "COPYNUM: " << "\t" << best_cn << std::endl;
+		if(opt::verbose >= 1)
+		{
+			std::cout << iter->first << "\t"
+					  << data.getContigLen() << "\t" 
+					  << data.getNumReads() << "\t"
+					  << (double)data.getNumReads() / (double)data.getContigLen() << "\t"
+					  << uf << "\t"
+					  << best << "\t" 
+					  << second << "\t" 
+					  << ratio << "\t" 
+					  << "COPYNUM: " << "\t" << best_cn << std::endl;
+		}
 		
 	}
 }
@@ -134,6 +163,11 @@ double estimateGlobalMeanCoverage(CoverageMap& covMap)
 void parseOptions(int argc, char** argv)
 {
 	bool die = false;
+
+	// Set defaults
+	opt::threshold = 50;
+	opt::outfile = "unicontigs.caf";
+
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{
 		std::istringstream arg(optarg != NULL ? optarg : "");
@@ -142,6 +176,8 @@ void parseOptions(int argc, char** argv)
 			case '?': die = true; break;
 			case 'k': arg >> opt::k; break;
 			case 'v': opt::verbose++; break;
+			case 't': arg >> opt::threshold; break;
+			case 'o': arg >> opt::outfile; break;
 			case OPT_HELP:
 				std::cout << USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
@@ -154,6 +190,18 @@ void parseOptions(int argc, char** argv)
 	if (opt::k <= 0) 
 	{
 		std::cerr << PROGRAM ": missing -k,--kmer option\n";
+		die = true;
+	}
+
+	if(opt::threshold <= 0)
+	{
+		std::cerr << PROGRAM ": invalid -t,--threshold option (must be > 0)\n";
+		die = true;
+	}
+
+	if(opt::outfile.empty())
+	{
+		std::cerr << PROGRAM ": invalid -o,--outfile option (cannot be empty string)\n";
 		die = true;
 	}
 

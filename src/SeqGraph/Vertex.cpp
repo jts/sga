@@ -17,7 +17,7 @@ void Vertex::addEdge(Edge e)
 	std::pair<EdgeSet::iterator, bool> result = m_edges.insert(e);
 	if(!result.second)
 	{
-		std::cerr << "Warning, added duplicate edge " << e << std::endl;
+		//std::cerr << "Warning, added duplicate edge " << e << std::endl;
 	}
 }
 
@@ -57,6 +57,16 @@ void Vertex::merge(const Vertex* /*pV2*/, const Edge& e)
 bool Vertex::hasEdge(Edge e) const
 {
 	return m_edges.find(e) != m_edges.end();
+}
+
+//
+// Get a particular edge
+//
+Edge Vertex::getEdge(Edge e) const
+{
+	 EdgeSet::const_iterator i = m_edges.find(e);
+	 assert(i != m_edges.end());
+	 return *i;
 }
 
 //

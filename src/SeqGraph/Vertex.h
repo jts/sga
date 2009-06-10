@@ -48,6 +48,9 @@ class Vertex
 		// Check for the precense of an edge
 		bool hasEdge(Edge e) const;
 
+		// Return the matching edge
+		Edge getEdge(Edge e) const;
+
 		// Merge the data of another vertex into this vertex
 		virtual void merge(const Vertex* pV2, const Edge& e);
 

@@ -53,7 +53,7 @@ void buildGraph(SDMap& sdMap)
 		{
 			continue;
 		}
-
+	
 		addVertexToScaffoldGraph(scaffoldGraph, sdMap, sourceContig.getID());
 		
 		for(size_t idx = 0; idx <= 1; ++idx)
@@ -71,28 +71,28 @@ void buildGraph(SDMap& sdMap)
 	}
 
 	scaffoldGraph.writeDot("before.dot");
-
-	// make transitive edges through the graph until no more work can be done
+	scaffoldGraph.visit(&cutInconsistent);
+	scaffoldGraph.writeDot("cutIncon.dot");
 	while(scaffoldGraph.visit(&makeTransitive));
-	//scaffoldGraph.visit(&cutAmbigious);
+	scaffoldGraph.visit(&cutAmbigious);
 	scaffoldGraph.writeDot("after.dot");
 
 	//scaffoldGraph.constructLinearPath("1005");
 	PathVector paths = scaffoldGraph.getLinearComponents();
 	int id = 0;
+	std::ofstream out("scaffold.caf");
 	for(PathVector::iterator iter = paths.begin(); iter != paths.end(); ++iter)
 	{
-		writeScaffold(std::cout, id++, *iter);
+		writeScaffold(out, id++, *iter);
 	}
-
-	scaffoldGraph.writeDot("scaffold.dot");
+	out.close();
 }
 
 void writeScaffold(ostream& out, int idNum, const Path& path)
 {
 	if(path.size() == 0)
 	{
-		std::cerr << "Warning zero-element scaffold\n";
+		//std::cerr << "Warning zero-element scaffold\n";
 		return;
 	}
 
@@ -178,7 +178,7 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 			// Otherwise remove all the links from this vert in this direction
 			if(!isConflicted)
 			{
-				std::cerr << "linearizing off of " << pVertex->getID() << std::endl;
+				std::cout << "linearizing off of " << pVertex->getID() << std::endl;
 				// Update the graph
 				// Remove all links to the source vert except the closest
 				// Add the inferred links
@@ -208,10 +208,19 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 					pGraph->removeEdge(next.edge.getTwin());
 
 					// Add the new edge
-					pGraph->addEdge(inferred);
-					pGraph->addEdge(inferred.getTwin());
+					Vertex* ns = pGraph->getVertex(inferred.getStart());
+					if(!ns->hasEdge(inferred))
+					{
+						pGraph->addEdge(inferred);
+						pGraph->addEdge(inferred.getTwin());
+					}
+					else
+					{
+						Edge old = ns->getEdge(inferred);
+						std::cout << "Inferred edge already exists " << old << " curr= " << old.getOverlap() << " new= " << inferred.getOverlap() << "\n";
+					}
 
-					std::cerr << "\tcreated edge " << inferred << std::endl;
+					std::cout << "\tcreated edge " << inferred << std::endl;
 				}
 			}
 			else
@@ -227,6 +236,76 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 	}	
 	return modified;
 }
+
+//
+// Check whether the set of edges
+//
+bool areEdgesConsistent(SeqGraph* pGraph, Vertex* pVertex, EdgeDir dir)
+{
+	// Get the edges for this direction
+	EdgeVec edges = pVertex->getEdges(dir);
+
+	if(edges.size() <= 1)
+		return true; //trivial case
+
+	// Convert edges to the ranges that they cover
+	LSLVec lslVec;
+	for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+	{		
+		Range r = convertEdgeToRange(pGraph, *iter);
+		lslVec.push_back(LinearScaffoldLink(*iter, r));
+	}
+	
+	// Sort by start coordinate
+	sort(lslVec.begin(), lslVec.end(), LinearScaffoldLink::sortStarts);
+
+	//
+	// Infer distances between the contigs that are linked to the source contig
+	// Check if the distances are all consistent 
+	//
+	bool isConflicted = false;
+	size_t numLinks = lslVec.size();
+	assert(numLinks > 0);
+	LinearScaffoldLink prev = lslVec[0];
+	
+	std::cout << "Vert: " << pVertex->getID() << " " << dir << std::endl;
+
+	for(size_t idx = 1; idx < numLinks; ++idx)
+	{
+		LinearScaffoldLink curr = lslVec[idx];
+		size_t overlap = intersect(prev.range, curr.range).size();
+		bool contained = false;//overlap == curr.range.size() || overlap == prev.range.size();
+		bool isAmbigious = overlap > overlapThreshold;
+		isConflicted = isConflicted || contained || isAmbigious;
+		std::cout << "\t" << prev.range << " " << curr.range << " " << contained << " " << isAmbigious << std::endl;
+		prev = curr;
+	}
+	return !isConflicted;
+}
+
+bool cutInconsistent(SeqGraph* pGraph, Vertex* pVertex)
+{
+	bool modified = false;
+	bool isInconsistent = !areEdgesConsistent(pGraph, pVertex, ED_SENSE) || 
+							!areEdgesConsistent(pGraph, pVertex, ED_ANTISENSE);
+
+	if(isInconsistent)
+	{
+		std::cout << "Cutting inconsistent vertex " << pVertex->getID() << std::endl;
+		for(int d = 0; d < ED_COUNT; ++d)
+		{
+			EdgeVec edges = pVertex->getEdges(EDGE_DIRECTIONS[d]);
+			for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+			{		
+				pGraph->removeEdge(*iter);
+				pGraph->removeEdge(iter->getTwin());
+			}
+			modified = true;
+		}
+	}
+	return modified;
+}
+
 
 bool cutAmbigious(SeqGraph* pGraph, Vertex* pVertex)
 {
@@ -283,6 +362,7 @@ void addVertexToScaffoldGraph(SeqGraph& graph, SDMap& sdMap, ContigID id)
 void addEdgeToScaffoldGraph(SeqGraph& graph, ContigID id1, ContigID id2, EdgeDir dir, EdgeComp comp, int dist)
 {
 	Edge e(id1, id2, dir, comp, dist);
+	//std::cerr << "Adding edge " << e << std::endl;
 	graph.addEdge(e);
 	graph.addEdge(e.getTwin());
 }
@@ -344,6 +424,7 @@ void parseLinks(std::string filename, SDMap& sdMap)
 			{
 				// Check if the link is to a unique contig
 				Contig& linkedTo = getContig(sdMap, sl.linkedID);
+				(void)linkedTo;
 				if(linkedTo.isUnique())
 				{
 					currSD.addLink(sl, EDGE_DIRECTIONS[idx]);

@@ -346,7 +346,7 @@ bool SeqGraph::visit(VertexVisitFunction f)
 	VertexPtrMap::const_iterator iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
 	{
-		modified = modified || f(this, iter->second);
+		modified = f(this, iter->second) || modified;
 	}
 	return modified;
 }
