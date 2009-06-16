@@ -37,6 +37,7 @@ IntDist generatePELikelihood(IntDist& fragDist, int length);
 void parseContigs(std::string file, IDUniDataMap& covMap);
 void parseAligns(std::string file, IDUniDataMap& covMap);
 void parsePairedAligns(std::string file, IDUniDataMap& covMap);
+void parseGraph(std::string file, IDUniDataMap& udMap);
 void parseOptions(int argc, char** argv);
 
 //
@@ -54,8 +55,9 @@ static const char *USAGE_MESSAGE =
 "Estimate the uniqueness of all the sequences in the CONTIGS file using alignment and paired end data.\n"
 "\n"
 "  -a, --align=FILE        file to read alignments from\n"
-"  -p, --paired=FILE       file to read paired alignments from\n"
+"  -p, --paired=FILE       file to read paired alignments from (experimental)\n"
 "  -h, --histogram=FILE    file to read the fragment size histogram from\n"
+"  -g, --graph=FILE        file to read the graph (adjacency info) from (experimental)\n"
 "  -k, --kmer=KMER_SIZE    k-mer size\n"
 "  -l, --len_cutoff=SIZE   suppress calls for contigs below this size\n"
 "  -t, --threshold         log-likelihood difference required to make a copy number call\n"
@@ -73,13 +75,15 @@ namespace opt
 	static unsigned int length_cutoff;
 	static bool bUseDepth;
 	static bool bUsePairs;
+	static bool bUseGraph;
 	static std::string outfile;
 	static std::string alignFile;
 	static std::string pairedFile;
 	static std::string histFile;
+	static std::string graphFile;
 }
 
-static const char* shortopts = "k:o:t:a:p:h:l:v";
+static const char* shortopts = "k:o:t:a:p:h:l:g:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_NODEPTH };
 
@@ -91,6 +95,7 @@ static const struct option longopts[] = {
 	{ "threshold",   required_argument, NULL, 't' },
 	{ "outfile",     required_argument, NULL, 'o' },
 	{ "len_cutoff",  required_argument, NULL, 'l' },
+	{ "graph",       required_argument, NULL, 'g' },
 	{ "no_depth",    no_argument,       NULL, OPT_NODEPTH },
 	{ "verbose",     no_argument,       NULL, 'v' },
 	{ "help",        no_argument,       NULL, OPT_HELP },

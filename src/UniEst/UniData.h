@@ -26,6 +26,7 @@ class UniData
 		// Add data
 		void addCoverage(int k, const KAlignment& ka);
 		void addOverhangCoverage(int idx, int k, const KAlignment& ka2);
+		void addEdgeMultiplicity(int idx);
 
 		// Get data
 		Contig& getContig() { return m_contig; }
@@ -37,6 +38,7 @@ class UniData
 		double getReadDensity() const { return (double)m_numReads / (double)m_contig.getLength(); } 
 		size_t getOverhangCoverage(int idx) const;
 		double getMeanKmerCoverage() const;
+		size_t getEdgeMultiplicity(int idx) const { return m_edgeMultiplicity[idx]; }
 
 		// Uniqueness estimate functions
 		UniqueFlag estimateByDepth(double mean, double lrThreshold);
@@ -46,7 +48,7 @@ class UniData
 		double getExpectedOverhangCoverage(const IntDist& fragDist, double mean) const;
 
 		// Print
-		void printStats(const IntDist& fragDist, double mean, double error) const;
+		void printStats() const;
 		void printKmerCoverage() const;
 
 	private:
@@ -61,6 +63,7 @@ class UniData
 		IntVec m_kmerCoverage;
 		StringSet m_pairedCoverage[2];
 		size_t m_numOverhangingKmers[2];
+		size_t m_edgeMultiplicity[2];
 
 		// These flags are used for information only, the actual unique is recorded in the contig
 		// and determiend by a higher-level function

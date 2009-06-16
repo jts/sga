@@ -57,6 +57,17 @@ struct KAlignment
 	}
 };
 
+struct AdjInfo
+{
+	ContigID from;
+	ContigID to;
+	int dir;
+	bool comp;
+
+	friend std::istream& operator>>(std::istream& in, AdjInfo& a);
+};
+
+
 //
 // Range 
 //

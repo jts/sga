@@ -7,6 +7,33 @@
 //
 
 //
+// AdjInfo
+// 
+std::istream& operator>>(std::istream& in, AdjInfo& a)
+{
+	std::string line;
+	getline(in, line);
+
+	// return if we've hit the end
+	if(line == "")
+		return in;
+	
+	StringVec fields = split(line, ',');
+	assert(fields.size() == 4);
+
+	std::stringstream parser0(fields[0]);
+	std::stringstream parser1(fields[1]);
+	std::stringstream parser2(fields[2]);
+	std::stringstream parser3(fields[3]);
+
+	parser0 >> a.from;
+	parser1 >> a.to;
+	parser2 >> a.dir;
+	parser3 >> a.comp;
+	return in;
+}
+
+//
 // Sequence operations
 //
 

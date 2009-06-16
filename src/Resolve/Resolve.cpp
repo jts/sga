@@ -9,46 +9,6 @@
 #include "Util.h"
 #include "Contig.h"
 
-struct AdjInfo
-{
-	AdjInfo(int o) : overlap(o) {}
-	int overlap;
-	Edge e;
-
-	friend std::istream& operator>>(std::istream& in, AdjInfo& a)
-	{
-		std::string line;
-		getline(in, line);
-
-		// return if we've hit the end
-		if(line == "")
-			return in;
-		
-		StringVec fields = split(line, ',');
-		assert(fields.size() == 4);
-
-		VertexID from;
-		VertexID to;
-		int dir;
-		bool comp;
-	
-		std::stringstream parser0(fields[0]);
-		std::stringstream parser1(fields[1]);
-		std::stringstream parser2(fields[2]);
-		std::stringstream parser3(fields[3]);
-
-		parser0 >> from;
-		parser1 >> to;
-		parser2 >> dir;
-		parser3 >> comp;
-
-		Edge tmp(from, to, (EdgeDir)dir, (EdgeComp)comp, a.overlap);
-		a.e = tmp;
-		return in;
-	}
-};
-
-
 void loadContigVertices(SeqGraph& graph, int kmer, std::string filename)
 {
 	std::ifstream file(filename.c_str());
@@ -66,10 +26,11 @@ void loadContigEdges(int overlap, SeqGraph& graph, std::string filename)
 {
 	std::ifstream file(filename.c_str());
 	assert(file.is_open());
-	AdjInfo a(overlap);
+	AdjInfo a;
 	while(file >> a)
 	{
-		graph.addEdge(a.e);
+		Edge e(a.from, a.to, (EdgeDir)a.dir, (EdgeComp)a.comp, overlap);
+		graph.addEdge(e);
 	}
 }
 

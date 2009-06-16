@@ -17,12 +17,14 @@ int main(int argc, char** argv)
 		std::cerr << "Contigs file: " << contigFile << "\n";
 		std::cerr << "Alignments file: " << (opt::alignFile.empty() ? "none" : opt::alignFile) << "\n";
 		std::cerr << "Paired aligns file: " << (opt::pairedFile.empty() ? "none" : opt::pairedFile) << "\n";
+		std::cerr << "Graph file: " << (opt::graphFile.empty() ? "none" : opt::graphFile) << "\n";		
 		std::cerr << "Threshold: " << opt::threshold << "\n";
 		std::cerr << "Len cutoff: " << opt::length_cutoff << "\n";
 		std::cerr << "Kmer: " << opt::k << "\n";
 		std::cerr << "Writing results to: " << opt::outfile << "\n";
 		std::cerr << "Using depth data: " << opt::bUseDepth << "\n";
 		std::cerr << "Using paired data: " << opt::bUsePairs << "\n";
+		std::cerr << "Using graph data: " << opt::bUseGraph << "\n";
 	}
 
 	// Parse the contigs file to load the initial data 
@@ -43,6 +45,12 @@ int main(int argc, char** argv)
 		fragSizeCounts.readFromFile(opt::histFile);
 		fragDist = fragSizeCounts.convertToIntDist(0.99); // Convert to a pdf and trim
 		parsePairedAligns(opt::pairedFile, udMap);
+	}
+
+	// If a graph file has been specified, read the file to count the number of edges each contig has
+	if(opt::bUseGraph)
+	{
+		parseGraph(opt::graphFile, udMap);
 	}
 
 	// Initially, fit based on the the top 10% of contigs based on size
@@ -79,11 +87,16 @@ int main(int argc, char** argv)
 
 				if(opt::bUsePairs)
 				{
-					UniqueFlag uf = iter->second.estimateByOverhang(fragDist, 
-																			mean_coverage_parameter, 
-																			error_rate_parameter, 
-																			overhang_cutoff);
+					UniqueFlag uf = iter->second.estimateByOverhang(fragDist, mean_coverage_parameter, error_rate_parameter, overhang_cutoff);
 					if(uf != UF_UNIQUE)
+						bAllUnique = false;
+				}
+
+				if(opt::bUseGraph)
+				{
+					size_t mult0 = iter->second.getEdgeMultiplicity(0);
+					size_t mult1 = iter->second.getEdgeMultiplicity(1);
+					if(mult0 > 1 || mult1 > 1)
 						bAllUnique = false;
 				}
 
@@ -103,15 +116,13 @@ int main(int argc, char** argv)
 	}
 	
 	// Print the data
-	if(opt::verbose > 1)
+	if(opt::verbose >= 1)
 	{
-		std::cout << "name\tlen\tnum\tdensity\tleft_over_actual\tright_over_actual\t" <<
-					 "left_over_expect\tright_over_expect\tdepth_uf\toverhang_uf\n";
-
+		std::cout << "name\tlen\tnum\tdensity\tleft_edges\tright_edges\tdepth_uf\toverhang_uf\n";
 		for(IDUniDataMap::iterator iter = udMap.begin(); iter != udMap.end(); ++iter)
 		{
 			UniData& ud = iter->second;
-			ud.printStats(fragDist, mean_coverage_parameter, error_rate_parameter);
+			ud.printStats();
 		}
 	}
 
@@ -299,6 +310,29 @@ void parsePairedAligns(std::string file, IDUniDataMap& udMap)
     reader.close();
 }
 
+//
+// Parse the graph file
+//
+void parseGraph(std::string file, IDUniDataMap& udMap)
+{
+	std::ifstream reader(file.c_str());
+	if(!reader.is_open())
+	{
+		std::cerr << "Cannot open " << file << std::endl;
+		exit(1);
+	}
+
+	AdjInfo a;
+	while(reader >> a)
+	{
+		IDUniDataMap::iterator iter = udMap.find(a.from);
+		assert(iter != udMap.end());		
+		iter->second.addEdgeMultiplicity(a.dir);
+	}
+	reader.close();
+}
+
+
 // 
 // Handle command line arguments
 //
@@ -312,6 +346,7 @@ void parseOptions(int argc, char** argv)
 	opt::length_cutoff = 50;
 	opt::bUseDepth = 1;
 	opt::bUsePairs = 0;
+	opt::bUseGraph = 0;
 
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{
@@ -323,6 +358,7 @@ void parseOptions(int argc, char** argv)
 			case 'a': arg >> opt::alignFile; break;
 			case 'p': arg >> opt::pairedFile; opt::bUsePairs = 1; break;
 			case 'h': arg >> opt::histFile; opt::bUsePairs = 1;  break;
+			case 'g': arg >> opt::graphFile; opt::bUseGraph = 1; break;
 			case 'l': arg >> opt::length_cutoff; break;
 			case 'v': opt::verbose++; break;
 			case 't': arg >> opt::threshold; break;
@@ -367,9 +403,9 @@ void parseOptions(int argc, char** argv)
 		die = true;
 	}		
 
-	if(!opt::bUseDepth && !opt::bUsePairs)
+	if(!opt::bUseDepth && !opt::bUsePairs && !opt::bUseGraph)
 	{
-		std::cerr << PROGRAM ": invalid options, you cannot specify --no_depth without provided a --paired/hist file\n";
+		std::cerr << PROGRAM ": invalid options, you cannot specify --no_depth without provided a --paired/hist or --graph file\n";
 		die = true;
 	}
 

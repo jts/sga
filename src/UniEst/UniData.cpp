@@ -16,6 +16,8 @@ UniData::UniData(Contig c, int k) : m_contig(c),
 {
 	m_numOverhangingKmers[0] = 0;
 	m_numOverhangingKmers[1] = 0;
+	m_edgeMultiplicity[0] = 0;
+	m_edgeMultiplicity[1] = 0;
 }
 
 //
@@ -49,6 +51,15 @@ void UniData::addOverhangCoverage(int idx, int k, const KAlignment& ka)
 		m_pairedCoverage[idx].insert(ustr.str());
 		m_numOverhangingKmers[idx]++;
 	}
+}
+
+//
+// Increment the number of edges in a particular direction
+//
+void UniData::addEdgeMultiplicity(int idx)
+{
+	assert(idx <= 1);
+	m_edgeMultiplicity[idx]++;
 }
 
 //
@@ -192,16 +203,14 @@ double UniData::getMeanKmerCoverage() const
 //
 //
 //
-void UniData::printStats(const IntDist& fragDist, double mean, double error) const
+void UniData::printStats() const
 {
 	std::cout << m_contig.getID() << "\t" 
 				<< getContigLen() << "\t" 
 				<< getNumReads() << "\t" 
 				<< getReadDensity() << "\t" 
-				<< getOverhangCoverage(0) - (error * getContigLen()) << "\t"
-				<< getOverhangCoverage(1) - (error * getContigLen()) << "\t"
-				<< getExpectedOverhangCoverage(fragDist, mean) << "\t"
-				<< getExpectedOverhangCoverage(fragDist, mean) << "\t"
+				<< m_edgeMultiplicity[0] << "\t"
+				<< m_edgeMultiplicity[1] << "\t"
 				<< m_depthUF << "\t"
 				<< m_overhangUF << "\n";
 }
