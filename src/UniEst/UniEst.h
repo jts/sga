@@ -30,7 +30,7 @@ typedef std::vector<const UniData*> UniDataPVec;
 UniDataPVec filterByPercent(const IDUniDataMap& udMap, double percent);
 UniDataPVec filterByUnique(const IDUniDataMap& udMap);
 
-void fitParameters(const UniDataPVec& fitVec, const IntDist& fragDist, double& mean, double& error_rate);
+void fitParameters(const UniDataPVec& fitVec, const IntDist& fragDist, bool fitError, double& mean, double& error_rate);
 IntDist generatePELikelihood(IntDist& fragDist, int length);
 
 // Various parsers
@@ -60,7 +60,6 @@ static const char *USAGE_MESSAGE =
 "  -l, --len_cutoff=SIZE   suppress calls for contigs below this size\n"
 "  -t, --threshold         log-likelihood difference required to make a copy number call\n"
 "      --no_depth          do not use depth information when making calls\n"
-"      --no_pair           do not use pairing information when making calls\n"
 "  -v, --verbose           display verbose output\n"
 "  -o, --outfile           name of file to write contigs to\n"
 "      --help              display this help and exit\n";
@@ -82,7 +81,7 @@ namespace opt
 
 static const char* shortopts = "k:o:t:a:p:h:l:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_NODEPTH, OPT_NOPAIR };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_NODEPTH };
 
 static const struct option longopts[] = {
 	{ "kmer",        required_argument, NULL, 'k' },
@@ -92,9 +91,8 @@ static const struct option longopts[] = {
 	{ "threshold",   required_argument, NULL, 't' },
 	{ "outfile",     required_argument, NULL, 'o' },
 	{ "len_cutoff",  required_argument, NULL, 'l' },
-	{ "verbose",     no_argument,       NULL, 'v' },
 	{ "no_depth",    no_argument,       NULL, OPT_NODEPTH },
-	{ "no_pair",     no_argument,       NULL, OPT_NOPAIR },
+	{ "verbose",     no_argument,       NULL, 'v' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }

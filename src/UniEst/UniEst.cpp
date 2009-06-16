@@ -25,17 +25,25 @@ int main(int argc, char** argv)
 		std::cerr << "Using paired data: " << opt::bUsePairs << "\n";
 	}
 
-	// Coverage map
+	// Parse the contigs file to load the initial data 
 	IDUniDataMap udMap;
 	parseContigs(contigFile, udMap);
 
-	FragmentDistribution fragSizeCounts;
-	fragSizeCounts.readFromFile(opt::histFile);
-	IntDist fragDist = fragSizeCounts.convertToIntDist(0.99); // Convert to a pdf and trim
-	parsePairedAligns(opt::pairedFile, udMap);
+	// TODO: Derive this parameter from data
+	double overhang_cutoff = 1.5;
+	IntDist fragDist;
+	
+	// If an alignment file has been specified, read in the file and add depth info
+	parseAligns(opt::alignFile, udMap);
 
-	if(!opt::alignFile.empty())
-		parseAligns(opt::alignFile, udMap);
+	// If a pairs file has been specified, read in the histogram and pair aligns
+	if(opt::bUsePairs)
+	{
+		FragmentDistribution fragSizeCounts;
+		fragSizeCounts.readFromFile(opt::histFile);
+		fragDist = fragSizeCounts.convertToIntDist(0.99); // Convert to a pdf and trim
+		parsePairedAligns(opt::pairedFile, udMap);
+	}
 
 	// Initially, fit based on the the top 10% of contigs based on size
 	UniDataPVec fitVec = filterByPercent(udMap, 0.9);
@@ -44,7 +52,7 @@ int main(int argc, char** argv)
 
 	for(size_t i = 0; i < numIters; ++i)
 	{
-		fitParameters(fitVec, fragDist, mean_coverage_parameter, error_rate_parameter);
+		fitParameters(fitVec, fragDist, opt::bUsePairs, mean_coverage_parameter, error_rate_parameter);
 		if(opt::verbose >= 1)
 		{
 			std::cerr << "Mean estimate: " << mean_coverage_parameter 
@@ -60,17 +68,26 @@ int main(int argc, char** argv)
 			}
 			else
 			{
+				bool bAllUnique = true;
 
-				UniqueFlag ufByDepth = iter->second.estimateByDepth(mean_coverage_parameter, opt::threshold);
+				if(opt::bUseDepth)
+				{
+					UniqueFlag uf = iter->second.estimateByDepth(mean_coverage_parameter, opt::threshold);
+					if(uf != UF_UNIQUE)
+						bAllUnique = false;
+				}
 
-				// TODO: Derive this parameter from data
-				double overhang_cutoff = 1.5;
-				UniqueFlag ufByOverhang = iter->second.estimateByOverhang(fragDist, 
-																		mean_coverage_parameter, 
-																		error_rate_parameter, 
-																		overhang_cutoff);
+				if(opt::bUsePairs)
+				{
+					UniqueFlag uf = iter->second.estimateByOverhang(fragDist, 
+																			mean_coverage_parameter, 
+																			error_rate_parameter, 
+																			overhang_cutoff);
+					if(uf != UF_UNIQUE)
+						bAllUnique = false;
+				}
 
-				if((!opt::bUseDepth || ufByDepth == UF_UNIQUE) && (!opt::bUsePairs || ufByOverhang == UF_UNIQUE))
+				if(bAllUnique)
 				{
 					iter->second.getContig().setUniqueFlag(UF_UNIQUE);
 				}
@@ -86,13 +103,16 @@ int main(int argc, char** argv)
 	}
 	
 	// Print the data
-	std::cout << "name\tlen\tnum\tdensity\tleft_over_actual\tright_over_actual\t" <<
-				 "left_over_expect\tright_over_expect\tdepth_uf\toverhang_uf\n";
-
-	for(IDUniDataMap::iterator iter = udMap.begin(); iter != udMap.end(); ++iter)
+	if(opt::verbose > 1)
 	{
-		UniData& ud = iter->second;
-		ud.printStats(fragDist, mean_coverage_parameter, error_rate_parameter);
+		std::cout << "name\tlen\tnum\tdensity\tleft_over_actual\tright_over_actual\t" <<
+					 "left_over_expect\tright_over_expect\tdepth_uf\toverhang_uf\n";
+
+		for(IDUniDataMap::iterator iter = udMap.begin(); iter != udMap.end(); ++iter)
+		{
+			UniData& ud = iter->second;
+			ud.printStats(fragDist, mean_coverage_parameter, error_rate_parameter);
+		}
 	}
 
 	// Output contigs
@@ -147,7 +167,7 @@ UniDataPVec filterByUnique(const IDUniDataMap& udMap)
 	return fitVec;
 }
 
-void fitParameters(const UniDataPVec& fitVec, const IntDist& fragDist, double& mean, double& error_rate)
+void fitParameters(const UniDataPVec& fitVec, const IntDist& fragDist, bool fitError, double& mean, double& error_rate)
 {
 	mean = 0;
 	error_rate = 0;
@@ -164,36 +184,39 @@ void fitParameters(const UniDataPVec& fitVec, const IntDist& fragDist, double& m
 	mean = (double)sumReads/(double)sumLen;
 
 	// Compute the error rate parameter with an least-squares fit between the observed - expected overhang coverage
-	double* pXValues = new double[fitVec.size() * 2];
-	double* pYValues = new double[fitVec.size() * 2];
-
-	for(size_t i = 0; i < fitVec.size(); ++i)
+	if(fitError)
 	{
-		const UniData* pData = fitVec[i];
-		size_t len = pData->getContigLen();
+		double* pXValues = new double[fitVec.size() * 2];
+		double* pYValues = new double[fitVec.size() * 2];
 
-		double expected = pData->getExpectedOverhangCoverage(fragDist, mean);
+		for(size_t i = 0; i < fitVec.size(); ++i)
+		{
+			const UniData* pData = fitVec[i];
+			size_t len = pData->getContigLen();
 
-		size_t obs0 = pData->getOverhangCoverage(0);
-		size_t obs1 = pData->getOverhangCoverage(1);
+			double expected = pData->getExpectedOverhangCoverage(fragDist, mean);
 
-		double diff0 = (double)(obs0 - expected);
-		double diff1 = (double)(obs1 - expected);
+			size_t obs0 = pData->getOverhangCoverage(0);
+			size_t obs1 = pData->getOverhangCoverage(1);
 
-		pXValues[2*i] = len;
-		pXValues[2*i+1] = len;
+			double diff0 = (double)(obs0 - expected);
+			double diff1 = (double)(obs1 - expected);
 
-		pYValues[2*i] = diff0;
-		pYValues[2*i+1] = diff1;
+			pXValues[2*i] = len;
+			pXValues[2*i+1] = len;
+
+			pYValues[2*i] = diff0;
+			pYValues[2*i+1] = diff1;
+		}
+
+		// perform a least-squares fit using gsl
+		double c0, c1, cov00, cov01, cov11, sumsq;
+		gsl_fit_linear(pXValues, 1, pYValues, 1, 2*fitVec.size(), &c0, &c1, &cov00, &cov01, &cov11, &sumsq);
+		delete [] pXValues;
+		delete [] pYValues;
+
+		error_rate = c1;
 	}
-
-	// perform a least-squares fit using gsl
-	double c0, c1, cov00, cov01, cov11, sumsq;
-	gsl_fit_linear(pXValues, 1, pYValues, 1, 2*fitVec.size(), &c0, &c1, &cov00, &cov01, &cov11, &sumsq);
-	delete [] pXValues;
-	delete [] pYValues;
-
-	error_rate = c1;
 }
 
 //
@@ -288,7 +311,7 @@ void parseOptions(int argc, char** argv)
 	opt::outfile = "unicontigs.caf";
 	opt::length_cutoff = 50;
 	opt::bUseDepth = 1;
-	opt::bUsePairs = 1;
+	opt::bUsePairs = 0;
 
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{
@@ -298,14 +321,13 @@ void parseOptions(int argc, char** argv)
 			case '?': die = true; break;
 			case 'k': arg >> opt::k; break;
 			case 'a': arg >> opt::alignFile; break;
-			case 'p': arg >> opt::pairedFile; break;
-			case 'h': arg >> opt::histFile; break;
+			case 'p': arg >> opt::pairedFile; opt::bUsePairs = 1; break;
+			case 'h': arg >> opt::histFile; opt::bUsePairs = 1;  break;
 			case 'l': arg >> opt::length_cutoff; break;
 			case 'v': opt::verbose++; break;
 			case 't': arg >> opt::threshold; break;
 			case 'o': arg >> opt::outfile; break;
 			case OPT_NODEPTH: opt::bUseDepth = 0; break;
-			case OPT_NOPAIR: opt::bUsePairs = 0; break;
 			case OPT_HELP:
 				std::cout << USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
@@ -332,10 +354,22 @@ void parseOptions(int argc, char** argv)
 		std::cerr << PROGRAM ": invalid -l,--len_cutff option (must be > 0)\n";
 		die = true;
 	}
-	
+
+	if(opt::bUsePairs && opt::histFile.empty())
+	{
+		std::cerr << PROGRAM ": error missing --histogram file\n";
+		die = true;
+	}	
+
+	if(opt::bUsePairs && opt::pairedFile.empty())
+	{
+		std::cerr << PROGRAM ": error missing --paired file\n";
+		die = true;
+	}		
+
 	if(!opt::bUseDepth && !opt::bUsePairs)
 	{
-		std::cerr << PROGRAM ": invalid options, both --no_depth and --no_pairs cannot be specified\n";
+		std::cerr << PROGRAM ": invalid options, you cannot specify --no_depth without provided a --paired/hist file\n";
 		die = true;
 	}
 
@@ -356,15 +390,9 @@ void parseOptions(int argc, char** argv)
 		die = true;
 	}
 
-	if(opt::alignFile.empty() && opt::pairedFile.empty())
+	if(opt::alignFile.empty())
 	{
-		std::cerr << PROGRAM ": an alignment or a paired file must be specified\n";
-		die = true;
-	}
-
-	if(!opt::pairedFile.empty() && opt::histFile.empty())
-	{
-		std::cerr << PROGRAM ": a histogram file must be provided with the paired file\n";
+		std::cerr << PROGRAM ": an alignment file must be specified\n";
 		die = true;
 	}
 

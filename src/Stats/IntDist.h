@@ -9,6 +9,7 @@
 class IntDist
 {
 	public:
+		IntDist() {}
 		IntDist(int start, int end);
 
 		// get/set
