@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = Util UniEst SeqGraph Scaffold Resolve
+SUBDIRS = Util Stats UniEst SeqGraph Scaffold Resolve

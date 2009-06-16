@@ -52,10 +52,12 @@ typedef std::vector<ContigPosition> ContigPositionVector;
 //
 
 void buildGraph(SDMap& sdMap);
-bool cutAmbigious(SeqGraph* pGraph, Vertex* pVertex);
-bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex);
 bool areEdgesConsistent(SeqGraph* pGraph, Vertex* pVertex, EdgeDir dir);
+
+// Vertex visit functions
+bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex);
 bool cutInconsistent(SeqGraph* pGraph, Vertex* pVertex);
+bool cutAmbigious(SeqGraph* pGraph, Vertex* pVertex);
 
 Contig& getContig(SDMap& sdMap, ContigID cid);
 Range convertEdgeToRange(const SeqGraph* sg, const Edge& e);

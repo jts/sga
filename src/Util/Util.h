@@ -57,6 +57,9 @@ struct KAlignment
 	}
 };
 
+//
+// Range 
+//
 struct Range
 {
 	Range() : start(0), end(0) {}
@@ -130,15 +133,6 @@ inline EdgeDir correctDir(EdgeDir dir, EdgeComp comp)
 {
 	return (comp == EC_SAME) ? dir : !dir;
 }
-
-//
-// Probability
-//
-double poisson(int k, double m);
-int factorial(int k);
-
-double log_poisson(int k, double m);
-double log_factorial(int k);
 
 #endif
 
