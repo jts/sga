@@ -4,35 +4,7 @@
 #include <cassert>
 #include <sstream>
 #include "Resolve.h"
-#include "SeqGraph.h"
-#include "SeqVertex.h"
 #include "Util.h"
-#include "Contig.h"
-
-void loadContigVertices(SeqGraph& graph, int kmer, std::string filename)
-{
-	std::ifstream file(filename.c_str());
-	assert(file.is_open());
-	Contig c;
-	(void)kmer;
-	while(readCAF(file,c))
-	{
-		SeqVertex* pSV = new SeqVertex(c.getID(), c.getSequence());
-		graph.addVertex(pSV);
-	}
-}
-
-void loadContigEdges(int overlap, SeqGraph& graph, std::string filename)
-{
-	std::ifstream file(filename.c_str());
-	assert(file.is_open());
-	AdjInfo a;
-	while(file >> a)
-	{
-		Edge e(a.from, a.to, (EdgeDir)a.dir, (EdgeComp)a.comp, overlap);
-		graph.addEdge(e);
-	}
-}
 
 int main(int argc, char** argv)
 {
@@ -45,44 +17,48 @@ int main(int argc, char** argv)
 	SeqGraph sg;
 
 	// Load verts and edges
-	loadContigVertices(sg, opt::k, contigFile);
-	loadContigEdges(opt::k - 1, sg, adjFile);
+	loadVertices(sg, opt::k, contigFile);
+	loadEdges(sg, opt::k - 1, adjFile);
 
 	//sg.stats();
 	sg.validate();
 
-	VertexIDVec nbVerts = sg.getNonBranchingVertices();
-	for(VertexIDVec::iterator iter = nbVerts.begin(); iter != nbVerts.end(); ++iter)
-	{
-		std::cout << *iter << "\t" << "UNIQUE\n";
-	}
 	//sg.simplify();
 	//sg.stats();
 	//sg.validate();
 }
 
-
-void test()
+//
+//
+//
+void loadVertices(SeqGraph& graph, int kmer, std::string filename)
 {
-	SeqGraph sg;
-	Vertex* pV0 = new Vertex("0");
-	Vertex* pV1 = new Vertex("1");
-	Vertex* pV2 = new Vertex("2");
-	Vertex* pV3 = new Vertex("3");
-	Vertex* pV4 = new Vertex("4");
-	sg.addVertex(pV0);
-	sg.addVertex(pV1);
-	sg.addVertex(pV2);
-	sg.addVertex(pV3);
-	sg.addVertex(pV4);
-
-	sg.flip("4");
-	sg.simplify();
-	//sg.flip(4);
-
-	sg.validate();
-	sg.writeDot("blah");
+	std::ifstream file(filename.c_str());
+	assert(file.is_open());
+	Contig c;
+	(void)kmer;
+	while(readCAF(file,c))
+	{
+		SeqVertex* pSV = new SeqVertex(c.getID(), c.getSequence());
+		graph.addVertex(pSV);
+	}
 }
+
+//
+//
+//
+void loadEdges(SeqGraph& graph, int overlap, std::string filename)
+{
+	std::ifstream file(filename.c_str());
+	assert(file.is_open());
+	AdjInfo a;
+	while(file >> a)
+	{
+		Edge e(a.from, a.to, (EdgeDir)a.dir, (EdgeComp)a.comp, overlap);
+		graph.addEdge(e);
+	}
+}
+
 
 // 
 // Handle command line arguments

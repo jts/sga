@@ -1,6 +1,8 @@
 #ifndef RESOLVE_H
 #define RESOLVE_H
 
+#include "SeqGraph.h"
+#include "SeqVertex.h"
 #include "Contig.h"
 #include <cassert>
 #include <cerrno>
@@ -16,6 +18,8 @@
 //
 // Functions
 //
+void loadVertices(SeqGraph& graph, int kmer, std::string filename);
+void loadEdges(SeqGraph& graph, int overlap, std::string filename);
 void parseOptions(int argc, char** argv);
 
 //
