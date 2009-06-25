@@ -37,6 +37,7 @@ AC_CONFIG_FILES([Makefile
 		Util/Makefile
 		Stats/Makefile
 		UniEst/Makefile
-		Scaffold/Makefile])
+		Scaffold/Makefile
+		Tests/Makefile])
 
 AC_OUTPUT
