@@ -33,6 +33,7 @@ AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 
 AC_CONFIG_FILES([Makefile
 		Util/Makefile
+		Scaffold/Makefile
 		Stats/Makefile
 		UniEst/Makefile
 		Tests/Makefile])

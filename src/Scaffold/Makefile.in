@@ -50,8 +50,7 @@ PROGRAMS = $(bin_PROGRAMS)
 am_Scaffold_OBJECTS = Scaffold-Scaffold.$(OBJEXT) \
 	Scaffold-ScaffoldData.$(OBJEXT)
 Scaffold_OBJECTS = $(am_Scaffold_OBJECTS)
-Scaffold_DEPENDENCIES = $(top_builddir)/Util/libutil.a \
-	$(top_builddir)/SeqGraph/libseqgraph.a
+Scaffold_DEPENDENCIES = $(top_builddir)/Util/libutil.a
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -153,11 +152,10 @@ sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 Scaffold_CPPFLAGS = \
 	-I$(top_srcdir)/Util \
-	-I$(top_srcdir)/SeqGraph
+	-I$(top_srcdir)/Bigraph
 
 Scaffold_LDADD = \
-	$(top_builddir)/Util/libutil.a \
-	$(top_builddir)/SeqGraph/libseqgraph.a
+	$(top_builddir)/Util/libutil.a 
 
 Scaffold_SOURCES = Scaffold.cpp ScaffoldData.cpp
 all: all-am

@@ -8,31 +8,29 @@
 #include "GraphCommon.h"
 #include "Vertex.h"
 
-using namespace std;
-
 template<typename VT>
 class Bigraph
 {
 
-	//
-	// Typedefs
-	//
-	typedef VT VertexType;
-	typedef typename VertexType::EdgeType GraphEdgeType;
-
-	typedef map<VertexID, VertexType*> VertexPtrMap;
-	typedef typename VertexPtrMap::iterator VertexPtrMapIter;
-	typedef typename VertexPtrMap::const_iterator VertexPtrMapConstIter;
-	
-	typedef bool(*VertexVisitFunction)(Bigraph*, VertexType*);
-	typedef std::vector<GraphEdgeType> EdgeVec;
-	typedef typename EdgeVec::iterator EdgeVecIter;
-	typedef EdgeVec Path; // alias
-	typedef std::vector<Path> PathVector;
-	typedef std::vector<VertexID> VertexIDVec;
-
-	
 	public:
+		//
+		// Typedefs
+		//
+		typedef VT VertexType;
+		typedef typename VertexType::EdgeType GraphEdgeType;
+
+		typedef std::map<VertexID, VertexType*> VertexPtrMap;
+		typedef typename VertexPtrMap::iterator VertexPtrMapIter;
+		typedef typename VertexPtrMap::const_iterator VertexPtrMapConstIter;
+		
+		typedef bool(*VertexVisitFunction)(Bigraph*, VertexType*);
+		typedef std::vector<GraphEdgeType> EdgeVec;
+		typedef typename EdgeVec::iterator EdgeVecIter;
+		typedef EdgeVec Path; // alias
+		typedef std::vector<Path> PathVector;
+		typedef std::vector<VertexID> VertexIDVec;
+
+	
 		Bigraph();
 		~Bigraph();
 

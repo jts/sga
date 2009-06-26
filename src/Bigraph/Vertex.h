@@ -39,6 +39,7 @@ class Vertex
 		typedef typename EdgeVec::iterator EdgeVecIter;
 	
 		Vertex(VertexID id) : m_id(id), m_color(VC_WHITE) {}
+		Vertex(VertexID id, VD d) : m_id(id), m_color(VC_WHITE), m_data(d) {}
 		~Vertex() {};
 
 		//
@@ -164,6 +165,9 @@ class Vertex
 		// Return the vert's id
 		VertexID getID() const { return m_id; }
 
+		// Return the data this vertex carries
+		VD getData() const { return m_data; }
+
 		// Output
 		friend ostream& operator<<(std::ostream& out, const Vertex& obj)
 		{
@@ -194,6 +198,7 @@ class Vertex
 		VertexID m_id;
 		EdgeSet m_edges;
 		VertexColor m_color;
+		VD m_data;
 };
 
 #endif

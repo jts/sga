@@ -54,7 +54,7 @@ void loadEdges(SeqGraph& graph, int overlap, std::string filename)
 	AdjInfo a;
 	while(file >> a)
 	{
-		Edge e(a.from, a.to, (EdgeDir)a.dir, (EdgeComp)a.comp, overlap);
+		Edge e(a.from, a.to, (EdgeDir)a.dir, (EdgeComp)a.comp, new EdgeData(overlap));
 		graph.addEdge(e);
 	}
 }

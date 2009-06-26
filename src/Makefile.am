@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = Util Stats UniEst Tests
+SUBDIRS = Util Scaffold Stats UniEst Tests

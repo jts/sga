@@ -3,8 +3,7 @@
 
 #include "Util.h"
 #include "Contig.h"
-#include "ScaffoldData.h"
-#include "SeqGraph.h"
+#include "Bigraph.h"
 #include <cassert>
 #include <cerrno>
 #include <cstring>
@@ -18,13 +17,63 @@
 #include <vector>
 #include <set>
 
+struct ScaffoldData
+{
+	ScaffoldData(int d, double sd, int np) : estDist(d), stdDev(sd), numPairs(np) {}
+	int estDist;
+	double stdDev;
+	unsigned int numPairs;
+};
+
+struct SLink
+{
+	ContigID linkedID;
+	int dist;
+	unsigned int numPairs;
+	double stdDev;
+	bool isRC;
+	
+	friend std::istream& operator>>(std::istream& in, SLink& sl)
+	{
+		std::string line;
+		in >> line;
+		if(line.size () != 0)
+		{
+			StringVec fields = split(line, ',');
+			assert(fields.size() == 5);
+			sl.linkedID = fields[0];
+			sl.dist = atoi(fields[1].c_str());
+			sl.numPairs = atoi(fields[2].c_str());
+			std::stringstream fparser(fields[3]);
+			fparser >> sl.stdDev;
+			sl.isRC = atoi(fields[4].c_str());
+		}
+		return in;
+	}
+
+	friend std::ostream& operator<<(std::ostream& out, const SLink& sl)
+	{
+		out << sl.linkedID << " " << sl.dist << " " << sl.numPairs << " " << sl.stdDev << " " << sl.isRC;
+		return out;
+	}		
+};
+
+
+//
+// Typedefs
+//
+typedef Edge<ScaffoldData> ScaffoldEdge;
+typedef Vertex<Contig, ScaffoldEdge> ScaffoldVertex;
+typedef Bigraph<ScaffoldVertex> ScaffoldGraph;
+
+
 //
 // Structs
 //
 struct LinearScaffoldLink
 {
-	LinearScaffoldLink(Edge e, Range r) : edge(e), range(r) {}
-	Edge edge;
+	LinearScaffoldLink(ScaffoldEdge e, Range r) : edge(e), range(r) {}
+	ScaffoldEdge edge;
 	Range range;
 
 	friend std::ostream& operator<<(std::ostream& out, const LinearScaffoldLink& lsl)
@@ -45,33 +94,31 @@ struct LinearScaffoldLink
 typedef std::map<ContigID, ScaffoldData> SDMap;
 typedef std::vector<Range> RangeVec;
 typedef std::vector<LinearScaffoldLink> LSLVec;
-typedef std::vector<ContigPosition> ContigPositionVector;
 
 //
 // Functions
 //
-
 void buildGraph(SDMap& sdMap);
-bool areEdgesConsistent(SeqGraph* pGraph, Vertex* pVertex, EdgeDir dir);
+bool areEdgesConsistent(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex, EdgeDir dir);
 
 // Vertex visit functions
-bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex);
-bool cutInconsistent(SeqGraph* pGraph, Vertex* pVertex);
-bool cutAmbigious(SeqGraph* pGraph, Vertex* pVertex);
+bool makeTransitive(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+bool cutInconsistent(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+bool cutAmbigious(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
 
 Contig& getContig(SDMap& sdMap, ContigID cid);
-Range convertEdgeToRange(const SeqGraph* sg, const Edge& e);
+Range convertEdgeToRange(const ScaffoldGraph* sg, const ScaffoldEdge& e);
 
 // Graph building
-void addVertexToScaffoldGraph(SeqGraph& graph, SDMap& sdMap, ContigID id);
-void addEdgeToScaffoldGraph(SeqGraph& graph, ContigID id1, ContigID id2, EdgeDir dir, EdgeComp comp, int dist);
+void addVertexToScaffoldGraph(ScaffoldGraph& graph, SDMap& sdMap, ContigID id);
+void addEdgeToScaffoldGraph(ScaffoldGraph& graph, ContigID id1, ContigID id2, EdgeDir dir, EdgeComp comp, int dist);
 
 // Parsing
-void parseLinks(std::string filename, SDMap& sdMap);
+void parseLinks(std::string filename, ScaffoldGraph& graph);
 void parseOptions(int argc, char** argv);
 
 // Writing
-void writeScaffold(ostream& out, int idNum, const Path& path);
+void writeScaffold(ostream& out, int idNum, const ScaffoldGraph::Path& path);
 void writeScaffoldNode(ostream& out, VertexID id, int dist, bool orientation);
 
 //

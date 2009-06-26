@@ -3,7 +3,6 @@
 
 #include "Util.h"
 #include "Contig.h"
-#include "ScaffoldData.h"
 
 //
 // Structs

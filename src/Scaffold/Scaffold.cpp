@@ -1,7 +1,5 @@
 #include "Scaffold.h"
-#include "ScaffoldData.h"
-#include "SeqGraph.h"
-#include "SeqVertex.h"
+#include "Bigraph.h"
 #include <math.h>
 #include <iterator>
 
@@ -22,7 +20,8 @@ int main(int argc, char** argv)
 	std::string contigFile(argv[optind++]);
 	std::string distanceFile(argv[optind++]);
 
-	SDMap sdMap;
+	// Build the graph
+	ScaffoldGraph scaffoldGraph;
 
 	// Read the contigs
 	std::ifstream contigReader(contigFile.c_str());
@@ -31,44 +30,17 @@ int main(int argc, char** argv)
 	Contig c;
 	while(readCAF(contigReader,c))
 	{
-		ScaffoldData sd(c);
-		sdMap.insert(std::make_pair(c.getID(), sd));
+		// Only scaffold between unique contigs
+		if(c.isUnique())
+		{
+			scaffoldGraph.addVertex(new ScaffoldVertex(c.getID(), c));
+		}
 	}
 	contigReader.close();
 
-	parseLinks(distanceFile, sdMap);
+	// Parse the scaffold links and add edges to the graph
+	parseLinks(distanceFile, scaffoldGraph);
 
-	buildGraph(sdMap);
-}
-
-void buildGraph(SDMap& sdMap)
-{
-	SeqGraph scaffoldGraph;
-	for(SDMap::iterator sdIter = sdMap.begin(); sdIter != sdMap.end(); ++sdIter)
-	{
-		ScaffoldData& sd = sdIter->second;
-		Contig& sourceContig = sd.getContig();
-		
-		if(!sourceContig.isUnique())
-		{
-			continue;
-		}
-	
-		addVertexToScaffoldGraph(scaffoldGraph, sdMap, sourceContig.getID());
-		
-		for(size_t idx = 0; idx <= 1; ++idx)
-		{
-			EdgeDir currSourceDir = (idx == 0) ? ED_ANTISENSE : ED_SENSE;
-
-			SLinkVec& links = sd.getLinks(idx);
-			for(SLinkVec::iterator vIter = links.begin(); vIter != links.end(); ++vIter)
-			{
-				addVertexToScaffoldGraph(scaffoldGraph, sdMap, vIter->linkedID);
-				EdgeComp currComp = (vIter->isRC) ? EC_REVERSE : EC_SAME;
-				addEdgeToScaffoldGraph(scaffoldGraph, sourceContig.getID(), vIter->linkedID, currSourceDir, currComp, vIter->dist);
-			}
-		}
-	}
 
 	scaffoldGraph.writeDot("before.dot");
 	scaffoldGraph.visit(&cutInconsistent);
@@ -78,17 +50,18 @@ void buildGraph(SDMap& sdMap)
 	scaffoldGraph.writeDot("after.dot");
 
 	//scaffoldGraph.constructLinearPath("1005");
-	PathVector paths = scaffoldGraph.getLinearComponents();
+	ScaffoldGraph::PathVector paths = scaffoldGraph.getLinearComponents();
 	int id = 0;
 	std::ofstream out("scaffold.caf");
-	for(PathVector::iterator iter = paths.begin(); iter != paths.end(); ++iter)
+	for(ScaffoldGraph::PathVector::iterator iter = paths.begin(); iter != paths.end(); ++iter)
 	{
 		writeScaffold(out, id++, *iter);
 	}
 	out.close();
+
 }
 
-void writeScaffold(ostream& out, int idNum, const Path& path)
+void writeScaffold(ostream& out, int idNum, const ScaffoldGraph::Path& path)
 {
 	if(path.size() == 0)
 	{
@@ -109,13 +82,14 @@ void writeScaffold(ostream& out, int idNum, const Path& path)
 	out << "\n";
 	
 	// write the first contig
-	Edge firstEdge = path.front();
+	ScaffoldEdge firstEdge = path.front();
 	writeScaffoldNode(out, firstEdge.getStart(), 0, false);
 	out << "\n";
 	
-	for(Path::const_iterator iter = path.begin(); iter != path.end(); ++iter)
+	for(ScaffoldGraph::Path::const_iterator iter = path.begin(); iter != path.end(); ++iter)
 	{
-		writeScaffoldNode(out, iter->getEnd(), iter->getOverlap(), iter->getComp() == EC_REVERSE);
+		ScaffoldData scaffoldData = iter->getData();
+		writeScaffoldNode(out, iter->getEnd(), scaffoldData.estDist, iter->getComp() == EC_REVERSE);
 		out << "\n";
 	}
 }
@@ -129,7 +103,7 @@ void writeScaffoldNode(ostream& out, VertexID id, int dist, bool orientation)
 	std::copy(fields.begin(), fields.end(), std::ostream_iterator<std::string>(out, "\t"));
 }
 
-bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
+bool makeTransitive(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex)
 {
 	bool modified = false;
 	for(int d = 0; d < ED_COUNT; ++d)
@@ -137,14 +111,14 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 		EdgeDir dir = EDGE_DIRECTIONS[d];
 		
 		// Get the edges for this direction
-		EdgeVec edges = pVertex->getEdges(dir);
+		ScaffoldGraph::EdgeVec edges = pVertex->getEdges(dir);
 
 		// If there is more than one edge in this direction, check if the edges are consistent
 		if(edges.size() > 1)
 		{
 			LSLVec lslVec;
 
-			for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+			for(ScaffoldGraph::EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 			{		
 				Range r = convertEdgeToRange(pGraph, *iter);
 				lslVec.push_back(LinearScaffoldLink(*iter, r));
@@ -200,7 +174,11 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 					EdgeComp cComp = (curr.edge.getComp() == next.edge.getComp()) ? EC_SAME : EC_REVERSE;
 
 					// Create the edge
-					Edge inferred(curr.edge.getEnd(), next.edge.getEnd(), cDir, cComp, dist);
+					ScaffoldEdge inferred(curr.edge.getEnd(), 
+											next.edge.getEnd(), 
+											cDir, 
+											cComp, 
+											ScaffoldData(dist, 0, 0));
 					assert(inferred.getTwin().getDir() == nDir); // sanity check
 
 					// Delete the edge from the source to next
@@ -208,7 +186,7 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 					pGraph->removeEdge(next.edge.getTwin());
 
 					// Add the new edge
-					Vertex* ns = pGraph->getVertex(inferred.getStart());
+					ScaffoldVertex* ns = pGraph->getVertex(inferred.getStart());
 					if(!ns->hasEdge(inferred))
 					{
 						pGraph->addEdge(inferred);
@@ -216,8 +194,8 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 					}
 					else
 					{
-						Edge old = ns->getEdge(inferred);
-						std::cout << "Inferred edge already exists " << old << " curr= " << old.getOverlap() << " new= " << inferred.getOverlap() << "\n";
+						//Edge old = ns->getEdge(inferred);
+						//std::cout << "Inferred edge already exists " << old << " curr= " << old.getOverlap() << " new= " << inferred.getOverlap() << "\n";
 					}
 
 					std::cout << "\tcreated edge " << inferred << std::endl;
@@ -225,7 +203,7 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 			}
 			else
 			{
-				for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+				for(ScaffoldGraph::EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 				{
 					pGraph->removeEdge(*iter);
 					pGraph->removeEdge(iter->getTwin());
@@ -240,17 +218,17 @@ bool makeTransitive(SeqGraph* pGraph, Vertex* pVertex)
 //
 // Check whether the set of edges
 //
-bool areEdgesConsistent(SeqGraph* pGraph, Vertex* pVertex, EdgeDir dir)
+bool areEdgesConsistent(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex, EdgeDir dir)
 {
 	// Get the edges for this direction
-	EdgeVec edges = pVertex->getEdges(dir);
+	ScaffoldGraph::EdgeVec edges = pVertex->getEdges(dir);
 
 	if(edges.size() <= 1)
 		return true; //trivial case
 
 	// Convert edges to the ranges that they cover
 	LSLVec lslVec;
-	for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+	for(ScaffoldGraph::EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 	{		
 		Range r = convertEdgeToRange(pGraph, *iter);
 		lslVec.push_back(LinearScaffoldLink(*iter, r));
@@ -283,7 +261,7 @@ bool areEdgesConsistent(SeqGraph* pGraph, Vertex* pVertex, EdgeDir dir)
 	return !isConflicted;
 }
 
-bool cutInconsistent(SeqGraph* pGraph, Vertex* pVertex)
+bool cutInconsistent(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex)
 {
 	bool modified = false;
 	bool isInconsistent = !areEdgesConsistent(pGraph, pVertex, ED_SENSE) || 
@@ -294,8 +272,8 @@ bool cutInconsistent(SeqGraph* pGraph, Vertex* pVertex)
 		std::cout << "Cutting inconsistent vertex " << pVertex->getID() << std::endl;
 		for(int d = 0; d < ED_COUNT; ++d)
 		{
-			EdgeVec edges = pVertex->getEdges(EDGE_DIRECTIONS[d]);
-			for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+			ScaffoldGraph::EdgeVec edges = pVertex->getEdges(EDGE_DIRECTIONS[d]);
+			for(ScaffoldGraph::EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 			{		
 				pGraph->removeEdge(*iter);
 				pGraph->removeEdge(iter->getTwin());
@@ -307,7 +285,7 @@ bool cutInconsistent(SeqGraph* pGraph, Vertex* pVertex)
 }
 
 
-bool cutAmbigious(SeqGraph* pGraph, Vertex* pVertex)
+bool cutAmbigious(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex)
 {
 	bool modified = false;
 	for(int d = 0; d < ED_COUNT; ++d)
@@ -315,13 +293,13 @@ bool cutAmbigious(SeqGraph* pGraph, Vertex* pVertex)
 		EdgeDir dir = EDGE_DIRECTIONS[d];
 		
 		// Get the edges for this direction
-		EdgeVec edges = pVertex->getEdges(dir);
+		ScaffoldGraph::EdgeVec edges = pVertex->getEdges(dir);
 
 		// If there is a single edge in this direction, merge the vertices
 		// Don't merge singular self edges though
 		if(edges.size() > 1)
 		{
-			for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+			for(ScaffoldGraph::EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 			{		
 				pGraph->removeEdge(*iter);
 				pGraph->removeEdge(iter->getTwin());
@@ -335,54 +313,16 @@ bool cutAmbigious(SeqGraph* pGraph, Vertex* pVertex)
 //
 //
 //
-Range convertEdgeToRange(const SeqGraph* sg, const Edge& e)
+Range convertEdgeToRange(const ScaffoldGraph* sg, const ScaffoldEdge& e)
 {
-	SeqVertex* pVert = (SeqVertex*)sg->getVertex(e.getEnd());
-	return Range(e.getOverlap(), e.getOverlap() + pVert->getSeq().length());
+	ScaffoldVertex* pVert = sg->getVertex(e.getEnd());
+	return Range(e.getData().estDist, e.getData().estDist + pVert->getData().getLength());
 }
-
-//
-//
-//
-void addVertexToScaffoldGraph(SeqGraph& graph, SDMap& sdMap, ContigID id)
-{
-	if(!graph.hasVertex(id))
-	{
-		SDMap::iterator iter = sdMap.find(id);
-		assert(iter != sdMap.end());
-		Sequence s = iter->second.getContig().getSequence();
-		SeqVertex* pVertex = new SeqVertex(id, s);
-		graph.addVertex(pVertex);
-	}
-}
-
-//
-//
-//
-void addEdgeToScaffoldGraph(SeqGraph& graph, ContigID id1, ContigID id2, EdgeDir dir, EdgeComp comp, int dist)
-{
-	Edge e(id1, id2, dir, comp, dist);
-	//std::cerr << "Adding edge " << e << std::endl;
-	graph.addEdge(e);
-	graph.addEdge(e.getTwin());
-}
-
-//
-// 
-//
-Contig& getContig(SDMap& sdMap, ContigID cid)
-{
-	SDMap::iterator iter = sdMap.find(cid);
-	assert(iter != sdMap.end());
-	return iter->second.getContig();
-}
-
-
 
 //
 // Parse a distance file 
 //
-void parseLinks(std::string filename, SDMap& sdMap)
+void parseLinks(std::string filename, ScaffoldGraph& graph)
 {
 	std::ifstream linkReader(filename.c_str());
 	assert(linkReader.is_open());
@@ -394,16 +334,6 @@ void parseLinks(std::string filename, SDMap& sdMap)
 		ContigID sourceID;
 		parser >> sourceID;
 
-		// Get an iterator to the data
-		SDMap::iterator iter = sdMap.find(sourceID);
-		if(iter == sdMap.end())
-		{
-			std::cout << "could not find " << sourceID << std::endl;
-		}
-
-		assert(iter != sdMap.end());
-		ScaffoldData& currSD = iter->second;
-	
 		// Discard the seperator
 		char sep;
 		parser >> sep;
@@ -422,12 +352,17 @@ void parseLinks(std::string filename, SDMap& sdMap)
 			SLink sl;
 			while(d_parser >> sl)
 			{
-				// Check if the link is to a unique contig
-				Contig& linkedTo = getContig(sdMap, sl.linkedID);
-				(void)linkedTo;
-				if(linkedTo.isUnique())
+				// Build an edge if both contigs exist in the graph
+				// This implies both contigs are unique
+				if(graph.hasVertex(sourceID) && graph.hasVertex(sl.linkedID))
 				{
-					currSD.addLink(sl, EDGE_DIRECTIONS[idx]);
+					ScaffoldEdge edge(sourceID, 
+									  sl.linkedID, 
+									  EDGE_DIRECTIONS[idx], 
+									  (sl.isRC) ? EC_REVERSE : EC_SAME, 
+									  ScaffoldData(sl.dist, sl.stdDev, sl.numPairs));
+					graph.addEdge(edge);
+					graph.addEdge(edge.getTwin());
 				}
 			}
 		}
