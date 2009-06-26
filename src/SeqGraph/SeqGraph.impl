@@ -7,16 +7,16 @@
 //
 //
 //
-template<typename VT, typename ET>
-SeqGraph<VT,ET>::SeqGraph()
+template<typename VT>
+SeqGraph<VT>::SeqGraph()
 {
 }
 
 //
 //
 //
-template<typename VT, typename ET>
-SeqGraph<VT,ET>::~SeqGraph()
+template<typename VT>
+SeqGraph<VT>::~SeqGraph()
 {
 	typename VertexPtrMap::iterator iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -29,8 +29,8 @@ SeqGraph<VT,ET>::~SeqGraph()
 //
 // Add a vertex
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::addVertex(VertexType* pVert)
+template<typename VT>
+void SeqGraph<VT>::addVertex(VertexType* pVert)
 {
 	// Make sure the id is correct
 	m_vertices.insert(std::make_pair(pVert->getID(), pVert));
@@ -39,15 +39,15 @@ void SeqGraph<VT,ET>::addVertex(VertexType* pVert)
 //
 // Remove a vertex
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::removeVertex(VertexID id)
+template<typename VT>
+void SeqGraph<VT>::removeVertex(VertexID id)
 {
 	// Remove the edges pointing to this Vertex
 	VertexType* pVertex = getVertex(id);
 	EdgeVec ev = pVertex->getEdges();
 	for(EdgeVecIter iter = ev.begin(); iter != ev.end(); ++iter)
 	{
-		EdgeType twin = iter->getTwin();
+		GraphEdgeType twin = iter->getTwin();
 		VertexType* pV2 = getVertex(twin.getStart());
 		pV2->removeEdge(twin);
 	}
@@ -60,8 +60,8 @@ void SeqGraph<VT,ET>::removeVertex(VertexID id)
 //
 // Check for the existance of a vertex
 //
-template<typename VT, typename ET>
-bool SeqGraph<VT,ET>::hasVertex(VertexID id)
+template<typename VT>
+bool SeqGraph<VT>::hasVertex(VertexID id)
 {
 	VertexPtrMapIter iter = m_vertices.find(id);
 	return iter != m_vertices.end();
@@ -70,8 +70,8 @@ bool SeqGraph<VT,ET>::hasVertex(VertexID id)
 //
 // Get a vertex
 //
-template<typename VT, typename ET>
-typename SeqGraph<VT,ET>::VertexType* SeqGraph<VT,ET>::getVertex(VertexID id) const
+template<typename VT>
+typename SeqGraph<VT>::VertexType* SeqGraph<VT>::getVertex(VertexID id) const
 {
 	VertexPtrMapConstIter iter = m_vertices.find(id);
 	if(iter == m_vertices.end())
@@ -85,8 +85,8 @@ typename SeqGraph<VT,ET>::VertexType* SeqGraph<VT,ET>::getVertex(VertexID id) co
 //
 // Add an edge
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::addEdge(const EdgeType& e)
+template<typename VT>
+void SeqGraph<VT>::addEdge(const GraphEdgeType& e)
 {
 	VertexType* pVert1 = getVertex(e.getStart());
 	pVert1->addEdge(e);
@@ -95,8 +95,8 @@ void SeqGraph<VT,ET>::addEdge(const EdgeType& e)
 //
 // Remove an edge
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::removeEdge(const EdgeType& e)
+template<typename VT>
+void SeqGraph<VT>::removeEdge(const GraphEdgeType& e)
 {
 	VertexType* pVert1 = getVertex(e.getStart());
 	pVert1->removeEdge(e);
@@ -105,8 +105,8 @@ void SeqGraph<VT,ET>::removeEdge(const EdgeType& e)
 //
 // High level merge function that does not specify an edge
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::mergeVertices(VertexID id1, VertexID id2)
+template<typename VT>
+void SeqGraph<VT>::mergeVertices(VertexID id1, VertexID id2)
 {
 	VertexType* pVert1 = getVertex(id1);
 	VertexType* pVert2 = getVertex(id2); 
@@ -127,7 +127,7 @@ void SeqGraph<VT,ET>::mergeVertices(VertexID id1, VertexID id2)
 	}
 
 	// There is a single unique edge between the vertices
-	EdgeType mergeEdge = *edgesTo.begin();
+	GraphEdgeType mergeEdge = *edgesTo.begin();
 
 	// Call the real merging function
 	mergeAlongEdge(pVert1, pVert2, mergeEdge);
@@ -136,14 +136,14 @@ void SeqGraph<VT,ET>::mergeVertices(VertexID id1, VertexID id2)
 //
 // Merge two vertices along the specified edge
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::mergeAlongEdge(VertexType* pV1, VertexType* pV2, const EdgeType& edge)
+template<typename VT>
+void SeqGraph<VT>::mergeAlongEdge(VertexType* pV1, VertexType* pV2, const GraphEdgeType& edge)
 {
 	// Merge the data
 	pV1->merge(pV2, edge);
 
 	// Construct the twin edge (the edge in v2 that points to v1)
-	EdgeType twinEdge = edge.getTwin();
+	GraphEdgeType twinEdge = edge.getTwin();
 
 	// Ensure v2 has the twin edge
 	assert(pV2->hasEdge(twinEdge));
@@ -164,11 +164,11 @@ void SeqGraph<VT,ET>::mergeAlongEdge(VertexType* pV1, VertexType* pV2, const Edg
 		assert(iter->getDir() == edge.getDir());
 
 		// Build the new edge and add it to V1
-		EdgeType e(pV1->getID(), iter->getEnd(), iter->getDir(), iter->getComp(), iter->getOverlap());
+		GraphEdgeType e(pV1->getID(), iter->getEnd(), iter->getDir(), iter->getComp(), iter->getOverlap());
 		pV1->addEdge(e);
 
 		// Add the twin edge to the new partner node
-		EdgeType twin = e.getTwin();
+		GraphEdgeType twin = e.getTwin();
 		VertexType* pV3 = getVertex(twin.getStart());
 		pV3->addEdge(twin);
 	}
@@ -190,8 +190,8 @@ void SeqGraph<VT,ET>::mergeAlongEdge(VertexType* pV1, VertexType* pV2, const Edg
 //
 //	Simplify the graph by removing transitive edges
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::simplify()
+template<typename VT>
+void SeqGraph<VT>::simplify()
 {
 	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
@@ -207,7 +207,7 @@ void SeqGraph<VT,ET>::simplify()
 			// Don't merge singular self edges though
 			if(edges.size() == 1 && !edges.front().isSelf())
 			{
-				EdgeType single = edges.front();
+				GraphEdgeType single = edges.front();
 				mergeAlongEdge(iter->second, getVertex(single.getEnd()), single);
 			}
 		}
@@ -217,8 +217,8 @@ void SeqGraph<VT,ET>::simplify()
 //
 // Validate that the graph is sane
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::validate()
+template<typename VT>
+void SeqGraph<VT>::validate()
 {
 	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
@@ -241,8 +241,8 @@ void SeqGraph<VT,ET>::validate()
 //
 // Flip a vertex
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::flip(VertexID id)
+template<typename VT>
+void SeqGraph<VT>::flip(VertexID id)
 {
 	VertexType* pVertex = getVertex(id);
 	EdgeVec edges = pVertex->getEdges();
@@ -250,9 +250,9 @@ void SeqGraph<VT,ET>::flip(VertexID id)
 	for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 	{
 		// Get the old twin
-		EdgeType twin = iter->getTwin();
+		GraphEdgeType twin = iter->getTwin();
 		
-		EdgeType flipped = *iter; 
+		GraphEdgeType flipped = *iter; 
 		flipped.flip();
 
 		// Remove the edge from the source ver
@@ -269,8 +269,8 @@ void SeqGraph<VT,ET>::flip(VertexID id)
 //
 // Get the IDs of the vertices that do not branch (both sense/antisense degree <= 1)
 //
-template<typename VT, typename ET>
-VertexIDVec SeqGraph<VT,ET>::getNonBranchingVertices() const
+template<typename VT>
+VertexIDVec SeqGraph<VT>::getNonBranchingVertices() const
 {
 	VertexIDVec out;
 	VertexPtrMapConstIter iter = m_vertices.begin(); 
@@ -291,8 +291,8 @@ VertexIDVec SeqGraph<VT,ET>::getNonBranchingVertices() const
 // Get all the paths corresponding to the linear components of the graph
 // Precondition: all vertices have in/out degree at most 1 (no branching)
 //
-template<typename VT, typename ET>
-typename SeqGraph<VT,ET>::PathVector SeqGraph<VT,ET>::getLinearComponents()
+template<typename VT>
+typename SeqGraph<VT>::PathVector SeqGraph<VT>::getLinearComponents()
 {
 	PathVector outPaths;
 	setColors(VC_WHITE);
@@ -313,8 +313,8 @@ typename SeqGraph<VT,ET>::PathVector SeqGraph<VT,ET>::getLinearComponents()
 // Return all the path of nodes that can be linearally reached from this node
 // The path expands in both directions so the first node in the path is not necessarily the source
 //
-template<typename VT, typename ET>
-typename SeqGraph<VT,ET>::Path SeqGraph<VT,ET>::constructLinearPath(VertexID id)
+template<typename VT>
+typename SeqGraph<VT>::Path SeqGraph<VT>::constructLinearPath(VertexID id)
 {
 	Path sensePath;
 	Path antisensePath;
@@ -331,8 +331,8 @@ typename SeqGraph<VT,ET>::Path SeqGraph<VT,ET>::constructLinearPath(VertexID id)
 // Recursively follow the graph in the specified direction without branching
 // outPath is an out-parameter of the edges that were followed
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::followLinear(VertexID id, EdgeDir dir, Path& outPath)
+template<typename VT>
+void SeqGraph<VT>::followLinear(VertexID id, EdgeDir dir, Path& outPath)
 {
 	VertexType* pVertex = getVertex(id);
 	EdgeVec edges = pVertex->getEdges(dir);
@@ -342,7 +342,7 @@ void SeqGraph<VT,ET>::followLinear(VertexID id, EdgeDir dir, Path& outPath)
 	
 	if(edges.size() == 1)
 	{
-		EdgeType& se = edges.front();
+		GraphEdgeType& se = edges.front();
 		outPath.push_back(se);
 		// Correct the direction for the comp
 		assert(se.getDir() == dir);
@@ -357,8 +357,8 @@ void SeqGraph<VT,ET>::followLinear(VertexID id, EdgeDir dir, Path& outPath)
 // Visit each vertex and call the function pointer
 // The function returns TRUE if it modifies the graph
 //
-template<typename VT, typename ET>
-bool SeqGraph<VT,ET>::visit(VertexVisitFunction f)
+template<typename VT>
+bool SeqGraph<VT>::visit(VertexVisitFunction f)
 {
 	bool modified = false;
 	VertexPtrMapConstIter iter = m_vertices.begin(); 
@@ -372,8 +372,8 @@ bool SeqGraph<VT,ET>::visit(VertexVisitFunction f)
 //
 // Set all the vertices in the graph to the given color
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::setColors(VertexColor c)
+template<typename VT>
+void SeqGraph<VT>::setColors(VertexColor c)
 {
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -385,8 +385,8 @@ void SeqGraph<VT,ET>::setColors(VertexColor c)
 //
 // Check if all the vertices in the graph are the given color
 //
-template<typename VT, typename ET>
-bool SeqGraph<VT,ET>::checkColors(VertexColor c)
+template<typename VT>
+bool SeqGraph<VT>::checkColors(VertexColor c)
 {
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -400,8 +400,8 @@ bool SeqGraph<VT,ET>::checkColors(VertexColor c)
 //
 // Output simple stats
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::stats() const
+template<typename VT>
+void SeqGraph<VT>::stats() const
 {
 	int numVerts = 0;
 	int numEdges = 0;
@@ -419,8 +419,8 @@ void SeqGraph<VT,ET>::stats() const
 //
 // Dump the graph to a dot file
 //
-template<typename VT, typename ET>
-void SeqGraph<VT,ET>::writeDot(string filename) const
+template<typename VT>
+void SeqGraph<VT>::writeDot(string filename) const
 {
 	std::ofstream out(filename.c_str());
 	
