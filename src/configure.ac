@@ -32,12 +32,9 @@ AC_PROG_RANLIB
 AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 
 AC_CONFIG_FILES([Makefile
-		Resolve/Makefile
-		SeqGraph/Makefile
 		Util/Makefile
 		Stats/Makefile
 		UniEst/Makefile
-		Scaffold/Makefile
 		Tests/Makefile])
 
 AC_OUTPUT

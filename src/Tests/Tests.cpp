@@ -1,48 +1,32 @@
 #include <iostream>
-#include <list>
-
-template<typename A>
-class TempEdge
-{
-	A data;
-};
-
-template<typename V, typename E>
-class TempVert
-{
-	std::list<TempEdge<E> > m_list;
-	V data;
-};
-
-template<typename V, typename E>
-class TempGraph
-{
-	typedef TempVert<V,E> VertexType;
-	typedef typename std::list<VertexType> VertexList;
-	VertexList m_vertices;
-};
-
-class OverlapData
-{
-	int overlap;
-};
-
-class SequenceVertex
-{	
-	
-};
+#include "Edge.h"
+#include "Vertex.h"
+#include "SeqGraph.h"
 
 int main(int argc, char** argv)
 {
 	(void)argc;
 	(void)argv;
 
-	TempEdge<int> blag;
-	TempVert<int, int> vert;
-	TempGraph<int, int> graph;
+	typedef Edge<int> IntEdge;
+	typedef Vertex<int, IntEdge> IntVertex;
 
-	(void)vert;
-	(void)blag;
+	IntVertex* v1 = new IntVertex("1");
+	IntVertex* v2 = new IntVertex("2");
+	IntVertex* v3 = new IntVertex("3");
+
+	typedef SeqGraph<IntVertex, IntEdge> IntGraph;
+
+	IntEdge e1("1", "2", ED_SENSE, EC_SAME, 10);
+	IntEdge e2("2", "3", ED_SENSE, EC_SAME, 20);
+
+	IntGraph g;
+	g.addVertex(v1);
+	g.addVertex(v2);
+	g.addVertex(v3);
+	v1->addEdge(e1);
+	v2->addEdge(e2);
+	g.writeDot("test.dot");
 	return 0;
 }
 

@@ -3,21 +3,21 @@
 
 #include <ostream>
 #include "Util.h"
-#include "Common.h"
+#include "GraphCommon.h"
 
 using namespace std;
 
+template<typename D>
 class Edge
 {
 	public:
-		Edge() {};
-		Edge(VertexID start, VertexID end, EdgeDir dir, EdgeComp comp, int overlap) : 
-				m_start(start), m_end(end), m_dir(dir), m_comp(comp), m_overlap(overlap) {}
+		Edge(VertexID start, VertexID end, EdgeDir dir, EdgeComp comp, D data) : 
+				m_start(start), m_end(end), m_dir(dir), m_comp(comp), m_data(data) {}
 
 		// Generate the twin edge, the edge from the end node back to the start node
 		Edge getTwin() const
 		{
-			return Edge(m_end, m_start, getTwinDir(), m_comp, m_overlap);
+			return Edge(m_end, m_start, getTwinDir(), m_comp, m_data);
 		}
 
 		// Make the direction of the edge that its twin should point along 
@@ -38,9 +38,9 @@ class Edge
 		VertexID getEnd() const { return m_end; }
 		EdgeDir getDir() const { return m_dir; }
 		EdgeComp getComp() const { return m_comp; }
-		int getOverlap() const { return m_overlap; }
 		bool isSelf() const { return m_start == m_end; }
 		double getWeight() const { return m_weight; }
+		D getData() const { return m_data; }
 
 		// Setters
 		void setWeight(double w) { m_weight = w; }
@@ -82,13 +82,15 @@ class Edge
 		}
 
 	private:
+		
+		Edge() {}; // Default constructor is not allowed
+
 		VertexID m_start;
 		VertexID m_end;
 		EdgeDir m_dir;
 		EdgeComp m_comp;
-		int m_overlap;
 		double m_weight;
-
+		D m_data;
 };
 
 #endif

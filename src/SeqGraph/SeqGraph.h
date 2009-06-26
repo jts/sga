@@ -5,38 +5,39 @@
 #include <stdio.h>
 #include <vector>
 #include <map>
+#include "GraphCommon.h"
 #include "Vertex.h"
 
 using namespace std;
 
-// 
-// Forward declare
-//
-class SeqGraph;
-
-//
-// Typedefs
-//
-typedef map<VertexID, Vertex*> VertexPtrMap;
-typedef VertexPtrMap::iterator VertexPtrMapIter;
-typedef bool(*VertexVisitFunction)(SeqGraph*, Vertex*);
-typedef std::vector<Edge> Path;
-typedef std::vector<Path> PathVector;
-typedef std::vector<VertexID> VertexIDVec;
-
-//
-// Functions
-//
-Path reversePath(const Path& p);
-
+template<typename VT, typename ET>
 class SeqGraph
 {
+
+	//
+	// Typedefs
+	//
+	typedef VT VertexType;
+	typedef ET EdgeType;
+
+	typedef map<VertexID, VertexType*> VertexPtrMap;
+	typedef typename VertexPtrMap::iterator VertexPtrMapIter;
+	typedef typename VertexPtrMap::const_iterator VertexPtrMapConstIter;
+	
+	typedef bool(*VertexVisitFunction)(SeqGraph*, VertexType*);
+	typedef std::vector<EdgeType> EdgeVec;
+	typedef typename EdgeVec::iterator EdgeVecIter;
+	typedef EdgeVec Path; // alias
+	typedef std::vector<Path> PathVector;
+	typedef std::vector<VertexID> VertexIDVec;
+
+	
 	public:
 		SeqGraph();
 		~SeqGraph();
 
 		// Add a vertex
-		void addVertex(Vertex* pVert);
+		void addVertex(VertexType* pVert);
 		
 		// Remove a vertex
 		void removeVertex(VertexID id);
@@ -45,13 +46,13 @@ class SeqGraph
 		bool hasVertex(VertexID id);
 
 		// Get a vertex
-		Vertex* getVertex(VertexID id) const;
+		VertexType* getVertex(VertexID id) const;
 
 		// Add an edge
-		void addEdge(const Edge& e);
+		void addEdge(const EdgeType& e);
 
 		// Remove an edge
-		void removeEdge(const Edge& e);
+		void removeEdge(const EdgeType& e);
 
 		// Merge vertices
 		void mergeVertices(VertexID id1, VertexID id2);
@@ -93,10 +94,12 @@ class SeqGraph
 		void followLinear(VertexID id, EdgeDir dir, Path& outPath);
 
 		// Merge two vertices along a specified edge
-		void mergeAlongEdge(Vertex* pV1, Vertex* pV2, const Edge& edge);
+		void mergeAlongEdge(VertexType* pV1, VertexType* pV2, const EdgeType& edge);
 
 		// Vertex collection
 		VertexPtrMap m_vertices;
 };
+
+#include "SeqGraph.impl"
 
 #endif

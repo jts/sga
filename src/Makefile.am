@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = Util Stats UniEst SeqGraph Scaffold Resolve Tests
+SUBDIRS = Util Stats UniEst Tests
