@@ -8,7 +8,7 @@
 #include <ostream>
 #include <iostream>
 #include <iterator>
-#include "Common.h"
+#include "GraphCommon.h"
 #include "Edge.h"
 
 // Namespace

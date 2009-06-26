@@ -2,13 +2,13 @@
 #include <ostream>
 #include <fstream>
 #include <iostream>
-#include "SeqGraph.h"
+#include "Bigraph.h"
 
 //
 //
 //
 template<typename VT>
-SeqGraph<VT>::SeqGraph()
+Bigraph<VT>::Bigraph()
 {
 }
 
@@ -16,7 +16,7 @@ SeqGraph<VT>::SeqGraph()
 //
 //
 template<typename VT>
-SeqGraph<VT>::~SeqGraph()
+Bigraph<VT>::~Bigraph()
 {
 	typename VertexPtrMap::iterator iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -30,7 +30,7 @@ SeqGraph<VT>::~SeqGraph()
 // Add a vertex
 //
 template<typename VT>
-void SeqGraph<VT>::addVertex(VertexType* pVert)
+void Bigraph<VT>::addVertex(VertexType* pVert)
 {
 	// Make sure the id is correct
 	m_vertices.insert(std::make_pair(pVert->getID(), pVert));
@@ -40,7 +40,7 @@ void SeqGraph<VT>::addVertex(VertexType* pVert)
 // Remove a vertex
 //
 template<typename VT>
-void SeqGraph<VT>::removeVertex(VertexID id)
+void Bigraph<VT>::removeVertex(VertexID id)
 {
 	// Remove the edges pointing to this Vertex
 	VertexType* pVertex = getVertex(id);
@@ -61,7 +61,7 @@ void SeqGraph<VT>::removeVertex(VertexID id)
 // Check for the existance of a vertex
 //
 template<typename VT>
-bool SeqGraph<VT>::hasVertex(VertexID id)
+bool Bigraph<VT>::hasVertex(VertexID id)
 {
 	VertexPtrMapIter iter = m_vertices.find(id);
 	return iter != m_vertices.end();
@@ -71,7 +71,7 @@ bool SeqGraph<VT>::hasVertex(VertexID id)
 // Get a vertex
 //
 template<typename VT>
-typename SeqGraph<VT>::VertexType* SeqGraph<VT>::getVertex(VertexID id) const
+typename Bigraph<VT>::VertexType* Bigraph<VT>::getVertex(VertexID id) const
 {
 	VertexPtrMapConstIter iter = m_vertices.find(id);
 	if(iter == m_vertices.end())
@@ -86,7 +86,7 @@ typename SeqGraph<VT>::VertexType* SeqGraph<VT>::getVertex(VertexID id) const
 // Add an edge
 //
 template<typename VT>
-void SeqGraph<VT>::addEdge(const GraphEdgeType& e)
+void Bigraph<VT>::addEdge(const GraphEdgeType& e)
 {
 	VertexType* pVert1 = getVertex(e.getStart());
 	pVert1->addEdge(e);
@@ -96,7 +96,7 @@ void SeqGraph<VT>::addEdge(const GraphEdgeType& e)
 // Remove an edge
 //
 template<typename VT>
-void SeqGraph<VT>::removeEdge(const GraphEdgeType& e)
+void Bigraph<VT>::removeEdge(const GraphEdgeType& e)
 {
 	VertexType* pVert1 = getVertex(e.getStart());
 	pVert1->removeEdge(e);
@@ -106,7 +106,7 @@ void SeqGraph<VT>::removeEdge(const GraphEdgeType& e)
 // High level merge function that does not specify an edge
 //
 template<typename VT>
-void SeqGraph<VT>::mergeVertices(VertexID id1, VertexID id2)
+void Bigraph<VT>::mergeVertices(VertexID id1, VertexID id2)
 {
 	VertexType* pVert1 = getVertex(id1);
 	VertexType* pVert2 = getVertex(id2); 
@@ -137,7 +137,7 @@ void SeqGraph<VT>::mergeVertices(VertexID id1, VertexID id2)
 // Merge two vertices along the specified edge
 //
 template<typename VT>
-void SeqGraph<VT>::mergeAlongEdge(VertexType* pV1, VertexType* pV2, const GraphEdgeType& edge)
+void Bigraph<VT>::mergeAlongEdge(VertexType* pV1, VertexType* pV2, const GraphEdgeType& edge)
 {
 	// Merge the data
 	pV1->merge(pV2, edge);
@@ -191,7 +191,7 @@ void SeqGraph<VT>::mergeAlongEdge(VertexType* pV1, VertexType* pV2, const GraphE
 //	Simplify the graph by removing transitive edges
 //
 template<typename VT>
-void SeqGraph<VT>::simplify()
+void Bigraph<VT>::simplify()
 {
 	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
@@ -218,7 +218,7 @@ void SeqGraph<VT>::simplify()
 // Validate that the graph is sane
 //
 template<typename VT>
-void SeqGraph<VT>::validate()
+void Bigraph<VT>::validate()
 {
 	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
@@ -242,7 +242,7 @@ void SeqGraph<VT>::validate()
 // Flip a vertex
 //
 template<typename VT>
-void SeqGraph<VT>::flip(VertexID id)
+void Bigraph<VT>::flip(VertexID id)
 {
 	VertexType* pVertex = getVertex(id);
 	EdgeVec edges = pVertex->getEdges();
@@ -270,7 +270,7 @@ void SeqGraph<VT>::flip(VertexID id)
 // Get the IDs of the vertices that do not branch (both sense/antisense degree <= 1)
 //
 template<typename VT>
-VertexIDVec SeqGraph<VT>::getNonBranchingVertices() const
+VertexIDVec Bigraph<VT>::getNonBranchingVertices() const
 {
 	VertexIDVec out;
 	VertexPtrMapConstIter iter = m_vertices.begin(); 
@@ -292,7 +292,7 @@ VertexIDVec SeqGraph<VT>::getNonBranchingVertices() const
 // Precondition: all vertices have in/out degree at most 1 (no branching)
 //
 template<typename VT>
-typename SeqGraph<VT>::PathVector SeqGraph<VT>::getLinearComponents()
+typename Bigraph<VT>::PathVector Bigraph<VT>::getLinearComponents()
 {
 	PathVector outPaths;
 	setColors(VC_WHITE);
@@ -314,7 +314,7 @@ typename SeqGraph<VT>::PathVector SeqGraph<VT>::getLinearComponents()
 // The path expands in both directions so the first node in the path is not necessarily the source
 //
 template<typename VT>
-typename SeqGraph<VT>::Path SeqGraph<VT>::constructLinearPath(VertexID id)
+typename Bigraph<VT>::Path Bigraph<VT>::constructLinearPath(VertexID id)
 {
 	Path sensePath;
 	Path antisensePath;
@@ -332,7 +332,7 @@ typename SeqGraph<VT>::Path SeqGraph<VT>::constructLinearPath(VertexID id)
 // outPath is an out-parameter of the edges that were followed
 //
 template<typename VT>
-void SeqGraph<VT>::followLinear(VertexID id, EdgeDir dir, Path& outPath)
+void Bigraph<VT>::followLinear(VertexID id, EdgeDir dir, Path& outPath)
 {
 	VertexType* pVertex = getVertex(id);
 	EdgeVec edges = pVertex->getEdges(dir);
@@ -358,7 +358,7 @@ void SeqGraph<VT>::followLinear(VertexID id, EdgeDir dir, Path& outPath)
 // The function returns TRUE if it modifies the graph
 //
 template<typename VT>
-bool SeqGraph<VT>::visit(VertexVisitFunction f)
+bool Bigraph<VT>::visit(VertexVisitFunction f)
 {
 	bool modified = false;
 	VertexPtrMapConstIter iter = m_vertices.begin(); 
@@ -373,7 +373,7 @@ bool SeqGraph<VT>::visit(VertexVisitFunction f)
 // Set all the vertices in the graph to the given color
 //
 template<typename VT>
-void SeqGraph<VT>::setColors(VertexColor c)
+void Bigraph<VT>::setColors(VertexColor c)
 {
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -386,7 +386,7 @@ void SeqGraph<VT>::setColors(VertexColor c)
 // Check if all the vertices in the graph are the given color
 //
 template<typename VT>
-bool SeqGraph<VT>::checkColors(VertexColor c)
+bool Bigraph<VT>::checkColors(VertexColor c)
 {
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -401,7 +401,7 @@ bool SeqGraph<VT>::checkColors(VertexColor c)
 // Output simple stats
 //
 template<typename VT>
-void SeqGraph<VT>::stats() const
+void Bigraph<VT>::stats() const
 {
 	int numVerts = 0;
 	int numEdges = 0;
@@ -420,7 +420,7 @@ void SeqGraph<VT>::stats() const
 // Dump the graph to a dot file
 //
 template<typename VT>
-void SeqGraph<VT>::writeDot(string filename) const
+void Bigraph<VT>::writeDot(string filename) const
 {
 	std::ofstream out(filename.c_str());
 	

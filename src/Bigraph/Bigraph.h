@@ -11,7 +11,7 @@
 using namespace std;
 
 template<typename VT>
-class SeqGraph
+class Bigraph
 {
 
 	//
@@ -24,7 +24,7 @@ class SeqGraph
 	typedef typename VertexPtrMap::iterator VertexPtrMapIter;
 	typedef typename VertexPtrMap::const_iterator VertexPtrMapConstIter;
 	
-	typedef bool(*VertexVisitFunction)(SeqGraph*, VertexType*);
+	typedef bool(*VertexVisitFunction)(Bigraph*, VertexType*);
 	typedef std::vector<GraphEdgeType> EdgeVec;
 	typedef typename EdgeVec::iterator EdgeVecIter;
 	typedef EdgeVec Path; // alias
@@ -33,8 +33,8 @@ class SeqGraph
 
 	
 	public:
-		SeqGraph();
-		~SeqGraph();
+		Bigraph();
+		~Bigraph();
 
 		// Add a vertex
 		void addVertex(VertexType* pVert);
@@ -100,6 +100,6 @@ class SeqGraph
 		VertexPtrMap m_vertices;
 };
 
-#include "SeqGraph.impl"
+#include "Bigraph.impl"
 
 #endif

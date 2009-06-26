@@ -1,7 +1,7 @@
 #include <iostream>
 #include "Edge.h"
 #include "Vertex.h"
-#include "SeqGraph.h"
+#include "Bigraph.h"
 
 int main(int argc, char** argv)
 {
@@ -15,7 +15,7 @@ int main(int argc, char** argv)
 	IntVertex* v2 = new IntVertex("2");
 	IntVertex* v3 = new IntVertex("3");
 
-	typedef SeqGraph<IntVertex> IntGraph;
+	typedef Bigraph<IntVertex> IntGraph;
 
 	IntEdge e1("1", "2", ED_SENSE, EC_SAME, 10);
 	IntEdge e2("2", "3", ED_SENSE, EC_SAME, 20);
