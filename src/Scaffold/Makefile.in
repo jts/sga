@@ -47,8 +47,7 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_Scaffold_OBJECTS = Scaffold-Scaffold.$(OBJEXT) \
-	Scaffold-ScaffoldData.$(OBJEXT)
+am_Scaffold_OBJECTS = Scaffold-Scaffold.$(OBJEXT)
 Scaffold_OBJECTS = $(am_Scaffold_OBJECTS)
 Scaffold_DEPENDENCIES = $(top_builddir)/Util/libutil.a
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
@@ -157,7 +156,7 @@ Scaffold_CPPFLAGS = \
 Scaffold_LDADD = \
 	$(top_builddir)/Util/libutil.a 
 
-Scaffold_SOURCES = Scaffold.cpp ScaffoldData.cpp
+Scaffold_SOURCES = Scaffold.cpp
 all: all-am
 
 .SUFFIXES:
@@ -225,7 +224,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Scaffold-Scaffold.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Scaffold-ScaffoldData.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -254,20 +252,6 @@ Scaffold-Scaffold.obj: Scaffold.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Scaffold.cpp' object='Scaffold-Scaffold.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Scaffold-Scaffold.obj `if test -f 'Scaffold.cpp'; then $(CYGPATH_W) 'Scaffold.cpp'; else $(CYGPATH_W) '$(srcdir)/Scaffold.cpp'; fi`
-
-Scaffold-ScaffoldData.o: ScaffoldData.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Scaffold-ScaffoldData.o -MD -MP -MF "$(DEPDIR)/Scaffold-ScaffoldData.Tpo" -c -o Scaffold-ScaffoldData.o `test -f 'ScaffoldData.cpp' || echo '$(srcdir)/'`ScaffoldData.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/Scaffold-ScaffoldData.Tpo" "$(DEPDIR)/Scaffold-ScaffoldData.Po"; else rm -f "$(DEPDIR)/Scaffold-ScaffoldData.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldData.cpp' object='Scaffold-ScaffoldData.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Scaffold-ScaffoldData.o `test -f 'ScaffoldData.cpp' || echo '$(srcdir)/'`ScaffoldData.cpp
-
-Scaffold-ScaffoldData.obj: ScaffoldData.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Scaffold-ScaffoldData.obj -MD -MP -MF "$(DEPDIR)/Scaffold-ScaffoldData.Tpo" -c -o Scaffold-ScaffoldData.obj `if test -f 'ScaffoldData.cpp'; then $(CYGPATH_W) 'ScaffoldData.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldData.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/Scaffold-ScaffoldData.Tpo" "$(DEPDIR)/Scaffold-ScaffoldData.Po"; else rm -f "$(DEPDIR)/Scaffold-ScaffoldData.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldData.cpp' object='Scaffold-ScaffoldData.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Scaffold-ScaffoldData.obj `if test -f 'ScaffoldData.cpp'; then $(CYGPATH_W) 'ScaffoldData.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldData.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

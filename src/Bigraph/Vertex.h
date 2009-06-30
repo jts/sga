@@ -187,7 +187,7 @@ class Vertex
 				string label = (iter->getComp() == EC_SAME) ? "S" : "F";
 				out << "\"" << iter->getStart() << "\" -> \"" << iter->getEnd();
 				out << "\" [color=\"" << color << "\" ";
-				out << "label=\"" << label << "\"];\n";
+				out << "label=\"" << label << " (" << iter->getData() << ") \"];\n";
 			}
 		}
 		

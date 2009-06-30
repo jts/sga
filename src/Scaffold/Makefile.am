@@ -7,4 +7,4 @@ Scaffold_CPPFLAGS = \
 Scaffold_LDADD = \
 	$(top_builddir)/Util/libutil.a 
 
-Scaffold_SOURCES = Scaffold.cpp ScaffoldData.cpp
+Scaffold_SOURCES = Scaffold.cpp

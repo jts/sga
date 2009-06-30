@@ -255,7 +255,9 @@ bool areEdgesConsistent(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex, EdgeDir 
 		bool contained = false;//overlap == curr.range.size() || overlap == prev.range.size();
 		bool isAmbigious = overlap > overlapThreshold;
 		isConflicted = isConflicted || contained || isAmbigious;
-		std::cout << "\t" << prev.range << " " << curr.range << " " << contained << " " << isAmbigious << std::endl;
+		std::cout << "\t" << prev.range << " " << curr.range << " " 
+							<< prev.edge.getData().stdDev << " " << curr.edge.getData().stdDev << " " 
+							<< contained << " " << overlap << " " << isAmbigious << std::endl;
 		prev = curr;
 	}
 	return !isConflicted;

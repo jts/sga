@@ -23,6 +23,12 @@ struct ScaffoldData
 	int estDist;
 	double stdDev;
 	unsigned int numPairs;
+
+	friend std::ostream& operator<<(std::ostream& out, const ScaffoldData& sd)
+	{
+		out << sd.estDist;
+		return out;
+	}
 };
 
 struct SLink

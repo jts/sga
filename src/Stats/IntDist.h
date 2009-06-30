@@ -16,10 +16,14 @@ class IntDist
 		void addWeight(int pos, double w);
 		void setP(int pos, double p);
 		double getP(int index) const;
+		double getWeight(int index) const;
 		int getStart() const { return m_start; }
 		int getEnd() const { return m_start + m_values.size(); }
+		double expectedValue() const;
 
-		// calculate probabilities from weights
+		//
+		// normalize the distribution by calculating probabilities from weights
+		//
 		void normalize();
 
 		// utility funcs
@@ -30,6 +34,7 @@ class IntDist
 		int m_start;
 		bool m_normalized;
 		DoubleVec m_values;
+		static double ERROR_LIMIT;
 };
 
 #endif

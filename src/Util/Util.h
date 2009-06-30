@@ -48,6 +48,43 @@ struct KAlignment
 	int read_length;
 	bool is_reverse;
 
+	// Return the outer coordinate of the alignment
+	int contigOuterCoordinate() const
+	{
+		if(!is_reverse)
+		{
+			return contig_start_pos - read_start_pos;
+		}
+		else
+		{
+			return contig_start_pos + align_length + read_start_pos;
+		}
+	}
+
+	//
+	// Convert the alignment into the alignment on the reverse complement
+	// of the target
+	//
+	void flipAlignment(int targetLength)
+	{
+		int tPos = targetLength - contig_start_pos + align_length;
+		contig_start_pos = tPos;
+		is_reverse = !is_reverse;
+	}
+
+	//
+	// Get the distance from thto the end of the contig
+	// This is in the direction of the alignment
+	//
+	int getDistanceToEnd(int targetLen) const
+	{
+		int outerCoordinate = contigOuterCoordinate();
+		if(!is_reverse)
+			return targetLen - outerCoordinate;
+		else
+			return outerCoordinate;
+	}
+
 	friend std::istream& operator>> (std::istream& in, KAlignment& a)
 	{
 		in >> a.contig_id >> a.contig_start_pos;
@@ -57,6 +94,24 @@ struct KAlignment
 	}
 };
 
+//
+// AlignPair
+//
+struct AlignPair
+{
+	friend std::istream& operator>> (std::istream& in, AlignPair& ap)
+	{
+		std::string readname;
+		in >> readname >> ap.aligns[0] >> readname >> ap.aligns[1];
+		return in;
+	}
+
+	KAlignment aligns[2];
+};
+
+//
+// AdjInfo
+//
 struct AdjInfo
 {
 	ContigID from;

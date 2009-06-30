@@ -20,9 +20,8 @@ IntDist FragmentDistribution::convertToIntDist(double trim)
 {
 	int min, max;
 	findPRange(trim, min, max);
-
 	IntDist pdf(min, max);
-	for(int idx = min; idx < max; ++idx)
+	for(int idx = min; idx <= max; ++idx)
 	{
 		pdf.addWeight(idx, getCount(idx));
 	}
