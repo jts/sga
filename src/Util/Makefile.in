@@ -48,7 +48,8 @@ AR = ar
 ARFLAGS = cru
 libutil_a_AR = $(AR) $(ARFLAGS)
 libutil_a_LIBADD =
-am_libutil_a_OBJECTS = Util.$(OBJEXT) Contig.$(OBJEXT)
+am_libutil_a_OBJECTS = libutil_a-Util.$(OBJEXT) \
+	libutil_a-Contig.$(OBJEXT) libutil_a-ContigGraph.$(OBJEXT)
 libutil_a_OBJECTS = $(am_libutil_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -154,9 +155,13 @@ sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 noinst_LIBRARIES = libutil.a
+libutil_a_CPPFLAGS = \
+	-I$(top_srcdir)/Bigraph
+
 libutil_a_SOURCES = \
 	Util.cpp Util.h \
-	Contig.h Contig.cpp
+	Contig.h Contig.cpp \
+	ContigGraph.h ContigGraph.cpp
 
 all: all-am
 
@@ -205,8 +210,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Contig.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Util.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Contig.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-ContigGraph.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Util.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -221,6 +227,48 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+libutil_a-Util.o: Util.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-Util.o -MD -MP -MF "$(DEPDIR)/libutil_a-Util.Tpo" -c -o libutil_a-Util.o `test -f 'Util.cpp' || echo '$(srcdir)/'`Util.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-Util.Tpo" "$(DEPDIR)/libutil_a-Util.Po"; else rm -f "$(DEPDIR)/libutil_a-Util.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Util.cpp' object='libutil_a-Util.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-Util.o `test -f 'Util.cpp' || echo '$(srcdir)/'`Util.cpp
+
+libutil_a-Util.obj: Util.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-Util.obj -MD -MP -MF "$(DEPDIR)/libutil_a-Util.Tpo" -c -o libutil_a-Util.obj `if test -f 'Util.cpp'; then $(CYGPATH_W) 'Util.cpp'; else $(CYGPATH_W) '$(srcdir)/Util.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-Util.Tpo" "$(DEPDIR)/libutil_a-Util.Po"; else rm -f "$(DEPDIR)/libutil_a-Util.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Util.cpp' object='libutil_a-Util.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-Util.obj `if test -f 'Util.cpp'; then $(CYGPATH_W) 'Util.cpp'; else $(CYGPATH_W) '$(srcdir)/Util.cpp'; fi`
+
+libutil_a-Contig.o: Contig.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-Contig.o -MD -MP -MF "$(DEPDIR)/libutil_a-Contig.Tpo" -c -o libutil_a-Contig.o `test -f 'Contig.cpp' || echo '$(srcdir)/'`Contig.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-Contig.Tpo" "$(DEPDIR)/libutil_a-Contig.Po"; else rm -f "$(DEPDIR)/libutil_a-Contig.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Contig.cpp' object='libutil_a-Contig.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-Contig.o `test -f 'Contig.cpp' || echo '$(srcdir)/'`Contig.cpp
+
+libutil_a-Contig.obj: Contig.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-Contig.obj -MD -MP -MF "$(DEPDIR)/libutil_a-Contig.Tpo" -c -o libutil_a-Contig.obj `if test -f 'Contig.cpp'; then $(CYGPATH_W) 'Contig.cpp'; else $(CYGPATH_W) '$(srcdir)/Contig.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-Contig.Tpo" "$(DEPDIR)/libutil_a-Contig.Po"; else rm -f "$(DEPDIR)/libutil_a-Contig.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Contig.cpp' object='libutil_a-Contig.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-Contig.obj `if test -f 'Contig.cpp'; then $(CYGPATH_W) 'Contig.cpp'; else $(CYGPATH_W) '$(srcdir)/Contig.cpp'; fi`
+
+libutil_a-ContigGraph.o: ContigGraph.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-ContigGraph.o -MD -MP -MF "$(DEPDIR)/libutil_a-ContigGraph.Tpo" -c -o libutil_a-ContigGraph.o `test -f 'ContigGraph.cpp' || echo '$(srcdir)/'`ContigGraph.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-ContigGraph.Tpo" "$(DEPDIR)/libutil_a-ContigGraph.Po"; else rm -f "$(DEPDIR)/libutil_a-ContigGraph.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ContigGraph.cpp' object='libutil_a-ContigGraph.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-ContigGraph.o `test -f 'ContigGraph.cpp' || echo '$(srcdir)/'`ContigGraph.cpp
+
+libutil_a-ContigGraph.obj: ContigGraph.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-ContigGraph.obj -MD -MP -MF "$(DEPDIR)/libutil_a-ContigGraph.Tpo" -c -o libutil_a-ContigGraph.obj `if test -f 'ContigGraph.cpp'; then $(CYGPATH_W) 'ContigGraph.cpp'; else $(CYGPATH_W) '$(srcdir)/ContigGraph.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-ContigGraph.Tpo" "$(DEPDIR)/libutil_a-ContigGraph.Po"; else rm -f "$(DEPDIR)/libutil_a-ContigGraph.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ContigGraph.cpp' object='libutil_a-ContigGraph.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-ContigGraph.obj `if test -f 'ContigGraph.cpp'; then $(CYGPATH_W) 'ContigGraph.cpp'; else $(CYGPATH_W) '$(srcdir)/ContigGraph.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

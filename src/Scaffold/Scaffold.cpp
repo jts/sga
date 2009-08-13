@@ -297,8 +297,7 @@ bool cutAmbigious(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex)
 		// Get the edges for this direction
 		ScaffoldGraph::EdgeVec edges = pVertex->getEdges(dir);
 
-		// If there is a single edge in this direction, merge the vertices
-		// Don't merge singular self edges though
+		// Cut edges if there is more than one in this direction
 		if(edges.size() > 1)
 		{
 			for(ScaffoldGraph::EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)

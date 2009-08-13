@@ -85,6 +85,12 @@ struct KAlignment
 			return outerCoordinate;
 	}
 
+	// Comparse by read position
+	static int compareReadPos(const KAlignment& a1, const KAlignment& a2)
+	{
+		return a1.read_start_pos < a2.read_start_pos;
+	}
+
 	friend std::istream& operator>> (std::istream& in, KAlignment& a)
 	{
 		in >> a.contig_id >> a.contig_start_pos;

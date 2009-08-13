@@ -420,17 +420,21 @@ void Bigraph<VT>::stats() const
 // Dump the graph to a dot file
 //
 template<typename VT>
-void Bigraph<VT>::writeDot(string filename) const
+void Bigraph<VT>::writeDot(string filename, int dotFlags, VertexColorFunction colorFunc) const
 {
 	std::ofstream out(filename.c_str());
 	
-	out << "digraph G\n{\n";
+	std::string graphType = (dotFlags & DF_UNDIRECTED) ? "graph" : "digraph";
+
+	out << graphType << " G\n{\n";
 	VertexPtrMapConstIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
 	{
 		VertexID id = iter->second->getID();
-		out << id << " [ label =\"" << id << "\"];\n";
-		iter->second->writeEdges(out);
+		out << id << " [ label =\"" << id << "\" ";
+		out << "color =\"" << colorFunc(iter->second->getData()) << "\"";
+		out << "];\n";
+		iter->second->writeEdges(out, dotFlags);
 	}
 	out << "}\n";
 	out.close();

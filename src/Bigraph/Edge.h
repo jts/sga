@@ -20,7 +20,16 @@ class Edge
 			return Edge(m_end, m_start, getTwinDir(), m_comp, m_data);
 		}
 
+		// Make the direction of the edge that is in the same direction as the current edge
+		// but originating in the endpoint vertex
+		// This is the transitive direction start --> end *-->* 
+		EdgeDir getTransitiveDir() const
+		{
+			return (m_comp == EC_SAME) ? m_dir : !m_dir;
+		}
 		// Make the direction of the edge that its twin should point along 
+		// start   --->   end
+		//       * <--- *
 		EdgeDir getTwinDir() const
 		{
 			return (m_comp == EC_SAME) ? !m_dir : m_dir;

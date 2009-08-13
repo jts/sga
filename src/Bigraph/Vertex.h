@@ -31,6 +31,7 @@ class Vertex
 	public:
 
 		// Typedefs
+		typedef VD VertexData;
 		typedef ET EdgeType;
 		typedef set<EdgeType> EdgeSet;
 		typedef vector<EdgeType> EdgeVec;
@@ -178,16 +179,28 @@ class Vertex
 
 
 		// Output edges in graphviz format
-		void writeEdges(ostream& out) const
+		void writeEdges(ostream& out, int dotFlags) const
 		{
 			EdgeSetConstIter iter = m_edges.begin();
 			for(; iter != m_edges.end(); ++iter)
 			{
-				string color = (iter->getDir() == ED_SENSE) ? "black" : "red";
-				string label = (iter->getComp() == EC_SAME) ? "S" : "F";
-				out << "\"" << iter->getStart() << "\" -> \"" << iter->getEnd();
-				out << "\" [color=\"" << color << "\" ";
-				out << "label=\"" << label << " (" << iter->getData() << ") \"];\n";
+				if(dotFlags & DF_UNDIRECTED)
+				{
+					if(iter->getStart() < iter->getEnd())
+					{
+						out << "\"" << iter->getStart() << "\" -- \"" << iter->getEnd() << "\"";
+					}
+				}
+				else
+				{
+					out << "\"" << iter->getStart() << "\" -> \"" << iter->getEnd();
+					string color = (iter->getDir() == ED_SENSE) ? "black" : "red";
+					string label = (iter->getComp() == EC_SAME) ? "S" : "F";
+					out << "\" [color=\"" << color << "\" ";
+					out << "label=\"" << label << " (" << iter->getData() << ") \"];";
+				}
+				out << "\n";
+
 			}
 		}
 		

@@ -96,7 +96,11 @@ StringVec split(std::string in, char delimiter)
 void splitKeyValue(std::string in, std::string& key, std::string& value)
 {
 	StringVec parts = split(in, CAF_SEP);
-	assert(parts.size() == 2 && "Invalid key-value pair");
+	if(parts.size() != 2)
+	{
+		std::cerr << "Invalid key-value pair " << in << std::endl;
+		assert(false);
+	}
 
 	key = parts[0];
 	value = parts[1];

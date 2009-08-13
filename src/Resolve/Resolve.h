@@ -1,9 +1,9 @@
 #ifndef RESOLVE_H
 #define RESOLVE_H
 
-#include "SeqGraph.h"
-#include "SeqVertex.h"
+#include "Bigraph.h"
 #include "Contig.h"
+#include "ContigGraph.h"
 #include <cassert>
 #include <cerrno>
 #include <cstring>
@@ -14,13 +14,17 @@
 #include <sstream>
 #include <string>
 
+//
+// Typedefs
+//
+
 
 //
 // Functions
 //
-void loadVertices(SeqGraph& graph, int kmer, std::string filename);
-void loadEdges(SeqGraph& graph, int overlap, std::string filename);
 void parseOptions(int argc, char** argv);
+std::string colorVertexByLength(Contig d);
+std::string colorVertexByAnnotation(Contig d);
 
 //
 // Getopt

@@ -14,50 +14,67 @@ int main(int argc, char** argv)
 	std::string contigFile(argv[optind++]);
 	std::string adjFile(argv[optind++]);
 	
-	SeqGraph sg;
-
-	// Load verts and edges
-	loadVertices(sg, opt::k, contigFile);
-	loadEdges(sg, opt::k - 1, adjFile);
+	ContigGraph* pContigGraph = createContigGraph(opt::k, contigFile, adjFile);
 
 	//sg.stats();
-	sg.validate();
-
+	pContigGraph->validate();
+	pContigGraph->writeDot("contigGraph.dot", DF_UNDIRECTED, colorVertexByAnnotation);
 	//sg.simplify();
 	//sg.stats();
 	//sg.validate();
+	delete pContigGraph;
 }
 
-//
-//
-//
-void loadVertices(SeqGraph& graph, int kmer, std::string filename)
+// Default vertex color function, returns black for everything
+std::string colorVertexByLength(Contig d)
 {
-	std::ifstream file(filename.c_str());
-	assert(file.is_open());
-	Contig c;
-	(void)kmer;
-	while(readCAF(file,c))
+	if(d.getLength() > 500)
 	{
-		SeqVertex* pSV = new SeqVertex(c.getID(), c.getSequence());
-		graph.addVertex(pSV);
+		return "red";
+	}
+	else
+	{
+		return "black";
 	}
 }
 
-//
-//
-//
-void loadEdges(SeqGraph& graph, int overlap, std::string filename)
+// Return the color based on the annotation of the contig
+std::string colorVertexByAnnotation(Contig d)
 {
-	std::ifstream file(filename.c_str());
-	assert(file.is_open());
-	AdjInfo a;
-	while(file >> a)
+	unsigned int annt = d.getAnnotation();
+	
+	int numSet = 0;
+	std::string color = "black";
+
+	if(annt & 0x1)
 	{
-		Edge e(a.from, a.to, (EdgeDir)a.dir, (EdgeComp)a.comp, new EdgeData(overlap));
-		graph.addEdge(e);
+		++numSet;
+		color = "red";
 	}
+	if(annt & 0x2)
+	{
+		++numSet;
+		color = "blue";
+	}
+	if(annt & 0x4)
+	{
+		++numSet;
+		color = "green";
+	}
+
+	// Reference
+	if(annt & 0x8)
+	{
+		++numSet;
+		color = "black";
+	}
+
+
+	return color;
 }
+
+
+
 
 
 // 

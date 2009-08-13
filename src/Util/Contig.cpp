@@ -8,6 +8,7 @@ static const char* LENFIELD = "LN";
 static const char* COVFIELD = "CV";
 static const char* SEQFIELD = "SQ";
 static const char* UNQFIELD = "UN";
+static const char* ANTFIELD = "AN";
 
 Contig::Contig() :	m_length(0), 
 					m_coverage(0.0f), 
@@ -76,6 +77,8 @@ void Contig::setFromKeyValue(std::string& key, std::string& value)
 		parser >> m_coverage;
 	else if(key == SEQFIELD)
 		parser >> m_seq;
+	else if(key == ANTFIELD)
+		parser >> m_annotation;
 	else if(key == UNQFIELD)
 	{
 		int v;

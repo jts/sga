@@ -52,8 +52,35 @@ void overlapTest()
 void stTest(std::string s)
 {
 	SuffixTree st(s + "$");
+	st.printInfo();
 }
 
+void stReadTest()
+{
+	std::string ref = "ATACAGATAACAGATACATAGATAGACCGAATAGACAGTACAGATACAGATATAGATAGATATAGACATAGA";
+	SuffixTree sd(ref.substr(0, 25) + "$");
+
+	for(int i = 0; i < 10; ++i)
+	{
+		sd.insert(ref.substr(i, 25) + "$");
+		sd.printInfo();
+	}
+	/*
+	std::string r1 = ref.substr(0,25) + "$";
+	std::string r2 = ref.substr(1,25) + "$";
+	std::string r3 = ref.substr(2,25) + "$";
+	std::string r4 = ref.substr(3,25) + "$";
+
+	SuffixTree sd(r1);
+	sd.printInfo();
+	sd.insert(r2);
+	sd.printInfo();
+	sd.insert(r3);
+	sd.printInfo();
+	sd.insert(r4);
+	sd.printInfo();
+	*/
+}
 
 //
 //
@@ -63,7 +90,8 @@ int main(int /*argc*/, char** argv)
 	//simpleTest();
 	(void)argv;
 	//overlapTest();
-	stTest(argv[1]);
+	//stTest(argv[1]);
+	stReadTest();
 	return 1;
 }
 

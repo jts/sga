@@ -7,5 +7,4 @@ Resolve_CPPFLAGS = \
 Resolve_LDADD = \
 	$(top_builddir)/Util/libutil.a
 
-
 Resolve_SOURCES = Resolve.cpp

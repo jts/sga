@@ -37,6 +37,8 @@ class Contig
 		size_t getLength() const { return m_length; }
 		Sequence getSequence() const { return m_seq; }
 		bool isUnique() const { return m_uniqueFlag == UF_UNIQUE; }
+		unsigned int getAnnotation() { return m_annotation; }
+
 		//
 		// Setters
 		//
@@ -68,7 +70,7 @@ class Contig
 		double m_coverage;
 		UniqueFlag m_uniqueFlag;
 		Sequence m_seq;
-
+		unsigned int m_annotation;
 };
 
 #endif

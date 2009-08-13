@@ -24,6 +24,8 @@ class Bigraph
 		typedef typename VertexPtrMap::const_iterator VertexPtrMapConstIter;
 		
 		typedef bool(*VertexVisitFunction)(Bigraph*, VertexType*);
+		typedef std::string(*VertexColorFunction)(typename VertexType::VertexData);
+
 		typedef std::vector<GraphEdgeType> EdgeVec;
 		typedef typename EdgeVec::iterator EdgeVecIter;
 		typedef EdgeVec Path; // alias
@@ -81,7 +83,7 @@ class Bigraph
 		bool visit(VertexVisitFunction f);
 
 		// Dump the graph to a dot file
-		void writeDot(string filename) const;
+		void writeDot(string filename, int dotFlags = 0, VertexColorFunction colorFunc = &VertexBlackFunction) const;
 
 	private:
 

@@ -37,6 +37,9 @@ AC_CONFIG_FILES([Makefile
 		Stats/Makefile
 		UniEst/Makefile
 		BDE/Makefile
+		Resolve/Makefile
+		IndelFinder/Makefile
+		STA/Makefile
 		Tests/Makefile])
 
 AC_OUTPUT
