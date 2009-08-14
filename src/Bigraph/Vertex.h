@@ -167,7 +167,7 @@ class Vertex
 		VertexID getID() const { return m_id; }
 
 		// Return the data this vertex carries
-		VD getData() const { return m_data; }
+		VD& getData() { return m_data; }
 
 		// Output
 		friend ostream& operator<<(std::ostream& out, const Vertex& obj)

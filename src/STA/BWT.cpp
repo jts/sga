@@ -1,3 +1,4 @@
+#include <sstream>
 #include "BWT.h"
 
 //
@@ -5,93 +6,89 @@
 //
 BWT::BWT(std::string text)
 {
-	SAString sas("str0", 0, text);
-	SAStringVector cycles;
-	makeRotations(cycles, sas);
-	construct(1, cycles);
+	SuffixString ss(0, text + "$");
+	SuffixStringVector cycled;
+	makeCycles(ss, &cycled);
+	sortConstruct(1, &cycled);
 }
 
 //
-BWT::BWT(SAStringVector v)
+BWT::BWT(const StringVector& sv)
 {
-	SAStringVector cycles;
-	for(SAStringVector::const_iterator iter = v.begin(); iter != v.end(); ++iter)
+	SuffixStringVector cycled;
+	for(size_t i = 0; i < sv.size(); ++i)
 	{
-		makeRotations(cycles, *iter);
+		SuffixString suffix(i, sv[i] + "$");
+		makeCycles(suffix, &cycled);
 	}
-	construct(v.size(), cycles);
+	sortConstruct(sv.size(), &cycled);
 }
 
 
 //
-// Construct the bwt from the cycles table
+// Construct the bwt from the cycles table via simple sorting
 //
-void BWT::construct(int numStrings, SAStringVector& cycles)
+void BWT::sortConstruct(int numStrings, SuffixStringVector* cycles)
 {
-	std::sort(cycles.begin(), cycles.end());
-	m_suffixArray.resize(cycles.size());
-	m_bwStr.resize(cycles.size());
-	m_saStr.resize(cycles.size());
-	m_occurances.resize(cycles.size());
+	// Resize all the arrays
+	size_t n = cycles->size();
+
+	m_suffixArray.resize(n);
+	m_bwStr.resize(n);
+	m_saStr.resize(n);
 	m_offset = numStrings;
-
-	CharSet alphabetTmp;
-
+	
+	// Sort the array
+	std::sort(cycles->begin(), cycles->end());
 	// Set up the bwt string and suffix array from the cycled strings
-	for(size_t i = 0; i < cycles.size(); ++i)
+	for(size_t i = 0; i < n; ++i)
 	{
-		SAString& curr = cycles[i];
+		SuffixString& curr = (*cycles)[i];
 
 		m_suffixArray[i] = curr.id;
 		char c = curr.str[curr.str.length() - 1];
+		
 		m_bwStr[i] = c;
 		m_saStr[i] = curr.str[0];
-		alphabetTmp.insert(c);
 	}
 
-	// Set up the alphabet string
-	for(CharSet::iterator iter = alphabetTmp.begin(); iter != alphabetTmp.end(); ++iter)
-	{
-		m_alphabet.append(1, *iter);
-	}
+	// initialize the occurance table
+	m_occurance.initialize(m_bwStr);
 
-	// Naive algorithms to calculate O(a,i)
+	// Calculate the C(a) array
+	
+	// Calculate the number of times character x appears in the bw string
+	AlphaCount tmp;
 	for(size_t i = 0; i < m_bwStr.size(); ++i)
 	{
-		for(size_t j = 0; j < m_alphabet.size(); ++j)
-		{
-			int count = countOcc(m_bwStr, i, m_alphabet[j]);
-			m_occurances.set(m_alphabet[j], i, count);
-		}
+		tmp.increment(m_bwStr[i]);
 	}
 
-	// Naive algorithm to calculate C(a)
-	for(size_t j = 0; j < m_alphabet.size(); ++j)
+	m_predCount.set('A', 0); // A is lexographically lowest
+	m_predCount.set('C', tmp.get('A'));
+	m_predCount.set('G', tmp.get('A') + tmp.get('C'));
+	m_predCount.set('T', tmp.get('A') + tmp.get('C') + tmp.get('G'));
+
+	if(0)
 	{
-		int count = 0;
-		for(size_t i = m_offset; i < m_saStr.size(); ++i)
+		std::cout << "SuffixArray: ";
+		std::copy(m_suffixArray.begin(), m_suffixArray.end(), std::ostream_iterator<GSuffix>(std::cout, ","));
+
+		std::cout << "\nBWT String:  " << m_bwStr << "\n";
+		std::cout << "C(a): " << m_predCount << "\n";
+
+		std::cout << "\nTable:\n";
+		std::cout << "i\tSA\tSTR\tO(a,i)\n";
+		for(size_t i = 0; i < m_suffixArray.size(); ++i)
 		{
-			if(m_saStr[i] < m_alphabet[j])
+			//std::cout << m_suffixArray[i] << "\t" << m_saStr[i] << "\t" << m_bwStr[i] << "\n";
+			std::cout << i << "\t" << (*cycles)[i] << "\t";
+			for(size_t j = 0; j < ALPHABET_SIZE; ++j)
 			{
-				++count;
+				std::cout << m_occurance.get(ALPHABET[j], i);
 			}
+			std::cout << "\n";
 		}
-		m_predMap[m_alphabet[j]] = count;
-	}
-
-	std::cout << "SuffixArray: ";
-	std::copy(m_suffixArray.begin(), m_suffixArray.end(), std::ostream_iterator<Ident>(std::cout, ","));
-	std::cout << "\nBWT String:  " << m_bwStr << "\n";
-	std::cout << "\nPred Map:\n";
-	printMap(m_predMap);
-	std::cout << "\nO(a, i): \n";
-	m_occurances.print();
-
-	std::cout << "\nTable:\n";
-	for(size_t i = 0; i < m_suffixArray.size(); ++i)
-	{
-		//std::cout << m_suffixArray[i] << "\t" << m_saStr[i] << "\t" << m_bwStr[i] << "\n";
-		std::cout << i << "\t" << cycles[i] << "\n";
 	}
 }
 
@@ -104,8 +101,8 @@ void BWT::backwardSearch(std::string w)
 	int len = w.size();
 	int j = len - 1;
 	char curr = w[j];
-	int r_lower = m_predMap[curr] + m_offset;
-	int r_upper = r_lower + m_occurances.get(curr, m_bwStr.size() - 1) - 1;
+	int r_lower = m_predCount.get(curr) + m_offset;
+	int r_upper = r_lower + m_occurance.get(curr, m_bwStr.size() - 1) - 1;
 	--j;
 	std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
@@ -113,12 +110,11 @@ void BWT::backwardSearch(std::string w)
 		curr = w[j];
 		std::cout << "RL = C(" << curr << ") + O(" << curr << ", " << r_lower - 1 << ") + " << m_offset << "\n"; 
 		std::cout << "RU = C(" << curr << ") + O(" << curr << ", " << r_upper << ")\n";
-		std::cout << "RL = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_lower - 1) << " + " << m_offset << "\n"; 
-		std::cout << "RU = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_upper) << "\n"; 
+		std::cout << "RL = " << m_predCount.get(curr) << " + " << m_occurance.get(curr, r_lower - 1) << " + " << m_offset << "\n"; 
+		std::cout << "RU = " << m_predCount.get(curr) << " + " << m_occurance.get(curr, r_upper) << "\n"; 
 
-		r_lower = m_predMap[curr] + m_occurances.get(curr, r_lower - 1) + m_offset;
-		r_upper = m_predMap[curr] + m_occurances.get(curr, r_upper) + m_offset - 1;
-
+		r_lower = m_predCount.get(curr) + m_occurance.get(curr, r_lower - 1) + m_offset;
+		r_upper = m_predCount.get(curr) + m_occurance.get(curr, r_upper) + m_offset - 1;
 		std::cout << "Curr: " << curr << " Interval now: " << r_lower << "," << r_upper << "\n";
 	}
 
@@ -134,8 +130,8 @@ void BWT::getOverlaps(std::string w, int minOverlap)
 	int len = w.size();
 	int j = len - 1;
 	char curr = w[j];
-	int r_lower = m_predMap[curr] + m_offset;
-	int r_upper = r_lower + m_occurances.get(curr, m_bwStr.size() - 1) - 1;
+	int r_lower = m_predCount.get(curr) + m_offset;
+	int r_upper = r_lower + m_occurance.get(curr, m_bwStr.size() - 1) - 1;
 	--j;
 	//std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
@@ -149,8 +145,8 @@ void BWT::getOverlaps(std::string w, int minOverlap)
 		std::cout << "RU = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_upper) << "\n"; 
 		*/
 
-		r_lower = m_predMap[curr] + m_occurances.get(curr, r_lower - 1) + m_offset;
-		r_upper = m_predMap[curr] + m_occurances.get(curr, r_upper) + m_offset - 1;
+		r_lower = m_predCount.get(curr) + m_occurance.get(curr, r_lower - 1) + m_offset;
+		r_upper = m_predCount.get(curr) + m_occurance.get(curr, r_upper) + m_offset - 1;
 
 		int overlapLen = len - j;
 		if(overlapLen > minOverlap)
@@ -158,26 +154,44 @@ void BWT::getOverlaps(std::string w, int minOverlap)
 			std::cout << "Found overlap of len " << overlapLen << " to: \n";
 			for(int i = r_lower; i <= r_upper; ++i)
 			{
-				Ident id = m_suffixArray[i];
+				GSuffix id = m_suffixArray[i];
 				std::cout << "\t" << id << "\n";
 			}
 		}
 	}
 }
 
-
 //
-// Count the number of times c appears in string s[0, i]
+// Make all the cyclic rotations of a string, placing the result in *outTable
 //
-int BWT::countOcc(std::string s, int i, char c)
+void BWT::makeCycles(SuffixString s, SuffixStringVector* outTable)
 {
-	int count = 0;
-	for(int j = 0; j <= i; ++j)
+	int l = s.str.length();
+	for(int i = 0; i < l; ++i)
 	{
-		if(s[j] == c)
-			++count;
+		SuffixString r = SuffixString(s.id.getLabel(), i, s.str.substr(i, l - i) + s.str.substr(0, i));
+		outTable->push_back(r);
 	}
-	return count;
 }
 
+//
+// Print information about the BWT
+//
+void BWT::printInfo() const
+{
+	size_t o_size = m_occurance.getByteSize();
+	size_t p_size = sizeof(m_predCount);
+	size_t sa_size = sizeof(m_suffixArray); // Base size for the vector
+	for(size_t i = 0; i < m_suffixArray.size(); ++i)
+	{
+		sa_size += m_suffixArray[i].getByteSize();
+	}
 
+	size_t saStr_size = sizeof(m_saStr) + m_saStr.size();
+	size_t bwStr_size = sizeof(m_bwStr) + m_bwStr.size();
+	size_t offset_size = sizeof(m_offset);
+	size_t total_size = o_size + p_size + sa_size + saStr_size + bwStr_size + offset_size;
+	printf("BWT Size -- occ: %zu C(a): %zu SA: %zu F(): %zu L(): %zu misc: %zu TOTAL: %zu\n",
+			o_size, p_size, sa_size, saStr_size, bwStr_size, offset_size, total_size);
+	printf("N: %zu Bytes per suffix: %lf\n", m_bwStr.size(), (double)total_size / m_bwStr.size());
+}

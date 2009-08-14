@@ -10,4 +10,9 @@ STA_LDADD = \
 	$(top_builddir)/Stats/libstats.a 
 
 
-STA_SOURCES = STA.cpp BWT.cpp BWT.h STCommon.cpp STCommon.h SuffixTree.cpp SuffixTree.h
+STA_SOURCES = STA.cpp \
+			  BWT.cpp BWT.h \
+			  STCommon.cpp STCommon.h \
+			  SuffixTree.cpp SuffixTree.h \
+			  STGlobal.h \
+			  Occurance.cpp Occurance.h 

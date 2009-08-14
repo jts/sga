@@ -1,89 +1,103 @@
+//-----------------------------------------------
+// Copyright 2009 Wellcome Trust Sanger Institute
+// Written by Jared Simpson (js18@sanger.ac.uk)
+// Released under the GPL license
+//-----------------------------------------------
+//
+// STCommon.h - Base classes and data structures
+//
 #ifndef STCOMMON_H
 #define STCOMMON_H
+#include "STGlobals.h"
+//
+// Functions
+//
 
-#include <iostream>
-#include <vector>
-#include <iterator>
-#include <algorithm>
-#include <map>
-#include <set>
+// Convert a base to an index
+AIdx base2Idx(char b);
 
-struct Ident
+// Print out a map using cout
+template<class K, class V>
+void printMap(const std::map<K,V>& m);
+
+// Print a vector
+template<class T>
+void printVector(const std::vector<T>& v);
+
+//
+// Classes
+//
+
+//
+// A GSuffix (generalized suffix) is an ID giving the string this suffix belongs to and a number indicating
+// the position of the suffix in the string
+//
+class GSuffix
 {
-	Ident() : label(""), idx(0) {}
-	Ident(std::string l, int i) : label(l), idx(i) {}
-	Ident(std::string l) : label(l), idx(0) {}
+	public:
 
-	friend std::ostream& operator<<(std::ostream& out, const Ident& i)
-	{
-		out << i.label << "," << i.idx;
-		return out;
-	}
+		// Constructors
+		GSuffix() : m_label(0), m_idx(0) {}
+		GSuffix(Label l, int i) : m_label(l), m_idx(i) {}
+		GSuffix(Label l) : m_label(l), m_idx(0) {}
+		
+		//
+		Label getLabel() const { return m_label; }
+		uint16_t getIdx() const { return m_idx; }
 
-	std::string label;
-	int idx;
+		//
+		size_t getByteSize() const { return sizeof(m_idx) + sizeof(m_label); }
+
+		// Output
+		friend std::ostream& operator<<(std::ostream& out, const GSuffix& gs);
+
+	private:
+		Label m_label;
+		uint16_t m_idx;
 };
 
 //
+// A suffix string is a label and the rotated string that represents it
 //
-//
-class SAString
+class SuffixString
 {	
 	public:
-
-		SAString(std::string m, int i, std::string s) : id(m,i), str(s) {}
-		SAString(std::string m, std::string s) : id(m), str(s) {}
+	
+		// Constructors
+		SuffixString(Label l, int i, std::string s) : id(l,i), str(s) {}
+		SuffixString(Label l, std::string s) : id(l), str(s) {}
 		
-		friend int operator<(const SAString& o1, const SAString& o2)
-		{
-			return o1.str < o2.str;
-		}
+		// Comparator
+		friend int operator<(const SuffixString& o1, const SuffixString& o2);
+		
+		// Output
+		friend std::ostream& operator<<(std::ostream& out, const SuffixString& s);
 
-		friend std::ostream& operator<<(std::ostream& out, const SAString& s)
-		{
-			out << s.id << "\t" << s.str;
-			return out;
-		}
-
-		Ident id;
+		// These fields are intentially public
+		GSuffix id;
 		std::string str;
 };
 
 //
-// Typedefs
+// A simple class holding the count for each base of a DNA string (plus the terminator)  
 //
-typedef std::vector<SAString> SAStringVector;
-typedef std::vector<int> IntVector;
-typedef std::vector<Ident> IdentVector;
-typedef std::map<char, int> CharIntMap;
-typedef std::set<char> CharSet;
-typedef std::map<std::string, int> IDIntMap;
-
-//
-// Make all the cyclic rotations of a string
-//
-void makeRotations(SAStringVector& table, SAString s);
-
-
-//
-// Print out a map using cout
-//
-template<class K, class V>
-void printMap(const std::map<K,V>& m)
+typedef uint32_t BaseCount;
+class AlphaCount
 {
-	for(typename std::map<K,V>::const_iterator iter = m.begin(); iter != m.end(); ++iter)
-	{
-		std::cout << iter->first << "\t" << iter->second << "\n";
-	}
-}
+	public:
+		AlphaCount();
+		void set(char b, BaseCount v);
+		void increment(char b);
+		BaseCount get(char b) const;
+		
+		friend std::ostream& operator<<(std::ostream& out, const AlphaCount& ac);
 
-//
-// Print a vector
-//
-template<class T>
-void printVector(const std::vector<T>& v)
-{
-	std::copy(v.begin(), v.end(), std::ostream_iterator<T>(std::cout, "\n"));
-}
+	private:
+		BaseCount m_counts[ALPHABET_SIZE];
+};
+
+// Typedefs of STL collections of the above classes
+typedef std::vector<SuffixString> SuffixStringVector;
+typedef std::vector<GSuffix> GSuffixVector;
 
 #endif

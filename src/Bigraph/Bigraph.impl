@@ -370,6 +370,23 @@ bool Bigraph<VT>::visit(VertexVisitFunction f)
 }
 
 //
+// Visit each vertex and call the functor
+// The function returns TRUE if it modifies the graph
+//
+template<typename VT>
+template<typename VF>
+bool Bigraph<VT>::visit(VF& vf)
+{
+	bool modified = false;
+	VertexPtrMapConstIter iter = m_vertices.begin(); 
+	for(; iter != m_vertices.end(); ++iter)
+	{
+		modified = vf.visit(this, iter->second) || modified;
+	}
+	return modified;
+}
+
+//
 // Set all the vertices in the graph to the given color
 //
 template<typename VT>

@@ -45,6 +45,25 @@ std::istream& readCAF(std::istream& in, Contig& c)
 	return in;
 }
 
+//
+//
+//
+SequenceVector Contig::getVariants() const
+{
+	SequenceVector out;
+	out.push_back(getSequence());
+	out.insert(out.end(), m_variants.begin(), m_variants.end());
+	return out;
+}
+
+//
+//
+//
+void Contig::addVariants(const SequenceVector& seqs)
+{
+	m_variants.insert(m_variants.end(), seqs.begin(), seqs.end());
+}
+
 
 //
 //

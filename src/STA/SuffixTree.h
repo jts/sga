@@ -14,8 +14,6 @@ typedef uint8_t STIdx;
 
 const uint8_t MAX_CHILDREN = 5;
 
-STIdx base2Idx(char b);
-
 struct STNode
 {
 	STNode(STLabel l, STNode* p) : edgeLabel(l)

@@ -35,6 +35,7 @@ typedef std::vector<double> DoubleVec;
 typedef std::vector<std::string> StringVec;
 typedef std::string Sequence;
 typedef std::string ContigID;
+typedef std::vector<Sequence> SequenceVector;
 
 //
 // Alignment

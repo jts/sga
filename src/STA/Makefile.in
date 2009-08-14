@@ -48,7 +48,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_STA_OBJECTS = STA-STA.$(OBJEXT) STA-BWT.$(OBJEXT) \
-	STA-STCommon.$(OBJEXT) STA-SuffixTree.$(OBJEXT)
+	STA-STCommon.$(OBJEXT) STA-SuffixTree.$(OBJEXT) \
+	STA-Occurance.$(OBJEXT)
 STA_OBJECTS = $(am_STA_OBJECTS)
 STA_DEPENDENCIES = $(top_builddir)/Util/libutil.a \
 	$(top_builddir)/Stats/libstats.a
@@ -164,7 +165,13 @@ STA_LDADD = \
 	$(top_builddir)/Util/libutil.a \
 	$(top_builddir)/Stats/libstats.a 
 
-STA_SOURCES = STA.cpp BWT.cpp BWT.h STCommon.cpp STCommon.h SuffixTree.cpp SuffixTree.h
+STA_SOURCES = STA.cpp \
+			  BWT.cpp BWT.h \
+			  STCommon.cpp STCommon.h \
+			  SuffixTree.cpp SuffixTree.h \
+			  STGlobal.h \
+			  Occurance.cpp Occurance.h 
+
 all: all-am
 
 .SUFFIXES:
@@ -232,6 +239,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STA-BWT.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STA-Occurance.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STA-STA.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STA-STCommon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STA-SuffixTree.Po@am__quote@
@@ -305,6 +313,20 @@ STA-SuffixTree.obj: SuffixTree.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SuffixTree.cpp' object='STA-SuffixTree.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STA_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STA-SuffixTree.obj `if test -f 'SuffixTree.cpp'; then $(CYGPATH_W) 'SuffixTree.cpp'; else $(CYGPATH_W) '$(srcdir)/SuffixTree.cpp'; fi`
+
+STA-Occurance.o: Occurance.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STA_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STA-Occurance.o -MD -MP -MF "$(DEPDIR)/STA-Occurance.Tpo" -c -o STA-Occurance.o `test -f 'Occurance.cpp' || echo '$(srcdir)/'`Occurance.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/STA-Occurance.Tpo" "$(DEPDIR)/STA-Occurance.Po"; else rm -f "$(DEPDIR)/STA-Occurance.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Occurance.cpp' object='STA-Occurance.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STA_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STA-Occurance.o `test -f 'Occurance.cpp' || echo '$(srcdir)/'`Occurance.cpp
+
+STA-Occurance.obj: Occurance.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STA_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT STA-Occurance.obj -MD -MP -MF "$(DEPDIR)/STA-Occurance.Tpo" -c -o STA-Occurance.obj `if test -f 'Occurance.cpp'; then $(CYGPATH_W) 'Occurance.cpp'; else $(CYGPATH_W) '$(srcdir)/Occurance.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/STA-Occurance.Tpo" "$(DEPDIR)/STA-Occurance.Po"; else rm -f "$(DEPDIR)/STA-Occurance.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Occurance.cpp' object='STA-Occurance.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(STA_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o STA-Occurance.obj `if test -f 'Occurance.cpp'; then $(CYGPATH_W) 'Occurance.cpp'; else $(CYGPATH_W) '$(srcdir)/Occurance.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

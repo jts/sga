@@ -82,13 +82,20 @@ class Bigraph
 		// Visit each vertex in the graph and perform the visit function
 		bool visit(VertexVisitFunction f);
 
+		// Visit each vertex in the graph and call the visit functor object
+		template<typename VF>
+		bool visit(VF& vf);
+
+		
+		// Set the colors for the entire graph
+		void setColors(VertexColor c);
+
 		// Dump the graph to a dot file
 		void writeDot(string filename, int dotFlags = 0, VertexColorFunction colorFunc = &VertexBlackFunction) const;
 
 	private:
 
-		// Set/check the colors for the entire graph
-		void setColors(VertexColor c);
+		// Check the colors for the entire graph
 		bool checkColors(VertexColor c);
 
 		void followLinear(VertexID id, EdgeDir dir, Path& outPath);

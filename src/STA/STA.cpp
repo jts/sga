@@ -5,48 +5,31 @@
 //
 //
 //
-void simpleTest()
-{
-	std::string t = "GOOGOL$";
-	std::cout << "T: " << t << "\n";
-	BWT b(t);
-	b.backwardSearch("GO");
-}
-
-//
-//
-//
 void dnaTest()
 {
 	std::string ref = "ATACAGATAACAGATACATAGATAGACCGA";
-	std::string s1 = ref.substr(0, 25);
-	std::string s2 = ref.substr(5);
-	std::string t = s1 + "$" + s2 + "&";
+	//std::string s1 = ref.substr(0, 25);
+	//std::string s2 = ref.substr(5);
+	std::string s1 = "AACAGAT";
+	std::string s2 = "ACATGAA";
+
+	StringVector input;
+	input.push_back( s1 );
+	input.push_back( s2 );
+
 
 	std::cout << "S1: " << s1 << std::endl;
-	std::cout << "S2:      " << s2 << std::endl;
-	std::cout << "T:  " << t << std::endl;
-	BWT b(t);
-	std::string search = s1.substr(10);
-	std::cout << "Searching for " << search;
-	b.backwardSearch(search);
-}
-
-//
-//
-//
-void overlapTest()
-{
-	std::string ref = "ATACAGATAACAGATACATAGATAGACCGA";
-	SAStringVector input;
-	input.push_back( SAString("str1", 0, ref.substr(0, 25) + "$") );
-	input.push_back( SAString("str2", 0, ref.substr(5) + "&") );
-	printVector(input);
-
-	BWT b(input);
-	SAString read = input.front();
-	std::string s = read.str.substr(0, read.str.length() - 1);
-	b.getOverlaps(s, 10);
+	std::cout << "S2: " << s2 << std::endl;
+	//std::cout << "T:  " << t << std::endl;
+	
+	BWT b(s1);
+	b.backwardSearch(s2);
+	BWT c(s2);
+	BWT d(input);
+	d.printInfo();
+	//std::string search = s1.substr(10);
+	//std::cout << "Searching for " << search;
+	//b.backwardSearch(search);
 }
 
 void stTest(std::string s)
@@ -55,31 +38,29 @@ void stTest(std::string s)
 	st.printInfo();
 }
 
-void stReadTest()
+void makeBWTFromReads(std::string file)
 {
-	std::string ref = "ATACAGATAACAGATACATAGATAGACCGAATAGACAGTACAGATACAGATATAGATAGATATAGACATAGA";
-	SuffixTree sd(ref.substr(0, 25) + "$");
-
-	for(int i = 0; i < 10; ++i)
+	StringVector reads;
+	std::ifstream in(file.c_str());
+	std::string line;
+	size_t count = 0;
+	while(in >> line)
 	{
-		sd.insert(ref.substr(i, 25) + "$");
-		sd.printInfo();
-	}
-	/*
-	std::string r1 = ref.substr(0,25) + "$";
-	std::string r2 = ref.substr(1,25) + "$";
-	std::string r3 = ref.substr(2,25) + "$";
-	std::string r4 = ref.substr(3,25) + "$";
+		if(count % 2 == 1)
+		{
+			//std::cout << line << "\n";
+			//reads.push_back(line);
+			BWT b(line);
+			b.printInfo();
+			return;
+		}
 
-	SuffixTree sd(r1);
-	sd.printInfo();
-	sd.insert(r2);
-	sd.printInfo();
-	sd.insert(r3);
-	sd.printInfo();
-	sd.insert(r4);
-	sd.printInfo();
-	*/
+		if(count % 10000 == 0)
+			std::cout << "Processed " << count << "\n";
+		++count;
+	}
+	std::cout << "Loaded " << reads.size() << " reads\n";
+	BWT b(reads);
 }
 
 //
@@ -89,9 +70,11 @@ int main(int /*argc*/, char** argv)
 {
 	//simpleTest();
 	(void)argv;
+	//dnaTest();
 	//overlapTest();
 	//stTest(argv[1]);
-	stReadTest();
+	//stReadTest();
+	makeBWTFromReads(argv[1]);
 	return 1;
 }
 
