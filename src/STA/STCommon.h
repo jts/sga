@@ -28,6 +28,42 @@ void printVector(const std::vector<T>& v);
 // Classes
 //
 
+
+//
+// A Generalized SuffixArray ID (SAID) is a single number where the high n bits represents the
+// identifier of the string (as the index into a StringDictionary) and the low (64 - n) bits 
+// represents the position in that string
+//
+struct SAID
+{
+	public:
+		SAID() : m_val(0) {}
+		SAID(uint64_t i);
+		SAID(uint64_t i, uint64_t p);
+
+		//
+		void setID(uint64_t i);
+		void setPos(uint64_t i);
+		uint64_t getID() const;
+		uint64_t getPos() const;
+
+		// Output
+		friend std::ostream& operator<<(std::ostream& out, const SAID& s);
+
+
+	private:
+		
+		//
+		uint64_t m_val;
+
+		// Masks
+		static const uint8_t ID_BITS = 36; // Allows up to 68 billion IDs
+		static const uint8_t POS_BITS = 64 - ID_BITS;
+		static const uint64_t HIGH_MASK = ~0 << POS_BITS;
+		static const uint64_t LOW_MASK = ~HIGH_MASK;
+};
+
+
 //
 // A GSuffix (generalized suffix) is an ID giving the string this suffix belongs to and a number indicating
 // the position of the suffix in the string
@@ -64,8 +100,8 @@ class SuffixString
 	public:
 	
 		// Constructors
-		SuffixString(Label l, int i, std::string s) : id(l,i), str(s) {}
-		SuffixString(Label l, std::string s) : id(l), str(s) {}
+		SuffixString(int i, int p, std::string s) : id(i,p), str(s) {}
+		SuffixString(int i, std::string s) : id(i), str(s) {}
 		
 		// Comparator
 		friend int operator<(const SuffixString& o1, const SuffixString& o2);
@@ -74,7 +110,7 @@ class SuffixString
 		friend std::ostream& operator<<(std::ostream& out, const SuffixString& s);
 
 		// These fields are intentially public
-		GSuffix id;
+		SAID id;
 		std::string str;
 };
 
@@ -98,6 +134,5 @@ class AlphaCount
 
 // Typedefs of STL collections of the above classes
 typedef std::vector<SuffixString> SuffixStringVector;
-typedef std::vector<GSuffix> GSuffixVector;
 
 #endif

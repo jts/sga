@@ -9,6 +9,66 @@
 #include "STCommon.h"
 
 //
+// SAId
+//
+
+// Constructors
+SAID::SAID(uint64_t i)
+{
+	setID(i);
+}
+
+//
+SAID::SAID(uint64_t i, uint64_t p)
+{
+	setID(i);
+	setPos(p);
+}
+
+// Set the id
+void SAID::setID(uint64_t i)
+{
+	// Clear the HIGH bits by ANDing with the low mask
+	m_val &= LOW_MASK;
+	
+	// Shift the new position into place and set the new value
+	i <<= POS_BITS;
+	m_val |= i;
+}
+
+// Set the position
+void SAID::setPos(uint64_t i)
+{
+	// Clear the LOW bits by anding with the high mask
+	m_val &= HIGH_MASK;
+
+	// Set the new value
+	m_val |= i;
+}
+
+// Get the ID
+uint64_t SAID::getID() const
+{
+	return (m_val & HIGH_MASK) >> POS_BITS;
+}
+
+// Get the position
+uint64_t SAID::getPos() const
+{
+	return (m_val & LOW_MASK);
+}
+
+
+// Output
+std::ostream& operator<<(std::ostream& out, const SAID& s)
+{
+	out << s.getID() << "," << s.getPos();
+	return out;
+}
+
+
+
+//
 // GSuffix
 //
 

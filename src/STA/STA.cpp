@@ -1,41 +1,22 @@
 #include "STCommon.h"
 #include "BWT.h"
 #include "SuffixTree.h"
+#include "ReadTable.h" 
 
-//
-//
-//
-void dnaTest()
+void readDictTest()
 {
-	std::string ref = "ATACAGATAACAGATACATAGATAGACCGA";
-	//std::string s1 = ref.substr(0, 25);
-	//std::string s2 = ref.substr(5);
-	std::string s1 = "AACAGAT";
-	std::string s2 = "ACATGAA";
+	ReadTable rt;
+	Read r1("r1", "AGATACAGAT");
+	Read r2("r2", "GATACATAC");
 
-	StringVector input;
-	input.push_back( s1 );
-	input.push_back( s2 );
+	rt.addRead(r1);
+	rt.addRead(r2);
 
-
-	std::cout << "S1: " << s1 << std::endl;
-	std::cout << "S2: " << s2 << std::endl;
-	//std::cout << "T:  " << t << std::endl;
-	
-	BWT b(s1);
-	b.backwardSearch(s2);
-	BWT c(s2);
-	BWT d(input);
-	d.printInfo();
-	//std::string search = s1.substr(10);
-	//std::cout << "Searching for " << search;
-	//b.backwardSearch(search);
-}
-
-void stTest(std::string s)
-{
-	SuffixTree st(s + "$");
-	st.printInfo();
+	SuffixArray sa1(0, r1.seq);
+	SuffixArray sa2(1, r2.seq);
+	SuffixArray sam(sa1, sa2);
+	sam.validate(&rt);
+	sam.print(&rt);
 }
 
 void makeBWTFromReads(std::string file)
@@ -50,8 +31,8 @@ void makeBWTFromReads(std::string file)
 		{
 			//std::cout << line << "\n";
 			//reads.push_back(line);
-			BWT b(line);
-			b.printInfo();
+			//BWT b(line);
+			//b.printInfo();
 			return;
 		}
 
@@ -60,8 +41,30 @@ void makeBWTFromReads(std::string file)
 		++count;
 	}
 	std::cout << "Loaded " << reads.size() << " reads\n";
-	BWT b(reads);
+	//BWT b(reads);
 }
+
+void unitTest()
+{
+	// Test construction of SAId's
+	
+	SAID said;
+	uint32_t id1 = 3;
+	uint32_t pos1 = 10;
+	said.setID(id1);
+	said.setPos(pos1);
+
+	uint64_t id2 = 1249123132;
+	uint8_t pos2 = 199;
+	said.setPos(pos2);
+	said.setID(id2);
+	said.setID(id2);
+
+	assert(said.getID() == id2);
+	assert(said.getPos() == pos2);
+
+}
+
 
 //
 //
@@ -70,11 +73,9 @@ int main(int /*argc*/, char** argv)
 {
 	//simpleTest();
 	(void)argv;
-	//dnaTest();
-	//overlapTest();
-	//stTest(argv[1]);
-	//stReadTest();
-	makeBWTFromReads(argv[1]);
+	//unitTest();
+	readDictTest();
+	//makeBWTFromReads(argv[1]);
 	return 1;
 }
 

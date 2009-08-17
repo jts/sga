@@ -15,4 +15,7 @@ STA_SOURCES = STA.cpp \
 			  STCommon.cpp STCommon.h \
 			  SuffixTree.cpp SuffixTree.h \
 			  STGlobal.h \
-			  Occurance.cpp Occurance.h 
+			  Occurance.cpp Occurance.h \
+			  SuffixArray.cpp SuffixArray.h \
+			  InverseSuffixArray.cpp InverseSuffixArray.h \
+			  ReadTable.cpp ReadTable.h

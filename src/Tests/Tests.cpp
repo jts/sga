@@ -8,6 +8,10 @@ int main(int argc, char** argv)
 	(void)argc;
 	(void)argv;
 
+	return 0;
+}
+void graphTests()
+{
 	typedef Edge<int> IntEdge;
 	typedef Vertex<int, IntEdge> IntVertex;
 
@@ -27,7 +31,6 @@ int main(int argc, char** argv)
 	v1->addEdge(e1);
 	v2->addEdge(e2);
 	g.writeDot("test.dot");
-	return 0;
 }
 
 
