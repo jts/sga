@@ -6,5 +6,6 @@ libutil_a_CPPFLAGS = \
 libutil_a_SOURCES = \
 	Util.cpp Util.h \
 	Contig.h Contig.cpp \
-	ContigGraph.h ContigGraph.cpp
+	ContigGraph.h ContigGraph.cpp \
+	Timer.h Timer.cpp
 

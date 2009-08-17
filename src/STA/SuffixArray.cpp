@@ -74,7 +74,7 @@ SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
 
 	for(size_t k = 0; k < n; ++k)
 	{
-		printf("Top of main loop (%zu, %zu, %zu)\n", i, j, k);
+		//printf("Top of main loop (%zu, %zu, %zu)\n", i, j, k);
 
 		// Compare A[i] to B[j]
 		// Set up indices into the F array of A and B
@@ -103,7 +103,7 @@ SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
 			char nextA = a.getF(fidx_a);
 			char nextB = b.getF(fidx_b);
 
-			printf("	Top of while loop (%zu, %zu, %c, %c)\n", fidx_a, fidx_b, nextA, nextB);
+			//printf("	Top of while loop (%zu, %zu, %c, %c)\n", fidx_a, fidx_b, nextA, nextB);
 
 			if(nextA == '$' && nextB == '$') // If both suffixes are terminal, return the one with the lexographically lower id
 			{
@@ -135,7 +135,7 @@ SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
 
 				fidx_a = isa_a.getRank(said_a.getID(), said_a.getPos() + 1);
 				fidx_b = isa_b.getRank(said_b.getID(), said_b.getPos() + 1);
-				printf("	updated fidx to be (%zu, %zu)\n", fidx_a, fidx_b);
+				//printf("	updated fidx to be (%zu, %zu)\n", fidx_a, fidx_b);
 			}
 		}
 
@@ -178,7 +178,7 @@ void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
 		m_F[i] = curr.str[0];
 	}
 
-	if(1)
+	if(0)
 	{
 		std::cout << "\nTable:\n";
 		std::cout << "i\tSA\tSTR\tISA\n";
@@ -215,7 +215,7 @@ void SuffixArray::validate(const ReadTable* pRT) const
 		std::string suffix2 = pRT->getRead(id2.getID()).seq.substr(id2.getPos()) + "$";
 		bool suffixValidated = true;
 
-		if(suffix1 == "$" && suffix2 == "$")
+		if(suffix1 == suffix2)
 		{
 			suffixValidated = id1.getID() < id2.getID();
 		}

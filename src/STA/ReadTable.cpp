@@ -15,6 +15,7 @@ void ReadTable::addRead(const Read& r)
 
 const Read& ReadTable::getRead(size_t idx) const
 {
+	assert(idx < m_table.size());
 	return m_table[idx];
 }
 
