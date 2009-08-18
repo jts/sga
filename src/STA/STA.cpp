@@ -61,24 +61,50 @@ void makeBWTFromReads(std::string file)
 	typedef std::vector<SuffixArray> SAVec;
 
 	count = 0;
-	SAVec* sav = new SAVec;
+	SAVec* inV = new SAVec;
+	SAVec* outV = new SAVec;
+
+	//
+	//
 	Timer* t1 = new Timer("Building initial trees");
 	for(size_t i = 0; i < rt.getCount(); ++i)
 	{
-		sav->push_back(SuffixArray(i, rt.getRead(i).seq));
-		if(count % 10000 == 0)
-			std::cout << "Built " << count << " trees\n";
-		++count;
+		inV->push_back(SuffixArray(i, rt.getRead(i).seq));
 	}
 	delete t1;
 
+	//
+	//
 	Timer* t2 = new Timer("Merging trees");
-	for(size_t j = 0; j < sav->size(); j+=2)
+
+	while(inV->size() > 1)
 	{
-		SuffixArray n((*sav)[j], (*sav)[j+1]);
+		std::cout << "Merge: input has " << inV->size() << " elements\n";
+		for(size_t j = 0; j < inV->size(); j+=2)
+		{
+			if(j != inV->size() - 1)
+			{
+				outV->push_back(SuffixArray((*inV)[j], (*inV)[j+1]));
+			}
+			else
+			{
+				outV->push_back((*inV)[j]);
+			}
+		}
+
+		// Swap pointers
+		inV->clear();
+		SAVec* temp = inV;
+		inV = outV;
+		outV = temp;
 	}
+	std::cout << "Final vector has: " << inV->size() << " elements\n";
+	inV->front().validate(&rt);
+	inV->front().print(&rt);
+
 	delete t2;
-	delete sav;
+	delete inV;
+	delete outV; 
 	//BWT b(reads);
 }
 
