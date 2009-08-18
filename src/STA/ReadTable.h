@@ -29,6 +29,7 @@ class ReadTable
 		void addRead(const Read& r);
 		const Read& getRead(size_t idx) const;
 		size_t getCount() const;
+		size_t getSumLengths() const;
 
 	private:
 		ReadVector m_table;

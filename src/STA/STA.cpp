@@ -7,33 +7,51 @@
 void readDictTest()
 {
 	ReadTable rt;
-	Read r1("r1", "AGATACAGAT");
-	Read r2("r2", "GATACATAC");
-	Read r3("r3", "ACATGATACAG");
-	Read r4("r4", "TACAGATAT");
+	Read r1("r1", "ATA");
+	Read r2("r2", "CTA");
+	Read r3("r2", "ATA");
 
 	rt.addRead(r1);
-	rt.addRead(r2);
 	rt.addRead(r3);
-	rt.addRead(r4);
-
-	SuffixArray sa1(0, r1.seq);
-	SuffixArray sa2(1, r2.seq);
-	SuffixArray sa3(2, r3.seq);
-	SuffixArray sa4(3, r4.seq);
-	
-	SuffixArray sam1(sa1, sa2);
-	SuffixArray sam2(sa3, sa4);
-	SuffixArray sam3(sam1, sam2);
-
-	sam1.validate(&rt);
-	sam1.print(&rt);
-
-	sam3.print(&rt);
-	sam3.validate(&rt);
+	rt.addRead(r2);
+	SuffixArray sa;
+	sa.initialize(rt);
+	sa.sort(&rt);
+	sa.validate(&rt);
 }
 
 void makeBWTFromReads(std::string file)
+{
+	std::ifstream in(file.c_str());
+	ReadTable rt;
+
+	std::string line;
+	size_t count = 0;
+	while(in >> line)
+	{
+		if(count % 2 == 1)
+		{
+			Read r("noname", line);
+			rt.addRead(r);
+		}
+
+		if(count % 10000 == 0)
+			std::cout << "Processed " << count << "\n";
+		++count;
+	}
+	std::cout << "Loaded " << rt.getCount() << " reads\n";
+
+	// Make initial suffix arrays
+	SuffixArray sa;
+	sa.initialize(rt);
+	Timer* pT1 = new Timer("SuffixSort");
+	sa.sort(&rt);
+	delete pT1;
+	sa.validate(&rt);
+}
+
+
+void makeBWTFromReads2(std::string file)
 {
 	std::ifstream in(file.c_str());
 	ReadTable rt;
@@ -128,19 +146,4 @@ void unitTest()
 	assert(said.getPos() == pos2);
 
 }
-
-
-//
-//
-//
-int main(int /*argc*/, char** argv)
-{
-	//simpleTest();
-	(void)argv;
-	//unitTest();
-	//readDictTest();
-	makeBWTFromReads(argv[1]);
-	return 1;
-}
-
 

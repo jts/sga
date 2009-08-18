@@ -11,11 +11,24 @@
 #include "STCommon.h"
 #include "ReadTable.h"
 
+// Simple struct to sort suffixes using their ids by looking
+// up substrings in the table via pRT
+struct SuffixCompare
+{
+	public:
+		SuffixCompare(const ReadTable* pRT) : m_pRT(pRT) {}
+		bool operator()(SAID x, SAID y);
+
+	private:
+		const ReadTable* m_pRT;
+};
+
 class SuffixArray
 {
 	public:
 		
 		//
+		SuffixArray() {}
 		SuffixArray(uint64_t i, std::string t);
 		SuffixArray(const StringVector& sv);
 		SuffixArray(const ReadTable& sv);
@@ -28,7 +41,9 @@ class SuffixArray
 		size_t getNumStrings() const { return m_numStrings; } 
 
 		// Validate the suffix array
+		void initialize(const ReadTable& rt);
 		void validate(const ReadTable* pRT) const;
+		void sort(const ReadTable* pRT);
 
 		// Make all the cyclic rotations of a string
 		static void makeCycles(SuffixString s, SuffixStringVector* outTable);

@@ -9,6 +9,42 @@
 #include "SuffixArray.h"
 #include "InverseSuffixArray.h"
 
+// Sort two suffixes
+bool SuffixCompare::operator()(SAID x, SAID y) 
+{ 
+	const std::string& sx = m_pRT->getRead(x.getID()).seq;
+	const std::string& sy = m_pRT->getRead(y.getID()).seq;
+
+	bool xterminal = x.getPos() == sx.size();
+	bool yterminal = y.getPos() == sy.size();
+	if(xterminal && yterminal)
+	{
+		return x.getID() < y.getID();
+	}
+	else if(xterminal)
+	{
+		return true;
+	}
+	else if(yterminal)
+	{
+		return false;
+	}
+	else
+	{
+		std::string sfx = sx.substr(x.getPos()) + "$";
+		std::string sfy = sy.substr(y.getPos()) + "$";
+		if(sfx == sfy)
+		{
+			return x.getID() < y.getID();
+		}
+		else
+		{
+			return sfx < sfy;
+		}
+	}
+}
+
+
 //
 // Construct the suffix array for the string
 // 
@@ -51,7 +87,7 @@ SuffixArray::SuffixArray(const ReadTable& rt)
 }
 
 //
-// Merge A nd new suffix array which is the merger of A and B
+// Merge a new suffix array which is the merger of A and B
 //
 SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
 {
@@ -156,6 +192,38 @@ SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
 }
 
 //
+// Initialize a suffix array for the strings in RT
+//
+void SuffixArray::initialize(const ReadTable& rt)
+{
+	size_t n = rt.getSumLengths() + rt.getCount(); // We need room for 1 suffix per base pair + a '$' char per read
+	m_data.resize(n);
+	m_F.resize(n);
+	std::cerr << "Allocating space for " << n << " suffixes\n";
+
+	// Fill the data table with the linear ordering of the suffixes
+	size_t count = 0;
+	for(size_t i = 0; i < rt.getCount(); ++i)
+	{
+		for(size_t j = 0; j < rt.getRead(i).seq.size() + 1; ++j)
+		{
+			m_data[count++] = SAID(i, j);
+		}
+	}
+	std::cerr << "Created " << count << " suffixes\n";
+}
+
+//
+// Sort an initialized suffix array in-place
+// 
+void SuffixArray::sort(const ReadTable* pRT)
+{
+	SuffixCompare compare(pRT);
+	std::sort(m_data.begin(), m_data.end(), compare);
+}
+
+
+//
 // Construct the bwt from the cycles table via simple sorting
 //
 void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
@@ -226,7 +294,8 @@ void SuffixArray::validate(const ReadTable* pRT) const
 
 		if(!suffixValidated)
 		{
-			std::cerr << "Validation failure: " << suffix1 << " is not less than " << suffix2 << "\n";
+			std::cerr << "Validation failure: " << suffix1 << " is not less than " << suffix2
+						<< " ids: " << id1.getID() << "," << id2.getID() << "\n";
 			assert(suffix1 < suffix2);
 		}
 	}

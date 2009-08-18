@@ -1,16 +1,11 @@
-bin_PROGRAMS = STA
+noinst_LIBRARIES = libsta.a
 
-STA_CPPFLAGS = \
+libsta_a_CPPFLAGS = \
 	-I$(top_srcdir)/Util \
 	-I$(top_srcdir)/Bigraph \
 	-I$(top_srcdir)/Stats
 
-STA_LDADD = \
-	$(top_builddir)/Util/libutil.a \
-	$(top_builddir)/Stats/libstats.a 
-
-
-STA_SOURCES = STA.cpp \
+libsta_a_SOURCES = STA.cpp \
 			  BWT.cpp BWT.h \
 			  STCommon.cpp STCommon.h \
 			  SuffixTree.cpp SuffixTree.h \

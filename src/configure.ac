@@ -40,6 +40,7 @@ AC_CONFIG_FILES([Makefile
 		Resolve/Makefile
 		IndelFinder/Makefile
 		STA/Makefile
-		Tests/Makefile])
+		Tests/Makefile
+		sga/Makefile])
 
 AC_OUTPUT
