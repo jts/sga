@@ -39,8 +39,8 @@ AC_CONFIG_FILES([Makefile
 		BDE/Makefile
 		Resolve/Makefile
 		IndelFinder/Makefile
-		STA/Makefile
+		SuffixTools/Makefile
 		Tests/Makefile
-		sga/Makefile])
+		SGA/Makefile])
 
 AC_OUTPUT

@@ -48,6 +48,9 @@ class SuffixArray
 		// Make all the cyclic rotations of a string
 		static void makeCycles(SuffixString s, SuffixStringVector* outTable);
 
+		// Operators
+		friend std::ostream& operator<<(std::ostream& out, const SuffixArray& sa);
+
 		// Print funcs
 		void print() const;
 		void print(const ReadTable* pRT) const;

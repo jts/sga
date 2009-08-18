@@ -259,6 +259,19 @@ void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
 	}
 }
 
+// Output operator
+std::ostream& operator<<(std::ostream& out, const SuffixArray& sa)
+{
+	// Write the size
+	out << sa.m_data.size() << "\n";
+	for(size_t i = 0; i < sa.m_data.size(); ++i)
+	{
+		out << sa.m_data[i] << "\n";
+	}
+	return out;
+}
+
+
 //
 // Validate the suffix array using the read table
 //

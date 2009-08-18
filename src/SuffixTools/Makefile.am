@@ -1,14 +1,12 @@
-noinst_LIBRARIES = libsta.a
+noinst_LIBRARIES = libsuffixtools.a
 
-libsta_a_CPPFLAGS = \
+libsuffixtools_a_CPPFLAGS = \
 	-I$(top_srcdir)/Util \
 	-I$(top_srcdir)/Bigraph \
 	-I$(top_srcdir)/Stats
 
-libsta_a_SOURCES = STA.cpp \
-			  BWT.cpp BWT.h \
+libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 			  STCommon.cpp STCommon.h \
-			  SuffixTree.cpp SuffixTree.h \
 			  STGlobal.h \
 			  Occurance.cpp Occurance.h \
 			  SuffixArray.cpp SuffixArray.h \
