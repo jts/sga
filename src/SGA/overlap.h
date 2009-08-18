@@ -4,13 +4,13 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// index - Read in sequences and index them in a suffix array
+// overlap - Overlap reads using a bwt
 //
-#ifndef INDEX_H
-#define INDEX_H
+#ifndef OVERLAP_H
+#define OVERLAP_H
 
-void printIndexUsage();
-int indexMain(int argc, char** argv);
-void buildIndex(std::string filename);
+void printOverlapUsage();
+int overlapMain(int argc, char** argv);
+void computeOverlaps(std::string indexFile, std::string overlapFile);
 
 #endif

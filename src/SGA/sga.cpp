@@ -9,6 +9,7 @@
 #include <string>
 #include <iostream>
 #include "index.h" 
+#include "overlap.h"
 
 #define VERSION "0.1"
 #define PROGRAM_BIN "sga"
@@ -21,15 +22,17 @@ int main(int argc, char** argv)
 	(void)argc;
 	(void)argv;
 
-	if(argc <= 1 || argv[1] == "--help")
-	{
+	if(argc <= 1)
 		printUsage();
-	}
 	else
 	{
 		std::string command(argv[1]);
+		if(command == "help" || command == "--help")
+			printUsage();
 		if(command == "index")
 			indexMain(argc - 2, argv + 2);
+		else if(command == "overlap")
+			overlapMain(argc - 2, argv + 2);
 		else
 		{
 			std::cerr << "Unrecognized command: " << command << "\n";

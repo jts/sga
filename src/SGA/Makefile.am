@@ -12,4 +12,5 @@ sga_LDADD = \
 	$(top_builddir)/SuffixTools/libsuffixtools.a
 
 sga_SOURCES = sga.cpp \
-              index.cpp index.h
+              index.cpp index.h \
+			  overlap.cpp overlap.h
