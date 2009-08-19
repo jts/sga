@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = Util Scaffold Stats UniEst Tests BDE Resolve IndelFinder SuffixTools SGA
+SUBDIRS = Util Stats UniEst Tests SuffixTools SGA

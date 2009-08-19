@@ -30,6 +30,12 @@ void ReadTable::addRead(const SeqItem& r)
 }
 
 //
+size_t ReadTable::getReadLength(size_t idx) const
+{
+	return m_table[idx].seq.length();
+}
+
+//
 const SeqItem& ReadTable::getRead(size_t idx) const
 {
 	assert(idx < m_table.size());

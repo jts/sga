@@ -80,16 +80,21 @@ void BWT::backwardSearch(std::string w)
 	std::cout << "Interval found: " << r_lower << "," << r_upper << "\n";
 }
 
-// Perform a search for overlaps
-void BWT::getOverlaps(std::string w, int minOverlap)
+// Perform a search for overlaps using a backward search algorithm
+HitVector BWT::getOverlaps(std::string w, int minOverlap)
 {
 	std::cout << "Searching for " << w << "\n";
+
+	// Initialize the search
 	int len = w.size();
 	int j = len - 1;
 	char curr = w[j];
 	int r_lower = m_predCount.get(curr) + m_numStrings;
 	int r_upper = r_lower + m_occurance.get(curr, m_L.size() - 1) - 1;
 	--j;
+
+	HitData hits;
+
 	//std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
 	{
@@ -108,14 +113,15 @@ void BWT::getOverlaps(std::string w, int minOverlap)
 		int overlapLen = len - j;
 		if(overlapLen > minOverlap)
 		{
-			std::cout << "Found overlap of len " << overlapLen << " to: \n";
+			// Create the hit
 			for(int i = r_lower; i <= r_upper; ++i)
 			{
 				SAID id = m_pSuffixArray->get(i);
-				std::cout << "\t" << id << "\n";
+				hits.addHit(Hit(id, j, overlapLen));
 			}
 		}
 	}
+	return hits.getHits();
 }
 
 // Print the BWT

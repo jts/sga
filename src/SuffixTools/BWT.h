@@ -13,6 +13,7 @@
 #include "Occurance.h"
 #include "SuffixArray.h"
 #include "ReadTable.h"
+#include "HitData.h"
 
 //
 // BWT
@@ -26,7 +27,7 @@ class BWT
 
 		// Exact match
 		void backwardSearch(std::string w);
-		void getOverlaps(std::string w, int minOverlap);
+		HitVector getOverlaps(std::string w, int minOverlap);
 
 		// L[i] -> F mapping 
 		size_t LF(size_t idx) const;

@@ -30,8 +30,7 @@ struct SeqItem
 class SeqReader
 {
 	public:
-		SeqReader(std::string filename) : m_fileHandle(filename.c_str()) {}
-		SeqReader(const char* filename) : m_fileHandle(filename) {}
+		SeqReader(std::string filename);
 		~SeqReader();
 		bool get(SeqItem& si);
 

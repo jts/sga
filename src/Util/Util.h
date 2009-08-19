@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 #include <istream>
+#include <fstream>
 #include <cassert>
 #include <sstream>
 
@@ -48,33 +49,27 @@ typedef std::vector<Sequence> SequenceVector;
 // KAlignment
 struct KAlignment
 {
+	// functions
+	int contigOuterCoordinate() const;
+	void flipAlignment(int targetLength); // transform an alignment into the alignment on the rc seq
+	int getDistanceToEnd(int targetLen) const; // distance from the align to the end
+	static int compareReadPos(const KAlignment& a1, const KAlignment& a2);
+	friend std::istream& operator>> (std::istream& in, KAlignment& a);
+
+	// data
 	ContigID contig_id;
 	int contig_start_pos;
 	int read_start_pos;
 	int align_length;
 	int read_length;
 	bool is_reverse;
-
-	// Return the outer coordinate of the alignment
-	int contigOuterCoordinate() const;
-
-	// Convert the alignment into the alignment on the reverse complement
-	void flipAlignment(int targetLength);
-
-	// Get the distance from the alignment to the end of the contig
-	// This is in the direction of the alignment
-	int getDistanceToEnd(int targetLen) const;
-
-	// Comparse by read position
-	static int compareReadPos(const KAlignment& a1, const KAlignment& a2);
-
-	// Input
-	friend std::istream& operator>> (std::istream& in, KAlignment& a);
+	
 };
 
 // AlignPair
 struct AlignPair
 {
+	// functions
 	friend std::istream& operator>> (std::istream& in, AlignPair& ap)
 	{
 		std::string readname;
@@ -82,38 +77,75 @@ struct AlignPair
 		return in;
 	}
 
+	// data
 	KAlignment aligns[2];
 };
 
 // AdjInfo
 struct AdjInfo
 {
+
+	// functions
+	friend std::istream& operator>>(std::istream& in, AdjInfo& a);
+
+	// data
 	ContigID from;
 	ContigID to;
 	int dir;
 	bool comp;
-
-	friend std::istream& operator>>(std::istream& in, AdjInfo& a);
 };
 
-// Range 
-struct Range
+// Interval 
+struct Interval
 {
-	Range() : start(0), end(0) {}
-	Range(int s, int e) : start(s), end(e) {}
+	// constructors
+	Interval() : start(0), end(0) {}
+	Interval(int s, int e) : start(s), end(e) {}
+
+	// functions
+	friend std::ostream& operator<<(std::ostream& out, const Interval& i);
+	friend std::istream& operator>>(std::istream& in, Interval& i);	
+	
+	// data 
 	int start;
 	int end;
+};
 
-	size_t size() { return end - start; }
+// String, coordinate pair
+struct SeqCoord
+{
+	// constructor
+	SeqCoord() {}
+	SeqCoord(std::string i, int s, int e) : id(i), interval(s, e) {}
 
-	friend std::ostream& operator<<(std::ostream& out, const Range& r);
+	// functions
+	friend std::ostream& operator<<(std::ostream& out, const SeqCoord& sc);
+	friend std::istream& operator>>(std::istream& in, SeqCoord& sc);	
 
-	friend Range intersect(const Range& r1, const Range& r2);
+	// data
+	std::string id;
+	Interval interval;
+};
+
+// Overlap
+struct Overlap
+{
+	// constructors
+	Overlap(std::string i1, int s1, int e1, std::string i2, int s2, int e2); 
+
+	// functions
+	friend std::ostream& operator<<(std::ostream& out, const Overlap& o);
+	friend std::istream& operator>>(std::istream& in, Overlap& o);
+
+	// data
+	SeqCoord sc[2];
 };
 
 //
 // Functions
 //
+std::string stripFilename(std::string filename);
+void checkFileHandle(std::ifstream& fh, std::string fn);
 
 // Key-value operations
 template <class C>

@@ -16,11 +16,16 @@ typedef std::vector<SeqItem> ReadVector;
 class ReadTable
 {
 	public:
+		//
 		ReadTable() {}
 		ReadTable(std::string filename);
 		
+		//
 		void addRead(const SeqItem& r);
+		
+		//
 		const SeqItem& getRead(size_t idx) const;
+		size_t getReadLength(size_t idx) const;
 		size_t getCount() const;
 		size_t getSumLengths() const;
 

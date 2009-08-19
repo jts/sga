@@ -8,7 +8,12 @@
 //
 #include <iostream>
 #include "SeqReader.h"
+#include "Util.h"
 
+SeqReader::SeqReader(std::string filename) : m_fileHandle(filename.c_str())
+{
+	checkFileHandle(m_fileHandle, filename);
+}
 	
 SeqReader::~SeqReader()
 {

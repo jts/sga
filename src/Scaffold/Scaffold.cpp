@@ -41,7 +41,6 @@ int main(int argc, char** argv)
 	// Parse the scaffold links and add edges to the graph
 	parseLinks(distanceFile, scaffoldGraph);
 
-
 	scaffoldGraph.writeDot("before.dot");
 	scaffoldGraph.visit(&cutInconsistent);
 	scaffoldGraph.writeDot("cutIncon.dot");

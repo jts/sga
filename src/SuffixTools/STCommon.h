@@ -107,5 +107,6 @@ class AlphaCount
 
 // Typedefs of STL collections of the above classes
 typedef std::vector<SuffixString> SuffixStringVector;
+typedef std::vector<SAID> SAIDVector;
 
 #endif

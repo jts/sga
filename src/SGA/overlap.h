@@ -8,9 +8,12 @@
 //
 #ifndef OVERLAP_H
 #define OVERLAP_H
+#include <getopt.h>
+#include "config.h"
 
-void printOverlapUsage();
+// functions
 int overlapMain(int argc, char** argv);
-void computeOverlaps(std::string indexFile, std::string overlapFile);
+void computeOverlaps();
+void parseOverlapOptions(int argc, char** argv);
 
 #endif

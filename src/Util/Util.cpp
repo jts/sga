@@ -96,17 +96,24 @@ std::istream& operator>>(std::istream& in, AdjInfo& a)
 }
 
 //
-// Range
+// Interval
 //
-std::ostream& operator<<(std::ostream& out, const Range& r)
+std::ostream& operator<<(std::ostream& out, const Interval& r)
 {
-	out << "[ " << r.start << "," << r.end << " ]";
+	out << r.start << " " << r.end;
 	return out;
 }
 
-Range intersect(const Range& r1, const Range& r2)
+std::istream& operator>>(std::istream& in, Interval& r)
 {
-	Range result;
+	in >> r.start >> r.end;
+	return in;
+}
+
+
+Interval intersect(const Interval& r1, const Interval& r2)
+{
+	Interval result;
 	result.start = std::max(r1.start, r2.start);
 	result.end = std::min(r1.end, r2.end);
 
@@ -120,12 +127,56 @@ Range intersect(const Range& r1, const Range& r2)
 }
 
 //
+// SeqCoord
+//
+
+// Output
+std::ostream& operator<<(std::ostream& out, const SeqCoord& sc)
+{
+	out << sc.id << " " << sc.interval;
+	return out;
+}
+
+// Input
+std::istream& operator>>(std::istream& in, SeqCoord& sc)
+{
+	in >> sc.id >> sc.interval;
+	return in;
+}
+
+//
+// Overlap
+//
+Overlap::Overlap(std::string i1, int s1, int e1, 
+                 std::string i2, int s2, int e2)
+{
+	sc[0] = SeqCoord(i1, s1, e1);
+	sc[1] = SeqCoord(i2, s2, e2);
+}
+
+// Output
+std::ostream& operator<<(std::ostream& out, const Overlap& o)
+{
+	out << o.sc[0] << "\t";
+	out << o.sc[1];
+	return out;
+}
+
+// Input
+std::istream& operator>>(std::istream& in, Overlap& o)
+{
+	in >> o.sc[0];
+	in >> o.sc[1];
+	return in;
+}
+
+
+
+//
 // Sequence operations
 //
 
-//
 // Reverse complement a sequence
-//
 Sequence reverseComplement(Sequence seq)
 {
 	std::string out(seq.length(), 'A');
@@ -137,9 +188,7 @@ Sequence reverseComplement(Sequence seq)
 	return out;
 }
 
-//
 // Complement a base
-//
 char complement(char base)
 {
 	switch(base)
@@ -157,9 +206,34 @@ char complement(char base)
 	}
 }
 
-//
+// Strip the leading directories and
+// the last trailling suffix from a filename
+std::string stripFilename(std::string filename)
+{
+	std::string temp(basename(filename.c_str())); // strip leading directory
+	size_t suffixPos = temp.find_last_of('.');
+	if(suffixPos == std::string::npos)
+	{
+		return temp; // no suffix
+	}
+	else
+	{
+		return temp.substr(0, suffixPos);
+	}
+}
+
+// Ensure a filehandle is open
+void checkFileHandle(std::ifstream& fh, std::string fn)
+{
+	if(!fh.is_open())
+	{
+		std::cerr << "Error: could not open " << fn << " for read\n";
+		exit(1);
+	}	
+}
+
+
 // Split a string into parts based on the delimiter
-//
 StringVec split(std::string in, char delimiter)
 {
 	StringVec out;
@@ -176,9 +250,7 @@ StringVec split(std::string in, char delimiter)
 	return out;
 }
 
-//
 // Split a key-value pair
-//
 void splitKeyValue(std::string in, std::string& key, std::string& value)
 {
 	StringVec parts = split(in, CAF_SEP);
