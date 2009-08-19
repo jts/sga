@@ -6,16 +6,31 @@
 //
 // ReadTable - A 0-indexed table of reads
 //
+#include <iostream>
 #include "ReadTable.h"
+#include "SeqReader.h"
+
+// Read the sequences from a file
+ReadTable::ReadTable(std::string filename)
+{
+	SeqReader reader(filename);
+	SeqItem si;
+	while(reader.get(si))
+	{
+		std::cout << "Read sequence with ID: " << si.id << " and seq: " << si.seq << "\n";
+		addRead(si);
+	}
+	std::cerr << "Read "<< getCount() << " sequences\n";
+}
 
 //
-void ReadTable::addRead(const Read& r)
+void ReadTable::addRead(const SeqItem& r)
 {
 	m_table.push_back(r);
 }
 
 //
-const Read& ReadTable::getRead(size_t idx) const
+const SeqItem& ReadTable::getRead(size_t idx) const
 {
 	assert(idx < m_table.size());
 	return m_table[idx];

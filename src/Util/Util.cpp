@@ -1,14 +1,76 @@
+//-----------------------------------------------
+// Copyright 2009 Wellcome Trust Sanger Institute
+// Written by Jared Simpson (js18@sanger.ac.uk)
+// Released under the GPL license
+//-----------------------------------------------
+//
+// Util - Common data structures and functions
+//
 #include <iostream>
 #include <math.h>
 #include "Util.h"
 
 //
-// Globals
+// KAlign
 //
+
+// Return the outer coordinate of the alignment
+int KAlignment::contigOuterCoordinate() const
+{
+	if(!is_reverse)
+	{
+		return contig_start_pos - read_start_pos;
+	}
+	else
+	{
+		return contig_start_pos + align_length + read_start_pos;
+	}
+}
+
+//
+// Convert the alignment into the alignment on the reverse complement
+// of the target
+//
+void KAlignment::flipAlignment(int targetLength)
+{
+	int tPos = targetLength - contig_start_pos + align_length;
+	contig_start_pos = tPos;
+	is_reverse = !is_reverse;
+}
+
+//
+// Get the distance from thto the end of the contig
+// This is in the direction of the alignment
+//
+int KAlignment::getDistanceToEnd(int targetLen) const
+{
+	int outerCoordinate = contigOuterCoordinate();
+	if(!is_reverse)
+		return targetLen - outerCoordinate;
+	else
+		return outerCoordinate;
+}
+
+// Comparse by read position
+int KAlignment::compareReadPos(const KAlignment& a1, const KAlignment& a2)
+{
+	return a1.read_start_pos < a2.read_start_pos;
+}
+
+// Output
+std::istream& operator>> (std::istream& in, KAlignment& a)
+{
+	in >> a.contig_id >> a.contig_start_pos;
+	in >> a.read_start_pos >> a.align_length;
+	in >> a.read_length >> a.is_reverse;
+	return in;
+}
 
 //
 // AdjInfo
-// 
+//
+
+// Input
 std::istream& operator>>(std::istream& in, AdjInfo& a)
 {
 	std::string line;
@@ -31,6 +93,30 @@ std::istream& operator>>(std::istream& in, AdjInfo& a)
 	parser2 >> a.dir;
 	parser3 >> a.comp;
 	return in;
+}
+
+//
+// Range
+//
+std::ostream& operator<<(std::ostream& out, const Range& r)
+{
+	out << "[ " << r.start << "," << r.end << " ]";
+	return out;
+}
+
+Range intersect(const Range& r1, const Range& r2)
+{
+	Range result;
+	result.start = std::max(r1.start, r2.start);
+	result.end = std::min(r1.end, r2.end);
+
+	// Check for non-overlap
+	if(result.end <= result.start)
+	{
+		result.start = 0;
+		result.end = 0;
+	}
+	return result;
 }
 
 //

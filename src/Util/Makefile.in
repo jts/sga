@@ -50,7 +50,8 @@ libutil_a_AR = $(AR) $(ARFLAGS)
 libutil_a_LIBADD =
 am_libutil_a_OBJECTS = libutil_a-Util.$(OBJEXT) \
 	libutil_a-Contig.$(OBJEXT) libutil_a-ContigGraph.$(OBJEXT) \
-	libutil_a-Timer.$(OBJEXT)
+	libutil_a-Timer.$(OBJEXT) libutil_a-ReadTable.$(OBJEXT) \
+	libutil_a-SeqReader.$(OBJEXT)
 libutil_a_OBJECTS = $(am_libutil_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -163,7 +164,9 @@ libutil_a_SOURCES = \
 	Util.cpp Util.h \
 	Contig.h Contig.cpp \
 	ContigGraph.h ContigGraph.cpp \
-	Timer.h Timer.cpp
+	Timer.h Timer.cpp \
+	ReadTable.h ReadTable.cpp \
+	SeqReader.h SeqReader.cpp
 
 all: all-am
 
@@ -214,6 +217,8 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Contig.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-ContigGraph.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-ReadTable.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-SeqReader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Timer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Util.Po@am__quote@
 
@@ -286,6 +291,34 @@ libutil_a-Timer.obj: Timer.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Timer.cpp' object='libutil_a-Timer.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-Timer.obj `if test -f 'Timer.cpp'; then $(CYGPATH_W) 'Timer.cpp'; else $(CYGPATH_W) '$(srcdir)/Timer.cpp'; fi`
+
+libutil_a-ReadTable.o: ReadTable.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-ReadTable.o -MD -MP -MF "$(DEPDIR)/libutil_a-ReadTable.Tpo" -c -o libutil_a-ReadTable.o `test -f 'ReadTable.cpp' || echo '$(srcdir)/'`ReadTable.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-ReadTable.Tpo" "$(DEPDIR)/libutil_a-ReadTable.Po"; else rm -f "$(DEPDIR)/libutil_a-ReadTable.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ReadTable.cpp' object='libutil_a-ReadTable.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-ReadTable.o `test -f 'ReadTable.cpp' || echo '$(srcdir)/'`ReadTable.cpp
+
+libutil_a-ReadTable.obj: ReadTable.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-ReadTable.obj -MD -MP -MF "$(DEPDIR)/libutil_a-ReadTable.Tpo" -c -o libutil_a-ReadTable.obj `if test -f 'ReadTable.cpp'; then $(CYGPATH_W) 'ReadTable.cpp'; else $(CYGPATH_W) '$(srcdir)/ReadTable.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-ReadTable.Tpo" "$(DEPDIR)/libutil_a-ReadTable.Po"; else rm -f "$(DEPDIR)/libutil_a-ReadTable.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ReadTable.cpp' object='libutil_a-ReadTable.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-ReadTable.obj `if test -f 'ReadTable.cpp'; then $(CYGPATH_W) 'ReadTable.cpp'; else $(CYGPATH_W) '$(srcdir)/ReadTable.cpp'; fi`
+
+libutil_a-SeqReader.o: SeqReader.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-SeqReader.o -MD -MP -MF "$(DEPDIR)/libutil_a-SeqReader.Tpo" -c -o libutil_a-SeqReader.o `test -f 'SeqReader.cpp' || echo '$(srcdir)/'`SeqReader.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-SeqReader.Tpo" "$(DEPDIR)/libutil_a-SeqReader.Po"; else rm -f "$(DEPDIR)/libutil_a-SeqReader.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SeqReader.cpp' object='libutil_a-SeqReader.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-SeqReader.o `test -f 'SeqReader.cpp' || echo '$(srcdir)/'`SeqReader.cpp
+
+libutil_a-SeqReader.obj: SeqReader.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-SeqReader.obj -MD -MP -MF "$(DEPDIR)/libutil_a-SeqReader.Tpo" -c -o libutil_a-SeqReader.obj `if test -f 'SeqReader.cpp'; then $(CYGPATH_W) 'SeqReader.cpp'; else $(CYGPATH_W) '$(srcdir)/SeqReader.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-SeqReader.Tpo" "$(DEPDIR)/libutil_a-SeqReader.Po"; else rm -f "$(DEPDIR)/libutil_a-SeqReader.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SeqReader.cpp' object='libutil_a-SeqReader.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-SeqReader.obj `if test -f 'SeqReader.cpp'; then $(CYGPATH_W) 'SeqReader.cpp'; else $(CYGPATH_W) '$(srcdir)/SeqReader.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

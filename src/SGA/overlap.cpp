@@ -11,6 +11,7 @@
 #include "Util.h"
 #include "overlap.h"
 #include "SuffixArray.h"
+#include "BWT.h"
 
 int overlapMain(int argc, char** argv)
 {
@@ -28,30 +29,23 @@ int overlapMain(int argc, char** argv)
 
 void computeOverlaps(std::string indexFile, std::string readsFile)
 {
-	std::ifstream inReads(readsFile.c_str());
-	ReadTable rt;
-
-	std::string line;
-	size_t count = 0;
-	while(inReads >> line)
-	{
-		if(count % 2 == 1)
-		{
-			Read r("", line);
-			rt.addRead(r);
-		}
-
-		if(count % 10000 == 0)
-			std::cout << "Processed " << count << "\n";
-		++count;
-	}
-	std::cout << "Loaded " << rt.getCount() << " reads\n";
+	ReadTable rt(readsFile);
 
 	// Load suffix array
 	std::ifstream inSA(indexFile.c_str());
 	SuffixArray sa;
 	inSA >> sa;
 	sa.validate(&rt);
+
+	// Convert SA to a BWT
+	BWT b(&sa, &rt);
+	b.print(&rt);
+
+	// Compute overlaps
+	for(size_t i = 0; i < rt.getCount(); ++i)
+	{
+		b.getOverlaps(rt.getRead(i).seq, 30);
+	}
 }
 
 void printOverlapUsage()

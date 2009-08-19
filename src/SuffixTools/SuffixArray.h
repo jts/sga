@@ -36,20 +36,22 @@ class SuffixArray
 
 		//
 		SAID get(size_t idx) const { return m_data[idx]; }
-		char getF(size_t idx) const { return m_F[idx]; }
 		size_t getSize() const { return m_data.size(); }
 		size_t getNumStrings() const { return m_numStrings; } 
+		std::string getSuffix(size_t idx, const ReadTable* pRT) const;
 
 		// Validate the suffix array
 		void initialize(const ReadTable& rt);
 		void validate(const ReadTable* pRT) const;
 		void sort(const ReadTable* pRT);
+		
 
 		// Make all the cyclic rotations of a string
 		static void makeCycles(SuffixString s, SuffixStringVector* outTable);
 
 		// Operators
 		friend std::ostream& operator<<(std::ostream& out, const SuffixArray& sa);
+		friend std::istream& operator>>(std::istream& in, SuffixArray& sa);
 
 		// Print funcs
 		void print() const;
@@ -58,9 +60,7 @@ class SuffixArray
 	private:
 		
 		void sortConstruct(int numStrings, SuffixStringVector* cycles);
-
 		std::vector<SAID> m_data;
-		BWStr m_F; // m_F[i] is the first character in the suffix at i
 		size_t m_numStrings;
 };
 

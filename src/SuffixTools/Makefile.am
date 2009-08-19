@@ -10,5 +10,4 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 			  STGlobal.h \
 			  Occurance.cpp Occurance.h \
 			  SuffixArray.cpp SuffixArray.h \
-			  InverseSuffixArray.cpp InverseSuffixArray.h \
-			  ReadTable.cpp ReadTable.h
+			  InverseSuffixArray.cpp InverseSuffixArray.h

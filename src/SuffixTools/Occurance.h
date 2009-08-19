@@ -24,9 +24,10 @@ class Occurance
 		void initialize(const BWStr& b);
 
 		// 
-		int get(char a, int i) const;
-		void increment(char a, int i);
-		void set(char a, int i, int s);
+		AlphaCount get(size_t i) const;
+		BaseCount get(char a, size_t i) const;
+		void increment(char a, size_t i);
+		void set(char a, size_t i, BaseCount s);
 		void print() const;
 		size_t getByteSize() const;
 

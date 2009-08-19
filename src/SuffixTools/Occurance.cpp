@@ -32,20 +32,26 @@ void Occurance::initialize(const BWStr& b)
 	}
 }
 
+//
+AlphaCount Occurance::get(size_t i) const
+{
+	return m_values[i];
+}
+
 // 
-int Occurance::get(char a, int i) const
+BaseCount Occurance::get(char a, size_t i) const
 {
 	return m_values[i].get(a);
 }
 
 //
-void Occurance::increment(char a, int i)
+void Occurance::increment(char a, size_t i)
 {
 	m_values[i].increment(a);
 }
 
 //
-void Occurance::set(char a, int i, int s)
+void Occurance::set(char a, size_t i, BaseCount s)
 {
 	m_values[i].set(a, s);
 }

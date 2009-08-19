@@ -47,7 +47,8 @@ struct SAID
 		uint64_t getID() const;
 		uint64_t getPos() const;
 
-		// Output
+		// Input/Output
+		friend std::istream& operator>>(std::istream& in, SAID& s);
 		friend std::ostream& operator<<(std::ostream& out, const SAID& s);
 
 
@@ -63,34 +64,6 @@ struct SAID
 		static const uint64_t LOW_MASK = ~HIGH_MASK;
 };
 
-
-//
-// A GSuffix (generalized suffix) is an ID giving the string this suffix belongs to and a number indicating
-// the position of the suffix in the string
-//
-class GSuffix
-{
-	public:
-
-		// Constructors
-		GSuffix() : m_label(0), m_idx(0) {}
-		GSuffix(Label l, int i) : m_label(l), m_idx(i) {}
-		GSuffix(Label l) : m_label(l), m_idx(0) {}
-		
-		//
-		Label getLabel() const { return m_label; }
-		uint16_t getIdx() const { return m_idx; }
-
-		//
-		size_t getByteSize() const { return sizeof(m_idx) + sizeof(m_label); }
-
-		// Output
-		friend std::ostream& operator<<(std::ostream& out, const GSuffix& gs);
-
-	private:
-		Label m_label;
-		uint16_t m_idx;
-};
 
 //
 // A suffix string is a label and the rotated string that represents it
@@ -117,7 +90,7 @@ class SuffixString
 //
 // A simple class holding the count for each base of a DNA string (plus the terminator)  
 //
-typedef uint32_t BaseCount;
+typedef uint64_t BaseCount;
 class AlphaCount
 {
 	public:

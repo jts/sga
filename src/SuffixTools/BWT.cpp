@@ -7,94 +7,34 @@
 // BWT.cpp - Burrows Wheeler transform of a generalized suffix array
 //
 #include "BWT.h"
-#if 0
-//
-// Construct the bwt of the string text and all associated data structures
-//
-BWT::BWT(std::string text)
-{
-	SuffixString ss(0, text + "$");
-	SuffixStringVector cycled;
-	makeCycles(ss, &cycled);
-	sortConstruct(1, &cycled);
-}
 
-//
-BWT::BWT(const StringVector& sv)
+// Construct the BWT from a suffix array
+BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 {
-	SuffixStringVector cycled;
-	for(size_t i = 0; i < sv.size(); ++i)
-	{
-		SuffixString suffix(i, sv[i] + "$");
-		makeCycles(suffix, &cycled);
-	}
-	sortConstruct(sv.size(), &cycled);
-}
-
-#if 0
-//
-// Construct a new BWT which is the merger of A and B
-//
-void BWT::merge(const BWT& a, const BWT& b)
-{
-	const SuffixArray& sa_a = a.getSuffixArray();
-	const SuffixArray& sa_b = b.getSuffixArray();
-	size_t n_merged = sa_a.size() + sa_b.size();
-
-	// Set all the sizes
-	m_suffixArray.resize(n);
-	m_L.resize(n);
+	size_t n = pSA->getSize();
+	m_numStrings = pSA->getNumStrings();
+	m_pSuffixArray = pSA;
 	m_F.resize(n);
-	m_numStrings = a.getNumStrings() + b.getNumStrings();
-
-	size_t i = 0; // Index into a
-	size_t j = 0; // Index into b
-	size_t k = 0; // index into merged bwt
-
-	for(; k < n; ++k)
-	{
-		// Decide if Suffix A[i] < B[i]
-		// Since they terminate with a unique character $_i they cannot be equal
-		size_t sa_idx_a = i;
-		size_t sa_idx_b = j;
-
-		// Case 1:  
-	}
-}
-#endif
-
-//
-// Construct the bwt from the cycles table via simple sorting
-//
-void BWT::sortConstruct(int numStrings, SuffixStringVector* cycles)
-{
-	// Resize all the arrays
-	size_t n = cycles->size();
-
-	m_suffixArray.resize(n);
 	m_L.resize(n);
-	m_F.resize(n);
-	m_numStrings = numStrings;
-	
-	// Sort the array
-	std::sort(cycles->begin(), cycles->end());
+
 	// Set up the bwt string and suffix array from the cycled strings
 	for(size_t i = 0; i < n; ++i)
 	{
-		SuffixString& curr = (*cycles)[i];
+		SAID said = pSA->get(i);
+		const SeqItem& si = pRT->getRead(said.getID());
 
-		m_suffixArray[i] = curr.id;
-		char c = curr.str[curr.str.length() - 1];
-		m_F[i] = curr.str[0];
-		m_L[i] = c;
+		// Get the position of the start of the suffix
+		uint64_t f_pos = said.getPos();
+		uint64_t l_pos = (f_pos == 0) ? si.seq.length() : f_pos - 1;
+
+		m_F[i] = (f_pos == si.seq.length()) ? '$' : si.seq[f_pos];
+		m_L[i] = (l_pos == si.seq.length()) ? '$' : si.seq[l_pos];
 	}
 
 	// initialize the occurance table
 	m_occurance.initialize(m_L);
 
 	// Calculate the C(a) array
-	
-	// Calculate the number of times character x appears in the bw string
 	AlphaCount tmp;
 	for(size_t i = 0; i < m_L.size(); ++i)
 	{
@@ -105,41 +45,15 @@ void BWT::sortConstruct(int numStrings, SuffixStringVector* cycles)
 	m_predCount.set('C', tmp.get('A'));
 	m_predCount.set('G', tmp.get('A') + tmp.get('C'));
 	m_predCount.set('T', tmp.get('A') + tmp.get('C') + tmp.get('G'));
-
-	if(1)
-	{
-		std::cout << "SuffixArray: ";
-		std::copy(m_suffixArray.begin(), m_suffixArray.end(), std::ostream_iterator<SAID>(std::cout, " "));
-
-		std::cout << "\nBWT String:  " << m_L << "\n";
-		std::cout << "C(a): " << m_predCount << "\n";
-
-		std::cout << "\nTable:\n";
-		std::cout << "i\tSA\tSTR\tLF(i)\tO(a,i)\n";
-		for(size_t i = 0; i < m_suffixArray.size(); ++i)
-		{
-			//std::cout << m_suffixArray[i] << "\t" << m_F[i] << "\t" << m_L[i] << "\n";
-			std::cout << i << "\t" << (*cycles)[i] << "\t" << LF(i) << "\t";
-			for(size_t j = 0; j < ALPHABET_SIZE; ++j)
-			{
-				std::cout << m_occurance.get(ALPHABET[j], i);
-			}
-			std::cout << "\n";
-		}
-	}
 }
 
-//
 // Compute the last to first mapping for this BWT
-//
 size_t BWT::LF(size_t idx) const
 {
 	return m_L[idx] != '$' ? m_predCount.get(m_L[idx]) + m_occurance.get(m_L[idx], idx) : 0;
 }
 
-//
 // Perform a exact search for the string w using the backwards algorithm
-//
 void BWT::backwardSearch(std::string w)
 {
 	std::cout << "Searching for " << w << "\n";
@@ -166,9 +80,7 @@ void BWT::backwardSearch(std::string w)
 	std::cout << "Interval found: " << r_lower << "," << r_upper << "\n";
 }
 
-//
 // Perform a search for overlaps
-// 
 void BWT::getOverlaps(std::string w, int minOverlap)
 {
 	std::cout << "Searching for " << w << "\n";
@@ -199,46 +111,34 @@ void BWT::getOverlaps(std::string w, int minOverlap)
 			std::cout << "Found overlap of len " << overlapLen << " to: \n";
 			for(int i = r_lower; i <= r_upper; ++i)
 			{
-				SAID id = m_suffixArray[i];
+				SAID id = m_pSuffixArray->get(i);
 				std::cout << "\t" << id << "\n";
 			}
 		}
 	}
 }
 
-//
-// Make all the cyclic rotations of a string, placing the result in *outTable
-//
-void BWT::makeCycles(SuffixString s, SuffixStringVector* outTable)
+// Print the BWT
+void BWT::print(const ReadTable* pRT) const
 {
-	int l = s.str.length();
-	for(int i = 0; i < l; ++i)
+	std::cout << "i\tF(i)\tL(i)\tO(-,i)\tSUFF\n";
+	for(size_t i = 0; i < m_F.size(); ++i)
 	{
-		SuffixString r = SuffixString(s.id.getID(), i, s.str.substr(i, l - i) + s.str.substr(0, i));
-		outTable->push_back(r);
+		std::cout << i << "\t" << m_F[i] << "\t" << m_L[i] << "\t" << m_occurance.get(i) << m_pSuffixArray->getSuffix(i, pRT) << "\n";
 	}
 }
 
-//
 // Print information about the BWT
-//
 void BWT::printInfo() const
 {
 	size_t o_size = m_occurance.getByteSize();
 	size_t p_size = sizeof(m_predCount);
-	size_t sa_size = sizeof(m_suffixArray); // Base size for the vector
-	for(size_t i = 0; i < m_suffixArray.size(); ++i)
-	{
-		sa_size += sizeof(m_suffixArray[i]);
-	}
 
 	size_t saStr_size = sizeof(m_F) + m_F.size();
 	size_t bwStr_size = sizeof(m_L) + m_L.size();
 	size_t offset_size = sizeof(m_numStrings);
-	size_t total_size = o_size + p_size + sa_size + saStr_size + bwStr_size + offset_size;
-	printf("BWT Size -- occ: %zu C(a): %zu SA: %zu F(): %zu L(): %zu misc: %zu TOTAL: %zu\n",
-			o_size, p_size, sa_size, saStr_size, bwStr_size, offset_size, total_size);
+	size_t total_size = o_size + p_size + saStr_size + bwStr_size + offset_size;
+	printf("BWT Size -- occ: %zu C(a): %zu F(): %zu L(): %zu misc: %zu TOTAL: %zu\n",
+			o_size, p_size, saStr_size, bwStr_size, offset_size, total_size);
 	printf("N: %zu Bytes per suffix: %lf\n", m_L.size(), (double)total_size / m_L.size());
 }
-
-#endif

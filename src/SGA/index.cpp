@@ -11,6 +11,7 @@
 #include "Util.h"
 #include "index.h"
 #include "SuffixArray.h"
+#include "SeqReader.h"
 
 int indexMain(int argc, char** argv)
 {
@@ -30,24 +31,7 @@ int indexMain(int argc, char** argv)
 
 void buildIndex(std::string filename)
 {
-	std::ifstream in(filename.c_str());
-	ReadTable rt;
-
-	std::string line;
-	size_t count = 0;
-	while(in >> line)
-	{
-		if(count % 2 == 1)
-		{
-			Read r("", line);
-			rt.addRead(r);
-		}
-
-		if(count % 10000 == 0)
-			std::cout << "Processed " << count << "\n";
-		++count;
-	}
-	std::cout << "Loaded " << rt.getCount() << " reads\n";
+	ReadTable rt(filename);
 
 	// Make initial suffix arrays
 	SuffixArray sa;

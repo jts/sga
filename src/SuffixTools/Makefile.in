@@ -34,7 +34,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-subdir = STA
+subdir = SuffixTools
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -46,14 +46,14 @@ CONFIG_CLEAN_FILES =
 LIBRARIES = $(noinst_LIBRARIES)
 AR = ar
 ARFLAGS = cru
-libsta_a_AR = $(AR) $(ARFLAGS)
-libsta_a_LIBADD =
-am_libsta_a_OBJECTS = libsta_a-STA.$(OBJEXT) libsta_a-BWT.$(OBJEXT) \
-	libsta_a-STCommon.$(OBJEXT) libsta_a-SuffixTree.$(OBJEXT) \
-	libsta_a-Occurance.$(OBJEXT) libsta_a-SuffixArray.$(OBJEXT) \
-	libsta_a-InverseSuffixArray.$(OBJEXT) \
-	libsta_a-ReadTable.$(OBJEXT)
-libsta_a_OBJECTS = $(am_libsta_a_OBJECTS)
+libsuffixtools_a_AR = $(AR) $(ARFLAGS)
+libsuffixtools_a_LIBADD =
+am_libsuffixtools_a_OBJECTS = libsuffixtools_a-BWT.$(OBJEXT) \
+	libsuffixtools_a-STCommon.$(OBJEXT) \
+	libsuffixtools_a-Occurance.$(OBJEXT) \
+	libsuffixtools_a-SuffixArray.$(OBJEXT) \
+	libsuffixtools_a-InverseSuffixArray.$(OBJEXT)
+libsuffixtools_a_OBJECTS = $(am_libsuffixtools_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -66,8 +66,8 @@ COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libsta_a_SOURCES)
-DIST_SOURCES = $(libsta_a_SOURCES)
+SOURCES = $(libsuffixtools_a_SOURCES)
+DIST_SOURCES = $(libsuffixtools_a_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -157,21 +157,18 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-noinst_LIBRARIES = libsta.a
-libsta_a_CPPFLAGS = \
+noinst_LIBRARIES = libsuffixtools.a
+libsuffixtools_a_CPPFLAGS = \
 	-I$(top_srcdir)/Util \
 	-I$(top_srcdir)/Bigraph \
 	-I$(top_srcdir)/Stats
 
-libsta_a_SOURCES = STA.cpp \
-			  BWT.cpp BWT.h \
+libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 			  STCommon.cpp STCommon.h \
-			  SuffixTree.cpp SuffixTree.h \
 			  STGlobal.h \
 			  Occurance.cpp Occurance.h \
 			  SuffixArray.cpp SuffixArray.h \
-			  InverseSuffixArray.cpp InverseSuffixArray.h \
-			  ReadTable.cpp ReadTable.h
+			  InverseSuffixArray.cpp InverseSuffixArray.h
 
 all: all-am
 
@@ -186,9 +183,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign  STA/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign  SuffixTools/Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign  STA/Makefile
+	  $(AUTOMAKE) --foreign  SuffixTools/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -209,10 +206,10 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 
 clean-noinstLIBRARIES:
 	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
-libsta.a: $(libsta_a_OBJECTS) $(libsta_a_DEPENDENCIES) 
-	-rm -f libsta.a
-	$(libsta_a_AR) libsta.a $(libsta_a_OBJECTS) $(libsta_a_LIBADD)
-	$(RANLIB) libsta.a
+libsuffixtools.a: $(libsuffixtools_a_OBJECTS) $(libsuffixtools_a_DEPENDENCIES) 
+	-rm -f libsuffixtools.a
+	$(libsuffixtools_a_AR) libsuffixtools.a $(libsuffixtools_a_OBJECTS) $(libsuffixtools_a_LIBADD)
+	$(RANLIB) libsuffixtools.a
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -220,14 +217,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsta_a-BWT.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsta_a-InverseSuffixArray.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsta_a-Occurance.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsta_a-ReadTable.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsta_a-STA.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsta_a-STCommon.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsta_a-SuffixArray.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsta_a-SuffixTree.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-BWT.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-Occurance.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-STCommon.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-SuffixArray.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -243,117 +237,75 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
-libsta_a-STA.o: STA.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-STA.o -MD -MP -MF "$(DEPDIR)/libsta_a-STA.Tpo" -c -o libsta_a-STA.o `test -f 'STA.cpp' || echo '$(srcdir)/'`STA.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-STA.Tpo" "$(DEPDIR)/libsta_a-STA.Po"; else rm -f "$(DEPDIR)/libsta_a-STA.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STA.cpp' object='libsta_a-STA.o' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-BWT.o: BWT.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-BWT.o -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-BWT.Tpo" -c -o libsuffixtools_a-BWT.o `test -f 'BWT.cpp' || echo '$(srcdir)/'`BWT.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-BWT.Tpo" "$(DEPDIR)/libsuffixtools_a-BWT.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-BWT.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='BWT.cpp' object='libsuffixtools_a-BWT.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-STA.o `test -f 'STA.cpp' || echo '$(srcdir)/'`STA.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-BWT.o `test -f 'BWT.cpp' || echo '$(srcdir)/'`BWT.cpp
 
-libsta_a-STA.obj: STA.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-STA.obj -MD -MP -MF "$(DEPDIR)/libsta_a-STA.Tpo" -c -o libsta_a-STA.obj `if test -f 'STA.cpp'; then $(CYGPATH_W) 'STA.cpp'; else $(CYGPATH_W) '$(srcdir)/STA.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-STA.Tpo" "$(DEPDIR)/libsta_a-STA.Po"; else rm -f "$(DEPDIR)/libsta_a-STA.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STA.cpp' object='libsta_a-STA.obj' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-BWT.obj: BWT.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-BWT.obj -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-BWT.Tpo" -c -o libsuffixtools_a-BWT.obj `if test -f 'BWT.cpp'; then $(CYGPATH_W) 'BWT.cpp'; else $(CYGPATH_W) '$(srcdir)/BWT.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-BWT.Tpo" "$(DEPDIR)/libsuffixtools_a-BWT.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-BWT.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='BWT.cpp' object='libsuffixtools_a-BWT.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-STA.obj `if test -f 'STA.cpp'; then $(CYGPATH_W) 'STA.cpp'; else $(CYGPATH_W) '$(srcdir)/STA.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-BWT.obj `if test -f 'BWT.cpp'; then $(CYGPATH_W) 'BWT.cpp'; else $(CYGPATH_W) '$(srcdir)/BWT.cpp'; fi`
 
-libsta_a-BWT.o: BWT.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-BWT.o -MD -MP -MF "$(DEPDIR)/libsta_a-BWT.Tpo" -c -o libsta_a-BWT.o `test -f 'BWT.cpp' || echo '$(srcdir)/'`BWT.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-BWT.Tpo" "$(DEPDIR)/libsta_a-BWT.Po"; else rm -f "$(DEPDIR)/libsta_a-BWT.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='BWT.cpp' object='libsta_a-BWT.o' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-STCommon.o: STCommon.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-STCommon.o -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-STCommon.Tpo" -c -o libsuffixtools_a-STCommon.o `test -f 'STCommon.cpp' || echo '$(srcdir)/'`STCommon.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-STCommon.Tpo" "$(DEPDIR)/libsuffixtools_a-STCommon.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-STCommon.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STCommon.cpp' object='libsuffixtools_a-STCommon.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-BWT.o `test -f 'BWT.cpp' || echo '$(srcdir)/'`BWT.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-STCommon.o `test -f 'STCommon.cpp' || echo '$(srcdir)/'`STCommon.cpp
 
-libsta_a-BWT.obj: BWT.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-BWT.obj -MD -MP -MF "$(DEPDIR)/libsta_a-BWT.Tpo" -c -o libsta_a-BWT.obj `if test -f 'BWT.cpp'; then $(CYGPATH_W) 'BWT.cpp'; else $(CYGPATH_W) '$(srcdir)/BWT.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-BWT.Tpo" "$(DEPDIR)/libsta_a-BWT.Po"; else rm -f "$(DEPDIR)/libsta_a-BWT.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='BWT.cpp' object='libsta_a-BWT.obj' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-STCommon.obj: STCommon.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-STCommon.obj -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-STCommon.Tpo" -c -o libsuffixtools_a-STCommon.obj `if test -f 'STCommon.cpp'; then $(CYGPATH_W) 'STCommon.cpp'; else $(CYGPATH_W) '$(srcdir)/STCommon.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-STCommon.Tpo" "$(DEPDIR)/libsuffixtools_a-STCommon.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-STCommon.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STCommon.cpp' object='libsuffixtools_a-STCommon.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-BWT.obj `if test -f 'BWT.cpp'; then $(CYGPATH_W) 'BWT.cpp'; else $(CYGPATH_W) '$(srcdir)/BWT.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-STCommon.obj `if test -f 'STCommon.cpp'; then $(CYGPATH_W) 'STCommon.cpp'; else $(CYGPATH_W) '$(srcdir)/STCommon.cpp'; fi`
 
-libsta_a-STCommon.o: STCommon.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-STCommon.o -MD -MP -MF "$(DEPDIR)/libsta_a-STCommon.Tpo" -c -o libsta_a-STCommon.o `test -f 'STCommon.cpp' || echo '$(srcdir)/'`STCommon.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-STCommon.Tpo" "$(DEPDIR)/libsta_a-STCommon.Po"; else rm -f "$(DEPDIR)/libsta_a-STCommon.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STCommon.cpp' object='libsta_a-STCommon.o' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-Occurance.o: Occurance.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-Occurance.o -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-Occurance.Tpo" -c -o libsuffixtools_a-Occurance.o `test -f 'Occurance.cpp' || echo '$(srcdir)/'`Occurance.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-Occurance.Tpo" "$(DEPDIR)/libsuffixtools_a-Occurance.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-Occurance.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Occurance.cpp' object='libsuffixtools_a-Occurance.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-STCommon.o `test -f 'STCommon.cpp' || echo '$(srcdir)/'`STCommon.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-Occurance.o `test -f 'Occurance.cpp' || echo '$(srcdir)/'`Occurance.cpp
 
-libsta_a-STCommon.obj: STCommon.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-STCommon.obj -MD -MP -MF "$(DEPDIR)/libsta_a-STCommon.Tpo" -c -o libsta_a-STCommon.obj `if test -f 'STCommon.cpp'; then $(CYGPATH_W) 'STCommon.cpp'; else $(CYGPATH_W) '$(srcdir)/STCommon.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-STCommon.Tpo" "$(DEPDIR)/libsta_a-STCommon.Po"; else rm -f "$(DEPDIR)/libsta_a-STCommon.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='STCommon.cpp' object='libsta_a-STCommon.obj' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-Occurance.obj: Occurance.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-Occurance.obj -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-Occurance.Tpo" -c -o libsuffixtools_a-Occurance.obj `if test -f 'Occurance.cpp'; then $(CYGPATH_W) 'Occurance.cpp'; else $(CYGPATH_W) '$(srcdir)/Occurance.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-Occurance.Tpo" "$(DEPDIR)/libsuffixtools_a-Occurance.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-Occurance.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Occurance.cpp' object='libsuffixtools_a-Occurance.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-STCommon.obj `if test -f 'STCommon.cpp'; then $(CYGPATH_W) 'STCommon.cpp'; else $(CYGPATH_W) '$(srcdir)/STCommon.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-Occurance.obj `if test -f 'Occurance.cpp'; then $(CYGPATH_W) 'Occurance.cpp'; else $(CYGPATH_W) '$(srcdir)/Occurance.cpp'; fi`
 
-libsta_a-SuffixTree.o: SuffixTree.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-SuffixTree.o -MD -MP -MF "$(DEPDIR)/libsta_a-SuffixTree.Tpo" -c -o libsta_a-SuffixTree.o `test -f 'SuffixTree.cpp' || echo '$(srcdir)/'`SuffixTree.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-SuffixTree.Tpo" "$(DEPDIR)/libsta_a-SuffixTree.Po"; else rm -f "$(DEPDIR)/libsta_a-SuffixTree.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SuffixTree.cpp' object='libsta_a-SuffixTree.o' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-SuffixArray.o: SuffixArray.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-SuffixArray.o -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-SuffixArray.Tpo" -c -o libsuffixtools_a-SuffixArray.o `test -f 'SuffixArray.cpp' || echo '$(srcdir)/'`SuffixArray.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-SuffixArray.Tpo" "$(DEPDIR)/libsuffixtools_a-SuffixArray.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-SuffixArray.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SuffixArray.cpp' object='libsuffixtools_a-SuffixArray.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-SuffixTree.o `test -f 'SuffixTree.cpp' || echo '$(srcdir)/'`SuffixTree.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-SuffixArray.o `test -f 'SuffixArray.cpp' || echo '$(srcdir)/'`SuffixArray.cpp
 
-libsta_a-SuffixTree.obj: SuffixTree.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-SuffixTree.obj -MD -MP -MF "$(DEPDIR)/libsta_a-SuffixTree.Tpo" -c -o libsta_a-SuffixTree.obj `if test -f 'SuffixTree.cpp'; then $(CYGPATH_W) 'SuffixTree.cpp'; else $(CYGPATH_W) '$(srcdir)/SuffixTree.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-SuffixTree.Tpo" "$(DEPDIR)/libsta_a-SuffixTree.Po"; else rm -f "$(DEPDIR)/libsta_a-SuffixTree.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SuffixTree.cpp' object='libsta_a-SuffixTree.obj' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-SuffixArray.obj: SuffixArray.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-SuffixArray.obj -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-SuffixArray.Tpo" -c -o libsuffixtools_a-SuffixArray.obj `if test -f 'SuffixArray.cpp'; then $(CYGPATH_W) 'SuffixArray.cpp'; else $(CYGPATH_W) '$(srcdir)/SuffixArray.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-SuffixArray.Tpo" "$(DEPDIR)/libsuffixtools_a-SuffixArray.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-SuffixArray.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SuffixArray.cpp' object='libsuffixtools_a-SuffixArray.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-SuffixTree.obj `if test -f 'SuffixTree.cpp'; then $(CYGPATH_W) 'SuffixTree.cpp'; else $(CYGPATH_W) '$(srcdir)/SuffixTree.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-SuffixArray.obj `if test -f 'SuffixArray.cpp'; then $(CYGPATH_W) 'SuffixArray.cpp'; else $(CYGPATH_W) '$(srcdir)/SuffixArray.cpp'; fi`
 
-libsta_a-Occurance.o: Occurance.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-Occurance.o -MD -MP -MF "$(DEPDIR)/libsta_a-Occurance.Tpo" -c -o libsta_a-Occurance.o `test -f 'Occurance.cpp' || echo '$(srcdir)/'`Occurance.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-Occurance.Tpo" "$(DEPDIR)/libsta_a-Occurance.Po"; else rm -f "$(DEPDIR)/libsta_a-Occurance.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Occurance.cpp' object='libsta_a-Occurance.o' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-InverseSuffixArray.o: InverseSuffixArray.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-InverseSuffixArray.o -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Tpo" -c -o libsuffixtools_a-InverseSuffixArray.o `test -f 'InverseSuffixArray.cpp' || echo '$(srcdir)/'`InverseSuffixArray.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Tpo" "$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='InverseSuffixArray.cpp' object='libsuffixtools_a-InverseSuffixArray.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-Occurance.o `test -f 'Occurance.cpp' || echo '$(srcdir)/'`Occurance.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-InverseSuffixArray.o `test -f 'InverseSuffixArray.cpp' || echo '$(srcdir)/'`InverseSuffixArray.cpp
 
-libsta_a-Occurance.obj: Occurance.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-Occurance.obj -MD -MP -MF "$(DEPDIR)/libsta_a-Occurance.Tpo" -c -o libsta_a-Occurance.obj `if test -f 'Occurance.cpp'; then $(CYGPATH_W) 'Occurance.cpp'; else $(CYGPATH_W) '$(srcdir)/Occurance.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-Occurance.Tpo" "$(DEPDIR)/libsta_a-Occurance.Po"; else rm -f "$(DEPDIR)/libsta_a-Occurance.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Occurance.cpp' object='libsta_a-Occurance.obj' libtool=no @AMDEPBACKSLASH@
+libsuffixtools_a-InverseSuffixArray.obj: InverseSuffixArray.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-InverseSuffixArray.obj -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Tpo" -c -o libsuffixtools_a-InverseSuffixArray.obj `if test -f 'InverseSuffixArray.cpp'; then $(CYGPATH_W) 'InverseSuffixArray.cpp'; else $(CYGPATH_W) '$(srcdir)/InverseSuffixArray.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Tpo" "$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='InverseSuffixArray.cpp' object='libsuffixtools_a-InverseSuffixArray.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-Occurance.obj `if test -f 'Occurance.cpp'; then $(CYGPATH_W) 'Occurance.cpp'; else $(CYGPATH_W) '$(srcdir)/Occurance.cpp'; fi`
-
-libsta_a-SuffixArray.o: SuffixArray.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-SuffixArray.o -MD -MP -MF "$(DEPDIR)/libsta_a-SuffixArray.Tpo" -c -o libsta_a-SuffixArray.o `test -f 'SuffixArray.cpp' || echo '$(srcdir)/'`SuffixArray.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-SuffixArray.Tpo" "$(DEPDIR)/libsta_a-SuffixArray.Po"; else rm -f "$(DEPDIR)/libsta_a-SuffixArray.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SuffixArray.cpp' object='libsta_a-SuffixArray.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-SuffixArray.o `test -f 'SuffixArray.cpp' || echo '$(srcdir)/'`SuffixArray.cpp
-
-libsta_a-SuffixArray.obj: SuffixArray.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-SuffixArray.obj -MD -MP -MF "$(DEPDIR)/libsta_a-SuffixArray.Tpo" -c -o libsta_a-SuffixArray.obj `if test -f 'SuffixArray.cpp'; then $(CYGPATH_W) 'SuffixArray.cpp'; else $(CYGPATH_W) '$(srcdir)/SuffixArray.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-SuffixArray.Tpo" "$(DEPDIR)/libsta_a-SuffixArray.Po"; else rm -f "$(DEPDIR)/libsta_a-SuffixArray.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SuffixArray.cpp' object='libsta_a-SuffixArray.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-SuffixArray.obj `if test -f 'SuffixArray.cpp'; then $(CYGPATH_W) 'SuffixArray.cpp'; else $(CYGPATH_W) '$(srcdir)/SuffixArray.cpp'; fi`
-
-libsta_a-InverseSuffixArray.o: InverseSuffixArray.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-InverseSuffixArray.o -MD -MP -MF "$(DEPDIR)/libsta_a-InverseSuffixArray.Tpo" -c -o libsta_a-InverseSuffixArray.o `test -f 'InverseSuffixArray.cpp' || echo '$(srcdir)/'`InverseSuffixArray.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-InverseSuffixArray.Tpo" "$(DEPDIR)/libsta_a-InverseSuffixArray.Po"; else rm -f "$(DEPDIR)/libsta_a-InverseSuffixArray.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='InverseSuffixArray.cpp' object='libsta_a-InverseSuffixArray.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-InverseSuffixArray.o `test -f 'InverseSuffixArray.cpp' || echo '$(srcdir)/'`InverseSuffixArray.cpp
-
-libsta_a-InverseSuffixArray.obj: InverseSuffixArray.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-InverseSuffixArray.obj -MD -MP -MF "$(DEPDIR)/libsta_a-InverseSuffixArray.Tpo" -c -o libsta_a-InverseSuffixArray.obj `if test -f 'InverseSuffixArray.cpp'; then $(CYGPATH_W) 'InverseSuffixArray.cpp'; else $(CYGPATH_W) '$(srcdir)/InverseSuffixArray.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-InverseSuffixArray.Tpo" "$(DEPDIR)/libsta_a-InverseSuffixArray.Po"; else rm -f "$(DEPDIR)/libsta_a-InverseSuffixArray.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='InverseSuffixArray.cpp' object='libsta_a-InverseSuffixArray.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-InverseSuffixArray.obj `if test -f 'InverseSuffixArray.cpp'; then $(CYGPATH_W) 'InverseSuffixArray.cpp'; else $(CYGPATH_W) '$(srcdir)/InverseSuffixArray.cpp'; fi`
-
-libsta_a-ReadTable.o: ReadTable.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-ReadTable.o -MD -MP -MF "$(DEPDIR)/libsta_a-ReadTable.Tpo" -c -o libsta_a-ReadTable.o `test -f 'ReadTable.cpp' || echo '$(srcdir)/'`ReadTable.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-ReadTable.Tpo" "$(DEPDIR)/libsta_a-ReadTable.Po"; else rm -f "$(DEPDIR)/libsta_a-ReadTable.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ReadTable.cpp' object='libsta_a-ReadTable.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-ReadTable.o `test -f 'ReadTable.cpp' || echo '$(srcdir)/'`ReadTable.cpp
-
-libsta_a-ReadTable.obj: ReadTable.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsta_a-ReadTable.obj -MD -MP -MF "$(DEPDIR)/libsta_a-ReadTable.Tpo" -c -o libsta_a-ReadTable.obj `if test -f 'ReadTable.cpp'; then $(CYGPATH_W) 'ReadTable.cpp'; else $(CYGPATH_W) '$(srcdir)/ReadTable.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsta_a-ReadTable.Tpo" "$(DEPDIR)/libsta_a-ReadTable.Po"; else rm -f "$(DEPDIR)/libsta_a-ReadTable.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ReadTable.cpp' object='libsta_a-ReadTable.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsta_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsta_a-ReadTable.obj `if test -f 'ReadTable.cpp'; then $(CYGPATH_W) 'ReadTable.cpp'; else $(CYGPATH_W) '$(srcdir)/ReadTable.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-InverseSuffixArray.obj `if test -f 'InverseSuffixArray.cpp'; then $(CYGPATH_W) 'InverseSuffixArray.cpp'; else $(CYGPATH_W) '$(srcdir)/InverseSuffixArray.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

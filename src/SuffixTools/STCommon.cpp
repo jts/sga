@@ -58,24 +58,21 @@ uint64_t SAID::getPos() const
 	return (m_val & LOW_MASK);
 }
 
+// Input
+std::istream& operator>>(std::istream& in, SAID& s)
+{
+	uint64_t i;
+	uint64_t p;
+	in >> i >> p;
+	s.setID(i);
+	s.setPos(p);
+	return in;
+}
 
 // Output
 std::ostream& operator<<(std::ostream& out, const SAID& s)
 {
-	out << s.getID() << "," << s.getPos();
-	return out;
-}
-
-
-
-//
-// GSuffix
-//
-
-// output operator for a GSuffix
-std::ostream& operator<<(std::ostream& out, const GSuffix& gs)
-{
-	out << gs.m_label << "," << gs.m_idx;
+	out << s.getID() << " " << s.getPos();
 	return out;
 }
 

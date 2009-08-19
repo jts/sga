@@ -45,9 +45,7 @@ bool SuffixCompare::operator()(SAID x, SAID y)
 }
 
 
-//
 // Construct the suffix array for the string
-// 
 SuffixArray::SuffixArray(uint64_t i, std::string text)
 {
 	SuffixString ss(i, text + "$");
@@ -56,9 +54,7 @@ SuffixArray::SuffixArray(uint64_t i, std::string text)
 	sortConstruct(1, &cycled);
 }
 
-//
 // Construct the suffix array for a vector of strings using the trivial sort method
-//
 SuffixArray::SuffixArray(const StringVector& sv)
 {
 	SuffixStringVector cycled;
@@ -70,22 +66,19 @@ SuffixArray::SuffixArray(const StringVector& sv)
 	sortConstruct(sv.size(), &cycled);
 }
 
-//
 // Construct the suffix array for a table of strings using the trivial sort method
-//
-
 SuffixArray::SuffixArray(const ReadTable& rt)
 {
 	SuffixStringVector cycled;
 	for(size_t i = 0; i < rt.getCount(); ++i)
 	{
-		const Read& r = rt.getRead(i);
+		const SeqItem& r = rt.getRead(i);
 		SuffixString suffix(i, r.seq + "$");
 		makeCycles(suffix, &cycled);
 	}
 	sortConstruct(rt.getCount(), &cycled);
 }
-
+#if 0
 //
 // Merge a new suffix array which is the merger of A and B
 //
@@ -190,15 +183,14 @@ SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
 		}
 	}
 }
+#endif
 
-//
 // Initialize a suffix array for the strings in RT
-//
 void SuffixArray::initialize(const ReadTable& rt)
 {
 	size_t n = rt.getSumLengths() + rt.getCount(); // We need room for 1 suffix per base pair + a '$' char per read
 	m_data.resize(n);
-	m_F.resize(n);
+	m_numStrings = rt.getCount();
 	std::cerr << "Allocating space for " << n << " suffixes\n";
 
 	// Fill the data table with the linear ordering of the suffixes
@@ -213,9 +205,7 @@ void SuffixArray::initialize(const ReadTable& rt)
 	std::cerr << "Created " << count << " suffixes\n";
 }
 
-//
 // Sort an initialized suffix array in-place
-// 
 void SuffixArray::sort(const ReadTable* pRT)
 {
 	SuffixCompare compare(pRT);
@@ -223,16 +213,13 @@ void SuffixArray::sort(const ReadTable* pRT)
 }
 
 
-//
 // Construct the bwt from the cycles table via simple sorting
-//
 void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
 {
 	// Resize all the arrays
 	size_t n = cycles->size();
 
 	m_data.resize(n);
-	m_F.resize(n);
 	m_numStrings = numStrings;
 	
 	// Sort the array
@@ -243,7 +230,6 @@ void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
 	{
 		SuffixString& curr = (*cycles)[i];
 		m_data[i] = curr.id;
-		m_F[i] = curr.str[0];
 	}
 
 	if(0)
@@ -252,7 +238,7 @@ void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
 		std::cout << "i\tSA\tSTR\tISA\n";
 		for(size_t i = 0; i < m_data.size(); ++i)
 		{
-			//std::cout << m_suffixArray[i] << "\t" << m_F[i] << "\t" << m_L[i] << "\n";
+			//std::cout << m_suffixArray[i] << "\t" << m_L[i] << "\n";
 			//SuffixString& ss = (*cycles)[i];
 			std::cout << i << "\t" << (*cycles)[i] << "\n";
 		}
@@ -262,8 +248,10 @@ void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
 // Output operator
 std::ostream& operator<<(std::ostream& out, const SuffixArray& sa)
 {
-	// Write the size
+	// Write the size and number of strings
 	out << sa.m_data.size() << "\n";
+	out << sa.m_numStrings << "\n";
+
 	for(size_t i = 0; i < sa.m_data.size(); ++i)
 	{
 		out << sa.m_data[i] << "\n";
@@ -272,13 +260,32 @@ std::ostream& operator<<(std::ostream& out, const SuffixArray& sa)
 }
 
 
-//
+// Input operator
+std::istream& operator>>(std::istream& in, SuffixArray& sa)
+{
+	// Read the size and number of strings
+	size_t n;
+	in >> n;
+	in >> sa.m_numStrings;
+
+	sa.m_data.resize(n);
+	size_t i = 0;
+	SAID id;
+	while(in >> id)
+		sa.m_data[i++] = id;
+	assert(i == n);
+	return in;
+}
+
 // Validate the suffix array using the read table
-//
 void SuffixArray::validate(const ReadTable* pRT) const
 {
 	size_t maxIdx = pRT->getCount();
 	size_t n = m_data.size();
+
+	// Exit if there is nothing to do
+	if(n == 0)
+		return;
 
 	// Compute the ISA
 	InverseSuffixArray isa(*this);
@@ -314,35 +321,37 @@ void SuffixArray::validate(const ReadTable* pRT) const
 	}
 }
 
-//
+// Get the suffix cooresponding to idx using the read table
+std::string SuffixArray::getSuffix(size_t idx, const ReadTable* pRT) const
+{
+	SAID id = m_data[idx];
+	return pRT->getRead(id.getID()).seq.substr(id.getPos()) + "$";
+}
+
+
 // Print the suffix array
-//
 void SuffixArray::print(const ReadTable* pRT) const
 {
-	std::cout << "i\tSA(i)\tF(i)\n";
+	std::cout << "i\tSA(i)\n";
 	for(size_t i = 0; i < m_data.size(); ++i)
 	{
 		SAID id1 = m_data[i];
 		std::string suffix1 = pRT->getRead(id1.getID()).seq.substr(id1.getPos()) + "$";
-		std::cout << i << "\t" << id1 << "\t" << m_F[i] << "\t" << suffix1 << "\n";
+		std::cout << i << "\t" << id1 << "\t" << suffix1 << "\n";
 	}
 }
 
-//
 // Print the suffix array
-//
 void SuffixArray::print() const
 {
-	std::cout << "i\tSA(i)\tF(i)\n";
+	std::cout << "i\tSA(i)\n";
 	for(size_t i = 0; i < m_data.size(); ++i)
 	{
-		std::cout << i << "\t" << m_data[i] << "\t" << m_F[i] << "\n";
+		std::cout << i << "\t" << m_data[i] << "\n";
 	}
 }
 
-//
 // Make all the cyclic rotations of a string, placing the result in *outTable
-//
 void SuffixArray::makeCycles(SuffixString s, SuffixStringVector* outTable)
 {
 	int l = s.str.length();

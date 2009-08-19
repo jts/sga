@@ -1,3 +1,11 @@
+//-----------------------------------------------
+// Copyright 2009 Wellcome Trust Sanger Institute
+// Written by Jared Simpson (js18@sanger.ac.uk)
+// Released under the GPL license
+//-----------------------------------------------
+//
+// Util - Common data structures and functions
+//
 #ifndef UTIL_H
 #define UTIL_H
 
@@ -37,9 +45,7 @@ typedef std::string Sequence;
 typedef std::string ContigID;
 typedef std::vector<Sequence> SequenceVector;
 
-//
-// Alignment
-//
+// KAlignment
 struct KAlignment
 {
 	ContigID contig_id;
@@ -50,60 +56,23 @@ struct KAlignment
 	bool is_reverse;
 
 	// Return the outer coordinate of the alignment
-	int contigOuterCoordinate() const
-	{
-		if(!is_reverse)
-		{
-			return contig_start_pos - read_start_pos;
-		}
-		else
-		{
-			return contig_start_pos + align_length + read_start_pos;
-		}
-	}
+	int contigOuterCoordinate() const;
 
-	//
 	// Convert the alignment into the alignment on the reverse complement
-	// of the target
-	//
-	void flipAlignment(int targetLength)
-	{
-		int tPos = targetLength - contig_start_pos + align_length;
-		contig_start_pos = tPos;
-		is_reverse = !is_reverse;
-	}
+	void flipAlignment(int targetLength);
 
-	//
-	// Get the distance from thto the end of the contig
+	// Get the distance from the alignment to the end of the contig
 	// This is in the direction of the alignment
-	//
-	int getDistanceToEnd(int targetLen) const
-	{
-		int outerCoordinate = contigOuterCoordinate();
-		if(!is_reverse)
-			return targetLen - outerCoordinate;
-		else
-			return outerCoordinate;
-	}
+	int getDistanceToEnd(int targetLen) const;
 
 	// Comparse by read position
-	static int compareReadPos(const KAlignment& a1, const KAlignment& a2)
-	{
-		return a1.read_start_pos < a2.read_start_pos;
-	}
+	static int compareReadPos(const KAlignment& a1, const KAlignment& a2);
 
-	friend std::istream& operator>> (std::istream& in, KAlignment& a)
-	{
-		in >> a.contig_id >> a.contig_start_pos;
-		in >> a.read_start_pos >> a.align_length;
-		in >> a.read_length >> a.is_reverse;
-		return in;
-	}
+	// Input
+	friend std::istream& operator>> (std::istream& in, KAlignment& a);
 };
 
-//
 // AlignPair
-//
 struct AlignPair
 {
 	friend std::istream& operator>> (std::istream& in, AlignPair& ap)
@@ -116,9 +85,7 @@ struct AlignPair
 	KAlignment aligns[2];
 };
 
-//
 // AdjInfo
-//
 struct AdjInfo
 {
 	ContigID from;
@@ -129,10 +96,7 @@ struct AdjInfo
 	friend std::istream& operator>>(std::istream& in, AdjInfo& a);
 };
 
-
-//
 // Range 
-//
 struct Range
 {
 	Range() : start(0), end(0) {}
@@ -142,35 +106,16 @@ struct Range
 
 	size_t size() { return end - start; }
 
-	friend std::ostream& operator<<(std::ostream& out, const Range& r)
-	{
-		out << "[ " << r.start << "," << r.end << " ]";
-		return out;
-	}
+	friend std::ostream& operator<<(std::ostream& out, const Range& r);
 
-	friend Range intersect(const Range& r1, const Range& r2)
-	{
-		Range result;
-		result.start = std::max(r1.start, r2.start);
-		result.end = std::min(r1.end, r2.end);
-
-		// Check for non-overlap
-		if(result.end <= result.start)
-		{
-			result.start = 0;
-			result.end = 0;
-		}
-		return result;
-	}
+	friend Range intersect(const Range& r1, const Range& r2);
 };
 
 //
 // Functions
 //
 
-//
 // Key-value operations
-//
 template <class C>
 std::string makeKeyValue(std::string key, C value)
 {
