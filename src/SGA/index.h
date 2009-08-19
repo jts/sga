@@ -8,9 +8,10 @@
 //
 #ifndef INDEX_H
 #define INDEX_H
-
-void printIndexUsage();
+#include <getopt.h>
+#include "config.h"
 int indexMain(int argc, char** argv);
 void buildIndex(std::string filename);
+void parseIndexOptions(int argc, char** argv);
 
 #endif

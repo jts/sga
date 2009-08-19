@@ -24,7 +24,7 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2009 Wellcome Trust Sanger Institute\n";
 
 static const char *OVERLAP_USAGE_MESSAGE =
-"Usage: " SUBPROGRAM " [OPTION] ... INDEX READSFILE\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... INDEX READSFILE\n"
 "Compute pairwise overlap between all the sequences in READS using the index INDEX\n"
 "\n"
 "  -v, --verbose                        display verbose output\n"
