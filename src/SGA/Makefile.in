@@ -48,7 +48,7 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_sga_OBJECTS = sga-sga.$(OBJEXT) sga-index.$(OBJEXT) \
-	sga-overlap.$(OBJEXT)
+	sga-overlap.$(OBJEXT) sga-assemble.$(OBJEXT)
 sga_OBJECTS = $(am_sga_OBJECTS)
 sga_DEPENDENCIES = $(top_builddir)/Util/libutil.a \
 	$(top_builddir)/Stats/libstats.a \
@@ -169,7 +169,8 @@ sga_LDADD = \
 
 sga_SOURCES = sga.cpp \
               index.cpp index.h \
-			  overlap.cpp overlap.h
+			  overlap.cpp overlap.h \
+			  assemble.cpp assemble.h
 
 all: all-am
 
@@ -237,6 +238,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-assemble.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-overlap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-sga.Po@am__quote@
@@ -296,6 +298,20 @@ sga-overlap.obj: overlap.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='overlap.cpp' object='sga-overlap.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-overlap.obj `if test -f 'overlap.cpp'; then $(CYGPATH_W) 'overlap.cpp'; else $(CYGPATH_W) '$(srcdir)/overlap.cpp'; fi`
+
+sga-assemble.o: assemble.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga-assemble.o -MD -MP -MF "$(DEPDIR)/sga-assemble.Tpo" -c -o sga-assemble.o `test -f 'assemble.cpp' || echo '$(srcdir)/'`assemble.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga-assemble.Tpo" "$(DEPDIR)/sga-assemble.Po"; else rm -f "$(DEPDIR)/sga-assemble.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='assemble.cpp' object='sga-assemble.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-assemble.o `test -f 'assemble.cpp' || echo '$(srcdir)/'`assemble.cpp
+
+sga-assemble.obj: assemble.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga-assemble.obj -MD -MP -MF "$(DEPDIR)/sga-assemble.Tpo" -c -o sga-assemble.obj `if test -f 'assemble.cpp'; then $(CYGPATH_W) 'assemble.cpp'; else $(CYGPATH_W) '$(srcdir)/assemble.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga-assemble.Tpo" "$(DEPDIR)/sga-assemble.Po"; else rm -f "$(DEPDIR)/sga-assemble.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='assemble.cpp' object='sga-assemble.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-assemble.obj `if test -f 'assemble.cpp'; then $(CYGPATH_W) 'assemble.cpp'; else $(CYGPATH_W) '$(srcdir)/assemble.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

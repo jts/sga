@@ -9,5 +9,6 @@ libutil_a_SOURCES = \
 	ContigGraph.h ContigGraph.cpp \
 	Timer.h Timer.cpp \
 	ReadTable.h ReadTable.cpp \
-	SeqReader.h SeqReader.cpp
+	SeqReader.h SeqReader.cpp \
+	StringGraph.h StringGraph.cpp
 

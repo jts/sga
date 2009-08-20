@@ -1,5 +1,13 @@
-#ifndef SEQGRAPH_H
-#define SEQGRAPH_H
+//-----------------------------------------------
+// Copyright 2009 Wellcome Trust Sanger Institute
+// Written by Jared Simpson (js18@sanger.ac.uk)
+// Released under the GPL license
+//-----------------------------------------------
+//
+// Templated bidirectional graph 
+//
+#ifndef BIGRAPH_H
+#define BIGRAPH_H
 
 #include <string>
 #include <stdio.h>
@@ -7,7 +15,6 @@
 #include <map>
 #include "GraphCommon.h"
 #include "Vertex.h"
-
 template<typename VT>
 class Bigraph
 {
@@ -85,7 +92,6 @@ class Bigraph
 		// Visit each vertex in the graph and call the visit functor object
 		template<typename VF>
 		bool visit(VF& vf);
-
 		
 		// Set the colors for the entire graph
 		void setColors(VertexColor c);

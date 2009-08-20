@@ -46,6 +46,13 @@ typedef std::string Sequence;
 typedef std::string ContigID;
 typedef std::vector<Sequence> SequenceVector;
 
+// SeqItem
+struct SeqItem
+{
+	std::string id;
+	Sequence seq;
+};
+
 // KAlignment
 struct KAlignment
 {
@@ -131,6 +138,7 @@ struct SeqCoord
 struct Overlap
 {
 	// constructors
+	Overlap() {}
 	Overlap(std::string i1, int s1, int e1, std::string i2, int s2, int e2); 
 
 	// functions

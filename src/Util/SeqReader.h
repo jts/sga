@@ -20,13 +20,6 @@ enum RecordType
 };
 
 //
-struct SeqItem
-{
-	std::string id;
-	Sequence seq;
-};
-
-//
 class SeqReader
 {
 	public:

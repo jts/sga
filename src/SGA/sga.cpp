@@ -10,6 +10,7 @@
 #include <iostream>
 #include "index.h" 
 #include "overlap.h"
+#include "assemble.h"
 
 #define VERSION "0.1"
 #define PROGRAM_BIN "sga"
@@ -37,6 +38,8 @@ int main(int argc, char** argv)
 			indexMain(argc - 1, argv + 1);
 		else if(command == "overlap")
 			overlapMain(argc - 1, argv + 1);
+		else if(command == "assemble")
+			assembleMain(argc - 1, argv + 1);
 		else
 		{
 			std::cerr << "Unrecognized command: " << command << "\n";
