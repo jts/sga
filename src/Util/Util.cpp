@@ -130,6 +130,36 @@ Interval intersect(const Interval& r1, const Interval& r2)
 // SeqCoord
 //
 
+// Checks if the left edge is extreme
+bool SeqCoord::isLeftExtreme() const
+{
+	return (interval.start == 0);
+}
+
+// Checks if the right edge is extreme
+bool SeqCoord::isRightExtreme(size_t stringLen) const
+{
+	return (interval.end + 1 == static_cast<int>(stringLen));
+}
+
+// Checks if at least one endpoint is the end of the string
+bool SeqCoord::isExtreme(size_t stringLen) const
+{
+	return (isLeftExtreme() || isRightExtreme(stringLen));
+}
+
+// Checks if both end points are the end of the string
+bool SeqCoord::isContainment(size_t stringLen) const
+{
+	return (isLeftExtreme() && isRightExtreme(stringLen));
+}
+
+// Check if the interval is in reverse orientation
+bool SeqCoord::isReverse() const
+{
+	return interval.end < interval.start;
+}
+
 // Output
 std::ostream& operator<<(std::ostream& out, const SeqCoord& sc)
 {
@@ -150,23 +180,23 @@ std::istream& operator>>(std::istream& in, SeqCoord& sc)
 Overlap::Overlap(std::string i1, int s1, int e1, 
                  std::string i2, int s2, int e2)
 {
-	sc[0] = SeqCoord(i1, s1, e1);
-	sc[1] = SeqCoord(i2, s2, e2);
+	read[0] = SeqCoord(i1, s1, e1);
+	read[1] = SeqCoord(i2, s2, e2);
 }
 
 // Output
 std::ostream& operator<<(std::ostream& out, const Overlap& o)
 {
-	out << o.sc[0] << "\t";
-	out << o.sc[1];
+	out << o.read[0] << "\t";
+	out << o.read[1];
 	return out;
 }
 
 // Input
 std::istream& operator>>(std::istream& in, Overlap& o)
 {
-	in >> o.sc[0];
-	in >> o.sc[1];
+	in >> o.read[0];
+	in >> o.read[1];
 	return in;
 }
 

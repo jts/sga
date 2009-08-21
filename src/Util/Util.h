@@ -126,6 +126,11 @@ struct SeqCoord
 	SeqCoord(std::string i, int s, int e) : id(i), interval(s, e) {}
 
 	// functions
+	bool isLeftExtreme() const;
+	bool isRightExtreme(size_t stringLen) const;
+	bool isExtreme(size_t stringLen) const;
+	bool isContainment(size_t stringLen) const;
+	bool isReverse() const;
 	friend std::ostream& operator<<(std::ostream& out, const SeqCoord& sc);
 	friend std::istream& operator>>(std::istream& in, SeqCoord& sc);	
 
@@ -146,7 +151,7 @@ struct Overlap
 	friend std::istream& operator>>(std::istream& in, Overlap& o);
 
 	// data
-	SeqCoord sc[2];
+	SeqCoord read[2];
 };
 
 //
