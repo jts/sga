@@ -39,6 +39,7 @@ void graphTests()
 	g.addEdge(pE4);
 	g.validate();
 	g.writeDot("before.dot");
+	
 	g.simplify();
 	g.validate();
 	g.writeDot("test.dot");

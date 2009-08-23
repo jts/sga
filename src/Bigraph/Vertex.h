@@ -41,7 +41,7 @@ class Vertex
 	public:
 	
 		Vertex(VertexID id) : m_id(id), m_color(VC_WHITE) {}
-		virtual ~Vertex() {};
+		virtual ~Vertex();
 
 		// Add an edge
 		void addEdge(Edge* ep);

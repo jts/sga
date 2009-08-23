@@ -9,6 +9,16 @@
 #include "Vertex.h"
 #include "Edge.h"
 
+Vertex::~Vertex()
+{
+	EdgePtrMapIter iter = m_edges.begin();
+	for(; iter != m_edges.end(); ++iter)
+	{
+		delete iter->second;
+		iter->second = NULL;
+	}
+}
+
 // Add an edge
 void Vertex::addEdge(Edge* ep)
 {

@@ -176,9 +176,13 @@ void Bigraph::merge(Edge* pEdge)
 
 	// Remove the edge from pV1 to pV2
 	pV1->removeEdge(pEdge);
+	delete pEdge;
+	pEdge = 0;
 
 	// Remove the edge from pV2 to pV1
 	pV2->removeEdge(pTwin);
+	delete pTwin;
+	pEdge = 0;
 
 	// Remove V2
 	removeVertex(pV2->getID());
