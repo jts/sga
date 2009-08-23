@@ -3,33 +3,44 @@
 #include "Vertex.h"
 #include "Bigraph.h"
 
+void graphTests();
+
 int main(int argc, char** argv)
 {
 	(void)argc;
 	(void)argv;
-
+	graphTests();
 	return 0;
 }
 void graphTests()
 {
-	typedef Edge<int> IntEdge;
-	typedef Vertex<int, IntEdge> IntVertex;
 
-	IntVertex* v1 = new IntVertex("1");
-	IntVertex* v2 = new IntVertex("2");
-	IntVertex* v3 = new IntVertex("3");
+	Vertex* v1 = new Vertex("1");
+	Vertex* v2 = new Vertex("2");
+	Vertex* v3 = new Vertex("3");
 
-	typedef Bigraph<IntVertex> IntGraph;
+	Edge* pE1 = new Edge(v1, v2, ED_SENSE, EC_REVERSE);
+	Edge* pE2 = new Edge(v2, v1, ED_SENSE, EC_REVERSE);
+	Edge* pE3 = new Edge(v2, v3, ED_ANTISENSE, EC_SAME);
+	Edge* pE4 = new Edge(v3, v2, ED_SENSE, EC_SAME);
 
-	IntEdge e1("1", "2", ED_SENSE, EC_SAME, 10);
-	IntEdge e2("2", "3", ED_SENSE, EC_SAME, 20);
+	pE1->setTwin(pE2);
+	pE2->setTwin(pE1);
+	pE3->setTwin(pE4);
+	pE4->setTwin(pE3);
 
-	IntGraph g;
+	Bigraph g;
 	g.addVertex(v1);
 	g.addVertex(v2);
 	g.addVertex(v3);
-	v1->addEdge(e1);
-	v2->addEdge(e2);
+	g.addEdge(pE1);
+	g.addEdge(pE2);
+	g.addEdge(pE3);
+	g.addEdge(pE4);
+	g.validate();
+	g.writeDot("before.dot");
+	g.simplify();
+	g.validate();
 	g.writeDot("test.dot");
 }
 

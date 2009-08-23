@@ -4,7 +4,7 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// Templated bidirectional graph 
+// Bidirectional graph 
 //
 #ifndef BIGRAPH_H
 #define BIGRAPH_H
@@ -15,36 +15,32 @@
 #include <map>
 #include "GraphCommon.h"
 #include "Vertex.h"
-template<typename VT>
+#include "Edge.h"
+
+//
+// Typedefs
+//
+typedef std::map<VertexID, Vertex*> VertexPtrMap;
+typedef VertexPtrMap::iterator VertexPtrMapIter;
+typedef VertexPtrMap::const_iterator VertexPtrMapConstIter;
+
+class Bigraph;
+typedef bool(*VertexVisitFunction)(Bigraph*, Vertex*);
+
+typedef EdgePtrVec Path; // alias
+typedef std::vector<Path> PathVector;
+typedef std::vector<VertexID> VertexIDVec;
+
 class Bigraph
 {
 
 	public:
-		//
-		// Typedefs
-		//
-		typedef VT VertexType;
-		typedef typename VertexType::EdgeType GraphEdgeType;
-
-		typedef std::map<VertexID, VertexType*> VertexPtrMap;
-		typedef typename VertexPtrMap::iterator VertexPtrMapIter;
-		typedef typename VertexPtrMap::const_iterator VertexPtrMapConstIter;
-		
-		typedef bool(*VertexVisitFunction)(Bigraph*, VertexType*);
-		typedef std::string(*VertexColorFunction)(typename VertexType::VertexData);
-
-		typedef std::vector<GraphEdgeType> EdgeVec;
-		typedef typename EdgeVec::iterator EdgeVecIter;
-		typedef EdgeVec Path; // alias
-		typedef std::vector<Path> PathVector;
-		typedef std::vector<VertexID> VertexIDVec;
-
 	
 		Bigraph();
 		~Bigraph();
 
 		// Add a vertex
-		void addVertex(VertexType* pVert);
+		void addVertex(Vertex* pVert);
 		
 		// Remove a vertex
 		void removeVertex(VertexID id);
@@ -53,16 +49,19 @@ class Bigraph
 		bool hasVertex(VertexID id);
 
 		// Get a vertex
-		VertexType* getVertex(VertexID id) const;
+		Vertex* getVertex(VertexID id) const;
 
 		// Add an edge
-		void addEdge(const GraphEdgeType& e);
+		void addEdge(Edge* pEdge);
 
 		// Remove an edge
-		void removeEdge(const GraphEdgeType& e);
+		void removeEdge(const EdgeDesc& ed);
 
 		// Merge vertices
 		void mergeVertices(VertexID id1, VertexID id2);
+
+		// Merge vertices that are joined by the specified edge
+		void merge(Edge* pEdge);		
 
 		// Simplify the graph by removing transitive edges
 		void simplify();
@@ -83,6 +82,9 @@ class Bigraph
 		// The path expands in both directions so the first node in the path is not necessarily the source
 		Path constructLinearPath(VertexID id);
 
+		// Reverse a path
+		static Path reversePath(const Path& path);
+
 		// Print simple summary statistics to stdout
 		void stats() const;
 		
@@ -96,8 +98,8 @@ class Bigraph
 		// Set the colors for the entire graph
 		void setColors(VertexColor c);
 
-		// Dump the graph to a dot file
-		void writeDot(string filename, int dotFlags = 0, VertexColorFunction colorFunc = &VertexBlackFunction) const;
+		// Write the graph to a dot file
+		void writeDot(std::string filename, int dotFlags = 0) const;
 
 	private:
 
@@ -106,13 +108,8 @@ class Bigraph
 
 		void followLinear(VertexID id, EdgeDir dir, Path& outPath);
 
-		// Merge two vertices along a specified edge
-		void mergeAlongEdge(VertexType* pV1, VertexType* pV2, const GraphEdgeType& edge);
-
 		// Vertex collection
 		VertexPtrMap m_vertices;
 };
-
-#include "Bigraph.impl"
 
 #endif

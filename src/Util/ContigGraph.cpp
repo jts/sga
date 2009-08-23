@@ -24,8 +24,7 @@ void loadEdges(ContigGraph& graph, int overlap, std::string filename)
 	AdjInfo a;
 	while(file >> a)
 	{
-		ContigEdge e(a.from, a.to, (EdgeDir)a.dir, (EdgeComp)a.comp, overlap);
-		graph.addEdge(e);
+		graph.addEdge(new Edge(a.from, a.to, (EdgeDir)a.dir, (EdgeComp)a.comp));
 	}
 }
 

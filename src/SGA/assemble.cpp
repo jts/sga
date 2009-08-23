@@ -64,6 +64,16 @@ int assembleMain(int argc, char** argv)
 void assemble()
 {
 	StringGraph* pGraph = createStringGraph(opt::readsFile, opt::overlapFile);
+
+	SGFastaVisitor* bv = new SGFastaVisitor("before.fa");
+	pGraph->visit(*bv);
+	delete bv;
+	
+	pGraph->simplify();
+	pGraph->writeDot("postSimplify.fa");
+
+	SGFastaVisitor av("after.fa");
+	pGraph->visit(av);
 	delete pGraph;
 }
 

@@ -1,3 +1,11 @@
+//-----------------------------------------------
+// Copyright 2009 Wellcome Trust Sanger Institute
+// Written by Jared Simpson (js18@sanger.ac.uk)
+// Released under the GPL license
+//-----------------------------------------------
+//
+// Bidirectional graph 
+//
 #include <assert.h>
 #include <ostream>
 #include <fstream>
@@ -7,18 +15,16 @@
 //
 //
 //
-template<typename VT>
-Bigraph<VT>::Bigraph()
+Bigraph::Bigraph()
 {
 }
 
 //
 //
 //
-template<typename VT>
-Bigraph<VT>::~Bigraph()
+Bigraph::~Bigraph()
 {
-	typename VertexPtrMap::iterator iter = m_vertices.begin(); 
+	VertexPtrMap::iterator iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
 	{
 		delete iter->second;
@@ -29,28 +35,19 @@ Bigraph<VT>::~Bigraph()
 //
 // Add a vertex
 //
-template<typename VT>
-void Bigraph<VT>::addVertex(VertexType* pVert)
+void Bigraph::addVertex(Vertex* pVert)
 {
-	// Make sure the id is correct
 	m_vertices.insert(std::make_pair(pVert->getID(), pVert));
 }
 
 //
 // Remove a vertex
 //
-template<typename VT>
-void Bigraph<VT>::removeVertex(VertexID id)
+void Bigraph::removeVertex(VertexID id)
 {
 	// Remove the edges pointing to this Vertex
-	VertexType* pVertex = getVertex(id);
-	EdgeVec ev = pVertex->getEdges();
-	for(EdgeVecIter iter = ev.begin(); iter != ev.end(); ++iter)
-	{
-		GraphEdgeType twin = iter->getTwin();
-		VertexType* pV2 = getVertex(twin.getStart());
-		pV2->removeEdge(twin);
-	}
+	Vertex* pVertex = getVertex(id);
+	assert(pVertex->countEdges() == 0);
 
 	// Remove the vertex from the collection
 	delete pVertex;
@@ -60,8 +57,7 @@ void Bigraph<VT>::removeVertex(VertexID id)
 //
 // Check for the existance of a vertex
 //
-template<typename VT>
-bool Bigraph<VT>::hasVertex(VertexID id)
+bool Bigraph::hasVertex(VertexID id)
 {
 	VertexPtrMapIter iter = m_vertices.find(id);
 	return iter != m_vertices.end();
@@ -70,8 +66,7 @@ bool Bigraph<VT>::hasVertex(VertexID id)
 //
 // Get a vertex
 //
-template<typename VT>
-typename Bigraph<VT>::VertexType* Bigraph<VT>::getVertex(VertexID id) const
+Vertex* Bigraph::getVertex(VertexID id) const
 {
 	VertexPtrMapConstIter iter = m_vertices.find(id);
 	if(iter == m_vertices.end())
@@ -85,113 +80,114 @@ typename Bigraph<VT>::VertexType* Bigraph<VT>::getVertex(VertexID id) const
 //
 // Add an edge
 //
-template<typename VT>
-void Bigraph<VT>::addEdge(const GraphEdgeType& e)
+void Bigraph::addEdge(Edge* pEdge)
 {
-	VertexType* pVert1 = getVertex(e.getStart());
-	pVert1->addEdge(e);
+	Vertex* pVert = getVertex(pEdge->getStartID());
+	pVert->addEdge(pEdge);
 }
 
 //
 // Remove an edge
 //
-template<typename VT>
-void Bigraph<VT>::removeEdge(const GraphEdgeType& e)
+void Bigraph::removeEdge(const EdgeDesc& ed)
 {
-	VertexType* pVert1 = getVertex(e.getStart());
-	pVert1->removeEdge(e);
+	Vertex* pVert = getVertex(ed.id);
+	pVert->removeEdge(ed);
 }
 
 //
 // High level merge function that does not specify an edge
 //
-template<typename VT>
-void Bigraph<VT>::mergeVertices(VertexID id1, VertexID id2)
+void Bigraph::mergeVertices(VertexID id1, VertexID id2)
 {
-	VertexType* pVert1 = getVertex(id1);
-	VertexType* pVert2 = getVertex(id2); 
+	Vertex* pVert1 = getVertex(id1);
 
 	// Get the edges from vertex1 to vertex2
-	EdgeVec edgesTo = pVert1->findEdgesTo(id2);
+	EdgePtrVec edgesTo = pVert1->findEdgesTo(id2);
 
 	if(edgesTo.empty())
 	{
-		cerr << "mergeVertices: vertices are not connected\n";
+		std::cerr << "mergeVertices: vertices are not connected\n";
 		return;
 	}
 
 	if(edgesTo.size() > 1)
 	{
-		cerr << "mergeVertces: cannot merge because of ambigious edges\n";
+		std::cerr << "mergeVertces: cannot merge because of ambigious edges\n";
 		return;
 	}
 
 	// There is a single unique edge between the vertices
-	GraphEdgeType mergeEdge = *edgesTo.begin();
+	Edge* mergeEdge = *edgesTo.begin();
 
 	// Call the real merging function
-	mergeAlongEdge(pVert1, pVert2, mergeEdge);
+	merge(mergeEdge);
 }
 
 //
 // Merge two vertices along the specified edge
 //
-template<typename VT>
-void Bigraph<VT>::mergeAlongEdge(VertexType* pV1, VertexType* pV2, const GraphEdgeType& edge)
+void Bigraph::merge(Edge* pEdge)
 {
-	// Merge the data
-	pV1->merge(pV2, edge);
+	Vertex* pV1 = pEdge->getStart();
+	Vertex* pV2 = pEdge->getEnd();
+	std::cout << "Merging " << pV1->getID() << " with " << pV2->getID() << "\n";
 
-	// Construct the twin edge (the edge in v2 that points to v1)
-	GraphEdgeType twinEdge = edge.getTwin();
+	// Merge the data
+	pV1->merge(pEdge);
+
+	// Get the twin edge (the edge in v2 that points to v1)
+	Edge* pTwin = pEdge->getTwin();
 
 	// Ensure v2 has the twin edge
-	assert(pV2->hasEdge(twinEdge));
+	assert(pV2->hasEdge(pTwin));
 
-	// Get the edge set opposite of the twin edge
-	EdgeVec transEdges = pV2->getEdges(!twinEdge.getDir());
+	// Get the edge set opposite of the twin edge (which will be the new edges in this direction for V1)
+	EdgePtrVec transEdges = pV2->getEdges(!pTwin->getDir());
 
 	// Should the edges be flipped?
-	bool doFlip = (edge.getComp() == EC_REVERSE);
+	bool doFlip = (pEdge->getComp() == EC_REVERSE);
 
-	// Add the new edges to V1
-	for(EdgeVecIter iter = transEdges.begin(); iter != transEdges.end(); ++iter)
+	// Move the edges from pV2 to pV1
+	for(EdgePtrVecIter iter = transEdges.begin(); iter != transEdges.end(); ++iter)
 	{
-		// If the verts dont have the same comp, flip the edge
+		Edge* pTransEdge = *iter;
+
+		// Remove the edge from V2
+		pV2->removeEdge(pTransEdge);
+
+		// If the edge between V1 and V2 was a reverse edge, this edge 
+		// must be flipped before adding to V1
 		if(doFlip)
-			iter->flip();
+			pTransEdge->flip();
+		assert(pTransEdge->getDir() == pEdge->getDir());
+		pTransEdge->setStart(pV1); //update the start vertex
+		pV1->addEdge(pTransEdge); // add to V1
 
-		assert(iter->getDir() == edge.getDir());
-
-		// Build the new edge and add it to V1
-		GraphEdgeType e(pV1->getID(), iter->getEnd(), iter->getDir(), iter->getComp(), iter->getOverlap());
-		pV1->addEdge(e);
-
-		// Add the twin edge to the new partner node
-		GraphEdgeType twin = e.getTwin();
-		VertexType* pV3 = getVertex(twin.getStart());
-		pV3->addEdge(twin);
+		// Now, update the twin edge
+		Vertex* pV3 = pTransEdge->getEnd();
+		Edge* pE3 = pTransEdge->getTwin();
+		pV3->removeEdge(pE3); 
+		pE3->merge(pTwin); // This updates the endpoint
+		if(doFlip)
+			pE3->flipComp(); // Only the comp needs to be updated, the direction stays the same
+		pV3->addEdge(pE3); 
 	}
 
 	// Remove the edge from pV1 to pV2
-	pV1->removeEdge(edge);
+	pV1->removeEdge(pEdge);
 
 	// Remove the edge from pV2 to pV1
-	pV2->removeEdge(twinEdge);
+	pV2->removeEdge(pTwin);
 
-	// Check if V2 should be completely deleted
-	size_t edgeCount = pV2->countEdges(twinEdge.getDir());
-	if(edgeCount == 0)
-	{
-		removeVertex(pV2->getID());
-	}
+	// Remove V2
+	removeVertex(pV2->getID());
 }
 
 //
 //	Simplify the graph by removing transitive edges
 //
-template<typename VT>
-void Bigraph<VT>::simplify()
+void Bigraph::simplify()
 {
 	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
@@ -201,14 +197,14 @@ void Bigraph<VT>::simplify()
 			EdgeDir dir = EDGE_DIRECTIONS[d];
 			
 			// Get the edges for this direction
-			EdgeVec edges = iter->second->getEdges(dir);
+			EdgePtrVec edges = iter->second->getEdges(dir);
 
 			// If there is a single edge in this direction, merge the vertices
 			// Don't merge singular self edges though
-			if(edges.size() == 1 && !edges.front().isSelf())
+			if(edges.size() == 1 && !edges.front()->isSelf())
 			{
-				GraphEdgeType single = edges.front();
-				mergeAlongEdge(iter->second, getVertex(single.getEnd()), single);
+				Edge* pSingle = edges.front();
+				merge(pSingle);
 			}
 		}
 	}
@@ -217,21 +213,25 @@ void Bigraph<VT>::simplify()
 //
 // Validate that the graph is sane
 //
-template<typename VT>
-void Bigraph<VT>::validate()
+void Bigraph::validate()
 {
 	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
 	{
 		// Ensure the twin edge exists for every edge
-		EdgeVec edges = iter->second->getEdges();
-		for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+		EdgePtrVec edges = iter->second->getEdges();
+		for(EdgePtrVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 		{
-			VertexType* pV2 = getVertex(iter->getEnd());
-			if(!pV2->hasEdge(iter->getTwin()))
+			Edge* pEdge = *iter;
+			Vertex* pV2 = getVertex(pEdge->getEndID());
+			if(!pV2->hasEdge(pEdge->getTwinDesc()))
 			{
-				cerr << "Warning, twin edge does not exist for " << iter->getStart() 
-						<< "," << iter->getEnd() << endl;
+				std::cerr << "Warning edge " << *pEdge << " does not have a twin with desc " << pEdge->getTwinDesc() << "\n";
+			}
+
+			if(pEdge->getTwin() == NULL)
+			{
+				std::cerr << "Warning, twin pointer for edge " << *pEdge << " is NULL\n";
 			}
 		}
 	}
@@ -241,13 +241,15 @@ void Bigraph<VT>::validate()
 //
 // Flip a vertex
 //
-template<typename VT>
-void Bigraph<VT>::flip(VertexID id)
+void Bigraph::flip(VertexID /*id*/)
 {
-	VertexType* pVertex = getVertex(id);
-	EdgeVec edges = pVertex->getEdges();
+	assert(false);
+#if 0
+	// TODO: update this code
+	Vertex* pVertex = getVertex(id);
+	EdgePtrVec edges = pVertex->getEdges();
 
-	for(EdgeVecIter iter = edges.begin(); iter != edges.end(); ++iter)
+	for(EdgePtrVecIter iter = edges.begin(); iter != edges.end(); ++iter)
 	{
 		// Get the old twin
 		GraphEdgeType twin = iter->getTwin();
@@ -260,17 +262,17 @@ void Bigraph<VT>::flip(VertexID id)
 		pVertex->addEdge(flipped);
 
 		// Update the partner by deleting the old twin and 
-		VertexType* pV2 = getVertex(twin.getStart());
+		Vertex* pV2 = getVertex(twin.getStart());
 		pV2->removeEdge(twin);
 		pV2->addEdge(flipped.getTwin());
 	}
+#endif
 }
 
 //
 // Get the IDs of the vertices that do not branch (both sense/antisense degree <= 1)
 //
-template<typename VT>
-VertexIDVec Bigraph<VT>::getNonBranchingVertices() const
+VertexIDVec Bigraph::getNonBranchingVertices() const
 {
 	VertexIDVec out;
 	VertexPtrMapConstIter iter = m_vertices.begin(); 
@@ -291,8 +293,7 @@ VertexIDVec Bigraph<VT>::getNonBranchingVertices() const
 // Get all the paths corresponding to the linear components of the graph
 // Precondition: all vertices have in/out degree at most 1 (no branching)
 //
-template<typename VT>
-typename Bigraph<VT>::PathVector Bigraph<VT>::getLinearComponents()
+PathVector Bigraph::getLinearComponents()
 {
 	PathVector outPaths;
 	setColors(VC_WHITE);
@@ -313,8 +314,7 @@ typename Bigraph<VT>::PathVector Bigraph<VT>::getLinearComponents()
 // Return all the path of nodes that can be linearally reached from this node
 // The path expands in both directions so the first node in the path is not necessarily the source
 //
-template<typename VT>
-typename Bigraph<VT>::Path Bigraph<VT>::constructLinearPath(VertexID id)
+Path Bigraph::constructLinearPath(VertexID id)
 {
 	Path sensePath;
 	Path antisensePath;
@@ -331,34 +331,41 @@ typename Bigraph<VT>::Path Bigraph<VT>::constructLinearPath(VertexID id)
 // Recursively follow the graph in the specified direction without branching
 // outPath is an out-parameter of the edges that were followed
 //
-template<typename VT>
-void Bigraph<VT>::followLinear(VertexID id, EdgeDir dir, Path& outPath)
+void Bigraph::followLinear(VertexID id, EdgeDir dir, Path& outPath)
 {
-	VertexType* pVertex = getVertex(id);
-	EdgeVec edges = pVertex->getEdges(dir);
+	Vertex* pVertex = getVertex(id);
+	EdgePtrVec edges = pVertex->getEdges(dir);
 
 	// Color the vertex
 	pVertex->setColor(VC_BLACK);
 	
 	if(edges.size() == 1)
 	{
-		GraphEdgeType& se = edges.front();
-		outPath.push_back(se);
+		Edge* pSingle = edges.front();
+		outPath.push_back(pSingle);
 		// Correct the direction for the comp
-		assert(se.getDir() == dir);
-		EdgeDir corrected_dir = correctDir(se.getDir(), se.getComp());
+		assert(pSingle->getDir() == dir);
+		EdgeDir corrected_dir = correctDir(pSingle->getDir(), pSingle->getComp());
 
 		// Recurse
-		followLinear(se.getEnd(), corrected_dir, outPath);
+		followLinear(pSingle->getEndID(), corrected_dir, outPath);
 	}
+}
+
+//
+Path Bigraph::reversePath(const Path& path)
+{
+	Path out;
+    for(Path::const_reverse_iterator iter = path.rbegin(); iter != path.rend(); ++iter)
+		out.push_back((*iter)->getTwin());
+	return out;
 }
 
 //
 // Visit each vertex and call the function pointer
 // The function returns TRUE if it modifies the graph
 //
-template<typename VT>
-bool Bigraph<VT>::visit(VertexVisitFunction f)
+bool Bigraph::visit(VertexVisitFunction f)
 {
 	bool modified = false;
 	VertexPtrMapConstIter iter = m_vertices.begin(); 
@@ -373,9 +380,8 @@ bool Bigraph<VT>::visit(VertexVisitFunction f)
 // Visit each vertex and call the functor
 // The function returns TRUE if it modifies the graph
 //
-template<typename VT>
 template<typename VF>
-bool Bigraph<VT>::visit(VF& vf)
+bool Bigraph::visit(VF& vf)
 {
 	bool modified = false;
 	VertexPtrMapConstIter iter = m_vertices.begin(); 
@@ -389,8 +395,7 @@ bool Bigraph<VT>::visit(VF& vf)
 //
 // Set all the vertices in the graph to the given color
 //
-template<typename VT>
-void Bigraph<VT>::setColors(VertexColor c)
+void Bigraph::setColors(VertexColor c)
 {
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -402,8 +407,7 @@ void Bigraph<VT>::setColors(VertexColor c)
 //
 // Check if all the vertices in the graph are the given color
 //
-template<typename VT>
-bool Bigraph<VT>::checkColors(VertexColor c)
+bool Bigraph::checkColors(VertexColor c)
 {
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -417,8 +421,7 @@ bool Bigraph<VT>::checkColors(VertexColor c)
 //
 // Output simple stats
 //
-template<typename VT>
-void Bigraph<VT>::stats() const
+void Bigraph::stats() const
 {
 	int numVerts = 0;
 	int numEdges = 0;
@@ -436,8 +439,7 @@ void Bigraph<VT>::stats() const
 //
 // Dump the graph to a dot file
 //
-template<typename VT>
-void Bigraph<VT>::writeDot(string filename, int dotFlags, VertexColorFunction colorFunc) const
+void Bigraph::writeDot(std::string filename, int dotFlags) const
 {
 	std::ofstream out(filename.c_str());
 	
@@ -449,7 +451,6 @@ void Bigraph<VT>::writeDot(string filename, int dotFlags, VertexColorFunction co
 	{
 		VertexID id = iter->second->getID();
 		out << id << " [ label =\"" << id << "\" ";
-		out << "color =\"" << colorFunc(iter->second->getData()) << "\"";
 		out << "];\n";
 		iter->second->writeEdges(out, dotFlags);
 	}

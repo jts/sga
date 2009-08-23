@@ -2,6 +2,7 @@
 #define GRAPHCOMMON_H
 
 #include <vector>
+#include "Util.h"
 
 // Flags specifying how the dot file should be drawn
 enum DotFlags
@@ -15,25 +16,39 @@ enum DotFlags
 typedef std::string VertexID;
 typedef std::vector<VertexID> VertexIDVec;
 
-//
-// Functions
-//
-template<typename ET>
-std::vector<ET> reversePath(const std::vector<ET>& path)
+
+// An edge description is the triplet of values
+// that is needed to uniquely identify an edge
+struct EdgeDesc
 {
-	std::vector<ET> out;
-    for(typename std::vector<ET>::const_reverse_iterator iter = path.rbegin(); iter != path.rend(); ++iter)
-		out.push_back(iter->getTwin());
-	return out;
-}
+	EdgeDesc(VertexID i, EdgeDir d, EdgeComp c) : id(i), dir(d), comp(c) {}
+	VertexID id;
+	EdgeDir dir;
+	EdgeComp comp;
 
-// Default vertex color function, returns black for everything
-template<typename D>
-std::string VertexBlackFunction(D /*d*/)
-{
-	return "black";
-}
+	// Less than
+	bool operator<(const EdgeDesc& obj) const
+	{
+		if(id < obj.id)
+			return true;
+		else if(id > obj.id)
+			return false;
+		else if(dir < obj.dir)
+			return true;
+		else if(dir > obj.dir)
+			return false;
+		else if(comp < obj.comp)
+			return true;
+		else if(comp > obj.comp)
+			return false;
+		return false;
+	}
 
-
+	friend std::ostream& operator<<(std::ostream& out, const EdgeDesc& ed)
+	{
+		out << ed.id << "," << ed.dir << "," << ed.comp;
+		return out;
+	}
+};
 
 #endif 

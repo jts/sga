@@ -1,3 +1,12 @@
+//-----------------------------------------------
+// Copyright 2009 Wellcome Trust Sanger Institute
+// Written by Jared Simpson (js18@sanger.ac.uk)
+// Released under the GPL license
+//-----------------------------------------------
+//
+// Base bidirectional edge class 
+//
+
 #ifndef EDGE_H
 #define EDGE_H
 
@@ -5,20 +14,37 @@
 #include "Util.h"
 #include "GraphCommon.h"
 
-using namespace std;
+// Foward declare
+class Vertex;
 
-template<typename D>
 class Edge
 {
 	public:
-		Edge(VertexID start, VertexID end, EdgeDir dir, EdgeComp comp, D data) : 
-				m_start(start), m_end(end), m_dir(dir), m_comp(comp), m_data(data) {}
+		Edge(Vertex* start, Vertex* end, EdgeDir dir, EdgeComp comp) : 
+				m_pStart(start), m_pEnd(end), m_dir(dir), m_comp(comp), m_pTwin(NULL) {}
 
-		// Generate the twin edge, the edge from the end node back to the start node
-		Edge getTwin() const
+		virtual ~Edge() {}
+
+		void setStart(Vertex* pVert)
 		{
-			return Edge(m_end, m_start, getTwinDir(), m_comp, m_data);
+			m_pStart = pVert;
 		}
+
+		void setTwin(Edge* pEdge)
+		{
+			m_pTwin = pEdge;
+		}
+
+		Edge* getTwin() const
+		{
+			assert(m_pTwin != NULL);
+			return m_pTwin;
+		}
+		
+		// Merge the given edge with this edge
+		void merge(Edge* pEdge);
+
+		EdgeDesc getTwinDesc() const;
 
 		// Make the direction of the edge that is in the same direction as the current edge
 		// but originating in the endpoint vertex
@@ -27,6 +53,7 @@ class Edge
 		{
 			return (m_comp == EC_SAME) ? m_dir : !m_dir;
 		}
+
 		// Make the direction of the edge that its twin should point along 
 		// start   --->   end
 		//       * <--- *
@@ -35,71 +62,43 @@ class Edge
 			return (m_comp == EC_SAME) ? !m_dir : m_dir;
 		}
 
+		EdgeDesc getDesc() const
+		{
+			return EdgeDesc(getEndID(), getDir(), getComp());
+		}
+		
+
 		// Flip the edge
+		void flipComp() { m_comp = !m_comp; }
+		void flipDir() { m_dir = !m_dir; }
+
 		void flip()
 		{
-			m_comp = !m_comp;
-			m_dir = !m_dir;
+			flipComp();
+			flipDir();
 		}
 
 		// Getters
-		VertexID getStart() const { return m_start; }
-		VertexID getEnd() const { return m_end; }
-		EdgeDir getDir() const { return m_dir; }
-		EdgeComp getComp() const { return m_comp; }
-		bool isSelf() const { return m_start == m_end; }
-		double getWeight() const { return m_weight; }
-		D getData() const { return m_data; }
-
-		// Setters
-		void setWeight(double w) { m_weight = w; }
-
-		// Equality operator
-		bool operator==(const Edge& obj) const
-		{
-			return (m_start == obj.m_start) && (m_end == obj.m_end) && 
-					(m_dir == obj.m_dir) && (m_comp == obj.m_comp);
-		}
-
-		// Less than
-		bool operator<(const Edge& obj) const
-		{
-			if(m_start < obj.m_start)
-				return true;
-			else if(m_start > obj.m_start)
-				return false;
-			else if(m_end < obj.m_end)
-				return true;
-			else if(m_end > obj.m_end)
-				return false;
-			else if(m_dir < obj.m_dir)
-				return true;
-			else if(m_dir > obj.m_dir)
-				return false;
-			else if(m_comp < obj.m_comp)
-				return true;
-			else if(m_comp > obj.m_comp)
-				return false;
-			return false;
-		}
+		Vertex* getStart() const;
+		Vertex* getEnd() const;
+		VertexID getStartID() const; 
+		VertexID getEndID() const; 
+		EdgeDir getDir() const; 
+		EdgeComp getComp() const; 
+		bool isSelf() const;
 
 		// Output
-		friend ostream& operator<<(std::ostream& out, const Edge& obj)
-		{
-			out << obj.m_start << "," << obj.m_end << "," << obj.m_dir << "," << obj.m_comp;
-			return out;
-		}
+		friend std::ostream& operator<<(std::ostream& out, const Edge& obj);
 
 	private:
 		
 		Edge() {}; // Default constructor is not allowed
 
-		VertexID m_start;
-		VertexID m_end;
+		Vertex* m_pStart;
+		Vertex* m_pEnd;
 		EdgeDir m_dir;
 		EdgeComp m_comp;
-		double m_weight;
-		D m_data;
+		Edge* m_pTwin;
 };
 
 #endif

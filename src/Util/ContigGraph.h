@@ -16,9 +16,7 @@
 //
 // Typedefs
 //
-typedef Edge<int> ContigEdge;
-typedef Vertex<Contig, ContigEdge> ContigVertex;
-typedef Bigraph<ContigVertex> ContigGraph;
+typedef Bigraph ContigGraph;
 
 void loadVertices(ContigGraph& graph, int /*kmer*/, std::string filename);
 void loadEdges(ContigGraph& graph, int overlap, std::string filename);
