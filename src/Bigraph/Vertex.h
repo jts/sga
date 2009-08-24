@@ -50,7 +50,9 @@ class Vertex
 		bool hasEdge(Edge* pEdge) const;
 		bool hasEdge(const EdgeDesc& ed) const;
 		Edge* getEdge(const EdgeDesc& ed);
+	
 		virtual void merge(const Edge* pEdge);
+		virtual void validate() const;
 
 		EdgePtrVec findEdgesTo(VertexID id);
 		EdgePtrVec getEdges(EdgeDir dir);

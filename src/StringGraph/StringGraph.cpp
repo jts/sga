@@ -50,11 +50,11 @@ void StringEdge::updateLabel(const StringEdge* pSE)
 	std::cout << "Updated edge to be: " << m_seq << "\n";
 }
 
-
-// StringVertex::Merge is a virtual function inheriting from Vertex::merge
-// which joins two vertices together
-// The sequence of pEdge is the unmatched portion of V2 that 
-// needs to be added to V1
+// Merging two string vertices has two parts
+// First, the sequence of the vertex is extended
+// by the the content of the edge label
+// Then, all the edges that are pointing to this node
+// must be updated to contain the extension of the vertex
 void StringVertex::merge(const Edge* pEdge)
 {
 	// Call baseclass merge
@@ -73,8 +73,7 @@ void StringVertex::merge(const Edge* pEdge)
 	for(EdgePtrMapIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		// Only update edges in the opposite direction of the merged-in edge
-		// (This is the dimension of the sequence that grew, therefore the edge label
-		// must grow)
+		// This is the dimension that grew
 		if(iter->second->getDir() != pEdge->getDir())
 		{
 			StringEdge* pTwinSE = static_cast<StringEdge*>(iter->second->getTwin());
@@ -84,12 +83,30 @@ void StringVertex::merge(const Edge* pEdge)
 
 	// Update the read count
 	m_readCount += pV2->getReadCount();
+	validate();
+}
 
-	// As a sanity check, ensure that v2->seq is now contained by 
-	// v1->seq
-	std::cout << "this:  " << m_seq << "\n"; 
-	std::cout << "other: " << pV2->getSeq() << "\n";
-	assert(getSeq().find(pV2->getSeq()) != std::string::npos);
+// Ensure that the edges of the graph are correct
+void StringVertex::validate() const
+{
+	Vertex::validate();
+
+	for(EdgePtrMapConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		StringEdge* pSE = static_cast<StringEdge*>(iter->second);
+		std::string label = pSE->getSeq();
+		StringVertex* pEnd = static_cast<StringVertex*>(pSE->getEnd());
+
+		std::string vertSeq = pEnd->getSeq();
+		std::string vertSuffix = (pSE->getDir() == ED_SENSE) ? vertSeq.substr(vertSeq.length() - label.length()) :
+																vertSeq.substr(0, label.length());
+
+		if(pSE->getComp() == EC_REVERSE)
+			vertSuffix = reverseComplement(vertSuffix);
+		if(vertSuffix != label)
+			std::cerr << "Warning edge label " << label << " does not match vertex suffix " << vertSuffix << "\n";
+	}
+
 }
 
 // Visitor which outputs the graph in fasta format

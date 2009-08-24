@@ -58,6 +58,7 @@ class StringVertex : public Vertex
 		
 		// functions
 		virtual void merge(const Edge* pEdge);
+		virtual void validate() const;
 
 		size_t getReadCount() const { return m_readCount; }
 		const std::string& getSeq() const { return m_seq; }

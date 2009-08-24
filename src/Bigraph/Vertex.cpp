@@ -47,6 +47,21 @@ void Vertex::removeEdge(const EdgeDesc& ed)
 	m_edges.erase(iter);
 }
 
+void Vertex::validate() const
+{
+	// Ensure the twin edge exists for every edge
+	for(EdgePtrMapConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		Edge* pEdge = iter->second;
+		Edge* pTwinEdge = pEdge->getTwin();
+		Vertex* pEndpoint = pEdge->getEnd();
+		if(pTwinEdge == NULL)
+			std::cerr << "Warning, twin pointer for edge " << *pEdge << " is NULL\n";
+		else if(!pEndpoint->hasEdge(pEdge->getTwinDesc()))
+			std::cerr << "Warning edge " << *pEdge << " does not have a twin with desc " << pEdge->getTwinDesc() << "\n";
+	}
+}
+
 // Merge
 void Vertex::merge(const Edge* /*pEdge*/)
 {

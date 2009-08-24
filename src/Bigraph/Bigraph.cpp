@@ -221,24 +221,8 @@ void Bigraph::validate()
 	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
 	{
-		// Ensure the twin edge exists for every edge
-		EdgePtrVec edges = iter->second->getEdges();
-		for(EdgePtrVecIter iter = edges.begin(); iter != edges.end(); ++iter)
-		{
-			Edge* pEdge = *iter;
-			Vertex* pV2 = getVertex(pEdge->getEndID());
-			if(!pV2->hasEdge(pEdge->getTwinDesc()))
-			{
-				std::cerr << "Warning edge " << *pEdge << " does not have a twin with desc " << pEdge->getTwinDesc() << "\n";
-			}
-
-			if(pEdge->getTwin() == NULL)
-			{
-				std::cerr << "Warning, twin pointer for edge " << *pEdge << " is NULL\n";
-			}
-		}
+		iter->second->validate();
 	}
-
 }
 
 //

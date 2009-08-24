@@ -71,10 +71,10 @@ void assemble()
 	
 	pGraph->validate();
 	//pGraph->simplify();
-	//pGraph->mergeVertices("tiled_1", "tiled_2");
-	//pGraph->mergeVertices("tiled_0", "tiled_1");
-
-	pGraph->simplify();
+	pGraph->mergeVertices("tiled_1", "tiled_2");
+	pGraph->mergeVertices("tiled_0", "tiled_1");
+	pGraph->validate();
+	//pGraph->simplify();
 	pGraph->writeDot("postSimplify.fa");
 
 	SGFastaVisitor av("after.fa");
