@@ -48,11 +48,20 @@ void Vertex::removeEdge(const EdgeDesc& ed)
 }
 
 // Merge
-void Vertex::merge(const Edge* /*pEdge*/)
+void Vertex::merge(const Edge* pEdge)
 {
-
+	// Signal all the vertices connected to this one that it has been updated
+	for(EdgePtrMapIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		iter->second->getEnd()->partnerUpdate(iter->second->getTwin(), pEdge);
+	}
 }
 
+// Partner update handler
+void Vertex::partnerUpdate(const Edge* /*pPartner*/, const Edge* /*pMerged*/)
+{
+	// do nothing in the base case
+}
 
 // Check for the presence of an edge
 bool Vertex::hasEdge(Edge* pEdge) const
@@ -153,7 +162,7 @@ void Vertex::writeEdges(std::ostream& out, int dotFlags) const
 			std::string color = (iter->second->getDir() == ED_SENSE) ? "black" : "red";
 			std::string label = (iter->second->getComp() == EC_SAME) ? "S" : "F";
 			out << "\" [color=\"" << color << "\" ";
-			out << "label=\"\"];";
+			out << "label=\"" << iter->second->getLabel() << "\"];";
 		}
 		out << "\n";
 	}

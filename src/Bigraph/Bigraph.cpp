@@ -161,6 +161,7 @@ void Bigraph::merge(Edge* pEdge)
 		if(doFlip)
 			pTransEdge->flip();
 		assert(pTransEdge->getDir() == pEdge->getDir());
+
 		pTransEdge->setStart(pV1); //update the start vertex
 		pV1->addEdge(pTransEdge); // add to V1
 
@@ -169,8 +170,6 @@ void Bigraph::merge(Edge* pEdge)
 		Edge* pE3 = pTransEdge->getTwin();
 		pV3->removeEdge(pE3); 
 		pE3->merge(pTwin); // This updates the endpoint
-		if(doFlip)
-			pE3->flipComp(); // Only the comp needs to be updated, the direction stays the same
 		pV3->addEdge(pE3); 
 	}
 
@@ -376,22 +375,6 @@ bool Bigraph::visit(VertexVisitFunction f)
 	for(; iter != m_vertices.end(); ++iter)
 	{
 		modified = f(this, iter->second) || modified;
-	}
-	return modified;
-}
-
-//
-// Visit each vertex and call the functor
-// The function returns TRUE if it modifies the graph
-//
-template<typename VF>
-bool Bigraph::visit(VF& vf)
-{
-	bool modified = false;
-	VertexPtrMapConstIter iter = m_vertices.begin(); 
-	for(; iter != m_vertices.end(); ++iter)
-	{
-		modified = vf.visit(this, iter->second) || modified;
 	}
 	return modified;
 }

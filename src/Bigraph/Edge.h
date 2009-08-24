@@ -42,7 +42,7 @@ class Edge
 		}
 		
 		// Merge the given edge with this edge
-		void merge(Edge* pEdge);
+		virtual void merge(const Edge* pEdge);
 
 		EdgeDesc getTwinDesc() const;
 
@@ -72,7 +72,7 @@ class Edge
 		void flipComp() { m_comp = !m_comp; }
 		void flipDir() { m_dir = !m_dir; }
 
-		void flip()
+		virtual void flip()
 		{
 			flipComp();
 			flipDir();
@@ -86,6 +86,7 @@ class Edge
 		EdgeDir getDir() const; 
 		EdgeComp getComp() const; 
 		bool isSelf() const;
+		virtual std::string getLabel() const { return std::string(""); }
 
 		// Output
 		friend std::ostream& operator<<(std::ostream& out, const Edge& obj);

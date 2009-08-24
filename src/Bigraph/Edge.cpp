@@ -58,8 +58,10 @@ EdgeDesc Edge::getTwinDesc() const
 }
 
 // Merge pEdge into this edge by updating the endpoints
-void Edge::merge(Edge* pEdge)
+void Edge::merge(const Edge* pEdge)
 {
+	if(pEdge->getComp() == EC_REVERSE)
+		flipComp();
 	m_pEnd = pEdge->getEnd();
 }
 

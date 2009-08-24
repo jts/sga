@@ -93,7 +93,16 @@ class Bigraph
 
 		// Visit each vertex in the graph and call the visit functor object
 		template<typename VF>
-		bool visit(VF& vf);
+		bool visit(VF& vf)
+		{
+			bool modified = false;
+			VertexPtrMapConstIter iter = m_vertices.begin(); 
+			for(; iter != m_vertices.end(); ++iter)
+			{
+				modified = vf.visit(this, iter->second) || modified;
+			}
+			return modified;
+		}
 		
 		// Set the colors for the entire graph
 		void setColors(VertexColor c);
