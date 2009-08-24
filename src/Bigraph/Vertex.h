@@ -51,7 +51,6 @@ class Vertex
 		bool hasEdge(const EdgeDesc& ed) const;
 		Edge* getEdge(const EdgeDesc& ed);
 		virtual void merge(const Edge* pEdge);
-		virtual void partnerUpdate(const Edge* pPartner, const Edge* pMerged);
 
 		EdgePtrVec findEdgesTo(VertexID id);
 		EdgePtrVec getEdges(EdgeDir dir);
@@ -67,7 +66,7 @@ class Vertex
 		// Output edges in graphviz format
 		void writeEdges(std::ostream& out, int dotFlags) const;
 
-	private:
+	protected:
 
 		VertexID m_id;
 		EdgePtrMap m_edges;

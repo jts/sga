@@ -37,6 +37,7 @@ void StringEdge::merge(const Edge* pEdge)
 	updateLabel(pSE);
 }
 
+// Update the label for this edge to include the label of the provided edge
 void StringEdge::updateLabel(const StringEdge* pSE)
 {
 	std::string edgeLabel = pSE->getSeq();
@@ -68,6 +69,19 @@ void StringVertex::merge(const Edge* pEdge)
 	else
 		m_seq.insert(0, pSE->getSeq()); //prepend
 
+	// Now update the edges that point TO this vertex to contain the merged-in label
+	for(EdgePtrMapIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		// Only update edges in the opposite direction of the merged-in edge
+		// (This is the dimension of the sequence that grew, therefore the edge label
+		// must grow)
+		if(iter->second->getDir() != pEdge->getDir())
+		{
+			StringEdge* pTwinSE = static_cast<StringEdge*>(iter->second->getTwin());
+			pTwinSE->updateLabel(pSE);
+		}
+	}
+
 	// Update the read count
 	m_readCount += pV2->getReadCount();
 
@@ -76,22 +90,6 @@ void StringVertex::merge(const Edge* pEdge)
 	std::cout << "this:  " << m_seq << "\n"; 
 	std::cout << "other: " << pV2->getSeq() << "\n";
 	assert(getSeq().find(pV2->getSeq()) != std::string::npos);
-}
-
-// When a vertex has been merged with another, the labels of all the edges
-// pointing to that vertex must be updated on the side that was extended
-void StringVertex::partnerUpdate(const Edge* pPartnerEdge, const Edge* pMerged)
-{
-	Vertex::partnerUpdate(pPartnerEdge, pMerged);
-	StringEdge* pSEMerged = static_cast<const StringEdge*>(pMerged);
-	StringEdge* pSEPartner = static_cast<const StringEdge*>(pPartnerEdge);
-	std::cout << "Partner update called for " << getID() << "\n";
-	// If the partner edge is in the same direction as the merged-in edge, do nothing
-	// otherwise update the label
-	if(pPartnerEdge->getTwin()->getDir() != pMerged->getDir())
-	{
-		pSEPartner->updateLabel(pSEMerged);
-	}
 }
 
 // Visitor which outputs the graph in fasta format

@@ -48,19 +48,9 @@ void Vertex::removeEdge(const EdgeDesc& ed)
 }
 
 // Merge
-void Vertex::merge(const Edge* pEdge)
+void Vertex::merge(const Edge* /*pEdge*/)
 {
-	// Signal all the vertices connected to this one that it has been updated
-	for(EdgePtrMapIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
-	{
-		iter->second->getEnd()->partnerUpdate(iter->second->getTwin(), pEdge);
-	}
-}
-
-// Partner update handler
-void Vertex::partnerUpdate(const Edge* /*pPartner*/, const Edge* /*pMerged*/)
-{
-	// do nothing in the base case
+	// base case does nothing
 }
 
 // Check for the presence of an edge
