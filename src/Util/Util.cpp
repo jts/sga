@@ -133,13 +133,14 @@ Interval intersect(const Interval& r1, const Interval& r2)
 // Checks if the left edge is extreme
 bool SeqCoord::isLeftExtreme() const
 {
-	return (interval.start == 0);
+	return (interval.start == 0 || interval.end == 0);
 }
 
 // Checks if the right edge is extreme
 bool SeqCoord::isRightExtreme(size_t stringLen) const
 {
-	return (interval.end + 1 == static_cast<int>(stringLen));
+	int l = static_cast<int>(stringLen);
+	return (interval.end + 1 == l || interval.start + 1== l);
 }
 
 // Checks if at least one endpoint is the end of the string

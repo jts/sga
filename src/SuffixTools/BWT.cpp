@@ -95,21 +95,18 @@ HitVector BWT::getOverlaps(std::string w, int minOverlap)
 
 	HitData hits;
 
-	//std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
+	std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
 	{
 		curr = w[j];
-		
-		/*
-		std::cout << "RL = C(" << curr << ") + O(" << curr << ", " << r_lower - 1 << ") + " << m_offset << "\n"; 
-		std::cout << "RU = C(" << curr << ") + O(" << curr << ", " << r_upper << ")\n";
-		std::cout << "RL = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_lower - 1) << " + " << m_offset << "\n"; 
-		std::cout << "RU = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_upper) << "\n"; 
-		*/
-
+		//std::cout << "RL = C(" << curr << ") + O(" << curr << ", " << r_lower - 1 << ") + " << m_numStrings << "\n"; 
+		//std::cout << "RU = C(" << curr << ") + O(" << curr << ", " << r_upper << ")\n";
+		//std::cout << "RL = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_lower - 1) << " + " << m_offset << "\n"; 
+		//std::cout << "RU = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_upper) << "\n"; 
 		r_lower = m_predCount.get(curr) + m_occurance.get(curr, r_lower - 1) + m_numStrings;
 		r_upper = m_predCount.get(curr) + m_occurance.get(curr, r_upper) + m_numStrings - 1;
-
+		std::cout << "Curr: " << curr << " Interval now: " << r_lower << "," << r_upper << "\n";
+		
 		int overlapLen = len - j;
 		if(overlapLen > minOverlap)
 		{

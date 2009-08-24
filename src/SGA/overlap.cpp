@@ -94,28 +94,48 @@ void computeOverlaps()
 	// Compute overlaps
 	for(size_t i = 0; i < rt.getCount(); ++i)
 	{
-		HitVector hitVec = b.getOverlaps(rt.getRead(i).seq, 30);
-		for(size_t j = 0; j < hitVec.size(); ++j)
+		Sequence readSeq = rt.getRead(i).seq;
+
+		// Align the read and its reverse complement
+		for(size_t rc = 0; rc < 2; ++rc)
 		{
-			// Convert the hit to an overlap
-			Hit& hit = hitVec[j];
-			
-			// Skip self alignments
-			if(hit.said.getID() != i)
+			if(rc == 1)
 			{
-				// Get the read names for the strings
-				std::string rn1 = rt.getRead(i).id;
-				std::string rn2 = rt.getRead(hit.said.getID()).id;
+				readSeq = reverseComplement(readSeq);
+			}
 
-				// Compute the endpoints of the overlap
-				int s1 = hit.qstart;
-				int e1 = s1 + hit.len - 1;
+			HitVector hitVec = b.getOverlaps(readSeq, 30);
+			std::cout << "Num hits: " << hitVec.size() << "\n";
+			for(size_t j = 0; j < hitVec.size(); ++j)
+			{
+				// Convert the hit to an overlap
+				Hit& hit = hitVec[j];
+				
+				// Skip self alignments
+				if(hit.said.getID() != i)
+				{
+					// Get the read names for the strings
+					std::string rn1 = rt.getRead(i).id;
+					std::string rn2 = rt.getRead(hit.said.getID()).id;
 
-				int s2 = hit.said.getPos();
-				int e2 = s2 + hit.len - 1;
+					// Compute the endpoints of the overlap
+					int s1 = hit.qstart;
+					int e1 = s1 + hit.len - 1;
 
-				Overlap o(rn1, s1, e1, rn2, s2, e2);
-				outHandle << o << "\n";
+					int s2 = hit.said.getPos();
+					int e2 = s2 + hit.len - 1;
+
+					// If the alignment is reverse-complement, give the range on the actual (not reverse-comp) read
+					// The coordinates will be reverse (s1 > e1) which signifies that it is an RC alignment
+					if(rc == 1)
+					{
+						s1 = readSeq.length() - (s1 + 1);
+						e1 = readSeq.length() - (e1 + 1);
+					}
+
+					Overlap o(rn1, s1, e1, rn2, s2, e2);
+					outHandle << o << "\n";
+				}
 			}
 		}
 	}

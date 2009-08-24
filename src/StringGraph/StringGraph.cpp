@@ -98,7 +98,8 @@ void StringVertex::validate() const
 		StringVertex* pEnd = static_cast<StringVertex*>(pSE->getEnd());
 
 		std::string vertSeq = pEnd->getSeq();
-		std::string vertSuffix = (pSE->getDir() == ED_SENSE) ? vertSeq.substr(vertSeq.length() - label.length()) :
+		EdgeDir suffixDir = (pSE->getComp() == EC_SAME) ? pSE->getDir() : !pSE->getDir();
+		std::string vertSuffix = (suffixDir == ED_SENSE) ? vertSeq.substr(vertSeq.length() - label.length()) :
 																vertSeq.substr(0, label.length());
 
 		if(pSE->getComp() == EC_REVERSE)
@@ -141,33 +142,32 @@ StringGraph* createStringGraph(std::string readFile, std::string overlapFile)
 		size_t sizes[2];
 		Sequence overhangs[2];
 
+		EdgeComp comp = (o.read[0].isReverse() || o.read[1].isReverse()) ? EC_REVERSE : EC_SAME;
+		std::cout << "Creating edge with comp: " << comp << "\n";
+
 		for(size_t idx = 0; idx < 2; ++idx)
 		{
 			pVerts[idx] = static_cast<StringVertex*>(pGraph->getVertex(o.read[idx].id));
 			assert(pVerts[idx]);
 			sizes[idx] = pVerts[idx]->getSeq().length();
 			
-			// Ensure that the overlaps are canonical
-			assert(o.read[idx].interval.start < o.read[idx].interval.end);
-			
 			// Ensure the reads are not identical
 			assert(!o.read[idx].isContainment(sizes[idx]));
-
-			overhangs[idx] = getOverhangString(o.read[idx], pVerts[idx]->getSeq());
+			std::string overhang = getOverhangString(o.read[idx], pVerts[idx]->getSeq());
+			overhangs[idx] = (comp == EC_SAME) ? overhang : reverseComplement(overhang);
 		}
 
 		// Ensure that each overlap is extreme
 		if(!o.read[0].isExtreme(sizes[0]) || !o.read[1].isExtreme(sizes[1]))
 			continue;
 
-		EdgeComp comp = (o.read[0].isReverse() || o.read[1].isReverse()) ? EC_REVERSE : EC_SAME;
-
 		// Add edges
 		StringEdge* pEdges[2];
 		for(size_t idx = 0; idx < 2; ++idx)
 		{
-			EdgeDir dir = (o.read[idx].isLeftExtreme()) ? ED_ANTISENSE : ED_SENSE;
+			EdgeDir dir = o.read[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
 			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, overhangs[1 - idx]);
+			std::cout << "EDGE: " << *pEdges[idx] << "\n";
 		}
 		pEdges[0]->setTwin(pEdges[1]);
 		pEdges[1]->setTwin(pEdges[0]);
@@ -191,18 +191,31 @@ std::string getOverhangString(const SeqCoord& sc, const std::string& seq)
 {
 	size_t left, right;
 
+	int lower;
+	int upper;
+	if(!sc.isReverse())
+	{
+		lower = sc.interval.start;
+		upper = sc.interval.end;
+	}
+	else
+	{
+		lower = sc.interval.end;
+		upper = sc.interval.start;
+	}
+
 	if(sc.isLeftExtreme())
 	{
 		 // the end coordinate includes the last base, so the overhang starts at the next pos
-		left = sc.interval.end + 1;
+		left = upper + 1;
 		right = seq.length();
 	}
 	else
 	{
 		left = 0;
-		right = sc.interval.start;
+		right = lower;
 	}
-	
+
 	assert(left <= right);
 	return seq.substr(left, right - left);
 }
