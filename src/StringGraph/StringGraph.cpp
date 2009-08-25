@@ -41,13 +41,16 @@ void StringEdge::merge(const Edge* pEdge)
 void StringEdge::updateLabel(const StringEdge* pSE)
 {
 	std::string edgeLabel = pSE->getSeq();
-	if(pSE->getComp() == EC_REVERSE)
+	// The edge label must be flipped if the edge from pSE is
+	// not in the same direction as this edge. This implies that 
+	// the orientation of V2 and V3 (the endpoints of pSE) are different orientation
+	if(getDir() != pSE->getDir())
 		edgeLabel = reverseComplement(edgeLabel);
 	if(getDir() == ED_SENSE)
 		m_seq.append(edgeLabel);
 	else
 		m_seq.insert(0, edgeLabel);
-	std::cout << "Updated edge to be: " << m_seq << "\n";
+	std::cout << "Updated edge " << *this << " to be: " << m_seq << "\n";
 }
 
 // Merging two string vertices has two parts
@@ -105,7 +108,9 @@ void StringVertex::validate() const
 		if(pSE->getComp() == EC_REVERSE)
 			vertSuffix = reverseComplement(vertSuffix);
 		if(vertSuffix != label)
+		{
 			std::cerr << "Warning edge label " << label << " does not match vertex suffix " << vertSuffix << "\n";
+		}
 	}
 
 }
@@ -175,7 +180,6 @@ StringGraph* createStringGraph(std::string readFile, std::string overlapFile)
 		pGraph->addEdge(pEdges[0]);
 		pGraph->addEdge(pEdges[1]);
 	}
-	pGraph->writeDot("stringgraph.dot");
 	overlapReader.close();
 	return pGraph;
 }

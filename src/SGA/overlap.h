@@ -22,7 +22,9 @@ int overlapMain(int argc, char** argv);
 
 // overlap computation
 void computeOverlaps();
-OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRC);
+OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRevIdx, bool isReversed);
+void flipCoords(const int len, int& s, int &e);
+void swap(int& s, int& e);
 
 // data structure creation
 BWT* createBWT(SuffixArray* pSA, const ReadTable* pRT);

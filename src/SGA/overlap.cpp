@@ -96,9 +96,12 @@ void computeOverlaps()
 
 		for(size_t sn = 0; sn <= 1; ++sn)
 		{
+			bool isRC = (sn == 1) ? true : false;
 			const Sequence& currSeq = seqs[sn];
-			OverlapVector fwdOvr = alignRead(i, currSeq, pBWT, pRT, sn == 1);
-			OverlapVector revOvr = alignRead(i, reverse(currSeq), pRBWT, pRevRT, sn == 1);
+			
+			OverlapVector fwdOvr = alignRead(i, currSeq, pBWT, pRT, false, isRC);
+			OverlapVector revOvr = alignRead(i, reverse(currSeq), pRBWT, pRevRT, true, !isRC);
+
 			std::copy(fwdOvr.begin(), fwdOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
 			std::copy(revOvr.begin(), revOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
 		}
@@ -114,7 +117,7 @@ void computeOverlaps()
 }
 
 // Align reads, returning overlaps
-OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRC)
+OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRevIdx, bool isReversed)
 {
 	OverlapVector overlaps;
 
@@ -128,30 +131,58 @@ OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, con
 		Hit& hit = hitVec[j];
 		
 		// Get the read names for the strings
-		std::string rn1 = pRT->getRead(seqIdx).id;
-		std::string rn2 = pRT->getRead(hit.said.getID()).id;
+		SeqItem r1 = pRT->getRead(seqIdx);
+		SeqItem r2 = pRT->getRead(hit.said.getID());
 		
 		// Skip self alignments and non-canonical (where the aligning read has a lexo. higher name)
-		if(hit.said.getID() != seqIdx && rn1 < rn2)
+		if(hit.said.getID() != seqIdx && r1.id < r2.id)
 		{	
+			std::cout << "Main: " << r1.id << " align flags: " << isRevIdx << "," << isReversed << "\n";
 			// Compute the endpoints of the overlap
 			int s1 = hit.qstart;
 			int e1 = s1 + hit.len - 1;
 
 			int s2 = hit.said.getPos();
 			int e2 = s2 + hit.len - 1;
-
-			// If the alignment is reverse-complement, give the range on the actual (not reverse-comp) read
-			// The coordinates will be reverse (s1 > e1) which signifies that it is an RC alignment
-			if(isRC)
+			
+			// The alignment was to the reverse index, flip the coordinates of r2
+			if(isRevIdx)
 			{
-				s1 = seq.length() - (s1 + 1);
-				e1 = seq.length() - (e1 + 1);
+				flipCoords(r2.seq.length(), s2, e2);
 			}
-			overlaps.push_back(Overlap(rn1, s1, e1, rn2, s2, e2));
+
+			// The alignment was the reverse of the input read (complemented or otherwise), flip coordinates
+			if(isReversed)
+			{
+				flipCoords(r1.seq.length(), s1, e1);
+			}
+			
+			// If both intervals were reversed, swap the start and end to
+			// indicate that the reads are in the same orientation
+			if(isRevIdx && isReversed)
+			{
+				swap(s1, e1);
+				swap(s2, e2);
+			}
+			overlaps.push_back(Overlap(r1.id, s1, e1, r2.id, s2, e2));
 		}
 	}
 	return overlaps;
+}
+
+//
+void flipCoords(const int len, int& s, int &e)
+{
+	s = len - (s + 1);
+	e = len - (e + 1);	
+}
+
+//
+void swap(int& s, int& e)
+{
+	int temp = e;
+	e = s;
+	s = temp;
 }
 
 // Create a bwt from a suffix array file and read table

@@ -208,6 +208,7 @@ void Bigraph::simplify()
 			{
 				Edge* pSingle = edges.front();
 				merge(pSingle);
+				validate();
 			}
 		}
 	}

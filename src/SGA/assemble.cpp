@@ -69,12 +69,11 @@ void assemble()
 	delete bv;
 	
 	pGraph->validate();
-	pGraph->simplify();
-	//pGraph->mergeVertices("tiled_1", "tiled_2");
-	//pGraph->mergeVertices("tiled_0", "tiled_1");
-	pGraph->validate();
 	//pGraph->simplify();
-	pGraph->writeDot("postSimplify.fa");
+	pGraph->writeDot("initialGraph.dot");
+	pGraph->simplify();
+	pGraph->validate();
+	pGraph->writeDot("final.dot");
 
 	SGFastaVisitor av("after.fa");
 	pGraph->visit(av);
