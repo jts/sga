@@ -6,8 +6,8 @@
 //
 // ReadTable - A 0-indexed table of reads
 //
-#ifndef READDICTIONARY_H
-#define READDICTIONARY_H
+#ifndef READTABLE_H
+#define READTABLE_H
 #include "Util.h"
 #include "SeqReader.h"
 
@@ -21,6 +21,7 @@ class ReadTable
 		ReadTable(std::string filename);
 		
 		//
+		void initializeReverse(const ReadTable* pRT);
 		void addRead(const SeqItem& r);
 		
 		//
@@ -28,6 +29,10 @@ class ReadTable
 		size_t getReadLength(size_t idx) const;
 		size_t getCount() const;
 		size_t getSumLengths() const;
+
+		//
+		friend std::ostream& operator<<(std::ostream& out, const ReadTable& rt);
+
 
 	private:
 		ReadVector m_table;

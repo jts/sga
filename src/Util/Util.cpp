@@ -208,13 +208,37 @@ std::istream& operator>>(std::istream& in, Overlap& o)
 //
 
 // Reverse complement a sequence
-Sequence reverseComplement(Sequence seq)
+Sequence reverseComplement(const Sequence& seq)
 {
 	std::string out(seq.length(), 'A');
 	size_t last_pos = seq.length() - 1;
 	for(int i = last_pos; i >= 0; --i)
 	{
 		out[last_pos - i] = complement(seq[i]);
+	}
+	return out;
+}
+
+// Reverse a sequence
+Sequence reverse(const Sequence& seq)
+{
+	std::string out(seq.length(), 'A');
+	size_t last_pos = seq.length() - 1;
+	for(int i = last_pos; i >= 0; --i)
+	{
+		out[last_pos - i] = seq[i];
+	}
+	return out;
+}
+
+// Complement a sequence
+Sequence complement(const Sequence& seq)
+{
+	std::string out(seq.length(), 'A');
+	size_t l = seq.length();
+	for(size_t i = 0; i < l; ++i)
+	{
+		out[i] = complement(seq[i]);
 	}
 	return out;
 }

@@ -175,7 +175,9 @@ void splitKeyValue(std::string in, std::string& key, std::string& value);
 //
 // Sequence operations
 //
-Sequence reverseComplement(Sequence seq);
+Sequence reverseComplement(const Sequence& seq);
+Sequence complement(const Sequence& seq);
+Sequence reverse(const Sequence& seq);
 char complement(char base);
 
 //

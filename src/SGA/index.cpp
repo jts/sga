@@ -30,23 +30,23 @@ static const char *INDEX_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"      -o, --outfile=FILE               write overlaps to FILE [basename(READSFILE).sa]\n"
+"      -p, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
 {
 	static unsigned int verbose;
 	static std::string readsFile;
-	static std::string outFile;
+	static std::string prefix;
 }
 
-static const char* shortopts = "o:m:v";
+static const char* shortopts = "p:m:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
-	{ "outfile",     required_argument, NULL, 'o' },
+	{ "prefix",     required_argument, NULL, 'p' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -56,22 +56,42 @@ int indexMain(int argc, char** argv)
 {
 	parseIndexOptions(argc, argv);
 	std::cout << "Building index for " << opt::readsFile << "\n";
-	buildIndex(opt::readsFile);
+
+	// Parse the initial read table
+	ReadTable* pRT = new ReadTable(opt::readsFile);
+	
+	// Create and write the suffix array for the forward reads
+	buildIndex(opt::prefix + ".sa", pRT);
+
+	// Create the reverse read table
+	ReadTable* pRevRT = new ReadTable();
+	pRevRT->initializeReverse(pRT);
+	std::cout << *pRevRT;
+	delete pRT; // done with the initial reads
+	
+	// Build the reverse suffix array
+	buildIndex(opt::prefix + ".rsa", pRevRT);
+	delete pRevRT;
+
 	return 0;
 }
 
-void buildIndex(std::string filename)
+void buildIndex(std::string outfile, const ReadTable* pRT)
 {
-	ReadTable rt(filename);
-
 	// Make initial suffix arrays
-	SuffixArray sa;
-	sa.initialize(rt);
-	sa.sort(&rt);
-	sa.validate(&rt);
+	SuffixArray* pSA = new SuffixArray();
+	pSA->initialize(*pRT);
+	pSA->sort(pRT);
+	pSA->validate(pRT);
+	writeSA(outfile, pSA);
+	delete pSA;
+	pSA = NULL;
+}
 
-	std::ofstream out(opt::outFile.c_str());
-	out << sa;
+void writeSA(std::string filename, const SuffixArray* pSA)
+{
+	std::ofstream out(filename.c_str());
+	out << *pSA;
 	out.close();
 }
 
@@ -86,7 +106,7 @@ void parseIndexOptions(int argc, char** argv)
 		std::istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) 
 		{
-			case 'o': arg >> opt::outFile; break;
+			case 'p': arg >> opt::prefix; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:
@@ -117,8 +137,8 @@ void parseIndexOptions(int argc, char** argv)
 
 	// Parse the input filenames
 	opt::readsFile = argv[optind++];
-	if(opt::outFile.empty())
+	if(opt::prefix.empty())
 	{
-		opt::outFile = stripFilename(opt::readsFile) + ".sa";
+		opt::prefix = stripFilename(opt::readsFile);
 	}
 }

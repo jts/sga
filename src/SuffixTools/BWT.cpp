@@ -54,7 +54,7 @@ size_t BWT::LF(size_t idx) const
 }
 
 // Perform a exact search for the string w using the backwards algorithm
-void BWT::backwardSearch(std::string w)
+void BWT::backwardSearch(std::string w) const
 {
 	std::cout << "Searching for " << w << "\n";
 	int len = w.size();
@@ -81,9 +81,9 @@ void BWT::backwardSearch(std::string w)
 }
 
 // Perform a search for overlaps using a backward search algorithm
-HitVector BWT::getOverlaps(std::string w, int minOverlap)
+HitVector BWT::getOverlaps(std::string w, int minOverlap) const
 {
-	std::cout << "Searching for " << w << "\n";
+	//std::cout << "Searching for " << w << "\n";
 
 	// Initialize the search
 	int len = w.size();
@@ -95,7 +95,7 @@ HitVector BWT::getOverlaps(std::string w, int minOverlap)
 
 	HitData hits;
 
-	std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
+	//std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
 	{
 		curr = w[j];
@@ -105,10 +105,10 @@ HitVector BWT::getOverlaps(std::string w, int minOverlap)
 		//std::cout << "RU = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_upper) << "\n"; 
 		r_lower = m_predCount.get(curr) + m_occurance.get(curr, r_lower - 1) + m_numStrings;
 		r_upper = m_predCount.get(curr) + m_occurance.get(curr, r_upper) + m_numStrings - 1;
-		std::cout << "Curr: " << curr << " Interval now: " << r_lower << "," << r_upper << "\n";
+		//std::cout << "Curr: " << curr << " Interval now: " << r_lower << "," << r_upper << "\n";
 		
 		int overlapLen = len - j;
-		if(overlapLen > minOverlap)
+		if(overlapLen >= minOverlap)
 		{
 			// Create the hit
 			for(int i = r_lower; i <= r_upper; ++i)

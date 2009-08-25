@@ -7,6 +7,7 @@
 // ReadTable - A 0-indexed table of reads
 //
 #include <iostream>
+#include <algorithm>
 #include "ReadTable.h"
 #include "SeqReader.h"
 
@@ -17,10 +18,22 @@ ReadTable::ReadTable(std::string filename)
 	SeqItem si;
 	while(reader.get(si))
 	{
-		std::cout << "Read sequence with ID: " << si.id << " and seq: " << si.seq << "\n";
 		addRead(si);
 	}
 	std::cerr << "Read "<< getCount() << " sequences\n";
+}
+
+// Populate this read table with the reverse reads from pRT
+void ReadTable::initializeReverse(const ReadTable* pRT)
+{
+	size_t numReads = pRT->getCount();
+	m_table.reserve(numReads);
+	for(size_t i = 0; i < numReads; ++i)
+	{
+		SeqItem read = pRT->getRead(i);
+		read.seq = reverse(read.seq);
+		addRead(read);
+	}
 }
 
 //
@@ -57,4 +70,16 @@ size_t ReadTable::getSumLengths() const
 		sum += m_table[i].seq.size();
 	}
 	return sum;
+}
+
+//
+std::ostream& operator<<(std::ostream& out, const ReadTable& rt)
+{
+	size_t numReads = rt.getCount();
+	for(size_t i = 0; i < numReads; ++i)
+	{
+		const SeqItem& read = rt.getRead(i);
+		out << read.id << "\t" << read.seq << "\n";
+	}
+	return out;
 }

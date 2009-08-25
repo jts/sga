@@ -8,6 +8,7 @@
 //
 #include <iostream>
 #include <fstream>
+#include <iterator>
 #include "Util.h"
 #include "overlap.h"
 #include "SuffixArray.h"
@@ -24,32 +25,31 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2009 Wellcome Trust Sanger Institute\n";
 
 static const char *OVERLAP_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... INDEX READSFILE\n"
-"Compute pairwise overlap between all the sequences in READS using the index INDEX\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READSFILE\n"
+"Compute pairwise overlap between all the sequences in READS\n"
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -m, --min-overlap=OVERLAP_LEN    minimum overlap required between two reads [30]\n"
-"      -o, --outfile=FILE               write overlaps to FILE [basename(READSFILE).ovr]\n"
+"      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
 {
 	static unsigned int verbose;
 	static unsigned int minOverlap;
-	static std::string indexFile;
+	static std::string prefix;
 	static std::string readsFile;
-	static std::string outFile;
 }
 
-static const char* shortopts = "o:m:v";
+static const char* shortopts = "p:m:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
 	{ "min-overlap", required_argument, NULL, 'm' },
-	{ "outfile",     required_argument, NULL, 'o' },
+	{ "prefix",      required_argument, NULL, 'p' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -67,87 +67,120 @@ int overlapMain(int argc, char** argv)
 
 void computeOverlaps()
 {
-	ReadTable rt(opt::readsFile);
+	ReadTable* pRT = new ReadTable(opt::readsFile);
+	ReadTable* pRevRT = new ReadTable();
+	pRevRT->initializeReverse(pRT);
 
-	// Load suffix array
-	std::ifstream inSA(opt::indexFile.c_str());
-	checkFileHandle(inSA, opt::indexFile);
+	// Load the suffix arrays
+	SuffixArray* pSA = loadSuffixArray(opt::prefix + ".sa");
+	SuffixArray* pRSA = loadSuffixArray(opt::prefix + ".rsa");
 
-	if(!inSA.is_open())
-	{
-		std::cerr << "Error: could not open " << opt::indexFile << " for read\n";
-		exit(1);
-	}
-
-	SuffixArray sa;
-	inSA >> sa;
-	sa.validate(&rt);
-
-	// Convert SA to a BWT
-	BWT b(&sa, &rt);
-	b.print(&rt);
+	// Create the BWT
+	BWT* pBWT = createBWT(pSA, pRT);
+	BWT* pRBWT = createBWT(pRSA, pRevRT);
 
 	// Open the writer
-	std::ofstream outHandle(opt::outFile.c_str());
+	std::string outFile = opt::prefix + ".ovr";
+	std::ofstream outHandle(outFile.c_str());
 	assert(outHandle.is_open());
 
 	// Compute overlaps
-	for(size_t i = 0; i < rt.getCount(); ++i)
+	for(size_t i = 0; i < pRT->getCount(); ++i)
 	{
-		Sequence readSeq = rt.getRead(i).seq;
+		const SeqItem& read = pRT->getRead(i);
 
 		// Align the read and its reverse complement
-		for(size_t rc = 0; rc < 2; ++rc)
+		Sequence seqs[2];
+		seqs[0] = read.seq;//reverseComplement(read.seq);
+		seqs[1] = reverseComplement(seqs[0]);
+
+		for(size_t sn = 0; sn <= 1; ++sn)
 		{
-			if(rc == 1)
-			{
-				readSeq = reverseComplement(readSeq);
-			}
-
-			HitVector hitVec = b.getOverlaps(readSeq, 30);
-			std::cout << "Num hits: " << hitVec.size() << "\n";
-			for(size_t j = 0; j < hitVec.size(); ++j)
-			{
-				// Convert the hit to an overlap
-				Hit& hit = hitVec[j];
-				
-				// Skip self alignments
-				if(hit.said.getID() != i)
-				{
-					// Get the read names for the strings
-					std::string rn1 = rt.getRead(i).id;
-					std::string rn2 = rt.getRead(hit.said.getID()).id;
-
-					// Compute the endpoints of the overlap
-					int s1 = hit.qstart;
-					int e1 = s1 + hit.len - 1;
-
-					int s2 = hit.said.getPos();
-					int e2 = s2 + hit.len - 1;
-
-					// If the alignment is reverse-complement, give the range on the actual (not reverse-comp) read
-					// The coordinates will be reverse (s1 > e1) which signifies that it is an RC alignment
-					if(rc == 1)
-					{
-						s1 = readSeq.length() - (s1 + 1);
-						e1 = readSeq.length() - (e1 + 1);
-					}
-
-					Overlap o(rn1, s1, e1, rn2, s2, e2);
-					outHandle << o << "\n";
-				}
-			}
+			const Sequence& currSeq = seqs[sn];
+			OverlapVector fwdOvr = alignRead(i, currSeq, pBWT, pRT, sn == 1);
+			OverlapVector revOvr = alignRead(i, reverse(currSeq), pRBWT, pRevRT, sn == 1);
+			std::copy(fwdOvr.begin(), fwdOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
+			std::copy(revOvr.begin(), revOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
 		}
 	}
 	outHandle.close();
-	inSA.close();
+	
+	delete pRT;
+	delete pRevRT;
+	delete pSA;
+	delete pRSA;
+	delete pBWT;
+	delete pRBWT;
 }
+
+// Align reads, returning overlaps
+OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRC)
+{
+	OverlapVector overlaps;
+
+	// Get the hits
+	HitVector hitVec = pBWT->getOverlaps(seq, opt::minOverlap);
+
+	// Convert the hits to overlaps
+	for(size_t j = 0; j < hitVec.size(); ++j)
+	{
+		// Convert the hit to an overlap
+		Hit& hit = hitVec[j];
+		
+		// Get the read names for the strings
+		std::string rn1 = pRT->getRead(seqIdx).id;
+		std::string rn2 = pRT->getRead(hit.said.getID()).id;
+		
+		// Skip self alignments and non-canonical (where the aligning read has a lexo. higher name)
+		if(hit.said.getID() != seqIdx && rn1 < rn2)
+		{	
+			// Compute the endpoints of the overlap
+			int s1 = hit.qstart;
+			int e1 = s1 + hit.len - 1;
+
+			int s2 = hit.said.getPos();
+			int e2 = s2 + hit.len - 1;
+
+			// If the alignment is reverse-complement, give the range on the actual (not reverse-comp) read
+			// The coordinates will be reverse (s1 > e1) which signifies that it is an RC alignment
+			if(isRC)
+			{
+				s1 = seq.length() - (s1 + 1);
+				e1 = seq.length() - (e1 + 1);
+			}
+			overlaps.push_back(Overlap(rn1, s1, e1, rn2, s2, e2));
+		}
+	}
+	return overlaps;
+}
+
+// Create a bwt from a suffix array file and read table
+BWT* createBWT(SuffixArray* pSA, const ReadTable* pRT)
+{
+	// Convert SA to a BWT
+	BWT* pBWT = new BWT(pSA, pRT);
+	//pBWT->print(pRT);
+	return pBWT;
+}
+
+//
+SuffixArray* loadSuffixArray(std::string filename)
+{
+	std::ifstream inSA(filename.c_str());
+	checkFileHandle(inSA, filename);
+
+	SuffixArray* pSA = new SuffixArray();
+	inSA >> *pSA;
+	return pSA;
+}
+
 
 // 
 // Handle command line arguments
 //
 void parseOverlapOptions(int argc, char** argv)
 {
+	opt::minOverlap = 30;
 	bool die = false;
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{
@@ -155,7 +188,7 @@ void parseOverlapOptions(int argc, char** argv)
 		switch (c) 
 		{
 			case 'm': arg >> opt::minOverlap; break;
-			case 'o': arg >> opt::outFile; break;
+			case 'p': arg >> opt::prefix; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:
@@ -167,12 +200,12 @@ void parseOverlapOptions(int argc, char** argv)
 		}
 	}
 
-	if (argc - optind < 2) 
+	if (argc - optind < 1) 
 	{
 		std::cerr << SUBPROGRAM ": missing arguments\n";
 		die = true;
 	} 
-	else if (argc - optind > 2) 
+	else if (argc - optind > 1) 
 	{
 		std::cerr << SUBPROGRAM ": too many arguments\n";
 		die = true;
@@ -185,11 +218,10 @@ void parseOverlapOptions(int argc, char** argv)
 	}
 
 	// Parse the input filenames
-	opt::indexFile = argv[optind++];
 	opt::readsFile = argv[optind++];
 
-	if(opt::outFile.empty())
+	if(opt::prefix.empty())
 	{
-		opt::outFile = stripFilename(opt::readsFile) + ".ovr";
+		opt::prefix = stripFilename(opt::readsFile);
 	}
 }

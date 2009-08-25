@@ -10,8 +10,11 @@
 #define INDEX_H
 #include <getopt.h>
 #include "config.h"
+#include "SuffixArray.h"
+
 int indexMain(int argc, char** argv);
-void buildIndex(std::string filename);
+void buildIndex(std::string outfile, const ReadTable* pRT);
+void writeSA(std::string filename, const SuffixArray* pSA);
 void parseIndexOptions(int argc, char** argv);
 
 #endif

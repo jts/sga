@@ -25,7 +25,7 @@ void Vertex::addEdge(Edge* ep)
 	std::pair<EdgePtrMapIter, bool> result = m_edges.insert(std::make_pair(ep->getDesc(), ep));
 	if(!result.second)
 	{
-		std::cerr << "Error attempt to add duplicate edge " << ep << std::endl;
+		std::cerr << "Error attempt to add duplicate edge " << *ep << std::endl;
 		assert(false);
 	}
 }

@@ -24,10 +24,10 @@ class BWT
 	
 		// Constructors
 		BWT(const SuffixArray* pSA, const ReadTable* pRT);
-
+			
 		// Exact match
-		void backwardSearch(std::string w);
-		HitVector getOverlaps(std::string w, int minOverlap);
+		void backwardSearch(std::string w) const;
+		HitVector getOverlaps(std::string w, int minOverlap) const;
 
 		// L[i] -> F mapping 
 		size_t LF(size_t idx) const;
