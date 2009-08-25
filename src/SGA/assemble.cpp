@@ -23,29 +23,28 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2009 Wellcome Trust Sanger Institute\n";
 
 static const char *ASSEMBLE_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... OVERLAPFILE READSFILE\n"
-"Create contigs for the reads in READSFILE using the overlaps in OVERLAPFILE\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READSFILE\n"
+"Create contigs for the reads in READSFILE. Overlaps are read from PREFIX.ovr. PREFIX defaults to the basename of READSFILE\n"
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"      -o, --outfile=FILE               write overlaps to FILE [basename(READSFILE).ctg]\n"
+"      -p, --prefix=FILE                use PREFIX instead of the basename of READSFILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
 {
 	static unsigned int verbose;
-	static std::string overlapFile;
 	static std::string readsFile;
-	static std::string outFile;
+	static std::string prefix;
 }
 
-static const char* shortopts = "o:v";
+static const char* shortopts = "p:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
-	{ "outfile",     required_argument, NULL, 'o' },
+	{ "prefix",      required_argument, NULL, 'p' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -63,7 +62,7 @@ int assembleMain(int argc, char** argv)
 
 void assemble()
 {
-	StringGraph* pGraph = createStringGraph(opt::readsFile, opt::overlapFile);
+	StringGraph* pGraph = createStringGraph(opt::readsFile, opt::prefix + ".ovr");
 
 	SGFastaVisitor* bv = new SGFastaVisitor("before.fa");
 	pGraph->visit(*bv);
@@ -93,7 +92,7 @@ void parseAssembleOptions(int argc, char** argv)
 		std::istringstream arg(optarg != NULL ? optarg : "");
 		switch (c) 
 		{
-			case 'o': arg >> opt::outFile; break;
+			case 'p': arg >> opt::prefix; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:
@@ -105,12 +104,12 @@ void parseAssembleOptions(int argc, char** argv)
 		}
 	}
 
-	if (argc - optind < 2) 
+	if (argc - optind < 1) 
 	{
 		std::cerr << SUBPROGRAM ": missing arguments\n";
 		die = true;
 	} 
-	else if (argc - optind > 2) 
+	else if (argc - optind > 1) 
 	{
 		std::cerr << SUBPROGRAM ": too many arguments\n";
 		die = true;
@@ -123,11 +122,10 @@ void parseAssembleOptions(int argc, char** argv)
 	}
 
 	// Parse the input filenames
-	opt::overlapFile = argv[optind++];
 	opt::readsFile = argv[optind++];
 
-	if(opt::outFile.empty())
+	if(opt::prefix.empty())
 	{
-		opt::outFile = stripFilename(opt::readsFile) + ".ctg";
+		opt::prefix = stripFilename(opt::readsFile);
 	}
 }
