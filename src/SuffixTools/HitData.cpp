@@ -17,10 +17,28 @@ void HitData::addHit(const Hit& h)
 	// Check if a hit to this read already exists
 	HitMap::iterator iter = m_hitMap.find(readID);
 
-	// Insert/Replace
-	if(iter == m_hitMap.end() || iter->second.len < h.len)
+	// If there are no hits, create the vector and add this hit
+	if(iter == m_hitMap.end())
 	{
-		m_hitMap[readID] = h;
+		m_hitMap[readID].push_back(h);
+	}
+	else
+	{
+		// There are hits to this read stored
+		// If the new hit is better, clear out the old hits and append
+		// All the hits in the vector have the same score so we can just check the first one
+		HitVector& currHits = iter->second;
+		assert(currHits.size() > 0);
+		if(h.len > currHits.front().len)
+		{
+			currHits.clear();
+			currHits.push_back(h);
+		}
+		else if(h.len == currHits.front().len)
+		{
+			currHits.push_back(h);
+		}
+		// the hit is worse than the hits already stored, do nothing
 	}
 }
 
@@ -31,7 +49,7 @@ HitVector HitData::getHits() const
 	hv.reserve(m_hitMap.size());
 	for(HitMap::const_iterator iter = m_hitMap.begin(); iter != m_hitMap.end(); ++iter)
 	{
-		hv.push_back(iter->second);
+		hv.insert(hv.end(), iter->second.begin(), iter->second.end());
 	}
 	return hv;
 }

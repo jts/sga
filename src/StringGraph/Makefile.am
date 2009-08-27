@@ -5,5 +5,6 @@ libstringgraph_a_CPPFLAGS = \
 	-I$(top_srcdir)/Util
 
 libstringgraph_a_SOURCES = \
-	StringGraph.cpp StringGraph.h 
+	StringGraph.cpp StringGraph.h \
+	SGUtil.cpp SGUtil.h
 

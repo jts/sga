@@ -22,8 +22,8 @@ struct Hit
 	bool queryRev;
 };
 
-typedef std::map<uint64_t, Hit> HitMap;
 typedef std::vector<Hit> HitVector;
+typedef std::map<uint64_t, HitVector> HitMap;
 
 class HitData
 {

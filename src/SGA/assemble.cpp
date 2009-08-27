@@ -10,7 +10,7 @@
 #include <fstream>
 #include "Util.h"
 #include "assemble.h"
-#include "StringGraph.h"
+#include "SGUtil.h"
 
 //
 // Getopt
@@ -62,7 +62,7 @@ int assembleMain(int argc, char** argv)
 
 void assemble()
 {
-	StringGraph* pGraph = createStringGraph(opt::readsFile, opt::prefix + ".ovr");
+	StringGraph* pGraph = createSGFromOverlaps(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn");
 
 	SGFastaVisitor* bv = new SGFastaVisitor("before.fa");
 	pGraph->visit(*bv);
@@ -71,7 +71,7 @@ void assemble()
 	pGraph->validate();
 	//pGraph->simplify();
 	pGraph->writeDot("initialGraph.dot");
-	//pGraph->simplify();
+	pGraph->simplify();
 	pGraph->validate();
 	pGraph->writeDot("final.dot");
 

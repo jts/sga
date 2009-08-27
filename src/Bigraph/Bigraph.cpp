@@ -47,7 +47,6 @@ void Bigraph::removeVertex(VertexID id)
 {
 	// Remove the edges pointing to this Vertex
 	Vertex* pVertex = getVertex(id);
-	pVertex->deleteEdges();
 	assert(pVertex->countEdges() == 0);
 
 	// Remove the vertex from the collection
@@ -188,7 +187,7 @@ void Bigraph::merge(Edge* pEdge)
 }
 
 //
-//	Simplify the graph by removing transitive edges
+//	Simplify the graph by compacting singular edges
 //
 void Bigraph::simplify()
 {
@@ -206,9 +205,14 @@ void Bigraph::simplify()
 			// Don't merge singular self edges though
 			if(edges.size() == 1 && !edges.front()->isSelf())
 			{
+				// Check that the edge back is singular as well
 				Edge* pSingle = edges.front();
-				merge(pSingle);
-				validate();
+				Edge* pTwin = pSingle->getTwin();
+				Vertex* pV2 = pSingle->getEnd();
+				if(pV2->countEdges(pTwin->getDir()) == 1)
+				{
+					merge(pSingle);
+				}
 			}
 		}
 	}

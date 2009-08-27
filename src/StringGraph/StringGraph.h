@@ -82,8 +82,4 @@ struct SGFastaVisitor
 	std::ofstream m_fileHandle;
 };
 
-// functions
-StringGraph* createStringGraph(std::string readFile, std::string overlapFile);
-std::string getOverhangString(const SeqCoord& sc, const std::string& seq);
-
 #endif
