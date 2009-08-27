@@ -22,6 +22,7 @@ int overlapMain(int argc, char** argv);
 
 // overlap computation
 void computeOverlaps();
+OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTable* pFwdRT, const ReadTable* pRevRT);
 OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRevIdx, bool isReversed);
 void flipCoords(const int len, int& s, int &e);
 void swap(int& s, int& e);

@@ -66,7 +66,6 @@ int indexMain(int argc, char** argv)
 	// Create the reverse read table
 	ReadTable* pRevRT = new ReadTable();
 	pRevRT->initializeReverse(pRT);
-	std::cout << *pRevRT;
 	delete pRT; // done with the initial reads
 	
 	// Build the reverse suffix array

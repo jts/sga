@@ -71,7 +71,7 @@ void assemble()
 	pGraph->validate();
 	//pGraph->simplify();
 	pGraph->writeDot("initialGraph.dot");
-	pGraph->simplify();
+	//pGraph->simplify();
 	pGraph->validate();
 	pGraph->writeDot("final.dot");
 

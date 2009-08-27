@@ -47,6 +47,7 @@ class Vertex
 		void addEdge(Edge* ep);
 		void removeEdge(Edge* pEdge);
 		void removeEdge(const EdgeDesc& ed);
+		void deleteEdges();
 		bool hasEdge(Edge* pEdge) const;
 		bool hasEdge(const EdgeDesc& ed) const;
 		Edge* getEdge(const EdgeDesc& ed);

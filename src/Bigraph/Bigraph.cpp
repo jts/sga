@@ -47,6 +47,7 @@ void Bigraph::removeVertex(VertexID id)
 {
 	// Remove the edges pointing to this Vertex
 	Vertex* pVertex = getVertex(id);
+	pVertex->deleteEdges();
 	assert(pVertex->countEdges() == 0);
 
 	// Remove the vertex from the collection
@@ -71,8 +72,7 @@ Vertex* Bigraph::getVertex(VertexID id) const
 	VertexPtrMapConstIter iter = m_vertices.find(id);
 	if(iter == m_vertices.end())
 	{
-		std::cerr << "Cannot find vertex " << id << " aborting\n";
-		assert(iter != m_vertices.end());
+		return NULL;
 	}
 	return iter->second;
 }

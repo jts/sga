@@ -14,10 +14,12 @@
 struct Hit
 {
 	Hit() {}
-	Hit(SAID i, uint32_t qs, uint32_t l) : said(i), qstart(qs), len(l) {}
+	Hit(SAID i, uint32_t qs, uint32_t l, bool tr, bool qr) : said(i), qstart(qs), len(l), targetRev(tr), queryRev(qr) {}
 	SAID said;
 	uint32_t qstart;
 	uint32_t len;
+	bool targetRev;
+	bool queryRev;
 };
 
 typedef std::map<uint64_t, Hit> HitMap;

@@ -94,17 +94,27 @@ void computeOverlaps()
 		seqs[0] = read.seq;//reverseComplement(read.seq);
 		seqs[1] = reverseComplement(seqs[0]);
 
+		HitData hits;
+		// Get all the hits of this sequence to the forward and reverse BWT
 		for(size_t sn = 0; sn <= 1; ++sn)
 		{
 			bool isRC = (sn == 1) ? true : false;
 			const Sequence& currSeq = seqs[sn];
 			
-			OverlapVector fwdOvr = alignRead(i, currSeq, pBWT, pRT, false, isRC);
-			OverlapVector revOvr = alignRead(i, reverse(currSeq), pRBWT, pRevRT, true, !isRC);
-
-			std::copy(fwdOvr.begin(), fwdOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
-			std::copy(revOvr.begin(), revOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
+			pBWT->getHits(currSeq, opt::minOverlap, false, isRC, &hits);
+			pRBWT->getHits(reverse(currSeq), opt::minOverlap, true, !isRC, &hits);
 		}
+
+		HitVector hitVec = hits.getHits();
+		OverlapVector overlaps = processHits(i, hitVec, pRT, pRevRT);
+		std::copy(overlaps.begin(), overlaps.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
+
+		//	OverlapVector fwdOvr = alignRead(i, currSeq, pBWT, pRT, false, isRC);
+		//	OverlapVector revOvr = alignRead(i, reverse(currSeq), pRBWT, pRevRT, true, !isRC);
+
+		//	std::copy(fwdOvr.begin(), fwdOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
+		//	std::copy(revOvr.begin(), revOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
+
 	}
 	outHandle.close();
 	
@@ -116,28 +126,26 @@ void computeOverlaps()
 	delete pRBWT;
 }
 
-// Align reads, returning overlaps
-OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRevIdx, bool isReversed)
+// Process all the hits into overlaps
+OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTable* pFwdRT, const ReadTable* pRevRT)
 {
 	OverlapVector overlaps;
-
-	// Get the hits
-	HitVector hitVec = pBWT->getOverlaps(seq, opt::minOverlap);
-
 	// Convert the hits to overlaps
 	for(size_t j = 0; j < hitVec.size(); ++j)
 	{
 		// Convert the hit to an overlap
-		Hit& hit = hitVec[j];
+		const Hit& hit = hitVec[j];
 		
+		const ReadTable* pCurrRT = (hit.targetRev) ? pRevRT : pFwdRT;
+
 		// Get the read names for the strings
-		SeqItem r1 = pRT->getRead(seqIdx);
-		SeqItem r2 = pRT->getRead(hit.said.getID());
+		SeqItem query = pCurrRT->getRead(seqIdx);
+		SeqItem target = pCurrRT->getRead(hit.said.getID());
 		
-		// Skip self alignments and non-canonical (where the aligning read has a lexo. higher name)
-		if(hit.said.getID() != seqIdx && r1.id < r2.id)
+		// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
+		if(query.id != target.id && query.id < target.id)
 		{	
-			std::cout << "Main: " << r1.id << " align flags: " << isRevIdx << "," << isReversed << "\n";
+			std::cout << "Query: " << query.id << " align flags: " << hit.targetRev << "," << hit.queryRev << "\n";
 			// Compute the endpoints of the overlap
 			int s1 = hit.qstart;
 			int e1 = s1 + hit.len - 1;
@@ -146,25 +154,27 @@ OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, con
 			int e2 = s2 + hit.len - 1;
 			
 			// The alignment was to the reverse index, flip the coordinates of r2
-			if(isRevIdx)
+			if(hit.targetRev)
 			{
-				flipCoords(r2.seq.length(), s2, e2);
+				flipCoords(target.seq.length(), s2, e2);
 			}
 
 			// The alignment was the reverse of the input read (complemented or otherwise), flip coordinates
-			if(isReversed)
+			if(hit.queryRev)
 			{
-				flipCoords(r1.seq.length(), s1, e1);
+				flipCoords(query.seq.length(), s1, e1);
 			}
 			
 			// If both intervals were reversed, swap the start and end to
 			// indicate that the reads are in the same orientation
-			if(isRevIdx && isReversed)
+			if(hit.targetRev && hit.queryRev)
 			{
 				swap(s1, e1);
 				swap(s2, e2);
 			}
-			overlaps.push_back(Overlap(r1.id, s1, e1, r2.id, s2, e2));
+
+			Overlap o(query.id, s1, e1, target.id, s2, e2);
+			overlaps.push_back(o);
 		}
 	}
 	return overlaps;
@@ -211,7 +221,7 @@ SuffixArray* loadSuffixArray(std::string filename)
 //
 void parseOverlapOptions(int argc, char** argv)
 {
-	opt::minOverlap = 30;
+	opt::minOverlap = 25;
 	bool die = false;
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{

@@ -47,6 +47,25 @@ void Vertex::removeEdge(const EdgeDesc& ed)
 	m_edges.erase(iter);
 }
 
+// Delete all the edges, and their twins, from this vertex
+void Vertex::deleteEdges()
+{
+	EdgePtrMapIter iter = m_edges.begin();
+	for(; iter != m_edges.end(); ++iter)
+	{
+		Edge* pEdge = iter->second;
+		Edge* pTwin = pEdge->getTwin();
+		Vertex* pPartner = pEdge->getEnd();
+		pPartner->removeEdge(pTwin);
+		delete pEdge;
+		pEdge = NULL;
+		delete pTwin;
+		pTwin = NULL;
+		iter->second = NULL;
+	}
+	m_edges.clear();
+}
+
 void Vertex::validate() const
 {
 	// Ensure the twin edge exists for every edge
