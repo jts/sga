@@ -137,22 +137,21 @@ bool SeqCoord::isLeftExtreme() const
 }
 
 // Checks if the right edge is extreme
-bool SeqCoord::isRightExtreme(size_t stringLen) const
+bool SeqCoord::isRightExtreme() const
 {
-	int l = static_cast<int>(stringLen);
-	return (interval.end + 1 == l || interval.start + 1== l);
+	return (interval.end + 1 == seqlen || interval.start + 1 == seqlen);
 }
 
 // Checks if at least one endpoint is the end of the string
-bool SeqCoord::isExtreme(size_t stringLen) const
+bool SeqCoord::isExtreme() const
 {
-	return (isLeftExtreme() || isRightExtreme(stringLen));
+	return (isLeftExtreme() || isRightExtreme());
 }
 
 // Checks if both end points are the end of the string
-bool SeqCoord::isContainment(size_t stringLen) const
+bool SeqCoord::isContained() const
 {
-	return (isLeftExtreme() && isRightExtreme(stringLen));
+	return (isLeftExtreme() && isRightExtreme());
 }
 
 // Check if the interval is in reverse orientation
@@ -164,25 +163,25 @@ bool SeqCoord::isReverse() const
 // Output
 std::ostream& operator<<(std::ostream& out, const SeqCoord& sc)
 {
-	out << sc.id << " " << sc.interval;
+	out << sc.id << " " << sc.interval << " " << sc.seqlen;
 	return out;
 }
 
 // Input
 std::istream& operator>>(std::istream& in, SeqCoord& sc)
 {
-	in >> sc.id >> sc.interval;
+	in >> sc.id >> sc.interval >> sc.seqlen;
 	return in;
 }
 
 //
 // Overlap
 //
-Overlap::Overlap(std::string i1, int s1, int e1, 
-                 std::string i2, int s2, int e2)
+Overlap::Overlap(std::string i1, int s1, int e1, int l1,
+                 std::string i2, int s2, int e2, int l2)
 {
-	read[0] = SeqCoord(i1, s1, e1);
-	read[1] = SeqCoord(i2, s2, e2);
+	read[0] = SeqCoord(i1, s1, e1, l1);
+	read[1] = SeqCoord(i2, s2, e2, l2);
 }
 
 // Output

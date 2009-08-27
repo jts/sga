@@ -123,13 +123,13 @@ struct SeqCoord
 {
 	// constructor
 	SeqCoord() {}
-	SeqCoord(std::string i, int s, int e) : id(i), interval(s, e) {}
+	SeqCoord(std::string i, int s, int e, int l) : id(i), interval(s, e), seqlen(l) {}
 
 	// functions
 	bool isLeftExtreme() const;
-	bool isRightExtreme(size_t stringLen) const;
-	bool isExtreme(size_t stringLen) const;
-	bool isContainment(size_t stringLen) const;
+	bool isRightExtreme() const;
+	bool isExtreme() const;
+	bool isContained() const;
 	bool isReverse() const;
 	friend std::ostream& operator<<(std::ostream& out, const SeqCoord& sc);
 	friend std::istream& operator>>(std::istream& in, SeqCoord& sc);	
@@ -137,6 +137,7 @@ struct SeqCoord
 	// data
 	std::string id;
 	Interval interval;
+	int seqlen;
 };
 
 // Overlap
@@ -144,7 +145,7 @@ struct Overlap
 {
 	// constructors
 	Overlap() {}
-	Overlap(std::string i1, int s1, int e1, std::string i2, int s2, int e2); 
+	Overlap(std::string i1, int s1, int e1, int l1, std::string i2, int s2, int e2, int l2); 
 
 	// functions
 	friend std::ostream& operator<<(std::ostream& out, const Overlap& o);

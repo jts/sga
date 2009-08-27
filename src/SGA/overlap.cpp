@@ -79,10 +79,14 @@ void computeOverlaps()
 	BWT* pBWT = createBWT(pSA, pRT);
 	BWT* pRBWT = createBWT(pRSA, pRevRT);
 
-	// Open the writer
-	std::string outFile = opt::prefix + ".ovr";
-	std::ofstream outHandle(outFile.c_str());
-	assert(outHandle.is_open());
+	// Open the writers
+	std::string overlapFile = opt::prefix + ".ovr";
+	std::ofstream overlapHandle(overlapFile.c_str());
+	assert(overlapHandle.is_open());
+
+	std::string containFile = opt::prefix + ".ctn";
+	std::ofstream containHandle(containFile.c_str());
+	assert(containHandle.is_open());
 
 	// Compute overlaps
 	for(size_t i = 0; i < pRT->getCount(); ++i)
@@ -106,18 +110,73 @@ void computeOverlaps()
 		}
 
 		HitVector hitVec = hits.getHits();
-		OverlapVector overlaps = processHits(i, hitVec, pRT, pRevRT);
-		std::copy(overlaps.begin(), overlaps.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
+		OverlapVector overlapVec = processHits(i, hitVec, pRT, pRevRT);
 
-		//	OverlapVector fwdOvr = alignRead(i, currSeq, pBWT, pRT, false, isRC);
-		//	OverlapVector revOvr = alignRead(i, reverse(currSeq), pRBWT, pRevRT, true, !isRC);
+		// Validate the overlaps
+		for(size_t i = 0; i < overlapVec.size(); ++i)
+		{
+			const Overlap& ovr = overlapVec[i];
+			// Ensure that the overlap is not a containment
+			if(ovr.read[0].isContained() && ovr.read[1].isContained())
+			{
+				// Reads are mutually contained, consider the read with lexo. higher
+				// id to be contained within the one with lexo. lower id
+				if(ovr.read[0].id < ovr.read[1].id)
+					writeContainment(containHandle, ovr.read[1], ovr.read[0]);
+				else
+					writeContainment(containHandle, ovr.read[0], ovr.read[1]);
+			}
+			else if(ovr.read[0].isContained())
+			{
+				writeContainment(containHandle, ovr.read[0], ovr.read[1]);
+			}
+			else if(ovr.read[1].isContained())
+			{
+				writeContainment(containHandle, ovr.read[1], ovr.read[0]);
+			}
 
-		//	std::copy(fwdOvr.begin(), fwdOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
-		//	std::copy(revOvr.begin(), revOvr.end(), std::ostream_iterator<Overlap>(outHandle, "\n"));
+			// One of the reads was a containment, skip
+			if(ovr.read[0].isContained() || ovr.read[1].isContained())
+			{
+				std::cerr << "Skipping contained overlap: " << ovr << "\n";
+				continue;
+			}
+			// Unless both overlaps are extreme, skip
+			if(!ovr.read[0].isExtreme() || !ovr.read[1].isExtreme())
+			{
+				std::cerr << "Skipping non-extreme overlap: " << ovr << "\n";
+				continue;
+			}
 
+			// Ensure that the overlaps are the correct orientation
+			// If the reads are from the same strand, one should be left extreme and one should be right extreme
+			// If they are from opposite strands, they should both be left (or right)
+			bool sameStrand = !(ovr.read[0].isReverse() || ovr.read[1].isReverse());
+			bool proper = false;
+			if(sameStrand)
+			{
+				proper = (ovr.read[0].isLeftExtreme() != ovr.read[1].isLeftExtreme() && 
+						  ovr.read[0].isRightExtreme() != ovr.read[1].isRightExtreme());
+			}
+			else
+			{
+				proper = (ovr.read[0].isLeftExtreme() == ovr.read[1].isLeftExtreme() && 
+				          ovr.read[0].isRightExtreme() == ovr.read[1].isRightExtreme());
+			}
+
+			if(!proper)
+			{
+				std::cerr << "Skipping improper overlap: " << ovr << "\n";
+				continue;
+			}
+			// All checks passed, output the overlap
+			overlapHandle << ovr << "\n";
+		}
 	}
-	outHandle.close();
-	
+
+	overlapHandle.close();
+	containHandle.close();
+
 	delete pRT;
 	delete pRevRT;
 	delete pSA;
@@ -145,7 +204,6 @@ OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTabl
 		// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
 		if(query.id != target.id && query.id < target.id)
 		{	
-			std::cout << "Query: " << query.id << " align flags: " << hit.targetRev << "," << hit.queryRev << "\n";
 			// Compute the endpoints of the overlap
 			int s1 = hit.qstart;
 			int e1 = s1 + hit.len - 1;
@@ -173,7 +231,7 @@ OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTabl
 				swap(s2, e2);
 			}
 
-			Overlap o(query.id, s1, e1, target.id, s2, e2);
+			Overlap o(query.id, s1, e1, query.seq.length(), target.id, s2, e2, target.seq.length());
 			overlaps.push_back(o);
 		}
 	}
@@ -203,6 +261,13 @@ BWT* createBWT(SuffixArray* pSA, const ReadTable* pRT)
 	//pBWT->print(pRT);
 	return pBWT;
 }
+
+// Write out a containmend
+void writeContainment(std::ofstream& containHandle, const SeqCoord& contained, const SeqCoord& within)
+{
+	containHandle << contained.id << "\t" << within.id << "\n";
+}
+
 
 //
 SuffixArray* loadSuffixArray(std::string filename)

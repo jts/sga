@@ -26,6 +26,7 @@ OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTabl
 OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRevIdx, bool isReversed);
 void flipCoords(const int len, int& s, int &e);
 void swap(int& s, int& e);
+void writeContainment(std::ofstream& containHandle, const SeqCoord& contained, const SeqCoord& within);
 
 // data structure creation
 BWT* createBWT(SuffixArray* pSA, const ReadTable* pRT);

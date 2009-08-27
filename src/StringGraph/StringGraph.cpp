@@ -144,7 +144,6 @@ StringGraph* createStringGraph(std::string readFile, std::string overlapFile)
 
 		// Initialize data and perform checks
 		StringVertex* pVerts[2];
-		size_t sizes[2];
 		Sequence overhangs[2];
 
 		EdgeComp comp = (o.read[0].isReverse() || o.read[1].isReverse()) ? EC_REVERSE : EC_SAME;
@@ -154,17 +153,13 @@ StringGraph* createStringGraph(std::string readFile, std::string overlapFile)
 		{
 			pVerts[idx] = static_cast<StringVertex*>(pGraph->getVertex(o.read[idx].id));
 			assert(pVerts[idx]);
-			sizes[idx] = pVerts[idx]->getSeq().length();
 			
 			// Ensure the reads are not identical
-			assert(!o.read[idx].isContainment(sizes[idx]));
+			assert(!o.read[idx].isContained() && o.read[idx].isExtreme());
+
 			std::string overhang = getOverhangString(o.read[idx], pVerts[idx]->getSeq());
 			overhangs[idx] = (comp == EC_SAME) ? overhang : reverseComplement(overhang);
 		}
-
-		// Ensure that each overlap is extreme
-		if(!o.read[0].isExtreme(sizes[0]) || !o.read[1].isExtreme(sizes[1]))
-			continue;
 
 		// Add edges
 		StringEdge* pEdges[2];
@@ -174,6 +169,7 @@ StringGraph* createStringGraph(std::string readFile, std::string overlapFile)
 			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, overhangs[1 - idx]);
 			std::cout << "EDGE: " << *pEdges[idx] << "\n";
 		}
+
 		pEdges[0]->setTwin(pEdges[1]);
 		pEdges[1]->setTwin(pEdges[0]);
 
@@ -212,7 +208,7 @@ std::string getOverhangString(const SeqCoord& sc, const std::string& seq)
 	{
 		 // the end coordinate includes the last base, so the overhang starts at the next pos
 		left = upper + 1;
-		right = seq.length();
+		right = sc.seqlen;
 	}
 	else
 	{
