@@ -11,4 +11,5 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 			  Occurance.cpp Occurance.h \
 			  SuffixArray.cpp SuffixArray.h \
 			  InverseSuffixArray.cpp InverseSuffixArray.h \
-			  HitData.cpp HitData.h
+			  HitData.cpp HitData.h \
+			  LCPArray.cpp LCPArray.h

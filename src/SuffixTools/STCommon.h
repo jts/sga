@@ -9,6 +9,8 @@
 #ifndef STCOMMON_H
 #define STCOMMON_H
 #include "STGlobals.h"
+#include <utility>
+
 //
 // Functions
 //
@@ -46,6 +48,9 @@ struct SAID
 		void setPos(uint64_t i);
 		uint64_t getID() const;
 		uint64_t getPos() const;
+
+		// Returns true if the suffix is the full length of the string
+		bool isFull() const;
 
 		// Input/Output
 		friend std::istream& operator>>(std::istream& in, SAID& s);
@@ -108,5 +113,8 @@ class AlphaCount
 // Typedefs of STL collections of the above classes
 typedef std::vector<SuffixString> SuffixStringVector;
 typedef std::vector<SAID> SAIDVector;
+typedef std::pair<SAID, SAID> SAIDPair;
+typedef std::vector<SAIDPair> SAIDPairVec;
+typedef std::set<uint64_t> NumericIDSet;
 
 #endif

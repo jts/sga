@@ -31,7 +31,7 @@ OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, con
 // utility functions
 void flipCoords(const int len, int& s, int &e);
 void swap(int& s, int& e);
-void writeContainment(std::ofstream& containHandle, const std::string& contained, const std::string& within);
+void writeContainment(std::ofstream& containHandle, const SeqCoord& contained, const SeqCoord& within);
 
 // data structure creation
 BWT* createBWT(SuffixArray* pSA, const ReadTable* pRT);

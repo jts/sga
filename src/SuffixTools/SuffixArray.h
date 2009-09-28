@@ -11,6 +11,8 @@
 #include "STCommon.h"
 #include "ReadTable.h"
 
+class LCPArray;
+
 // Simple struct to sort suffixes using their ids by looking
 // up substrings in the table via pRT
 struct SuffixCompare
@@ -44,7 +46,10 @@ class SuffixArray
 		void initialize(const ReadTable& rt);
 		void validate(const ReadTable* pRT) const;
 		void sort(const ReadTable* pRT);
-		
+
+		// Detect all the redundant strings in the data set
+		SAIDPairVec detectRedundantStrings(const ReadTable* pRT, const LCPArray* pLCP) const;
+		void removeReads(const NumericIDSet& idSet);
 
 		// Make all the cyclic rotations of a string
 		static void makeCycles(SuffixString s, SuffixStringVector* outTable);
@@ -60,7 +65,7 @@ class SuffixArray
 	private:
 		
 		void sortConstruct(int numStrings, SuffixStringVector* cycles);
-		std::vector<SAID> m_data;
+		SAIDVector m_data;
 		size_t m_numStrings;
 };
 

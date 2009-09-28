@@ -53,7 +53,8 @@ am_libsuffixtools_a_OBJECTS = libsuffixtools_a-BWT.$(OBJEXT) \
 	libsuffixtools_a-Occurance.$(OBJEXT) \
 	libsuffixtools_a-SuffixArray.$(OBJEXT) \
 	libsuffixtools_a-InverseSuffixArray.$(OBJEXT) \
-	libsuffixtools_a-HitData.$(OBJEXT)
+	libsuffixtools_a-HitData.$(OBJEXT) \
+	libsuffixtools_a-LCPArray.$(OBJEXT)
 libsuffixtools_a_OBJECTS = $(am_libsuffixtools_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -170,7 +171,8 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 			  Occurance.cpp Occurance.h \
 			  SuffixArray.cpp SuffixArray.h \
 			  InverseSuffixArray.cpp InverseSuffixArray.h \
-			  HitData.cpp HitData.h
+			  HitData.cpp HitData.h \
+			  LCPArray.cpp LCPArray.h
 
 all: all-am
 
@@ -222,6 +224,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-BWT.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-HitData.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-LCPArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-Occurance.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-STCommon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-SuffixArray.Po@am__quote@
@@ -323,6 +326,20 @@ libsuffixtools_a-HitData.obj: HitData.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='HitData.cpp' object='libsuffixtools_a-HitData.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-HitData.obj `if test -f 'HitData.cpp'; then $(CYGPATH_W) 'HitData.cpp'; else $(CYGPATH_W) '$(srcdir)/HitData.cpp'; fi`
+
+libsuffixtools_a-LCPArray.o: LCPArray.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-LCPArray.o -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-LCPArray.Tpo" -c -o libsuffixtools_a-LCPArray.o `test -f 'LCPArray.cpp' || echo '$(srcdir)/'`LCPArray.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-LCPArray.Tpo" "$(DEPDIR)/libsuffixtools_a-LCPArray.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-LCPArray.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='LCPArray.cpp' object='libsuffixtools_a-LCPArray.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-LCPArray.o `test -f 'LCPArray.cpp' || echo '$(srcdir)/'`LCPArray.cpp
+
+libsuffixtools_a-LCPArray.obj: LCPArray.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-LCPArray.obj -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-LCPArray.Tpo" -c -o libsuffixtools_a-LCPArray.obj `if test -f 'LCPArray.cpp'; then $(CYGPATH_W) 'LCPArray.cpp'; else $(CYGPATH_W) '$(srcdir)/LCPArray.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-LCPArray.Tpo" "$(DEPDIR)/libsuffixtools_a-LCPArray.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-LCPArray.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='LCPArray.cpp' object='libsuffixtools_a-LCPArray.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-LCPArray.obj `if test -f 'LCPArray.cpp'; then $(CYGPATH_W) 'LCPArray.cpp'; else $(CYGPATH_W) '$(srcdir)/LCPArray.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

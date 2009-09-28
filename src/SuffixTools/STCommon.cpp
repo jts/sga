@@ -58,6 +58,12 @@ uint64_t SAID::getPos() const
 	return (m_val & LOW_MASK);
 }
 
+// 
+bool SAID::isFull() const
+{
+	return getPos() == 0;
+}
+
 // Input
 std::istream& operator>>(std::istream& in, SAID& s)
 {

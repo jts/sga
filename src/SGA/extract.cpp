@@ -4,7 +4,7 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// overlap - compute pairwise overlaps between reads
+// extract - extract exact overlaps between reads directly from a suffix array
 //
 #include <iostream>
 #include <fstream>
@@ -18,20 +18,19 @@
 //
 // Getopt
 //
-#define SUBPROGRAM "overlap"
-static const char *OVERLAP_VERSION_MESSAGE =
+#define SUBPROGRAM "extract"
+static const char *EXTRACT_VERSION_MESSAGE =
 SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Written by Jared Simpson.\n"
 "\n"
 "Copyright 2009 Wellcome Trust Sanger Institute\n";
 
-static const char *OVERLAP_USAGE_MESSAGE =
+static const char *EXTRACT_USAGE_MESSAGE =
 "Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READSFILE\n"
-"Compute pairwise overlap between all the sequences in READS\n"
+"Extract exact read overlaps from a suffix array\n"
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"      -e, --exact                      use the exact extraction algorithm instead of BWT-based alignment\n"
 "      -m, --min-overlap=OVERLAP_LEN    minimum overlap required between two reads [30]\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -42,10 +41,9 @@ namespace opt
 	static unsigned int minOverlap;
 	static std::string prefix;
 	static std::string readsFile;
-	static bool bExactAlgo;
 }
 
-static const char* shortopts = "p:m:ve";
+static const char* shortopts = "p:m:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -53,7 +51,6 @@ static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
 	{ "min-overlap", required_argument, NULL, 'm' },
 	{ "prefix",      required_argument, NULL, 'p' },
-	{ "exact",       no_argument,       NULL, 'e' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -65,11 +62,7 @@ static const struct option longopts[] = {
 int overlapMain(int argc, char** argv)
 {
 	parseOverlapOptions(argc, argv);
-	if(opt::bExactAlgo)
-		computeOverlapsLCP();
-	else
-		computeOverlapsBWT();
-
+	computeOverlapsLCP();
 	return 0;
 }
 
@@ -83,42 +76,20 @@ void computeOverlapsLCP()
 	SuffixArray* pSA = loadSuffixArray(opt::prefix + ".sa");
 	SuffixArray* pRSA = loadSuffixArray(opt::prefix + ".rsa");
 
-	// Initialize LCP
 	LCPArray* pLCP = new LCPArray(pSA, pRT);
-	pSA->print(pRT);
-
+	pLCP->print(pSA, pRT);
 	// Open the writers
 	std::string overlapFile = opt::prefix + ".ovr";
 	std::ofstream overlapHandle(overlapFile.c_str());
 	assert(overlapHandle.is_open());
+
 	std::string containFile = opt::prefix + ".ctn";
 	std::ofstream containHandle(containFile.c_str());
 	assert(containHandle.is_open());
 
-	// Remove contained reads
-	
-	// Detect all the contained reads in the forward suffix array, then use that list to remove them both
-	SAIDPairVec containedReads = pSA->detectRedundantStrings(pRT, pLCP);
-
-	// Print the contained reads and build the set of suffix array ids to remove
-	NumericIDSet idSet;
-	for(size_t idx = 0; idx < containedReads.size(); ++idx)
-	{
-		std::string contained = pRT->getRead(containedReads[idx].first.getID()).id;
-		std::string container = pRT->getRead(containedReads[idx].second.getID()).id;
-		writeContainment(containHandle, contained, container);
-		idSet.insert(containedReads[idx].first.getID());
-	}
-
-	pSA->removeReads(idSet);
-	pRSA->removeReads(idSet);
-	pSA->validate(pRT);
-	pRSA->validate(pRevRT);
-	pSA->print(pRT);
-
-	// Cleanup
 	overlapHandle.close();
 	containHandle.close();
+
 	delete pRT;
 	delete pRevRT;
 	delete pSA;
@@ -184,17 +155,17 @@ void computeOverlapsBWT()
 				// Reads are mutually contained, consider the read with lexo. higher
 				// id to be contained within the one with lexo. lower id
 				if(ovr.read[0].id < ovr.read[1].id)
-					writeContainment(containHandle, ovr.read[1].id, ovr.read[0].id);
+					writeContainment(containHandle, ovr.read[1], ovr.read[0]);
 				else
-					writeContainment(containHandle, ovr.read[0].id, ovr.read[1].id);
+					writeContainment(containHandle, ovr.read[0], ovr.read[1]);
 			}
 			else if(ovr.read[0].isContained())
 			{
-				writeContainment(containHandle, ovr.read[0].id, ovr.read[1].id);
+				writeContainment(containHandle, ovr.read[0], ovr.read[1]);
 			}
 			else if(ovr.read[1].isContained())
 			{
-				writeContainment(containHandle, ovr.read[1].id, ovr.read[0].id);
+				writeContainment(containHandle, ovr.read[1], ovr.read[0]);
 			}
 
 			// One of the reads was a containment, skip
@@ -325,9 +296,9 @@ BWT* createBWT(SuffixArray* pSA, const ReadTable* pRT)
 }
 
 // Write out a containmend
-void writeContainment(std::ofstream& containHandle, const std::string& contained, const std::string& within)
+void writeContainment(std::ofstream& containHandle, const SeqCoord& contained, const SeqCoord& within)
 {
-	containHandle << contained << "\t" << within << "\n";
+	containHandle << contained.id << "\t" << within.id << "\n";
 }
 
 
@@ -348,10 +319,7 @@ SuffixArray* loadSuffixArray(std::string filename)
 //
 void parseOverlapOptions(int argc, char** argv)
 {
-	// Set defaults
 	opt::minOverlap = 25;
-	opt::bExactAlgo = false;
-
 	bool die = false;
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{
@@ -360,7 +328,6 @@ void parseOverlapOptions(int argc, char** argv)
 		{
 			case 'm': arg >> opt::minOverlap; break;
 			case 'p': arg >> opt::prefix; break;
-			case 'e': opt::bExactAlgo = true; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:
