@@ -161,11 +161,11 @@ SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
 				// respective suffixes using the ISA
 				// This is guarenteed to never wrap around since the match will terminate
 				// at the last character
-				SAElem said_a = a.get(fidx_a); 
-				SAElem said_b = b.get(fidx_b); 
+				SAElem elem_a = a.get(fidx_a); 
+				SAElem elem_b = b.get(fidx_b); 
 
-				fidx_a = isa_a.getRank(said_a.getID(), said_a.getPos() + 1);
-				fidx_b = isa_b.getRank(said_b.getID(), said_b.getPos() + 1);
+				fidx_a = isa_a.getRank(elem_a.getID(), elem_a.getPos() + 1);
+				fidx_b = isa_b.getRank(elem_b.getID(), elem_b.getPos() + 1);
 				//printf("	updated fidx to be (%zu, %zu)\n", fidx_a, fidx_b);
 			}
 		}

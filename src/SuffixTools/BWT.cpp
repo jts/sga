@@ -20,11 +20,11 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	// Set up the bwt string and suffix array from the cycled strings
 	for(size_t i = 0; i < n; ++i)
 	{
-		SAElem said = pSA->get(i);
-		const SeqItem& si = pRT->getRead(said.getID());
+		SAElem saElem = pSA->get(i);
+		const SeqItem& si = pRT->getRead(saElem.getID());
 
 		// Get the position of the start of the suffix
-		uint64_t f_pos = said.getPos();
+		uint64_t f_pos = saElem.getPos();
 		uint64_t l_pos = (f_pos == 0) ? si.seq.length() : f_pos - 1;
 
 		m_F[i] = (f_pos == si.seq.length()) ? '$' : si.seq[f_pos];
