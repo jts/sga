@@ -367,6 +367,10 @@ void SuffixArray::validate(const ReadTable* pRT) const
 // 
 void SuffixArray::removeReads(const NumericIDSet& idSet)
 {
+	// Early exit if the idset is empty
+	if(idSet.empty())
+		return;
+
 	SAElemVector newData;
 	newData.reserve(m_data.size());
 
