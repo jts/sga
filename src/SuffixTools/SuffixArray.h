@@ -19,7 +19,7 @@ struct SuffixCompare
 {
 	public:
 		SuffixCompare(const ReadTable* pRT) : m_pRT(pRT) {}
-		bool operator()(SAID x, SAID y);
+		bool operator()(SAElem x, SAElem y);
 
 	private:
 		const ReadTable* m_pRT;
@@ -37,7 +37,7 @@ class SuffixArray
 		SuffixArray(const SuffixArray& a, const SuffixArray& b);
 
 		//
-		SAID get(size_t idx) const { return m_data[idx]; }
+		SAElem get(size_t idx) const { return m_data[idx]; }
 		size_t getSize() const { return m_data.size(); }
 		size_t getNumStrings() const { return m_numStrings; } 
 		std::string getSuffix(size_t idx, const ReadTable* pRT) const;
@@ -48,7 +48,7 @@ class SuffixArray
 		void sort(const ReadTable* pRT);
 
 		// Detect all the redundant strings in the data set
-		SAIDPairVec detectRedundantStrings(const ReadTable* pRT, const LCPArray* pLCP) const;
+		SAElemPairVec detectRedundantStrings(const ReadTable* pRT, const LCPArray* pLCP) const;
 		void removeReads(const NumericIDSet& idSet);
 
 		// Make all the cyclic rotations of a string
@@ -65,7 +65,7 @@ class SuffixArray
 	private:
 		
 		void sortConstruct(int numStrings, SuffixStringVector* cycles);
-		SAIDVector m_data;
+		SAElemVector m_data;
 		size_t m_numStrings;
 };
 

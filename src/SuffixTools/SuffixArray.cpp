@@ -11,7 +11,7 @@
 #include "LCPArray.h"
 
 // Compare two suffixes
-bool SuffixCompare::operator()(SAID x, SAID y) 
+bool SuffixCompare::operator()(SAElem x, SAElem y) 
 { 
 	const SeqItem& rx = m_pRT->getRead(x.getID());
 	const SeqItem& ry = m_pRT->getRead(y.getID());
@@ -161,8 +161,8 @@ SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
 				// respective suffixes using the ISA
 				// This is guarenteed to never wrap around since the match will terminate
 				// at the last character
-				SAID said_a = a.get(fidx_a); 
-				SAID said_b = b.get(fidx_b); 
+				SAElem said_a = a.get(fidx_a); 
+				SAElem said_b = b.get(fidx_b); 
 
 				fidx_a = isa_a.getRank(said_a.getID(), said_a.getPos() + 1);
 				fidx_b = isa_b.getRank(said_b.getID(), said_b.getPos() + 1);
@@ -201,7 +201,7 @@ void SuffixArray::initialize(const ReadTable& rt)
 	{
 		for(size_t j = 0; j < rt.getRead(i).seq.size() + 1; ++j)
 		{
-			m_data[count++] = SAID(i, j);
+			m_data[count++] = SAElem(i, j);
 		}
 	}
 	std::cerr << "Created " << count << " suffixes\n";
@@ -248,9 +248,9 @@ void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
 }
 
 // Detect identical reads that can be removed from the collection
-SAIDPairVec SuffixArray::detectRedundantStrings(const ReadTable* pRT, const LCPArray* pLCP) const
+SAElemPairVec SuffixArray::detectRedundantStrings(const ReadTable* pRT, const LCPArray* pLCP) const
 {
-	SAIDPairVec spv;
+	SAElemPairVec spv;
 	size_t block_root_idx = 0; // tracks the last full-length suffix seen
 	size_t idx = 1;
 
@@ -258,14 +258,14 @@ SAIDPairVec SuffixArray::detectRedundantStrings(const ReadTable* pRT, const LCPA
 	{
 		// Check if the current entry is identical to the previous entry 
 		// (which is identical to the entry at block_root_idx)
-		const SAID& currSAID = get(idx);
-		if(currSAID.isFull())
+		const SAElem& currSAElem = get(idx);
+		if(currSAElem.isFull())
 		{
-			if(pLCP->get(idx - 1) == pRT->getReadLength(currSAID.getID()))
+			if(pLCP->get(idx - 1) == pRT->getReadLength(currSAElem.getID()))
 			{
 				// This read is identical to the block root
-				spv.push_back(std::make_pair(currSAID, get(block_root_idx)));
-				std::cerr << "Found contained read: " << currSAID << " within " << get(block_root_idx) << "\n";
+				spv.push_back(std::make_pair(currSAElem, get(block_root_idx)));
+				std::cerr << "Found contained read: " << currSAElem << " within " << get(block_root_idx) << "\n";
 			}
 			else
 			{
@@ -307,7 +307,7 @@ std::istream& operator>>(std::istream& in, SuffixArray& sa)
 
 	sa.m_data.resize(n);
 	size_t i = 0;
-	SAID id;
+	SAElem id;
 	while(in >> id)
 		sa.m_data[i++] = id;
 	assert(i == n);
@@ -334,8 +334,8 @@ void SuffixArray::validate(const ReadTable* pRT) const
 	// Ensure that the suffix at pos i is lexographically lower than the suffix at i + 1 using the full string
 	for(size_t i = 0; i < n - 1; ++i)
 	{
-		SAID id1 = m_data[i];
-		SAID id2 = m_data[i+1];
+		SAElem id1 = m_data[i];
+		SAElem id2 = m_data[i+1];
 		assert(id1.getID() < maxIdx);
 		std::string suffix1 = pRT->getRead(id1.getID()).seq.substr(id1.getPos()) + "$";
 		std::string suffix2 = pRT->getRead(id2.getID()).seq.substr(id2.getPos()) + "$";
@@ -367,12 +367,12 @@ void SuffixArray::validate(const ReadTable* pRT) const
 // 
 void SuffixArray::removeReads(const NumericIDSet& idSet)
 {
-	SAIDVector newData;
+	SAElemVector newData;
 	newData.reserve(m_data.size());
 
 	for(size_t idx = 0; idx < m_data.size(); ++idx)
 	{
-		SAID id = m_data[idx];
+		SAElem id = m_data[idx];
 		if(idSet.find(id.getID()) == idSet.end())
 		{
 			// not on the delete list
@@ -388,7 +388,7 @@ void SuffixArray::removeReads(const NumericIDSet& idSet)
 // Get the suffix cooresponding to idx using the read table
 std::string SuffixArray::getSuffix(size_t idx, const ReadTable* pRT) const
 {
-	SAID id = m_data[idx];
+	SAElem id = m_data[idx];
 	return pRT->getRead(id.getID()).seq.substr(id.getPos());
 }
 
@@ -399,7 +399,7 @@ void SuffixArray::print(const ReadTable* pRT) const
 	std::cout << "i\tSA(i)\n";
 	for(size_t i = 0; i < m_data.size(); ++i)
 	{
-		SAID id1 = m_data[i];
+		SAElem id1 = m_data[i];
 		std::string suffix = getSuffix(i, pRT) + "$";
 		std::cout << i << "\t" << id1 << "\t" << suffix << "\n";
 	}

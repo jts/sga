@@ -98,7 +98,7 @@ void computeOverlapsLCP()
 	// Remove contained reads
 	
 	// Detect all the contained reads in the forward suffix array, then use that list to remove them both
-	SAIDPairVec containedReads = pSA->detectRedundantStrings(pRT, pLCP);
+	SAElemPairVec containedReads = pSA->detectRedundantStrings(pRT, pLCP);
 
 	// Print the contained reads and build the set of suffix array ids to remove
 	NumericIDSet idSet;
@@ -261,7 +261,7 @@ OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTabl
 
 		// Get the read names for the strings
 		SeqItem query = pCurrRT->getRead(seqIdx);
-		SeqItem target = pCurrRT->getRead(hit.said.getID());
+		SeqItem target = pCurrRT->getRead(hit.saElem.getID());
 		
 		// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
 		if(query.id != target.id && query.id < target.id)
@@ -270,7 +270,7 @@ OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTabl
 			int s1 = hit.qstart;
 			int e1 = s1 + hit.len - 1;
 
-			int s2 = hit.said.getPos();
+			int s2 = hit.saElem.getPos();
 			int e2 = s2 + hit.len - 1;
 			
 			// The alignment was to the reverse index, flip the coordinates of r2

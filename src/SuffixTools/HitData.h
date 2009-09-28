@@ -14,8 +14,8 @@
 struct Hit
 {
 	Hit() {}
-	Hit(SAID i, uint32_t qs, uint32_t l, bool tr, bool qr) : said(i), qstart(qs), len(l), targetRev(tr), queryRev(qr) {}
-	SAID said;
+	Hit(SAElem i, uint32_t qs, uint32_t l, bool tr, bool qr) : saElem(i), qstart(qs), len(l), targetRev(tr), queryRev(qr) {}
+	SAElem saElem;
 	uint32_t qstart;
 	uint32_t len;
 	bool targetRev;

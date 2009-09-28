@@ -130,7 +130,7 @@ void unitTest()
 {
 	// Test construction of SAId's
 	
-	SAID said;
+	SAElem said;
 	uint32_t id1 = 3;
 	uint32_t pos1 = 10;
 	said.setID(id1);

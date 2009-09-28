@@ -20,7 +20,7 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	// Set up the bwt string and suffix array from the cycled strings
 	for(size_t i = 0; i < n; ++i)
 	{
-		SAID said = pSA->get(i);
+		SAElem said = pSA->get(i);
 		const SeqItem& si = pRT->getRead(said.getID());
 
 		// Get the position of the start of the suffix
@@ -111,7 +111,7 @@ void BWT::getHits(std::string w, int minOverlap, bool targetRev, bool queryRev, 
 			// Create the hit
 			for(int i = r_lower; i <= r_upper; ++i)
 			{
-				SAID id = m_pSuffixArray->get(i);
+				SAElem id = m_pSuffixArray->get(i);
 				pHits->addHit(Hit(id, j, overlapLen, targetRev, queryRev));
 			}
 		}

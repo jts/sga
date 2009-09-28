@@ -32,16 +32,16 @@ void printVector(const std::vector<T>& v);
 
 
 //
-// A Generalized SuffixArray ID (SAID) is a single number where the high n bits represents the
+// A Generalized SuffixArray ID (SAElem) is a single number where the high n bits represents the
 // identifier of the string (as the index into a StringDictionary) and the low (64 - n) bits 
 // represents the position in that string
 //
-struct SAID
+struct SAElem
 {
 	public:
-		SAID() : m_val(0) {}
-		SAID(uint64_t i);
-		SAID(uint64_t i, uint64_t p);
+		SAElem() : m_val(0) {}
+		SAElem(uint64_t i);
+		SAElem(uint64_t i, uint64_t p);
 
 		//
 		void setID(uint64_t i);
@@ -53,8 +53,8 @@ struct SAID
 		bool isFull() const;
 
 		// Input/Output
-		friend std::istream& operator>>(std::istream& in, SAID& s);
-		friend std::ostream& operator<<(std::ostream& out, const SAID& s);
+		friend std::istream& operator>>(std::istream& in, SAElem& s);
+		friend std::ostream& operator<<(std::ostream& out, const SAElem& s);
 
 
 	private:
@@ -88,7 +88,7 @@ class SuffixString
 		friend std::ostream& operator<<(std::ostream& out, const SuffixString& s);
 
 		// These fields are intentially public
-		SAID id;
+		SAElem id;
 		std::string str;
 };
 
@@ -112,9 +112,9 @@ class AlphaCount
 
 // Typedefs of STL collections of the above classes
 typedef std::vector<SuffixString> SuffixStringVector;
-typedef std::vector<SAID> SAIDVector;
-typedef std::pair<SAID, SAID> SAIDPair;
-typedef std::vector<SAIDPair> SAIDPairVec;
+typedef std::vector<SAElem> SAElemVector;
+typedef std::pair<SAElem, SAElem> SAElemPair;
+typedef std::vector<SAElemPair> SAElemPairVec;
 typedef std::set<uint64_t> NumericIDSet;
 
 #endif

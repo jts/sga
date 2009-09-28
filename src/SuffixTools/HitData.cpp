@@ -12,7 +12,7 @@
 // Add a hit to the map
 void HitData::addHit(const Hit& h)
 {
-	uint64_t readID = h.said.getID();
+	uint64_t readID = h.saElem.getID();
 
 	// Check if a hit to this read already exists
 	HitMap::iterator iter = m_hitMap.find(readID);

@@ -13,20 +13,20 @@
 //
 
 // Constructors
-SAID::SAID(uint64_t i)
+SAElem::SAElem(uint64_t i)
 {
 	setID(i);
 }
 
 //
-SAID::SAID(uint64_t i, uint64_t p)
+SAElem::SAElem(uint64_t i, uint64_t p)
 {
 	setID(i);
 	setPos(p);
 }
 
 // Set the id
-void SAID::setID(uint64_t i)
+void SAElem::setID(uint64_t i)
 {
 	// Clear the HIGH bits by ANDing with the low mask
 	m_val &= LOW_MASK;
@@ -37,7 +37,7 @@ void SAID::setID(uint64_t i)
 }
 
 // Set the position
-void SAID::setPos(uint64_t i)
+void SAElem::setPos(uint64_t i)
 {
 	// Clear the LOW bits by anding with the high mask
 	m_val &= HIGH_MASK;
@@ -47,25 +47,25 @@ void SAID::setPos(uint64_t i)
 }
 
 // Get the ID
-uint64_t SAID::getID() const
+uint64_t SAElem::getID() const
 {
 	return (m_val & HIGH_MASK) >> POS_BITS;
 }
 
 // Get the position
-uint64_t SAID::getPos() const
+uint64_t SAElem::getPos() const
 {
 	return (m_val & LOW_MASK);
 }
 
 // 
-bool SAID::isFull() const
+bool SAElem::isFull() const
 {
 	return getPos() == 0;
 }
 
 // Input
-std::istream& operator>>(std::istream& in, SAID& s)
+std::istream& operator>>(std::istream& in, SAElem& s)
 {
 	uint64_t i;
 	uint64_t p;
@@ -76,7 +76,7 @@ std::istream& operator>>(std::istream& in, SAID& s)
 }
 
 // Output
-std::ostream& operator<<(std::ostream& out, const SAID& s)
+std::ostream& operator<<(std::ostream& out, const SAElem& s)
 {
 	out << s.getID() << " " << s.getPos();
 	return out;
