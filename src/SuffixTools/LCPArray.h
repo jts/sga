@@ -19,7 +19,7 @@ class LCPArray
 	public:
 		
 		// constructors
-		LCPArray(SuffixArray* pSA, ReadTable* pRT);
+		LCPArray(const SuffixArray* pSA, const ReadTable* pRT);
 
 		// getters
 		unsigned int get(size_t idx) const;

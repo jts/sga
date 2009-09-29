@@ -48,7 +48,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_sga_OBJECTS = sga-sga.$(OBJEXT) sga-index.$(OBJEXT) \
-	sga-overlap.$(OBJEXT) sga-assemble.$(OBJEXT)
+	sga-overlap.$(OBJEXT) sga-assemble.$(OBJEXT) \
+	sga-oview.$(OBJEXT)
 sga_OBJECTS = $(am_sga_OBJECTS)
 sga_DEPENDENCIES = $(top_builddir)/Util/libutil.a \
 	$(top_builddir)/Stats/libstats.a \
@@ -175,7 +176,8 @@ sga_LDADD = \
 sga_SOURCES = sga.cpp \
               index.cpp index.h \
 			  overlap.cpp overlap.h \
-			  assemble.cpp assemble.h
+			  assemble.cpp assemble.h \
+			  oview.cpp oview.h
 
 all: all-am
 
@@ -246,6 +248,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-assemble.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-overlap.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-oview.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-sga.Po@am__quote@
 
 .cpp.o:
@@ -317,6 +320,20 @@ sga-assemble.obj: assemble.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='assemble.cpp' object='sga-assemble.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-assemble.obj `if test -f 'assemble.cpp'; then $(CYGPATH_W) 'assemble.cpp'; else $(CYGPATH_W) '$(srcdir)/assemble.cpp'; fi`
+
+sga-oview.o: oview.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga-oview.o -MD -MP -MF "$(DEPDIR)/sga-oview.Tpo" -c -o sga-oview.o `test -f 'oview.cpp' || echo '$(srcdir)/'`oview.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga-oview.Tpo" "$(DEPDIR)/sga-oview.Po"; else rm -f "$(DEPDIR)/sga-oview.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='oview.cpp' object='sga-oview.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-oview.o `test -f 'oview.cpp' || echo '$(srcdir)/'`oview.cpp
+
+sga-oview.obj: oview.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga-oview.obj -MD -MP -MF "$(DEPDIR)/sga-oview.Tpo" -c -o sga-oview.obj `if test -f 'oview.cpp'; then $(CYGPATH_W) 'oview.cpp'; else $(CYGPATH_W) '$(srcdir)/oview.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga-oview.Tpo" "$(DEPDIR)/sga-oview.Po"; else rm -f "$(DEPDIR)/sga-oview.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='oview.cpp' object='sga-oview.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-oview.obj `if test -f 'oview.cpp'; then $(CYGPATH_W) 'oview.cpp'; else $(CYGPATH_W) '$(srcdir)/oview.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

@@ -14,13 +14,22 @@
 // Read the sequences from a file
 ReadTable::ReadTable(std::string filename)
 {
+	m_pIndex = NULL; // not built by default
 	SeqReader reader(filename);
 	SeqItem si;
 	while(reader.get(si))
 	{
 		addRead(si);
 	}
+
 	std::cerr << "Read "<< getCount() << " sequences\n";
+}
+
+// 
+ReadTable::~ReadTable()
+{
+	if(m_pIndex != NULL)
+		delete m_pIndex;
 }
 
 // Populate this read table with the reverse reads from pRT
@@ -53,6 +62,34 @@ const SeqItem& ReadTable::getRead(size_t idx) const
 {
 	assert(idx < m_table.size());
 	return m_table[idx];
+}
+
+// indexReadsByID must be called before this function can be used
+const SeqItem& ReadTable::getRead(const std::string& id) const
+{
+	assert(m_pIndex != NULL);
+	if(m_pIndex == NULL)
+	{
+		std::cerr << "Error: read table is not indexed (did you forget to call ReadTable::buildIndex?)\n";
+		assert(false);
+	}
+
+	ReadIndex::const_iterator i = m_pIndex->find(id);
+	if(i == m_pIndex->end())
+	{
+		std::cerr << "Read with id " << id << " not found in table\n";
+		assert(false);
+	}
+
+	return *i->second;
+}
+
+// build a read id -> *seqitem index
+void ReadTable::indexReadsByID()
+{
+	m_pIndex = new ReadIndex;
+	for(size_t i = 0; i < m_table.size(); ++i)
+		m_pIndex->insert(std::make_pair(m_table[i].id, &m_table[i]));
 }
 
 //

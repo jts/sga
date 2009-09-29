@@ -41,6 +41,7 @@ class SuffixArray
 		size_t getSize() const { return m_data.size(); }
 		size_t getNumStrings() const { return m_numStrings; } 
 		std::string getSuffix(size_t idx, const ReadTable* pRT) const;
+		size_t getSuffixLength(const ReadTable* pRT, const SAElem elem) const;
 
 		// Validate the suffix array
 		void initialize(const ReadTable& rt);
@@ -48,7 +49,12 @@ class SuffixArray
 		void sort(const ReadTable* pRT);
 
 		// Detect all the redundant strings in the data set
-		SAElemPairVec detectRedundantStrings(const ReadTable* pRT, const LCPArray* pLCP) const;
+		SAElemPairVec detectRedundantStrings(const ReadTable* pRT) const;
+
+		// Detect prefix/suffix overlaps in the suffix array of a minimum length
+		OverlapVector extractPrefixSuffixOverlaps(int minOverlap, const ReadTable* pRT) const;
+
+		// Remove all the suffixes from the SA that have an id in idSet
 		void removeReads(const NumericIDSet& idSet);
 
 		// Make all the cyclic rotations of a string
@@ -64,7 +70,10 @@ class SuffixArray
 
 	private:
 		
+		// Simple construction algorithm based on sorting the cycled rotations of the strings
 		void sortConstruct(int numStrings, SuffixStringVector* cycles);
+
+		// Data members
 		SAElemVector m_data;
 		size_t m_numStrings;
 };

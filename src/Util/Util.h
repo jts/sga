@@ -155,6 +155,8 @@ struct Overlap
 	SeqCoord read[2];
 };
 
+typedef std::vector<Overlap> OverlapVector;
+
 //
 // Functions
 //

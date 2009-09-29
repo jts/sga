@@ -248,8 +248,11 @@ void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
 }
 
 // Detect identical reads that can be removed from the collection
-SAElemPairVec SuffixArray::detectRedundantStrings(const ReadTable* pRT, const LCPArray* pLCP) const
+SAElemPairVec SuffixArray::detectRedundantStrings(const ReadTable* pRT) const
 {
+	// Build the LCP array
+	LCPArray* pLCP = new LCPArray(this, pRT);
+	
 	SAElemPairVec spv;
 	size_t block_root_idx = 0; // tracks the last full-length suffix seen
 	size_t idx = 1;
@@ -279,7 +282,56 @@ SAElemPairVec SuffixArray::detectRedundantStrings(const ReadTable* pRT, const LC
 		}
 		++idx;
 	}
+
+	delete pLCP;
 	return spv;
+}
+
+// Extract all the exact prefix/suffix matches from the suffix array.
+// The algorithm iterates through the SA until it finds a full-length suffix (which is also a prefix of the string/read). 
+// It then iterates backwards from that position collecting all the proper suffixes that match some portion of the prefix
+OverlapVector SuffixArray::extractPrefixSuffixOverlaps(int minOverlap, const ReadTable* pRT) const
+{
+	// Build the LCP array
+	LCPArray* pLCP = new LCPArray(this, pRT);
+	
+	OverlapVector ov;
+	size_t i = 0;
+	while(i < m_data.size())
+	{
+		const SAElem& iElem = get(i);
+		if(iElem.isFull())
+		{
+			assert(i > 0);
+			int j = i - 1;
+			// track the minimum LCP seen in the block so far
+			// this is the amount the suffix at j matches the prefix at i
+			size_t min_lcp = pLCP->get(j);
+			while(j >= 0 && static_cast<int>(min_lcp) >= minOverlap)
+			{
+				// Check if the length of the longest common prefix is equal to the length of the suffix
+				// (this implies that there is a perfect match between the suffix at j and the prefix at j+1)
+				// Also, check that the reads are distinct
+				SAElem jElem = get(j);
+				if(min_lcp == getSuffixLength(pRT, jElem) && iElem.getID() != jElem.getID())
+				{
+					// This is a proper prefix/suffix match
+					const SeqItem& iRead = pRT->getRead(iElem.getID());
+					const SeqItem& jRead = pRT->getRead(jElem.getID());
+					
+					ov.push_back(Overlap(jRead.id, jElem.getPos(), jRead.seq.length() - 1, jRead.seq.length(), iRead.id, 0, min_lcp - 1, iRead.seq.length()));
+					std::cout << "found overlap at " << j << "\n";
+				}
+				--j;
+				if(pLCP->get(j) < min_lcp)
+					min_lcp = pLCP->get(j);
+			}
+		}
+		++i;
+	}
+
+	delete pLCP;
+	return ov;
 }
 
 // Output operator
@@ -394,6 +446,13 @@ std::string SuffixArray::getSuffix(size_t idx, const ReadTable* pRT) const
 {
 	SAElem id = m_data[idx];
 	return pRT->getRead(id.getID()).seq.substr(id.getPos());
+}
+
+// Return the length of the suffix corresponding to elem 
+size_t SuffixArray::getSuffixLength(const ReadTable* pRT, const SAElem elem) const
+{
+	size_t readLength = pRT->getReadLength(elem.getID());
+	return readLength - elem.getPos();
 }
 
 

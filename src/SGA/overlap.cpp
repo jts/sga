@@ -83,10 +83,6 @@ void computeOverlapsLCP()
 	SuffixArray* pSA = loadSuffixArray(opt::prefix + ".sa");
 	SuffixArray* pRSA = loadSuffixArray(opt::prefix + ".rsa");
 
-	// Initialize LCP
-	LCPArray* pLCP = new LCPArray(pSA, pRT);
-	pSA->print(pRT);
-
 	// Open the writers
 	std::string overlapFile = opt::prefix + ".ovr";
 	std::ofstream overlapHandle(overlapFile.c_str());
@@ -95,10 +91,12 @@ void computeOverlapsLCP()
 	std::ofstream containHandle(containFile.c_str());
 	assert(containHandle.is_open());
 
+	//
 	// Remove contained reads
+	//
 	
 	// Detect all the contained reads in the forward suffix array, then use that list to remove them both
-	SAElemPairVec containedReads = pSA->detectRedundantStrings(pRT, pLCP);
+	SAElemPairVec containedReads = pSA->detectRedundantStrings(pRT);
 
 	// Print the contained reads and build the set of suffix array ids to remove
 	NumericIDSet idSet;
@@ -116,6 +114,13 @@ void computeOverlapsLCP()
 	pRSA->validate(pRevRT);
 	pSA->print(pRT);
 
+	//
+	// Extract overlaps
+	//
+	
+	OverlapVector overlapVec = pSA->extractPrefixSuffixOverlaps(opt::minOverlap, pRT);
+	processOverlaps(overlapVec, containHandle, overlapHandle);
+
 	// Cleanup
 	overlapHandle.close();
 	containHandle.close();
@@ -123,7 +128,6 @@ void computeOverlapsLCP()
 	delete pRevRT;
 	delete pSA;
 	delete pRSA;
-	delete pLCP;
 }
 
 
@@ -173,67 +177,7 @@ void computeOverlapsBWT()
 
 		HitVector hitVec = hits.getHits();
 		OverlapVector overlapVec = processHits(i, hitVec, pRT, pRevRT);
-
-		// Validate the overlaps
-		for(size_t i = 0; i < overlapVec.size(); ++i)
-		{
-			const Overlap& ovr = overlapVec[i];
-			// Ensure that the overlap is not a containment
-			if(ovr.read[0].isContained() && ovr.read[1].isContained())
-			{
-				// Reads are mutually contained, consider the read with lexo. higher
-				// id to be contained within the one with lexo. lower id
-				if(ovr.read[0].id < ovr.read[1].id)
-					writeContainment(containHandle, ovr.read[1].id, ovr.read[0].id);
-				else
-					writeContainment(containHandle, ovr.read[0].id, ovr.read[1].id);
-			}
-			else if(ovr.read[0].isContained())
-			{
-				writeContainment(containHandle, ovr.read[0].id, ovr.read[1].id);
-			}
-			else if(ovr.read[1].isContained())
-			{
-				writeContainment(containHandle, ovr.read[1].id, ovr.read[0].id);
-			}
-
-			// One of the reads was a containment, skip
-			if(ovr.read[0].isContained() || ovr.read[1].isContained())
-			{
-				std::cerr << "Skipping contained overlap: " << ovr << "\n";
-				continue;
-			}
-			// Unless both overlaps are extreme, skip
-			if(!ovr.read[0].isExtreme() || !ovr.read[1].isExtreme())
-			{
-				std::cerr << "Skipping non-extreme overlap: " << ovr << "\n";
-				continue;
-			}
-
-			// Ensure that the overlaps are the correct orientation
-			// If the reads are from the same strand, one should be left extreme and one should be right extreme
-			// If they are from opposite strands, they should both be left (or right)
-			bool sameStrand = !(ovr.read[0].isReverse() || ovr.read[1].isReverse());
-			bool proper = false;
-			if(sameStrand)
-			{
-				proper = (ovr.read[0].isLeftExtreme() != ovr.read[1].isLeftExtreme() && 
-						  ovr.read[0].isRightExtreme() != ovr.read[1].isRightExtreme());
-			}
-			else
-			{
-				proper = (ovr.read[0].isLeftExtreme() == ovr.read[1].isLeftExtreme() && 
-				          ovr.read[0].isRightExtreme() == ovr.read[1].isRightExtreme());
-			}
-
-			if(!proper)
-			{
-				std::cerr << "Skipping improper overlap: " << ovr << "\n";
-				continue;
-			}
-			// All checks passed, output the overlap
-			overlapHandle << ovr << "\n";
-		}
+		processOverlaps(overlapVec, containHandle, overlapHandle);
 	}
 
 	overlapHandle.close();
@@ -298,6 +242,71 @@ OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTabl
 		}
 	}
 	return overlaps;
+}
+
+//
+void processOverlaps(const OverlapVector& overlapVec, std::ofstream& containHandle, std::ofstream& overlapHandle)
+{
+	// Validate the overlaps
+	for(size_t i = 0; i < overlapVec.size(); ++i)
+	{
+		const Overlap& ovr = overlapVec[i];
+		// Ensure that the overlap is not a containment
+		if(ovr.read[0].isContained() && ovr.read[1].isContained())
+		{
+			// Reads are mutually contained, consider the read with lexo. higher
+			// id to be contained within the one with lexo. lower id
+			if(ovr.read[0].id < ovr.read[1].id)
+				writeContainment(containHandle, ovr.read[1].id, ovr.read[0].id);
+			else
+				writeContainment(containHandle, ovr.read[0].id, ovr.read[1].id);
+		}
+		else if(ovr.read[0].isContained())
+		{
+			writeContainment(containHandle, ovr.read[0].id, ovr.read[1].id);
+		}
+		else if(ovr.read[1].isContained())
+		{
+			writeContainment(containHandle, ovr.read[1].id, ovr.read[0].id);
+		}
+
+		// One of the reads was a containment, skip
+		if(ovr.read[0].isContained() || ovr.read[1].isContained())
+		{
+			std::cerr << "Skipping contained overlap: " << ovr << "\n";
+			continue;
+		}
+		// Unless both overlaps are extreme, skip
+		if(!ovr.read[0].isExtreme() || !ovr.read[1].isExtreme())
+		{
+			std::cerr << "Skipping non-extreme overlap: " << ovr << "\n";
+			continue;
+		}
+
+		// Ensure that the overlaps are the correct orientation
+		// If the reads are from the same strand, one should be left extreme and one should be right extreme
+		// If they are from opposite strands, they should both be left (or right)
+		bool sameStrand = !(ovr.read[0].isReverse() || ovr.read[1].isReverse());
+		bool proper = false;
+		if(sameStrand)
+		{
+			proper = (ovr.read[0].isLeftExtreme() != ovr.read[1].isLeftExtreme() && 
+					  ovr.read[0].isRightExtreme() != ovr.read[1].isRightExtreme());
+		}
+		else
+		{
+			proper = (ovr.read[0].isLeftExtreme() == ovr.read[1].isLeftExtreme() && 
+					  ovr.read[0].isRightExtreme() == ovr.read[1].isRightExtreme());
+		}
+
+		if(!proper)
+		{
+			std::cerr << "Skipping improper overlap: " << ovr << "\n";
+			continue;
+		}
+		// All checks passed, output the overlap
+		overlapHandle << ovr << "\n";
+	}
 }
 
 //

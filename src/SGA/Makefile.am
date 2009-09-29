@@ -17,4 +17,5 @@ sga_LDADD = \
 sga_SOURCES = sga.cpp \
               index.cpp index.h \
 			  overlap.cpp overlap.h \
-			  assemble.cpp assemble.h
+			  assemble.cpp assemble.h \
+			  oview.cpp oview.h

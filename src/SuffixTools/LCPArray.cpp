@@ -11,7 +11,7 @@
 #include "LCPArray.h"
 
 // Naive construction algorithm
-LCPArray::LCPArray(SuffixArray* pSA, ReadTable* pRT)
+LCPArray::LCPArray(const SuffixArray* pSA, const ReadTable* pRT)
 {
 	size_t saSize = pSA->getSize();
 	m_data.resize(saSize - 1);
