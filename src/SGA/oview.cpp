@@ -52,7 +52,6 @@ static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
 	{ "min-overlap", required_argument, NULL, 'm' },
 	{ "prefix",      required_argument, NULL, 'p' },
-	{ "exact",       no_argument,       NULL, 'e' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -108,14 +107,32 @@ int oviewMain(int argc, char** argv)
 		// Setup the padding string for the right sequence
 		int offset = std::min(pLeftSC->interval.start, pLeftSC->interval.end);
 		assert(offset >= 0 && offset < pLeftSC->seqlen);
-		char* d_padding = new char[offset + 1];
-		memset(d_padding, 32, offset);
-		d_padding[offset] = 0;
+
+		char* d_padding_str = new char[offset + 1];
+		memset(d_padding_str, 32, offset);
+		d_padding_str[offset] = 0;
 
 		// Draw the right sequence
-		std::cout << DEFAULT_PADDING << d_padding << rightSeq << "\n";
-		std::cout << "\n";
-		delete [] d_padding;
+		std::cout << DEFAULT_PADDING << d_padding_str << rightSeq << "\n";
+
+		// Calculate the matching string
+		std::string leftMatch = pLeftSC->getSubstring(leftSeq);
+		std::string rightMatch = pRightSC->getSubstring(rightSeq);
+		size_t maxLen = std::max(leftMatch.length(), rightMatch.length());
+
+		// Output the matching string
+		std::string matchStr(maxLen, ' ');
+		for(size_t i = 0; i < maxLen; ++i)
+		{
+			if(i > leftMatch.size() || i > rightMatch.size() || leftMatch[i] != rightMatch[i])
+				matchStr[i] = ' ';
+			else
+				matchStr[i] = '*';
+		}
+
+		std::cout << DEFAULT_PADDING << d_padding_str << matchStr << "\n\n";
+
+		delete [] d_padding_str;
 	}
 
 	delete pRT;

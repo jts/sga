@@ -160,6 +160,24 @@ bool SeqCoord::isReverse() const
 	return interval.end < interval.start;
 }
 
+std::string SeqCoord::getSubstring(std::string str) const
+{
+	int left;
+	int size; 
+	if(interval.start < interval.end)
+	{
+		left = interval.start;
+		size = interval.end - interval.start + 1;
+	}
+	else
+	{
+		left = interval.end;
+		size = interval.start - interval.end + 1;
+	}
+
+	return str.substr(left, size);
+}
+
 // Output
 std::ostream& operator<<(std::ostream& out, const SeqCoord& sc)
 {

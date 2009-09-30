@@ -131,6 +131,10 @@ struct SeqCoord
 	bool isExtreme() const;
 	bool isContained() const;
 	bool isReverse() const;
+
+	// Get the substring described by the interval
+	std::string getSubstring(std::string str) const;
+
 	friend std::ostream& operator<<(std::ostream& out, const SeqCoord& sc);
 	friend std::istream& operator>>(std::istream& in, SeqCoord& sc);	
 
