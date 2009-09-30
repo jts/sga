@@ -328,8 +328,6 @@ OverlapVector SuffixArray::extractPrefixSuffixOverlaps(int minOverlap, const Rea
 											 iRead.id, 0, min_lcp - 1, iRead.seq.length()));
 						idSet.insert(jElem.getID());
 					}
-
-					std::cout << "found overlap at " << j << "\n";
 				}
 				--j;
 				if(pLCP->get(j) < min_lcp)

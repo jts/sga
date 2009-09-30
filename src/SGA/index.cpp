@@ -82,7 +82,8 @@ void buildIndex(std::string outfile, const ReadTable* pRT)
 	pSA->initialize(*pRT);
 	pSA->sort(pRT);
 	pSA->validate(pRT);
-	pSA->print(pRT);
+	if(opt::verbose > 0)
+		pSA->print(pRT);
 	writeSA(outfile, pSA);
 	delete pSA;
 	pSA = NULL;

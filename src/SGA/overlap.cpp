@@ -110,9 +110,12 @@ void computeOverlapsLCP()
 
 	pSA->removeReads(idSet);
 	pRSA->removeReads(idSet);
+	std::cerr << "Warning: validation is turned on\n";
 	pSA->validate(pRT);
 	pRSA->validate(pRevRT);
-	pSA->print(pRT);
+
+	if(opt::verbose > 0)
+		pSA->print();
 
 	//
 	// Extract overlaps
