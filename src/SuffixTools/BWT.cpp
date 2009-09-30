@@ -80,8 +80,8 @@ void BWT::backwardSearch(std::string w) const
 	std::cout << "Interval found: " << r_lower << "," << r_upper << "\n";
 }
 
-// Perform a search for overlaps using a backward search algorithm
-void BWT::getHits(std::string w, int minOverlap, bool targetRev, bool queryRev, HitData* pHits) const
+// Perform a search for hits to read prefixes using a backward search algorithm
+void BWT::getPrefixHits(std::string w, int minOverlap, bool targetRev, bool queryRev, HitData* pHits) const
 {
 	// Initialize the search
 	int len = w.size();

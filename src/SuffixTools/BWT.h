@@ -27,7 +27,7 @@ class BWT
 			
 		// Exact match
 		void backwardSearch(std::string w) const;
-		void getHits(std::string w, int minOverlap, bool targetRev, bool queryRev, HitData* pHits) const;
+		void getPrefixHits(std::string w, int minOverlap, bool targetRev, bool queryRev, HitData* pHits) const;
 
 		// L[i] -> F mapping 
 		size_t LF(size_t idx) const;

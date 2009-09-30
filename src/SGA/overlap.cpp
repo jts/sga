@@ -172,8 +172,8 @@ void computeOverlapsBWT()
 			bool isRC = (sn == 1) ? true : false;
 			const Sequence& currSeq = seqs[sn];
 			
-			pBWT->getHits(currSeq, opt::minOverlap, false, isRC, &hits);
-			pRBWT->getHits(reverse(currSeq), opt::minOverlap, true, !isRC, &hits);
+			pBWT->getPrefixHits(currSeq, opt::minOverlap, false, isRC, &hits);
+			pRBWT->getPrefixHits(reverse(currSeq), opt::minOverlap, true, !isRC, &hits);
 		}
 
 		HitVector hitVec = hits.getHits();
