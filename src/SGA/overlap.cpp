@@ -145,6 +145,7 @@ void computeOverlapsBWT()
 	BWT* pBWT = createBWT(pSA, pRT);
 	BWT* pRBWT = createBWT(pRSA, pRevRT);
 
+	pBWT->print(pRT);
 	// Open the writers
 	std::string overlapFile = opt::prefix + ".ovr";
 	std::ofstream overlapHandle(overlapFile.c_str());
@@ -200,7 +201,7 @@ OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTabl
 	{
 		// Convert the hit to an overlap
 		const Hit& hit = hitVec[j];
-		
+				
 		const ReadTable* pCurrRT = (hit.targetRev) ? pRevRT : pFwdRT;
 
 		// Get the read names for the strings

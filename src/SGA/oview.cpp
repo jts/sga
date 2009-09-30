@@ -105,7 +105,12 @@ int oviewMain(int argc, char** argv)
 		std::cout << DEFAULT_PADDING << leftSeq << "\n";
 
 		// Setup the padding string for the right sequence
-		int offset = std::min(pLeftSC->interval.start, pLeftSC->interval.end);
+		int offset;
+		if(!pLeftSC->isReverse())
+			offset = pLeftSC->interval.start;
+		else
+			offset = pLeftSC->seqlen - pLeftSC->interval.start - 1;
+			
 		assert(offset >= 0 && offset < pLeftSC->seqlen);
 
 		char* d_padding_str = new char[offset + 1];

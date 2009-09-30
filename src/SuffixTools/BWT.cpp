@@ -83,8 +83,6 @@ void BWT::backwardSearch(std::string w) const
 // Perform a search for overlaps using a backward search algorithm
 void BWT::getHits(std::string w, int minOverlap, bool targetRev, bool queryRev, HitData* pHits) const
 {
-	//std::cout << "Searching for " << w << "\n";
-
 	// Initialize the search
 	int len = w.size();
 	int j = len - 1;
@@ -111,8 +109,12 @@ void BWT::getHits(std::string w, int minOverlap, bool targetRev, bool queryRev, 
 			// Create the hit
 			for(int i = r_lower; i <= r_upper; ++i)
 			{
-				SAElem id = m_pSuffixArray->get(i);
-				pHits->addHit(Hit(id, j, overlapLen, targetRev, queryRev));
+				SAElem elem = m_pSuffixArray->get(i);
+				
+				// Only accept hits which match the prefix of another read, indicated by the suffix element having 
+				// a position of 0
+				if(elem.getPos() == 0)
+					pHits->addHit(Hit(elem, j, overlapLen, targetRev, queryRev));
 			}
 		}
 	}
