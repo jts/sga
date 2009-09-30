@@ -307,6 +307,7 @@ OverlapVector SuffixArray::extractPrefixSuffixOverlaps(int minOverlap, const Rea
 			// track the minimum LCP seen in the block so far
 			// this is the amount the suffix at j matches the prefix at i
 			size_t min_lcp = pLCP->get(j);
+			std::set<uint64_t> idSet;
 			while(j >= 0 && static_cast<int>(min_lcp) >= minOverlap)
 			{
 				// Check if the length of the longest common prefix is equal to the length of the suffix
@@ -319,7 +320,15 @@ OverlapVector SuffixArray::extractPrefixSuffixOverlaps(int minOverlap, const Rea
 					const SeqItem& iRead = pRT->getRead(iElem.getID());
 					const SeqItem& jRead = pRT->getRead(jElem.getID());
 					
-					ov.push_back(Overlap(jRead.id, jElem.getPos(), jRead.seq.length() - 1, jRead.seq.length(), iRead.id, 0, min_lcp - 1, iRead.seq.length()));
+					// Check if we have seen a match to this id yet
+					// The first hit to a read will always be the longest
+					if(idSet.find(jElem.getID()) == idSet.end())
+					{
+						ov.push_back(Overlap(jRead.id, jElem.getPos(), jRead.seq.length() - 1, jRead.seq.length(), 
+											 iRead.id, 0, min_lcp - 1, iRead.seq.length()));
+						idSet.insert(jElem.getID());
+					}
+
 					std::cout << "found overlap at " << j << "\n";
 				}
 				--j;
