@@ -26,7 +26,7 @@ struct EdgeDesc
 	EdgeDir dir;
 	EdgeComp comp;
 
-	// Less than
+	// Operators
 	bool operator<(const EdgeDesc& obj) const
 	{
 		if(id < obj.id)
@@ -42,6 +42,11 @@ struct EdgeDesc
 		else if(comp > obj.comp)
 			return false;
 		return false;
+	}
+
+	bool operator==(const EdgeDesc& obj) const
+	{
+		return id == obj.id && dir == obj.dir && comp == obj.comp;
 	}
 
 	friend std::ostream& operator<<(std::ostream& out, const EdgeDesc& ed)

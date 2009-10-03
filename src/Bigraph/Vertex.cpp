@@ -11,23 +11,18 @@
 
 Vertex::~Vertex()
 {
-	EdgePtrMapIter iter = m_edges.begin();
+	EdgePtrListIter iter = m_edges.begin();
 	for(; iter != m_edges.end(); ++iter)
 	{
-		delete iter->second;
-		iter->second = NULL;
+		delete *iter;
+		*iter = NULL;
 	}
 }
 
 // Add an edge
 void Vertex::addEdge(Edge* ep)
 {
-	std::pair<EdgePtrMapIter, bool> result = m_edges.insert(std::make_pair(ep->getDesc(), ep));
-	if(!result.second)
-	{
-		std::cerr << "Error attempt to add duplicate edge " << *ep << std::endl;
-		assert(false);
-	}
+	m_edges.push_back(ep);
 }
 
 // Remove an edge
@@ -39,10 +34,11 @@ void Vertex::removeEdge(Edge* pEdge)
 }
 
 // Remove edge
-// Note - this does not delete the edge
+// Note - this does not delete the edge through the pointer
 void Vertex::removeEdge(const EdgeDesc& ed)
 {
-	EdgePtrMapIter iter = m_edges.find(ed);
+
+	EdgePtrListIter iter = findEdge(ed);
 	assert(iter != m_edges.end());
 	m_edges.erase(iter);
 }
@@ -50,10 +46,10 @@ void Vertex::removeEdge(const EdgeDesc& ed)
 // Delete all the edges, and their twins, from this vertex
 void Vertex::deleteEdges()
 {
-	EdgePtrMapIter iter = m_edges.begin();
+	EdgePtrListIter iter = m_edges.begin();
 	for(; iter != m_edges.end(); ++iter)
 	{
-		Edge* pEdge = iter->second;
+		Edge* pEdge = *iter;
 		Edge* pTwin = pEdge->getTwin();
 		Vertex* pPartner = pEdge->getEnd();
 		pPartner->removeEdge(pTwin);
@@ -61,23 +57,53 @@ void Vertex::deleteEdges()
 		pEdge = NULL;
 		delete pTwin;
 		pTwin = NULL;
-		iter->second = NULL;
+		*iter = NULL;
 	}
 	m_edges.clear();
 }
 
+// Return the iterator to the edge matching edgedesc
+EdgePtrListIter Vertex::findEdge(const EdgeDesc& ed)
+{
+	for(EdgePtrListIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		if((*iter)->getDesc() == ed)
+			return iter;
+	}
+	return m_edges.end();
+}
+
+EdgePtrListConstIter Vertex::findEdge(const EdgeDesc& ed) const
+{
+	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		if((*iter)->getDesc() == ed)
+			return iter;
+	}
+	return m_edges.end();
+}
+
 void Vertex::validate() const
 {
+	EdgeDescSet edSet;
 	// Ensure the twin edge exists for every edge
-	for(EdgePtrMapConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
-		Edge* pEdge = iter->second;
+		Edge* pEdge = *iter;
 		Edge* pTwinEdge = pEdge->getTwin();
 		Vertex* pEndpoint = pEdge->getEnd();
 		if(pTwinEdge == NULL)
 			std::cerr << "Warning, twin pointer for edge " << *pEdge << " is NULL\n";
 		else if(!pEndpoint->hasEdge(pEdge->getTwinDesc()))
 			std::cerr << "Warning edge " << *pEdge << " does not have a twin with desc " << pEdge->getTwinDesc() << "\n";
+		
+		std::pair<EdgeDescSet::iterator, bool> result = edSet.insert(pEdge->getDesc());
+		if(result.second != true)
+		{
+			std::cerr << "Error: edge with description " << pEdge->getDesc() 
+			          << " is in the adj list twice\n";
+			assert(false);
+		}
 	}
 }
 
@@ -96,27 +122,27 @@ bool Vertex::hasEdge(Edge* pEdge) const
 //
 bool Vertex::hasEdge(const EdgeDesc& ed) const
 {
-	return m_edges.find(ed) != m_edges.end();
+	return findEdge(ed) != m_edges.end();
 }
 
 // Return the edge matching the descriptions
 Edge* Vertex::getEdge(const EdgeDesc& ed)
 {
-	 EdgePtrMapConstIter i = m_edges.find(ed);
+	 EdgePtrListIter i = findEdge(ed);
 	 assert(i != m_edges.end());
-	 return i->second;
+	 return *i;
 }
 
 // Find edges to the specified vertex
 EdgePtrVec Vertex::findEdgesTo(VertexID id)
 {
-	EdgePtrMapConstIter iter = m_edges.begin();
+	EdgePtrListConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
 	for(; iter != m_edges.end(); ++iter)
 	{
-		if(iter->second->getEndID() == id)
+		if((*iter)->getEndID() == id)
 		{
-			outEdges.push_back(iter->second);
+			outEdges.push_back(*iter);
 		}
 	}
 	return outEdges;
@@ -128,14 +154,14 @@ EdgePtrVec Vertex::findEdgesTo(VertexID id)
 //
 EdgePtrVec Vertex::getEdges(EdgeDir dir)
 {
-	EdgePtrMapConstIter iter = m_edges.begin();
+	EdgePtrListConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
 	outEdges.reserve(m_edges.size());
 	for(; iter != m_edges.end(); ++iter)
 	{
-		if(iter->second->getDir() == dir)
+		if((*iter)->getDir() == dir)
 		{
-			outEdges.push_back(iter->second);
+			outEdges.push_back(*iter);
 		}
 	}
 	return outEdges;
@@ -145,16 +171,16 @@ EdgePtrVec Vertex::getEdges(EdgeDir dir)
 // Get the edges
 EdgePtrVec Vertex::getEdges()
 {
-	EdgePtrMapConstIter iter = m_edges.begin();
+	EdgePtrListConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
-	outEdges.reserve(m_edges.size());
 	for(; iter != m_edges.end(); ++iter)
-		outEdges.push_back(iter->second);
+		outEdges.push_back(*iter);
 	return outEdges;	
 }
 
 
 // Count the edges
+// This function is not necessarily constant time
 size_t Vertex::countEdges() const
 { 
 	return m_edges.size(); 
@@ -170,23 +196,23 @@ size_t Vertex::countEdges(EdgeDir dir)
 // Output edges in graphviz format
 void Vertex::writeEdges(std::ostream& out, int dotFlags) const
 {
-	EdgePtrMapConstIter iter = m_edges.begin();
+	EdgePtrListConstIter iter = m_edges.begin();
 	for(; iter != m_edges.end(); ++iter)
 	{
 		if(dotFlags & DF_UNDIRECTED)
 		{
-			if(iter->second->getStartID() < iter->second->getEndID())
+			if((*iter)->getStartID() < (*iter)->getEndID())
 			{
-				out << "\"" << iter->second->getStart() << "\" -- \"" << iter->second->getEnd() << "\"";
+				out << "\"" << (*iter)->getStart() << "\" -- \"" << (*iter)->getEnd() << "\"";
 			}
 		}
 		else
 		{
-			out << "\"" << iter->second->getStartID() << "\" -> \"" << iter->second->getEndID();
-			std::string color = (iter->second->getDir() == ED_SENSE) ? "black" : "red";
-			std::string label = (iter->second->getComp() == EC_SAME) ? "S" : "F";
+			out << "\"" << (*iter)->getStartID() << "\" -> \"" << (*iter)->getEndID();
+			std::string color = ((*iter)->getDir() == ED_SENSE) ? "black" : "red";
+			std::string label = ((*iter)->getComp() == EC_SAME) ? "S" : "F";
 			out << "\" [color=\"" << color << "\" ";
-			out << "label=\"" << iter->second->getLabel() << "\"];";
+			out << "label=\"" << (*iter)->getLabel() << "\"];";
 		}
 		out << "\n";
 	}

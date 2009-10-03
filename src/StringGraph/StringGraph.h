@@ -76,10 +76,19 @@ struct SGFastaVisitor
 	~SGFastaVisitor() { m_fileHandle.close(); }
 
 	// functions
+	void previsit(StringGraph* /*pGraph*/) {}
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
-
+	void postvisit(StringGraph* /*pGraph*/) {}
 	// data
 	std::ofstream m_fileHandle;
+};
+
+struct SGTransRedVisitor
+{
+	SGTransRedVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
 };
 
 #endif

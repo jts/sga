@@ -12,7 +12,9 @@
 // Includes
 #include <stdio.h>
 #include <map>
+#include <set>
 #include <vector>
+#include <list>
 #include <ostream>
 #include <iostream>
 #include <iterator>
@@ -32,9 +34,13 @@ enum VertexColor
 // Typedefs
 typedef std::map<EdgeDesc, Edge*> EdgePtrMap;
 typedef std::vector<Edge*> EdgePtrVec;
+typedef std::set<EdgeDesc> EdgeDescSet;
+typedef std::list<Edge*> EdgePtrList;
 typedef EdgePtrMap::iterator EdgePtrMapIter;
 typedef EdgePtrMap::const_iterator EdgePtrMapConstIter;
 typedef EdgePtrVec::iterator EdgePtrVecIter;
+typedef EdgePtrList::iterator EdgePtrListIter;
+typedef EdgePtrList::const_iterator EdgePtrListConstIter;
 
 class Vertex
 {
@@ -43,7 +49,7 @@ class Vertex
 		Vertex(VertexID id) : m_id(id), m_color(VC_WHITE) {}
 		virtual ~Vertex();
 
-		// Add an edge
+		// Edge list operations
 		void addEdge(Edge* ep);
 		void removeEdge(Edge* pEdge);
 		void removeEdge(const EdgeDesc& ed);
@@ -54,6 +60,10 @@ class Vertex
 	
 		virtual void merge(const Edge* pEdge);
 		virtual void validate() const;
+		
+		// getters
+		EdgePtrListIter findEdge(const EdgeDesc& ed);
+		EdgePtrListConstIter findEdge(const EdgeDesc& ed) const;
 
 		EdgePtrVec findEdgesTo(VertexID id);
 		EdgePtrVec getEdges(EdgeDir dir);
@@ -72,7 +82,7 @@ class Vertex
 	protected:
 
 		VertexID m_id;
-		EdgePtrMap m_edges;
+		EdgePtrList m_edges;
 		VertexColor m_color;
 };
 

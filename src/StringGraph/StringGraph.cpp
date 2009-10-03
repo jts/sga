@@ -72,13 +72,13 @@ void StringVertex::merge(const Edge* pEdge)
 		m_seq.insert(0, pSE->getSeq()); //prepend
 
 	// Now update the edges that point TO this vertex to contain the merged-in label
-	for(EdgePtrMapIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrListIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		// Only update edges in the opposite direction of the merged-in edge
 		// This is the dimension that grew
-		if(iter->second->getDir() != pEdge->getDir())
+		if((*iter)->getDir() != pEdge->getDir())
 		{
-			StringEdge* pTwinSE = static_cast<StringEdge*>(iter->second->getTwin());
+			StringEdge* pTwinSE = static_cast<StringEdge*>((*iter)->getTwin());
 			pTwinSE->updateLabel(pSE);
 		}
 	}
@@ -93,9 +93,9 @@ void StringVertex::validate() const
 {
 	Vertex::validate();
 
-	for(EdgePtrMapConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
-		StringEdge* pSE = static_cast<StringEdge*>(iter->second);
+		StringEdge* pSE = static_cast<StringEdge*>(*iter);
 		std::string label = pSE->getSeq();
 		StringVertex* pEnd = static_cast<StringVertex*>(pSE->getEnd());
 
@@ -121,5 +121,24 @@ bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 	m_fileHandle << ">" << pSV->getID() << " " <<  pSV->getReadCount() << "\n";
 	m_fileHandle << pSV->getSeq() << "\n";
 	return false;
+}
+
+void SGTransRedVisitor::previsit(StringGraph* pGraph)
+{
+	// Set all the vertices in the graph to "vacant"
+	pGraph->setColors(VC_WHITE);
+	std::cout << "Running TR algorithm\n";
+}
+
+bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+	(void)pGraph;
+	(void)pVertex;
+	return false;
+}
+
+void SGTransRedVisitor::postvisit(StringGraph* /*pGraph*/)
+{
+
 }
 

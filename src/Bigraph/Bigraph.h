@@ -96,11 +96,13 @@ class Bigraph
 		bool visit(VF& vf)
 		{
 			bool modified = false;
+			vf.previsit(this);
 			VertexPtrMapConstIter iter = m_vertices.begin(); 
 			for(; iter != m_vertices.end(); ++iter)
 			{
 				modified = vf.visit(this, iter->second) || modified;
 			}
+			vf.postvisit(this);
 			return modified;
 		}
 		
