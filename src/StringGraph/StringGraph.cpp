@@ -111,7 +111,20 @@ void StringVertex::validate() const
 			std::cerr << "Warning edge label " << label << " does not match vertex suffix " << vertSuffix << "\n";
 		}
 	}
+}
 
+void StringVertex::sortAdjList()
+{
+	StringEdgeLenComp comp;
+	m_edges.sort(comp);
+}
+
+// Compare string edge points by length
+bool StringEdgeLenComp::operator()(const Edge* pA, const Edge* pB)
+{
+	const StringEdge* pSA = static_cast<const StringEdge*>(pA);
+	const StringEdge* pSB = static_cast<const StringEdge*>(pB);
+	return pSA->getSeqLen() < pSB->getSeqLen();
 }
 
 // Visitor which outputs the graph in fasta format
@@ -128,6 +141,7 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 	// Set all the vertices in the graph to "vacant"
 	pGraph->setColors(VC_WHITE);
 	std::cout << "Running TR algorithm\n";
+	pGraph->sortVertexAdjLists();
 }
 
 bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)

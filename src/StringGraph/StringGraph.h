@@ -24,6 +24,14 @@
 
 typedef Bigraph StringGraph;
 class StringVertex;
+class StringEdge;
+
+// String edge sorting function, by length
+struct StringEdgeLenComp
+{
+	bool operator()(const Edge* pA, const Edge* pB);
+};
+
 
 // Derived from Bigraph Edge
 class StringEdge : public Edge
@@ -43,6 +51,8 @@ class StringEdge : public Edge
 		void updateLabel(const StringEdge* pSE);
 		virtual std::string getLabel() const;
 		const std::string& getSeq() const { return m_seq; }
+		size_t getSeqLen() const { return m_seq.length(); }
+		
 		
 	private:
 
@@ -59,6 +69,7 @@ class StringVertex : public Vertex
 		// functions
 		virtual void merge(const Edge* pEdge);
 		virtual void validate() const;
+		virtual void sortAdjList();
 
 		size_t getReadCount() const { return m_readCount; }
 		const std::string& getSeq() const { return m_seq; }

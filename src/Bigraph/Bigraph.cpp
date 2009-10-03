@@ -219,6 +219,16 @@ void Bigraph::simplify()
 }
 
 //
+// Sort the adjacency list for each vertex
+//
+void Bigraph::sortVertexAdjLists()
+{
+	VertexPtrMapIter iter = m_vertices.begin();
+	for(; iter != m_vertices.end(); ++iter)
+		iter->second->sortAdjList();
+}
+
+//
 // Validate that the graph is sane
 //
 void Bigraph::validate()

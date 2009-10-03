@@ -72,6 +72,9 @@ class Bigraph
 		// Flip a given vertex
 		void flip(VertexID id);
 
+		// Sort all the vertex adjacency lists
+		void sortVertexAdjLists();
+
 		// Get the IDs of the vertices that do not branch (both sense/antisense degree <= 1)
 		VertexIDVec getNonBranchingVertices() const;
 

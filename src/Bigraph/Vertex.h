@@ -31,6 +31,12 @@ enum VertexColor
 	VC_BLACK
 };
 
+// Default edge sorting function, by ID
+struct EdgeIDComp
+{
+	bool operator()(const Edge* pA, const Edge* pB);
+};
+
 // Typedefs
 typedef std::map<EdgeDesc, Edge*> EdgePtrMap;
 typedef std::vector<Edge*> EdgePtrVec;
@@ -60,6 +66,7 @@ class Vertex
 	
 		virtual void merge(const Edge* pEdge);
 		virtual void validate() const;
+		virtual void sortAdjList();
 		
 		// getters
 		EdgePtrListIter findEdge(const EdgeDesc& ed);

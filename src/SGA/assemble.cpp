@@ -71,6 +71,9 @@ void assemble()
 	pGraph->validate();
 	//pGraph->simplify();
 	pGraph->writeDot("initialGraph.dot");
+	SGTransRedVisitor trVisit;
+	pGraph->visit(trVisit);
+
 	pGraph->simplify();
 	pGraph->validate();
 	pGraph->writeDot("final.dot");

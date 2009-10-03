@@ -73,6 +73,7 @@ EdgePtrListIter Vertex::findEdge(const EdgeDesc& ed)
 	return m_edges.end();
 }
 
+//
 EdgePtrListConstIter Vertex::findEdge(const EdgeDesc& ed) const
 {
 	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
@@ -83,6 +84,14 @@ EdgePtrListConstIter Vertex::findEdge(const EdgeDesc& ed) const
 	return m_edges.end();
 }
 
+//
+void Vertex::sortAdjList()
+{
+	EdgeIDComp comp;
+	m_edges.sort(comp);
+}
+
+//
 void Vertex::validate() const
 {
 	EdgeDescSet edSet;
@@ -218,3 +227,7 @@ void Vertex::writeEdges(std::ostream& out, int dotFlags) const
 	}
 }
 
+bool EdgeIDComp::operator()(const Edge* pA, const Edge* pB) 
+{
+   	return pA->getEndID() < pB->getEndID();
+}
