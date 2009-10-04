@@ -62,6 +62,26 @@ void Vertex::deleteEdges()
 	m_edges.clear();
 }
 
+// Delete edges that are marked
+// This only deletes the edge and not its twin
+void Vertex::sweepEdges(GraphColor c)
+{
+
+	EdgePtrListIter iter = m_edges.begin();
+	while(iter != m_edges.end())
+	{
+		Edge* pEdge = *iter;
+		if(pEdge->getColor() == c)
+		{
+			delete pEdge;
+			pEdge = NULL;
+			iter = m_edges.erase(iter);
+		}
+		else
+			++iter;
+	}
+}
+
 // Return the iterator to the edge matching edgedesc
 EdgePtrListIter Vertex::findEdge(const EdgeDesc& ed)
 {

@@ -139,7 +139,7 @@ bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 void SGTransRedVisitor::previsit(StringGraph* pGraph)
 {
 	// Set all the vertices in the graph to "vacant"
-	pGraph->setColors(VC_WHITE);
+	pGraph->setColors(GC_WHITE);
 	std::cout << "Running TR algorithm in EXACT mode\n";
 	pGraph->sortVertexAdjLists();
 }
@@ -151,7 +151,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
 	(void)pVertex;
-
+	
 	for(size_t idx = 0; idx < ED_COUNT; idx++)
 	{
 		EdgeDir dir = EDGE_DIRECTIONS[idx];
@@ -162,31 +162,33 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			continue;
 
 		for(size_t i = 0; i < edges.size(); ++i)
-			(edges[i])->getEnd()->setColor(VC_GRAY);
+			(edges[i])->getEnd()->setColor(GC_GRAY);
 
 		StringEdge* pLongestEdge = static_cast<StringEdge*>(edges.back());
 		size_t longestLen = pLongestEdge->getSeqLen();
-		(void)longestLen;
+		
 		for(size_t i = 0; i < edges.size(); ++i)
 		{
 			StringEdge* pVWEdge = static_cast<StringEdge*>(edges[i]);
 			StringVertex* pWVert = static_cast<StringVertex*>(pVWEdge->getEnd());
 
+			//std::cout << "Examining edges from " << pWVert->getID() << " longest: " << longestLen << "\n";
 			//std::cout << pWVert->getID() << " w_edges: \n";
 			EdgeDir transDir = !pVWEdge->getTwinDir();
-			if(pWVert->getColor() == VC_GRAY)
+			if(pWVert->getColor() == GC_GRAY)
 			{
 				EdgePtrVec w_edges = pWVert->getEdges(transDir);
 				for(size_t j = 0; j < w_edges.size(); ++j)
 				{
+					//std::cout << "	edge: " << *w_edges[j] << "\n";
 					StringEdge* pWXEdge = static_cast<StringEdge*>(w_edges[j]);
 					size_t trans_len = pVWEdge->getSeqLen() + pWXEdge->getSeqLen();
 					if(trans_len <= longestLen)
 					{
-						if(pWXEdge->getEnd()->getColor() == VC_GRAY)
+						if(pWXEdge->getEnd()->getColor() == GC_GRAY)
 						{
 							// X is the endpoint of an edge of V, therefore it is transitive
-							pWXEdge->getEnd()->setColor(VC_BLACK);
+							pWXEdge->getEnd()->setColor(GC_BLACK);
 							//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive\n";
 						}
 					}
@@ -198,21 +200,22 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
 		for(size_t i = 0; i < edges.size(); ++i)
 		{
-			if(edges[i]->getEnd()->getColor() == VC_BLACK)
+			if(edges[i]->getEnd()->getColor() == GC_BLACK)
 			{
-				std::cout << "Removed edge to " << edges[i]->getEndID() << " from " << pVertex->getID() << "\n";
-				pVertex->removeEdge(edges[i]);
-				edges[i]->getEnd()->removeEdge(edges[i]->getTwin());
+				// Mark the edge and its twin for removal
+				edges[i]->setColor(GC_BLACK);
+				edges[i]->getTwin()->setColor(GC_BLACK);
 			}
-			edges[i]->getEnd()->setColor(VC_WHITE);
+			edges[i]->getEnd()->setColor(GC_WHITE);
 		}
 	}
 
 	return false;
 }
 
-void SGTransRedVisitor::postvisit(StringGraph* /*pGraph*/)
+// Remove all the marked edges
+void SGTransRedVisitor::postvisit(StringGraph* pGraph)
 {
-
+	pGraph->sweepEdges(GC_BLACK);
 }
 

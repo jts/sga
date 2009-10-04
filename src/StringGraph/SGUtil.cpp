@@ -18,7 +18,7 @@ ContainMap::ContainMap(std::string file)
 	std::string s2;
 	while(reader >> s1 >> s2)
 	{
-		std::cout << "Read ctn " << s1 << " " << s2 << std::endl;
+		//std::cout << "Read ctn " << s1 << " " << s2 << std::endl;
 		add(s1, s2);
 	}
 	reader.close();
@@ -26,14 +26,12 @@ ContainMap::ContainMap(std::string file)
 
 void ContainMap::add(std::string s1, std::string s2)
 {
+	/*
 	if(isContained(s1))
-	{
 		std::cerr << "Warning: " << s1 << " is contained in: " << getContainer(s1) << "\n";
-	}
 	if(isContained(s2))
-	{
 		std::cerr << "Warning: " << s2 << " is contained in: " << getContainer(s2) << "\n";
-	}
+	*/
 	m_data.insert(std::make_pair(s1, s2));
 }
 
@@ -78,10 +76,6 @@ void createVertices(StringGraph* pGraph, std::string readFile, const ContainMap&
 		{
 			pGraph->addVertex(new StringVertex(si.id, si.seq));
 		}
-		else
-		{
-			std::cerr << "Skipping contained vertex " << si.id << "\n";
-		}
 	}
 }
 
@@ -96,7 +90,7 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 	{
 		if(containments.isContained(o.read[0].id) || containments.isContained(o.read[1].id))
 		{
-			std::cerr << "skipping edge that has contained vertex " << o << "\n";
+			//std::cerr << "skipping edge that has contained vertex " << o << "\n";
 			continue;
 		}
 
@@ -123,7 +117,6 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 		{
 			EdgeDir dir = o.read[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
 			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, overhangs[1 - idx]);
-			std::cout << "EDGE: " << *pEdges[idx] << "\n";
 		}
 
 		pEdges[0]->setTwin(pEdges[1]);

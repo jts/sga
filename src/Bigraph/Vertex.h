@@ -23,14 +23,6 @@
 // Forward declare
 class Edge;
 
-// Enums
-enum VertexColor
-{
-	VC_WHITE,
-	VC_GRAY,
-	VC_BLACK
-};
-
 // Default edge sorting function, by ID
 struct EdgeIDComp
 {
@@ -52,7 +44,7 @@ class Vertex
 {
 	public:
 	
-		Vertex(VertexID id) : m_id(id), m_color(VC_WHITE) {}
+		Vertex(VertexID id) : m_id(id), m_color(GC_WHITE) {}
 		virtual ~Vertex();
 
 		// Edge list operations
@@ -60,10 +52,12 @@ class Vertex
 		void removeEdge(Edge* pEdge);
 		void removeEdge(const EdgeDesc& ed);
 		void deleteEdges();
+		void sweepEdges(GraphColor c);
 		bool hasEdge(Edge* pEdge) const;
 		bool hasEdge(const EdgeDesc& ed) const;
 		Edge* getEdge(const EdgeDesc& ed);
-	
+		
+		// Virtual functions
 		virtual void merge(const Edge* pEdge);
 		virtual void validate() const;
 		virtual void sortAdjList();
@@ -80,8 +74,8 @@ class Vertex
 
 		// 
 		VertexID getID() const { return m_id; }
-		VertexColor getColor() const { return m_color; }
-		void setColor(VertexColor c) { m_color = c; }
+		GraphColor getColor() const { return m_color; }
+		void setColor(GraphColor c) { m_color = c; }
 
 		// Output edges in graphviz format
 		void writeEdges(std::ostream& out, int dotFlags) const;
@@ -90,7 +84,7 @@ class Vertex
 
 		VertexID m_id;
 		EdgePtrList m_edges;
-		VertexColor m_color;
+		GraphColor m_color;
 };
 
 #endif

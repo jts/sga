@@ -69,16 +69,16 @@ void assemble()
 	delete bv;
 	
 	pGraph->validate();
-	//pGraph->simplify();
-	pGraph->writeDot("initialGraph.dot");
+	pGraph->writeDot("before.dot");
 	SGTransRedVisitor trVisit;
 	pGraph->visit(trVisit);
 
 	pGraph->simplify();
+
 	pGraph->validate();
 	pGraph->writeDot("final.dot");
 
-	SGFastaVisitor av("after.fa");
+	SGFastaVisitor av("contigs.fa");
 	pGraph->visit(av);
 	delete pGraph;
 }

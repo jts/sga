@@ -11,6 +11,14 @@ enum DotFlags
 	DF_ANNOTATIONS = 0x02
 };
 
+// GraphColors are generic flags that can be used to indicate state
+enum GraphColor
+{
+	GC_WHITE,
+	GC_GRAY,
+	GC_BLACK
+};
+
 
 // Typedefs
 typedef std::string VertexID;

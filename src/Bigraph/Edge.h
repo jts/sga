@@ -21,7 +21,7 @@ class Edge
 {
 	public:
 		Edge(Vertex* start, Vertex* end, EdgeDir dir, EdgeComp comp) : 
-				m_pStart(start), m_pEnd(end), m_dir(dir), m_comp(comp), m_pTwin(NULL) {}
+				m_pStart(start), m_pEnd(end), m_dir(dir), m_comp(comp), m_pTwin(NULL), m_color(GC_WHITE) {}
 
 		virtual ~Edge() {}
 
@@ -33,6 +33,11 @@ class Edge
 		void setTwin(Edge* pEdge)
 		{
 			m_pTwin = pEdge;
+		}
+
+		void setColor(GraphColor c)
+		{
+			m_color = c;
 		}
 
 		Edge* getTwin() const
@@ -86,6 +91,7 @@ class Edge
 		EdgeDir getDir() const; 
 		EdgeComp getComp() const; 
 		bool isSelf() const;
+		GraphColor getColor() const;
 		virtual std::string getLabel() const { return std::string(""); }
 
 		// Output
@@ -100,6 +106,7 @@ class Edge
 		EdgeDir m_dir;
 		EdgeComp m_comp;
 		Edge* m_pTwin;
+		GraphColor m_color;
 };
 
 #endif

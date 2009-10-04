@@ -52,6 +52,12 @@ bool Edge::isSelf() const
 }
 
 // 
+GraphColor Edge::getColor() const
+{
+	return m_color;
+}
+
+// 
 EdgeDesc Edge::getTwinDesc() const
 {
 	return EdgeDesc(getStartID(), getTwinDir(), m_comp);

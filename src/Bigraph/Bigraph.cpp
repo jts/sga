@@ -186,36 +186,48 @@ void Bigraph::merge(Edge* pEdge)
 	removeVertex(pV2->getID());
 }
 
+
 //
+void Bigraph::sweepEdges(GraphColor c)
+{
+	for(VertexPtrMapIter iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
+		iter->second->sweepEdges(c);
+}
+
+
 //	Simplify the graph by compacting singular edges
-//
 void Bigraph::simplify()
 {
-	VertexPtrMapIter iter = m_vertices.begin();
-	for(; iter != m_vertices.end(); ++iter)
+	bool changed = true;
+	while(changed)
 	{
-		for(int d = 0; d < ED_COUNT; ++d)
+		changed = false;
+		for(VertexPtrMapIter iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
 		{
-			EdgeDir dir = EDGE_DIRECTIONS[d];
-			
-			// Get the edges for this direction
-			EdgePtrVec edges = iter->second->getEdges(dir);
-
-			// If there is a single edge in this direction, merge the vertices
-			// Don't merge singular self edges though
-			if(edges.size() == 1 && !edges.front()->isSelf())
+			for(int d = 0; d < ED_COUNT; ++d)
 			{
-				// Check that the edge back is singular as well
-				Edge* pSingle = edges.front();
-				Edge* pTwin = pSingle->getTwin();
-				Vertex* pV2 = pSingle->getEnd();
-				if(pV2->countEdges(pTwin->getDir()) == 1)
+				EdgeDir dir = EDGE_DIRECTIONS[d];
+				
+				// Get the edges for this direction
+				EdgePtrVec edges = iter->second->getEdges(dir);
+
+				// If there is a single edge in this direction, merge the vertices
+				// Don't merge singular self edges though
+				if(edges.size() == 1 && !edges.front()->isSelf())
 				{
-					merge(pSingle);
+					// Check that the edge back is singular as well
+					Edge* pSingle = edges.front();
+					Edge* pTwin = pSingle->getTwin();
+					Vertex* pV2 = pSingle->getEnd();
+					if(pV2->countEdges(pTwin->getDir()) == 1)
+					{
+						merge(pSingle);
+						changed = true;
+					}
 				}
 			}
 		}
-	}
+	} 
 }
 
 //
@@ -298,17 +310,17 @@ VertexIDVec Bigraph::getNonBranchingVertices() const
 PathVector Bigraph::getLinearComponents()
 {
 	PathVector outPaths;
-	setColors(VC_WHITE);
+	setColors(GC_WHITE);
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
 	{
 		// Output the linear path containing this vertex if it hasnt been visited already
-		if(iter->second->getColor() != VC_BLACK)
+		if(iter->second->getColor() != GC_BLACK)
 		{
 			outPaths.push_back(constructLinearPath(iter->second->getID()));
 		}
 	}
-	assert(checkColors(VC_BLACK));
+	assert(checkColors(GC_BLACK));
 	return outPaths;
 }
 
@@ -339,7 +351,7 @@ void Bigraph::followLinear(VertexID id, EdgeDir dir, Path& outPath)
 	EdgePtrVec edges = pVertex->getEdges(dir);
 
 	// Color the vertex
-	pVertex->setColor(VC_BLACK);
+	pVertex->setColor(GC_BLACK);
 	
 	if(edges.size() == 1)
 	{
@@ -381,7 +393,7 @@ bool Bigraph::visit(VertexVisitFunction f)
 //
 // Set all the vertices in the graph to the given color
 //
-void Bigraph::setColors(VertexColor c)
+void Bigraph::setColors(GraphColor c)
 {
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)
@@ -393,7 +405,7 @@ void Bigraph::setColors(VertexColor c)
 //
 // Check if all the vertices in the graph are the given color
 //
-bool Bigraph::checkColors(VertexColor c)
+bool Bigraph::checkColors(GraphColor c)
 {
 	VertexPtrMapIter iter = m_vertices.begin(); 
 	for(; iter != m_vertices.end(); ++iter)

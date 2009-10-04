@@ -57,6 +57,9 @@ class Bigraph
 		// Remove an edge
 		void removeEdge(const EdgeDesc& ed);
 
+		// Remove all edges marked by color c
+		void sweepEdges(GraphColor c);
+
 		// Merge vertices
 		void mergeVertices(VertexID id1, VertexID id2);
 
@@ -110,15 +113,16 @@ class Bigraph
 		}
 		
 		// Set the colors for the entire graph
-		void setColors(VertexColor c);
+		void setColors(GraphColor c);
+
+		// Check the colors for the entire graph
+		bool checkColors(GraphColor c);
+
 
 		// Write the graph to a dot file
 		void writeDot(std::string filename, int dotFlags = 0) const;
 
 	private:
-
-		// Check the colors for the entire graph
-		bool checkColors(VertexColor c);
 
 		void followLinear(VertexID id, EdgeDir dir, Path& outPath);
 
