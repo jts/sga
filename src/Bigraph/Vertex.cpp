@@ -150,9 +150,7 @@ EdgePtrVec Vertex::findEdgesTo(VertexID id)
 	for(; iter != m_edges.end(); ++iter)
 	{
 		if((*iter)->getEndID() == id)
-		{
 			outEdges.push_back(*iter);
-		}
 	}
 	return outEdges;
 }
@@ -160,18 +158,16 @@ EdgePtrVec Vertex::findEdgesTo(VertexID id)
 
 //
 // Get the edges in a particular direction
+// This preserves the ordering of the edges
 //
 EdgePtrVec Vertex::getEdges(EdgeDir dir)
 {
 	EdgePtrListConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
-	outEdges.reserve(m_edges.size());
 	for(; iter != m_edges.end(); ++iter)
 	{
 		if((*iter)->getDir() == dir)
-		{
 			outEdges.push_back(*iter);
-		}
 	}
 	return outEdges;
 }

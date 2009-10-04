@@ -140,14 +140,72 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 {
 	// Set all the vertices in the graph to "vacant"
 	pGraph->setColors(VC_WHITE);
-	std::cout << "Running TR algorithm\n";
+	std::cout << "Running TR algorithm in EXACT mode\n";
 	pGraph->sortVertexAdjLists();
 }
 
+// Perform a transitive reduction about this vertex
+// Precondition: the edge list is sorted by length (ascending)
 bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
 	(void)pVertex;
+
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];
+		//std::cout << pVertex->getID() << "," << dir << "\n";
+		EdgePtrVec edges = pVertex->getEdges(dir); // These edges are already sorted
+
+		if(edges.size() == 0)
+			continue;
+
+		for(size_t i = 0; i < edges.size(); ++i)
+			(edges[i])->getEnd()->setColor(VC_GRAY);
+
+		StringEdge* pLongestEdge = static_cast<StringEdge*>(edges.back());
+		size_t longestLen = pLongestEdge->getSeqLen();
+		(void)longestLen;
+		for(size_t i = 0; i < edges.size(); ++i)
+		{
+			StringEdge* pVWEdge = static_cast<StringEdge*>(edges[i]);
+			StringVertex* pWVert = static_cast<StringVertex*>(pVWEdge->getEnd());
+
+			//std::cout << pWVert->getID() << " w_edges: \n";
+			EdgeDir transDir = !pVWEdge->getTwinDir();
+			if(pWVert->getColor() == VC_GRAY)
+			{
+				EdgePtrVec w_edges = pWVert->getEdges(transDir);
+				for(size_t j = 0; j < w_edges.size(); ++j)
+				{
+					StringEdge* pWXEdge = static_cast<StringEdge*>(w_edges[j]);
+					size_t trans_len = pVWEdge->getSeqLen() + pWXEdge->getSeqLen();
+					if(trans_len <= longestLen)
+					{
+						if(pWXEdge->getEnd()->getColor() == VC_GRAY)
+						{
+							// X is the endpoint of an edge of V, therefore it is transitive
+							pWXEdge->getEnd()->setColor(VC_BLACK);
+							//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive\n";
+						}
+					}
+					else
+						break;
+				}
+			}
+		}
+
+		for(size_t i = 0; i < edges.size(); ++i)
+		{
+			if(edges[i]->getEnd()->getColor() == VC_BLACK)
+			{
+				std::cout << "Removed edge to " << edges[i]->getEndID() << " from " << pVertex->getID() << "\n";
+				pVertex->removeEdge(edges[i]);
+			}
+			edges[i]->getEnd()->setColor(VC_WHITE);
+		}
+	}
+
 	return false;
 }
 
