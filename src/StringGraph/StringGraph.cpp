@@ -131,7 +131,7 @@ bool StringEdgeLenComp::operator()(const Edge* pA, const Edge* pB)
 bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
 	StringVertex* pSV = static_cast<StringVertex*>(pVertex);
-	m_fileHandle << ">" << pSV->getID() << " " <<  pSV->getReadCount() << "\n";
+	m_fileHandle << ">" << pSV->getID() << " " <<  pSV->getSeq().length() << " " << pSV->getReadCount() << "\n";
 	m_fileHandle << pSV->getSeq() << "\n";
 	return false;
 }
@@ -145,6 +145,7 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 }
 
 // Perform a transitive reduction about this vertex
+// This uses Myers' algorithm (2005, The fragment assembly string graph)
 // Precondition: the edge list is sorted by length (ascending)
 bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
@@ -201,6 +202,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			{
 				std::cout << "Removed edge to " << edges[i]->getEndID() << " from " << pVertex->getID() << "\n";
 				pVertex->removeEdge(edges[i]);
+				edges[i]->getEnd()->removeEdge(edges[i]->getTwin());
 			}
 			edges[i]->getEnd()->setColor(VC_WHITE);
 		}

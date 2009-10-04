@@ -160,6 +160,14 @@ bool SeqCoord::isReverse() const
 	return interval.end < interval.start;
 }
 
+// Flip the orientation of the seq coord
+void SeqCoord::flip()
+{
+	//int tmp = interval.end;
+	interval.start = seqlen - interval.start - 1;
+	interval.end = seqlen - interval.end - 1;
+}
+
 std::string SeqCoord::getSubstring(std::string str) const
 {
 	int left;
@@ -174,7 +182,6 @@ std::string SeqCoord::getSubstring(std::string str) const
 		left = interval.end;
 		size = interval.start - interval.end + 1;
 	}
-
 	return str.substr(left, size);
 }
 

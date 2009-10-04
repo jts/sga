@@ -83,8 +83,23 @@ int oviewMain(int argc, char** argv)
 		if(containMap.isContained(o.read[0].id) || containMap.isContained(o.read[1].id))
 			continue;
 
-		std::cout << "Overlap string: " << o << "\n\n";
-		
+				
+		std::string seqs[2];
+
+		for(size_t idx = 0; idx < 2; ++idx)
+		{
+			if(o.read[idx].isReverse())
+			{
+				seqs[idx] = reverseComplement(pRT->getRead(o.read[idx].id).seq);
+				o.read[idx].flip();
+			}
+			else
+				seqs[idx] = pRT->getRead(o.read[idx].id).seq;
+		}
+
+		std::cout << "Canonized overlap string: " << o << "\n\n";
+
+
 		// Determine the left and right sequence
 		SeqCoord* pLeftSC;
 		SeqCoord* pRightSC;
@@ -92,14 +107,8 @@ int oviewMain(int argc, char** argv)
 		pLeftSC = &o.read[leftIdx];
 		pRightSC = &o.read[1 - leftIdx];
 
-		std::string leftSeq = pRT->getRead(pLeftSC->id).seq;
-		std::string rightSeq = pRT->getRead(pRightSC->id).seq;
-
-		// Reverse the sequences if necessary
-		if(pLeftSC->isReverse())
-			leftSeq = reverseComplement(leftSeq);
-		if(pRightSC->isReverse())
-			rightSeq = reverseComplement(rightSeq);
+		std::string leftSeq = seqs[leftIdx];
+		std::string rightSeq = seqs[1 - leftIdx];
 
 		// Draw the left sequence
 		std::cout << DEFAULT_PADDING << leftSeq << "\n";
