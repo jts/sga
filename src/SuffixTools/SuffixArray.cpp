@@ -9,43 +9,103 @@
 #include "SuffixArray.h"
 #include "InverseSuffixArray.h"
 #include "LCPArray.h"
+#include "bucketSort.h"
+
+
+SuffixCompare::SuffixCompare(const ReadTable* pRT) : m_pRT(pRT)
+{
+	m_bucketLen = 8;
+	for(size_t i = 0; i < 256; ++i)
+	{
+		switch(i)
+		{
+			case '$':
+				m_rankLUT[i] = 0;
+				break;
+			case 'A':
+				m_rankLUT[i] = 1;
+				break;
+			case 'C':
+				m_rankLUT[i] = 2;
+				break;
+			case 'G':
+				m_rankLUT[i] = 3;
+				break;
+			case 'T':
+				m_rankLUT[i] = 4;
+				break;
+			default:
+				m_rankLUT[i] = 0;
+				break;
+		}
+	}
+}
+
+SuffixCompare::~SuffixCompare()
+{
+}
 
 // Compare two suffixes
-bool SuffixCompare::operator()(SAElem x, SAElem y) 
+bool SuffixCompare::operator()(SAElem x, SAElem y) const
 { 
 	const SeqItem& rx = m_pRT->getRead(x.getID());
 	const SeqItem& ry = m_pRT->getRead(y.getID());
 	const std::string& sx = rx.seq;
 	const std::string& sy = ry.seq;
-	bool xterminal = x.getPos() == sx.size();
-	bool yterminal = y.getPos() == sy.size();
-	if(xterminal && yterminal)
-	{
+	
+	std::string sfx = sx.substr(x.getPos()) + "$";
+	std::string sfy = sy.substr(y.getPos()) + "$";
+	int cmp = sfx.compare(sfy);
+	if(cmp == 0)
 		return rx.id < ry.id;
-	}
-	else if(xterminal)
-	{
-		return true;
-	}
-	else if(yterminal)
-	{
-		return false;
-	}
 	else
-	{
-		std::string sfx = sx.substr(x.getPos()) + "$";
-		std::string sfy = sy.substr(y.getPos()) + "$";
-		if(sfx == sfy)
-		{
-			return rx.id < ry.id;
-		}
-		else
-		{
-			return sfx < sfy;
-		}
-	}
+		return cmp < 0;
 }
 
+// Get the bucket for a particular SAElem
+int SuffixCompare::operator()(SAElem x) const
+{
+	//std::cout << "Finding bucket for " << x << "\n";
+	const std::string& r = m_pRT->getRead(x.getID()).seq;
+	std::string sfx = r.substr(x.getPos()) + "$";
+
+	size_t stop = std::min(m_bucketLen, sfx.length());
+	int rank = 0;
+	for(size_t i = 0; i < stop; ++i)
+	{
+		char b = sfx[i];
+		rank += numPredSuffixes(b, m_bucketLen - i);
+	}
+	std::string subsfx = sfx.substr(0, stop);
+	//std::cout << subsfx << " rank " << rank << "\n";
+	return rank;
+}
+
+//
+int SuffixCompare::calcNumSuffixes(int maxLen) const
+{
+	int r = 0;
+	for(int i = 0; i <= maxLen; ++i)
+		r += (1 << 2*i);
+	return r;
+}
+
+//
+int SuffixCompare::getNumBuckets() const
+{
+	return calcNumSuffixes(m_bucketLen);
+}
+
+// Returns the number of suffixes that are less than the base b for the given max length
+int SuffixCompare::numPredSuffixes(char b, int maxLen) const
+{
+	// base case
+	int rb = getRank(b);
+	if(rb == 0)
+		return 0;
+	int block_size = calcNumSuffixes(maxLen - 1);
+	return block_size * (rb - 1) + 1;
+}
 
 // Construct the suffix array for the string
 SuffixArray::SuffixArray(uint64_t i, std::string text)
@@ -211,7 +271,10 @@ void SuffixArray::initialize(const ReadTable& rt)
 void SuffixArray::sort(const ReadTable* pRT)
 {
 	SuffixCompare compare(pRT);
-	std::sort(m_data.begin(), m_data.end(), compare);
+	//std::sort(m_data.begin(), m_data.end(), compare);
+	bucketSort(m_data.begin(), m_data.end(), compare);
+	assert(false);
+	//print(pRT);
 }
 
 
@@ -268,7 +331,6 @@ SAElemPairVec SuffixArray::detectRedundantStrings(const ReadTable* pRT) const
 			{
 				// This read is identical to the block root
 				spv.push_back(std::make_pair(currSAElem, get(block_root_idx)));
-				std::cerr << "Found contained read: " << currSAElem << " within " << get(block_root_idx) << "\n";
 			}
 			else
 			{
