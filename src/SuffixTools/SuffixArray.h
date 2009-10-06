@@ -46,7 +46,8 @@ struct SuffixCompare
 		SuffixCompare() {}
 		size_t m_bucketLen;
 		const ReadTable* m_pRT;
-		uint8_t m_rankLUT[256];
+		static const uint8_t m_rankLUT[256];
+
 };
 
 class SuffixArray

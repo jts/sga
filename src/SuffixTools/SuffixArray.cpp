@@ -11,34 +11,29 @@
 #include "LCPArray.h"
 #include "bucketSort.h"
 
+const uint8_t SuffixCompare::m_rankLUT[256] = {
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,1,0,2,0,0,0,3,0,0,0,0,0,0,0,0,
+	0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
 
 SuffixCompare::SuffixCompare(const ReadTable* pRT) : m_pRT(pRT)
 {
-	m_bucketLen = 8;
-	for(size_t i = 0; i < 256; ++i)
-	{
-		switch(i)
-		{
-			case '$':
-				m_rankLUT[i] = 0;
-				break;
-			case 'A':
-				m_rankLUT[i] = 1;
-				break;
-			case 'C':
-				m_rankLUT[i] = 2;
-				break;
-			case 'G':
-				m_rankLUT[i] = 3;
-				break;
-			case 'T':
-				m_rankLUT[i] = 4;
-				break;
-			default:
-				m_rankLUT[i] = 0;
-				break;
-		}
-	}
+	m_bucketLen = 4;
 }
 
 SuffixCompare::~SuffixCompare()
@@ -140,112 +135,6 @@ SuffixArray::SuffixArray(const ReadTable& rt)
 	}
 	sortConstruct(rt.getCount(), &cycled);
 }
-#if 0
-//
-// Merge a new suffix array which is the merger of A and B
-//
-SuffixArray::SuffixArray(const SuffixArray& a, const SuffixArray& b)
-{
-	size_t n_a = a.getSize();
-	size_t n_b = b.getSize();
-	size_t ns_a = a.getNumStrings();
-	size_t ns_b = b.getNumStrings();
-
-	size_t n = n_a + n_b;
-	m_numStrings = ns_a + ns_b;
-	m_data.resize(n);
-	m_F.resize(n);
-
-	// Get the ISA for A and B
-	InverseSuffixArray isa_a(a);
-	InverseSuffixArray isa_b(b);
-
-	size_t i = 0; // the current ith lowest (lexographically) suffix in A
-	size_t j = 0; // likewise in B
-
-	for(size_t k = 0; k < n; ++k)
-	{
-		//printf("Top of main loop (%zu, %zu, %zu)\n", i, j, k);
-
-		// Compare A[i] to B[j]
-		// Set up indices into the F array of A and B
-		// These indices record the current characters to compare to determine the precedence
-		// of the suffix A[i] and B[j]
-
-		size_t fidx_a = i;
-		size_t fidx_b = j;
-
-		bool a_lowest = false;
-		
-		while(1)
-		{
-			// Early exit if A or B have all their suffixes inserted
-			if(i == n_a)
-			{
-				a_lowest = false;
-				break;
-			}
-			else if(j == n_b)
-			{
-				a_lowest = true;
-				break;
-			}
-
-			char nextA = a.getF(fidx_a);
-			char nextB = b.getF(fidx_b);
-
-			//printf("	Top of while loop (%zu, %zu, %c, %c)\n", fidx_a, fidx_b, nextA, nextB);
-
-			if(nextA == '$' && nextB == '$') // If both suffixes are terminal, return the one with the lexographically lower id
-			{
-				// Both suffixes are terminal, return the suffix
-				// with the lowest id
-				a_lowest = (a.get(i).getID() < b.get(j).getID()) ? true : false;
-				break;
-			}
-			else if(nextA < nextB) // this catches the case where A == $ since $ is lower than the other chars
-			{
-				a_lowest = true;
-				break;
-			}
-			else if(nextB < nextA) // likewise as above
-			{
-				a_lowest = false;
-				break;
-			}
-			else
-			{
-				// The suffixes are non-terminal and equal at this position,
-				// redo the compare at the next character in the suffix
-				// Update fidx_a and fidx_b to point to the next character in the 
-				// respective suffixes using the ISA
-				// This is guarenteed to never wrap around since the match will terminate
-				// at the last character
-				SAElem elem_a = a.get(fidx_a); 
-				SAElem elem_b = b.get(fidx_b); 
-
-				fidx_a = isa_a.getRank(elem_a.getID(), elem_a.getPos() + 1);
-				fidx_b = isa_b.getRank(elem_b.getID(), elem_b.getPos() + 1);
-				//printf("	updated fidx to be (%zu, %zu)\n", fidx_a, fidx_b);
-			}
-		}
-
-		// Add the next suffix
-		if(a_lowest)
-		{
-			m_data[k] = a.get(i);
-			m_F[k] = a.getF(i);
-			++i;
-		}
-		else
-		{
-			m_data[k] = b.get(j);
-			m_F[k] = b.getF(j);
-			++j;
-		}
-	}
-}
-#endif
 
 // Initialize a suffix array for the strings in RT
 void SuffixArray::initialize(const ReadTable& rt)
@@ -272,9 +161,11 @@ void SuffixArray::sort(const ReadTable* pRT)
 {
 	SuffixCompare compare(pRT);
 	//std::sort(m_data.begin(), m_data.end(), compare);
-	bucketSort(m_data.begin(), m_data.end(), compare);
-	assert(false);
+	//bucketSort(m_data.begin(), m_data.end(), compare);
+	histogramSort(m_data.begin(), m_data.end(), compare);
+	//validate(pRT);
 	//print(pRT);
+	//assert(false);
 }
 
 
