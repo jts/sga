@@ -10,97 +10,7 @@
 #include "InverseSuffixArray.h"
 #include "LCPArray.h"
 #include "bucketSort.h"
-
-const uint8_t SuffixCompare::m_rankLUT[256] = {
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,1,0,2,0,0,0,3,0,0,0,0,0,0,0,0,
-	0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-};
-
-
-SuffixCompare::SuffixCompare(const ReadTable* pRT) : m_pRT(pRT)
-{
-	m_bucketLen = 4;
-}
-
-SuffixCompare::~SuffixCompare()
-{
-}
-
-// Compare two suffixes
-bool SuffixCompare::operator()(SAElem x, SAElem y) const
-{ 
-	const SeqItem& rx = m_pRT->getRead(x.getID());
-	const SeqItem& ry = m_pRT->getRead(y.getID());
-	const std::string& sx = rx.seq;
-	const std::string& sy = ry.seq;
-	
-	std::string sfx = sx.substr(x.getPos()) + "$";
-	std::string sfy = sy.substr(y.getPos()) + "$";
-	int cmp = sfx.compare(sfy);
-	if(cmp == 0)
-		return rx.id < ry.id;
-	else
-		return cmp < 0;
-}
-
-// Get the bucket for a particular SAElem
-int SuffixCompare::operator()(SAElem x) const
-{
-	//std::cout << "Finding bucket for " << x << "\n";
-	const std::string& r = m_pRT->getRead(x.getID()).seq;
-	std::string sfx = r.substr(x.getPos()) + "$";
-
-	size_t stop = std::min(m_bucketLen, sfx.length());
-	int rank = 0;
-	for(size_t i = 0; i < stop; ++i)
-	{
-		char b = sfx[i];
-		rank += numPredSuffixes(b, m_bucketLen - i);
-	}
-	std::string subsfx = sfx.substr(0, stop);
-	//std::cout << subsfx << " rank " << rank << "\n";
-	return rank;
-}
-
-//
-int SuffixCompare::calcNumSuffixes(int maxLen) const
-{
-	int r = 0;
-	for(int i = 0; i <= maxLen; ++i)
-		r += (1 << 2*i);
-	return r;
-}
-
-//
-int SuffixCompare::getNumBuckets() const
-{
-	return calcNumSuffixes(m_bucketLen);
-}
-
-// Returns the number of suffixes that are less than the base b for the given max length
-int SuffixCompare::numPredSuffixes(char b, int maxLen) const
-{
-	// base case
-	int rb = getRank(b);
-	if(rb == 0)
-		return 0;
-	int block_size = calcNumSuffixes(maxLen - 1);
-	return block_size * (rb - 1) + 1;
-}
+#include "SuffixCompare.h"
 
 // Construct the suffix array for the string
 SuffixArray::SuffixArray(uint64_t i, std::string text)
@@ -163,6 +73,7 @@ void SuffixArray::sort(const ReadTable* pRT)
 	//std::sort(m_data.begin(), m_data.end(), compare);
 	//bucketSort(m_data.begin(), m_data.end(), compare);
 	histogramSort(m_data.begin(), m_data.end(), compare);
+	//print(pRT);
 	//validate(pRT);
 	//print(pRT);
 	//assert(false);

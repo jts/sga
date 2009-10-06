@@ -13,43 +13,6 @@
 
 class LCPArray;
 
-// Simple struct to sort suffixes using their ids by looking
-// up substrings in the table via pRT
-struct SuffixCompare
-{
-	public:
-		SuffixCompare(const ReadTable* pRT);
-		~SuffixCompare();
-
-		// Comparator function
-		bool operator()(SAElem x, SAElem y) const; 
-
-		// Bucket function
-		int operator()(SAElem x) const;
-		
-		// Calculate the number of possible suffixes
-		int calcNumSuffixes(int maxLen) const;
-
-		// Return the number of buckets needed for bucket sort
-		int getNumBuckets() const;
-
-		// Calculate the number of suffixes that precede the first instance of b for a 
-		// given maximum suffix length
-		int numPredSuffixes(char b, int maxLen) const;
-
-	private:
-
-		inline uint8_t getRank(char b) const
-		{
-			return m_rankLUT[static_cast<uint8_t>(b)];
-		}
-		SuffixCompare() {}
-		size_t m_bucketLen;
-		const ReadTable* m_pRT;
-		static const uint8_t m_rankLUT[256];
-
-};
-
 class SuffixArray
 {
 	public:

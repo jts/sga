@@ -75,7 +75,7 @@ void bucketSort(IterType start, IterType end, BucketFunctor func)
 }
 
 template<typename IterType, typename BucketFunctor>
-void histogramSort(IterType start, IterType end, BucketFunctor func)
+void histogramSort(IterType start, IterType end, BucketFunctor func, int depth = 0)
 {
 	// Typedef the base value of the iterator
 	typedef typename std::iterator_traits<IterType>::value_type base_value;
@@ -84,6 +84,11 @@ void histogramSort(IterType start, IterType end, BucketFunctor func)
 
 	// Get the number of buckets needed
 	int numBuckets = func.getNumBuckets();
+
+	// Set the functor's offset
+	func.setBucketDepth(depth);
+	if(depth == 1)
+		std::cout << "Hist depth: " << depth << " num buckets: " << numBuckets << " span: " << end - start << " offset: " << func.getBucketOffset() <<"\n";
 
 	// Allocate an array for the bucket start points and the bucket end points
 	// TODO: Could remove at least one of these arrays
@@ -120,7 +125,10 @@ void histogramSort(IterType start, IterType end, BucketFunctor func)
 
 	// Now, consider the bucket_starts positions to be the next (potentially) unsorted position
 	// for each bucket. Iterate through these values cycles the elements into place
-	int curr_bucket = 0; // Start on the zeroth bucket
+	int curr_bucket = 0; // Start on the first bucket that has element
+	while(bucket_starts[curr_bucket] == bucket_ends[curr_bucket])
+		++curr_bucket;
+
 	while(curr_bucket != numBuckets)
 	{
 		//std::cout << "Curr Bucket: " << curr_bucket << "\n";
@@ -211,7 +219,21 @@ void histogramSort(IterType start, IterType end, BucketFunctor func)
 		IterType bucket_start_iter = start + bucket_starts[i];
 		IterType bucket_end_iter = start + bucket_ends[i];
 		//std::cout << "Sorting bucket " << i << "\n";
-		std::sort(bucket_start_iter, bucket_end_iter, func);
+		const int max_depth = 100;
+		const size_t min_elements = 100;
+
+		// terminate the bucket sort under 3 conditions:
+		//  1) the bucket is degenerate (no more histogram sorting can be done) - this comes from the functor
+		//  2) the number of elements in the bucket is low
+		//  3) the max depth has been hit
+		if(bucket_counts[i] < min_elements || depth >= max_depth || func.isBucketDegenerate(i))
+		{
+			std::sort(bucket_start_iter, bucket_end_iter, func);
+		}
+		else
+		{
+			histogramSort(bucket_start_iter, bucket_end_iter, func, depth + 1);
+		}
 	}
 
 	// delete arrays
