@@ -87,8 +87,6 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 
 	// Set the functor's offset
 	func.setBucketDepth(depth);
-	if(depth == 1)
-		std::cout << "Hist depth: " << depth << " num buckets: " << numBuckets << " span: " << end - start << " offset: " << func.getBucketOffset() <<"\n";
 
 	// Allocate an array for the bucket start points and the bucket end points
 	// TODO: Could remove at least one of these arrays
