@@ -148,7 +148,6 @@ void computeOverlapsBWT()
 	BWT* pBWT = createBWT(pSA, pRT);
 	BWT* pRBWT = createBWT(pRSA, pRevRT);
 
-	pBWT->print(pRT);
 	// Open the writers
 	std::string overlapFile = opt::prefix + ".ovr";
 	std::ofstream overlapHandle(overlapFile.c_str());

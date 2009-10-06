@@ -130,7 +130,7 @@ void Bigraph::merge(Edge* pEdge)
 {
 	Vertex* pV1 = pEdge->getStart();
 	Vertex* pV2 = pEdge->getEnd();
-	std::cout << "Merging " << pV1->getID() << " with " << pV2->getID() << "\n";
+	//std::cout << "Merging " << pV1->getID() << " with " << pV2->getID() << "\n";
 
 	// Merge the data
 	pV1->merge(pEdge);
