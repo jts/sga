@@ -179,7 +179,7 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 		// At this point, the bucket_start for the current bucket has moved 1 element
 		// Other buckets may have advanced as well
 		//
-		while(bucket_starts[curr_bucket] == bucket_ends[curr_bucket] && curr_bucket < numBuckets)
+		while(curr_bucket < numBuckets && bucket_starts[curr_bucket] == bucket_ends[curr_bucket])
 			++curr_bucket;
 	}
 
