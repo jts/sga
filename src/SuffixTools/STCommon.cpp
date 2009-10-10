@@ -156,6 +156,7 @@ AIdx base2Idx(char b)
 			return 4;
 		default:
 			assert(false);
+			return 0;
 	}
 }
 

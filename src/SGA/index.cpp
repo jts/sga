@@ -62,7 +62,9 @@ int indexMain(int argc, char** argv)
 	
 	// Create and write the suffix array for the forward reads
 	buildIndex(opt::prefix + ".sa", pRT);
-
+	
+	return 0;
+	/*
 	// Create the reverse read table
 	ReadTable* pRevRT = new ReadTable();
 	pRevRT->initializeReverse(pRT);
@@ -71,8 +73,8 @@ int indexMain(int argc, char** argv)
 	// Build the reverse suffix array
 	buildIndex(opt::prefix + ".rsa", pRevRT);
 	delete pRevRT;
-
 	return 0;
+	*/
 }
 
 void buildIndex(std::string outfile, const ReadTable* pRT)

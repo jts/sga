@@ -90,11 +90,11 @@ int oviewMain(int argc, char** argv)
 		{
 			if(o.read[idx].isReverse())
 			{
-				seqs[idx] = reverseComplement(pRT->getRead(o.read[idx].id).seq);
+				seqs[idx] = reverseComplement(pRT->getRead(o.read[idx].id).seq.toString());
 				o.read[idx].flip();
 			}
 			else
-				seqs[idx] = pRT->getRead(o.read[idx].id).seq;
+				seqs[idx] = pRT->getRead(o.read[idx].id).seq.toString();
 		}
 
 		std::cout << "Canonized overlap string: " << o << "\n\n";

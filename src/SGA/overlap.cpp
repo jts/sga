@@ -164,7 +164,7 @@ void computeOverlapsBWT()
 
 		// Align the read and its reverse complement
 		Sequence seqs[2];
-		seqs[0] = read.seq;//reverseComplement(read.seq);
+		seqs[0] = read.seq.toString();//reverseComplement(read.seq);
 		seqs[1] = reverseComplement(seqs[0]);
 
 		HitData hits;

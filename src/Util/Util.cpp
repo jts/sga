@@ -282,6 +282,7 @@ char complement(char base)
 			return 'A';
 		default:
 			assert(false && "Unknown base!");
+			return 'N';
 	}
 }
 

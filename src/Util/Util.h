@@ -16,6 +16,8 @@
 #include <cassert>
 #include <sstream>
 
+#include "DNAString.h"
+
 #define CAF_SEP ':'
 
 //
@@ -49,8 +51,9 @@ typedef std::vector<Sequence> SequenceVector;
 // SeqItem
 struct SeqItem
 {
+	// data
 	std::string id;
-	Sequence seq;
+	DNAString seq;
 };
 
 // KAlignment

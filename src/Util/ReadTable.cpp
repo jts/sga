@@ -40,7 +40,7 @@ void ReadTable::initializeReverse(const ReadTable* pRT)
 	for(size_t i = 0; i < numReads; ++i)
 	{
 		SeqItem read = pRT->getRead(i);
-		read.seq = reverse(read.seq);
+		read.seq.reverse();
 		addRead(read);
 	}
 }
@@ -104,7 +104,7 @@ size_t ReadTable::getSumLengths() const
 	size_t sum = 0;
 	for(size_t i = 0; i < m_table.size(); ++i)
 	{
-		sum += m_table[i].seq.size();
+		sum += m_table[i].seq.length();
 	}
 	return sum;
 }
@@ -116,7 +116,7 @@ std::ostream& operator<<(std::ostream& out, const ReadTable& rt)
 	for(size_t i = 0; i < numReads; ++i)
 	{
 		const SeqItem& read = rt.getRead(i);
-		out << read.id << "\t" << read.seq << "\n";
+		out << read.id << "\t" << read.seq.toString() << "\n";
 	}
 	return out;
 }

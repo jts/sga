@@ -40,7 +40,7 @@ SuffixArray::SuffixArray(const ReadTable& rt)
 	for(size_t i = 0; i < rt.getCount(); ++i)
 	{
 		const SeqItem& r = rt.getRead(i);
-		SuffixString suffix(i, r.seq + "$");
+		SuffixString suffix(i, r.seq.toString() + "$");
 		makeCycles(suffix, &cycled);
 	}
 	sortConstruct(rt.getCount(), &cycled);
@@ -58,7 +58,7 @@ void SuffixArray::initialize(const ReadTable& rt)
 	size_t count = 0;
 	for(size_t i = 0; i < rt.getCount(); ++i)
 	{
-		for(size_t j = 0; j < rt.getRead(i).seq.size() + 1; ++j)
+		for(size_t j = 0; j < rt.getRead(i).seq.length() + 1; ++j)
 		{
 			m_data[count++] = SAElem(i, j);
 		}
@@ -241,6 +241,7 @@ std::istream& operator>>(std::istream& in, SuffixArray& sa)
 void SuffixArray::validate(const ReadTable* pRT) const
 {
 	size_t maxIdx = pRT->getCount();
+	(void)maxIdx;
 	size_t n = m_data.size();
 
 	// Exit if there is nothing to do
@@ -260,8 +261,8 @@ void SuffixArray::validate(const ReadTable* pRT) const
 		SAElem id1 = m_data[i];
 		SAElem id2 = m_data[i+1];
 		assert(id1.getID() < maxIdx);
-		std::string suffix1 = pRT->getRead(id1.getID()).seq.substr(id1.getPos()) + "$";
-		std::string suffix2 = pRT->getRead(id2.getID()).seq.substr(id2.getPos()) + "$";
+		std::string suffix1 = pRT->getRead(id1.getID()).seq.getSuffixString(id1.getPos());
+		std::string suffix2 = pRT->getRead(id2.getID()).seq.getSuffixString(id2.getPos());
 
 		if(suffix1.length() == 1)
 			++empty_count;
@@ -316,7 +317,7 @@ void SuffixArray::removeReads(const NumericIDSet& idSet)
 std::string SuffixArray::getSuffix(size_t idx, const ReadTable* pRT) const
 {
 	SAElem id = m_data[idx];
-	return pRT->getRead(id.getID()).seq.substr(id.getPos());
+	return pRT->getRead(id.getID()).seq.getSuffixString(id.getPos());
 }
 
 // Return the length of the suffix corresponding to elem 
@@ -334,7 +335,7 @@ void SuffixArray::print(const ReadTable* pRT) const
 	for(size_t i = 0; i < m_data.size(); ++i)
 	{
 		SAElem id1 = m_data[i];
-		std::string suffix = getSuffix(i, pRT) + "$";
+		std::string suffix = getSuffix(i, pRT);
 		std::cout << i << "\t" << id1 << "\t" << suffix << "\n";
 	}
 }

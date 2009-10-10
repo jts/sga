@@ -63,38 +63,37 @@ bool SuffixCompare::operator()(SAElem x, SAElem y) const
 { 
 	const SeqItem& rx = m_pRT->getRead(x.getID());
 	const SeqItem& ry = m_pRT->getRead(y.getID());
-	const std::string& sx = rx.seq;
-	const std::string& sy = ry.seq;
+	const char* suffix_x = rx.seq.getSuffix(x.getPos());
+	const char* suffix_y = ry.seq.getSuffix(y.getPos());
 	
-	std::string sfx = sx.substr(x.getPos()) + "$";
-	std::string sfy = sy.substr(y.getPos()) + "$";
-	int cmp = sfx.compare(sfy);
-	if(cmp == 0)
-		return rx.id < ry.id;
-	else
+	int cmp = strcmp(suffix_x, suffix_y);
+
+	// If the suffixes are identical all the way to the last char, break ties by id
+	if(cmp != 0)
 		return cmp < 0;
+	else
+		return rx.id < ry.id;
 }
 
 // Get the bucket for a particular SAElem
 int SuffixCompare::operator()(SAElem x) const
 {
 	//std::cout << "Finding bucket for " << x << "\n";
-	const std::string& r = m_pRT->getRead(x.getID()).seq;
+	const DNAString& read = m_pRT->getRead(x.getID()).seq;
 
-	size_t position = x.getPos() + m_bucketOffset;
-	std::string sfx;
-	if(position >= r.length())
-		sfx = "$";
-	else
-		sfx = r.substr(position) + "$";
+	size_t suffix_start = x.getPos() + m_bucketOffset;
+	const char* suffix = read.getSuffix(suffix_start);
+	size_t suffix_len = read.getSuffixLength(suffix_start);
 
-	size_t stop = std::min(m_bucketLen, sfx.length());
+	size_t stop = std::min(m_bucketLen, suffix_len);
+
 	int rank = 0;
 	for(size_t i = 0; i < stop; ++i)
 	{
-		char b = sfx[i];
+		char b = suffix[i];
 		rank += numPredSuffixes(b, m_bucketLen - i);
 	}
+
 	return rank;
 }
 

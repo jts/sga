@@ -27,8 +27,8 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 		uint64_t f_pos = saElem.getPos();
 		uint64_t l_pos = (f_pos == 0) ? si.seq.length() : f_pos - 1;
 
-		m_F[i] = (f_pos == si.seq.length()) ? '$' : si.seq[f_pos];
-		m_L[i] = (l_pos == si.seq.length()) ? '$' : si.seq[l_pos];
+		m_F[i] = (f_pos == si.seq.length()) ? '$' : si.seq.get(f_pos);
+		m_L[i] = (l_pos == si.seq.length()) ? '$' : si.seq.get(l_pos);
 	}
 
 	// initialize the occurance table

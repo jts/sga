@@ -218,7 +218,7 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 		IterType bucket_end_iter = start + bucket_ends[i];
 		//std::cout << "Sorting bucket " << i << "\n";
 		const int max_depth = 100;
-		const size_t min_elements = 50;
+		const size_t min_elements = 100;
 
 		// terminate the bucket sort under 3 conditions:
 		//  1) the bucket is degenerate (no more histogram sorting can be done) - this comes from the functor

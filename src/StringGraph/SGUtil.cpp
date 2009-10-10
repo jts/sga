@@ -74,7 +74,7 @@ void createVertices(StringGraph* pGraph, std::string readFile, const ContainMap&
 	{
 		if(!containments.isContained(si.id))
 		{
-			pGraph->addVertex(new StringVertex(si.id, si.seq));
+			pGraph->addVertex(new StringVertex(si.id, si.seq.toString()));
 		}
 	}
 }
