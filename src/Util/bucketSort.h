@@ -189,8 +189,8 @@ void histogramSort(T* x, size_t n, BucketFunctor func, int depth = 0)
 		assert(curr_count == (bucket_ends[i] - bucket_starts[i]));
 
 		//std::cout << "Sorting bucket " << i << "\n";
-		const int max_depth = 4;
-		const size_t min_elements = 500;
+		const int max_depth = 100;
+		const size_t min_elements = 50;
 
 		// terminate the bucket sort under 3 conditions:
 		//  1) the bucket is degenerate (no more histogram sorting can be done) - this comes from the functor

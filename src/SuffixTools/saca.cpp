@@ -9,6 +9,7 @@
 #include "saca.h"
 #include "SuffixCompare.h"
 #include "mkqs.h"
+#include "bucketSort.h"
 
 unsigned char mask[]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
 
@@ -101,12 +102,12 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	SuffixCompare compare(pRT);
 	double ratio = (double)n1 / (double)num_suffixes;
 	std::cout << "Calling mkqs on " << n1 << " suffixes " << ratio << "\n";
+	//histogramSort(pSA->getHead(), n1, compare);
 	mkqs(pSA->getHead(), n1, 0, compare);
 	std::cout << "Inducing remaining suffixes\n";
 	for(size_t i = n1; i < num_suffixes; ++i)
 		pSA->set(i, SAElem());
 	
-
 	// Find the ends of the buckets
 	getBuckets(bucket_counts, buckets, ALPHABET_SIZE, true);
 

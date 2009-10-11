@@ -31,7 +31,7 @@ const uint8_t SuffixCompare::m_rankLUT[256] = {
 SuffixCompare::SuffixCompare(const ReadTable* pRT) : m_pRT(pRT)
 {
 	m_bucketOffset = 0;
-	m_bucketLen = 4;
+	m_bucketLen = 6;
 }
 
 //
