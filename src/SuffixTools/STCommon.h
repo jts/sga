@@ -52,8 +52,16 @@ struct SAElem
 
 		void setID(uint64_t i);
 		void setPos(uint64_t i);
-		uint64_t getID() const;
-		uint64_t getPos() const;
+
+		inline uint64_t getID() const
+		{
+			return (m_val & HIGH_MASK) >> POS_BITS;
+		}
+
+		inline uint64_t getPos() const
+		{
+			return (m_val & LOW_MASK);
+		}
 
 		// Returns true if the suffix is the full length of the string
 		bool isFull() const;

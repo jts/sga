@@ -98,15 +98,6 @@ int SuffixCompare::operator()(SAElem x) const
 }
 
 //
-char SuffixCompare::getChar(SAElem& x, int d) const
-{
-	const DNAString& read = m_pRT->getRead(x.getID()).seq;
-	size_t suffix_start = x.getPos();
-	const char* suffix = read.getSuffix(suffix_start);
-	return suffix[d];
-}
-
-//
 void SuffixCompare::printElem(SAElem& x) const
 {
 	const DNAString& read = m_pRT->getRead(x.getID()).seq;

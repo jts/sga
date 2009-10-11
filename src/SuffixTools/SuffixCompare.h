@@ -37,7 +37,10 @@ struct SuffixCompare
 		int operator()(SAElem x) const;
 
 		// Get the character at position d for the SAElem
-		char getChar(SAElem& x, int d) const;
+		inline char getChar(SAElem& x, int d) const
+		{
+			return m_pRT->getChar(x.getID(), x.getPos() + d);
+		}
 		
 		// Calculate the number of possible suffixes
 		int calcNumSuffixes(int maxLen) const;

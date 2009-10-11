@@ -46,18 +46,6 @@ void SAElem::setPos(uint64_t i)
 	m_val |= i;
 }
 
-// Get the ID
-uint64_t SAElem::getID() const
-{
-	return (m_val & HIGH_MASK) >> POS_BITS;
-}
-
-// Get the position
-uint64_t SAElem::getPos() const
-{
-	return (m_val & LOW_MASK);
-}
-
 // 
 bool SAElem::isFull() const
 {
