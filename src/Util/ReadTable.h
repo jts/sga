@@ -31,6 +31,14 @@ class ReadTable
 		//
 		const SeqItem& getRead(size_t idx) const;
 		const SeqItem& getRead(const std::string& id) const;
+	
+		// Get a particular character for a particular read
+		inline char getChar(size_t str_idx, size_t char_idx) const
+		{
+			assert(str_idx < m_table.size());
+			return m_table[str_idx].seq.get(char_idx);
+		}
+
 		size_t getReadLength(size_t idx) const;
 		size_t getCount() const;
 		size_t getSumLengths() const;

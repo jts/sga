@@ -25,14 +25,17 @@ class SuffixArray
 		SuffixArray(const SuffixArray& a, const SuffixArray& b);
 
 		//
+		SAElem* getHead() { return &m_data[0]; }
 		SAElem get(size_t idx) const { return m_data[idx]; }
+		void set(size_t idx, SAElem e) { m_data[idx] = e; }
 		size_t getSize() const { return m_data.size(); }
 		size_t getNumStrings() const { return m_numStrings; } 
 		std::string getSuffix(size_t idx, const ReadTable* pRT) const;
 		size_t getSuffixLength(const ReadTable* pRT, const SAElem elem) const;
 
-		// Validate the suffix array
+		//
 		void initialize(const ReadTable& rt);
+		void initialize(size_t num_suffixes, size_t num_strings);
 		void validate(const ReadTable* pRT) const;
 		void sort(const ReadTable* pRT);
 

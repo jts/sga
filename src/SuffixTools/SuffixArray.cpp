@@ -68,6 +68,12 @@ void SuffixArray::initialize(const ReadTable& rt)
 	std::cerr << "Created " << count << " suffixes\n";
 }
 
+void SuffixArray::initialize(size_t num_suffixes, size_t num_strings)
+{
+	m_data.resize(num_suffixes);
+	m_numStrings = num_strings;
+}
+
 // Sort an initialized suffix array in-place
 void SuffixArray::sort(const ReadTable* pRT)
 {
@@ -75,8 +81,8 @@ void SuffixArray::sort(const ReadTable* pRT)
 	//print(pRT);
 	//std::sort(m_data.begin(), m_data.end(), compare);
 	//bucketSort(m_data.begin(), m_data.end(), compare);
-	histogramSort(&m_data[0], m_data.size(), compare);
-	//mkqs(&m_data[0], m_data.size(), 0, compare);
+	//histogramSort(&m_data[0], m_data.size(), compare);
+	mkqs(&m_data[0], m_data.size(), 0, compare);
 	//print(pRT);
 	//validate(pRT);
 	//print(pRT);
@@ -339,7 +345,7 @@ void SuffixArray::print(const ReadTable* pRT) const
 	for(size_t i = 0; i < m_data.size(); ++i)
 	{
 		SAElem id1 = m_data[i];
-		std::string suffix = getSuffix(i, pRT);
+		std::string suffix = !id1.isEmpty() ? getSuffix(i, pRT) : "";
 		std::cout << i << "\t" << id1 << "\t" << suffix << "\n";
 	}
 }

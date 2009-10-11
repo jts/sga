@@ -78,7 +78,10 @@ std::istream& operator>>(std::istream& in, SAElem& s)
 // Output
 std::ostream& operator<<(std::ostream& out, const SAElem& s)
 {
-	out << s.getID() << " " << s.getPos();
+	if(!s.isEmpty())
+		out << s.getID() << " " << s.getPos();
+	else
+		out << -1;
 	return out;
 }
 

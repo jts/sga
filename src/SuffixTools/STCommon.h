@@ -10,6 +10,7 @@
 #define STCOMMON_H
 #include "STGlobals.h"
 #include <utility>
+#include <stdint.h>
 
 //
 // Functions
@@ -39,11 +40,16 @@ void printVector(const std::vector<T>& v);
 struct SAElem
 {
 	public:
-		SAElem() : m_val(0) {}
+		SAElem() : m_val(std::numeric_limits<uint64_t>::max()) { }
 		SAElem(uint64_t i);
 		SAElem(uint64_t i, uint64_t p);
 
 		//
+		inline bool isEmpty() const
+		{
+			return m_val == std::numeric_limits<uint64_t>::max();
+		}
+
 		void setID(uint64_t i);
 		void setPos(uint64_t i);
 		uint64_t getID() const;

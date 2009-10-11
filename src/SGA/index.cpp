@@ -12,6 +12,7 @@
 #include "index.h"
 #include "SuffixArray.h"
 #include "SeqReader.h"
+#include "saca.h"
 
 //
 // Getopt
@@ -81,14 +82,16 @@ void buildIndex(std::string outfile, const ReadTable* pRT)
 {
 	// Make initial suffix arrays
 	SuffixArray* pSA = new SuffixArray();
-	pSA->initialize(*pRT);
-	pSA->sort(pRT);
-
-	pSA->validate(pRT);
-
-	if(opt::verbose > 0)
+	
+	saca_induced_copying(pSA, pRT);
+	//pSA->initialize(*pRT);
+	//pSA->sort(pRT);
+	
+	//pSA->validate(pRT);
+	(void)outfile;
+	/*if(opt::verbose > 0)
 		pSA->print(pRT);
-	writeSA(outfile, pSA);
+	writeSA(outfile, pSA);*/
 	delete pSA;
 	pSA = NULL;
 }

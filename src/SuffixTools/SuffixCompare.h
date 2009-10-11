@@ -24,6 +24,12 @@ struct SuffixCompare
 		SuffixCompare(const SuffixCompare& other);
 		~SuffixCompare();
 
+		// Return the lexographic rank of the character b
+		inline static uint8_t getRank(char b)
+		{
+			return m_rankLUT[static_cast<uint8_t>(b)];
+		}
+
 		// Comparator function
 		bool operator()(SAElem x, SAElem y) const; 
 
@@ -60,10 +66,6 @@ struct SuffixCompare
 
 	private:
 
-		inline uint8_t getRank(char b) const
-		{
-			return m_rankLUT[static_cast<uint8_t>(b)];
-		}
 		SuffixCompare() {}
 		
 		const ReadTable* m_pRT;
