@@ -57,8 +57,13 @@ class DNAString
 				return 0;
 		}
 
-		// Return the suffix as a string, with a $ ending
-		char get(size_t idx) const;
+		// Get the character at the given position
+		inline char get(size_t idx) const
+		{
+			assert(idx < m_len + 1);
+			return m_data[idx];
+		}
+
 		void reverse();
 		std::string getSuffixString(size_t idx) const;
 		std::string toString() const;

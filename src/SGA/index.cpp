@@ -83,7 +83,9 @@ void buildIndex(std::string outfile, const ReadTable* pRT)
 	SuffixArray* pSA = new SuffixArray();
 	pSA->initialize(*pRT);
 	pSA->sort(pRT);
+
 	pSA->validate(pRT);
+
 	if(opt::verbose > 0)
 		pSA->print(pRT);
 	writeSA(outfile, pSA);

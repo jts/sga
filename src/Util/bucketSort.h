@@ -12,28 +12,6 @@
 #include <list>
 
 template<typename IterType, typename BucketFunctor>
-void _insertionSort(IterType start, IterType end, BucketFunctor func)
-{
-	if(start == end)
-		return;
-	typedef typename std::iterator_traits<IterType>::value_type base_value;
-	IterType i = start + 1;
-	for(IterType i = start + 1; i != end; ++i)
-	{
-		base_value v = *i;
-		IterType j;
-		for(j = i - 1; j >= start; --j)
-		{
-			bool cmp = !func(v, *j);
-			if(cmp)
-				break;
-			*(j+1) = *j;
-		}
-		*(j+1) = v;
-	}
-}
-
-template<typename IterType, typename BucketFunctor>
 void bucketSort(IterType start, IterType end, BucketFunctor func)
 {
 	// Typedef the base value of the iterator
@@ -74,14 +52,9 @@ void bucketSort(IterType start, IterType end, BucketFunctor func)
 	delete [] buckets;
 }
 
-template<typename IterType, typename BucketFunctor>
-void histogramSort(IterType start, IterType end, BucketFunctor func, int depth = 0)
+template<typename T, typename BucketFunctor>
+void histogramSort(T* x, size_t n, BucketFunctor func, int depth = 0)
 {
-	// Typedef the base value of the iterator
-	typedef typename std::iterator_traits<IterType>::value_type base_value;
-	typedef std::list<base_value> base_list;
-	typedef typename base_list::iterator list_iterator;
-
 	// Get the number of buckets needed
 	int numBuckets = func.getNumBuckets();
 
@@ -102,9 +75,9 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 	}	
 
 	// Place the items into buckets
-	for(IterType iter = start; iter != end; ++iter)
+	for(size_t i = 0; i < n; ++i)
 	{
-		int bucket_id = func(*iter);
+		int bucket_id = func(x[i]);
 		assert(bucket_id < numBuckets);
 		bucket_counts[bucket_id]++;
 	}
@@ -131,12 +104,10 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 	{
 		//std::cout << "Curr Bucket: " << curr_bucket << "\n";
 		//std::cout << "CurrIDX: " << bucket_starts[curr_bucket] << "\n";
-		
 		int elem_offset = bucket_starts[curr_bucket];
-		IterType currIter = start + elem_offset;
 		
 		// Get the bucket for this element
-		int bucket_id = func(*currIter);
+		int bucket_id = func(x[elem_offset]);
 
 		// if the element is in the correct bucket, just advance the pointer
 		if(bucket_id == curr_bucket)
@@ -147,7 +118,7 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 			// we have sorted one position further in the current bucket
 
 			// Hold the info for the element that has been displaced
-			base_value displaced = *currIter;
+			T displaced = x[elem_offset];
 			bool stop = false;
 
 			while(!stop)
@@ -158,18 +129,17 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 				if(displaced_bucket == curr_bucket)
 				{
 					// The displaced element belongs back in the original bucket, place it there
-					*currIter = displaced;
+					x[elem_offset] = displaced;
 					bucket_starts[curr_bucket]++;
 					stop = true;
 				}
 				else
 				{
 					int cycle_offset = bucket_starts[displaced_bucket];
-					IterType cycleIter = start + cycle_offset;
 
 					// Make space for the incoming element
-					base_value swap = *cycleIter;
-					*cycleIter = displaced;
+					T swap = x[cycle_offset];
+					x[cycle_offset] = displaced;
 					displaced = swap;
 					bucket_starts[displaced_bucket]++;
 				}
@@ -200,11 +170,10 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 	{
 		for(size_t j = bucket_starts[i]; j != bucket_ends[i]; ++j)
 		{
-			IterType validation_iter = start + j;
-			if(func(*validation_iter) != i)
+			if(func(x[j]) != i)
 			{
-				std::cerr << "Element " << *validation_iter << " belongs in bucket " << 
-					func(*validation_iter) << " not bucket " << i << "\n";
+				std::cerr << "Element " << x[j] << " belongs in bucket " << 
+					func(x[j]) << " not bucket " << i << "\n";
 				assert(false);
 			}
 		}
@@ -214,23 +183,32 @@ void histogramSort(IterType start, IterType end, BucketFunctor func, int depth =
 	// Finally, sort each bucket
 	for(int i = 0; i < numBuckets; ++i)
 	{
-		IterType bucket_start_iter = start + bucket_starts[i];
-		IterType bucket_end_iter = start + bucket_ends[i];
+		T* curr_bucket = x + bucket_starts[i];
+		size_t curr_count = bucket_counts[i];
+
+		assert(curr_count == (bucket_ends[i] - bucket_starts[i]));
+
 		//std::cout << "Sorting bucket " << i << "\n";
-		const int max_depth = 100;
-		const size_t min_elements = 100;
+		const int max_depth = 4;
+		const size_t min_elements = 500;
 
 		// terminate the bucket sort under 3 conditions:
 		//  1) the bucket is degenerate (no more histogram sorting can be done) - this comes from the functor
 		//  2) the number of elements in the bucket is low
 		//  3) the max depth has been hit
-		if(bucket_counts[i] < min_elements || depth >= max_depth || func.isBucketDegenerate(i))
+		if(func.isBucketDegenerate(i))
 		{
-			std::sort(bucket_start_iter, bucket_end_iter, func);
+			std::sort(curr_bucket, curr_bucket + bucket_counts[i], func);
+		}
+		else if(bucket_counts[i] < min_elements || depth >= max_depth)
+		{
+			int next_char = func.getNextSortingIndex();
+			mkqs(curr_bucket, curr_count, next_char, func);
+			//std::sort(curr_bucket, curr_bucket + bucket_counts[i], func);
 		}
 		else
 		{
-			histogramSort(bucket_start_iter, bucket_end_iter, func, depth + 1);
+			histogramSort(curr_bucket, bucket_counts[i], func, depth + 1);
 		}
 	}
 

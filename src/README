@@ -1,6 +1,5 @@
-New assembly package - designed to replace abyss's paired end implementation
-Does not use abyss code but some ideas that were originally in abyss are re-implemented (http://www.bcgsc.ca/platform/bioinfo/software/abyss and http://www.ncbi.nlm.nih.gov/pubmed/19251739)
-
+Uses multikey quicksort code from http://www.cs.princeton.edu/~rs/strings/demo.c
 Requirement: gnu scientific library
+
 Written by Jared Simpson
 Sanger Institute, 2009

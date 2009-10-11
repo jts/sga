@@ -31,7 +31,7 @@ const uint8_t SuffixCompare::m_rankLUT[256] = {
 SuffixCompare::SuffixCompare(const ReadTable* pRT) : m_pRT(pRT)
 {
 	m_bucketOffset = 0;
-	m_bucketLen = 6;
+	m_bucketLen = 4;
 }
 
 //
@@ -98,10 +98,33 @@ int SuffixCompare::operator()(SAElem x) const
 }
 
 //
+char SuffixCompare::getChar(SAElem& x, int d) const
+{
+	const DNAString& read = m_pRT->getRead(x.getID()).seq;
+	size_t suffix_start = x.getPos();
+	const char* suffix = read.getSuffix(suffix_start);
+	return suffix[d];
+}
+
+//
+void SuffixCompare::printElem(SAElem& x) const
+{
+	const DNAString& read = m_pRT->getRead(x.getID()).seq;
+	std::cout << read.getSuffixString(x.getPos()) << "\n";
+}
+
+//
 void SuffixCompare::setBucketDepth(int depth)
 {
 	m_bucketOffset = m_bucketLen * depth;
 }
+
+//
+int SuffixCompare::getNextSortingIndex() const
+{
+	return m_bucketOffset + 1;
+}
+
 
 //
 int SuffixCompare::calcNumSuffixes(int maxLen) const

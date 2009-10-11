@@ -65,13 +65,6 @@ DNAString::~DNAString()
 	_dealloc();
 }
 
-//
-char DNAString::get(size_t idx) const
-{
-	assert(idx < m_len);
-	return m_data[idx];
-}
-
 // Reverse the sequence
 void DNAString::reverse()
 {

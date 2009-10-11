@@ -11,6 +11,7 @@
 #include "LCPArray.h"
 #include "bucketSort.h"
 #include "SuffixCompare.h"
+#include "mkqs.h"
 
 // Construct the suffix array for the string
 SuffixArray::SuffixArray(uint64_t i, std::string text)
@@ -58,6 +59,7 @@ void SuffixArray::initialize(const ReadTable& rt)
 	size_t count = 0;
 	for(size_t i = 0; i < rt.getCount(); ++i)
 	{
+		// + 1 below is for the empty suffix (is it actually needed?)
 		for(size_t j = 0; j < rt.getRead(i).seq.length() + 1; ++j)
 		{
 			m_data[count++] = SAElem(i, j);
@@ -70,9 +72,11 @@ void SuffixArray::initialize(const ReadTable& rt)
 void SuffixArray::sort(const ReadTable* pRT)
 {
 	SuffixCompare compare(pRT);
+	//print(pRT);
 	//std::sort(m_data.begin(), m_data.end(), compare);
 	//bucketSort(m_data.begin(), m_data.end(), compare);
-	histogramSort(m_data.begin(), m_data.end(), compare);
+	histogramSort(&m_data[0], m_data.size(), compare);
+	//mkqs(&m_data[0], m_data.size(), 0, compare);
 	//print(pRT);
 	//validate(pRT);
 	//print(pRT);

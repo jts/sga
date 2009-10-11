@@ -29,6 +29,9 @@ struct SuffixCompare
 
 		// Bucket function
 		int operator()(SAElem x) const;
+
+		// Get the character at position d for the SAElem
+		char getChar(SAElem& x, int d) const;
 		
 		// Calculate the number of possible suffixes
 		int calcNumSuffixes(int maxLen) const;
@@ -42,12 +45,18 @@ struct SuffixCompare
 		// Set the offset
 		void setBucketDepth(int depth);
 
+		// Get the next character that should be sorted on
+		int getNextSortingIndex() const;
+
 		// Return true if a bucket is degenerate ie it cannot be subdivided any further
 		bool isBucketDegenerate(int index) const;
 
 		// Calculate the number of suffixes that precede the first instance of b for a 
 		// given maximum suffix length
 		int numPredSuffixes(char b, int maxLen) const;
+
+		// Print the element
+		void printElem(SAElem& x) const;
 
 	private:
 
