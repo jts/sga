@@ -10,12 +10,13 @@
 #include "SuffixCompare.h"
 #include "mkqs.h"
 #include "bucketSort.h"
+#include "Util.h"
 
 unsigned char mask[]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
 
 #define GET_CHAR(i, j) pRT->getChar((i),(j))
 #define isLMS(i, j) ((j) > 0 && getBit(type_array, (i), (j)) && !getBit(type_array, (i), (j-1)))
-#define GET_BKT(c) SuffixCompare::getRank((c))
+#define GET_BKT(c) getBaseRank((c))
 
 // Implementation of induced copying algorithm by
 // Nong, Zhang, Chan
@@ -71,22 +72,22 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	size_t num_suffixes = buckets[ALPHABET_SIZE - 1];
 	pSA->initialize(num_suffixes, pRT->getCount());
 
+	// Copy all the LMS substrings into the first n1 places in the SA
+	size_t n1 = 0;
 	for(size_t i = 0; i < num_strings; ++i)
 	{
 		size_t s_len = pRT->getReadLength(i) + 1;
 		for(size_t j = 0; j < s_len; ++j)
 		{
 			if(isLMS(i,j))
-			{
-				char c = GET_CHAR(i,j);
-				pSA->set(--buckets[GET_BKT(c)], SAElem(i, j));
-			}
+				pSA->set(n1++, SAElem(i, j));
 		}
 	}
 
-	induceSAl(pRT, pSA, type_array, bucket_counts, buckets, num_suffixes, ALPHABET_SIZE, false);
-	induceSAs(pRT, pSA, type_array, bucket_counts, buckets, num_suffixes, ALPHABET_SIZE, true);
-
+	/*
+	//induceSAl(pRT, pSA, type_array, bucket_counts, buckets, num_suffixes, ALPHABET_SIZE, false);
+	//induceSAs(pRT, pSA, type_array, bucket_counts, buckets, num_suffixes, ALPHABET_SIZE, true);
+	
 	// Compact all the sorted substrings into the first portion of the SA
 	size_t n1 = 0;
 	for(size_t i = 0; i < num_suffixes; ++i)
@@ -97,13 +98,20 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 			pSA->set(n1++, elem);
 		}
 	}
+	*/
 
-	// Call MKQS to sort the sub-array
-	SuffixCompare compare(pRT);
 	double ratio = (double)n1 / (double)num_suffixes;
 	std::cout << "Calling mkqs on " << n1 << " suffixes " << ratio << "\n";
+
+	// Call MKQS, first on the sequence and then on the ID
+	SuffixCompareRadix radix_compare(pRT, 6);
+	SuffixCompareID id_compare(pRT);
+	
 	//histogramSort(pSA->getHead(), n1, compare);
-	mkqs(pSA->getHead(), n1, 0, compare);
+	//mkqs(pSA->getHead(), n1, 0, radix_compare, id_compare);
+	histogramSort(pSA->getHead(), n1, 0, radix_compare, id_compare);
+
+	// Induction sort the remaining suffixes
 	std::cout << "Inducing remaining suffixes\n";
 	for(size_t i = n1; i < num_suffixes; ++i)
 		pSA->set(i, SAElem());
@@ -184,9 +192,9 @@ void countBuckets(const ReadTable* pRT, int* counts, int K)
 	{
 		size_t s_len = pRT->getReadLength(i);
 		for(size_t j = 0; j < s_len; ++j)
-			counts[SuffixCompare::getRank(GET_CHAR(i,j))]++;
+			counts[getBaseRank(GET_CHAR(i,j))]++;
 
-		counts[SuffixCompare::getRank('\0')]++;
+		counts[getBaseRank('\0')]++;
 	}
 }
 

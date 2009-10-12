@@ -77,12 +77,14 @@ void SuffixArray::initialize(size_t num_suffixes, size_t num_strings)
 // Sort an initialized suffix array in-place
 void SuffixArray::sort(const ReadTable* pRT)
 {
-	SuffixCompare compare(pRT);
 	//print(pRT);
 	//std::sort(m_data.begin(), m_data.end(), compare);
 	//bucketSort(m_data.begin(), m_data.end(), compare);
-	//histogramSort(&m_data[0], m_data.size(), compare);
-	mkqs(&m_data[0], m_data.size(), 0, compare);
+	SuffixCompareRadix radix_compare(pRT);
+	SuffixCompareID id_compare(pRT);
+	histogramSort(&m_data[0], m_data.size(), 0, radix_compare, id_compare);
+
+	//mkqs(&m_data[0], m_data.size(), 0, compare);
 	//print(pRT);
 	//validate(pRT);
 	//print(pRT);

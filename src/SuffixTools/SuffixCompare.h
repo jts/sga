@@ -4,46 +4,55 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// SuffixCompare - Suffix Comparator class
-// Designed to be passed to bucket/histogram sort and std::sort
+// SuffixCompare - Suffix Comparator classes
+// Used for histogram/bucket sort, mkqs and std::sort
 //
 #ifndef SUFFIXCOMPARE_H
 #define SUFFIXCOMPARE_H
 #include "STCommon.h"
 #include "ReadTable.h"
 
-class LCPArray;
-
-// Simple struct to sort suffixes using their ids by looking
-// up substrings in the table via pRT
-struct SuffixCompare
+// Suffix comparator object for radix-like sorts (bucket/histogram and MKQS)
+class SuffixCompareRadix
 {
 	public:
-		SuffixCompare(const ReadTable* pRT);
-		SuffixCompare(const ReadTable* pRT, int offset, int bucket_len);
-		SuffixCompare(const SuffixCompare& other);
-		~SuffixCompare();
-
-		// Return the lexographic rank of the character b
-		inline static uint8_t getRank(char b)
-		{
-			return m_rankLUT[static_cast<uint8_t>(b)];
-		}
-
-		// Comparator function
-		bool operator()(SAElem x, SAElem y) const; 
+		SuffixCompareRadix(const ReadTable* pRT);
+		SuffixCompareRadix(const ReadTable* pRT, int bucket_len);
+		~SuffixCompareRadix();
+	
+		//
+		void initializeNumSuffixLUT();
 
 		// Bucket function
-		int operator()(SAElem x) const;
+		int getBucket(SAElem x) const;
 
 		// Get the character at position d for the SAElem
 		inline char getChar(SAElem& x, int d) const
 		{
 			return m_pRT->getChar(x.getID(), x.getPos() + d);
 		}
-		
+
 		// Calculate the number of possible suffixes
 		int calcNumSuffixes(int maxLen) const;
+
+		// Get the number of possible suffixes of length maxLen using the lookup table
+		inline int getNumSuffixes(int maxLen) const
+		{
+			return m_pNumSuffixLUT[maxLen];
+		}
+
+		// Calculate the number of suffixes that precede the first instance of b for a 
+		// given maximum suffix length
+		inline int numPredSuffixes(char b, int maxLen) const
+		{
+			// base case
+			int rb = getBaseRank(b);
+			if(rb == 0)
+				return 0;
+			int block_size = getNumSuffixes(maxLen - 1);
+			return block_size * (rb - 1) + 1;
+		}
+		
 
 		// Return the number of buckets needed for bucket sort
 		int getNumBuckets() const;
@@ -51,31 +60,47 @@ struct SuffixCompare
 		// Return the bucket offset
 		size_t getBucketOffset() const { return m_bucketOffset; }
 
+		// Get the bucket length
+		size_t getBucketLen() const { return m_bucketLen; }
+
 		// Set the offset
 		void setBucketDepth(int depth);
-
-		// Get the next character that should be sorted on
-		int getNextSortingIndex() const;
 
 		// Return true if a bucket is degenerate ie it cannot be subdivided any further
 		bool isBucketDegenerate(int index) const;
 
-		// Calculate the number of suffixes that precede the first instance of b for a 
-		// given maximum suffix length
-		int numPredSuffixes(char b, int maxLen) const;
 
 		// Print the element
 		void printElem(SAElem& x) const;
 
 	private:
 
-		SuffixCompare() {}
-		
+		// Disallow default and copy constructor
+		SuffixCompareRadix() {}
+		SuffixCompareRadix(const SuffixCompareRadix& /*other*/) { assert(false); }
+
 		const ReadTable* m_pRT;
 		size_t m_bucketOffset;
 		size_t m_bucketLen;
+		int* m_pNumSuffixLUT;
+};
 
-		static const uint8_t m_rankLUT[256];
+// Compare two suffixes by their ID
+// This is used for the final pass, after suffixes has been compared by sequence
+class SuffixCompareID
+{
+	public:
+		SuffixCompareID(const ReadTable* pRT) : m_pRT(pRT) {}
+
+		// Comparator function
+		bool operator()(SAElem x, SAElem y) const;
+
+	private:
+		
+		// default is not accessible
+		SuffixCompareID() : m_pRT(0) {}
+
+		const ReadTable* m_pRT;
 };
 
 #endif

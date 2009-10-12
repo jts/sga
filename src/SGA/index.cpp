@@ -82,15 +82,16 @@ void buildIndex(std::string outfile, const ReadTable* pRT)
 {
 	// Make initial suffix arrays
 	SuffixArray* pSA = new SuffixArray();
-	
 	saca_induced_copying(pSA, pRT);
 	//pSA->initialize(*pRT);
 	//pSA->sort(pRT);
-	
+	(void)outfile;
+
+	//std::cerr << "Validating suffix array\n";
 	//pSA->validate(pRT);
-	if(opt::verbose > 0)
+	/*if(opt::verbose > 0)
 		pSA->print(pRT);
-	writeSA(outfile, pSA);
+	writeSA(outfile, pSA);*/
 	delete pSA;
 	pSA = NULL;
 }

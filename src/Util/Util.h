@@ -184,6 +184,33 @@ StringVec split(std::string in, char delimiter);
 void splitKeyValue(std::string in, std::string& key, std::string& value);
 
 //
+// Return the lexographic value for the given base
+//
+static const uint8_t s_lexoRankLUT[256] = {
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,1,0,2,0,0,0,3,0,0,0,0,0,0,0,0,
+	0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
+inline static uint8_t getBaseRank(char b)
+{
+	return s_lexoRankLUT[static_cast<uint8_t>(b)];
+}
+
+//
 // Sequence operations
 //
 Sequence reverseComplement(const Sequence& seq);

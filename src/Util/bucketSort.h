@@ -52,14 +52,14 @@ void bucketSort(IterType start, IterType end, BucketFunctor func)
 	delete [] buckets;
 }
 
-template<typename T, typename BucketFunctor>
-void histogramSort(T* x, size_t n, BucketFunctor func, int depth = 0)
+template<typename T, typename PrimarySorter, typename FinalSorter>
+void histogramSort(T* x, size_t n, int depth, PrimarySorter& primarySorter, const FinalSorter& finalSorter)
 {
 	// Get the number of buckets needed
-	int numBuckets = func.getNumBuckets();
+	int numBuckets = primarySorter.getNumBuckets();
 
 	// Set the functor's offset
-	func.setBucketDepth(depth);
+	primarySorter.setBucketDepth(depth);
 
 	// Allocate an array for the bucket start points and the bucket end points
 	// TODO: Could remove at least one of these arrays
@@ -77,7 +77,7 @@ void histogramSort(T* x, size_t n, BucketFunctor func, int depth = 0)
 	// Place the items into buckets
 	for(size_t i = 0; i < n; ++i)
 	{
-		int bucket_id = func(x[i]);
+		int bucket_id = primarySorter.getBucket(x[i]);
 		assert(bucket_id < numBuckets);
 		bucket_counts[bucket_id]++;
 	}
@@ -107,7 +107,7 @@ void histogramSort(T* x, size_t n, BucketFunctor func, int depth = 0)
 		int elem_offset = bucket_starts[curr_bucket];
 		
 		// Get the bucket for this element
-		int bucket_id = func(x[elem_offset]);
+		int bucket_id = primarySorter.getBucket(x[elem_offset]);
 
 		// if the element is in the correct bucket, just advance the pointer
 		if(bucket_id == curr_bucket)
@@ -124,7 +124,7 @@ void histogramSort(T* x, size_t n, BucketFunctor func, int depth = 0)
 			while(!stop)
 			{
 				// Get the offset of the position this element should be in
-				int displaced_bucket = func(displaced);
+				int displaced_bucket = primarySorter.getBucket(displaced);
 
 				if(displaced_bucket == curr_bucket)
 				{
@@ -186,29 +186,32 @@ void histogramSort(T* x, size_t n, BucketFunctor func, int depth = 0)
 		T* curr_bucket = x + bucket_starts[i];
 		size_t curr_count = bucket_counts[i];
 
+		if(curr_count < 2)
+			continue;
+
 		assert(curr_count == (bucket_ends[i] - bucket_starts[i]));
 
 		//std::cout << "Sorting bucket " << i << "\n";
 		const int max_depth = 100;
-		const size_t min_elements = 50;
+		const size_t min_elements = 2000;
 
 		// terminate the bucket sort under 3 conditions:
 		//  1) the bucket is degenerate (no more histogram sorting can be done) - this comes from the functor
 		//  2) the number of elements in the bucket is low
 		//  3) the max depth has been hit
-		if(func.isBucketDegenerate(i))
+		if(primarySorter.isBucketDegenerate(i))
 		{
-			std::sort(curr_bucket, curr_bucket + bucket_counts[i], func);
+			std::sort(curr_bucket, curr_bucket + curr_count, finalSorter);
 		}
 		else if(bucket_counts[i] < min_elements || depth >= max_depth)
 		{
-			int next_char = func.getNextSortingIndex();
-			mkqs(curr_bucket, curr_count, next_char, func);
-			//std::sort(curr_bucket, curr_bucket + bucket_counts[i], func);
+			int next_char = (depth + 1) * primarySorter.getBucketLen();
+			mkqs(curr_bucket, curr_count, next_char, primarySorter, finalSorter);
+			//std::sort(curr_bucket, curr_bucket + bucket_counts[i], finalSorter);
 		}
 		else
 		{
-			histogramSort(curr_bucket, bucket_counts[i], func, depth + 1);
+			histogramSort(curr_bucket, curr_count, depth + 1, primarySorter, finalSorter);
 		}
 	}
 
