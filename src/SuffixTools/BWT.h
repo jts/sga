@@ -23,6 +23,7 @@ class BWT
 	public:
 	
 		// Constructors
+		BWT(const std::string& filename);
 		BWT(const SuffixArray* pSA, const ReadTable* pRT);
 			
 		// Exact match
@@ -34,17 +35,19 @@ class BWT
 
 		// Print info about the BWT, including size
 		void printInfo() const;
-		void print(const ReadTable* pRT) const;
+		void print(const ReadTable* pRT, const SuffixArray* pSA) const;
+
+		// IO
+		friend std::ostream& operator<<(std::ostream& out, const BWT& bwt);
+		friend std::istream& operator>>(std::istream& in, BWT& bwt);
 
 	private:
-
+		BWT() {}
 		Occurance m_occurance;
 		AlphaCount m_predCount;
-		const SuffixArray* m_pSuffixArray;
 		
 		// The two representitive strings in the BWT, F is the first column of the sorted "block", L is the last
-		BWStr m_F;
-		BWStr m_L;
+		BWStr m_bwStr;
 		size_t m_numStrings;
 };
 #endif

@@ -15,6 +15,15 @@
 #include "saca.h"
 #include "Timer.h"
 
+// Read a suffix array from a file
+SuffixArray::SuffixArray(const std::string& filename)
+{
+	std::ifstream in(filename.c_str());
+	checkFileHandle(in, filename);
+	in >> *this;
+	in.close();
+}
+
 // Construct the suffix array for a table of reads
 SuffixArray::SuffixArray(const ReadTable* pRT)
 {

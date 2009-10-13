@@ -19,6 +19,7 @@ class SuffixArray
 		
 		//
 		SuffixArray() {}
+		SuffixArray(const std::string& filename);
 		SuffixArray(const ReadTable* pRT);
 
 		// Construction/Validation functions

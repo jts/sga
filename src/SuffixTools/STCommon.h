@@ -104,29 +104,6 @@ struct SAElem
 		static const uint64_t LOW_MASK = ~HIGH_MASK;
 };
 
-
-//
-// A suffix string is a label and the rotated string that represents it
-//
-class SuffixString
-{	
-	public:
-	
-		// Constructors
-		SuffixString(int i, int p, std::string s) : id(i,p), str(s) {}
-		SuffixString(int i, std::string s) : id(i), str(s) {}
-		
-		// Comparator
-		friend int operator<(const SuffixString& o1, const SuffixString& o2);
-		
-		// Output
-		friend std::ostream& operator<<(std::ostream& out, const SuffixString& s);
-
-		// These fields are intentially public
-		SAElem id;
-		std::string str;
-};
-
 //
 // A simple class holding the count for each base of a DNA string (plus the terminator)  
 //
@@ -140,13 +117,12 @@ class AlphaCount
 		BaseCount get(char b) const;
 		
 		friend std::ostream& operator<<(std::ostream& out, const AlphaCount& ac);
-
+		friend std::istream& operator>>(std::istream& in, AlphaCount& ac);
 	private:
 		BaseCount m_counts[ALPHABET_SIZE];
 };
 
 // Typedefs of STL collections of the above classes
-typedef std::vector<SuffixString> SuffixStringVector;
 typedef std::vector<SAElem> SAElemVector;
 typedef std::pair<SAElem, SAElem> SAElemPair;
 typedef std::vector<SAElemPair> SAElemPairVec;

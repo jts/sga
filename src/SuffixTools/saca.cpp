@@ -101,7 +101,7 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	*/
 
 	double ratio = (double)n1 / (double)num_suffixes;
-	std::cout << "Calling mkqs on " << n1 << " suffixes " << ratio << "\n";
+	std::cout << "[saca] calling mkqs on " << n1 << " suffixes " << ratio << "\n";
 
 	// Call MKQS, first on the sequence and then on the ID
 	SuffixCompareRadix radix_compare(pRT, 6);
@@ -111,7 +111,6 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	//histogramSort(pSA->getHead(), n1, 0, radix_compare, id_compare);
 
 	// Induction sort the remaining suffixes
-	std::cout << "Inducing remaining suffixes\n";
 	for(size_t i = n1; i < num_suffixes; ++i)
 		pSA->set(i, SAElem());
 	
@@ -130,7 +129,6 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	induceSAs(pRT, pSA, type_array, bucket_counts, buckets, num_suffixes, ALPHABET_SIZE, true);
 
 	//pSA->print(pRT);
-	std::cout << "done\n";
 	
 	// deallocate t array
 	for(size_t i = 0; i < num_strings; ++i)

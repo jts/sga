@@ -47,23 +47,6 @@ std::ostream& operator<<(std::ostream& out, const SAElem& s)
 }
 
 //
-// SuffixString
-//
-
-// Compare 2 SuffixStrings
-int operator<(const SuffixString& o1, const SuffixString& o2)
-{
-	return o1.str < o2.str;
-}
-
-// Output a SuffixString
-std::ostream& operator<<(std::ostream& out, const SuffixString& s)
-{
-	out << s.id << "\t" << s.str;
-	return out;
-}
-
-//
 // AlphaCount
 //
 
@@ -92,10 +75,18 @@ BaseCount AlphaCount::get(char b) const
 	return m_counts[base2Idx(b)];
 };
 
+//
 std::ostream& operator<<(std::ostream& out, const AlphaCount& ac)
 {
-	std::copy(ac.m_counts, ac.m_counts+5, std::ostream_iterator<BaseCount>(out, " "));
+	std::copy(ac.m_counts, ac.m_counts+ALPHABET_SIZE, std::ostream_iterator<BaseCount>(out, " "));
 	return out;
+}
+
+std::istream& operator>>(std::istream& in, AlphaCount& ac)
+{
+	for(size_t i = 0; i < ALPHABET_SIZE; ++i)
+		in >> ac.m_counts[i];
+	return in;
 }
 
 

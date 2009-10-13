@@ -16,22 +16,34 @@ class Occurance
 	public:
 		
 		// Constructors
-		Occurance() {}
-		Occurance(BWStr b) { initialize(b); }
-		Occurance(size_t n) { m_values.resize(n); }
+		Occurance() : m_sampleRate(1) {}
+		Occurance(BWStr b) : m_sampleRate(1) { initialize(b); }
+		Occurance(size_t n) : m_sampleRate(1) { m_values.resize(n); }
 
 		// Initialize the counts from the bwt string b
 		void initialize(const BWStr& b);
 
 		// 
-		AlphaCount get(size_t i) const;
-		BaseCount get(char a, size_t i) const;
+		inline AlphaCount get(size_t i) const
+		{
+			return m_values[i];
+		}
+		
+		inline BaseCount get(char a, size_t i) const
+		{
+			return m_values[i].get(a);
+		}
+
 		void increment(char a, size_t i);
 		void set(char a, size_t i, BaseCount s);
 		void print() const;
 		size_t getByteSize() const;
 
+		friend std::ostream& operator<<(std::ostream& out, const Occurance& o);
+		friend std::istream& operator>>(std::istream& in, Occurance& o);
+
 	private:
+		size_t m_sampleRate;
 		std::vector<AlphaCount> m_values;
 };
 

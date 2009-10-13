@@ -31,10 +31,6 @@ void flipCoords(const int len, int& s, int &e);
 void swap(int& s, int& e);
 void writeContainment(std::ofstream& containHandle, const std::string& contained, const std::string& within);
 
-// data structure creation
-BWT* createBWT(SuffixArray* pSA, const ReadTable* pRT);
-SuffixArray* loadSuffixArray(std::string filename);
-
 // options
 void parseOverlapOptions(int argc, char** argv);
 

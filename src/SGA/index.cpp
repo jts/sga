@@ -13,6 +13,7 @@
 #include "SuffixArray.h"
 #include "SeqReader.h"
 #include "saca.h"
+#include "BWT.h"
 
 //
 // Getopt
@@ -65,22 +66,23 @@ int indexMain(int argc, char** argv)
 	ReadTable* pRT = new ReadTable(opt::readsFile);
 	
 	// Create and write the suffix array for the forward reads
-	buildIndex(opt::prefix + ".sa", pRT);
+	buildIndex(opt::prefix, pRT, false);
 	
 	// Reverse all the reads
 	pRT->reverseAll();
 
 	// Build the reverse suffix array
-	buildIndex(opt::prefix + ".rsa", pRT);
+	buildIndex(opt::prefix, pRT, true);
 	
 	delete pRT;
 	return 0;
 }
 
-void buildIndex(std::string outfile, const ReadTable* pRT)
+void buildIndex(std::string prefix, const ReadTable* pRT, bool isReverse)
 {
 	// Create suffix array from read table
 	SuffixArray* pSA = new SuffixArray(pRT);
+	BWT* pBWT = new BWT(pSA, pRT);
 
 	if(opt::validate)
 	{
@@ -89,18 +91,26 @@ void buildIndex(std::string outfile, const ReadTable* pRT)
 	}
 
 	if(opt::verbose > 1)
-		pSA->print(pRT);
-	
-	writeSA(outfile, pSA);
+	{
+		//pSA->print(pRT);
+		pBWT->print(pRT, pSA);
+	}
+
+	std::string sa_filename = prefix + (!isReverse ? ".sa" : ".rsa");
+	std::string bwt_filename = prefix + (!isReverse ? ".bwt" : ".rbwt");
+
+	std::ofstream sa_out(sa_filename.c_str());
+	sa_out << *pSA;
+	sa_out.close();
+
+	std::ofstream bwt_out(bwt_filename.c_str());
+	bwt_out << *pBWT;
+	bwt_out.close();
+
 	delete pSA;
 	pSA = NULL;
-}
-
-void writeSA(std::string filename, const SuffixArray* pSA)
-{
-	std::ofstream out(filename.c_str());
-	out << *pSA;
-	out.close();
+	delete pBWT;
+	pBWT = NULL;
 }
 
 // 

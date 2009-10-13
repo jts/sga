@@ -33,18 +33,6 @@ void Occurance::initialize(const BWStr& b)
 }
 
 //
-AlphaCount Occurance::get(size_t i) const
-{
-	return m_values[i];
-}
-
-// 
-BaseCount Occurance::get(char a, size_t i) const
-{
-	return m_values[i].get(a);
-}
-
-//
 void Occurance::increment(char a, size_t i)
 {
 	m_values[i].increment(a);
@@ -61,6 +49,27 @@ size_t Occurance::getByteSize() const
 {
 	return m_values.size() * sizeof(AlphaCount);
 }
+
+std::ostream& operator<<(std::ostream& out, const Occurance& o)
+{
+	out << o.m_sampleRate << "\n";
+	out << o.m_values.size() << "\n";
+	for(size_t i = 0; i < o.m_values.size(); ++i)
+		out << o.m_values[i] << "\n";
+	return out;
+}
+
+std::istream& operator>>(std::istream& in, Occurance& o)
+{
+	in >> o.m_sampleRate;
+	size_t n;
+	in >> n;
+	o.m_values.resize(n);
+	for(size_t i = 0; i < n; ++i)
+		in >> o.m_values[i];
+	return in;
+}
+
 
 //
 void Occurance::print() const

@@ -69,8 +69,57 @@ int overlapMain(int argc, char** argv)
 		computeOverlapsLCP();
 	else
 		computeOverlapsBWT();
-
 	return 0;
+}
+
+void computeOverlapsBWT()
+{
+
+	// Create the BWT
+	BWT* pBWT = new BWT(opt::prefix + ".bwt");
+	BWT* pRBWT = new BWT(opt::prefix + ".rbwt");
+
+	// Open the writers
+	std::string overlapFile = opt::prefix + ".ovr";
+	std::ofstream overlapHandle(overlapFile.c_str());
+	assert(overlapHandle.is_open());
+
+	std::string containFile = opt::prefix + ".ctn";
+	std::ofstream containHandle(containFile.c_str());
+	assert(containHandle.is_open());
+	/*
+	// Compute overlaps
+	for(size_t i = 0; i < pRT->getCount(); ++i)
+	{
+		const SeqItem& read = pRT->getRead(i);
+
+		// Align the read and its reverse complement
+		Sequence seqs[2];
+		seqs[0] = read.seq.toString();//reverseComplement(read.seq);
+		seqs[1] = reverseComplement(seqs[0]);
+
+		HitData hits;
+		// Get all the hits of this sequence to the forward and reverse BWT
+		for(size_t sn = 0; sn <= 1; ++sn)
+		{
+			bool isRC = (sn == 1) ? true : false;
+			const Sequence& currSeq = seqs[sn];
+			
+			pBWT->getPrefixHits(currSeq, opt::minOverlap, false, isRC, &hits);
+			pRBWT->getPrefixHits(reverse(currSeq), opt::minOverlap, true, !isRC, &hits);
+		}
+
+		HitVector hitVec = hits.getHits();
+		OverlapVector overlapVec = processHits(i, hitVec, pRT, pRevRT);
+		processOverlaps(overlapVec, containHandle, overlapHandle);
+	}
+	*/
+
+	overlapHandle.close();
+	containHandle.close();
+
+	delete pBWT;
+	delete pRBWT;
 }
 
 void computeOverlapsLCP()
@@ -80,8 +129,8 @@ void computeOverlapsLCP()
 	pRevRT->initializeReverse(pRT);
 
 	// Load the suffix arrays
-	SuffixArray* pSA = loadSuffixArray(opt::prefix + ".sa");
-	SuffixArray* pRSA = loadSuffixArray(opt::prefix + ".rsa");
+	SuffixArray* pSA = new SuffixArray(opt::prefix + ".sa");
+	SuffixArray* pRSA = new SuffixArray(opt::prefix + ".rsa");
 
 	// Open the writers
 	std::string overlapFile = opt::prefix + ".ovr";
@@ -133,66 +182,6 @@ void computeOverlapsLCP()
 	delete pRSA;
 }
 
-
-void computeOverlapsBWT()
-{
-	ReadTable* pRT = new ReadTable(opt::readsFile);
-	ReadTable* pRevRT = new ReadTable();
-	pRevRT->initializeReverse(pRT);
-
-	// Load the suffix arrays
-	SuffixArray* pSA = loadSuffixArray(opt::prefix + ".sa");
-	SuffixArray* pRSA = loadSuffixArray(opt::prefix + ".rsa");
-
-	// Create the BWT
-	BWT* pBWT = createBWT(pSA, pRT);
-	BWT* pRBWT = createBWT(pRSA, pRevRT);
-
-	// Open the writers
-	std::string overlapFile = opt::prefix + ".ovr";
-	std::ofstream overlapHandle(overlapFile.c_str());
-	assert(overlapHandle.is_open());
-
-	std::string containFile = opt::prefix + ".ctn";
-	std::ofstream containHandle(containFile.c_str());
-	assert(containHandle.is_open());
-
-	// Compute overlaps
-	for(size_t i = 0; i < pRT->getCount(); ++i)
-	{
-		const SeqItem& read = pRT->getRead(i);
-
-		// Align the read and its reverse complement
-		Sequence seqs[2];
-		seqs[0] = read.seq.toString();//reverseComplement(read.seq);
-		seqs[1] = reverseComplement(seqs[0]);
-
-		HitData hits;
-		// Get all the hits of this sequence to the forward and reverse BWT
-		for(size_t sn = 0; sn <= 1; ++sn)
-		{
-			bool isRC = (sn == 1) ? true : false;
-			const Sequence& currSeq = seqs[sn];
-			
-			pBWT->getPrefixHits(currSeq, opt::minOverlap, false, isRC, &hits);
-			pRBWT->getPrefixHits(reverse(currSeq), opt::minOverlap, true, !isRC, &hits);
-		}
-
-		HitVector hitVec = hits.getHits();
-		OverlapVector overlapVec = processHits(i, hitVec, pRT, pRevRT);
-		processOverlaps(overlapVec, containHandle, overlapHandle);
-	}
-
-	overlapHandle.close();
-	containHandle.close();
-
-	delete pRT;
-	delete pRevRT;
-	delete pSA;
-	delete pRSA;
-	delete pBWT;
-	delete pRBWT;
-}
 
 // Process all the hits into overlaps
 OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTable* pFwdRT, const ReadTable* pRevRT)
@@ -327,33 +316,11 @@ void swap(int& s, int& e)
 	s = temp;
 }
 
-// Create a bwt from a suffix array file and read table
-BWT* createBWT(SuffixArray* pSA, const ReadTable* pRT)
-{
-	// Convert SA to a BWT
-	BWT* pBWT = new BWT(pSA, pRT);
-	//pBWT->print(pRT);
-	return pBWT;
-}
-
 // Write out a containmend
 void writeContainment(std::ofstream& containHandle, const std::string& contained, const std::string& within)
 {
 	containHandle << contained << "\t" << within << "\n";
 }
-
-
-//
-SuffixArray* loadSuffixArray(std::string filename)
-{
-	std::ifstream inSA(filename.c_str());
-	checkFileHandle(inSA, filename);
-
-	SuffixArray* pSA = new SuffixArray();
-	inSA >> *pSA;
-	return pSA;
-}
-
 
 // 
 // Handle command line arguments
