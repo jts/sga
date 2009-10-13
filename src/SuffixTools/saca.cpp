@@ -107,9 +107,8 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	SuffixCompareRadix radix_compare(pRT, 6);
 	SuffixCompareID id_compare(pRT);
 	
-	//histogramSort(pSA->getHead(), n1, compare);
-	//mkqs(pSA->getHead(), n1, 0, radix_compare, id_compare);
-	histogramSort(pSA->getHead(), n1, 0, radix_compare, id_compare);
+	mkqs2(&pSA->m_data[0], n1, 0, radix_compare, id_compare);
+	//histogramSort(pSA->getHead(), n1, 0, radix_compare, id_compare);
 
 	// Induction sort the remaining suffixes
 	std::cout << "Inducing remaining suffixes\n";
@@ -146,7 +145,7 @@ void induceSAl(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int* coun
 	getBuckets(counts, buckets, K, end);
 	for(size_t i = 0; i < n; ++i)
 	{
-		SAElem elem_i = pSA->get(i);
+		const SAElem& elem_i = pSA->get(i);
 		if(!elem_i.isEmpty() && elem_i.getPos() > 0)
 		{
 			//std::cout << "Curr: " << elem_i << "\n";
@@ -166,7 +165,7 @@ void induceSAs(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int* coun
 	getBuckets(counts, buckets, K, end);
 	for(int64_t i = n - 1; i >= 0; --i)
 	{
-		SAElem elem_i = pSA->get(i);
+		const SAElem& elem_i = pSA->get(i);
 		if(!elem_i.isEmpty() && elem_i.getPos() > 0)
 		{
 			//std::cout << "<isas>Curr: " << elem_i << "\n";

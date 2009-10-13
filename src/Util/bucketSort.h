@@ -146,7 +146,8 @@ void histogramSort(T* x, size_t n, int depth, PrimarySorter& primarySorter, cons
 			}
 		}
 
-		// At this point, the bucket_start for the current bucket has moved 1 element
+		// At this point, the bucket_start for current bucket 
+		// has moved 1 element
 		// Other buckets may have advanced as well
 		//
 		while(curr_bucket < numBuckets && bucket_starts[curr_bucket] == bucket_ends[curr_bucket])
@@ -163,23 +164,6 @@ void histogramSort(T* x, size_t n, int depth, PrimarySorter& primarySorter, cons
 		bucket_ends[i] = sum;
 	}
 
-#if 0
-	std::cerr << "Warning: histogram sort validation is turned on\n";
-	// Iterate through each bucket, ensuring that each element belongs there
-	for(int i = 0; i < numBuckets; ++i)
-	{
-		for(size_t j = bucket_starts[i]; j != bucket_ends[i]; ++j)
-		{
-			if(func(x[j]) != i)
-			{
-				std::cerr << "Element " << x[j] << " belongs in bucket " << 
-					func(x[j]) << " not bucket " << i << "\n";
-				assert(false);
-			}
-		}
-	}
-#endif
-
 	// Finally, sort each bucket
 	for(int i = 0; i < numBuckets; ++i)
 	{
@@ -193,7 +177,7 @@ void histogramSort(T* x, size_t n, int depth, PrimarySorter& primarySorter, cons
 
 		//std::cout << "Sorting bucket " << i << "\n";
 		const int max_depth = 100;
-		const size_t min_elements = 2000;
+		const size_t min_elements = 1000;
 
 		// terminate the bucket sort under 3 conditions:
 		//  1) the bucket is degenerate (no more histogram sorting can be done) - this comes from the functor
@@ -206,7 +190,7 @@ void histogramSort(T* x, size_t n, int depth, PrimarySorter& primarySorter, cons
 		else if(bucket_counts[i] < min_elements || depth >= max_depth)
 		{
 			int next_char = (depth + 1) * primarySorter.getBucketLen();
-			mkqs(curr_bucket, curr_count, next_char, primarySorter, finalSorter);
+			mkqs2(curr_bucket, curr_count, next_char, primarySorter, finalSorter);
 			//std::sort(curr_bucket, curr_bucket + bucket_counts[i], finalSorter);
 		}
 		else

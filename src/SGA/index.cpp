@@ -31,7 +31,8 @@ static const char *INDEX_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"      -p, --prefix=PREFIX              write index to file using PREFIX instead of prefix of READSFILE\n"
+"  -c, --check                          validate that the suffix array/bwt is correct\n"
+"  -p, --prefix=PREFIX                  write index to file using PREFIX instead of prefix of READSFILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -39,15 +40,17 @@ namespace opt
 	static unsigned int verbose;
 	static std::string readsFile;
 	static std::string prefix;
+	static bool validate;
 }
 
-static const char* shortopts = "p:m:v";
+static const char* shortopts = "p:m:cv";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
-	{ "prefix",     required_argument, NULL, 'p' },
+	{ "check",       no_argument,       NULL, 'c' },
+	{ "prefix",      required_argument, NULL, 'p' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -64,34 +67,31 @@ int indexMain(int argc, char** argv)
 	// Create and write the suffix array for the forward reads
 	buildIndex(opt::prefix + ".sa", pRT);
 	
-	return 0;
-	/*
-	// Create the reverse read table
-	ReadTable* pRevRT = new ReadTable();
-	pRevRT->initializeReverse(pRT);
-	delete pRT; // done with the initial reads
-	
+	// Reverse all the reads
+	pRT->reverseAll();
+
 	// Build the reverse suffix array
-	buildIndex(opt::prefix + ".rsa", pRevRT);
-	delete pRevRT;
+	buildIndex(opt::prefix + ".rsa", pRT);
+	
+	delete pRT;
 	return 0;
-	*/
 }
 
 void buildIndex(std::string outfile, const ReadTable* pRT)
 {
-	// Make initial suffix arrays
-	SuffixArray* pSA = new SuffixArray();
-	saca_induced_copying(pSA, pRT);
-	//pSA->initialize(*pRT);
-	//pSA->sort(pRT);
-	(void)outfile;
+	// Create suffix array from read table
+	SuffixArray* pSA = new SuffixArray(pRT);
 
-	//std::cerr << "Validating suffix array\n";
-	//pSA->validate(pRT);
-	/*if(opt::verbose > 0)
+	if(opt::validate)
+	{
+		std::cout << "Validating suffix array\n";
+		pSA->validate(pRT);
+	}
+
+	if(opt::verbose > 1)
 		pSA->print(pRT);
-	writeSA(outfile, pSA);*/
+	
+	writeSA(outfile, pSA);
 	delete pSA;
 	pSA = NULL;
 }
@@ -116,6 +116,7 @@ void parseIndexOptions(int argc, char** argv)
 		{
 			case 'p': arg >> opt::prefix; break;
 			case '?': die = true; break;
+			case 'c': opt::validate = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:
 				std::cout << INDEX_USAGE_MESSAGE;

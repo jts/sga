@@ -50,8 +50,26 @@ struct SAElem
 			return m_val == std::numeric_limits<uint64_t>::max();
 		}
 
-		void setID(uint64_t i);
-		void setPos(uint64_t i);
+		// set the id
+		inline void setID(uint64_t i)
+		{
+			// Clear the HIGH bits by ANDing with the low mask
+			m_val &= LOW_MASK;
+			
+			// Shift the new position into place and set the new value
+			i <<= POS_BITS;
+			m_val |= i;
+		}
+
+		// set the position
+		void setPos(uint64_t i)
+		{
+			// Clear the LOW bits by anding with the high mask
+			m_val &= HIGH_MASK;
+
+			// Set the new value
+			m_val |= i;
+		}
 
 		inline uint64_t getID() const
 		{
@@ -64,7 +82,10 @@ struct SAElem
 		}
 
 		// Returns true if the suffix is the full length of the string
-		bool isFull() const;
+		inline bool isFull() const
+		{
+			return getPos() == 0;
+		}
 
 		// Input/Output
 		friend std::istream& operator>>(std::istream& in, SAElem& s);

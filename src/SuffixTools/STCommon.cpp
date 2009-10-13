@@ -25,33 +25,6 @@ SAElem::SAElem(uint64_t i, uint64_t p)
 	setPos(p);
 }
 
-// Set the id
-void SAElem::setID(uint64_t i)
-{
-	// Clear the HIGH bits by ANDing with the low mask
-	m_val &= LOW_MASK;
-	
-	// Shift the new position into place and set the new value
-	i <<= POS_BITS;
-	m_val |= i;
-}
-
-// Set the position
-void SAElem::setPos(uint64_t i)
-{
-	// Clear the LOW bits by anding with the high mask
-	m_val &= HIGH_MASK;
-
-	// Set the new value
-	m_val |= i;
-}
-
-// 
-bool SAElem::isFull() const
-{
-	return getPos() == 0;
-}
-
 // Input
 std::istream& operator>>(std::istream& in, SAElem& s)
 {

@@ -6,7 +6,6 @@ libutil_a_CPPFLAGS = \
 libutil_a_SOURCES = \
 	Util.cpp Util.h \
 	Contig.h Contig.cpp \
-	Timer.h Timer.cpp \
 	ReadTable.h ReadTable.cpp \
 	SeqReader.h SeqReader.cpp \
 	DNAString.h DNAString.cpp

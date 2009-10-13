@@ -15,7 +15,7 @@ class Timer
 {
 	public:
 		Timer(std::string s) : m_desc(s), m_start(clock()) {}
-		~Timer();
+		~Timer() { 	printf("%s -- %.2lfs\n", m_desc.c_str(), (clock() - m_start) / CLOCKS_PER_SEC); }
 
 	private:
 		std::string m_desc;

@@ -46,6 +46,13 @@ void ReadTable::initializeReverse(const ReadTable* pRT)
 }
 
 //
+void ReadTable::reverseAll()
+{
+	for(size_t i = 0; i < getCount(); ++i)
+		m_table[i].seq.reverse();
+}
+
+//
 void ReadTable::addRead(const SeqItem& r)
 {
 	m_table.push_back(r);

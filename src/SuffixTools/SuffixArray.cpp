@@ -12,48 +12,32 @@
 #include "bucketSort.h"
 #include "SuffixCompare.h"
 #include "mkqs.h"
+#include "saca.h"
+#include "Timer.h"
 
-// Construct the suffix array for the string
-SuffixArray::SuffixArray(uint64_t i, std::string text)
+// Construct the suffix array for a table of reads
+SuffixArray::SuffixArray(const ReadTable* pRT)
 {
-	SuffixString ss(i, text + "$");
-	SuffixStringVector cycled;
-	makeCycles(ss, &cycled);
-	sortConstruct(1, &cycled);
-}
-
-// Construct the suffix array for a vector of strings using the trivial sort method
-SuffixArray::SuffixArray(const StringVector& sv)
-{
-	SuffixStringVector cycled;
-	for(size_t i = 0; i < sv.size(); ++i)
-	{
-		SuffixString suffix(i, sv[i] + "$");
-		makeCycles(suffix, &cycled);
-	}
-	sortConstruct(sv.size(), &cycled);
-}
-
-// Construct the suffix array for a table of strings using the trivial sort method
-SuffixArray::SuffixArray(const ReadTable& rt)
-{
-	SuffixStringVector cycled;
-	for(size_t i = 0; i < rt.getCount(); ++i)
-	{
-		const SeqItem& r = rt.getRead(i);
-		SuffixString suffix(i, r.seq.toString() + "$");
-		makeCycles(suffix, &cycled);
-	}
-	sortConstruct(rt.getCount(), &cycled);
+	Timer timer("SuffixArray Construction");
+#if 1
+	saca_induced_copying(this, pRT);
+#else
+	initialize(pRT);
+	SuffixCompareRadix radix_compare(pRT);
+	SuffixCompareID id_compare(pRT);	
+	//std::sort(m_data.begin(), m_data.end(), compare);
+	//bucketSort(m_data.begin(), m_data.end(), compare);
+	//histogramSort(&m_data[0], m_data.size(), 0, radix_compare, id_compare);
+	mkqs2(&m_data[0], m_data.size(), 0, radix_compare, id_compare);
+	//assert(false);
+#endif
 }
 
 // Initialize a suffix array for the strings in RT
 void SuffixArray::initialize(const ReadTable& rt)
 {
-	size_t n = rt.getSumLengths() + rt.getCount(); // We need room for 1 suffix per base pair + a '$' char per read
-	m_data.resize(n);
-	m_numStrings = rt.getCount();
-	std::cerr << "Allocating space for " << n << " suffixes\n";
+	size_t n = rt.getSumLengths() + rt.getCount(); 
+	initialize(n, rt.getCount());
 
 	// Fill the data table with the linear ordering of the suffixes
 	size_t count = 0;
@@ -65,63 +49,13 @@ void SuffixArray::initialize(const ReadTable& rt)
 			m_data[count++] = SAElem(i, j);
 		}
 	}
-	std::cerr << "Created " << count << " suffixes\n";
 }
 
 void SuffixArray::initialize(size_t num_suffixes, size_t num_strings)
 {
+
 	m_data.resize(num_suffixes);
 	m_numStrings = num_strings;
-}
-
-// Sort an initialized suffix array in-place
-void SuffixArray::sort(const ReadTable* pRT)
-{
-	//print(pRT);
-	//std::sort(m_data.begin(), m_data.end(), compare);
-	//bucketSort(m_data.begin(), m_data.end(), compare);
-	SuffixCompareRadix radix_compare(pRT);
-	SuffixCompareID id_compare(pRT);
-	histogramSort(&m_data[0], m_data.size(), 0, radix_compare, id_compare);
-
-	//mkqs(&m_data[0], m_data.size(), 0, compare);
-	//print(pRT);
-	//validate(pRT);
-	//print(pRT);
-	//assert(false);
-}
-
-
-// Construct the bwt from the cycles table via simple sorting
-void SuffixArray::sortConstruct(int numStrings, SuffixStringVector* cycles)
-{
-	// Resize all the arrays
-	size_t n = cycles->size();
-
-	m_data.resize(n);
-	m_numStrings = numStrings;
-	
-	// Sort the array
-	std::sort(cycles->begin(), cycles->end());
-
-	// Set up the bwt string and suffix array from the cycled strings
-	for(size_t i = 0; i < n; ++i)
-	{
-		SuffixString& curr = (*cycles)[i];
-		m_data[i] = curr.id;
-	}
-
-	if(0)
-	{
-		std::cout << "\nTable:\n";
-		std::cout << "i\tSA\tSTR\tISA\n";
-		for(size_t i = 0; i < m_data.size(); ++i)
-		{
-			//std::cout << m_suffixArray[i] << "\t" << m_L[i] << "\n";
-			//SuffixString& ss = (*cycles)[i];
-			std::cout << i << "\t" << (*cycles)[i] << "\n";
-		}
-	}
 }
 
 // Detect identical reads that can be removed from the collection
@@ -361,16 +295,4 @@ void SuffixArray::print() const
 		std::cout << i << "\t" << m_data[i] << "\n";
 	}
 }
-
-// Make all the cyclic rotations of a string, placing the result in *outTable
-void SuffixArray::makeCycles(SuffixString s, SuffixStringVector* outTable)
-{
-	int l = s.str.length();
-	for(int i = 0; i < l; ++i)
-	{
-		SuffixString r = SuffixString(s.id.getID(), i, s.str.substr(i, l - i) + s.str.substr(0, i));
-		outTable->push_back(r);
-	}
-}
-
 

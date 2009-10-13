@@ -41,6 +41,12 @@ class SuffixCompareRadix
 			return m_pNumSuffixLUT[maxLen];
 		}
 
+		// Get the suffix character string corresponding to this element
+		inline const char* getChrPtr(SAElem& x) const
+		{
+			return m_pRT->getRead(x.getID()).seq.getSuffix(x.getPos());
+		}
+
 		// Calculate the number of suffixes that precede the first instance of b for a 
 		// given maximum suffix length
 		inline int numPredSuffixes(char b, int maxLen) const

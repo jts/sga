@@ -23,14 +23,22 @@ class ReadTable
 		ReadTable(std::string filename);
 		~ReadTable();
 
-		//
+		// Initialize this read table as the reverse of the passed in read table
 		void initializeReverse(const ReadTable* pRT);
-		void addRead(const SeqItem& r);
+
+		// Reverse all the reads in this table
+		void reverseAll();
+
+		// Build a readid -> read index
 		void indexReadsByID();
 
 		//
+		void addRead(const SeqItem& r);
 		const SeqItem& getRead(size_t idx) const;
 		const SeqItem& getRead(const std::string& id) const;
+		size_t getReadLength(size_t idx) const;
+		size_t getCount() const;
+		size_t getSumLengths() const;
 	
 		// Get a particular character for a particular read
 		inline char getChar(size_t str_idx, size_t char_idx) const
@@ -39,11 +47,8 @@ class ReadTable
 			return m_table[str_idx].seq.get(char_idx);
 		}
 
-		size_t getReadLength(size_t idx) const;
-		size_t getCount() const;
-		size_t getSumLengths() const;
 
-		//
+		// I/O
 		friend std::ostream& operator<<(std::ostream& out, const ReadTable& rt);
 
 
