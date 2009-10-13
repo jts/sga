@@ -40,6 +40,7 @@ class BWT
 		// IO
 		friend std::ostream& operator<<(std::ostream& out, const BWT& bwt);
 		friend std::istream& operator>>(std::istream& in, BWT& bwt);
+		void write(std::string& filename);
 
 	private:
 		BWT() {}

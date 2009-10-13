@@ -19,6 +19,7 @@
 #include "DNAString.h"
 
 #define CAF_SEP ':'
+#define FUNCTION_TIMER (Timer functionTimer(__FUNCTION__))
 
 //
 // Enums

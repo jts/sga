@@ -160,6 +160,14 @@ std::istream& operator>>(std::istream& in, BWT& bwt)
 	return in;
 }
 
+// write the suffix array to a file
+void BWT::write(std::string& filename)
+{
+	std::ofstream out(filename.c_str());
+	out << *this;
+	out.close();
+}
+
 
 // Print the BWT
 void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const

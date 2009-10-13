@@ -62,7 +62,6 @@ void SuffixArray::initialize(const ReadTable& rt)
 
 void SuffixArray::initialize(size_t num_suffixes, size_t num_strings)
 {
-
 	m_data.resize(num_suffixes);
 	m_numStrings = num_strings;
 }
@@ -158,38 +157,6 @@ OverlapVector SuffixArray::extractPrefixSuffixOverlaps(int minOverlap, const Rea
 
 	delete pLCP;
 	return ov;
-}
-
-// Output operator
-std::ostream& operator<<(std::ostream& out, const SuffixArray& sa)
-{
-	// Write the size and number of strings
-	out << sa.m_data.size() << "\n";
-	out << sa.m_numStrings << "\n";
-
-	for(size_t i = 0; i < sa.m_data.size(); ++i)
-	{
-		out << sa.m_data[i] << "\n";
-	}
-	return out;
-}
-
-
-// Input operator
-std::istream& operator>>(std::istream& in, SuffixArray& sa)
-{
-	// Read the size and number of strings
-	size_t n;
-	in >> n;
-	in >> sa.m_numStrings;
-
-	sa.m_data.resize(n);
-	size_t i = 0;
-	SAElem id;
-	while(in >> id)
-		sa.m_data[i++] = id;
-	assert(i == n);
-	return in;
 }
 
 // Validate the suffix array using the read table
@@ -305,3 +272,42 @@ void SuffixArray::print() const
 	}
 }
 
+// write the suffix array to a file
+void SuffixArray::write(std::string& filename)
+{
+	std::ofstream out(filename.c_str());
+	out << *this;
+	out.close();
+}
+
+// Output operator
+std::ostream& operator<<(std::ostream& out, const SuffixArray& sa)
+{
+	// Write the size and number of strings
+	out << sa.m_data.size() << "\n";
+	out << sa.m_numStrings << "\n";
+
+	for(size_t i = 0; i < sa.m_data.size(); ++i)
+	{
+		out << sa.m_data[i] << "\n";
+	}
+	return out;
+}
+
+
+// Input operator
+std::istream& operator>>(std::istream& in, SuffixArray& sa)
+{
+	// Read the size and number of strings
+	size_t n;
+	in >> n;
+	in >> sa.m_numStrings;
+
+	sa.m_data.resize(n);
+	size_t i = 0;
+	SAElem id;
+	while(in >> id)
+		sa.m_data[i++] = id;
+	assert(i == n);
+	return in;
+}

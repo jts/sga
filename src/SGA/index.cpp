@@ -97,15 +97,10 @@ void buildIndex(std::string prefix, const ReadTable* pRT, bool isReverse)
 	}
 
 	std::string sa_filename = prefix + (!isReverse ? ".sa" : ".rsa");
+	pSA->write(sa_filename);
+
 	std::string bwt_filename = prefix + (!isReverse ? ".bwt" : ".rbwt");
-
-	std::ofstream sa_out(sa_filename.c_str());
-	sa_out << *pSA;
-	sa_out.close();
-
-	std::ofstream bwt_out(bwt_filename.c_str());
-	bwt_out << *pBWT;
-	bwt_out.close();
+	pBWT->write(bwt_filename);
 
 	delete pSA;
 	pSA = NULL;

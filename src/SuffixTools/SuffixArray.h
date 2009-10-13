@@ -47,6 +47,7 @@ class SuffixArray
 		
 
 		// Operators
+		void write(std::string& filename);
 		friend std::ostream& operator<<(std::ostream& out, const SuffixArray& sa);
 		friend std::istream& operator>>(std::istream& in, SuffixArray& sa);
 
