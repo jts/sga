@@ -42,20 +42,4 @@ struct Hit
 
 typedef std::vector<Hit> HitVector;
 
-#if 0
-typedef std::map<uint64_t, HitVector> HitMap;
-
-class HitData
-{
-	public:
-		
-		HitData() {}
-		void addHit(const Hit& h);
-		HitVector getHits() const;
-
-	private:
-		HitMap m_hitMap;
-};
-#endif 
-
 #endif

@@ -208,24 +208,9 @@ void parseHits(std::string hitsFile)
 void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& overlapHandle)
 {
 	// Ensure that the overlap is not a containment
-	if(ovr.read[0].isContained() && ovr.read[1].isContained())
+	if(ovr.read[0].isContained() || ovr.read[1].isContained())
 	{
-		// Reads are mutually contained, consider the read with lexo. higher
-		// id to be contained within the one with lexo. lower id
-		if(ovr.read[0].id < ovr.read[1].id)
-			writeContainment(containHandle, ovr.read[1].id, ovr.read[0].id);
-		else
-			writeContainment(containHandle, ovr.read[0].id, ovr.read[1].id);
-		return;
-	}
-	else if(ovr.read[0].isContained())
-	{
-		writeContainment(containHandle, ovr.read[0].id, ovr.read[1].id);
-		return;
-	}
-	else if(ovr.read[1].isContained())
-	{
-		writeContainment(containHandle, ovr.read[1].id, ovr.read[0].id);
+		containHandle << ovr << "\n";
 		return;
 	}
 
@@ -337,12 +322,6 @@ void computeOverlapsLCP()
 	delete pRSA;
 }
 #endif
-
-// Write out a containmend
-void writeContainment(std::ofstream& containHandle, const std::string& contained, const std::string& within)
-{
-	containHandle << contained << "\t" << within << "\n";
-}
 
 // 
 // Handle command line arguments

@@ -30,8 +30,6 @@ void writeOverlap(Overlap& overlap, std::ofstream& containHandle, std::ofstream&
 void flipCoords(const int len, int& s, int &e);
 void swap(int& s, int& e);
 
-void writeContainment(std::ofstream& containHandle, const std::string& contained, const std::string& within);
-
 // options
 void parseOverlapOptions(int argc, char** argv);
 

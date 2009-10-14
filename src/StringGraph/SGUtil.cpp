@@ -14,12 +14,14 @@ ContainMap::ContainMap(std::string file)
 {
 	std::ifstream reader(file.c_str());
 	checkFileHandle(reader, file);
-	std::string s1;
-	std::string s2;
-	while(reader >> s1 >> s2)
+	Overlap o;
+	while(reader >> o)
 	{
-		//std::cout << "Read ctn " << s1 << " " << s2 << std::endl;
-		add(s1, s2);
+		// By convention the lexographically lower ID is the container and the lexohigher is the contained
+		if(o.read[0].id < o.read[1].id)
+			add(o.read[1].id, o.read[0].id);
+		else
+			add(o.read[0].id, o.read[1].id);
 	}
 	reader.close();
 }
@@ -32,6 +34,7 @@ void ContainMap::add(std::string s1, std::string s2)
 	if(isContained(s2))
 		std::cerr << "Warning: " << s2 << " is contained in: " << getContainer(s2) << "\n";
 	*/
+	assert(s2 < s1);
 	m_data.insert(std::make_pair(s1, s2));
 }
 

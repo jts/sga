@@ -101,8 +101,8 @@ void BWT::getPrefixHits(size_t readIdx, std::string w, int minOverlap, bool targ
 	int len = w.size();
 	int j = len - 1;
 	char curr = w[j];
-	size_t r_lower = PRED(curr);
-	size_t r_upper = r_lower + OCC(curr, m_bwStr.size() - 1) - 1;
+	int64_t r_lower = PRED(curr);
+	int64_t r_upper = r_lower + OCC(curr, m_bwStr.size() - 1) - 1;
 	--j;
 	//std::cout << "Searching for string: " << w << "\n";
 	//printf("Starting point: %zu,%zu\n", r_lower, r_upper);
@@ -126,9 +126,9 @@ void BWT::getPrefixHits(size_t readIdx, std::string w, int minOverlap, bool targ
 			// Output the hits where the suffix of w has matched a proper prefix 
 			// (starting from the begining of the string) of some other string
 			// These suffixes can be calculated using the fm-index like any other interval
-			size_t t_lower = PRED('$') + OCC('$', r_lower - 1);
-			size_t t_upper = PRED('$') + OCC('$', r_upper) - 1;
-			for(size_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
+			int64_t t_lower = PRED('$') + OCC('$', r_lower - 1);
+			int64_t t_upper = PRED('$') + OCC('$', r_upper) - 1;
+			for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
 				pHits->push_back(Hit(readIdx, sa_idx, j, overlapLen, targetRev, queryRev));
 		}
 	}
