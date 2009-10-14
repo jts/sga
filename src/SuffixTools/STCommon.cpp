@@ -56,25 +56,6 @@ AlphaCount::AlphaCount()
 	memset(m_counts, 0, ALPHABET_SIZE * sizeof(BaseCount));
 }
 
-// Set the value for a given base
-void AlphaCount::set(char b, BaseCount v)
-{
-	m_counts[base2Idx(b)] = v;
-}
-
-// Increment the value for a given base
-void AlphaCount::increment(char b)
-{
-	m_counts[base2Idx(b)]++;
-};
-
-
-// Get the value for a given base
-BaseCount AlphaCount::get(char b) const
-{
-	return m_counts[base2Idx(b)];
-};
-
 //
 std::ostream& operator<<(std::ostream& out, const AlphaCount& ac)
 {
@@ -93,27 +74,6 @@ std::istream& operator>>(std::istream& in, AlphaCount& ac)
 //
 // Global functions
 // 
-
-// Convert a base to an index
-AIdx base2Idx(char b)
-{
-	switch(b)
-	{
-		case 'A':
-			return 0;
-		case 'C':
-			return 1;
-		case 'G':
-			return 2;
-		case 'T':
-			return 3;
-		case '$':
-			return 4;
-		default:
-			assert(false);
-			return 0;
-	}
-}
 
 // Print a map
 template<class K, class V>

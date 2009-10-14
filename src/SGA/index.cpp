@@ -72,7 +72,7 @@ int indexMain(int argc, char** argv)
 	pRT->reverseAll();
 
 	// Build the reverse suffix array
-	buildIndex(opt::prefix, pRT, true);
+	//buildIndex(opt::prefix, pRT, true);
 	
 	delete pRT;
 	return 0;
@@ -92,7 +92,9 @@ void buildIndex(std::string prefix, const ReadTable* pRT, bool isReverse)
 
 	if(opt::verbose > 1)
 	{
-		//pSA->print(pRT);
+		std::cout << "SuffixArray:\n";
+		pSA->print(pRT);
+		std::cout << "BWT:\n";
 		pBWT->print(pRT, pSA);
 	}
 

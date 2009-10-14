@@ -40,7 +40,7 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	}
 
 	// initialize the occurance table
-	m_occurance.initialize(m_bwStr);
+	m_occurance.initialize(this, DEFAULT_SAMPLE_RATE);
 
 	// Calculate the C(a) array
 	AlphaCount tmp;
@@ -53,6 +53,7 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	m_predCount.set('C', tmp.get('A'));
 	m_predCount.set('G', tmp.get('A') + tmp.get('C'));
 	m_predCount.set('T', tmp.get('A') + tmp.get('C') + tmp.get('G'));
+	printInfo();
 }
 
 // Compute the last to first mapping for this BWT
@@ -157,6 +158,7 @@ std::istream& operator>>(std::istream& in, BWT& bwt)
 	in >> bwt.m_bwStr;
 	in >> bwt.m_predCount;
 	in >> bwt.m_occurance;
+	bwt.m_occurance.setBWT(&bwt);
 	return in;
 }
 
@@ -188,7 +190,8 @@ void BWT::printInfo() const
 	size_t bwStr_size = sizeof(m_bwStr) + m_bwStr.size();
 	size_t offset_size = sizeof(m_numStrings);
 	size_t total_size = o_size + p_size + bwStr_size + offset_size;
-	printf("BWT Size -- occ: %zu C(a): %zu L(): %zu misc: %zu TOTAL: %zu\n",
-			o_size, p_size, bwStr_size, offset_size, total_size);
+	double total_mb = ((double)total_size / (double)(1024 * 1024));
+	printf("BWT Size -- OCC: %zu C: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
+			o_size, p_size, bwStr_size, offset_size, total_size, total_mb);
 	printf("N: %zu Bytes per suffix: %lf\n", m_bwStr.size(), (double)total_size / m_bwStr.size());
 }

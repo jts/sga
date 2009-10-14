@@ -33,6 +33,12 @@ class BWT
 		// L[i] -> F mapping 
 		size_t LF(size_t idx) const;
 
+		// 
+		inline const BWStr* getBWStr() const
+		{
+			return &m_bwStr;
+		}
+
 		// Print info about the BWT, including size
 		void printInfo() const;
 		void print(const ReadTable* pRT, const SuffixArray* pSA) const;
@@ -43,12 +49,21 @@ class BWT
 		void write(std::string& filename);
 
 	private:
+
+		static const int DEFAULT_SAMPLE_RATE = 128;
+		// Default constructor is not allowed
 		BWT() {}
+
+		// The O(a,i) array
 		Occurance m_occurance;
+
+		// The C(a) array
 		AlphaCount m_predCount;
 		
-		// The two representitive strings in the BWT, F is the first column of the sorted "block", L is the last
+		// The bw string
 		BWStr m_bwStr;
+
+		// The number of strings in the collection
 		size_t m_numStrings;
 };
 #endif

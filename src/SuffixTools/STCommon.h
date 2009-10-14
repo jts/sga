@@ -9,15 +9,13 @@
 #ifndef STCOMMON_H
 #define STCOMMON_H
 #include "STGlobals.h"
+#include "Util.h"
 #include <utility>
 #include <stdint.h>
 
 //
 // Functions
 //
-
-// Convert a base to an index
-AIdx base2Idx(char b);
 
 // Print out a map using cout
 template<class K, class V>
@@ -112,12 +110,43 @@ class AlphaCount
 {
 	public:
 		AlphaCount();
-		void set(char b, BaseCount v);
-		void increment(char b);
-		BaseCount get(char b) const;
+		inline void set(char b, BaseCount v)
+		{
+			m_counts[getBaseRank(b)] = v;
+		}
+
+		inline void increment(char b)
+		{
+			m_counts[getBaseRank(b)]++;
+		}
+
+		inline BaseCount get(char b) const
+		{
+			return m_counts[getBaseRank(b)];
+		}
 		
+		// Operators
 		friend std::ostream& operator<<(std::ostream& out, const AlphaCount& ac);
 		friend std::istream& operator>>(std::istream& in, AlphaCount& ac);
+		inline friend AlphaCount operator+(const AlphaCount& left, const AlphaCount& right)
+		{
+			AlphaCount out;
+			for(int i = 0; i < ALPHABET_SIZE; ++i)
+				out.m_counts[i] = left.m_counts[i] + right.m_counts[i];
+			return out;
+		}
+
+		// As the counts are unsigned integers, each value in left
+		// must be larger or equal to value in right. The calling function
+		// must guarentee this.
+		inline friend AlphaCount operator-(const AlphaCount& left, const AlphaCount& right)
+		{
+			AlphaCount out;
+			for(int i = 0; i < ALPHABET_SIZE; ++i)
+				out.m_counts[i] = left.m_counts[i] - right.m_counts[i];
+			return out;
+		}
+
 	private:
 		BaseCount m_counts[ALPHABET_SIZE];
 };

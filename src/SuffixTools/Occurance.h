@@ -11,39 +11,38 @@
 #define OCCURANCE_H
 #include "STCommon.h"
 
+class BWT;
+
 class Occurance
 {
 	public:
 		
 		// Constructors
-		Occurance() : m_sampleRate(1) {}
-		Occurance(BWStr b) : m_sampleRate(1) { initialize(b); }
-		Occurance(size_t n) : m_sampleRate(1) { m_values.resize(n); }
+		Occurance() : m_pBWT(NULL), m_sampleRate(1) {}
 
 		// Initialize the counts from the bwt string b
-		void initialize(const BWStr& b);
+		void initialize(const BWT* pBWT, int sampleRate);
 
-		// 
-		inline AlphaCount get(size_t i) const
+		//
+		const AlphaCount get(size_t idx) const;
+		inline BaseCount get(char a, size_t idx) const
 		{
-			return m_values[i];
+			return get(idx).get(a);
 		}
+
 		
-		inline BaseCount get(char a, size_t i) const
-		{
-			return m_values[i].get(a);
-		}
-
-		void increment(char a, size_t i);
 		void set(char a, size_t i, BaseCount s);
+		void setBWT(BWT* pBWT) { m_pBWT = pBWT; }
 		void print() const;
 		size_t getByteSize() const;
+		void validate() const;
 
 		friend std::ostream& operator<<(std::ostream& out, const Occurance& o);
 		friend std::istream& operator>>(std::istream& in, Occurance& o);
 
 	private:
-		size_t m_sampleRate;
+		const BWT* m_pBWT;
+		int m_sampleRate;
 		std::vector<AlphaCount> m_values;
 };
 
