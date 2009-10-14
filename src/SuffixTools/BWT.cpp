@@ -47,16 +47,19 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	m_occurance.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
 
 	// Calculate the C(a) array
+	
+	// Calculate the total number of occurances of each character in the BW str
 	AlphaCount tmp;
 	for(size_t i = 0; i < m_bwStr.size(); ++i)
 	{
 		tmp.increment(m_bwStr[i]);
 	}
 
-	m_predCount.set('A', 0); // A is lexographically lowest
-	m_predCount.set('C', tmp.get('A'));
-	m_predCount.set('G', tmp.get('A') + tmp.get('C'));
-	m_predCount.set('T', tmp.get('A') + tmp.get('C') + tmp.get('G'));
+	m_predCount.set('$', 0);
+	m_predCount.set('A', tmp.get('$')); 
+	m_predCount.set('C', m_predCount.get('A') + tmp.get('A'));
+	m_predCount.set('G', m_predCount.get('C') + tmp.get('C'));
+	m_predCount.set('T', m_predCount.get('G') + tmp.get('G'));
 }
 
 // Compute the last to first mapping for this BWT
@@ -72,8 +75,8 @@ void BWT::backwardSearch(std::string w) const
 	int len = w.size();
 	int j = len - 1;
 	char curr = w[j];
-	int r_lower = m_predCount.get(curr) + m_numStrings;
-	int r_upper = r_lower + m_occurance.get(m_bwStr, curr, m_bwStr.size() - 1) - 1;
+	int r_lower = PRED(curr);
+	int r_upper = r_lower + OCC(curr, m_bwStr.size() - 1) - 1;
 	--j;
 	std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
@@ -83,9 +86,8 @@ void BWT::backwardSearch(std::string w) const
 		printf("RU = C(%c) + O(%c,%d)\n", curr, curr, r_upper); 
 		printf("RL = %zu + %zu + %zu\n", PRED(curr), OCC(curr, r_lower - 1), m_numStrings); 
 		printf("RU = %zu + %zu\n", PRED(curr), OCC(curr, r_upper)); 
-
-		r_lower = PRED(curr) + OCC(curr, r_lower - 1) + m_numStrings;
-		r_upper = PRED(curr) + OCC(curr, r_upper) + m_numStrings - 1;
+		r_lower = PRED(curr) + OCC(curr, r_lower - 1);
+		r_upper = PRED(curr) + OCC(curr, r_upper) - 1;
 		printf("Curr: %c, Interval now: %d,%d\n", curr, r_lower, r_upper);
 	}
 
@@ -93,48 +95,42 @@ void BWT::backwardSearch(std::string w) const
 }
 
 // Perform a search for hits to read prefixes using a backward search algorithm
-void BWT::getPrefixHits(std::string w, int minOverlap, bool targetRev, bool queryRev, HitData* pHits) const
+void BWT::getPrefixHits(size_t readIdx, std::string w, int minOverlap, bool targetRev, bool queryRev, HitVector* pHits) const
 {
 	// Initialize the search
 	int len = w.size();
 	int j = len - 1;
 	char curr = w[j];
-	int r_lower = PRED(curr) + m_numStrings;
-	int r_upper = r_lower + OCC(curr, m_bwStr.size() - 1) - 1;
+	size_t r_lower = PRED(curr);
+	size_t r_upper = r_lower + OCC(curr, m_bwStr.size() - 1) - 1;
 	--j;
-
+	//std::cout << "Searching for string: " << w << "\n";
+	//printf("Starting point: %zu,%zu\n", r_lower, r_upper);
 	//std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
 	{
 		curr = w[j];
-		//printf("RL = C(%c) + O(%c,%d) + %zu\n", curr, r_lower - 1, m_numStrings); 
-		//printf("RU = C(%c) + O(%c,%d)\n", curr, r_upper); 
-		//printf("RL = %zu + %zu + %zu\n", PRED(curr), OCC(r_lower - 1), m_numStrings); 
-		//printf("RU = %zu + %zu\n", PRED(curr), OCC(curr, r_upper), m_numStrings); 		
-		r_lower = PRED(curr) + OCC(curr, r_lower - 1) + m_numStrings;
-		r_upper = PRED(curr) + OCC(curr, r_upper) + m_numStrings - 1;
-		//printf("Curr: %c, Interval now: %d,%d\n", curr, r_lower, r_upper);
-		
-		(void)targetRev;
-		(void)queryRev;
-		(void)pHits;
-		(void)minOverlap;
-		/*
+
+		//printf("RL = C(%c) + O(%c,%zu) + %zu\n", curr, curr, r_lower - 1, m_numStrings); 
+		//printf("RU = C(%c) + O(%c,%zu)\n", curr, curr, r_upper); 
+		//printf("RL = %zu + %zu + %zu\n", PRED(curr), OCC(curr, r_lower - 1), m_numStrings); 
+		//printf("RU = %zu + %zu\n", PRED(curr), OCC(curr, r_upper));
+
+		r_lower = PRED(curr) + OCC(curr, r_lower - 1);
+		r_upper = PRED(curr) + OCC(curr, r_upper) - 1;
+
+		//printf("Curr: %c, Interval now: %zu,%zu\n", curr, r_lower, r_upper);
 		int overlapLen = len - j;
 		if(overlapLen >= minOverlap)
 		{
-			// Create the hit
-			for(int i = r_lower; i <= r_upper; ++i)
-			{
-				SAElem elem = m_pSuffixArray->get(i);
-				
-				// Only accept hits which match the prefix of another read, indicated by the suffix element having 
-				// a position of 0
-				if(elem.getPos() == 0)
-					pHits->addHit(Hit(elem, j, overlapLen, targetRev, queryRev));
-			}
+			// Output the hits where the suffix of w has matched a proper prefix 
+			// (starting from the begining of the string) of some other string
+			// These suffixes can be calculated using the fm-index like any other interval
+			size_t t_lower = PRED('$') + OCC('$', r_lower - 1);
+			size_t t_upper = PRED('$') + OCC('$', r_upper) - 1;
+			for(size_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
+				pHits->push_back(Hit(readIdx, sa_idx, j, overlapLen, targetRev, queryRev));
 		}
-		*/
 	}
 }
 

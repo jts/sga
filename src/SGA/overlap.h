@@ -12,6 +12,7 @@
 #include "config.h"
 #include "BWT.h"
 
+
 // functions
 
 //
@@ -19,16 +20,16 @@ int overlapMain(int argc, char** argv);
 
 // overlap computation
 void computeOverlapsLCP();
-void computeOverlapsBWT();
+std::string computeHitsBWT();
 
 //
-OverlapVector processHits(size_t seqIdx, const HitVector& hitVec, const ReadTable* pFwdRT, const ReadTable* pRevRT);
-OverlapVector alignRead(size_t seqIdx, const Sequence& seq, const BWT* pBWT, const ReadTable* pRT, bool isRevIdx, bool isReversed);
-void processOverlaps(const OverlapVector& overlapVec, std::ofstream& containHandle, std::ofstream& overlapHandle);
+void parseHits(std::string hitsFile);
+void writeOverlap(Overlap& overlap, std::ofstream& containHandle, std::ofstream& overlapHandle);
 
 // utility functions
 void flipCoords(const int len, int& s, int &e);
 void swap(int& s, int& e);
+
 void writeContainment(std::ofstream& containHandle, const std::string& contained, const std::string& within);
 
 // options

@@ -8,7 +8,7 @@
 // alignment hits of a read
 //
 #include "HitData.h"
-
+#if 0
 // Add a hit to the map
 void HitData::addHit(const Hit& h)
 {
@@ -53,3 +53,4 @@ HitVector HitData::getHits() const
 	}
 	return hv;
 }
+#endif

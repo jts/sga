@@ -38,7 +38,7 @@ class SuffixArray
 		void removeReads(const NumericIDSet& idSet);
 
 		// Simple accessors
-		inline const SAElem& get(size_t idx) const { return m_data[idx]; }
+		inline const SAElem& get(size_t idx) const { assert(idx < m_data.size()); return m_data[idx]; }
 		inline void set(size_t idx, SAElem e) { m_data[idx] = e; }
 		size_t getSize() const { return m_data.size(); }
 		size_t getNumStrings() const { return m_numStrings; } 
@@ -47,9 +47,19 @@ class SuffixArray
 		
 
 		// Operators
-		void write(std::string& filename);
 		friend std::ostream& operator<<(std::ostream& out, const SuffixArray& sa);
 		friend std::istream& operator>>(std::istream& in, SuffixArray& sa);
+
+		// Output the entire suffix array
+		void write(std::string& filename);
+
+		// Output the suffix array index
+		// The suffix array index are the full-length suffixes (the entire string)
+		// of the suffix array, sorted into lexographical order
+		// The file format is the same as the suffix array
+		// This is used during the BWT indexing and is the only part of the
+		// suffix array that we need
+		void writeIndex(std::string& filename);
 
 		// Print funcs
 		void print() const;

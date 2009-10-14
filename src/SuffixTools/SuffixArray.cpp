@@ -280,6 +280,20 @@ void SuffixArray::write(std::string& filename)
 	out.close();
 }
 
+// write the index of the suffix array to a file
+void SuffixArray::writeIndex(std::string& filename)
+{
+	std::ofstream out(filename.c_str());
+	out << m_numStrings << "\n";
+	out << m_numStrings << "\n";
+	for(size_t i = 0; i < m_data.size(); ++i)
+	{
+		if(m_data[i].isFull())
+			out << m_data[i] << "\n";
+	}
+	out.close();
+}
+
 // Output operator
 std::ostream& operator<<(std::ostream& out, const SuffixArray& sa)
 {

@@ -8,6 +8,7 @@
 //
 #include <iostream>
 #include <fstream>
+#include "SGACommon.h"
 #include "Util.h"
 #include "index.h"
 #include "SuffixArray.h"
@@ -98,11 +99,14 @@ void buildIndex(std::string prefix, const ReadTable* pRT, bool isReverse)
 		pBWT->print(pRT, pSA);
 	}
 
-	std::string sa_filename = prefix + (!isReverse ? ".sa" : ".rsa");
+	std::string sa_filename = prefix + (!isReverse ? SA_EXT : RSA_EXT);
 	pSA->write(sa_filename);
 
-	std::string bwt_filename = prefix + (!isReverse ? ".bwt" : ".rbwt");
+	std::string bwt_filename = prefix + (!isReverse ? BWT_EXT : RBWT_EXT);
 	pBWT->write(bwt_filename);
+
+	std::string sufidx_filename = prefix + (!isReverse ? SAI_EXT : RSAI_EXT);
+	pSA->writeIndex(sufidx_filename);
 
 	delete pSA;
 	pSA = NULL;
