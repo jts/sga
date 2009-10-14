@@ -42,6 +42,7 @@ class BWT
 		// Print info about the BWT, including size
 		void printInfo() const;
 		void print(const ReadTable* pRT, const SuffixArray* pSA) const;
+		void validate() const;
 
 		// IO
 		friend std::ostream& operator<<(std::ostream& out, const BWT& bwt);
@@ -50,7 +51,7 @@ class BWT
 
 	private:
 
-		static const int DEFAULT_SAMPLE_RATE = 128;
+		static const int DEFAULT_SAMPLE_RATE = 64;
 		// Default constructor is not allowed
 		BWT() {}
 

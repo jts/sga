@@ -11,57 +11,20 @@
 #include "BWT.h"
 
 // Initialize the counts from the bwt string b
-void Occurance::initialize(const BWT* pBWT, int sampleRate)
+void Occurance::initialize(const BWStr& bwStr, int sampleRate)
 {
-	m_pBWT = pBWT;
 	m_sampleRate = sampleRate;
-	const BWStr* pBWString = m_pBWT->getBWStr();
-	size_t l = pBWString->length();
+	size_t l = bwStr.length();
 	int num_samples = (l % m_sampleRate == 0) ? (l / m_sampleRate) : (l / m_sampleRate + 1);
 	m_values.resize(num_samples);
 	
 	AlphaCount sum;
 	for(size_t i = 0; i < l; ++i)
 	{
-		char currB = (*pBWString)[i];
+		char currB = bwStr[i];
 		sum.increment(currB);
 		if(i % m_sampleRate == 0)
 			m_values[i / m_sampleRate] = sum;
-	}
-
-	std::cerr << "Warning occurance validation is turned on\n";
-	validate();
-}
-
-// Calculate the nearest sampled index and compute the values from 
-// the requested index to the nearest sample
-const AlphaCount Occurance::get(size_t idx) const
-{
-	// Quick path
-	if(idx % m_sampleRate == 0)
-		return m_values[idx / m_sampleRate];
-
-	// Calculate the nearest sample to this index
-	const BWStr* pBWStr = m_pBWT->getBWStr();
-	size_t lower_idx = idx / m_sampleRate;
-	size_t upper_idx = lower_idx + 1;
-	size_t lower_start = lower_idx * m_sampleRate;
-	size_t upper_start = upper_idx * m_sampleRate;
-
-	AlphaCount sum;
-
-	// Choose the closest index or force the choice to lower_idx is the upper_idx is invalid
-	if((idx - lower_start < upper_start - idx) || upper_idx == m_values.size())
-	{
-		for(size_t j = lower_start + 1; j <= idx; ++j)
-			sum.increment((*pBWStr)[j]);
-		return m_values[lower_idx] + sum;
-	}
-	else
-	{
-		for(size_t j = idx + 1; j <= upper_start; ++j)
-			sum.increment((*pBWStr)[j]);
-		return m_values[upper_idx] - sum;
 	}
 }
 
@@ -78,16 +41,15 @@ size_t Occurance::getByteSize() const
 }
 
 // Validate that the sampled occurance array is correct
-void Occurance::validate() const
+void Occurance::validate(const BWStr& bwStr) const
 {
-	const BWStr* pBWString = m_pBWT->getBWStr();
-	size_t l = pBWString->length();
+	size_t l = bwStr.length();
 	AlphaCount sum;
 	for(size_t i = 0; i < l; ++i)
 	{
-		char currB = (*pBWString)[i];
+		char currB = bwStr[i];
 		sum.increment(currB);
-		AlphaCount calculated = get(i);
+		AlphaCount calculated = get(bwStr, i);
 		for(int i = 0; i < ALPHABET_SIZE; ++i)
 			assert(calculated.get(ALPHABET[i]) == sum.get(ALPHABET[i]));
 	}

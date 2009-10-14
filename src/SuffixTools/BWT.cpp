@@ -10,6 +10,10 @@
 #include "Timer.h"
 #include <istream>
 
+// macros
+#define OCC(c,i) m_occurance.get(m_bwStr, (c), (i))
+#define PRED(c) m_predCount.get((c))
+
 // Parse a BWT from a file
 BWT::BWT(const std::string& filename)
 {
@@ -40,7 +44,7 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	}
 
 	// initialize the occurance table
-	m_occurance.initialize(this, DEFAULT_SAMPLE_RATE);
+	m_occurance.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
 
 	// Calculate the C(a) array
 	AlphaCount tmp;
@@ -53,13 +57,12 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	m_predCount.set('C', tmp.get('A'));
 	m_predCount.set('G', tmp.get('A') + tmp.get('C'));
 	m_predCount.set('T', tmp.get('A') + tmp.get('C') + tmp.get('G'));
-	printInfo();
 }
 
 // Compute the last to first mapping for this BWT
 size_t BWT::LF(size_t idx) const
 {
-	return m_bwStr[idx] != '$' ? m_predCount.get(m_bwStr[idx]) + m_occurance.get(m_bwStr[idx], idx) : 0;
+	return m_bwStr[idx] != '$' ? PRED(m_bwStr[idx]) + OCC(m_bwStr[idx], idx) : 0;
 }
 
 // Perform a exact search for the string w using the backwards algorithm
@@ -70,20 +73,20 @@ void BWT::backwardSearch(std::string w) const
 	int j = len - 1;
 	char curr = w[j];
 	int r_lower = m_predCount.get(curr) + m_numStrings;
-	int r_upper = r_lower + m_occurance.get(curr, m_bwStr.size() - 1) - 1;
+	int r_upper = r_lower + m_occurance.get(m_bwStr, curr, m_bwStr.size() - 1) - 1;
 	--j;
 	std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
 	{
 		curr = w[j];
-		std::cout << "RL = C(" << curr << ") + O(" << curr << ", " << r_lower - 1 << ") + " << m_numStrings << "\n"; 
-		std::cout << "RU = C(" << curr << ") + O(" << curr << ", " << r_upper << ")\n";
-		std::cout << "RL = " << m_predCount.get(curr) << " + " << m_occurance.get(curr, r_lower - 1) << " + " << m_numStrings << "\n"; 
-		std::cout << "RU = " << m_predCount.get(curr) << " + " << m_occurance.get(curr, r_upper) << "\n"; 
+		printf("RL = C(%c) + O(%c,%d) + %zu\n", curr, curr, r_lower - 1, m_numStrings); 
+		printf("RU = C(%c) + O(%c,%d)\n", curr, curr, r_upper); 
+		printf("RL = %zu + %zu + %zu\n", PRED(curr), OCC(curr, r_lower - 1), m_numStrings); 
+		printf("RU = %zu + %zu\n", PRED(curr), OCC(curr, r_upper)); 
 
-		r_lower = m_predCount.get(curr) + m_occurance.get(curr, r_lower - 1) + m_numStrings;
-		r_upper = m_predCount.get(curr) + m_occurance.get(curr, r_upper) + m_numStrings - 1;
-		std::cout << "Curr: " << curr << " Interval now: " << r_lower << "," << r_upper << "\n";
+		r_lower = PRED(curr) + OCC(curr, r_lower - 1) + m_numStrings;
+		r_upper = PRED(curr) + OCC(curr, r_upper) + m_numStrings - 1;
+		printf("Curr: %c, Interval now: %d,%d\n", curr, r_lower, r_upper);
 	}
 
 	std::cout << "Interval found: " << r_lower << "," << r_upper << "\n";
@@ -96,21 +99,21 @@ void BWT::getPrefixHits(std::string w, int minOverlap, bool targetRev, bool quer
 	int len = w.size();
 	int j = len - 1;
 	char curr = w[j];
-	int r_lower = m_predCount.get(curr) + m_numStrings;
-	int r_upper = r_lower + m_occurance.get(curr, m_bwStr.size() - 1) - 1;
+	int r_lower = PRED(curr) + m_numStrings;
+	int r_upper = r_lower + OCC(curr, m_bwStr.size() - 1) - 1;
 	--j;
 
 	//std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
 	for(;j >= 0; --j)
 	{
 		curr = w[j];
-		//std::cout << "RL = C(" << curr << ") + O(" << curr << ", " << r_lower - 1 << ") + " << m_numStrings << "\n"; 
-		//std::cout << "RU = C(" << curr << ") + O(" << curr << ", " << r_upper << ")\n";
-		//std::cout << "RL = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_lower - 1) << " + " << m_offset << "\n"; 
-		//std::cout << "RU = " << m_predMap[curr] << " + " << m_occurances.get(curr, r_upper) << "\n"; 
-		r_lower = m_predCount.get(curr) + m_occurance.get(curr, r_lower - 1) + m_numStrings;
-		r_upper = m_predCount.get(curr) + m_occurance.get(curr, r_upper) + m_numStrings - 1;
-		//std::cout << "Curr: " << curr << " Interval now: " << r_lower << "," << r_upper << "\n";
+		//printf("RL = C(%c) + O(%c,%d) + %zu\n", curr, r_lower - 1, m_numStrings); 
+		//printf("RU = C(%c) + O(%c,%d)\n", curr, r_upper); 
+		//printf("RL = %zu + %zu + %zu\n", PRED(curr), OCC(r_lower - 1), m_numStrings); 
+		//printf("RU = %zu + %zu\n", PRED(curr), OCC(curr, r_upper), m_numStrings); 		
+		r_lower = PRED(curr) + OCC(curr, r_lower - 1) + m_numStrings;
+		r_upper = PRED(curr) + OCC(curr, r_upper) + m_numStrings - 1;
+		//printf("Curr: %c, Interval now: %d,%d\n", curr, r_lower, r_upper);
 		
 		(void)targetRev;
 		(void)queryRev;
@@ -133,6 +136,12 @@ void BWT::getPrefixHits(std::string w, int minOverlap, bool targetRev, bool quer
 		}
 		*/
 	}
+}
+
+void BWT::validate() const
+{
+	std::cerr << "Warning BWT validation is turned on\n";
+	m_occurance.validate(m_bwStr);
 }
 
 // Output operator
@@ -158,7 +167,6 @@ std::istream& operator>>(std::istream& in, BWT& bwt)
 	in >> bwt.m_bwStr;
 	in >> bwt.m_predCount;
 	in >> bwt.m_occurance;
-	bwt.m_occurance.setBWT(&bwt);
 	return in;
 }
 
@@ -177,7 +185,7 @@ void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 	std::cout << "i\tL(i)\tO(-,i)\tSUFF\n";
 	for(size_t i = 0; i < m_bwStr.size(); ++i)
 	{
-		std::cout << i << "\t" << m_bwStr[i] << "\t" << m_occurance.get(i) << pSA->getSuffix(i, pRT) << "\n";
+		std::cout << i << "\t" << m_bwStr[i] << "\t" << m_occurance.get(m_bwStr, i) << pSA->getSuffix(i, pRT) << "\n";
 	}
 }
 

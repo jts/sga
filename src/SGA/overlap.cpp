@@ -87,6 +87,8 @@ void computeOverlapsBWT()
 	std::string containFile = opt::prefix + ".ctn";
 	std::ofstream containHandle(containFile.c_str());
 	assert(containHandle.is_open());
+
+
 	/*
 	// Compute overlaps
 	for(size_t i = 0; i < pRT->getCount(); ++i)

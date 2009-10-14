@@ -72,7 +72,7 @@ int indexMain(int argc, char** argv)
 	pRT->reverseAll();
 
 	// Build the reverse suffix array
-	//buildIndex(opt::prefix, pRT, true);
+	buildIndex(opt::prefix, pRT, true);
 	
 	delete pRT;
 	return 0;
