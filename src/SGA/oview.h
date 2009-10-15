@@ -12,12 +12,29 @@
 #include "config.h"
 #include "BWT.h"
 
+// typedefs
+typedef std::map<std::string, OverlapVector> OverlapMap;
+
+struct DrawData
+{
+	DrawData(int o, std::string n, std::string s) : offset(o), name(n), seq(s) {}
+	int offset;
+	std::string name;
+	std::string seq;
+
+	bool operator<(const DrawData& other) const
+	{
+		return offset < other.offset;
+	}
+};
+
+typedef std::vector<DrawData> DrawVector;
+
 // functions
 
-//
 int oviewMain(int argc, char** argv);
-
-// options
+void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* pOM);
+void drawMulti(std::string rootName, int root_len, DrawVector& dv);
 void parseOviewOptions(int argc, char** argv);
 
 #endif

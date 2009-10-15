@@ -16,8 +16,6 @@
 #include "LCPArray.h"
 #include "SGUtil.h"
 
-static const char* DEFAULT_PADDING = "        ";
-
 //
 // Getopt
 //
@@ -35,25 +33,30 @@ static const char *OVIEW_USAGE_MESSAGE =
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
+"      -i, --id=ID                      only show overlaps for read with ID\n"
+"      -m, --max-overhang=D             only show D overhanging bases of the alignments (default=6)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
 {
 	static unsigned int verbose;
+	static int max_overhang;
 	static std::string prefix;
 	static std::string readsFile;
+	static std::string readFilter;
 }
 
-static const char* shortopts = "p:m:ve";
+static const char* shortopts = "p:m:i:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-	{ "verbose",     no_argument,       NULL, 'v' },
-	{ "min-overlap", required_argument, NULL, 'm' },
-	{ "prefix",      required_argument, NULL, 'p' },
-	{ "help",        no_argument,       NULL, OPT_HELP },
-	{ "version",     no_argument,       NULL, OPT_VERSION },
+	{ "verbose",      no_argument,       NULL, 'v' },
+	{ "id",           required_argument, NULL, 'i' },
+	{ "prefix",       required_argument, NULL, 'p' },
+	{ "max-overhang", required_argument, NULL, 'm' },
+	{ "help",         no_argument,       NULL, OPT_HELP },
+	{ "version",      no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -75,84 +78,129 @@ int oviewMain(int argc, char** argv)
 	// read the overlaps and draw
 	std::string overlapFile = opt::prefix + ".ovr";
 	std::ifstream overlapReader(overlapFile.c_str());
-	Overlap o;
 
+	OverlapMap overlapMap;
+	Overlap o;
 	while(overlapReader >> o)
 	{
-		// skip contained reads
-		if(containMap.isContained(o.read[0].id) || containMap.isContained(o.read[1].id))
-			continue;
-
-				
-		std::string seqs[2];
-
-		for(size_t idx = 0; idx < 2; ++idx)
+		if(opt::readFilter.empty() || (o.read[0].id == opt::readFilter || o.read[1].id == opt::readFilter))
 		{
-			if(o.read[idx].isReverse())
-			{
-				seqs[idx] = reverseComplement(pRT->getRead(o.read[idx].id).seq.toString());
-				o.read[idx].flip();
-			}
-			else
-				seqs[idx] = pRT->getRead(o.read[idx].id).seq.toString();
+			overlapMap[o.read[0].id].push_back(o);
+			overlapMap[o.read[1].id].push_back(o);
 		}
+	}
 
-		std::cout << "Canonized overlap string: " << o << "\n\n";
-
-
-		// Determine the left and right sequence
-		SeqCoord* pLeftSC;
-		SeqCoord* pRightSC;
-		size_t leftIdx = (o.read[0].interval.start > o.read[1].interval.start) ? 0 : 1;
-		pLeftSC = &o.read[leftIdx];
-		pRightSC = &o.read[1 - leftIdx];
-
-		std::string leftSeq = seqs[leftIdx];
-		std::string rightSeq = seqs[1 - leftIdx];
-
-		// Draw the left sequence
-		std::cout << DEFAULT_PADDING << leftSeq << "\n";
-
-		// Setup the padding string for the right sequence
-		int offset;
-		if(!pLeftSC->isReverse())
-			offset = pLeftSC->interval.start;
-		else
-			offset = pLeftSC->seqlen - pLeftSC->interval.start - 1;
-			
-		assert(offset >= 0 && offset < pLeftSC->seqlen);
-
-		char* d_padding_str = new char[offset + 1];
-		memset(d_padding_str, 32, offset);
-		d_padding_str[offset] = 0;
-
-		// Draw the right sequence
-		std::cout << DEFAULT_PADDING << d_padding_str << rightSeq << "\n";
-
-		// Calculate the matching string
-		std::string leftMatch = pLeftSC->getSubstring(leftSeq);
-		std::string rightMatch = pRightSC->getSubstring(rightSeq);
-		size_t maxLen = std::max(leftMatch.length(), rightMatch.length());
-
-		// Output the matching string
-		std::string matchStr(maxLen, ' ');
-		for(size_t i = 0; i < maxLen; ++i)
+	if(!opt::readFilter.empty())
+		drawAlignment(opt::readFilter, pRT, &overlapMap);
+	else
+	{
+		// Output each overlap
+		for(size_t i = 0; i < pRT->getCount(); ++i)
 		{
-			if(i > leftMatch.size() || i > rightMatch.size() || leftMatch[i] != rightMatch[i])
-				matchStr[i] = ' ';
-			else
-				matchStr[i] = '*';
+			drawAlignment(pRT->getRead(i).id, pRT, &overlapMap);
 		}
-
-		std::cout << DEFAULT_PADDING << d_padding_str << matchStr << "\n\n";
-
-		delete [] d_padding_str;
 	}
 
 	delete pRT;
 	return 0;
 }
 
+//
+void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* pOM)
+{
+	std::string rootSeq = pRT->getRead(rootID).seq.toString();
+	DrawVector draw_vector;
+
+	DrawData rootData(0, rootID, rootSeq);
+	draw_vector.push_back(rootData);
+
+	// Get all the overlaps for this read
+	OverlapMap::const_iterator finder = pOM->find(rootID);
+	if(finder == pOM->end())
+		return;
+	
+	const OverlapVector& overlaps = finder->second;
+
+	// Convert each overlap into an offset and string
+	for(size_t j = 0; j < overlaps.size(); ++j)
+	{
+		const Overlap& curr = overlaps[j];
+		SeqCoord rootSC;
+		SeqCoord otherSC;
+		if(curr.read[0].id == rootID)
+		{
+			rootSC = curr.read[0];
+			otherSC = curr.read[1];
+		}
+		else
+		{
+			rootSC = curr.read[1];
+			otherSC = curr.read[0];
+		}
+
+		// If the root is reversed in this overlap, flip both
+		if(rootSC.isReverse())
+		{
+			rootSC.flip();
+			otherSC.flip();
+		}
+
+		std::string otherSeq = pRT->getRead(otherSC.id).seq.toString();
+		// Make the other sequence in the same frame as the root
+		if(otherSC.isReverse())
+		{
+			otherSeq = reverseComplement(otherSeq);
+			otherSC.flip();
+		}
+
+		assert(rootSC.isReverse() == otherSC.isReverse());
+		
+		// Calculate the offset of otherSeq
+
+		// Determine if other lies to the left or the right
+		int offset;
+		if(rootSC.interval.start > otherSC.interval.start)
+			offset = rootSC.interval.start;
+		else
+			offset = -otherSC.interval.start;
+		draw_vector.push_back(DrawData(offset, otherSC.id, otherSeq));
+	}
+	drawMulti(rootData.name, rootData.seq.size(), draw_vector);
+}
+
+//
+void drawMulti(std::string rootName, int root_len, DrawVector& dv)
+{
+	if(dv.size() < 2)
+		return;
+	std::sort(dv.begin(), dv.end());
+	int default_padding = 24;
+	std::cout << "\nDrawing overlaps for read " << rootName << "\n";
+	for(size_t i = 0; i < dv.size(); ++i)
+	{
+		int c_offset = dv[i].offset;
+		int c_len = dv[i].seq.length();
+
+		// This string runs from c_offset to c_offset + len
+		// Clip the string at -max_overhang to root_len + max_overhang
+		int left_clip = std::max(c_offset, -opt::max_overhang);
+		int right_clip = std::min(c_offset + c_len, root_len + opt::max_overhang);
+		
+		// translate the clipping coordinates to the string coords
+		int t_left_clip = left_clip - c_offset;
+		int t_right_clip = right_clip - c_offset;
+		// Calculate the length of the left padding
+		int padding = default_padding + left_clip;
+		//printf("lc: %d tlc: %d\n", left_clip, t_left_clip);
+		std::string leader = (t_left_clip > 0) ? "..." : "";
+		std::string trailer = (t_right_clip < c_len) ? "..." : ""; 
+		std::string clipped = dv[i].seq.substr(t_left_clip, t_right_clip - t_left_clip);
+		padding -= leader.size();
+		padding -= dv[i].name.size();
+		std::string padding_str(padding, ' ');
+		std::cout << dv[i].name << padding_str << leader << clipped << trailer << "\n";		
+	}
+}
 
 // 
 // Handle command line arguments
@@ -160,6 +208,10 @@ int oviewMain(int argc, char** argv)
 void parseOviewOptions(int argc, char** argv)
 {
 	bool die = false;
+
+	// Defaults
+	opt::max_overhang = 6;
+
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{
 		std::istringstream arg(optarg != NULL ? optarg : "");
@@ -168,6 +220,8 @@ void parseOviewOptions(int argc, char** argv)
 			case 'p': arg >> opt::prefix; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
+			case 'i': arg >> opt::readFilter; break;
+			case 'm': arg >> opt::max_overhang; break;
 			case OPT_HELP:
 				std::cout << OVIEW_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
