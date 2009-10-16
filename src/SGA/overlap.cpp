@@ -15,6 +15,7 @@
 #include "BWT.h"
 #include "LCPArray.h"
 #include "SGACommon.h"
+#include "Timer.h"
 
 //
 // Getopt
@@ -35,24 +36,27 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      -e, --exact                      use the exact extraction algorithm instead of BWT-based alignment\n"
 "      -m, --min-overlap=OVERLAP_LEN    minimum overlap required between two reads [30]\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
+"      -d, --max-diff=D                 report all prefix-suffix matches that have at most D differences\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
 {
 	static unsigned int verbose;
 	static unsigned int minOverlap;
+	static unsigned int maxDiff;
 	static std::string prefix;
 	static std::string readsFile;
 	static bool bExactAlgo;
 }
 
-static const char* shortopts = "p:m:ve";
+static const char* shortopts = "p:m:d:ve";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
 	{ "min-overlap", required_argument, NULL, 'm' },
+	{ "max-diff",    required_argument, NULL, 'd' },
 	{ "prefix",      required_argument, NULL, 'p' },
 	{ "exact",       no_argument,       NULL, 'e' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
@@ -92,20 +96,28 @@ std::string computeHitsBWT()
 	size_t count = 0;
 	SeqReader reader(opt::readsFile);
 	SeqItem read;
+	Timer timer("BWT Alignment", true);
 	while(reader.get(read))
 	{
 		// Align the read and its reverse complement
 		Sequence seqs[2];
 		seqs[0] = read.seq.toString();
 		seqs[1] = reverseComplement(seqs[0]);
-
 		// Get all the hits of this sequence to the forward and reverse BWT
 		for(size_t sn = 0; sn <= 1; ++sn)
 		{
 			bool isRC = (sn == 1) ? true : false;
 			const Sequence& currSeq = seqs[sn];
-			pBWT->getPrefixHits(count, currSeq, opt::minOverlap, false, isRC, pHits);
-			pRBWT->getPrefixHits(count, reverse(currSeq), opt::minOverlap, true, !isRC, pHits);
+			if(opt::bExactAlgo)
+			{
+				pBWT->getPrefixHits(count, currSeq, opt::minOverlap, false, isRC, pHits);
+				pRBWT->getPrefixHits(count, reverse(currSeq), opt::minOverlap, true, !isRC, pHits);
+			}
+			else
+			{
+				pBWT->getInexactPrefixHits(currSeq, pRBWT, opt::maxDiff, opt::minOverlap, count, false, isRC, pHits);
+				pRBWT->getInexactPrefixHits(reverse(currSeq), pBWT, opt::maxDiff, opt::minOverlap, count, true, !isRC, pHits);
+			}
 		}
 		++count;
 		
@@ -114,6 +126,9 @@ std::string computeHitsBWT()
 			hitsHandle << (*pHits)[i] << "\n";
 		pHits->clear();
 	}
+	double align_time_secs = timer.getElapsedTime();
+	printf("[bwt] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
+	printf("[bwt] performed %zu iterations in the inner loop\n", pBWT->getNumLoops() + pRBWT->getNumLoops());
 
 	delete pHits;
 	delete pBWT;
@@ -331,6 +346,7 @@ void parseOverlapOptions(int argc, char** argv)
 	// Set defaults
 	opt::minOverlap = 25;
 	opt::bExactAlgo = false;
+	opt::maxDiff = 0;
 
 	bool die = false;
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
@@ -341,6 +357,7 @@ void parseOverlapOptions(int argc, char** argv)
 			case 'm': arg >> opt::minOverlap; break;
 			case 'p': arg >> opt::prefix; break;
 			case 'e': opt::bExactAlgo = true; break;
+			case 'd': arg >> opt::maxDiff; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:

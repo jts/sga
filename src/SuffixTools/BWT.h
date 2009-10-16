@@ -29,10 +29,13 @@ class BWT
 		// Exact match
 		void backwardSearch(std::string w) const;
 		void getPrefixHits(size_t readIdx, std::string w, int minOverlap, bool targetRev, bool queryRev, HitVector* pHits) const;
-		void findTerminated(size_t r_lower, size_t r_upper) const;
+		void getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, int minOverlap, size_t readIdx, bool targetRev, bool queryRev, HitVector* pHits) const;
 
 		// L[i] -> F mapping 
 		size_t LF(size_t idx) const;
+
+		BaseCount getC(char b) const { return m_predCount.get(b); }
+		BaseCount getOcc(char b, size_t idx) const { return m_occurance.get(m_bwStr, b, idx); }
 
 		// 
 		inline const BWStr* getBWStr() const
@@ -50,9 +53,16 @@ class BWT
 		friend std::istream& operator>>(std::istream& in, BWT& bwt);
 		void write(std::string& filename);
 
+		size_t getNumLoops() const { return m_totalLoops; }
+
 	private:
 
-		static const int DEFAULT_SAMPLE_RATE = 64;
+		// calculate the lower bound of number of differences in w[0,i]
+		// if contains_w is true, the string (or read) w is contained in the bwt
+		// and should not be counted
+		void calculateD(std::string w, const BWT* pRevBWT, bool contains_w, int** pD) const;
+
+		static const int DEFAULT_SAMPLE_RATE = 32;
 		// Default constructor is not allowed
 		BWT() {}
 
@@ -67,5 +77,8 @@ class BWT
 
 		// The number of strings in the collection
 		size_t m_numStrings;
+
+		// profiling
+		mutable size_t m_totalLoops; 
 };
 #endif

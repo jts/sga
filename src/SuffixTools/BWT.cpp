@@ -9,6 +9,18 @@
 #include "BWT.h"
 #include "Timer.h"
 #include <istream>
+#include <queue>
+
+struct PartialAlign
+{
+	PartialAlign(int i, int n, int64_t s, int64_t e) : idx(i), num_mismatches(n), i_start(s), i_end(e) {}
+	int idx; // the index of the current base being processed
+	int num_mismatches; // the number of mismatches that have occured so far
+	int64_t i_start; // the start of the interval in the SA
+	int64_t i_end; // the end of the interval in the SA
+};
+
+typedef std::queue<PartialAlign> PAQueue;
 
 // macros
 #define OCC(c,i) m_occurance.get(m_bwStr, (c), (i))
@@ -133,6 +145,128 @@ void BWT::getPrefixHits(size_t readIdx, std::string w, int minOverlap, bool targ
 		}
 	}
 }
+
+// Perform a search for hits to read prefixes using a backward search algorithm
+void BWT::getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, int minOverlap, size_t readIdx, bool targetRev, bool queryRev, HitVector* pHits) const
+{
+	(void)pRevBWT;
+	int len = w.size();
+	//calculateD(w, pRevBWT, queryRev == targetRev, pD);
+	
+	int j = len - 1;
+	PAQueue hitQueue;
+	
+	// Create the initial partial hits
+	for(int i = 0; i < 4; ++i)
+	{
+		char base = ALPHABET[i];
+		int64_t r_lower = PRED(base);
+		int64_t r_upper = r_lower + OCC(base, m_bwStr.size() - 1) - 1;
+		if(ALPHABET[i] == w[j])
+			hitQueue.push(PartialAlign(j, 0, r_lower, r_upper));
+		else
+		{
+			if(maxDiff > 0)
+				hitQueue.push(PartialAlign(j, 1, r_lower, r_upper));
+		}
+	}
+
+	while(!hitQueue.empty())
+	{
+		++m_totalLoops;
+		PartialAlign& pa = hitQueue.front();
+		//printf("<curr hit> idx: %d nm: %d rl: %d ru: %d\n", pa.idx, pa.num_mismatches, (int)pa.i_start, (int)pa.i_end);
+		j = pa.idx;
+		int overlap_len = len - j;
+		
+		// Output valid prefix matches for this hit
+		if(overlap_len >= minOverlap)
+		{
+			int64_t t_lower = PRED('$') + OCC('$', pa.i_start - 1);
+			int64_t t_upper = PRED('$') + OCC('$', pa.i_end) - 1;
+			for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
+				pHits->push_back(Hit(readIdx, sa_idx, j, overlap_len, targetRev, queryRev));
+		}
+
+		// Calculate the next partial alignments
+		--j;
+		if(j >= 0)
+		{
+			for(int i = 0; i < 4; ++i)
+			{
+				char base = ALPHABET[i];
+				size_t pb = PRED(base);
+				int64_t r_lower = pb + OCC(base, pa.i_start - 1);
+				int64_t r_upper = pb + OCC(base, pa.i_end) - 1;
+				if(r_lower <= r_upper)
+				{
+					if(ALPHABET[i] == w[j])
+						hitQueue.push(PartialAlign(j, pa.num_mismatches, r_lower, r_upper));
+					else if(pa.num_mismatches < maxDiff)
+						hitQueue.push(PartialAlign(j, pa.num_mismatches + 1, r_lower, r_upper));
+				}
+			}
+		}
+		hitQueue.pop();
+	}
+}
+
+void BWT::calculateD(std::string w, const BWT* pRevBWT, bool contains_w, int** pD) const
+{
+	//std::cout << "D: " << w << " contains " << contains_w << "\n";
+	int min_span = (contains_w) ? 1 : 0;
+	size_t len = w.length();
+
+	int64_t r_lower = 0; 
+	int64_t r_upper = 0;
+	int z = 0;
+
+	//std::cout << "w: " << w << "\n";
+	for(size_t j = 0; j < len; j++)
+	{
+		for(size_t i = 0; i < len; ++i)
+			pD[j][i] = 0;
+
+		//printf("D: ");
+		z = 0;
+		for(size_t i = j; i < len; ++i)
+		{
+			char b = w[i];
+			
+			if(i == j)
+			{
+				r_lower = PRED(b);
+				r_upper = r_lower + pRevBWT->getOcc(b, m_bwStr.size() - 1) - 1;
+			}
+			else
+			{
+				r_lower = PRED(b) + pRevBWT->getOcc(b, r_lower - 1);
+				r_upper = PRED(b) + pRevBWT->getOcc(b, r_upper) - 1;
+			}
+
+			//printf("j: %zu Curr: %c, Interval now: %zu,%zu\n", j, b, r_lower, r_upper);
+			int span = r_upper - r_lower + 1;
+
+			if(span <= min_span)
+			{
+				r_lower = 1;
+				r_upper = m_bwStr.size() - 1;
+				z += 1;
+			}
+			pD[j][i] = z;
+		}
+		/*
+		for(size_t i = 0; i < len; ++i)
+		{
+			std::cout << pD[j][i];
+		}
+		std::cout << "\n";
+		*/
+	}
+	//std::cout << "\n";
+}
+
+
 
 void BWT::validate() const
 {
