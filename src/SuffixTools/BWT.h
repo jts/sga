@@ -29,13 +29,15 @@ class BWT
 		// Exact match
 		void backwardSearch(std::string w) const;
 		void getPrefixHits(size_t readIdx, std::string w, int minOverlap, bool targetRev, bool queryRev, HitVector* pHits) const;
-		void getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, int minOverlap, size_t readIdx, bool targetRev, bool queryRev, HitVector* pHits) const;
+		int getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, int minOverlap, size_t readIdx, bool targetRev, bool queryRev, HitVector* pHits) const;
 
 		// L[i] -> F mapping 
 		size_t LF(size_t idx) const;
 
-		BaseCount getC(char b) const { return m_predCount.get(b); }
-		BaseCount getOcc(char b, size_t idx) const { return m_occurance.get(m_bwStr, b, idx); }
+		inline BaseCount getC(char b) const { return m_predCount.get(b); }
+		inline BaseCount getOcc(char b, size_t idx) const { return m_occurance.get(m_bwStr, b, idx); }
+		inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurance.getDiff(m_bwStr, idx0, idx1); }
+		inline size_t getBWLen() const { return m_bwStr.length(); }
 
 		// 
 		inline const BWStr* getBWStr() const
@@ -60,9 +62,9 @@ class BWT
 		// calculate the lower bound of number of differences in w[0,i]
 		// if contains_w is true, the string (or read) w is contained in the bwt
 		// and should not be counted
-		void calculateD(std::string w, const BWT* pRevBWT, bool contains_w, int** pD) const;
+		void calculateD(std::string w, int minOverlap, const BWT* pRevBWT, bool contains_w, int* pD) const;
 
-		static const int DEFAULT_SAMPLE_RATE = 32;
+		static const int DEFAULT_SAMPLE_RATE = 64;
 		// Default constructor is not allowed
 		BWT() {}
 

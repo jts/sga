@@ -52,6 +52,12 @@ class Occurance
 				return m_values[upper_idx] - sum;
 			}
 		}
+
+		// Get the alphacount difference between idx1 and idx0
+		inline AlphaCount getDiff(const BWStr& bwStr, size_t idx0, size_t idx1) const
+		{
+			return get(bwStr, idx1) - get(bwStr, idx0);
+		}
 		
 		inline BaseCount get(const BWStr& bwStr, char a, size_t idx) const
 		{

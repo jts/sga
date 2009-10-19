@@ -16,6 +16,7 @@
 #include "LCPArray.h"
 #include "SGACommon.h"
 #include "Timer.h"
+#include "bwt_algorithms.h"
 
 //
 // Getopt
@@ -97,6 +98,7 @@ std::string computeHitsBWT()
 	SeqReader reader(opt::readsFile);
 	SeqItem read;
 	Timer timer("BWT Alignment", true);
+	int cost = 0;
 	while(reader.get(read))
 	{
 		// Align the read and its reverse complement
@@ -115,11 +117,16 @@ std::string computeHitsBWT()
 			}
 			else
 			{
-				pBWT->getInexactPrefixHits(currSeq, pRBWT, opt::maxDiff, opt::minOverlap, count, false, isRC, pHits);
-				pRBWT->getInexactPrefixHits(reverse(currSeq), pBWT, opt::maxDiff, opt::minOverlap, count, true, !isRC, pHits);
+				//cost += pBWT->getInexactPrefixHits(currSeq, pRBWT, opt::maxDiff, opt::minOverlap, count, false, isRC, pHits);
+				//cost += pRBWT->getInexactPrefixHits(reverse(currSeq), pBWT, opt::maxDiff, opt::minOverlap, count, true, !isRC, pHits);
+				
+				Hit templateHit; 
+				cost += alignInexactSuffix(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, templateHit, pHits);
+				cost += alignInexactSuffix(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, templateHit, pHits);
 			}
 		}
 		++count;
+		
 		
 		// Write the hits to the file
 		for(size_t i = 0; i < pHits->size(); ++i)
@@ -128,7 +135,7 @@ std::string computeHitsBWT()
 	}
 	double align_time_secs = timer.getElapsedTime();
 	printf("[bwt] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
-	printf("[bwt] performed %zu iterations in the inner loop\n", pBWT->getNumLoops() + pRBWT->getNumLoops());
+	printf("[bwt] performed %d iterations in the inner loop\n", cost);
 
 	delete pHits;
 	delete pBWT;

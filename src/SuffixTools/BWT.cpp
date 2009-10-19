@@ -13,9 +13,9 @@
 
 struct PartialAlign
 {
-	PartialAlign(int i, int n, int64_t s, int64_t e) : idx(i), num_mismatches(n), i_start(s), i_end(e) {}
+	PartialAlign(int i, int n, int64_t s, int64_t e) : idx(i), z(n), i_start(s), i_end(e) {}
 	int idx; // the index of the current base being processed
-	int num_mismatches; // the number of mismatches that have occured so far
+	int z; // the number of mismatches that have occured so far
 	int64_t i_start; // the start of the interval in the SA
 	int64_t i_end; // the end of the interval in the SA
 };
@@ -147,11 +147,12 @@ void BWT::getPrefixHits(size_t readIdx, std::string w, int minOverlap, bool targ
 }
 
 // Perform a search for hits to read prefixes using a backward search algorithm
-void BWT::getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, int minOverlap, size_t readIdx, bool targetRev, bool queryRev, HitVector* pHits) const
+int BWT::getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, int minOverlap, size_t readIdx, bool targetRev, bool queryRev, HitVector* pHits) const
 {
-	(void)pRevBWT;
+	int cost = 0;
 	int len = w.size();
-	//calculateD(w, pRevBWT, queryRev == targetRev, pD);
+	int* pD = new int[len];
+	calculateD(w, minOverlap, pRevBWT, queryRev == targetRev, pD);
 	
 	int j = len - 1;
 	PAQueue hitQueue;
@@ -163,22 +164,29 @@ void BWT::getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, i
 		int64_t r_lower = PRED(base);
 		int64_t r_upper = r_lower + OCC(base, m_bwStr.size() - 1) - 1;
 		if(ALPHABET[i] == w[j])
-			hitQueue.push(PartialAlign(j, 0, r_lower, r_upper));
+			hitQueue.push(PartialAlign(j, maxDiff, r_lower, r_upper));
 		else
 		{
 			if(maxDiff > 0)
-				hitQueue.push(PartialAlign(j, 1, r_lower, r_upper));
+				hitQueue.push(PartialAlign(j, maxDiff - 1, r_lower, r_upper));
 		}
 	}
 
 	while(!hitQueue.empty())
 	{
-		++m_totalLoops;
-		PartialAlign& pa = hitQueue.front();
+		++cost;
+		PartialAlign pa = hitQueue.front();
+		hitQueue.pop();
+
 		//printf("<curr hit> idx: %d nm: %d rl: %d ru: %d\n", pa.idx, pa.num_mismatches, (int)pa.i_start, (int)pa.i_end);
 		j = pa.idx;
 		int overlap_len = len - j;
-		
+
+		if(pa.z < pD[j])
+		{
+			continue;
+		}
+
 		// Output valid prefix matches for this hit
 		if(overlap_len >= minOverlap)
 		{
@@ -201,17 +209,18 @@ void BWT::getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, i
 				if(r_lower <= r_upper)
 				{
 					if(ALPHABET[i] == w[j])
-						hitQueue.push(PartialAlign(j, pa.num_mismatches, r_lower, r_upper));
-					else if(pa.num_mismatches < maxDiff)
-						hitQueue.push(PartialAlign(j, pa.num_mismatches + 1, r_lower, r_upper));
+						hitQueue.push(PartialAlign(j, pa.z, r_lower, r_upper));
+					else
+						hitQueue.push(PartialAlign(j, pa.z - 1, r_lower, r_upper));
 				}
 			}
 		}
-		hitQueue.pop();
 	}
+	delete [] pD;
+	return cost;
 }
 
-void BWT::calculateD(std::string w, const BWT* pRevBWT, bool contains_w, int** pD) const
+void BWT::calculateD(std::string w, int minOverlap, const BWT* pRevBWT, bool contains_w, int* pD) const
 {
 	//std::cout << "D: " << w << " contains " << contains_w << "\n";
 	int min_span = (contains_w) ? 1 : 0;
@@ -221,49 +230,45 @@ void BWT::calculateD(std::string w, const BWT* pRevBWT, bool contains_w, int** p
 	int64_t r_upper = 0;
 	int z = 0;
 
-	//std::cout << "w: " << w << "\n";
-	for(size_t j = 0; j < len; j++)
+	//std::cout << "w: " << w << "\n   ";
+	for(size_t i = 0; i < len; ++i)
+		pD[i] = 0;
+
+	for(size_t i = len - minOverlap; i < len; ++i)
 	{
-		for(size_t i = 0; i < len; ++i)
-			pD[j][i] = 0;
-
-		//printf("D: ");
-		z = 0;
-		for(size_t i = j; i < len; ++i)
+		char b = w[i];
+		
+		if(i == len - minOverlap)
 		{
-			char b = w[i];
-			
-			if(i == j)
-			{
-				r_lower = PRED(b);
-				r_upper = r_lower + pRevBWT->getOcc(b, m_bwStr.size() - 1) - 1;
-			}
-			else
-			{
-				r_lower = PRED(b) + pRevBWT->getOcc(b, r_lower - 1);
-				r_upper = PRED(b) + pRevBWT->getOcc(b, r_upper) - 1;
-			}
-
-			//printf("j: %zu Curr: %c, Interval now: %zu,%zu\n", j, b, r_lower, r_upper);
-			int span = r_upper - r_lower + 1;
-
-			if(span <= min_span)
-			{
-				r_lower = 1;
-				r_upper = m_bwStr.size() - 1;
-				z += 1;
-			}
-			pD[j][i] = z;
+			r_lower = PRED(b);
+			r_upper = r_lower + pRevBWT->getOcc(b, m_bwStr.size() - 1) - 1;
 		}
-		/*
-		for(size_t i = 0; i < len; ++i)
+		else
 		{
-			std::cout << pD[j][i];
+			r_lower = PRED(b) + pRevBWT->getOcc(b, r_lower - 1);
+			r_upper = PRED(b) + pRevBWT->getOcc(b, r_upper) - 1;
 		}
-		std::cout << "\n";
-		*/
+
+		//printf("j: %zu Curr: %c, Interval now: %zu,%zu\n", j, b, r_lower, r_upper);
+		int span = r_upper - r_lower + 1;
+
+		if(span <= min_span)
+		{
+			r_lower = 1;
+			r_upper = m_bwStr.size() - 1;
+			z += 1;
+		}
+		pD[i] = z;
+		//pD[i] = 0;
 	}
-	//std::cout << "\n";
+	
+	/*
+	for(size_t i = 0; i < len; ++i)
+	{
+		std::cout << pD[i];
+	}
+	std::cout << "\n";
+	*/
 }
 
 

@@ -124,6 +124,17 @@ class AlphaCount
 		{
 			return m_counts[getBaseRank(b)];
 		}
+
+		// Return the sum of the basecounts for characters lexo. lower than b
+		inline BaseCount getLessThan(char b) const
+		{
+			BaseCount out = 0;
+			int stop = getBaseRank(b);
+			for(int i = 0; i < stop; ++i)
+				out += m_counts[i];
+			return out;
+		}
+
 		
 		// Operators
 		friend std::ostream& operator<<(std::ostream& out, const AlphaCount& ac);

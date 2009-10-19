@@ -93,8 +93,8 @@ void buildIndex(std::string prefix, const ReadTable* pRT, bool isReverse)
 
 	if(opt::verbose > 1)
 	{
-		std::cout << "SuffixArray:\n";
-		pSA->print(pRT);
+		//std::cout << "SuffixArray:\n";
+		//pSA->print(pRT);
 		std::cout << "BWT:\n";
 		pBWT->print(pRT, pSA);
 	}
