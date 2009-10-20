@@ -4,6 +4,7 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_fit.h>
 #include <math.h>
+#include <algorithm>
 
 int main(int argc, char** argv)
 {
@@ -144,7 +145,7 @@ UniDataPVec filterByPercent(const IDUniDataMap& udMap, double percent)
 		sizeVec.push_back(iter->second.getContigLen());
 	}
 
-	sort(sizeVec.begin(), sizeVec.end());
+	std::sort(sizeVec.begin(), sizeVec.end());
 	size_t idx = (size_t)((double)sizeVec.size() * percent);
 	size_t cutoff = sizeVec[idx];
 	

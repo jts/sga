@@ -12,6 +12,7 @@
 #include "Util.h"
 #include <utility>
 #include <stdint.h>
+#include <limits>
 
 //
 // Functions

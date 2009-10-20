@@ -25,7 +25,7 @@ inline void _initInterval(BWTAlign& align, int idx, char b, const BWT* pB)
 	align.r_upper[idx] = align.r_lower[idx] + pB->getOcc(b, pB->getBWLen() - 1) - 1;
 }
 
-inline void updateIntervals(BWTAlign& align, char b, const BWT* pBWT, const BWT* pRevBWT)
+inline void updateIntervals(BWTAlign& align, char b, const BWT* /*pBWT*/, const BWT* pRevBWT)
 {
 	//_updateInterval(align, LEFT_INT_IDX, b, pBWT);
 	//_updateInterval(align, RIGHT_INT_IDX, b, pRevBWT);
@@ -36,7 +36,7 @@ inline void updateIntervals(BWTAlign& align, char b, const BWT* pBWT, const BWT*
 	align.r_upper[0] = align.r_lower[0] + diff.get(b) - 1;
 
 	// Update the right index directly
-	size_t pb = pBWT->getC(b);
+	size_t pb = pRevBWT->getC(b);
 	align.r_lower[1] = pb + pRevBWT->getOcc(b, align.r_lower[1] - 1);
 	align.r_upper[1] = pb + pRevBWT->getOcc(b, align.r_upper[1]) - 1;
 
@@ -57,7 +57,7 @@ inline void initIntervals(BWTAlign& align, char b, const BWT* pBWT, const BWT* p
 // are allowed in the first ceil(minOverlap / (maxDiff + 1) bases
 // Once all the seeds have hit the end of the string, the extension
 // flips to going to the left, collecting all the matches prefixes
-int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int maxDiff, int minOverlap, Hit& /*hitTemplate*/, HitVector* /*pHits*/)
+int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int maxDiff, int minOverlap, Hit& hitTemplate, HitVector* pHits)
 {
 	int cost = 0;
 	BWTAlignQueue* pQueue = new BWTAlignQueue;
@@ -79,8 +79,6 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 		align.dir = ED_RIGHT;
 		align.z = maxDiff;
 		align.seed_len = std::min(seed_len, len - pos);
-
-
 		//printf("Creating seed at %d to %d, str: %s\n", align.left_index, align.seed_len, w.substr(pos, align.seed_len).c_str());
 
 		// Initialize the left and right suffix array intervals
@@ -146,7 +144,10 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 			int64_t t_upper = pBWT->getC('$') + pBWT->getOcc('$', align.r_upper[LEFT_INT_IDX]) - 1;
 			for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
 			{
-				//std::cout << "Prefix hit to : " << sa_idx << "\n";
+				hitTemplate.saIdx = sa_idx;
+				hitTemplate.qstart = align.left_index;
+				hitTemplate.len = len - align.left_index;
+				pHits->push_back(hitTemplate);
 			}
 
 			// Extend hits

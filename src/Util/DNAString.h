@@ -10,6 +10,7 @@
 
 #ifndef DNASTRING_H
 #define DNASTRING_H
+#include <string.h>
 #include <string>
 #include <assert.h> 
 

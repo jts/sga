@@ -73,7 +73,7 @@ void InverseSuffixArray::print() const
 		const RankVector& rv = iter->second;
 		for(size_t j = 0; j < rv.size(); ++j)
 		{
-			printf("ISA(%zu, %zu): %zu\n", iter->first, j, getRank(iter->first, j));
+			printf("ISA(%llu, %zu): %llu\n", iter->first, j, getRank(iter->first, j));
 		}
 	}
 }

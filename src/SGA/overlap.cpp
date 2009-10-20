@@ -119,10 +119,12 @@ std::string computeHitsBWT()
 			{
 				//cost += pBWT->getInexactPrefixHits(currSeq, pRBWT, opt::maxDiff, opt::minOverlap, count, false, isRC, pHits);
 				//cost += pRBWT->getInexactPrefixHits(reverse(currSeq), pBWT, opt::maxDiff, opt::minOverlap, count, true, !isRC, pHits);
-				
-				Hit templateHit; 
-				cost += alignInexactSuffix(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, templateHit, pHits);
-				cost += alignInexactSuffix(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, templateHit, pHits);
+
+				Hit hitTemplate(count, 0, 0, 0, false, isRC); 
+				cost += alignInexactSuffix(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
+				hitTemplate.targetRev = true;
+				hitTemplate.queryRev = !isRC;
+				cost += alignInexactSuffix(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
 			}
 		}
 		++count;

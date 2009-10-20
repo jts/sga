@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iostream>
 #include <gsl/gsl_randist.h>
+#include <algorithm>
 
 //
 // Constructor
@@ -151,7 +152,7 @@ UniqueFlag UniData::estimateByDepth(double mean, double lrThreshold)
 	}
 
 	// Calculate the likelihood ratio between the best and second best
-	sort(pVec.begin(), pVec.end());
+	std::sort(pVec.begin(), pVec.end());
 	double best = pVec[pVec.size() - 1];
 	double second = pVec[pVec.size() - 2];
 	double ratio = best - second;

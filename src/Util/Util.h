@@ -15,6 +15,8 @@
 #include <fstream>
 #include <cassert>
 #include <sstream>
+#include <cstring>
+#include <cstdlib>
 
 #include "DNAString.h"
 

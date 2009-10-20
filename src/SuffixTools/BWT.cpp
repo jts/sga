@@ -96,8 +96,8 @@ void BWT::backwardSearch(std::string w) const
 		curr = w[j];
 		printf("RL = C(%c) + O(%c,%d) + %zu\n", curr, curr, r_lower - 1, m_numStrings); 
 		printf("RU = C(%c) + O(%c,%d)\n", curr, curr, r_upper); 
-		printf("RL = %zu + %zu + %zu\n", PRED(curr), OCC(curr, r_lower - 1), m_numStrings); 
-		printf("RU = %zu + %zu\n", PRED(curr), OCC(curr, r_upper)); 
+		printf("RL = %llu + %llu + %zu\n", PRED(curr), OCC(curr, r_lower - 1), m_numStrings); 
+		printf("RU = %llu + %llu\n", PRED(curr), OCC(curr, r_upper)); 
 		r_lower = PRED(curr) + OCC(curr, r_lower - 1);
 		r_upper = PRED(curr) + OCC(curr, r_upper) - 1;
 		printf("Curr: %c, Interval now: %d,%d\n", curr, r_lower, r_upper);
