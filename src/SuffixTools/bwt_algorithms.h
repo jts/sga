@@ -47,7 +47,6 @@ typedef std::queue<BWTAlign> BWTAlignQueue;
 
 // functions
 int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int maxDiff, int minOverlap, Hit& hitTemplate, HitVector* pHits);
-BWTAlign calculateFlipped(const std::string& w, const BWTAlign& align, const BWT* pBWT);
 
 
 #endif

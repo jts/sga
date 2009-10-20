@@ -11,11 +11,11 @@
 #define LEFT_INT_IDX 0
 #define RIGHT_INT_IDX 1
 
-inline void _updateInterval(BWTAlign& align, int idx, char b, const BWT* pB)
+inline void updateLeft(BWTAlign& align, char b, const BWT* pB)
 {
 	size_t pb = pB->getC(b);
-	align.r_lower[idx] = pb + pB->getOcc(b, align.r_lower[idx] - 1);
-	align.r_upper[idx] = pb + pB->getOcc(b, align.r_upper[idx]) - 1;
+	align.r_lower[LEFT_INT_IDX] = pb + pB->getOcc(b, align.r_lower[LEFT_INT_IDX] - 1);
+	align.r_upper[LEFT_INT_IDX] = pb + pB->getOcc(b, align.r_upper[LEFT_INT_IDX]) - 1;
 
 }
 
@@ -25,7 +25,8 @@ inline void _initInterval(BWTAlign& align, int idx, char b, const BWT* pB)
 	align.r_upper[idx] = align.r_lower[idx] + pB->getOcc(b, pB->getBWLen() - 1) - 1;
 }
 
-inline void updateIntervals(BWTAlign& align, char b, const BWT* /*pBWT*/, const BWT* pRevBWT)
+// Update both the left and right intervals using the reverse BWT
+inline void updateBoth(BWTAlign& align, char b, const BWT* pRevBWT)
 {
 	//_updateInterval(align, LEFT_INT_IDX, b, pBWT);
 	//_updateInterval(align, RIGHT_INT_IDX, b, pRevBWT);
@@ -68,7 +69,6 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 	int seed_len = (minOverlap % num_seeds == 0) ? minOverlap / num_seeds : (int)(minOverlap / num_seeds) + 1;
 	int seed_start = len - minOverlap;
 
-
 	// Populate the initial seeds
 	for(int i = 0; i < num_seeds; ++i)
 	{
@@ -93,27 +93,23 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 		++cost;
 		BWTAlign align = pQueue->front();
 		pQueue->pop();
+
 		//printf("Processing: "); align.print(w);
 		if(align.dir == ED_RIGHT)
 		{
-			// If the right index is the terminal position, flip the alignment
-			if(align.right_index == len - 1)
-			{
-				// Flip the direction
-				align.dir = ED_LEFT;
-				assert(align.isIntervalValid(LEFT_INT_IDX));
-				pQueue->push(align);
-				continue;
-			}
-
 			// Update the interval using RevBWT
 			++align.right_index;
+
+			// Flip if we've reached the end of the right extension phase
+			// This does not effect the subsequent updates
+			if(align.right_index == len - 1)
+				align.dir = ED_LEFT;
 
 			// If the length of the alignment is less than the seed length, do not allow mismatches
 			if(align.isSeed() || align.z == 0)
 			{
 				char b = w[align.right_index];
-				updateIntervals(align, b, pBWT, pRevBWT);
+				updateBoth(align, b, pRevBWT);
 				if(align.isIntervalValid(RIGHT_INT_IDX))
 					pQueue->push(align);
 			}
@@ -123,7 +119,7 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 				{
 					char b = ALPHABET[i];
 					BWTAlign branched = align;
-					updateIntervals(branched, b, pBWT, pRevBWT);
+					updateBoth(branched, b, pRevBWT);
 
 					if(branched.isIntervalValid(RIGHT_INT_IDX))
 					{
@@ -155,19 +151,29 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 			if(align.left_index < 0)
 				continue;
 
-			for(int i = 0; i < 4; ++i)
+			// If there cannot be a branch, only process the matching base
+			if(align.z == 0)
 			{
-				char b = ALPHABET[i];
-				BWTAlign branched = align;
-				// Only update left interval
-				_updateInterval(branched, LEFT_INT_IDX, b, pBWT);
-
-				if(branched.isIntervalValid(LEFT_INT_IDX))
+				char b = w[align.left_index];
+				updateLeft(align, b, pBWT);
+				if(align.isIntervalValid(LEFT_INT_IDX))
+					pQueue->push(align);
+			}
+			else
+			{
+				for(int i = 0; i < 4; ++i)
 				{
-					if(ALPHABET[i] != w[align.left_index])
-						--branched.z;
-					if(branched.z >= 0)
+					char b = ALPHABET[i];
+					BWTAlign branched = align;
+					// Only update left interval
+					updateLeft(branched, b, pBWT);
+
+					if(branched.isIntervalValid(LEFT_INT_IDX))
+					{
+						if(ALPHABET[i] != w[align.left_index])
+							--branched.z;
 						pQueue->push(branched);
+					}
 				}
 			}
 		}
