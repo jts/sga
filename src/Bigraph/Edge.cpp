@@ -63,8 +63,20 @@ EdgeDesc Edge::getTwinDesc() const
 	return EdgeDesc(getStartID(), getTwinDir(), m_comp);
 }
 
-// Merge pEdge into this edge by updating the endpoints
-void Edge::merge(const Edge* pEdge)
+// Join the edge pEdge into this edge, adding to the start
+void Edge::join(const Edge* pEdge)
+{
+	if(pEdge->getComp() == EC_REVERSE)
+		flip();
+
+	m_pStart = pEdge->getStart();
+
+	// Now, update the twin of this edge to extend to the twin of pEdge
+	m_pTwin->extend(pEdge->getTwin());
+}
+
+// Extend this edge by adding pEdge to the end
+void Edge::extend(const Edge* pEdge)
 {
 	if(pEdge->getComp() == EC_REVERSE)
 		flipComp();

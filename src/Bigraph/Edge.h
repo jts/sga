@@ -46,8 +46,10 @@ class Edge
 			return m_pTwin;
 		}
 		
-		// Merge the given edge with this edge
-		virtual void merge(const Edge* pEdge);
+		// Join merges pEdge into this edge, with pEdge describing the starting point
+		// Extend merged pEdge into this edge, with pEdge describing the endpoint
+		virtual void join(const Edge* pEdge);
+		virtual void extend(const Edge* pEdge);
 
 		EdgeDesc getTwinDesc() const;
 
@@ -97,7 +99,7 @@ class Edge
 		// Output
 		friend std::ostream& operator<<(std::ostream& out, const Edge& obj);
 
-	private:
+	protected:
 		
 		Edge() {}; // Default constructor is not allowed
 

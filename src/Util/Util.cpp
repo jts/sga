@@ -161,11 +161,18 @@ bool SeqCoord::isReverse() const
 }
 
 // Flip the orientation of the seq coord
+// This naturally reverses the orientation of the start/end points
 void SeqCoord::flip()
 {
-	//int tmp = interval.end;
 	interval.start = seqlen - interval.start - 1;
 	interval.end = seqlen - interval.end - 1;
+}
+
+// Reflect transfers the coordinates to the opposite strand without reversing
+void SeqCoord::reflect()
+{
+	flip();
+	reverse();
 }
 
 // Reverse the coordinates by swapping start/end
@@ -176,7 +183,31 @@ void SeqCoord::reverse()
 	interval.start = tmp;
 }
 
-std::string SeqCoord::getSubstring(std::string str) const
+// Complement the SeqCoord
+SeqCoord SeqCoord::complement() const
+{
+	assert(isExtreme());
+
+	SeqCoord out;
+	out.seqlen = seqlen;
+
+	if(isLeftExtreme())
+	{
+		out.interval.start = std::max(interval.start, interval.end) + 1;
+		out.interval.end = out.seqlen - 1;
+	}
+	else
+	{
+		out.interval.start = 0;
+		out.interval.end = std::min(interval.start, interval.end) - 1;
+	}
+
+	if(isReverse())
+		out.reverse();
+	return out;
+}
+
+std::string SeqCoord::getSubstring(const std::string& str) const
 {
 	int left;
 	int size; 
@@ -210,10 +241,40 @@ std::istream& operator>>(std::istream& in, SeqCoord& sc)
 //
 // Matching
 //
+Matching::Matching(const SeqCoord& sc1, const SeqCoord& sc2)
+{
+	coord[0] = sc1;
+	coord[1] = sc2;
+}
+
 Matching::Matching(int s1, int e1, int l1, int s2, int e2, int l2)
 {
 	coord[0] = SeqCoord(s1, e1, l1);
 	coord[1] = SeqCoord(s2, e2, l2);
+}
+
+Matching Matching::swapCoords() const
+{
+	Matching out;
+	out.coord[0] = coord[1];
+	out.coord[1] = coord[0];
+
+	// Ensure that coord[0] is not reversed
+	if(out.coord[0].isReverse())
+	{
+		out.coord[0].flip();
+		out.coord[1].flip();
+	}
+	return out;
+}
+
+void Matching::normalizeCoords()
+{
+	// The first coord should never be reversed
+	assert(!coord[0].isReverse());
+
+	if(coord[1].isReverse())
+		coord[1].flip();
 }
 
 // Output

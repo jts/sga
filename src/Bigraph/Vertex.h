@@ -58,7 +58,7 @@ class Vertex
 		Edge* getEdge(const EdgeDesc& ed);
 		
 		// Virtual functions
-		virtual void merge(const Edge* pEdge);
+		virtual void merge(Edge* pEdge);
 		virtual void validate() const;
 		virtual void sortAdjList();
 		

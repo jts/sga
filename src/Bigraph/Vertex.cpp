@@ -22,6 +22,7 @@ Vertex::~Vertex()
 // Add an edge
 void Vertex::addEdge(Edge* ep)
 {
+	assert(ep->getStart() == this);
 	m_edges.push_back(ep);
 }
 
@@ -66,7 +67,6 @@ void Vertex::deleteEdges()
 // This only deletes the edge and not its twin
 void Vertex::sweepEdges(GraphColor c)
 {
-
 	EdgePtrListIter iter = m_edges.begin();
 	while(iter != m_edges.end())
 	{
@@ -137,7 +137,7 @@ void Vertex::validate() const
 }
 
 // Merge
-void Vertex::merge(const Edge* /*pEdge*/)
+void Vertex::merge(Edge* /*pEdge*/)
 {
 	// base case does nothing
 }

@@ -137,11 +137,23 @@ struct SeqCoord
 	bool isExtreme() const;
 	bool isContained() const;
 	bool isReverse() const;
+	// Return the length of the interval, which is inclusive
+	int length() const { return isReverse() ? interval.start - interval.end + 1 : interval.end - interval.start + 1; }
+	
+	// Flip mirrors the coordinates so they are on the other strand
+	// The coordinates are naturally reversed to indicate its the other strand
 	void flip();
+
+	// Reverse swaps that start/end coord
 	void reverse();
 
+	// Reflect transfers the coordinates to the opposite strand without reversing
+	void reflect();
+
+	SeqCoord complement() const;
+
 	// Get the substring described by the interval
-	std::string getSubstring(std::string str) const;
+	std::string getSubstring(const std::string& str) const;
 
 	friend std::ostream& operator<<(std::ostream& out, const SeqCoord& sc);
 	friend std::istream& operator>>(std::istream& in, SeqCoord& sc);	
@@ -154,7 +166,41 @@ struct SeqCoord
 struct Matching
 {
 	Matching() {}
+	Matching(const SeqCoord& sc1, const SeqCoord& sc2);
 	Matching(int s1, int e1, int l1, int s2, int e2, int l2);
+
+	// Translate the SeqCoord c from the frame of coord[0] to coord[1]
+	SeqCoord translate(const SeqCoord& c) const
+	{
+		assert(coord[0].length() == coord[1].length()); // ensure translation is valid
+		int t = coord[1].interval.start - coord[0].interval.start;
+		
+		SeqCoord out;
+		out.seqlen = coord[1].seqlen;
+		out.interval.start = c.interval.start + t;
+		out.interval.end = c.interval.end + t;
+		return out;
+	}
+
+	// Translate the SeqCoord c from the frame of coord[1] to coord[0]
+	SeqCoord inverseTranslate(const SeqCoord& c) const
+	{
+		assert(coord[0].length() == coord[1].length()); // ensure translation is valid
+		int t = coord[0].interval.start - coord[1].interval.start;
+		
+		SeqCoord out;
+		out.seqlen = coord[0].seqlen;
+		out.interval.start = c.interval.start + t;
+		out.interval.end = c.interval.end + t;
+		return out;
+	}	
+
+	// Return a new match with the coords swapped
+	Matching swapCoords() const;
+
+	// Flip the coordinates, if necessary, to ensure they are in the correct orientation
+	void normalizeCoords();
+
 	friend std::ostream& operator<<(std::ostream& out, const Matching& m);
 	friend std::istream& operator>>(std::istream& in, Matching& m);
 

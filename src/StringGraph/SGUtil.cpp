@@ -119,7 +119,10 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 		for(size_t idx = 0; idx < 2; ++idx)
 		{
 			EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
-			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, overhangs[1 - idx]);
+			SeqCoord coord = o.match.coord[idx];
+			if(coord.isReverse())
+				coord.reverse();
+			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, coord);
 		}
 
 		pEdges[0]->setTwin(pEdges[1]);

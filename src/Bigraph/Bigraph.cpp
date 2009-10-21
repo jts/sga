@@ -144,32 +144,20 @@ void Bigraph::merge(Edge* pEdge)
 	// Get the edge set opposite of the twin edge (which will be the new edges in this direction for V1)
 	EdgePtrVec transEdges = pV2->getEdges(!pTwin->getDir());
 
-	// Should the edges be flipped?
-	bool doFlip = (pEdge->getComp() == EC_REVERSE);
-
 	// Move the edges from pV2 to pV1
 	for(EdgePtrVecIter iter = transEdges.begin(); iter != transEdges.end(); ++iter)
 	{
 		Edge* pTransEdge = *iter;
 
-		// Remove the edge from V2
+		// Remove the edge from V2, this does not destory the edge
 		pV2->removeEdge(pTransEdge);
 
-		// If the edge between V1 and V2 was a reverse edge, this edge 
-		// must be flipped before adding to V1
-		if(doFlip)
-			pTransEdge->flip();
+		// Join pEdge to the start of transEdge
+		// This updates the starting point of pTransEdge to be V1
+		// This calls Edge::extend on the twin edge
+		pTransEdge->join(pEdge);
 		assert(pTransEdge->getDir() == pEdge->getDir());
-
-		pTransEdge->setStart(pV1); //update the start vertex
 		pV1->addEdge(pTransEdge); // add to V1
-
-		// Now, update the twin edge
-		Vertex* pV3 = pTransEdge->getEnd();
-		Edge* pE3 = pTransEdge->getTwin();
-		pV3->removeEdge(pE3); 
-		pE3->merge(pTwin); // This updates the endpoint
-		pV3->addEdge(pE3); 
 	}
 
 	// Remove the edge from pV1 to pV2
@@ -184,6 +172,7 @@ void Bigraph::merge(Edge* pEdge)
 
 	// Remove V2
 	removeVertex(pV2->getID());
+	//validate();
 }
 
 

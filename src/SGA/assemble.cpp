@@ -69,8 +69,8 @@ void assemble()
 	SGTransRedVisitor trVisit;
 	pGraph->visit(trVisit);
 	pGraph->simplify();
-
-	//pGraph->validate();
+	//pGraph->mergeVertices("1/A", "66/A");
+	pGraph->validate();
 	//pGraph->writeDot("final.dot");
 
 	SGFastaVisitor av("contigs.fa");

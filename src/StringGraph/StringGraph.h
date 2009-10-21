@@ -43,20 +43,34 @@ class StringEdge : public Edge
                    Vertex* end, 
 		    	   EdgeDir dir, 
 			       EdgeComp comp, 
-			       std::string s) : Edge(start, end, dir, comp), m_seq(s) {}
+			       SeqCoord m) : Edge(start, end, dir, comp), m_matchCoord(m) {}
 		
 		// functions
-		virtual void merge(const Edge* pEdge);
 		virtual void flip();
-		void updateLabel(const StringEdge* pSE);
-		virtual std::string getLabel() const;
-		const std::string& getSeq() const { return m_seq; }
-		size_t getSeqLen() const { return m_seq.length(); }
+		virtual void join(const Edge* pEdge);
+		virtual void extend(const Edge* pEdge);
 		
+		// Match coordinate bookkeeping
+		void extendMatch(int ext_len);
+		void offsetMatch(int offset);
+		void completeMatch();
+		void updateSeqLen(int newLen);
+
+		// getters
+		virtual std::string getLabel() const;
+		std::string getMatchStr() const;
+		size_t getSeqLen() const;
+		const SeqCoord& getMatchCoord() const { return m_matchCoord; }
+		void validate() const;
+
+
+		// Get a match structure that describes the mapping from V1 to V2
+		Matching getMatch() const;
 		
 	private:
-
-		std::string m_seq;
+		
+		// The coords of the starting vertex, which match the ending vertex
+		SeqCoord m_matchCoord;
 };
 
 // Derived from Bigraph vertex
@@ -67,7 +81,7 @@ class StringVertex : public Vertex
 		StringVertex(VertexID id, const std::string& s) : Vertex(id), m_seq(s), m_readCount(1) {}
 		
 		// functions
-		virtual void merge(const Edge* pEdge);
+		virtual void merge(Edge* pEdge);
 		virtual void validate() const;
 		virtual void sortAdjList();
 
