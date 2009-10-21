@@ -138,6 +138,7 @@ struct SeqCoord
 	bool isContained() const;
 	bool isReverse() const;
 	void flip();
+	void reverse();
 
 	// Get the substring described by the interval
 	std::string getSubstring(std::string str) const;

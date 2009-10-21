@@ -138,11 +138,12 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 			otherSC = curr.read[0];
 		}
 
-		// If the root is reversed in this overlap, flip both
+		// If the root is reversed in this overlap, reverse both coordinates
+		// so that we can draw the root in its natural orientation
 		if(rootSC.isReverse())
 		{
-			rootSC.flip();
-			otherSC.flip();
+			rootSC.reverse();
+			otherSC.reverse();
 		}
 
 		std::string otherSeq = pRT->getRead(otherSC.id).seq.toString();
@@ -153,6 +154,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 			otherSC.flip();
 		}
 
+		assert(!rootSC.isReverse());
 		assert(rootSC.isReverse() == otherSC.isReverse());
 		
 		// Calculate the offset of otherSeq

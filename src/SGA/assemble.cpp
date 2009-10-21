@@ -64,14 +64,13 @@ void assemble()
 {
 	StringGraph* pGraph = createSGFromOverlaps(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn");
 
-	pGraph->validate();
+	//pGraph->validate();
 	//pGraph->writeDot("before.dot");
 	SGTransRedVisitor trVisit;
 	pGraph->visit(trVisit);
-
 	pGraph->simplify();
 
-	pGraph->validate();
+	//pGraph->validate();
 	//pGraph->writeDot("final.dot");
 
 	SGFastaVisitor av("contigs.fa");

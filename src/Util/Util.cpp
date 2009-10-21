@@ -168,6 +168,14 @@ void SeqCoord::flip()
 	interval.end = seqlen - interval.end - 1;
 }
 
+// Reverse the coordinates by swapping start/end
+void SeqCoord::reverse()
+{
+	int tmp = interval.end;
+	interval.end = interval.start;
+	interval.start = tmp;
+}
+
 std::string SeqCoord::getSubstring(std::string str) const
 {
 	int left;
