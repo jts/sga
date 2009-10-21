@@ -18,10 +18,10 @@ ContainMap::ContainMap(std::string file)
 	while(reader >> o)
 	{
 		// By convention the lexographically lower ID is the container and the lexohigher is the contained
-		if(o.read[0].id < o.read[1].id)
-			add(o.read[1].id, o.read[0].id);
+		if(o.id[0] < o.id[1])
+			add(o.id[1], o.id[0]);
 		else
-			add(o.read[0].id, o.read[1].id);
+			add(o.id[0], o.id[1]);
 	}
 	reader.close();
 }
@@ -91,7 +91,7 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 	Overlap o;
 	while(overlapReader >> o)
 	{
-		if(containments.isContained(o.read[0].id) || containments.isContained(o.read[1].id))
+		if(containments.isContained(o.id[0]) || containments.isContained(o.id[1]))
 		{
 			//std::cerr << "skipping edge that has contained vertex " << o << "\n";
 			continue;
@@ -100,17 +100,17 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 		// Initialize data and perform checks
 		StringVertex* pVerts[2];
 		Sequence overhangs[2];
-		EdgeComp comp = (o.read[0].isReverse() || o.read[1].isReverse()) ? EC_REVERSE : EC_SAME;
+		EdgeComp comp = (o.match.coord[0].isReverse() || o.match.coord[1].isReverse()) ? EC_REVERSE : EC_SAME;
 
 		for(size_t idx = 0; idx < 2; ++idx)
 		{
-			pVerts[idx] = static_cast<StringVertex*>(pGraph->getVertex(o.read[idx].id));
+			pVerts[idx] = static_cast<StringVertex*>(pGraph->getVertex(o.id[idx]));
 			assert(pVerts[idx]);
 			
 			// Ensure the reads are not identical
-			assert(!o.read[idx].isContained() && o.read[idx].isExtreme());
+			assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
 
-			std::string overhang = getOverhangString(o.read[idx], pVerts[idx]->getSeq());
+			std::string overhang = getOverhangString(o.match.coord[idx], pVerts[idx]->getSeq());
 			overhangs[idx] = (comp == EC_SAME) ? overhang : reverseComplement(overhang);
 		}
 
@@ -118,7 +118,7 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 		StringEdge* pEdges[2];
 		for(size_t idx = 0; idx < 2; ++idx)
 		{
-			EdgeDir dir = o.read[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
+			EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
 			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, overhangs[1 - idx]);
 		}
 

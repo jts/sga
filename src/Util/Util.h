@@ -129,7 +129,7 @@ struct SeqCoord
 {
 	// constructor
 	SeqCoord() {}
-	SeqCoord(std::string i, int s, int e, int l) : id(i), interval(s, e), seqlen(l) {}
+	SeqCoord(int s, int e, int l) : interval(s, e), seqlen(l) {}
 
 	// functions
 	bool isLeftExtreme() const;
@@ -147,9 +147,19 @@ struct SeqCoord
 	friend std::istream& operator>>(std::istream& in, SeqCoord& sc);	
 
 	// data
-	std::string id;
 	Interval interval;
 	int seqlen;
+};
+
+struct Matching
+{
+	Matching() {}
+	Matching(int s1, int e1, int l1, int s2, int e2, int l2);
+	friend std::ostream& operator<<(std::ostream& out, const Matching& m);
+	friend std::istream& operator>>(std::istream& in, Matching& m);
+
+	
+	SeqCoord coord[2];
 };
 
 // Overlap
@@ -164,7 +174,8 @@ struct Overlap
 	friend std::istream& operator>>(std::istream& in, Overlap& o);
 
 	// data
-	SeqCoord read[2];
+	std::string id[2];
+	Matching match;
 };
 
 typedef std::vector<Overlap> OverlapVector;

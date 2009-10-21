@@ -81,7 +81,7 @@ Vertex* Bigraph::getVertex(VertexID id) const
 //
 void Bigraph::addEdge(Edge* pEdge)
 {
-	Vertex* pVert = getVertex(pEdge->getStartID());
+	Vertex* pVert = pEdge->getStart();
 	pVert->addEdge(pEdge);
 }
 

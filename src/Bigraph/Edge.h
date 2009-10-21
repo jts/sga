@@ -40,7 +40,7 @@ class Edge
 			m_color = c;
 		}
 
-		Edge* getTwin() const
+		inline Edge* getTwin() const
 		{
 			assert(m_pTwin != NULL);
 			return m_pTwin;
@@ -54,7 +54,7 @@ class Edge
 		// Make the direction of the edge that is in the same direction as the current edge
 		// but originating in the endpoint vertex
 		// This is the transitive direction start --> end *-->* 
-		EdgeDir getTransitiveDir() const
+		inline EdgeDir getTransitiveDir() const
 		{
 			return (m_comp == EC_SAME) ? m_dir : !m_dir;
 		}
@@ -62,20 +62,20 @@ class Edge
 		// Make the direction of the edge that its twin should point along 
 		// start   --->   end
 		//       * <--- *
-		EdgeDir getTwinDir() const
+		inline EdgeDir getTwinDir() const
 		{
 			return (m_comp == EC_SAME) ? !m_dir : m_dir;
 		}
 
-		EdgeDesc getDesc() const
+		inline EdgeDesc getDesc() const
 		{
 			return EdgeDesc(getEndID(), getDir(), getComp());
 		}
 		
 
 		// Flip the edge
-		void flipComp() { m_comp = !m_comp; }
-		void flipDir() { m_dir = !m_dir; }
+		inline void flipComp() { m_comp = !m_comp; }
+		inline void flipDir() { m_dir = !m_dir; }
 
 		virtual void flip()
 		{

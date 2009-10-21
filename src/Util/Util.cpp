@@ -196,14 +196,37 @@ std::string SeqCoord::getSubstring(std::string str) const
 // Output
 std::ostream& operator<<(std::ostream& out, const SeqCoord& sc)
 {
-	out << sc.id << " " << sc.interval << " " << sc.seqlen;
+	out << sc.interval << " " << sc.seqlen;
 	return out;
 }
 
 // Input
 std::istream& operator>>(std::istream& in, SeqCoord& sc)
 {
-	in >> sc.id >> sc.interval >> sc.seqlen;
+	in >> sc.interval >> sc.seqlen;
+	return in;
+}
+
+//
+// Matching
+//
+Matching::Matching(int s1, int e1, int l1, int s2, int e2, int l2)
+{
+	coord[0] = SeqCoord(s1, e1, l1);
+	coord[1] = SeqCoord(s2, e2, l2);
+}
+
+// Output
+std::ostream& operator<<(std::ostream& out, const Matching& m)
+{
+	out << m.coord[0] << " " << m.coord[1];
+	return out;
+}
+
+// Input
+std::istream& operator>>(std::istream& in, Matching& m)
+{
+	in >> m.coord[0] >> m.coord[1];
 	return in;
 }
 
@@ -213,23 +236,22 @@ std::istream& operator>>(std::istream& in, SeqCoord& sc)
 Overlap::Overlap(std::string i1, int s1, int e1, int l1,
                  std::string i2, int s2, int e2, int l2)
 {
-	read[0] = SeqCoord(i1, s1, e1, l1);
-	read[1] = SeqCoord(i2, s2, e2, l2);
+	id[0] = i1;
+	id[1] = i2;
+	match = Matching(s1, e1, l1, s2, e2, l2);
 }
 
 // Output
 std::ostream& operator<<(std::ostream& out, const Overlap& o)
 {
-	out << o.read[0] << "\t";
-	out << o.read[1];
+	out << o.id[0] << " " << o.id[1] << " " << o.match;
 	return out;
 }
 
 // Input
 std::istream& operator>>(std::istream& in, Overlap& o)
 {
-	in >> o.read[0];
-	in >> o.read[1];
+	in >> o.id[0] >> o.id[1] >> o.match;
 	return in;
 }
 

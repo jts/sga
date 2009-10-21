@@ -232,14 +232,14 @@ void parseHits(std::string hitsFile)
 void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& overlapHandle)
 {
 	// Ensure that the overlap is not a containment
-	if(ovr.read[0].isContained() || ovr.read[1].isContained())
+	if(ovr.match.coord[0].isContained() || ovr.match.coord[1].isContained())
 	{
 		containHandle << ovr << "\n";
 		return;
 	}
 
 	// Unless both overlaps are extreme, skip
-	if(!ovr.read[0].isExtreme() || !ovr.read[1].isExtreme())
+	if(!ovr.match.coord[0].isExtreme() || !ovr.match.coord[1].isExtreme())
 	{
 		std::cerr << "Skipping non-extreme overlap: " << ovr << "\n";
 		return;
@@ -248,17 +248,17 @@ void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& ove
 	// Ensure that the overlaps are the correct orientation
 	// If the reads are from the same strand, one should be left extreme and one should be right extreme
 	// If they are from opposite strands, they should both be left (or right)
-	bool sameStrand = !(ovr.read[0].isReverse() || ovr.read[1].isReverse());
+	bool sameStrand = !(ovr.match.coord[0].isReverse() || ovr.match.coord[1].isReverse());
 	bool proper = false;
 	if(sameStrand)
 	{
-		proper = (ovr.read[0].isLeftExtreme() != ovr.read[1].isLeftExtreme() && 
-				  ovr.read[0].isRightExtreme() != ovr.read[1].isRightExtreme());
+		proper = (ovr.match.coord[0].isLeftExtreme() != ovr.match.coord[1].isLeftExtreme() && 
+				  ovr.match.coord[0].isRightExtreme() != ovr.match.coord[1].isRightExtreme());
 	}
 	else
 	{
-		proper = (ovr.read[0].isLeftExtreme() == ovr.read[1].isLeftExtreme() && 
-				  ovr.read[0].isRightExtreme() == ovr.read[1].isRightExtreme());
+		proper = (ovr.match.coord[0].isLeftExtreme() == ovr.match.coord[1].isLeftExtreme() && 
+				  ovr.match.coord[0].isRightExtreme() == ovr.match.coord[1].isRightExtreme());
 	}
 
 	if(!proper)

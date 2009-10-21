@@ -83,10 +83,10 @@ int oviewMain(int argc, char** argv)
 	Overlap o;
 	while(overlapReader >> o)
 	{
-		if(opt::readFilter.empty() || (o.read[0].id == opt::readFilter || o.read[1].id == opt::readFilter))
+		if(opt::readFilter.empty() || (o.id[0] == opt::readFilter || o.id[1] == opt::readFilter))
 		{
-			overlapMap[o.read[0].id].push_back(o);
-			overlapMap[o.read[1].id].push_back(o);
+			overlapMap[o.id[0]].push_back(o);
+			overlapMap[o.id[1]].push_back(o);
 		}
 	}
 
@@ -127,15 +127,18 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 		const Overlap& curr = overlaps[j];
 		SeqCoord rootSC;
 		SeqCoord otherSC;
-		if(curr.read[0].id == rootID)
+		std::string otherID;
+		if(curr.id[0] == rootID)
 		{
-			rootSC = curr.read[0];
-			otherSC = curr.read[1];
+			rootSC = curr.match.coord[0];
+			otherSC = curr.match.coord[1];
+			otherID = curr.id[1];
 		}
 		else
 		{
-			rootSC = curr.read[1];
-			otherSC = curr.read[0];
+			rootSC = curr.match.coord[1];
+			otherSC = curr.match.coord[0];
+			otherID = curr.id[0];
 		}
 
 		// If the root is reversed in this overlap, reverse both coordinates
@@ -146,7 +149,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 			otherSC.reverse();
 		}
 
-		std::string otherSeq = pRT->getRead(otherSC.id).seq.toString();
+		std::string otherSeq = pRT->getRead(otherID).seq.toString();
 		// Make the other sequence in the same frame as the root
 		if(otherSC.isReverse())
 		{
@@ -165,7 +168,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 			offset = rootSC.interval.start;
 		else
 			offset = -otherSC.interval.start;
-		draw_vector.push_back(DrawData(offset, otherSC.id, otherSeq));
+		draw_vector.push_back(DrawData(offset, otherID, otherSeq));
 	}
 	drawMulti(rootData.name, rootData.seq.size(), draw_vector);
 }
