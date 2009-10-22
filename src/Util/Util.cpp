@@ -126,63 +126,6 @@ Interval intersect(const Interval& r1, const Interval& r2)
 	return result;
 }
 
-//
-// SeqCoord
-//
-
-// Checks if the left edge is extreme
-bool SeqCoord::isLeftExtreme() const
-{
-	return (interval.start == 0 || interval.end == 0);
-}
-
-// Checks if the right edge is extreme
-bool SeqCoord::isRightExtreme() const
-{
-	return (interval.end + 1 == seqlen || interval.start + 1 == seqlen);
-}
-
-// Checks if at least one endpoint is the end of the string
-bool SeqCoord::isExtreme() const
-{
-	return (isLeftExtreme() || isRightExtreme());
-}
-
-// Checks if both end points are the end of the string
-bool SeqCoord::isContained() const
-{
-	return (isLeftExtreme() && isRightExtreme());
-}
-
-// Check if the interval is in reverse orientation
-bool SeqCoord::isReverse() const
-{
-	return interval.end < interval.start;
-}
-
-// Flip the orientation of the seq coord
-// This naturally reverses the orientation of the start/end points
-void SeqCoord::flip()
-{
-	interval.start = seqlen - interval.start - 1;
-	interval.end = seqlen - interval.end - 1;
-}
-
-// Reflect transfers the coordinates to the opposite strand without reversing
-void SeqCoord::reflect()
-{
-	flip();
-	reverse();
-}
-
-// Reverse the coordinates by swapping start/end
-void SeqCoord::reverse()
-{
-	int tmp = interval.end;
-	interval.end = interval.start;
-	interval.start = tmp;
-}
-
 // Complement the SeqCoord
 SeqCoord SeqCoord::complement() const
 {
@@ -356,25 +299,6 @@ Sequence complement(const Sequence& seq)
 		out[i] = complement(seq[i]);
 	}
 	return out;
-}
-
-// Complement a base
-char complement(char base)
-{
-	switch(base)
-	{
-		case 'A':
-			return 'T';
-		case 'C':
-			return 'G';
-		case 'G':
-			return 'C';
-		case 'T':
-			return 'A';
-		default:
-			assert(false && "Unknown base!");
-			return 'N';
-	}
 }
 
 // Strip the leading directories and

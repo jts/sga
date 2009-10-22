@@ -10,51 +10,15 @@
 #include "Vertex.h"
 
 //
-Vertex* Edge::getStart() const 
-{ 
-	return m_pStart; 
-}
-
-//
-Vertex* Edge::getEnd() const 
-{ 
-	return m_pEnd; 
-}
-
-//
 VertexID Edge::getStartID() const
-{ 
+{
 	return m_pStart->getID(); 
 }
 
 //
-VertexID Edge::getEndID() const 
-{ 
-	return m_pEnd->getID(); 
-}
-
-//
-EdgeDir Edge::getDir() const 
-{ 
-	return m_dir; 
-}
-
-//
-EdgeComp Edge::getComp() const
-{ 
-	return m_comp; 
-}
-
-//
-bool Edge::isSelf() const 
-{ 
-	return m_pStart == m_pEnd; 
-}
-
-// 
-GraphColor Edge::getColor() const
+VertexID Edge::getEndID() const
 {
-	return m_color;
+	return m_pEnd->getID(); 
 }
 
 // 

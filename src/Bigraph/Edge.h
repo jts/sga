@@ -86,14 +86,40 @@ class Edge
 		}
 
 		// Getters
-		Vertex* getStart() const;
-		Vertex* getEnd() const;
-		VertexID getStartID() const; 
-		VertexID getEndID() const; 
-		EdgeDir getDir() const; 
-		EdgeComp getComp() const; 
-		bool isSelf() const;
-		GraphColor getColor() const;
+		VertexID getStartID() const;
+		VertexID getEndID() const;
+
+		inline Vertex* getStart() const
+		{ 
+			return m_pStart; 
+		}
+
+		inline Vertex* getEnd() const
+		{
+			return m_pEnd;
+		}
+
+		
+		inline EdgeDir getDir() const
+		{
+			return m_dir; 
+		}
+
+ 		inline EdgeComp getComp() const
+		{
+			return m_comp;
+		}
+
+		inline bool isSelf() const
+		{	
+			return m_pStart == m_pEnd; 
+		}
+
+		inline GraphColor getColor() const
+		{
+			return m_color;
+		}
+
 		virtual std::string getLabel() const { return std::string(""); }
 
 		// Output

@@ -132,23 +132,59 @@ struct SeqCoord
 	SeqCoord(int s, int e, int l) : interval(s, e), seqlen(l) {}
 
 	// functions
-	bool isLeftExtreme() const;
-	bool isRightExtreme() const;
-	bool isExtreme() const;
-	bool isContained() const;
-	bool isReverse() const;
+	inline bool isLeftExtreme() const
+	{
+		return (interval.start == 0 || interval.end == 0);
+	}
+
+	inline bool isRightExtreme() const
+	{
+		return (interval.end + 1 == seqlen || interval.start + 1 == seqlen);
+	}
+
+	inline bool isExtreme() const
+	{
+		return (isLeftExtreme() || isRightExtreme());
+	}
+	
+	inline bool isContained() const
+	{
+		return (isLeftExtreme() && isRightExtreme());
+	}
+	
+	inline bool isReverse() const
+	{
+		return interval.end < interval.start;
+	}
+
 	// Return the length of the interval, which is inclusive
-	int length() const { return isReverse() ? interval.start - interval.end + 1 : interval.end - interval.start + 1; }
+	inline int length() const 
+	{ 
+		return isReverse() ? interval.start - interval.end + 1 : interval.end - interval.start + 1; 
+	}
 	
 	// Flip mirrors the coordinates so they are on the other strand
 	// The coordinates are naturally reversed to indicate its the other strand
-	void flip();
+	inline void flip()
+	{
+		interval.start = seqlen - interval.start - 1;
+		interval.end = seqlen - interval.end - 1;
+	}
 
 	// Reverse swaps that start/end coord
-	void reverse();
+	inline void reverse()
+	{
+		int tmp = interval.end;
+		interval.end = interval.start;
+		interval.start = tmp;
+	}
 
 	// Reflect transfers the coordinates to the opposite strand without reversing
-	void reflect();
+	inline void reflect()
+	{
+		flip();
+		reverse();
+	}
 
 	SeqCoord complement() const;
 
@@ -277,7 +313,26 @@ inline static uint8_t getBaseRank(char b)
 Sequence reverseComplement(const Sequence& seq);
 Sequence complement(const Sequence& seq);
 Sequence reverse(const Sequence& seq);
-char complement(char base);
+
+// Complement a base
+inline char complement(char base)
+{
+	switch(base)
+	{
+		case 'A':
+			return 'T';
+		case 'C':
+			return 'G';
+		case 'G':
+			return 'C';
+		case 'T':
+			return 'A';
+		default:
+			assert(false && "Unknown base!");
+			return 'N';
+	}
+}
+
 
 //
 // Edge Operations
