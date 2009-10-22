@@ -43,7 +43,11 @@ class Bigraph
 		void addVertex(Vertex* pVert);
 		
 		// Remove a vertex
-		void removeVertex(VertexID id);
+		// removeIslandVertex removes a vertex that is guarenteed to
+		// not have edges
+		// removeConnectedVertex removes a (possibly) connected vertex and all the edges to/from it
+		void removeIslandVertex(VertexID id);
+		void removeConnectedVertex(VertexID id);
 
 		// Check if a vertex exists
 		bool hasVertex(VertexID id);
@@ -58,6 +62,7 @@ class Bigraph
 		void removeEdge(const EdgeDesc& ed);
 
 		// Remove all edges marked by color c
+		void sweepVertices(GraphColor c);
 		void sweepEdges(GraphColor c);
 
 		// Merge vertices

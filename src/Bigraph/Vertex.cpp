@@ -23,6 +23,17 @@ Vertex::~Vertex()
 void Vertex::addEdge(Edge* ep)
 {
 	assert(ep->getStart() == this);
+
+	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		/*
+		if((*iter)->getEndID() == ep->getEndID())
+		{
+			std::cout << "Attempted to add duplicate edge with ID: " << ep->getEndID() << " to vertex: " << ep->getStartID() << "\n";
+			assert(false);
+		}
+		*/
+	}
 	m_edges.push_back(ep);
 }
 

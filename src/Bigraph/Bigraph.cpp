@@ -43,7 +43,7 @@ void Bigraph::addVertex(Vertex* pVert)
 //
 // Remove a vertex
 //
-void Bigraph::removeVertex(VertexID id)
+void Bigraph::removeIslandVertex(VertexID id)
 {
 	// Remove the edges pointing to this Vertex
 	Vertex* pVertex = getVertex(id);
@@ -53,6 +53,21 @@ void Bigraph::removeVertex(VertexID id)
 	delete pVertex;
 	m_vertices.erase(id);
 }
+
+//
+// Remove a vertex
+//
+void Bigraph::removeConnectedVertex(VertexID id)
+{
+	// Remove the edges pointing to this Vertex
+	Vertex* pVertex = getVertex(id);
+	pVertex->deleteEdges();
+
+	// Remove the vertex from the collection
+	delete pVertex;
+	m_vertices.erase(id);
+}
+
 
 //
 // Check for the existance of a vertex
@@ -171,8 +186,19 @@ void Bigraph::merge(Edge* pEdge)
 	pEdge = 0;
 
 	// Remove V2
-	removeVertex(pV2->getID());
+	// It is guarenteed to not be connected
+	removeIslandVertex(pV2->getID());
 	//validate();
+}
+
+//
+void Bigraph::sweepVertices(GraphColor c)
+{
+	for(VertexPtrMapIter iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
+	{
+		if(iter->second->getColor() == c)
+			removeConnectedVertex(iter->second->getID());
+	}
 }
 
 

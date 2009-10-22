@@ -179,7 +179,7 @@ void drawMulti(std::string rootName, int root_len, DrawVector& dv)
 	if(dv.size() < 2)
 		return;
 	std::sort(dv.begin(), dv.end());
-	int default_padding = 24;
+	int default_padding = 12;
 	std::cout << "\nDrawing overlaps for read " << rootName << "\n";
 	for(size_t i = 0; i < dv.size(); ++i)
 	{
@@ -196,14 +196,15 @@ void drawMulti(std::string rootName, int root_len, DrawVector& dv)
 		int t_right_clip = right_clip - c_offset;
 		// Calculate the length of the left padding
 		int padding = default_padding + left_clip;
-		//printf("lc: %d tlc: %d\n", left_clip, t_left_clip);
 		std::string leader = (t_left_clip > 0) ? "..." : "";
 		std::string trailer = (t_right_clip < c_len) ? "..." : ""; 
 		std::string clipped = dv[i].seq.substr(t_left_clip, t_right_clip - t_left_clip);
 		padding -= leader.size();
-		padding -= dv[i].name.size();
+		//padding -= dv[i].name.size();
+		//printf("offset: %d lc: %d rc: %d pad: %d\n", c_offset, left_clip, right_clip, padding);
+		assert(padding >= 0);
 		std::string padding_str(padding, ' ');
-		std::cout << dv[i].name << padding_str << leader << clipped << trailer << "\n";		
+		std::cout /*<< dv[i].name*/ << padding_str << leader << clipped << trailer << "\t" << dv[i].name << "\n";		
 	}
 }
 

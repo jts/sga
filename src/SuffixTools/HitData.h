@@ -26,6 +26,15 @@ struct Hit
 	bool targetRev; // Whether the target was reversed
 	bool queryRev; // Whether the query was reversed
 
+	// Sort hits by saIdx and then by overlap length
+	friend bool operator<(const Hit& h1, const Hit& h2)
+	{
+		if(h1.saIdx != h2.saIdx)
+			return h1.saIdx < h2.saIdx;
+		else
+			return h1.len > h2.len;
+	}
+
 	friend std::ostream& operator<<(std::ostream& out, const Hit& hit)
 	{
 		out << hit.readIdx << " " << hit.saIdx << " " << hit.qstart << " " << hit.len << " " << hit.targetRev << " " << hit.queryRev;

@@ -151,7 +151,7 @@ class AlphaCount
 		// As the counts are unsigned integers, each value in left
 		// must be larger or equal to value in right. The calling function
 		// must guarentee this.
-		inline friend AlphaCount operator-(const AlphaCount& left, const AlphaCount& right)
+		friend AlphaCount operator-(const AlphaCount& left, const AlphaCount& right)
 		{
 			AlphaCount out;
 			for(int i = 0; i < ALPHABET_SIZE; ++i)

@@ -131,13 +131,31 @@ std::string computeHitsBWT()
 		
 		
 		// Write the hits to the file
+		// Some hits may be duplicate so only output the longest hit to a particular saIdx
+		size_t prevID = std::numeric_limits<size_t>::max();
+		size_t prevLen = 0;
+		std::sort(pHits->begin(), pHits->end());
+
 		for(size_t i = 0; i < pHits->size(); ++i)
-			hitsHandle << (*pHits)[i] << "\n";
+		{
+			Hit& curr_hit = (*pHits)[i];
+			if(curr_hit.saIdx != prevID)
+			{
+				hitsHandle << curr_hit << "\n";
+			}
+			else
+			{
+				assert(curr_hit.len <= prevLen); 
+			}
+
+			prevID = curr_hit.saIdx;
+			prevLen = curr_hit.len;
+		}
 		pHits->clear();
 	}
 	double align_time_secs = timer.getElapsedTime();
 	printf("[bwt] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
-	printf("[bwt] performed %d iterations in the inner loop\n", cost);
+	printf("[bwt] performed %d iterations in the inner loop (%lf cost/sequence)\n", cost, (double)cost / (double)count);
 
 	delete pHits;
 	delete pBWT;
@@ -172,7 +190,7 @@ void parseHits(std::string hitsFile)
 	ReadTable* pRevRT = new ReadTable();
 	pRevRT->initializeReverse(pFwdRT);
 	
-	// Read each hit sequentially, converting it to an overlaps
+	// Read each hit sequentially, converting it to an overlap
 	Hit hit;
 	while(hitsHandle >> hit)
 	{

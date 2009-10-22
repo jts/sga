@@ -66,7 +66,7 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 	// Calculate the initial seeds
 	int len = w.length();
 	int num_seeds = maxDiff + 1;
-	int seed_len = (minOverlap % num_seeds == 0) ? minOverlap / num_seeds : (int)(minOverlap / num_seeds) + 1;
+	int seed_len = minOverlap / num_seeds;
 	int seed_start = len - minOverlap;
 
 	// Populate the initial seeds
@@ -79,7 +79,7 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 		align.dir = ED_RIGHT;
 		align.z = maxDiff;
 		align.seed_len = std::min(seed_len, len - pos);
-		//printf("Creating seed at %d to %d, str: %s\n", align.left_index, align.seed_len, w.substr(pos, align.seed_len).c_str());
+		//printf("Creating seed at %d to %d, str: %s\n", align.left_index, align.right_index, w.substr(pos, align.seed_len).c_str());
 
 		// Initialize the left and right suffix array intervals
 		char b = w[pos];
@@ -134,16 +134,19 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 		{
 			// Left extension
 
-			// By definition, the overlap length must be at least minOverlap so any prefix hits
-			// are valid overlaps
-			int64_t t_lower = pBWT->getC('$') + pBWT->getOcc('$', align.r_lower[LEFT_INT_IDX] - 1);
-			int64_t t_upper = pBWT->getC('$') + pBWT->getOcc('$', align.r_upper[LEFT_INT_IDX]) - 1;
-			for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
+			// If the overlap is large enough, output the hit
+			int overlap_len = len - align.left_index;
+			if(overlap_len >= minOverlap)
 			{
-				hitTemplate.saIdx = sa_idx;
-				hitTemplate.qstart = align.left_index;
-				hitTemplate.len = len - align.left_index;
-				pHits->push_back(hitTemplate);
+				int64_t t_lower = pBWT->getC('$') + pBWT->getOcc('$', align.r_lower[LEFT_INT_IDX] - 1);
+				int64_t t_upper = pBWT->getC('$') + pBWT->getOcc('$', align.r_upper[LEFT_INT_IDX]) - 1;
+				for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
+				{
+					hitTemplate.saIdx = sa_idx;
+					hitTemplate.qstart = align.left_index;
+					hitTemplate.len = len - align.left_index;
+					pHits->push_back(hitTemplate);
+				}
 			}
 
 			// Extend hits

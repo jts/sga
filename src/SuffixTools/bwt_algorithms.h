@@ -35,6 +35,13 @@ struct BWTAlign
 	int64_t r_lower[2]; // idx 0  is the left interval, 1 is the right 
 	int64_t r_upper[2]; // as above
 
+	void print() const
+	{
+		printf("li: %d ri: %d sl: %d dir: %d z: %d lrl: %d lru: %d rlr: %d rlu: %d\n", 
+		        left_index, right_index, seed_len, dir, z, (int)r_lower[0], (int)r_upper[0], (int)r_lower[1], (int)r_upper[1]);
+	}
+
+
 	void print(const std::string& w) const
 	{
 		printf("sub: %s li: %d ri: %d sl: %d dir: %d z: %d lrl: %d lru: %d rlr: %d rlu: %d\n", 

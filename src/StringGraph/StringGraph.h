@@ -116,4 +116,17 @@ struct SGTransRedVisitor
 	void postvisit(StringGraph*);
 };
 
+struct SGTrimVisitor
+{
+	SGTrimVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+
+	int num_island;
+	int num_terminal;
+	int num_contig;
+};
+
+
 #endif

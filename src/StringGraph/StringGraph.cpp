@@ -65,6 +65,7 @@ Matching StringEdge::getMatch() const
 
 void StringEdge::validate() const
 {
+	/*
 	const StringEdge* pTwin = CSE_CAST(getTwin());
 	std::string m_v1 = getMatchStr();
 	std::string m_v2 = pTwin->getMatchStr();
@@ -82,6 +83,7 @@ void StringEdge::validate() const
 		std::cout << "Validation failed for edge " << *this << "\n";
 		assert(false);
 	}
+	*/
 }
 
 // Join pEdge into the start of this edge
@@ -336,5 +338,46 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 void SGTransRedVisitor::postvisit(StringGraph* pGraph)
 {
 	pGraph->sweepEdges(GC_BLACK);
+}
+
+void SGTrimVisitor::previsit(StringGraph* pGraph)
+{
+	num_island = 0;
+	num_terminal = 0;
+	num_contig = 0;
+	pGraph->setColors(GC_WHITE);
+}
+
+// Perform a transitive reduction about this vertex
+// This uses Myers' algorithm (2005, The fragment assembly string graph)
+// Precondition: the edge list is sorted by length (ascending)
+bool SGTrimVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	bool noext[2] = {0,0};
+
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];
+		if(pVertex->countEdges(dir) == 0)
+		{
+			pVertex->setColor(GC_BLACK);
+			noext[idx] = 1;
+		}
+	}
+
+	if(noext[0] && noext[1])
+		num_island++;
+	else if(noext[0] || noext[1])
+		num_terminal++;
+	else
+		num_contig++;
+	return noext[0] || noext[1];
+}
+
+// Remove all the marked edges
+void SGTrimVisitor::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepVertices(GC_BLACK);
+	printf("island: %d terminal: %d contig: %d\n", num_island, num_terminal, num_contig);
 }
 
