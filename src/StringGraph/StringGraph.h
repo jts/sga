@@ -128,5 +128,14 @@ struct SGTrimVisitor
 	int num_contig;
 };
 
+struct SGBubbleVisitor
+{
+	SGBubbleVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+	int num_bubbles;
+};
+
 
 #endif

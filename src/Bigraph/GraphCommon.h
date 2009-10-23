@@ -16,7 +16,9 @@ enum GraphColor
 {
 	GC_WHITE,
 	GC_GRAY,
-	GC_BLACK
+	GC_BLACK,
+	GC_BLUE, 
+	GC_RED
 };
 
 

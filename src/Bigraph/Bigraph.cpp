@@ -194,10 +194,14 @@ void Bigraph::merge(Edge* pEdge)
 //
 void Bigraph::sweepVertices(GraphColor c)
 {
-	for(VertexPtrMapIter iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
+	VertexPtrMapIter iter = m_vertices.begin();
+	while(iter != m_vertices.end())
 	{
+		VertexPtrMapIter next = iter;
+		++next;
 		if(iter->second->getColor() == c)
 			removeConnectedVertex(iter->second->getID());
+		iter = next;
 	}
 }
 
@@ -426,7 +430,10 @@ bool Bigraph::checkColors(GraphColor c)
 	for(; iter != m_vertices.end(); ++iter)
 	{
 		if(iter->second->getColor() != c)
+		{
+			std::cerr << "Warning vertex " << iter->second->getID() << " is color " << iter->second->getColor() << " expected " << c << "\n";
 			return false;
+		}
 	}
 	return true;
 }
@@ -463,7 +470,7 @@ void Bigraph::writeDot(std::string filename, int dotFlags) const
 	for(; iter != m_vertices.end(); ++iter)
 	{
 		VertexID id = iter->second->getID();
-		out << id << " [ label =\"" << id << "\" ";
+		out << "\"" << id << "\" [ label =\"" << id << "\" ";
 		out << "];\n";
 		iter->second->writeEdges(out, dotFlags);
 	}

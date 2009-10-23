@@ -67,12 +67,15 @@ void assemble()
 	//pGraph->validate();
 	//pGraph->writeDot("before.dot");
 	SGTrimVisitor trimVisit;
-	pGraph->visit(trimVisit);
-
 	SGTransRedVisitor trVisit;
-	pGraph->visit(trVisit);
+	SGBubbleVisitor bubbleVisit;
 
+	pGraph->visit(trimVisit);
+	pGraph->visit(trVisit);
 	pGraph->simplify();
+	while(pGraph->visit(bubbleVisit));
+	pGraph->simplify();
+
 	//pGraph->mergeVertices("1/A", "66/A");
 	pGraph->validate();
 	pGraph->writeDot("final.dot");

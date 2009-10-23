@@ -229,6 +229,22 @@ struct Matching
 		out.interval.start = c.interval.start + t;
 		out.interval.end = c.interval.end + t;
 		return out;
+	}
+
+	// Translate a single position from c[0] frame to c[1]
+	int translate(int c) const
+	{
+		assert(coord[0].length() == coord[1].length()); // ensure translation is valid
+		int t = coord[1].interval.start - coord[0].interval.start;
+		return c + t;
+	}
+
+	// Translate a single position from c[1] frame to c[0]
+	int inverseTranslate(int c) const
+	{
+		assert(coord[0].length() == coord[1].length());
+		int t = coord[0].interval.start - coord[1].interval.start;
+		return c + t;
 	}	
 
 	// Return a new match with the coords swapped

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <iterator>
+#include <math.h>
 #include "Util.h"
 #include "oview.h"
 #include "SuffixArray.h"
@@ -35,6 +36,7 @@ static const char *OVIEW_USAGE_MESSAGE =
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -i, --id=ID                      only show overlaps for read with ID\n"
 "      -m, --max-overhang=D             only show D overhanging bases of the alignments (default=6)\n"
+"      -c, --correct-errors             correct reads errors using overlaps\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -44,19 +46,21 @@ namespace opt
 	static std::string prefix;
 	static std::string readsFile;
 	static std::string readFilter;
+	static bool correct_errors;
 }
 
-static const char* shortopts = "p:m:i:v";
+static const char* shortopts = "p:m:i:cv";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-	{ "verbose",      no_argument,       NULL, 'v' },
-	{ "id",           required_argument, NULL, 'i' },
-	{ "prefix",       required_argument, NULL, 'p' },
-	{ "max-overhang", required_argument, NULL, 'm' },
-	{ "help",         no_argument,       NULL, OPT_HELP },
-	{ "version",      no_argument,       NULL, OPT_VERSION },
+	{ "verbose",        no_argument,       NULL, 'v' },
+	{ "id",             required_argument, NULL, 'i' },
+	{ "prefix",         required_argument, NULL, 'p' },
+	{ "max-overhang",   required_argument, NULL, 'm' },
+	{ "correct-errors", no_argument,       NULL, 'c' },
+	{ "help",           no_argument,       NULL, OPT_HELP },
+	{ "version",        no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -83,26 +87,191 @@ int oviewMain(int argc, char** argv)
 	Overlap o;
 	while(overlapReader >> o)
 	{
-		if(opt::readFilter.empty() || (o.id[0] == opt::readFilter || o.id[1] == opt::readFilter))
+		// If we are in error correcting mode, or the read filter is not set or this read matches the filter, add it to the 
+		// overlap map
+		if(opt::correct_errors || opt::readFilter.empty() || (o.id[0] == opt::readFilter || o.id[1] == opt::readFilter))
 		{
 			overlapMap[o.id[0]].push_back(o);
 			overlapMap[o.id[1]].push_back(o);
 		}
 	}
 
-	if(!opt::readFilter.empty())
-		drawAlignment(opt::readFilter, pRT, &overlapMap);
+
+	if(opt::correct_errors)
+	{
+		correctReads(pRT, &overlapMap);
+	}
 	else
 	{
-		// Output each overlap
-		for(size_t i = 0; i < pRT->getCount(); ++i)
+		// draw mode
+		if(!opt::readFilter.empty())
 		{
-			drawAlignment(pRT->getRead(i).id, pRT, &overlapMap);
+			drawAlignment(opt::readFilter, pRT, &overlapMap);
+		}
+		else
+		{
+			// Output each overlap
+			for(size_t i = 0; i < pRT->getCount(); ++i)
+				drawAlignment(pRT->getRead(i).id, pRT, &overlapMap);
 		}
 	}
 
 	delete pRT;
 	return 0;
+}
+
+void correctReads(const ReadTable* pRT, const OverlapMap* pOM)
+{
+	std::string outFile(opt::prefix + ".ec.fa");
+	std::ofstream out(outFile.c_str());
+
+	size_t total_bases = 0;
+	size_t total_corrected = 0;
+	for(size_t i = 0; i < pRT->getCount(); ++i)
+	{
+		int num_corrected = 0;
+
+		const SeqItem& si = pRT->getRead(i);
+		std::string corrected = correct(pRT->getRead(i), pRT, pOM, num_corrected);
+		
+		total_bases += corrected.length();
+		total_corrected += num_corrected;
+		out << ">" << si.id << "\n" << corrected << "\n";
+	}
+	printf("corrected %zu bases out of %zu total (%lf)\n", total_corrected, total_bases, (double)total_corrected / total_bases);
+	out.close();
+}
+
+std::string correct(const SeqItem& read, const ReadTable* pRT, const OverlapMap* pOM, int& num_corrected)
+{
+	OverlapMap::const_iterator finder = pOM->find(read.id);
+	if(finder == pOM->end())
+		return read.seq.toString();
+	
+	const OverlapVector & overlaps = finder->second;
+	StringVector pileupVec(read.seq.length());
+
+	for(size_t i = 0; i < read.seq.length(); ++i)
+		pileupVec[i].append(1, read.seq.get(i));
+
+	for(size_t i = 0; i < overlaps.size(); ++i)
+	{
+		const Overlap& curr = overlaps[i];
+		SeqCoord readSC;
+		SeqCoord otherSC;
+		std::string otherID;
+		if(curr.id[0] == read.id)
+		{
+			readSC = curr.match.coord[0];
+			otherSC = curr.match.coord[1];
+			otherID = curr.id[1];
+		}
+		else
+		{
+			readSC = curr.match.coord[1];
+			otherSC = curr.match.coord[0];
+			otherID = curr.id[0];
+		}
+
+		// normalize coordinates into the root
+		if(readSC.isReverse())
+		{
+			readSC.reverse();
+			otherSC.reverse();
+		}
+
+		std::string otherSeq = pRT->getRead(otherID).seq.toString();
+		// Make the other sequence in the same frame as the root
+		if(otherSC.isReverse())
+		{
+			otherSeq = reverseComplement(otherSeq);
+			otherSC.flip();
+		}
+
+		assert(!readSC.isReverse());
+		assert(readSC.isReverse() == otherSC.isReverse());
+		Matching match(readSC, otherSC);
+
+		// Add the bases of other to the pileup
+		for(size_t j = 0; j < otherSeq.length(); ++j)
+		{
+			// Transform the position j on otherSeq to the coordinates of the read
+			int transformed = match.inverseTranslate(j);
+			if(transformed >= 0 && transformed < (int)pileupVec.size())
+				pileupVec[transformed].append(1, otherSeq[j]);
+		}
+	}
+
+	// Prior probability that there is an error at this base
+	//double p_base = 0.25; // all bases are equally probable
+	double p_error = 0.01;
+	double threshold = 40;
+
+	double lp_error = log(p_error);
+	double lp_correct = log(1.0f - p_error);
+
+	std::string corrected(read.seq.length(), 'A');
+	num_corrected = 0;
+
+	if(opt::verbose > 0)
+		std::cout << "Pileup string for " << read.seq.toString() << "\n";
+
+	for(size_t i = 0; i < pileupVec.size(); ++i)
+	{
+		double probs[4];
+		std::string& str = pileupVec[i];
+
+		// Calculate the probability of each base, assuming the sequence is haploid
+		for(size_t j = 0; j < 4; ++j)
+		{
+			char b = ALPHABET[j];
+			double lp = 0.0f;
+
+			for(size_t k = 0; k < str.size(); ++k)
+			{
+				if(str[k] == b)
+					lp += lp_correct;
+				else
+					lp += lp_error;
+			}
+			probs[j] = lp;
+		}
+
+		if(opt::verbose > 0)
+			printf("%s A: %lf C: %lf G: %lf T: %lf\n", str.c_str(), probs[0], probs[1], probs[2], probs[3]); 
+
+		// Correct the base if A) the most likely base is not the base in the read and B) the probability of the base is
+		// above threshold
+		char best = '$';
+		double best_lp = 0.0f;
+		for(size_t j = 0; j < 4; ++j)
+		{
+			if(probs[j] > best_lp || best == '$')
+			{
+				best = ALPHABET[j];
+				best_lp = probs[j];
+			}
+		}
+
+		std::sort(probs, probs+4);
+		double second = probs[2];
+		double diff = best_lp - second;
+		(void)diff;
+		(void)threshold;
+		
+		if(diff > threshold && best != str[0])
+		{
+			++num_corrected;
+			corrected[i] = best;
+		}
+		else
+		{
+			corrected[i] = str[0];
+		}
+		//printf("best: %c bestlp: %lf second: %lf diff: %lf\n", best, best_lp, second, diff);
+	}
+
+	return corrected;
 }
 
 //
@@ -228,6 +397,7 @@ void parseOviewOptions(int argc, char** argv)
 			case 'v': opt::verbose++; break;
 			case 'i': arg >> opt::readFilter; break;
 			case 'm': arg >> opt::max_overhang; break;
+			case 'c': opt::correct_errors = true; break;
 			case OPT_HELP:
 				std::cout << OVIEW_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);

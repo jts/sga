@@ -348,9 +348,7 @@ void SGTrimVisitor::previsit(StringGraph* pGraph)
 	pGraph->setColors(GC_WHITE);
 }
 
-// Perform a transitive reduction about this vertex
-// This uses Myers' algorithm (2005, The fragment assembly string graph)
-// Precondition: the edge list is sorted by length (ascending)
+// Mark any nodes that either dont have edges or edges in only one direction for removal
 bool SGTrimVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
 	bool noext[2] = {0,0};
@@ -380,4 +378,86 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 	pGraph->sweepVertices(GC_BLACK);
 	printf("island: %d terminal: %d contig: %d\n", num_island, num_terminal, num_contig);
 }
+
+void SGBubbleVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+	num_bubbles = 0;
+}
+
+// Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
+bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	bool bubble_found = false;
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];
+		EdgePtrVec edges = pVertex->getEdges(dir); // These edges are already sorted
+
+		if(edges.size() == 2)
+		{
+			// Mark the vertices
+			for(size_t i = 0; i < edges.size(); ++i)
+			{
+				Edge* pVWEdge = edges[i];
+				Vertex* pWVert = pVWEdge->getEnd();
+
+				// Get the edges from w in the same direction
+				EdgeDir transDir = !pVWEdge->getTwinDir();
+				EdgePtrVec wEdges = pWVert->getEdges(transDir);
+
+				// If the bubble has collapsed, there should only be one edge
+				if(wEdges.size() == 1)
+				{
+					Vertex* pBubbleEnd = wEdges.front()->getEnd();
+					if(pBubbleEnd->getColor() == GC_BLACK)
+					{
+						// The endpoint has been visited, set this vertex as needed removal
+						// and set the endpoint as unvisited
+						pWVert->setColor(GC_RED);
+						++num_bubbles;
+						bubble_found = true;
+					}
+					else
+					{
+						// Endpoint has not been hit, set it to visited
+						pBubbleEnd->setColor(GC_BLACK);
+						pWVert->setColor(GC_BLUE);
+					}
+				}
+			}
+			
+			// Unmark vertices
+			for(size_t i = 0; i < edges.size(); ++i)
+			{
+				Edge* pVWEdge = edges[i];
+				Vertex* pWVert = pVWEdge->getEnd();
+
+				// Get the edges from w in the same direction
+				EdgeDir transDir = !pVWEdge->getTwinDir();
+				EdgePtrVec wEdges = pWVert->getEdges(transDir);
+
+				// If the bubble has collapsed, there should only be one edge
+				if(wEdges.size() == 1)
+				{
+					Vertex* pBubbleEnd = wEdges.front()->getEnd();
+					pBubbleEnd->setColor(GC_WHITE);
+				}
+				if(pWVert->getColor() == GC_BLUE)
+					pWVert->setColor(GC_WHITE);
+			}
+
+		}
+	}
+	return bubble_found;
+}
+
+// Remove all the marked edges
+void SGBubbleVisitor::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepVertices(GC_RED);
+	printf("bubbles: %d\n", num_bubbles);
+	assert(pGraph->checkColors(GC_WHITE));
+}
+
 
