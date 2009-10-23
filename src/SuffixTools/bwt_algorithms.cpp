@@ -62,7 +62,6 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 {
 	int cost = 0;
 	BWTAlignQueue* pQueue = new BWTAlignQueue;
-	//std::cout << "Aligning string " << w << "\n";
 	// Calculate the initial seeds
 	int len = w.length();
 	int num_seeds = maxDiff + 1;
@@ -92,6 +91,7 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 	{
 		++cost;
 		BWTAlign align = pQueue->front();
+		//std::cout << "Align: "; align.print(w);
 		pQueue->pop();
 
 		//printf("Processing: "); align.print(w);
@@ -140,11 +140,13 @@ int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int m
 			{
 				int64_t t_lower = pBWT->getC('$') + pBWT->getOcc('$', align.r_lower[LEFT_INT_IDX] - 1);
 				int64_t t_upper = pBWT->getC('$') + pBWT->getOcc('$', align.r_upper[LEFT_INT_IDX]) - 1;
+
 				for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
 				{
 					hitTemplate.saIdx = sa_idx;
 					hitTemplate.qstart = align.left_index;
-					hitTemplate.len = len - align.left_index;
+					hitTemplate.len = overlap_len;
+					std::cout << "pushing hit of length " << overlap_len << " to saIdx " << sa_idx << "\n";
 					pHits->push_back(hitTemplate);
 				}
 			}

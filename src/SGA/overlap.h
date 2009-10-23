@@ -23,6 +23,7 @@ void computeOverlapsLCP();
 std::string computeHitsBWT();
 
 //
+void outputHits(std::ofstream& handle, HitVector* pHits);
 void parseHits(std::string hitsFile);
 void writeOverlap(Overlap& overlap, std::ofstream& containHandle, std::ofstream& overlapHandle);
 

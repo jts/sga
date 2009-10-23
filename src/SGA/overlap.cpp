@@ -91,8 +91,14 @@ std::string computeHitsBWT()
 	// Some reads may have (many) more hits so the vector will automatically expand to
 	// contain them. That will be the memory highwater mark so there is no point deallocating
 	// the vector after each trip through the loop.
+	// The hits to the forward and reverse BWT must be kept seperately since they use different indexes
+	// and we must have index clashes
+	//
 	HitVector* pHits = new HitVector;
+	HitVector* pRevHits = new HitVector;
+
 	pHits->reserve(100);
+	pRevHits->reserve(100);
 
 	size_t count = 0;
 	SeqReader reader(opt::readsFile);
@@ -106,6 +112,7 @@ std::string computeHitsBWT()
 		seqs[0] = read.seq.toString();
 		seqs[1] = reverseComplement(seqs[0]);
 		// Get all the hits of this sequence to the forward and reverse BWT
+		std::cout << "Processing " << count << "\n";
 		for(size_t sn = 0; sn <= 1; ++sn)
 		{
 			bool isRC = (sn == 1) ? true : false;
@@ -119,50 +126,58 @@ std::string computeHitsBWT()
 			{
 				//cost += pBWT->getInexactPrefixHits(currSeq, pRBWT, opt::maxDiff, opt::minOverlap, count, false, isRC, pHits);
 				//cost += pRBWT->getInexactPrefixHits(reverse(currSeq), pBWT, opt::maxDiff, opt::minOverlap, count, true, !isRC, pHits);
-
+				
 				Hit hitTemplate(count, 0, 0, 0, false, isRC); 
 				cost += alignInexactSuffix(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
 				hitTemplate.targetRev = true;
 				hitTemplate.queryRev = !isRC;
-				cost += alignInexactSuffix(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
+				cost += alignInexactSuffix(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pRevHits);
 			}
 		}
-		++count;
-		
-		
+
 		// Write the hits to the file
-		// Some hits may be duplicate so only output the longest hit to a particular saIdx
-		size_t prevID = std::numeric_limits<size_t>::max();
-		size_t prevLen = 0;
-		std::sort(pHits->begin(), pHits->end());
-
-		for(size_t i = 0; i < pHits->size(); ++i)
-		{
-			Hit& curr_hit = (*pHits)[i];
-			if(curr_hit.saIdx != prevID)
-			{
-				hitsHandle << curr_hit << "\n";
-			}
-			else
-			{
-				assert(curr_hit.len <= prevLen); 
-			}
-
-			prevID = curr_hit.saIdx;
-			prevLen = curr_hit.len;
-		}
+		outputHits(hitsHandle, pHits);
+		outputHits(hitsHandle, pRevHits);
 		pHits->clear();
+		pRevHits->clear();
+		++count;
 	}
 	double align_time_secs = timer.getElapsedTime();
 	printf("[bwt] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
 	printf("[bwt] performed %d iterations in the inner loop (%lf cost/sequence)\n", cost, (double)cost / (double)count);
 
 	delete pHits;
+	delete pRevHits;
 	delete pBWT;
 	delete pRBWT;
 
 	hitsHandle.close();
 	return hitsFile;
+}
+
+// Remove duplicate hits and write them to the filehandle
+void outputHits(std::ofstream& handle, HitVector* pHits)
+{
+	// Some hits may be duplicate so only output the longest hit to a particular saIdx
+	size_t prevID = std::numeric_limits<size_t>::max();
+	size_t prevLen = 0;
+	std::sort(pHits->begin(), pHits->end());
+
+	for(size_t i = 0; i < pHits->size(); ++i)
+	{
+		const Hit& curr_hit = (*pHits)[i];
+		if(curr_hit.saIdx != prevID)
+		{
+			handle << curr_hit << "\n";
+		}
+		else
+		{
+			assert(curr_hit.len <= prevLen); 
+		}
+
+		prevID = curr_hit.saIdx;
+		prevLen = curr_hit.len;
+	}
 }
 
 // Parse all the hits and convert them to overlaps
@@ -204,6 +219,7 @@ void parseHits(std::string hitsFile)
 		// The index of the second read is given as the position in the SuffixArray index
 		const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(hit.saIdx).getID());
 
+		std::cout << "HIT: " << hit << " ids: " << query.id << " " << target.id << "\n";
 		// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
 		if(query.id != target.id && query.id < target.id)
 		{	

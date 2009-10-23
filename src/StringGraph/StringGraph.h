@@ -137,5 +137,21 @@ struct SGBubbleVisitor
 	int num_bubbles;
 };
 
+struct SGGraphStatsVisitor
+{
+	SGGraphStatsVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+
+	int num_terminal;
+	int num_island;
+	int num_monobranch;
+	int num_dibranch;
+	int num_transitive;
+	int num_edges;
+	int num_vertex;	
+};
+
 
 #endif

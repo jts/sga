@@ -69,13 +69,16 @@ void assemble()
 	SGTrimVisitor trimVisit;
 	SGTransRedVisitor trVisit;
 	SGBubbleVisitor bubbleVisit;
+	SGGraphStatsVisitor statsVisit;
+	pGraph->visit(statsVisit);
 
 	pGraph->visit(trimVisit);
 	pGraph->visit(trVisit);
 	pGraph->simplify();
-	while(pGraph->visit(bubbleVisit));
+	pGraph->visit(bubbleVisit);
 	pGraph->simplify();
-
+	pGraph->visit(trVisit);
+	pGraph->visit(statsVisit);
 	//pGraph->mergeVertices("1/A", "66/A");
 	pGraph->validate();
 	pGraph->writeDot("final.dot");

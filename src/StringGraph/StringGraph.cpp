@@ -271,7 +271,6 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
-	(void)pVertex;
 	
 	for(size_t idx = 0; idx < ED_COUNT; idx++)
 	{
@@ -319,6 +318,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			}
 		}
 
+		bool trans_found = false;
 		for(size_t i = 0; i < edges.size(); ++i)
 		{
 			if(edges[i]->getEnd()->getColor() == GC_BLACK)
@@ -326,8 +326,17 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				// Mark the edge and its twin for removal
 				edges[i]->setColor(GC_BLACK);
 				edges[i]->getTwin()->setColor(GC_BLACK);
+				trans_found = true;
 			}
 			edges[i]->getEnd()->setColor(GC_WHITE);
+		}
+		if(!trans_found)
+		{
+			std::cout << "Edges for " << pVertex->getID() << " do not make a transitive set dir " << dir << "\n";
+		}
+		else
+		{
+			std::cout << "Edges for " << pVertex->getID() << " do make a transitive set dir " << dir << "\n";
 		}
 	}
 
@@ -415,6 +424,7 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 						// The endpoint has been visited, set this vertex as needed removal
 						// and set the endpoint as unvisited
 						pWVert->setColor(GC_RED);
+						pBubbleEnd->setColor(GC_WHITE);
 						++num_bubbles;
 						bubble_found = true;
 					}
@@ -459,5 +469,48 @@ void SGBubbleVisitor::postvisit(StringGraph* pGraph)
 	printf("bubbles: %d\n", num_bubbles);
 	assert(pGraph->checkColors(GC_WHITE));
 }
+
+void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
+{
+	num_terminal = 0;
+	num_island = 0;
+	num_monobranch = 0;
+	num_dibranch = 0;
+	num_transitive = 0;
+	num_edges = 0;
+	num_vertex = 0;
+}
+
+// Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
+bool SGGraphStatsVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	int s_count = pVertex->countEdges(ED_SENSE);
+	int as_count = pVertex->countEdges(ED_ANTISENSE);
+	if(s_count == 0 && as_count == 0)
+		++num_island;
+	else if(s_count == 0 || as_count == 0)
+		++num_terminal;
+
+	if(s_count > 1 && as_count > 1)
+		++num_dibranch;
+	else if(s_count > 1 || as_count > 1)
+		++num_monobranch;
+
+	if(s_count == 1 || as_count == 1)
+		++num_transitive;
+
+	num_edges += (s_count + as_count);
+	++num_vertex;
+	return false;
+}
+
+// Remove all the marked edges
+void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
+{
+	printf("island: %d terminal: %d monobranch: %d dibranch: %d transitive: %d\n", num_island, num_terminal,
+	                                                                               num_monobranch, num_dibranch, num_transitive);
+	printf("Total Vertices: %d Total Edges: %d\n", num_vertex, num_edges);
+}
+
 
 
