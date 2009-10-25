@@ -43,12 +43,16 @@ class StringEdge : public Edge
                    Vertex* end, 
 		    	   EdgeDir dir, 
 			       EdgeComp comp, 
-			       SeqCoord m) : Edge(start, end, dir, comp), m_matchCoord(m) {}
+			       SeqCoord m,
+				   int nd) : Edge(start, end, dir, comp), m_matchCoord(m), m_numDiff(nd) {}
 		
 		// functions
 		virtual void flip();
 		virtual void join(const Edge* pEdge);
 		virtual void extend(const Edge* pEdge);
+
+		// Get a match structure that describes the mapping from V1 to V2
+		Matching getMatch() const;		
 		
 		// Match coordinate bookkeeping
 		void extendMatch(int ext_len);
@@ -58,19 +62,24 @@ class StringEdge : public Edge
 
 		// getters
 		virtual std::string getLabel() const;
-		std::string getMatchStr() const;
 		size_t getSeqLen() const;
+		
+		size_t getMatchLength() const { return m_matchCoord.length(); }
+		std::string getMatchStr() const;
 		const SeqCoord& getMatchCoord() const { return m_matchCoord; }
+
+		int getNumDiff() const { return m_numDiff; }
+
+		// Validate that the edge is sane
 		void validate() const;
-
-
-		// Get a match structure that describes the mapping from V1 to V2
-		Matching getMatch() const;
 		
 	private:
 		
 		// The coords of the starting vertex, which match the ending vertex
 		SeqCoord m_matchCoord;
+
+		// The number of differences in the matching region
+		int m_numDiff;
 };
 
 // Derived from Bigraph vertex
@@ -139,6 +148,17 @@ struct SGBubbleVisitor
 	void postvisit(StringGraph*);
 	int num_bubbles;
 };
+
+struct SGErrorRemovalVisitor
+{
+	SGErrorRemovalVisitor(double er) : m_maxErrorRate(er) {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+
+	double m_maxErrorRate;
+};
+
 
 struct SGGraphStatsVisitor
 {

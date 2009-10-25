@@ -66,12 +66,15 @@ void assemble()
 
 	//pGraph->validate();
 	pGraph->writeDot("before.dot");
+	//SGErrorRemovalVisitor errorVisit(0.03);
 	SGTrimVisitor trimVisit;
 	SGTransRedVisitor trVisit;
 	SGBubbleVisitor bubbleVisit;
 	SGGraphStatsVisitor statsVisit;
-	pGraph->visit(statsVisit);
 
+	//pGraph->visit(statsVisit);
+	//pGraph->visit(errorVisit);
+	pGraph->visit(statsVisit);
 	pGraph->visit(trimVisit);
 
 	// Perform trans reduction and merge
@@ -79,14 +82,11 @@ void assemble()
 	
 	pGraph->simplify();
 	pGraph->visit(statsVisit);
-
 	
 	while(pGraph->visit(bubbleVisit))
 		pGraph->simplify();
-	
+
 	pGraph->simplify();
-	//pGraph->visit(trVisit);
-	
 
 	pGraph->visit(statsVisit);
 	pGraph->validate();

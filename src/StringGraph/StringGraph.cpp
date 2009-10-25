@@ -433,8 +433,30 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 		EdgeDir dir = EDGE_DIRECTIONS[idx];
 		EdgePtrVec edges = pVertex->getEdges(dir); // These edges are already sorted
 
-		if(edges.size() == 2)
+		if(edges.size() > 1)
 		{
+			// Check the vertices
+			for(size_t i = 0; i < edges.size(); ++i)
+			{
+				Edge* pVWEdge = edges[i];
+				Vertex* pWVert = pVWEdge->getEnd();
+
+				// Get the edges from w in the same direction
+				EdgeDir transDir = !pVWEdge->getTwinDir();
+				EdgePtrVec wEdges = pWVert->getEdges(transDir);
+
+				if(pWVert->getColor() == GC_RED)
+					return false;
+
+				// If the bubble has collapsed, there should only be one edge
+				if(wEdges.size() == 1)
+				{
+					Vertex* pBubbleEnd = wEdges.front()->getEnd();
+					if(pBubbleEnd->getColor() == GC_RED)
+						return false;
+				}
+			}
+
 			// Mark the vertices
 			for(size_t i = 0; i < edges.size(); ++i)
 			{
@@ -454,12 +476,15 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 						// The endpoint has been visited, set this vertex as needing removal
 						// and set the endpoint as unvisited
 						pWVert->setColor(GC_RED);
-						++num_bubbles;
 						bubble_found = true;
 					}
 					else
 					{
 						// Endpoint has not been hit, set it to visited
+						if(pBubbleEnd->getColor() == GC_RED || pWVert->getColor() == GC_RED)
+						{
+							std::cout << "Color stomp!\n";
+						}
 						pBubbleEnd->setColor(GC_BLACK);
 						pWVert->setColor(GC_BLUE);
 					}
@@ -486,6 +511,9 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 					pWVert->setColor(GC_WHITE);
 			}
 
+			if(bubble_found)
+				++num_bubbles;
+
 		}
 	}
 	return bubble_found;
@@ -498,6 +526,41 @@ void SGBubbleVisitor::postvisit(StringGraph* pGraph)
 	printf("bubbles: %d\n", num_bubbles);
 	assert(pGraph->checkColors(GC_WHITE));
 }
+
+void SGErrorRemovalVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+
+}
+
+// Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
+bool SGErrorRemovalVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	EdgePtrVec edges = pVertex->getEdges();
+	int bp_overlap = 0;
+	int num_diff = 0;
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		const StringEdge* pSE = CSE_CAST(edges[i]);
+		bp_overlap += pSE->getMatchLength();
+		num_diff += pSE->getNumDiff();
+	}
+
+	double ner = (double)num_diff / bp_overlap;
+	//printf("ND: %d NO: %d NER: %lf\n", num_diff, bp_overlap, ner);
+
+	if(ner > m_maxErrorRate)
+		pVertex->setColor(GC_BLACK);
+
+	return false;
+}
+
+// Remove all the marked edges
+void SGErrorRemovalVisitor::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepVertices(GC_BLACK);
+}
+
 
 void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
 {

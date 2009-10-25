@@ -122,7 +122,7 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 			SeqCoord coord = o.match.coord[idx];
 			if(coord.isReverse())
 				coord.reverse();
-			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, coord);
+			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, coord, o.numDiff);
 		}
 
 		pEdges[0]->setTwin(pEdges[1]);
