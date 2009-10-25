@@ -15,8 +15,8 @@
 struct Hit
 {
 	Hit() {}
-	Hit(size_t ri, size_t si, uint32_t qs, uint32_t l, bool tr, bool qr) : readIdx(ri), saIdx(si), qstart(qs), 
-																			 len(l), targetRev(tr), queryRev(qr) {}
+	Hit(size_t ri, size_t si, uint32_t qs, uint32_t l, bool tr, bool qr, int nd) : readIdx(ri), saIdx(si), qstart(qs), 
+																			 len(l), targetRev(tr), queryRev(qr), numDiff(nd) {}
 
 	size_t readIdx; // The index in the read table
 	size_t saIdx; // The index into the suffix array
@@ -25,6 +25,7 @@ struct Hit
 	uint32_t len; // The overlap length
 	bool targetRev; // Whether the target was reversed
 	bool queryRev; // Whether the query was reversed
+	int numDiff; // the number of differences in the match
 
 	// Sort hits by saIdx and then by overlap length
 	friend bool operator<(const Hit& h1, const Hit& h2)
@@ -37,13 +38,13 @@ struct Hit
 
 	friend std::ostream& operator<<(std::ostream& out, const Hit& hit)
 	{
-		out << hit.readIdx << " " << hit.saIdx << " " << hit.qstart << " " << hit.len << " " << hit.targetRev << " " << hit.queryRev;
+		out << hit.readIdx << " " << hit.saIdx << " " << hit.qstart << " " << hit.len << " " << hit.targetRev << " " << hit.queryRev << " " << hit.numDiff;
 		return out;
 	}
 
 	friend std::istream& operator>>(std::istream& in, Hit& hit)
 	{
-		in >> hit.readIdx >> hit.saIdx >> hit.qstart >> hit.len >> hit.targetRev >> hit.queryRev;
+		in >> hit.readIdx >> hit.saIdx >> hit.qstart >> hit.len >> hit.targetRev >> hit.queryRev >> hit.numDiff;
 		return in;
 	}
 

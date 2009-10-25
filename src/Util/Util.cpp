@@ -238,24 +238,25 @@ std::istream& operator>>(std::istream& in, Matching& m)
 // Overlap
 //
 Overlap::Overlap(std::string i1, int s1, int e1, int l1,
-                 std::string i2, int s2, int e2, int l2)
+                 std::string i2, int s2, int e2, int l2, int nd)
 {
 	id[0] = i1;
 	id[1] = i2;
 	match = Matching(s1, e1, l1, s2, e2, l2);
+	numDiff = nd;
 }
 
 // Output
 std::ostream& operator<<(std::ostream& out, const Overlap& o)
 {
-	out << o.id[0] << " " << o.id[1] << " " << o.match;
+	out << o.id[0] << " " << o.id[1] << " " << o.numDiff << " " << o.match;
 	return out;
 }
 
 // Input
 std::istream& operator>>(std::istream& in, Overlap& o)
 {
-	in >> o.id[0] >> o.id[1] >> o.match;
+	in >> o.id[0] >> o.id[1] >> o.numDiff >> o.match;
 	return in;
 }
 

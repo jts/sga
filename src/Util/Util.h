@@ -265,7 +265,7 @@ struct Overlap
 {
 	// constructors
 	Overlap() {}
-	Overlap(std::string i1, int s1, int e1, int l1, std::string i2, int s2, int e2, int l2); 
+	Overlap(std::string i1, int s1, int e1, int l1, std::string i2, int s2, int e2, int l2, int nd); 
 
 	// functions
 	friend std::ostream& operator<<(std::ostream& out, const Overlap& o);
@@ -273,6 +273,7 @@ struct Overlap
 
 	// data
 	std::string id[2];
+	int numDiff;
 	Matching match;
 };
 

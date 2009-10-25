@@ -53,7 +53,18 @@ struct BWTAlign
 typedef std::queue<BWTAlign> BWTAlignQueue;
 
 // functions
-int alignInexactSuffix(std::string w, const BWT* pBWT, const BWT* pRevBWT, int maxDiff, int minOverlap, Hit& hitTemplate, HitVector* pHits);
+int alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                       double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits);
+
+int alignSuffixInexactExhaustive(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                       double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits);
+
+int alignSuffixMaxDiff(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, int maxDiff, int minOverlap, Hit& hitTemplate, HitVector* pHits);
+
+int _alignBlock(const std::string& w, int block_start, int block_end,
+                const BWT* pBWT, const BWT* pRevBWT, int maxDiff, Hit& hitTemplate, HitVector* pHits);
+
+
 
 
 #endif

@@ -65,7 +65,7 @@ void assemble()
 	StringGraph* pGraph = createSGFromOverlaps(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn");
 
 	//pGraph->validate();
-	//pGraph->writeDot("before.dot");
+	pGraph->writeDot("before.dot");
 	SGTrimVisitor trimVisit;
 	SGTransRedVisitor trVisit;
 	SGBubbleVisitor bubbleVisit;
@@ -73,13 +73,22 @@ void assemble()
 	pGraph->visit(statsVisit);
 
 	pGraph->visit(trimVisit);
+
+	// Perform trans reduction and merge
 	pGraph->visit(trVisit);
+	
 	pGraph->simplify();
-	pGraph->visit(bubbleVisit);
-	pGraph->simplify();
-	pGraph->visit(trVisit);
 	pGraph->visit(statsVisit);
-	//pGraph->mergeVertices("1/A", "66/A");
+
+	
+	while(pGraph->visit(bubbleVisit))
+		pGraph->simplify();
+	
+	pGraph->simplify();
+	//pGraph->visit(trVisit);
+	
+
+	pGraph->visit(statsVisit);
 	pGraph->validate();
 	pGraph->writeDot("final.dot");
 

@@ -143,7 +143,7 @@ OverlapVector SuffixArray::extractPrefixSuffixOverlaps(int minOverlap, const Rea
 					if(idSet.find(jElem.getID()) == idSet.end())
 					{
 						ov.push_back(Overlap(jRead.id, jElem.getPos(), jRead.seq.length() - 1, jRead.seq.length(), 
-											 iRead.id, 0, min_lcp - 1, iRead.seq.length()));
+											 iRead.id, 0, min_lcp - 1, iRead.seq.length(), 0));
 						idSet.insert(jElem.getID());
 					}
 				}

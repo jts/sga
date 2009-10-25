@@ -142,7 +142,7 @@ void BWT::getPrefixHits(size_t readIdx, std::string w, int minOverlap, bool targ
 			int64_t t_lower = PRED('$') + OCC('$', r_lower - 1);
 			int64_t t_upper = PRED('$') + OCC('$', r_upper) - 1;
 			for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
-				pHits->push_back(Hit(readIdx, sa_idx, j, overlapLen, targetRev, queryRev));
+				pHits->push_back(Hit(readIdx, sa_idx, j, overlapLen, targetRev, queryRev, 0));
 		}
 	}
 }
@@ -194,7 +194,7 @@ int BWT::getInexactPrefixHits(std::string w, const BWT* pRevBWT, int maxDiff, in
 			int64_t t_lower = PRED('$') + OCC('$', pa.i_start - 1);
 			int64_t t_upper = PRED('$') + OCC('$', pa.i_end) - 1;
 			for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
-				pHits->push_back(Hit(readIdx, sa_idx, j, overlap_len, targetRev, queryRev));
+				pHits->push_back(Hit(readIdx, sa_idx, j, overlap_len, targetRev, queryRev, maxDiff - pa.z));
 		}
 
 		// Calculate the next partial alignments

@@ -34,7 +34,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"      -e, --exact                      use the exact extraction algorithm instead of BWT-based alignment\n"
+"      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
 "      -m, --min-overlap=OVERLAP_LEN    minimum overlap required between two reads [30]\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -d, --max-diff=D                 report all prefix-suffix matches that have at most D differences\n"
@@ -45,12 +45,13 @@ namespace opt
 	static unsigned int verbose;
 	static unsigned int minOverlap;
 	static unsigned int maxDiff;
+	static double errorRate;
 	static std::string prefix;
 	static std::string readsFile;
 	static bool bExactAlgo;
 }
 
-static const char* shortopts = "p:m:d:ve";
+static const char* shortopts = "p:m:d:e:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -59,7 +60,7 @@ static const struct option longopts[] = {
 	{ "min-overlap", required_argument, NULL, 'm' },
 	{ "max-diff",    required_argument, NULL, 'd' },
 	{ "prefix",      required_argument, NULL, 'p' },
-	{ "exact",       no_argument,       NULL, 'e' },
+	{ "error-rate",  required_argument, NULL, 'e' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -91,9 +92,7 @@ std::string computeHitsBWT()
 	// Some reads may have (many) more hits so the vector will automatically expand to
 	// contain them. That will be the memory highwater mark so there is no point deallocating
 	// the vector after each trip through the loop.
-	// The hits to the forward and reverse BWT must be kept seperately since they use different indexes
-	// and we must have index clashes
-	//
+	// The hits to the forward and reverse BWT must be kept seperately since they use different indices
 	HitVector* pHits = new HitVector;
 	HitVector* pRevHits = new HitVector;
 
@@ -107,14 +106,17 @@ std::string computeHitsBWT()
 	int cost = 0;
 	while(reader.get(read))
 	{
+		if(opt::verbose > 0 && count % 50000 == 0)
+			printf("[overlap] Aligned %zu sequences\n", count);
+
 		// Align the read and its reverse complement
 		Sequence seqs[2];
 		seqs[0] = read.seq.toString();
 		seqs[1] = reverseComplement(seqs[0]);
 		// Get all the hits of this sequence to the forward and reverse BWT
-		std::cout << "Processing " << count << "\n";
 		for(size_t sn = 0; sn <= 1; ++sn)
 		{
+
 			bool isRC = (sn == 1) ? true : false;
 			const Sequence& currSeq = seqs[sn];
 			if(opt::bExactAlgo)
@@ -126,12 +128,19 @@ std::string computeHitsBWT()
 			{
 				//cost += pBWT->getInexactPrefixHits(currSeq, pRBWT, opt::maxDiff, opt::minOverlap, count, false, isRC, pHits);
 				//cost += pRBWT->getInexactPrefixHits(reverse(currSeq), pBWT, opt::maxDiff, opt::minOverlap, count, true, !isRC, pHits);
-				
+				/*
 				Hit hitTemplate(count, 0, 0, 0, false, isRC); 
-				cost += alignInexactSuffix(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
+				cost += alignInexactSuffix2(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
 				hitTemplate.targetRev = true;
 				hitTemplate.queryRev = !isRC;
-				cost += alignInexactSuffix(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pRevHits);
+				cost += alignInexactSuffix2(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pRevHits);
+				*/
+
+				Hit hitTemplate(count, 0, 0, 0, false, isRC, 0); 
+				cost += alignSuffixInexact(currSeq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
+				hitTemplate.targetRev = true;
+				hitTemplate.queryRev = !isRC;
+				cost += alignSuffixInexact(reverse(currSeq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
 			}
 		}
 
@@ -219,7 +228,7 @@ void parseHits(std::string hitsFile)
 		// The index of the second read is given as the position in the SuffixArray index
 		const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(hit.saIdx).getID());
 
-		std::cout << "HIT: " << hit << " ids: " << query.id << " " << target.id << "\n";
+		//std::cout << "HIT: " << hit << " ids: " << query.id << " " << target.id << "\n";
 		// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
 		if(query.id != target.id && query.id < target.id)
 		{	
@@ -245,7 +254,7 @@ void parseHits(std::string hitsFile)
 				swap(s1, e1);
 				swap(s2, e2);
 			}
-			Overlap o(query.id, s1, e1, query.seq.length(), target.id, s2, e2, target.seq.length());
+			Overlap o(query.id, s1, e1, query.seq.length(), target.id, s2, e2, target.seq.length(), hit.numDiff);
 			writeOverlap(o, containHandle, overlapHandle);
 		}
 	}
@@ -399,7 +408,7 @@ void parseOverlapOptions(int argc, char** argv)
 		{
 			case 'm': arg >> opt::minOverlap; break;
 			case 'p': arg >> opt::prefix; break;
-			case 'e': opt::bExactAlgo = true; break;
+			case 'e': arg >> opt::errorRate; break;
 			case 'd': arg >> opt::maxDiff; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;

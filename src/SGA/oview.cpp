@@ -75,27 +75,12 @@ int oviewMain(int argc, char** argv)
 	ReadTable* pRT = new ReadTable(opt::readsFile);
 	pRT->indexReadsByID();
 
-	// read the contain map
+	// read the contain and overlap files
 	std::string containFile = opt::prefix + ".ctn";
-	ContainMap containMap(containFile);
-
-	// read the overlaps and draw
 	std::string overlapFile = opt::prefix + ".ovr";
-	std::ifstream overlapReader(overlapFile.c_str());
-
 	OverlapMap overlapMap;
-	Overlap o;
-	while(overlapReader >> o)
-	{
-		// If we are in error correcting mode, or the read filter is not set or this read matches the filter, add it to the 
-		// overlap map
-		if(opt::correct_errors || opt::readFilter.empty() || (o.id[0] == opt::readFilter || o.id[1] == opt::readFilter))
-		{
-			overlapMap[o.id[0]].push_back(o);
-			overlapMap[o.id[1]].push_back(o);
-		}
-	}
-
+	parseOverlaps(containFile, overlapMap);
+	parseOverlaps(overlapFile, overlapMap);
 
 	if(opt::correct_errors)
 	{
@@ -280,7 +265,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 	std::string rootSeq = pRT->getRead(rootID).seq.toString();
 	DrawVector draw_vector;
 
-	DrawData rootData(0, rootID, rootSeq);
+	DrawData rootData(0, rootID, rootSeq, 0, 0);
 	draw_vector.push_back(rootData);
 
 	// Get all the overlaps for this read
@@ -337,7 +322,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 			offset = rootSC.interval.start;
 		else
 			offset = -otherSC.interval.start;
-		draw_vector.push_back(DrawData(offset, otherID, otherSeq));
+		draw_vector.push_back(DrawData(offset, otherID, otherSeq, curr.numDiff, rootSC.length()));
 	}
 	drawMulti(rootData.name, rootData.seq.size(), draw_vector);
 }
@@ -373,9 +358,28 @@ void drawMulti(std::string rootName, int root_len, DrawVector& dv)
 		//printf("offset: %d lc: %d rc: %d pad: %d\n", c_offset, left_clip, right_clip, padding);
 		assert(padding >= 0);
 		std::string padding_str(padding, ' ');
-		std::cout /*<< dv[i].name*/ << padding_str << leader << clipped << trailer << "\t" << dv[i].name << "\n";		
+		std::string outstr = padding_str + leader + clipped + trailer;
+		printf("%s\t%d\t%d\t%lf\t%s\n", outstr.c_str(), dv[i].overlapLen, dv[i].numDiff, (double)dv[i].numDiff / dv[i].overlapLen, dv[i].name.c_str());
+		//std::cout /*<< dv[i].name*/ << padding_str << leader << clipped << trailer << "\t" << dv[i].name << "\n";		
 	}
 }
+
+void parseOverlaps(std::string filename, OverlapMap& overlapMap)
+{
+	std::ifstream overlapReader(filename.c_str());
+	Overlap o;
+	while(overlapReader >> o)
+	{
+		// If we are in error correcting mode, or the read filter is not set or this read matches the filter, add it to the 
+		// overlap map
+		if(opt::correct_errors || opt::readFilter.empty() || (o.id[0] == opt::readFilter || o.id[1] == opt::readFilter))
+		{
+			overlapMap[o.id[0]].push_back(o);
+			overlapMap[o.id[1]].push_back(o);
+		}
+	}
+}
+
 
 // 
 // Handle command line arguments

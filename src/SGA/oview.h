@@ -17,10 +17,12 @@ typedef std::map<std::string, OverlapVector> OverlapMap;
 
 struct DrawData
 {
-	DrawData(int o, std::string n, std::string s) : offset(o), name(n), seq(s) {}
+	DrawData(int o, std::string n, std::string s, int nd, int ol) : offset(o), name(n), seq(s), numDiff(nd), overlapLen(ol) {}
 	int offset;
 	std::string name;
 	std::string seq;
+	int numDiff;
+	int overlapLen;
 
 	bool operator<(const DrawData& other) const
 	{
@@ -37,6 +39,7 @@ void correctReads(const ReadTable* pRT, const OverlapMap* pOM);
 std::string correct(const SeqItem& read, const ReadTable* pRT, const OverlapMap* pOM, int& num_corrected);
 void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* pOM);
 void drawMulti(std::string rootName, int root_len, DrawVector& dv);
+void parseOverlaps(std::string filename, OverlapMap& overlapMap);
 void parseOviewOptions(int argc, char** argv);
 
 #endif

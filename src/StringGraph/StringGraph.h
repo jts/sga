@@ -114,6 +114,9 @@ struct SGTransRedVisitor
 	void previsit(StringGraph* pGraph);
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*);
+
+	int marked_verts;
+	int marked_edges;
 };
 
 struct SGTrimVisitor
