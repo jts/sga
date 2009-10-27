@@ -173,6 +173,10 @@ void Bigraph::merge(Edge* pEdge)
 		pTransEdge->join(pEdge);
 		assert(pTransEdge->getDir() == pEdge->getDir());
 		pV1->addEdge(pTransEdge); // add to V1
+
+		// Notify the edges they have been updated
+		pTransEdge->update();
+		pTransEdge->getTwin()->update();
 	}
 
 	// Remove the edge from pV1 to pV2

@@ -207,6 +207,18 @@ Sequence reverse(const Sequence& seq)
 	return out;
 }
 
+// count the differences between s1 and s2 over the first n bases
+int countDifferences(const std::string& s1, const std::string& s2, size_t n)
+{
+	int numDiff = 0;
+	for(size_t i = 0; i < n; ++i)
+	{
+		if(s1[i] != s2[i])
+			numDiff++;
+	}
+	return numDiff;
+}
+
 // Complement a sequence
 Sequence complement(const Sequence& seq)
 {

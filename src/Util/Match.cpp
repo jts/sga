@@ -43,16 +43,58 @@ void Match::canonize()
 	isReverse = false;
 }
 
+// Flip coord2 so it is out of frame of coord1
+void Match::decanonize()
+{
+	if(!isRC())
+		coord[1].flip();
+	isReverse = true;
+}
+
+// Calculation the translation offset to shift
+// a coord[0] position to a coord[1]. This must be calculated
+// using canonical coordinates
+int Match::calculateTranslation() const
+{
+	if(!isRC())
+		return coord[1].interval.start - coord[0].interval.start;
+	else
+	{
+		SeqCoord f = coord[1];
+		f.flip();
+		return f.interval.start - coord[0].interval.start;
+	}
+}
+
+// Calculation the translation offset to shift
+// a coord[1] position to a coord[0]. This must be calculated
+// using canonical coordinates
+int Match::calculateInverseTranslation() const
+{
+	if(!isRC())
+		return coord[0].interval.start - coord[1].interval.start;
+	else
+	{
+		SeqCoord f = coord[0];
+		f.flip();
+		return f.interval.start - coord[1].interval.start;
+	}
+}
+
+
 // Translate the SeqCoord c from the frame of coord[0] to coord[1]
 SeqCoord Match::translate(const SeqCoord& c) const
 {
 	assert(coord[0].length() == coord[1].length()); // ensure translation is valid
-	int t = coord[1].interval.start - coord[0].interval.start;
-	
+	int t = calculateTranslation();
+
 	SeqCoord out;
 	out.seqlen = coord[1].seqlen;
 	out.interval.start = c.interval.start + t;
 	out.interval.end = c.interval.end + t;
+	if(isRC())
+		out.flip();
+	
 	return out;
 }
 
@@ -60,29 +102,92 @@ SeqCoord Match::translate(const SeqCoord& c) const
 SeqCoord Match::inverseTranslate(const SeqCoord& c) const
 {
 	assert(coord[0].length() == coord[1].length()); // ensure translation is valid
-	int t = coord[0].interval.start - coord[1].interval.start;
+	int t = calculateInverseTranslation();
 	
 	SeqCoord out;
 	out.seqlen = coord[0].seqlen;
 	out.interval.start = c.interval.start + t;
 	out.interval.end = c.interval.end + t;
+
+	if(isRC())
+		out.flip();
+
 	return out;
 }
 
 // Translate a single position from c[0] frame to c[1]
 int Match::translate(int c) const
 {
+	assert(!isRC());
 	assert(coord[0].length() == coord[1].length()); // ensure translation is valid
-	int t = coord[1].interval.start - coord[0].interval.start;
+	int t = calculateTranslation();
 	return c + t;
 }
 
 // Translate a single position from c[1] frame to c[0]
 int Match::inverseTranslate(int c) const
 {
+	assert(!isRC());
 	assert(coord[0].length() == coord[1].length());
-	int t = coord[0].interval.start - coord[1].interval.start;
+	int t = calculateInverseTranslation();
 	return c + t;
+}
+
+// Given two matches, match_i and match_j
+// infer the match between match_i.coord[1] and match_j.coord[1]
+// This assumes that match_i.coord[0] and match_j.coord[0] are the same frame of
+// reference
+// This returns the minimal matching region, it could possibly be extended
+Match Match::infer(const Match& match_i, const Match& match_j)
+{
+	// Calculate the max/min start/end coordinates of coord[0]
+	int s = std::max(match_i.coord[0].interval.start, match_j.coord[0].interval.start);
+	int e = std::min(match_i.coord[0].interval.end, match_j.coord[0].interval.end);
+	
+
+	SeqCoord r_i(s, e, match_i.coord[1].seqlen);
+	SeqCoord r_j(s, e, match_j.coord[1].seqlen);
+
+	SeqCoord t_i = match_i.translate(r_i);
+	SeqCoord t_j = match_j.translate(r_j);
+	return Match(t_i, t_j, match_i.isRC() != match_j.isRC(), -1);
+}
+
+// Expand the match outwards so one sequence is left terminal and one sequence
+// is right terminal. This makes it a "proper" overlap
+// This function assumes the coordinates are valid (see SeqCoord)
+void Match::expand()
+{
+	assert(coord[0].isValid() && coord[1].isValid());
+
+	// This is simple if the coordinates are in canonical form, so here were canonize
+	// them and decanonize after
+	bool flipped = false;
+	if(isRC())
+	{
+		flipped = true;
+		canonize();
+	}
+
+	// left expansion
+	if(!coord[0].isLeftExtreme() || !coord[1].isLeftExtreme())
+	{
+		int dist = std::min(coord[0].getLeftDist(), coord[1].getLeftDist());
+		coord[0].interval.start -= dist;
+		coord[1].interval.start -= dist;
+	}
+
+	// right expansion
+	if(!coord[0].isRightExtreme() || !coord[1].isRightExtreme())
+	{
+		int dist = std::min(coord[0].getRightDist(), coord[1].getRightDist());
+		coord[0].interval.end += dist;
+		coord[1].interval.end += dist;
+	}
+
+	if(flipped)
+		decanonize();
+	assert(coord[0].isValid() && coord[1].isValid());
 }	
 
 // Output

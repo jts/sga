@@ -333,52 +333,32 @@ bool SGVariantVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 				// All coordinates are calculated from the point of view of pVertex
 				Match match_i = p_edgeI->getMatch();
 				Match match_j = p_edgeJ->getMatch();
+	
+				// Infer the match_ij based match_i and match_j
+				Match match_ij = Match::infer(match_i, match_j);
+	
+				std::string seq_i = p_vertI->getSeq();
+				std::string seq_j = !match_ij.isRC() ? p_vertJ->getSeq() : reverseComplement(p_vertJ->getSeq());
 				
-				// Calculate the shift and what sequence is furthest left (from the pov of vertex)
-				int vc_i;
-				int vc_j;
-				if(dir == ED_SENSE)
-				{
-					vc_i = match_i.coord[0].interval.start;
-					vc_j = match_j.coord[0].interval.start;
-				}
-				else
-				{
-					vc_i = match_i.coord[0].interval.end;
-					vc_j = match_j.coord[0].interval.end;
-				}
+				// Expand the match outwards so that one sequence is left terminal 
+				// and one is right terminal
+				match_ij.canonize();
+				match_ij.expand();
+				
+				// Extract the match strings
+				std::string ms_i = match_ij.coord[0].getSubstring(seq_i);
+				std::string ms_j = match_ij.coord[1].getSubstring(seq_j);
 
-				bool i_first = (vc_i < vc_j);
-				int offset = (i_first) ? vc_j - vc_i : vc_i - vc_j;
-
-				int start_i;
-				int start_j;
-
-				if(i_first)
-				{
-					start_i = offset;
-					start_j = 0;
-				}
-				else
-				{
-					start_i = 0;
-					start_j = offset;
-				}
-
-				std::string seq_i = (p_edgeI->getComp() == EC_SAME) ? p_vertI->getSeq() : reverseComplement(p_vertI->getSeq());
-				std::string seq_j = (p_edgeJ->getComp() == EC_SAME) ? p_vertJ->getSeq() : reverseComplement(p_vertJ->getSeq());
-
-				// Shift the positions so one starts at zero
-				/*
 				std::cout << "COMP: " << comp << "\n";
 				std::cout << "match_i: " << match_i << " " << p_edgeI->getComp() << "\n";
 				std::cout << "match_j: " << match_j << " " << p_edgeJ->getComp() << "\n";
-
-				std::cout << "start_i: " << start_i << "\n";
-				std::cout << "start_j: " << start_j << "\n";
-				*/
+				std::cout << "match_ij: " << match_ij << "\n";
+				std::cout << "ms_i: " << ms_i << "\n";
+				std::cout << "ms_j: " << ms_j << "\n";
+				/*
 				Overlap o = inferOverlap(seq_i, seq_j, start_i, start_j, p_vertI->getID(), p_vertJ->getID(), comp == EC_REVERSE);
 				m_fileHandle << o << "\n";
+				*/
 			}
 		}
 	}
@@ -404,7 +384,6 @@ Overlap SGVariantVisitor::inferOverlap(const std::string& seq_i, const std::stri
 	SeqCoord sc_j(seq_j.length(), start_j, start_j + match_span - 1);
 	Overlap o(id_i, sc_i, id_j, sc_j, isReverse, num_diff);
 	return o;
-	printf("Found %d diffs\n", num_diff);
 }
 
 //

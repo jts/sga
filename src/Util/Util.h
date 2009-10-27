@@ -21,6 +21,8 @@
 
 #define CAF_SEP ':'
 #define FUNCTION_TIMER Timer functionTimer(__PRETTY_FUNCTION__);
+#define VALIDATION_WARNING(x) static bool validation_warn = true; if(validation_warn) \
+							   printf("[%s] Warning validation is on\n", (x)); validation_warn = false;
 
 //
 // Enums
@@ -133,12 +135,12 @@ struct SeqCoord
 	// functions
 	inline bool isLeftExtreme() const
 	{
-		return (interval.start == 0 || interval.end == 0);
+		return (interval.start == 0);
 	}
 
 	inline bool isRightExtreme() const
 	{
-		return (interval.end + 1 == seqlen || interval.start + 1 == seqlen);
+		return (interval.end + 1 == seqlen);
 	}
 
 	inline bool isExtreme() const
@@ -156,6 +158,25 @@ struct SeqCoord
 	{ 
 		return interval.end - interval.start + 1;
 	}
+
+	// Return the distance from the start to the left end
+	inline int getLeftDist() const
+	{
+		return interval.start;
+	}
+
+	// Return the distance to the right end
+	inline int getRightDist() const
+	{
+		return seqlen - interval.end - 1;
+	}
+
+	// Ensure the interval is within in valid range [0, seqlen)
+	inline bool isValid() const
+	{
+		return interval.start >= 0 && interval.end < seqlen;
+	}
+
 	
 	// Flip mirrors the coordinates so they are on the other strand
 	// The coordinates are naturally reversed to indicate its the other strand
@@ -237,6 +258,10 @@ inline static uint8_t getBaseRank(char b)
 Sequence reverseComplement(const Sequence& seq);
 Sequence complement(const Sequence& seq);
 Sequence reverse(const Sequence& seq);
+
+// Count the number of differences between s1 and s2 over the first n chars
+int countDifferences(const std::string& s1, const std::string& s2, size_t n);
+
 
 // Complement a base
 inline char complement(char base)

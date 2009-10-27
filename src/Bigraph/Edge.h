@@ -51,6 +51,9 @@ class Edge
 		virtual void join(const Edge* pEdge);
 		virtual void extend(const Edge* pEdge);
 
+		// Post merge update function
+		virtual void update() {}
+
 		EdgeDesc getTwinDesc() const;
 
 		// Make the direction of the edge that is in the same direction as the current edge

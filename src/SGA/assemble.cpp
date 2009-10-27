@@ -86,7 +86,7 @@ void assemble()
 	// Perform trans reduction and perform an initial merge
 	pGraph->visit(trVisit);
 	pGraph->simplify();
-	//pGraph->visit(varVisit);
+	pGraph->visit(varVisit);
 
 	/*
 	// Bubble removal
@@ -97,7 +97,11 @@ void assemble()
 
 	// Final stats and validation
 	pGraph->visit(statsVisit);
+
+#ifdef VALIDATE
+	VALIDATION_WARNING("SGA/assemble")
 	pGraph->validate();
+#endif
 
 	// Write the results
 	pGraph->writeDot("final.dot");

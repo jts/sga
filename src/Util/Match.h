@@ -23,6 +23,10 @@ struct Match
 	inline bool isRC() const { return isReverse; }
 	inline int getNumDiff() const { return numDiff; }
 
+	// Calculate the translation offset from coord[0] to coord[1]
+	int calculateTranslation() const;
+	int calculateInverseTranslation() const;
+
 	// Translate the SeqCoord c from the frame of coord[0] to coord[1]
 	SeqCoord translate(const SeqCoord& c) const;
 
@@ -35,15 +39,20 @@ struct Match
 	// Translate a single position from c[1] frame to c[0]
 	int inverseTranslate(int c) const;
 
-	// Return a new match with the coords swapped
-	Match swapCoords() const;
-
 	// Swap the coords of this element
 	void swap();
+
+	// Infer an overlap between match_i.coord[1] and match_j.coord[1]
+	// based on coord[0] being shared
+	static Match infer(const Match& match_i, const Match& match_j);
+
+	// Expand a match outwards so each end is terminal for both coordinates
+	void expand();
 
 	// Flip coord[1] if isReverse is true, effectively
 	// bringing the matching strings into the same coordinate system
 	void canonize();
+	void decanonize();
 
 	// IO
 	friend std::ostream& operator<<(std::ostream& out, const Match& m);

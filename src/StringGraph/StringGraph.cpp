@@ -60,7 +60,6 @@ Match StringEdge::getMatch() const
 
 void StringEdge::validate() const
 {
-	/*
 	const StringEdge* pTwin = CSE_CAST(getTwin());
 	std::string m_v1 = getMatchStr();
 	std::string m_v2 = pTwin->getMatchStr();
@@ -68,17 +67,33 @@ void StringEdge::validate() const
 	if(getComp() == EC_REVERSE)
 		m_v2 = reverseComplement(m_v2);
 
-	if(m_v1 != m_v2)
+	bool error = false;
+	if(m_v1.length() != m_v2.length())
 	{
-		std::cout << "V1M: " << m_v1 << "\n";
-		std::cout << "V2M: " << m_v2 << "\n";
-		std::cout << "V1MC: " << getMatchCoord() << "\n";
-		std::cout << "V2MC: " << pTwin->getMatchCoord() << "\n";
-		std::cout << "V1: " << SV_CAST(getStart())->getSeq() << "\n";
-		std::cout << "Validation failed for edge " << *this << "\n";
+		std::cerr << "Error, matching strings are not the same length\n";
+		error = true;
+	}
+	else
+	{
+		int numDiff = countDifferences(m_v1, m_v2, m_v1.length());
+		if(numDiff != m_numDiff)
+		{
+			std::cerr << "Error, number of differences between m1 and m2 does not match expected (" 
+			          << numDiff << " != " << m_numDiff << ")\n";
+			error = true;
+		}
+	}
+
+	if(error)
+	{
+		std::cerr << "V1M: " << m_v1 << "\n";
+		std::cerr << "V2M: " << m_v2 << "\n";
+		std::cerr << "V1MC: " << getMatchCoord() << "\n";
+		std::cerr << "V2MC: " << pTwin->getMatchCoord() << "\n";
+		std::cerr << "V1: " << SV_CAST(getStart())->getSeq() << "\n";
+		std::cerr << "Validation failed for edge " << *this << "\n";
 		assert(false);
 	}
-	*/
 }
 
 // Join pEdge into the start of this edge
@@ -91,37 +106,26 @@ void StringEdge::join(const Edge* pEdge)
 	
 	Match m12 = pSE->getMatch();
 	Match m23 = getMatch();
-
-	// If the V1->V2 edge is reversed, flip m12.2 to be in the same coord system as V1
-	if(pEdge->getComp() == EC_REVERSE)
-	{
-		m12.coord[1].flip();
-		m23.coord[0].flip();
-	}
-
 	m_matchCoord = m12.inverseTranslate(m23.coord[0]);
-
-	/*
-	Match joined;
-	joined.coord[0] = m12.inverseTranslate(m23.coord[0]);
-	joined.coord[1] = m23.coord[1];
-
-	std::cout << "M12: " << m12 << "\n";
-	std::cout << "M23: " << m23 << "\n";
-	std::cout << "JND: " << joined << "\n";
 	
-	m_matchCoord = joined.coord[0];
-	*/
 	// Update the base class members
 	Edge::join(pEdge);
 }
 
-// Join pEdge into the start of this edge
+// Join pEdge into the end of this edge
 // This involves merging the intervals
 void StringEdge::extend(const Edge* pEdge)
 {
 	// Update the base class members
 	Edge::extend(pEdge);
+}
+
+// Update is called when the edge has been modified in some way
+// This means its been merged/moved and its difference count should be updated
+void StringEdge::update()
+{
+	updateDifferenceCount();
+	Edge::update();
 }
 
 void StringEdge::offsetMatch(int offset)
@@ -135,7 +139,9 @@ void StringEdge::extendMatch(int ext_len)
 	m_matchCoord.interval.end += ext_len;
 }
 
-void StringEdge::completeMatch()
+// Bump the edges of the match outwards so it covers the entire 
+// sequence
+void StringEdge::extendMatchFullLength()
 {
 	if(m_matchCoord.isLeftExtreme())
 		m_matchCoord.interval.end = m_matchCoord.seqlen - 1;
@@ -146,6 +152,18 @@ void StringEdge::completeMatch()
 void StringEdge::updateSeqLen(int newLen)
 {
 	m_matchCoord.seqlen = newLen;
+}
+
+void StringEdge::updateDifferenceCount()
+{
+	const StringEdge* pTwin = CSE_CAST(getTwin());
+	std::string m_v1 = getMatchStr();
+	std::string m_v2 = pTwin->getMatchStr();
+
+	if(getComp() == EC_REVERSE)
+		m_v2 = reverseComplement(m_v2);
+
+	m_numDiff = countDifferences(m_v1, m_v2, m_v1.length());
 }
 
 // Merging two string vertices has two parts
@@ -180,7 +198,7 @@ void StringVertex::merge(Edge* pEdge)
 	}
 
 	pSE->extendMatch(label.length());
-	pTwinSE->completeMatch();
+	pTwinSE->extendMatchFullLength();
 
 	// All the SeqCoords for the edges must have their seqlen field updated
 	// Also, if we prepended sequence to this edge, all the matches in the 
@@ -197,7 +215,12 @@ void StringVertex::merge(Edge* pEdge)
 	// Update the read count
 	StringVertex* pV2 = CSV_CAST(pSE->getEnd());
 	m_readCount += pV2->getReadCount();
+
+#ifdef VALIDATE
+	VALIDATION_WARNING("StringVertex::merge")
 	validate();
+#endif
+
 }
 
 // Ensure that the edges of the graph are correct

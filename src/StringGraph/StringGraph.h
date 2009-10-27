@@ -57,6 +57,7 @@ class StringEdge : public Edge
 		virtual void flip();
 		virtual void join(const Edge* pEdge);
 		virtual void extend(const Edge* pEdge);
+		virtual void update();
 
 		// Get a match structure that describes the mapping from V1 to V2
 		Match getMatch() const;		
@@ -64,8 +65,15 @@ class StringEdge : public Edge
 		// Match coordinate bookkeeping
 		void extendMatch(int ext_len);
 		void offsetMatch(int offset);
-		void completeMatch();
 		void updateSeqLen(int newLen);
+
+		// Update the number of differences between the sequences. Must be called after a 
+		// merge/extend
+		void updateDifferenceCount();
+		
+		// Make the match full length
+		void extendMatchFullLength();
+
 
 		// getters
 		virtual std::string getLabel() const;
