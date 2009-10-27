@@ -11,6 +11,7 @@
 #include "Util.h"
 #include "assemble.h"
 #include "SGUtil.h"
+#include "SGAlgorithms.h"
 
 //
 // Getopt
@@ -66,34 +67,43 @@ void assemble()
 
 	//pGraph->validate();
 	pGraph->writeDot("before.dot");
-	//SGErrorRemovalVisitor errorVisit(0.03);
+	
+	// Visitor functors
 	SGTrimVisitor trimVisit;
 	SGTransRedVisitor trVisit;
+	SGVariantVisitor varVisit;
 	SGBubbleVisitor bubbleVisit;
 	SGGraphStatsVisitor statsVisit;
 
 	//pGraph->visit(statsVisit);
-	//pGraph->visit(errorVisit);
+	
+	// Pre-assembly graph stats
 	pGraph->visit(statsVisit);
+	
+	// Remove dead end reads
 	pGraph->visit(trimVisit);
 
-	// Perform trans reduction and merge
+	// Perform trans reduction and perform an initial merge
 	pGraph->visit(trVisit);
-	
 	pGraph->simplify();
-	pGraph->visit(statsVisit);
-	
+	//pGraph->visit(varVisit);
+
+	/*
+	// Bubble removal
 	while(pGraph->visit(bubbleVisit))
 		pGraph->simplify();
-
 	pGraph->simplify();
+	*/
 
+	// Final stats and validation
 	pGraph->visit(statsVisit);
 	pGraph->validate();
-	pGraph->writeDot("final.dot");
 
+	// Write the results
+	pGraph->writeDot("final.dot");
 	SGFastaVisitor av("contigs.fa");
 	pGraph->visit(av);
+
 	delete pGraph;
 }
 

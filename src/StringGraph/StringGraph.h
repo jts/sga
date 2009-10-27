@@ -11,6 +11,7 @@
 #ifndef CONTIGGRAPH_H
 #define CONTIGGRAPH_H
 
+#include "Match.h"
 #include "Bigraph.h"
 #include <cassert>
 #include <cerrno>
@@ -21,6 +22,12 @@
 #include <getopt.h>
 #include <sstream>
 #include <string>
+
+#define SE_CAST(x) static_cast<StringEdge*>((x))
+#define CSE_CAST(x)  static_cast<const StringEdge*>((x))
+#define SV_CAST(x) static_cast<StringVertex*>((x))
+#define CSV_CAST(x)  static_cast<const StringVertex*>((x))
+
 
 typedef Bigraph StringGraph;
 class StringVertex;
@@ -52,7 +59,7 @@ class StringEdge : public Edge
 		virtual void extend(const Edge* pEdge);
 
 		// Get a match structure that describes the mapping from V1 to V2
-		Matching getMatch() const;		
+		Match getMatch() const;		
 		
 		// Match coordinate bookkeeping
 		void extendMatch(int ext_len);
@@ -101,80 +108,5 @@ class StringVertex : public Vertex
 		std::string m_seq;
 		size_t m_readCount;
 };
-
-// Visit functors
-struct SGFastaVisitor
-{
-	// constructor
-	SGFastaVisitor(std::string filename) : m_fileHandle(filename.c_str()) {}
-	~SGFastaVisitor() { m_fileHandle.close(); }
-
-	// functions
-	void previsit(StringGraph* /*pGraph*/) {}
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph* /*pGraph*/) {}
-	// data
-	std::ofstream m_fileHandle;
-};
-
-struct SGTransRedVisitor
-{
-	SGTransRedVisitor() {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	int marked_verts;
-	int marked_edges;
-};
-
-struct SGTrimVisitor
-{
-	SGTrimVisitor() {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	int num_island;
-	int num_terminal;
-	int num_contig;
-};
-
-struct SGBubbleVisitor
-{
-	SGBubbleVisitor() {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-	int num_bubbles;
-};
-
-struct SGErrorRemovalVisitor
-{
-	SGErrorRemovalVisitor(double er) : m_maxErrorRate(er) {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	double m_maxErrorRate;
-};
-
-
-struct SGGraphStatsVisitor
-{
-	SGGraphStatsVisitor() {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	int num_terminal;
-	int num_island;
-	int num_monobranch;
-	int num_dibranch;
-	int num_transitive;
-	int num_edges;
-	int num_vertex;	
-};
-
 
 #endif

@@ -99,8 +99,7 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 
 		// Initialize data and perform checks
 		StringVertex* pVerts[2];
-		Sequence overhangs[2];
-		EdgeComp comp = (o.match.coord[0].isReverse() || o.match.coord[1].isReverse()) ? EC_REVERSE : EC_SAME;
+		EdgeComp comp = (o.match.isRC()) ? EC_REVERSE : EC_SAME;
 
 		for(size_t idx = 0; idx < 2; ++idx)
 		{
@@ -109,9 +108,6 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 			
 			// Ensure the reads are not identical
 			assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
-
-			std::string overhang = getOverhangString(o.match.coord[idx], pVerts[idx]->getSeq());
-			overhangs[idx] = (comp == EC_SAME) ? overhang : reverseComplement(overhang);
 		}
 
 		// Add edges
@@ -120,9 +116,7 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 		{
 			EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
 			SeqCoord coord = o.match.coord[idx];
-			if(coord.isReverse())
-				coord.reverse();
-			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, coord, o.numDiff);
+			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, coord, o.match.getNumDiff());
 		}
 
 		pEdges[0]->setTwin(pEdges[1]);
@@ -132,38 +126,4 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 		pGraph->addEdge(pEdges[1]);
 	}
 	overlapReader.close();
-}
-
-//
-std::string getOverhangString(const SeqCoord& sc, const std::string& seq)
-{
-	size_t left, right;
-
-	int lower;
-	int upper;
-	if(!sc.isReverse())
-	{
-		lower = sc.interval.start;
-		upper = sc.interval.end;
-	}
-	else
-	{
-		lower = sc.interval.end;
-		upper = sc.interval.start;
-	}
-
-	if(sc.isLeftExtreme())
-	{
-		 // the end coordinate includes the last base, so the overhang starts at the next pos
-		left = upper + 1;
-		right = sc.seqlen;
-	}
-	else
-	{
-		left = 0;
-		right = lower;
-	}
-
-	assert(left <= right);
-	return seq.substr(left, right - left);
 }

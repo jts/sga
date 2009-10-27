@@ -144,9 +144,7 @@ SeqCoord SeqCoord::complement() const
 		out.interval.start = 0;
 		out.interval.end = std::min(interval.start, interval.end) - 1;
 	}
-
-	if(isReverse())
-		out.reverse();
+	assert(out.interval.start <= out.interval.end);
 	return out;
 }
 
@@ -180,87 +178,6 @@ std::istream& operator>>(std::istream& in, SeqCoord& sc)
 	in >> sc.interval >> sc.seqlen;
 	return in;
 }
-
-//
-// Matching
-//
-Matching::Matching(const SeqCoord& sc1, const SeqCoord& sc2)
-{
-	coord[0] = sc1;
-	coord[1] = sc2;
-}
-
-Matching::Matching(int s1, int e1, int l1, int s2, int e2, int l2)
-{
-	coord[0] = SeqCoord(s1, e1, l1);
-	coord[1] = SeqCoord(s2, e2, l2);
-}
-
-Matching Matching::swapCoords() const
-{
-	Matching out;
-	out.coord[0] = coord[1];
-	out.coord[1] = coord[0];
-
-	// Ensure that coord[0] is not reversed
-	if(out.coord[0].isReverse())
-	{
-		out.coord[0].flip();
-		out.coord[1].flip();
-	}
-	return out;
-}
-
-void Matching::normalizeCoords()
-{
-	// The first coord should never be reversed
-	assert(!coord[0].isReverse());
-
-	if(coord[1].isReverse())
-		coord[1].flip();
-}
-
-// Output
-std::ostream& operator<<(std::ostream& out, const Matching& m)
-{
-	out << m.coord[0] << " " << m.coord[1];
-	return out;
-}
-
-// Input
-std::istream& operator>>(std::istream& in, Matching& m)
-{
-	in >> m.coord[0] >> m.coord[1];
-	return in;
-}
-
-//
-// Overlap
-//
-Overlap::Overlap(std::string i1, int s1, int e1, int l1,
-                 std::string i2, int s2, int e2, int l2, int nd)
-{
-	id[0] = i1;
-	id[1] = i2;
-	match = Matching(s1, e1, l1, s2, e2, l2);
-	numDiff = nd;
-}
-
-// Output
-std::ostream& operator<<(std::ostream& out, const Overlap& o)
-{
-	out << o.id[0] << " " << o.id[1] << " " << o.numDiff << " " << o.match;
-	return out;
-}
-
-// Input
-std::istream& operator>>(std::istream& in, Overlap& o)
-{
-	in >> o.id[0] >> o.id[1] >> o.numDiff >> o.match;
-	return in;
-}
-
-
 
 //
 // Sequence operations

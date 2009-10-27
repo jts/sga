@@ -11,6 +11,7 @@
 #include <getopt.h>
 #include "config.h"
 #include "BWT.h"
+#include "Match.h"
 
 
 // functions

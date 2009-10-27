@@ -10,6 +10,7 @@
 #define SUFFIXARRAY_H
 #include "STCommon.h"
 #include "ReadTable.h"
+#include "Match.h"
 
 class LCPArray;
 

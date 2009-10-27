@@ -6,5 +6,6 @@ libstringgraph_a_CPPFLAGS = \
 
 libstringgraph_a_SOURCES = \
 	StringGraph.cpp StringGraph.h \
-	SGUtil.cpp SGUtil.h
+	SGUtil.cpp SGUtil.h \
+	SGAlgorithms.cpp SGAlgorithms.h
 

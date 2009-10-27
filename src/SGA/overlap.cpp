@@ -235,26 +235,22 @@ void parseHits(std::string hitsFile)
 			// Compute the endpoints of the overlap
 			int s1 = hit.qstart;
 			int e1 = s1 + hit.len - 1;
+			SeqCoord sc1(s1, e1, query.seq.length());
 
 			int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
 			int e2 = s2 + hit.len - 1;
-			
-			// The alignment was to the reverse index, flip the coordinates of r2
-			if(hit.targetRev)
-				flipCoords(target.seq.length(), s2, e2);
+			SeqCoord sc2(s2, e2, target.seq.length());
 
-			// The alignment was the reverse of the input read (complemented or otherwise), flip coordinates
+			// The coordinates are always with respect to the read, so flip them if
+			// we aligned to/from the reverse of the read
 			if(hit.queryRev)
-				flipCoords(query.seq.length(), s1, e1);
-			
-			// If both intervals were reversed, swap the start and end to
-			// indicate that the reads are in the same orientation
-			if(hit.targetRev && hit.queryRev)
-			{
-				swap(s1, e1);
-				swap(s2, e2);
-			}
-			Overlap o(query.id, s1, e1, query.seq.length(), target.id, s2, e2, target.seq.length(), hit.numDiff);
+				sc1.flip();
+			if(hit.targetRev)
+				sc2.flip();
+
+			bool isRC = hit.targetRev != hit.queryRev;
+
+			Overlap o(query.id, sc1, target.id, sc2, isRC, hit.numDiff);
 			writeOverlap(o, containHandle, overlapHandle);
 		}
 	}
@@ -288,11 +284,9 @@ void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& ove
 		return;
 	}
 
-	// Ensure that the overlaps are the correct orientation
-	// If the reads are from the same strand, one should be left extreme and one should be right extreme
-	// If they are from opposite strands, they should both be left (or right)
-	bool sameStrand = !(ovr.match.coord[0].isReverse() || ovr.match.coord[1].isReverse());
+	bool sameStrand = !ovr.match.isRC();
 	bool proper = false;
+	
 	if(sameStrand)
 	{
 		proper = (ovr.match.coord[0].isLeftExtreme() != ovr.match.coord[1].isLeftExtreme() && 
@@ -303,29 +297,15 @@ void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& ove
 		proper = (ovr.match.coord[0].isLeftExtreme() == ovr.match.coord[1].isLeftExtreme() && 
 				  ovr.match.coord[0].isRightExtreme() == ovr.match.coord[1].isRightExtreme());
 	}
-
+	
 	if(!proper)
 	{
 		std::cerr << "Skipping improper overlap: " << ovr << "\n";
 		return;
 	}
+
 	// All checks passed, output the overlap
 	overlapHandle << ovr << "\n";
-}
-
-//
-void flipCoords(const int len, int& s, int &e)
-{
-	s = len - (s + 1);
-	e = len - (e + 1);	
-}
-
-//
-void swap(int& s, int& e)
-{
-	int temp = e;
-	e = s;
-	s = temp;
 }
 
 #if 0

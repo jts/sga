@@ -17,7 +17,6 @@
 #include <sstream>
 #include <cstring>
 #include <cstdlib>
-
 #include "DNAString.h"
 
 #define CAF_SEP ':'
@@ -129,7 +128,7 @@ struct SeqCoord
 {
 	// constructor
 	SeqCoord() {}
-	SeqCoord(int s, int e, int l) : interval(s, e), seqlen(l) {}
+	SeqCoord(int s, int e, int l) : interval(s, e), seqlen(l) { assert(s <= e); }
 
 	// functions
 	inline bool isLeftExtreme() const
@@ -151,39 +150,27 @@ struct SeqCoord
 	{
 		return (isLeftExtreme() && isRightExtreme());
 	}
-	
-	inline bool isReverse() const
-	{
-		return interval.end < interval.start;
-	}
 
 	// Return the length of the interval, which is inclusive
 	inline int length() const 
 	{ 
-		return isReverse() ? interval.start - interval.end + 1 : interval.end - interval.start + 1; 
+		return interval.end - interval.start + 1;
 	}
 	
 	// Flip mirrors the coordinates so they are on the other strand
 	// The coordinates are naturally reversed to indicate its the other strand
 	inline void flip()
 	{
-		interval.start = seqlen - interval.start - 1;
-		interval.end = seqlen - interval.end - 1;
+		int tmp = seqlen - interval.start - 1;
+		interval.start = seqlen - interval.end - 1;
+		interval.end = tmp;
+		assert(interval.start <= interval.end);
 	}
 
-	// Reverse swaps that start/end coord
-	inline void reverse()
+	// Flip a single position p to the reverse strand for a sequence of length l
+	static inline int flip(int p, int l)
 	{
-		int tmp = interval.end;
-		interval.end = interval.start;
-		interval.start = tmp;
-	}
-
-	// Reflect transfers the coordinates to the opposite strand without reversing
-	inline void reflect()
-	{
-		flip();
-		reverse();
+		return l - p - 1;
 	}
 
 	SeqCoord complement() const;
@@ -198,86 +185,6 @@ struct SeqCoord
 	Interval interval;
 	int seqlen;
 };
-
-struct Matching
-{
-	Matching() {}
-	Matching(const SeqCoord& sc1, const SeqCoord& sc2);
-	Matching(int s1, int e1, int l1, int s2, int e2, int l2);
-
-	// Translate the SeqCoord c from the frame of coord[0] to coord[1]
-	SeqCoord translate(const SeqCoord& c) const
-	{
-		assert(coord[0].length() == coord[1].length()); // ensure translation is valid
-		int t = coord[1].interval.start - coord[0].interval.start;
-		
-		SeqCoord out;
-		out.seqlen = coord[1].seqlen;
-		out.interval.start = c.interval.start + t;
-		out.interval.end = c.interval.end + t;
-		return out;
-	}
-
-	// Translate the SeqCoord c from the frame of coord[1] to coord[0]
-	SeqCoord inverseTranslate(const SeqCoord& c) const
-	{
-		assert(coord[0].length() == coord[1].length()); // ensure translation is valid
-		int t = coord[0].interval.start - coord[1].interval.start;
-		
-		SeqCoord out;
-		out.seqlen = coord[0].seqlen;
-		out.interval.start = c.interval.start + t;
-		out.interval.end = c.interval.end + t;
-		return out;
-	}
-
-	// Translate a single position from c[0] frame to c[1]
-	int translate(int c) const
-	{
-		assert(coord[0].length() == coord[1].length()); // ensure translation is valid
-		int t = coord[1].interval.start - coord[0].interval.start;
-		return c + t;
-	}
-
-	// Translate a single position from c[1] frame to c[0]
-	int inverseTranslate(int c) const
-	{
-		assert(coord[0].length() == coord[1].length());
-		int t = coord[0].interval.start - coord[1].interval.start;
-		return c + t;
-	}	
-
-	// Return a new match with the coords swapped
-	Matching swapCoords() const;
-
-	// Flip the coordinates, if necessary, to ensure they are in the correct orientation
-	void normalizeCoords();
-
-	friend std::ostream& operator<<(std::ostream& out, const Matching& m);
-	friend std::istream& operator>>(std::istream& in, Matching& m);
-
-	
-	SeqCoord coord[2];
-};
-
-// Overlap
-struct Overlap
-{
-	// constructors
-	Overlap() {}
-	Overlap(std::string i1, int s1, int e1, int l1, std::string i2, int s2, int e2, int l2, int nd); 
-
-	// functions
-	friend std::ostream& operator<<(std::ostream& out, const Overlap& o);
-	friend std::istream& operator>>(std::istream& in, Overlap& o);
-
-	// data
-	std::string id[2];
-	int numDiff;
-	Matching match;
-};
-
-typedef std::vector<Overlap> OverlapVector;
 
 //
 // Functions

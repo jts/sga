@@ -141,47 +141,29 @@ std::string correct(const SeqItem& read, const ReadTable* pRT, const OverlapMap*
 
 	for(size_t i = 0; i < overlaps.size(); ++i)
 	{
-		const Overlap& curr = overlaps[i];
-		SeqCoord readSC;
-		SeqCoord otherSC;
-		std::string otherID;
-		if(curr.id[0] == read.id)
-		{
-			readSC = curr.match.coord[0];
-			otherSC = curr.match.coord[1];
-			otherID = curr.id[1];
-		}
-		else
-		{
-			readSC = curr.match.coord[1];
-			otherSC = curr.match.coord[0];
-			otherID = curr.id[0];
-		}
+		Overlap curr = overlaps[i];
 
-		// normalize coordinates into the root
-		if(readSC.isReverse())
-		{
-			readSC.reverse();
-			otherSC.reverse();
-		}
+		// If the first element of the overlap is not the read
+		// swap the elements
+		if(curr.id[0] != read.id)
+			curr.swap();
 
-		std::string otherSeq = pRT->getRead(otherID).seq.toString();
+		assert(curr.id[0] == read.id);
+	
+		std::string otherSeq = pRT->getRead(curr.id[1]).seq.toString();
+
 		// Make the other sequence in the same frame as the root
-		if(otherSC.isReverse())
+		if(curr.match.isRC())
 		{
 			otherSeq = reverseComplement(otherSeq);
-			otherSC.flip();
+			curr.match.canonize();
 		}
-
-		assert(!readSC.isReverse());
-		assert(readSC.isReverse() == otherSC.isReverse());
-		Matching match(readSC, otherSC);
 
 		// Add the bases of other to the pileup
 		for(size_t j = 0; j < otherSeq.length(); ++j)
 		{
 			// Transform the position j on otherSeq to the coordinates of the read
-			int transformed = match.inverseTranslate(j);
+			int transformed = curr.match.inverseTranslate(j);
 			if(transformed >= 0 && transformed < (int)pileupVec.size())
 				pileupVec[transformed].append(1, otherSeq[j]);
 		}
@@ -278,51 +260,25 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 	// Convert each overlap into an offset and string
 	for(size_t j = 0; j < overlaps.size(); ++j)
 	{
-		const Overlap& curr = overlaps[j];
-		SeqCoord rootSC;
-		SeqCoord otherSC;
-		std::string otherID;
-		if(curr.id[0] == rootID)
-		{
-			rootSC = curr.match.coord[0];
-			otherSC = curr.match.coord[1];
-			otherID = curr.id[1];
-		}
-		else
-		{
-			rootSC = curr.match.coord[1];
-			otherSC = curr.match.coord[0];
-			otherID = curr.id[0];
-		}
+		Overlap curr = overlaps[j];
 
-		// If the root is reversed in this overlap, reverse both coordinates
-		// so that we can draw the root in its natural orientation
-		if(rootSC.isReverse())
-		{
-			rootSC.reverse();
-			otherSC.reverse();
-		}
+		// Swap root read into first position if necessary
+		if(curr.id[0] != rootID)
+			curr.swap();
+		assert(curr.id[0] == rootID);
 
-		std::string otherSeq = pRT->getRead(otherID).seq.toString();
-		// Make the other sequence in the same frame as the root
-		if(otherSC.isReverse())
+		std::string otherSeq = pRT->getRead(curr.id[1]).seq.toString();
+
+		// 
+		if(curr.match.isRC())
 		{
 			otherSeq = reverseComplement(otherSeq);
-			otherSC.flip();
+			curr.match.canonize();
 		}
-
-		assert(!rootSC.isReverse());
-		assert(rootSC.isReverse() == otherSC.isReverse());
 		
-		// Calculate the offset of otherSeq
-
-		// Determine if other lies to the left or the right
-		int offset;
-		if(rootSC.interval.start > otherSC.interval.start)
-			offset = rootSC.interval.start;
-		else
-			offset = -otherSC.interval.start;
-		draw_vector.push_back(DrawData(offset, otherID, otherSeq, curr.numDiff, rootSC.length()));
+		// Calculate the offset between position 0 of otherSeq and the start of the root
+		int offset = curr.match.inverseTranslate(0);
+		draw_vector.push_back(DrawData(offset, curr.id[1], otherSeq, curr.match.getNumDiff(), curr.match.coord[0].length()));
 	}
 	drawMulti(rootData.name, rootData.seq.size(), draw_vector);
 }
