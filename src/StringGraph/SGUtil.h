@@ -34,9 +34,17 @@ struct ContainMap
 // functions
 
 // string graph creation
-StringGraph* createSGFromOverlaps(std::string readFile, std::string overlapFile, std::string containFile);
-void createVertices(StringGraph* pGraph, std::string readFile, const ContainMap& containments);
-void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments);
+StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std::string containFile);
+void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& containments);
+void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments);
+
+// Create the edges described by the overlap. Returns a pointer to the edge
+// from the first entry of the overlap to the second. 
+StringEdge* createEdges(StringGraph* pGraph, const Overlap& o);
+
+// Return the index (0 or 1) of the CONTAINED vertex (the discarded vertex of a containment)
+size_t getContainedIdx(const Overlap& o);
+
 
 //
 std::string getOverhangString(const SeqCoord& sc, const std::string& seq);

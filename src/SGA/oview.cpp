@@ -278,7 +278,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 		
 		// Calculate the offset between position 0 of otherSeq and the start of the root
 		int offset = curr.match.inverseTranslate(0);
-		draw_vector.push_back(DrawData(offset, curr.id[1], otherSeq, curr.match.getNumDiff(), curr.match.coord[0].length()));
+		draw_vector.push_back(DrawData(offset, curr.id[1], otherSeq, curr.match.getNumDiffs(), curr.match.coord[0].length()));
 	}
 	drawMulti(rootData.name, rootData.seq.size(), draw_vector);
 }

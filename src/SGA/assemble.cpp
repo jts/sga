@@ -63,7 +63,7 @@ int assembleMain(int argc, char** argv)
 
 void assemble()
 {
-	StringGraph* pGraph = createSGFromOverlaps(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn");
+	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn");
 
 	//pGraph->validate();
 	pGraph->writeDot("before.dot");
@@ -87,6 +87,9 @@ void assemble()
 	pGraph->visit(trVisit);
 	pGraph->simplify();
 	pGraph->visit(varVisit);
+	pGraph->visit(trVisit);
+	pGraph->visit(trimVisit);
+	pGraph->simplify();
 
 	/*
 	// Bubble removal

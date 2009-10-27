@@ -207,15 +207,22 @@ std::istream& operator>>(std::istream& in, Match& m)
 //
 // Overlap
 //
-Overlap::Overlap(std::string i1, const SeqCoord& sc1, std::string i2, const SeqCoord& sc2, bool isRC, int nd)
+Overlap::Overlap(const std::string& i1, const std::string& i2, const Match& m) : match(m)
+{
+	id[0] = i1;
+	id[1] = i2;
+}
+
+Overlap::Overlap(const std::string& i1, const SeqCoord& sc1, 
+                 const std::string& i2, const SeqCoord& sc2, bool isRC, int nd)
 {
 	id[0] = i1;
 	id[1] = i2;
 	match = Match(sc1, sc2, isRC, nd);
 }
 
-Overlap::Overlap(std::string i1, int s1, int e1, int l1,
-                 std::string i2, int s2, int e2, int l2, bool isRC, int nd)
+Overlap::Overlap(const std::string& i1, int s1, int e1, int l1,
+                 const std::string& i2, int s2, int e2, int l2, bool isRC, int nd)
 {
 	id[0] = i1;
 	id[1] = i2;

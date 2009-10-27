@@ -71,11 +71,7 @@ struct SGVariantVisitor
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*);
 
-	Overlap inferOverlap(const std::string& seq_i, const std::string& seq_j, int start_i, int start_j, 
-	                     const std::string& id_i, const std::string& id_j, bool isReverse) const;
-
 	std::ofstream m_fileHandle;						 
-
 };
 
 // Infer an error rate for each node are mark nodes about the error threshold for removal

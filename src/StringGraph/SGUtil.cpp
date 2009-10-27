@@ -17,11 +17,8 @@ ContainMap::ContainMap(std::string file)
 	Overlap o;
 	while(reader >> o)
 	{
-		// By convention the lexographically lower ID is the container and the lexohigher is the contained
-		if(o.id[0] < o.id[1])
-			add(o.id[1], o.id[0]);
-		else
-			add(o.id[0], o.id[1]);
+		size_t idx = getContainedIdx(o);
+		add(o.id[idx], o.id[1 - idx]);
 	}
 	reader.close();
 }
@@ -34,7 +31,6 @@ void ContainMap::add(std::string s1, std::string s2)
 	if(isContained(s2))
 		std::cerr << "Warning: " << s2 << " is contained in: " << getContainer(s2) << "\n";
 	*/
-	assert(s2 < s1);
 	m_data.insert(std::make_pair(s1, s2));
 }
 
@@ -53,8 +49,30 @@ std::string ContainMap::getContainer(std::string s) const
 		return "";
 }
 
+// Return the index of the CONTAINED vertex
+size_t getContainedIdx(const Overlap& o)
+{
+	// The verts are mutually contained, return the lexographically lower id
+	if(o.match.coord[0].isContained() && o.match.coord[1].isContained())
+	{
+		if(o.id[0] < o.id[1])
+			return 1;
+		else
+			return 0;
+	}
+	else if(o.match.coord[0].isContained())
+	{
+		return 0;
+	}
+	else
+	{
+		assert(o.match.coord[1].isContained());
+		return 1;
+	}
+}
+
 // Construct a string graph from overlaps
-StringGraph* createSGFromOverlaps(std::string readFile, std::string overlapFile, std::string containFile)
+StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std::string containFile)
 {
 	// Initialize the string graph
 	StringGraph* pGraph = new StringGraph;
@@ -63,12 +81,12 @@ StringGraph* createSGFromOverlaps(std::string readFile, std::string overlapFile,
 	ContainMap containments(containFile);
 	
 	// Create the graph
-	createVertices(pGraph, readFile, containments);
-	createEdges(pGraph, overlapFile, containments);
+	loadVertices(pGraph, readFile, containments);
+	loadEdges(pGraph, overlapFile, containments);
 	return pGraph;
 }
 
-void createVertices(StringGraph* pGraph, std::string readFile, const ContainMap& containments)
+void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& containments)
 {
 	// Add the reads as the vertices
 	SeqReader reader(readFile);
@@ -82,7 +100,7 @@ void createVertices(StringGraph* pGraph, std::string readFile, const ContainMap&
 	}
 }
 
-void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments)
+void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments)
 {
 	// Add the overlaps as edges
 	std::ifstream overlapReader(overlapFile.c_str());
@@ -96,34 +114,40 @@ void createEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap&
 			//std::cerr << "skipping edge that has contained vertex " << o << "\n";
 			continue;
 		}
-
-		// Initialize data and perform checks
-		StringVertex* pVerts[2];
-		EdgeComp comp = (o.match.isRC()) ? EC_REVERSE : EC_SAME;
-
-		for(size_t idx = 0; idx < 2; ++idx)
-		{
-			pVerts[idx] = static_cast<StringVertex*>(pGraph->getVertex(o.id[idx]));
-			assert(pVerts[idx]);
-			
-			// Ensure the reads are not identical
-			assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
-		}
-
-		// Add edges
-		StringEdge* pEdges[2];
-		for(size_t idx = 0; idx < 2; ++idx)
-		{
-			EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
-			SeqCoord coord = o.match.coord[idx];
-			pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, coord, o.match.getNumDiff());
-		}
-
-		pEdges[0]->setTwin(pEdges[1]);
-		pEdges[1]->setTwin(pEdges[0]);
-
-		pGraph->addEdge(pEdges[0]);
-		pGraph->addEdge(pEdges[1]);
+		createEdges(pGraph, o);
 	}
 	overlapReader.close();
+}
+
+// add edges to the graph for the given overlap
+StringEdge* createEdges(StringGraph* pGraph, const Overlap& o)
+{
+	// Initialize data and perform checks
+	StringVertex* pVerts[2];
+	EdgeComp comp = (o.match.isRC()) ? EC_REVERSE : EC_SAME;
+
+	for(size_t idx = 0; idx < 2; ++idx)
+	{
+		pVerts[idx] = static_cast<StringVertex*>(pGraph->getVertex(o.id[idx]));
+		assert(pVerts[idx]);		
+		// Ensure the reads are not identical
+		assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
+	}
+
+	// Allocated the edges
+	StringEdge* pEdges[2];
+	for(size_t idx = 0; idx < 2; ++idx)
+	{
+		EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
+		const SeqCoord& coord = o.match.coord[idx];
+		pEdges[idx] = new StringEdge(pVerts[idx], pVerts[1 - idx], dir, comp, coord, o.match.getNumDiffs());
+	}
+
+	pEdges[0]->setTwin(pEdges[1]);
+	pEdges[1]->setTwin(pEdges[0]);
+
+	pGraph->addEdge(pEdges[0]);
+	pGraph->addEdge(pEdges[1]);
+
+	return pEdges[0];
 }

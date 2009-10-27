@@ -7,6 +7,7 @@
 // SGAlgorithms - Collection of algorithms for operating on string graphs
 //
 #include "SGAlgorithms.h"
+#include "SGUtil.h"
 
 // Visitor which outputs the graph in fasta format
 bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
@@ -298,7 +299,7 @@ void SGVariantVisitor::previsit(StringGraph* pGraph)
 }
 
 // Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
-bool SGVariantVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	for(size_t idx = 0; idx < ED_COUNT; idx++)
 	{
@@ -312,6 +313,12 @@ bool SGVariantVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 			{
 				const StringEdge* p_edgeI = CSE_CAST(edges[i]);
 				const StringEdge* p_edgeJ = CSE_CAST(edges[j]);
+
+				if(p_edgeI->getColor() == GC_BLACK || p_edgeJ->getColor() == GC_BLACK)
+				{
+					std::cout << "Skipping newly created edges\n";
+					continue;
+				}
 				const StringVertex* p_vertI = CSV_CAST(p_edgeI->getEnd());
 				const StringVertex* p_vertJ = CSV_CAST(p_edgeJ->getEnd());
 
@@ -349,46 +356,58 @@ bool SGVariantVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 				std::string ms_i = match_ij.coord[0].getSubstring(seq_i);
 				std::string ms_j = match_ij.coord[1].getSubstring(seq_j);
 
+				/*
 				std::cout << "COMP: " << comp << "\n";
 				std::cout << "match_i: " << match_i << " " << p_edgeI->getComp() << "\n";
 				std::cout << "match_j: " << match_j << " " << p_edgeJ->getComp() << "\n";
 				std::cout << "match_ij: " << match_ij << "\n";
 				std::cout << "ms_i: " << ms_i << "\n";
 				std::cout << "ms_j: " << ms_j << "\n";
-				/*
-				Overlap o = inferOverlap(seq_i, seq_j, start_i, start_j, p_vertI->getID(), p_vertJ->getID(), comp == EC_REVERSE);
-				m_fileHandle << o << "\n";
 				*/
+				int numDiffs = countDifferences(ms_i, ms_j, ms_i.length());
+				match_ij.setNumDiffs(numDiffs);
+
+				//std::cout << "diffs: " << match_ij.getNumDiffs() << "\n";
+
+				if(numDiffs < 10)
+				{
+					const std::string& id_i = p_edgeI->getEndID();
+					const std::string& id_j = p_edgeJ->getEndID();
+					Overlap o(id_i, id_j, match_ij);
+
+					// Ensure there isnt a containment relationship
+					if(o.match.coord[0].isContained() || o.match.coord[1].isContained())
+					{
+						
+						// Mark the contained vertex for deletion
+						//std::cout << "Found containment\n";
+						size_t idx = getContainedIdx(o);
+						if(idx == 0)
+							p_edgeI->getEnd()->setColor(GC_RED);
+						else
+							p_edgeJ->getEnd()->setColor(GC_RED);
+						
+					}
+					else
+					{
+						// add the edges to the graph
+						StringEdge* p_edgeIJ = createEdges(pGraph, o);
+						StringEdge* p_edgeJI = SE_CAST(p_edgeIJ->getTwin());
+						p_edgeIJ->setColor(GC_BLACK);
+						p_edgeJI->setColor(GC_BLACK);
+					}
+				}
 			}
 		}
 	}
 	return false;
 }
 
-// Simple gapless count of mismatches between seq_i and seq_j given the starting position of the matches
-Overlap SGVariantVisitor::inferOverlap(const std::string& seq_i, const std::string& seq_j, int start_i, int start_j, 
-                                    const std::string& id_i, const std::string& id_j, bool isReverse) const
-{
-	int match_span = std::min(seq_i.length() - start_i, seq_j.length() - start_j);
-	int num_diff = 0;
-	printf("seq_i(%d): %s\nseq_j(%d): %s\n", start_i, seq_i.c_str(), start_j, seq_j.c_str());
-	for(int k = 0; k < match_span; ++k)
-	{
-		if(seq_i[start_i + k] != seq_j[start_j + k])
-			++num_diff;
-		printf("%c - %c\n", seq_i[start_i + k], seq_j[start_j + k]);
-	}
-
-	// Create the overlap
-	SeqCoord sc_i(seq_i.length(), start_i, start_i + match_span - 1);
-	SeqCoord sc_j(seq_j.length(), start_j, start_j + match_span - 1);
-	Overlap o(id_i, sc_i, id_j, sc_j, isReverse, num_diff);
-	return o;
-}
-
 //
-void SGVariantVisitor::postvisit(StringGraph* /*pGraph*/)
+void SGVariantVisitor::postvisit(StringGraph* pGraph)
 {
+	pGraph->sweepVertices(GC_RED);
+	std::cerr << "Set edge colors?\n";
 }
 
 void SGErrorRemovalVisitor::previsit(StringGraph* pGraph)

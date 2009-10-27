@@ -21,7 +21,8 @@ struct Match
 
 	// Accessors
 	inline bool isRC() const { return isReverse; }
-	inline int getNumDiff() const { return numDiff; }
+	inline int getNumDiffs() const { return numDiff; }
+	void setNumDiffs(int n) { numDiff = n; }
 
 	// Calculate the translation offset from coord[0] to coord[1]
 	int calculateTranslation() const;
@@ -69,8 +70,13 @@ struct Overlap
 {
 	// constructors
 	Overlap() {}
-	Overlap(std::string i1, const SeqCoord& sc1, std::string i2, const SeqCoord& sc2, bool isRC, int nd); 
-	Overlap(std::string i1, int s1, int e1, int l1, std::string i2, int s2, int e2, int l2, bool isRC, int nd); 
+	Overlap(const std::string& i1, const std::string& i2, const Match& m);
+
+	Overlap(const std::string& i1, const SeqCoord& sc1, 
+	        const std::string& i2, const SeqCoord& sc2, bool isRC, int nd); 
+
+	Overlap(const std::string& i1, int s1, int e1, int l1, 
+	        const std::string& i2, int s2, int e2, int l2, bool isRC, int nd); 
 
 	// Swap the order of the elements
 	void swap();

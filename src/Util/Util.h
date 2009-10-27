@@ -177,7 +177,6 @@ struct SeqCoord
 		return interval.start >= 0 && interval.end < seqlen;
 	}
 
-	
 	// Flip mirrors the coordinates so they are on the other strand
 	// The coordinates are naturally reversed to indicate its the other strand
 	inline void flip()
