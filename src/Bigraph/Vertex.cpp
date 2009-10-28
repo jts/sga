@@ -24,16 +24,17 @@ void Vertex::addEdge(Edge* ep)
 {
 	assert(ep->getStart() == this);
 
+#ifdef VALIDATE
 	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
-		/*
 		if((*iter)->getEndID() == ep->getEndID())
 		{
 			std::cout << "Attempted to add duplicate edge with ID: " << ep->getEndID() << " to vertex: " << ep->getStartID() << "\n";
+			std::cout << "Added in desc: " << ep->getDesc() << " curr desc: " << (*iter)->getDesc() << "\n";
 			assert(false);
 		}
-		*/
 	}
+#endif
 	m_edges.push_back(ep);
 }
 
@@ -214,6 +215,11 @@ EdgePtrVec Vertex::getEdges()
 	return outEdges;	
 }
 
+void Vertex::setEdgeColors(GraphColor c) 
+{ 
+	for(EdgePtrListIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+		(*iter)->setColor(c);
+}
 
 // Count the edges
 // This function is not necessarily constant time

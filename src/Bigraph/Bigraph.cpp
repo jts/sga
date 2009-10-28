@@ -85,9 +85,7 @@ Vertex* Bigraph::getVertex(VertexID id) const
 {
 	VertexPtrMapConstIter iter = m_vertices.find(id);
 	if(iter == m_vertices.end())
-	{
 		return NULL;
-	}
 	return iter->second;
 }
 
@@ -414,7 +412,7 @@ bool Bigraph::visit(VertexVisitFunction f)
 }
 
 //
-// Set all the vertices in the graph to the given color
+// Set all the vertices and edges in the graph to the given color
 //
 void Bigraph::setColors(GraphColor c)
 {
@@ -422,6 +420,7 @@ void Bigraph::setColors(GraphColor c)
 	for(; iter != m_vertices.end(); ++iter)
 	{
 		iter->second->setColor(c);
+		iter->second->setEdgeColors(c);
 	}
 }
 

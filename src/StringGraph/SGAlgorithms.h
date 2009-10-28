@@ -53,6 +53,16 @@ struct SGTrimVisitor
 	int num_contig;
 };
 
+// Detect small island vertices and removal them
+struct SGIslandVisitor
+{
+	SGIslandVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+};
+
+
 // Detect whether vertices are bubbles and mark them for removal
 struct SGBubbleVisitor
 {

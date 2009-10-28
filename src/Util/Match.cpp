@@ -144,7 +144,6 @@ Match Match::infer(const Match& match_i, const Match& match_j)
 	int s = std::max(match_i.coord[0].interval.start, match_j.coord[0].interval.start);
 	int e = std::min(match_i.coord[0].interval.end, match_j.coord[0].interval.end);
 	
-
 	SeqCoord r_i(s, e, match_i.coord[1].seqlen);
 	SeqCoord r_j(s, e, match_j.coord[1].seqlen);
 

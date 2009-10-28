@@ -76,6 +76,7 @@ class Vertex
 		VertexID getID() const { return m_id; }
 		GraphColor getColor() const { return m_color; }
 		void setColor(GraphColor c) { m_color = c; }
+		void setEdgeColors(GraphColor c);
 
 		// Output edges in graphviz format
 		void writeEdges(std::ostream& out, int dotFlags) const;

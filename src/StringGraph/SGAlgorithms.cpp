@@ -22,7 +22,6 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 {
 	// Set all the vertices in the graph to "vacant"
 	pGraph->setColors(GC_WHITE);
-	std::cout << "Running TR algorithm in EXACT mode\n";
 	pGraph->sortVertexAdjLists();
 
 	marked_verts = 0;
@@ -76,7 +75,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 							// X is the endpoint of an edge of V, therefore it is transitive
 							pWXEdge->getEnd()->setColor(GC_BLACK);
 							++marked_verts;
-							//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive\n";
+							//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << "\n";
 						}
 					}
 					else
@@ -108,7 +107,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 						// X is the endpoint of an edge of V, therefore it is transitive
 						pWXEdge->getEnd()->setColor(GC_BLACK);
 						++marked_verts;
-						//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive in stage 2\n";
+						//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << " in stage 2\n";
 					}
 				}
 				else
@@ -117,6 +116,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 		}
 
 		bool trans_found = false;
+		size_t trans_count = 0;
 		for(size_t i = 0; i < edges.size(); ++i)
 		{
 			if(edges[i]->getEnd()->getColor() == GC_BLACK)
@@ -126,8 +126,18 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				edges[i]->getTwin()->setColor(GC_BLACK);
 				marked_edges += 2;
 				trans_found = true;
+				trans_count++;
 			}
 			edges[i]->getEnd()->setColor(GC_WHITE);
+		}
+		if(trans_count + 1 != edges.size())
+		{
+			printf("Vertex %s could not be completely reduced (%d, %d)\n", pVertex->getID().c_str(), (int)trans_count, (int)edges.size());
+			for(size_t i = 0; i < edges.size(); ++i)
+			{
+				if(edges[i]->getColor() != GC_BLACK)
+					std::cout << "Remaining edge: " << *edges[i] << "\n";
+			}
 		}
 	}
 
@@ -180,6 +190,29 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 	pGraph->sweepVertices(GC_BLACK);
 	printf("island: %d terminal: %d contig: %d\n", num_island, num_terminal, num_contig);
 }
+
+void SGIslandVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+}
+
+// Mark any nodes that dont have edges
+bool SGIslandVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	if(pVertex->countEdges() == 0)
+	{
+		pVertex->setColor(GC_BLACK);
+		return true;
+	}
+	return false;
+}
+
+// Remove all the marked vertices
+void SGIslandVisitor::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepVertices(GC_BLACK);
+}
+
 
 //
 // Bubble visit
@@ -292,15 +325,19 @@ void SGBubbleVisitor::postvisit(StringGraph* pGraph)
 	assert(pGraph->checkColors(GC_WHITE));
 }
 
-// Precondition: the graph has been transitively reduced
+// 
 void SGVariantVisitor::previsit(StringGraph* pGraph)
 {
 	pGraph->setColors(GC_WHITE);
 }
 
-// Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
+// 
 bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
+	// Skip vertex if its been marked as contained
+	if(pVertex->getColor() == GC_RED)
+		return false;
+	bool changed_graph = false;
 	for(size_t idx = 0; idx < ED_COUNT; idx++)
 	{
 		EdgeDir dir = EDGE_DIRECTIONS[idx];
@@ -314,16 +351,18 @@ bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				const StringEdge* p_edgeI = CSE_CAST(edges[i]);
 				const StringEdge* p_edgeJ = CSE_CAST(edges[j]);
 
+				/*
 				if(p_edgeI->getColor() == GC_BLACK || p_edgeJ->getColor() == GC_BLACK)
 				{
-					std::cout << "Skipping newly created edges\n";
+					//std::cout << "Skipping newly created edges\n";
 					continue;
 				}
+				*/
 				const StringVertex* p_vertI = CSV_CAST(p_edgeI->getEnd());
 				const StringVertex* p_vertJ = CSV_CAST(p_edgeJ->getEnd());
 
 				// Infer the edge comp
-				EdgeComp comp = p_edgeI->getComp() == p_edgeJ->getComp() ? EC_SAME : EC_REVERSE;
+				EdgeComp comp = (p_edgeI->getComp() == p_edgeJ->getComp()) ? EC_SAME : EC_REVERSE;
 				
 				// Infer the i->j and j->i direction
 				EdgeDir ij_dir = !p_edgeI->getTwin()->getDir();
@@ -333,9 +372,10 @@ bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				// hasEdge is not a particularly fast operation
 				EdgeDesc ij_desc(p_edgeJ->getEndID(), ij_dir, comp);
 				EdgeDesc ji_desc(p_edgeI->getEndID(), ji_dir, comp);
+
 				if(p_edgeI->getEnd()->hasEdge(ij_desc) || p_edgeJ->getEnd()->hasEdge(ji_desc))
 					continue;
-
+				
 				// Set up the matches between the root vertex and i/j
 				// All coordinates are calculated from the point of view of pVertex
 				Match match_i = p_edgeI->getMatch();
@@ -345,17 +385,19 @@ bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				Match match_ij = Match::infer(match_i, match_j);
 	
 				std::string seq_i = p_vertI->getSeq();
-				std::string seq_j = !match_ij.isRC() ? p_vertJ->getSeq() : reverseComplement(p_vertJ->getSeq());
+				std::string seq_j = p_vertJ->getSeq();
 				
 				// Expand the match outwards so that one sequence is left terminal 
 				// and one is right terminal
-				match_ij.canonize();
 				match_ij.expand();
 				
 				// Extract the match strings
 				std::string ms_i = match_ij.coord[0].getSubstring(seq_i);
 				std::string ms_j = match_ij.coord[1].getSubstring(seq_j);
 
+				if(match_ij.isRC())
+					ms_j = reverseComplement(ms_j);
+				
 				/*
 				std::cout << "COMP: " << comp << "\n";
 				std::cout << "match_i: " << match_i << " " << p_edgeI->getComp() << "\n";
@@ -378,10 +420,14 @@ bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					// Ensure there isnt a containment relationship
 					if(o.match.coord[0].isContained() || o.match.coord[1].isContained())
 					{
-						
 						// Mark the contained vertex for deletion
-						//std::cout << "Found containment\n";
 						size_t idx = getContainedIdx(o);
+						/*
+						std::cout << "ci: " << seq_i << "\n";
+						std::cout << "cj: " << seq_j << "\n";
+						std::cout << "ms_i: " << ms_i << "\n";
+						std::cout << "ms_j: " << ms_j << "\n";
+						*/
 						if(idx == 0)
 							p_edgeI->getEnd()->setColor(GC_RED);
 						else
@@ -395,19 +441,22 @@ bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 						StringEdge* p_edgeJI = SE_CAST(p_edgeIJ->getTwin());
 						p_edgeIJ->setColor(GC_BLACK);
 						p_edgeJI->setColor(GC_BLACK);
+						//std::cout << "Created edge " << *p_edgeIJ << "\n";
+						//std::cout << "Created edge " << *p_edgeJI << "\n";
+						assert(p_edgeIJ->getComp() == comp);
 					}
+					changed_graph = true;
 				}
 			}
 		}
 	}
-	return false;
+	return changed_graph;
 }
 
 //
 void SGVariantVisitor::postvisit(StringGraph* pGraph)
 {
 	pGraph->sweepVertices(GC_RED);
-	std::cerr << "Set edge colors?\n";
 }
 
 void SGErrorRemovalVisitor::previsit(StringGraph* pGraph)

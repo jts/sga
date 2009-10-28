@@ -69,34 +69,32 @@ void assemble()
 	pGraph->writeDot("before.dot");
 	
 	// Visitor functors
-	SGTrimVisitor trimVisit;
+	SGIslandVisitor islandVisit;
 	SGTransRedVisitor trVisit;
 	SGVariantVisitor varVisit;
 	SGBubbleVisitor bubbleVisit;
 	SGGraphStatsVisitor statsVisit;
 
-	//pGraph->visit(statsVisit);
-	
 	// Pre-assembly graph stats
 	pGraph->visit(statsVisit);
+
+	// Remove islands (unlinked vertices) from the graph
+	pGraph->visit(islandVisit);
 	
-	// Remove dead end reads
-	pGraph->visit(trimVisit);
+	//pGraph->visit(trimVisit);
+	// Perform a transitive closure step
+	while(pGraph->visit(varVisit));
 
 	// Perform trans reduction and perform an initial merge
 	pGraph->visit(trVisit);
 	pGraph->simplify();
-	pGraph->visit(varVisit);
-	pGraph->visit(trVisit);
-	pGraph->visit(trimVisit);
-	pGraph->simplify();
-
-	/*
+	//pGraph->visit(trimVisit);
+	//pGraph->simplify();
+	
 	// Bubble removal
 	while(pGraph->visit(bubbleVisit))
 		pGraph->simplify();
 	pGraph->simplify();
-	*/
 
 	// Final stats and validation
 	pGraph->visit(statsVisit);
