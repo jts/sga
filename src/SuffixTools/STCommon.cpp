@@ -50,12 +50,6 @@ std::ostream& operator<<(std::ostream& out, const SAElem& s)
 // AlphaCount
 //
 
-// Constructor
-AlphaCount::AlphaCount()
-{
-	memset(m_counts, 0, ALPHABET_SIZE * sizeof(BaseCount));
-}
-
 //
 std::ostream& operator<<(std::ostream& out, const AlphaCount& ac)
 {

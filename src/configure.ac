@@ -35,12 +35,7 @@ AC_CONFIG_FILES([Makefile
 		Util/Makefile
 		Bigraph/Makefile
 		StringGraph/Makefile
-		Scaffold/Makefile
-		Stats/Makefile
 		UniEst/Makefile
-		BDE/Makefile
-		Resolve/Makefile
-		IndelFinder/Makefile
 		SuffixTools/Makefile
 		Tests/Makefile
 		SGA/Makefile])

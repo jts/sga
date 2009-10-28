@@ -110,7 +110,11 @@ typedef uint64_t BaseCount;
 class AlphaCount
 {
 	public:
-		AlphaCount();
+		inline AlphaCount()
+		{
+			memset(m_counts, 0, ALPHABET_SIZE * sizeof(BaseCount));
+		}
+
 		inline void set(char b, BaseCount v)
 		{
 			m_counts[getBaseRank(b)] = v;

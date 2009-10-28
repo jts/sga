@@ -7,7 +7,7 @@ libsuffixtools_a_CPPFLAGS = \
 
 libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 			  STCommon.cpp STCommon.h \
-			  STGlobal.h \
+			  STGlobals.h \
 			  Occurance.cpp Occurance.h \
 			  SuffixArray.cpp SuffixArray.h \
 			  SuffixCompare.cpp SuffixCompare.h \
