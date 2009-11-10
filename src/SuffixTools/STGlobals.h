@@ -22,6 +22,7 @@
 //
 const uint8_t ALPHABET_SIZE = 5;
 const char ALPHABET[ALPHABET_SIZE] = {'A', 'C', 'G', 'T', '$'};
+const char RANK_ALPHABET[ALPHABET_SIZE] = {'$', 'A', 'C', 'G', 'T'};
 const uint8_t DNA_ALPHABET_SIZE = 4;
 
 //

@@ -104,30 +104,42 @@ struct SAElem
 };
 
 //
-// A simple class holding the count for each base of a DNA string (plus the terminator)  
+// A simple class holding the count for each base of a DNA string (plus the terminator)
+// Note that the counts are stored in lexographic order
 //
 typedef uint64_t BaseCount;
 class AlphaCount
 {
 	public:
+	
+		//
 		inline AlphaCount()
 		{
 			memset(m_counts, 0, ALPHABET_SIZE * sizeof(BaseCount));
 		}
 
+		//
 		inline void set(char b, BaseCount v)
 		{
 			m_counts[getBaseRank(b)] = v;
 		}
 
+		// 
 		inline void increment(char b)
 		{
 			m_counts[getBaseRank(b)]++;
 		}
 
+		// 
 		inline BaseCount get(char b) const
 		{
 			return m_counts[getBaseRank(b)];
+		}
+
+		// Return the base for index i
+		inline char getBase(size_t i) const
+		{
+			return RANK_ALPHABET[i];
 		}
 
 		// Return the sum of the basecounts for characters lexo. lower than b
@@ -140,16 +152,62 @@ class AlphaCount
 			return out;
 		}
 
-		
+		// Returns true if only one of the DNA characters
+		// has a non-zero count
+		inline bool hasUniqueDNAChar()
+		{
+			// index 0 is the '$' character, which we skip
+			bool nonzero = false;
+			for(int i = 1; i < ALPHABET_SIZE; ++i)
+			{
+				if(m_counts[i] > 0)
+				{
+					// if nonzero is set, there is some other nonzero character, return false
+					if(nonzero)
+						return false;
+					else
+						nonzero = true;
+				}
+			}
+			return nonzero;
+		}
+
+		// Return the unique DNA character described by the alphacount
+		// Returns '$' if no such character exists
+		// Asserts if more than one character is described by the alphacount
+		inline char getUniqueDNAChar()
+		{
+			char r = '$';
+			for(int i = 1; i < ALPHABET_SIZE; ++i)
+			{
+				if(m_counts[i] > 0)
+				{
+					assert(r == '$');
+					// lookup the character in the ranked alphabet, since the elements
+					// are stored in lexographic order
+					r = RANK_ALPHABET[i];
+				}
+			}
+			return r;
+		}
+
 		// Operators
 		friend std::ostream& operator<<(std::ostream& out, const AlphaCount& ac);
 		friend std::istream& operator>>(std::istream& in, AlphaCount& ac);
+		
 		inline friend AlphaCount operator+(const AlphaCount& left, const AlphaCount& right)
 		{
 			AlphaCount out;
 			for(int i = 0; i < ALPHABET_SIZE; ++i)
 				out.m_counts[i] = left.m_counts[i] + right.m_counts[i];
 			return out;
+		}
+
+		inline AlphaCount& operator+=(const AlphaCount& a)
+		{
+			for(int i = 0; i < ALPHABET_SIZE; ++i)
+				m_counts[i] += a.m_counts[i];
+			return *this;
 		}
 
 		// As the counts are unsigned integers, each value in left

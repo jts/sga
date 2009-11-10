@@ -24,6 +24,8 @@ enum ExtendDirection
 	ED_RIGHT
 };
 
+
+// A pair of integers used to denote a range in a BWT array
 struct BWTInterval
 {
 	int64_t lower;
@@ -42,14 +44,30 @@ struct BWTInterval
 	{
 		return a.lower == b.lower && a.upper == b.upper;
 	}
+
+	friend std::ostream& operator<<(std::ostream& out, BWTInterval& a)
+	{
+		out << "[" << a.lower << "," << a.upper << "]";
+		return out;
+	}
 };
 
+// A pair of intervals, used for bidirectional searching a bwt/revbwt in lockstep
 struct BWTIntervalPair
 {
 	BWTInterval& get(unsigned int idx) { return interval[idx]; }
 	BWTInterval interval[2];
+
+	friend std::ostream& operator<<(std::ostream& out, BWTIntervalPair& a)
+	{
+		out << a.interval[0] << " " << a.interval[1];
+		return out;
+	}
+
 };
 
+// Structure holding all the working variables for making an inexact alignment for a sequence
+// to a BWT
 struct BWTAlign
 {
 	inline int length() const { return right_index - left_index + 1; }
@@ -108,7 +126,7 @@ typedef std::list<BWTAlign> BWTAlignList;
 
 //
 // Update both the left and right intervals using pRevBWT
-// This assumes that the left/right ranges in ipair are for string S
+// This assumes that the left/right ranges in pair are for string S
 // It returns the updated left/right ranges for string Sb (appending b)
 // using the pRevBWT to update both
 inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
@@ -125,6 +143,25 @@ inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 
 }
 
+//
+// Update both the left and right intervals using pBWT
+// This assumes that the left/right ranges in pair are for string S
+// It returns the updated left/right ranges for string bS (prepending b)
+inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT)
+{
+	// Update the left index using the difference between the AlphaCounts in the reverse table
+	AlphaCount diff = pBWT->getOccDiff(pair.interval[0].lower - 1, pair.interval[0].upper);
+	pair.interval[1].lower = pair.interval[1].lower + diff.getLessThan(b);
+	pair.interval[1].upper = pair.interval[1].lower + diff.get(b) - 1;
+
+	// Update the left index directly
+	size_t pb = pBWT->getC(b);
+	pair.interval[0].lower = pb + pBWT->getOcc(b, pair.interval[0].lower - 1);
+	pair.interval[0].upper = pb + pBWT->getOcc(b, pair.interval[0].upper) - 1;
+
+}
+
+
 // Update the left interval in pair using pB
 // This assumes the left interval is for string S
 // and returns the interval for bS (prepend b)
@@ -136,14 +173,27 @@ inline void updateLeft(BWTIntervalPair& pair, char b, const BWT* pB)
 
 }
 
+// Initialize the interval of index idx to be the range containining all the b suffixes
+inline void _initInterval(BWTIntervalPair& pair, int idx, char b, const BWT* pB)
+{
+	pair.interval[idx].lower = pB->getC(b);
+	pair.interval[idx].upper = pair.interval[idx].lower + pB->getOcc(b, pB->getBWLen() - 1) - 1;
+}
+
+// Initialize the interval of index idx to be the range containining all the b suffixes
+inline void initIntervals(BWTIntervalPair& pair, char b, const BWT* pBWT, const BWT* pRevBWT)
+{
+	_initInterval(pair, LEFT_INT_IDX, b, pBWT);
+	_initInterval(pair, RIGHT_INT_IDX, b, pRevBWT);
+}
+
+//
+// Alignment algorithms
+//
 int alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                        double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits);
 
-int alignSuffixInexactExhaustive(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                       double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits);
-
-int alignSuffixMaxDiff(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, int maxDiff, int minOverlap, Hit& hitTemplate, HitVector* pHits);
-
+// 
 int _alignBlock(const std::string& w, int block_start, int block_end,
                 const BWT* pBWT, const BWT* pRevBWT, int maxDiff, Hit& hitTemplate, HitVector* pHits);
 

@@ -57,7 +57,8 @@ am_libsuffixtools_a_OBJECTS = libsuffixtools_a-BWT.$(OBJEXT) \
 	libsuffixtools_a-LCPArray.$(OBJEXT) \
 	libsuffixtools_a-saca.$(OBJEXT) \
 	libsuffixtools_a-bwt_algorithms.$(OBJEXT) \
-	libsuffixtools_a-OverlapQuality.$(OBJEXT)
+	libsuffixtools_a-OverlapQuality.$(OBJEXT) \
+	libsuffixtools_a-AssembleExact.$(OBJEXT)
 libsuffixtools_a_OBJECTS = $(am_libsuffixtools_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -178,7 +179,8 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 			  LCPArray.cpp LCPArray.h \
 			  saca.h saca.cpp \
 			  bwt_algorithms.h bwt_algorithms.cpp \
-			  OverlapQuality.h OverlapQuality.cpp
+			  OverlapQuality.h OverlapQuality.cpp \
+			  AssembleExact.h AssembleExact.cpp
 
 all: all-am
 
@@ -227,6 +229,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-AssembleExact.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-BWT.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-InverseSuffixArray.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libsuffixtools_a-LCPArray.Po@am__quote@
@@ -391,6 +394,20 @@ libsuffixtools_a-OverlapQuality.obj: OverlapQuality.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='OverlapQuality.cpp' object='libsuffixtools_a-OverlapQuality.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-OverlapQuality.obj `if test -f 'OverlapQuality.cpp'; then $(CYGPATH_W) 'OverlapQuality.cpp'; else $(CYGPATH_W) '$(srcdir)/OverlapQuality.cpp'; fi`
+
+libsuffixtools_a-AssembleExact.o: AssembleExact.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-AssembleExact.o -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-AssembleExact.Tpo" -c -o libsuffixtools_a-AssembleExact.o `test -f 'AssembleExact.cpp' || echo '$(srcdir)/'`AssembleExact.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-AssembleExact.Tpo" "$(DEPDIR)/libsuffixtools_a-AssembleExact.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-AssembleExact.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='AssembleExact.cpp' object='libsuffixtools_a-AssembleExact.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-AssembleExact.o `test -f 'AssembleExact.cpp' || echo '$(srcdir)/'`AssembleExact.cpp
+
+libsuffixtools_a-AssembleExact.obj: AssembleExact.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libsuffixtools_a-AssembleExact.obj -MD -MP -MF "$(DEPDIR)/libsuffixtools_a-AssembleExact.Tpo" -c -o libsuffixtools_a-AssembleExact.obj `if test -f 'AssembleExact.cpp'; then $(CYGPATH_W) 'AssembleExact.cpp'; else $(CYGPATH_W) '$(srcdir)/AssembleExact.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libsuffixtools_a-AssembleExact.Tpo" "$(DEPDIR)/libsuffixtools_a-AssembleExact.Po"; else rm -f "$(DEPDIR)/libsuffixtools_a-AssembleExact.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='AssembleExact.cpp' object='libsuffixtools_a-AssembleExact.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libsuffixtools_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libsuffixtools_a-AssembleExact.obj `if test -f 'AssembleExact.cpp'; then $(CYGPATH_W) 'AssembleExact.cpp'; else $(CYGPATH_W) '$(srcdir)/AssembleExact.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

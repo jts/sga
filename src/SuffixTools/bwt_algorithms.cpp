@@ -11,20 +11,6 @@
 
 #define SWAP_LIST(x, y) pSwap = (x); (x) = (y); (y) = pSwap;
 
-// Initialize the interval with index idx
-inline void _initInterval(BWTIntervalPair& pair, int idx, char b, const BWT* pB)
-{
-	pair.interval[idx].lower = pB->getC(b);
-	pair.interval[idx].upper = pair.interval[idx].lower + pB->getOcc(b, pB->getBWLen() - 1) - 1;
-}
-
-inline void initIntervals(BWTIntervalPair& pair, char b, const BWT* pBWT, const BWT* pRevBWT)
-{
-	_initInterval(pair, LEFT_INT_IDX, b, pBWT);
-	_initInterval(pair, RIGHT_INT_IDX, b, pRevBWT);
-}
-
-
 // Set up the alignment blocks and call the alignment function on each block
 int alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                        double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits)

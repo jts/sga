@@ -69,7 +69,7 @@ void exact()
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
 	BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
 	ReadTable* pRT = new ReadTable(opt::readsFile);
-
+	AssembleExact::assemble(opt::minOverlap, pBWT, pRBWT, pRT);
 
 	delete pBWT;
 	delete pRBWT;
