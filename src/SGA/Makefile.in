@@ -49,7 +49,7 @@ binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am_sga_OBJECTS = sga-sga.$(OBJEXT) sga-index.$(OBJEXT) \
 	sga-overlap.$(OBJEXT) sga-assemble.$(OBJEXT) \
-	sga-oview.$(OBJEXT)
+	sga-oview.$(OBJEXT) sga-exact.$(OBJEXT)
 sga_OBJECTS = $(am_sga_OBJECTS)
 sga_DEPENDENCIES = $(top_builddir)/Util/libutil.a \
 	$(top_builddir)/Stats/libstats.a \
@@ -177,7 +177,8 @@ sga_SOURCES = sga.cpp \
               index.cpp index.h \
 			  overlap.cpp overlap.h \
 			  assemble.cpp assemble.h \
-			  oview.cpp oview.h
+			  oview.cpp oview.h \
+			  exact.cpp exact.h
 
 all: all-am
 
@@ -246,6 +247,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-assemble.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-exact.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-index.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-overlap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga-oview.Po@am__quote@
@@ -334,6 +336,20 @@ sga-oview.obj: oview.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='oview.cpp' object='sga-oview.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-oview.obj `if test -f 'oview.cpp'; then $(CYGPATH_W) 'oview.cpp'; else $(CYGPATH_W) '$(srcdir)/oview.cpp'; fi`
+
+sga-exact.o: exact.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga-exact.o -MD -MP -MF "$(DEPDIR)/sga-exact.Tpo" -c -o sga-exact.o `test -f 'exact.cpp' || echo '$(srcdir)/'`exact.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga-exact.Tpo" "$(DEPDIR)/sga-exact.Po"; else rm -f "$(DEPDIR)/sga-exact.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='exact.cpp' object='sga-exact.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-exact.o `test -f 'exact.cpp' || echo '$(srcdir)/'`exact.cpp
+
+sga-exact.obj: exact.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga-exact.obj -MD -MP -MF "$(DEPDIR)/sga-exact.Tpo" -c -o sga-exact.obj `if test -f 'exact.cpp'; then $(CYGPATH_W) 'exact.cpp'; else $(CYGPATH_W) '$(srcdir)/exact.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga-exact.Tpo" "$(DEPDIR)/sga-exact.Po"; else rm -f "$(DEPDIR)/sga-exact.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='exact.cpp' object='sga-exact.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga-exact.obj `if test -f 'exact.cpp'; then $(CYGPATH_W) 'exact.cpp'; else $(CYGPATH_W) '$(srcdir)/exact.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

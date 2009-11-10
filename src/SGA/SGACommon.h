@@ -22,4 +22,8 @@
 #define SAI_EXT ".sai"
 #define RSAI_EXT ".rsai"
 
+
+// Default values
+#define DEFAULT_MIN_OVERLAP 25
+
 #endif

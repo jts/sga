@@ -14,6 +14,8 @@
 void Occurance::initialize(const BWStr& bwStr, int sampleRate)
 {
 	m_sampleRate = sampleRate;
+	calculateShiftValue();
+
 	size_t l = bwStr.length();
 	int num_samples = (l % m_sampleRate == 0) ? (l / m_sampleRate) : (l / m_sampleRate + 1);
 	m_values.resize(num_samples);
@@ -26,6 +28,25 @@ void Occurance::initialize(const BWStr& bwStr, int sampleRate)
 		if(i % m_sampleRate == 0)
 			m_values[i / m_sampleRate] = sum;
 	}
+}
+
+// 
+void Occurance::calculateShiftValue()
+{
+	assert(m_sampleRate > 0);
+	assert(IS_POWER_OF_2(m_sampleRate));
+
+	// m_sampleRate is a power of 2, count what bit is set
+	unsigned int v = m_sampleRate;
+	unsigned int c = 0; // c accumulates the total bits set in v
+
+	while(v != 1)
+	{
+		v >>= 1;
+		++c;
+	}
+	m_shift = c;
+	assert(1 << m_shift == m_sampleRate);
 }
 
 //
@@ -72,6 +93,7 @@ std::istream& operator>>(std::istream& in, Occurance& o)
 	o.m_values.resize(n);
 	for(size_t i = 0; i < n; ++i)
 		in >> o.m_values[i];
+	o.calculateShiftValue();
 	return in;
 }
 

@@ -198,6 +198,9 @@ struct SeqCoord
 	// Get the substring described by the interval
 	std::string getSubstring(const std::string& str) const;
 
+	// Get the substring described by the complement of the interval
+	std::string getComplementString(const std::string& str) const;
+
 	friend std::ostream& operator<<(std::ostream& out, const SeqCoord& sc);
 	friend std::istream& operator>>(std::istream& in, SeqCoord& sc);	
 
@@ -223,6 +226,11 @@ std::string makeKeyValue(std::string key, C value)
 
 StringVec split(std::string in, char delimiter);
 void splitKeyValue(std::string in, std::string& key, std::string& value);
+
+
+// Debug function to get the distance between two reads based on their names, which 
+// encodes the positions
+size_t debug_getReadDistFromNames(const std::string& name1, const std::string& name2);
 
 //
 // Return the lexographic value for the given base

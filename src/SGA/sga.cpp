@@ -12,6 +12,7 @@
 #include "overlap.h"
 #include "assemble.h"
 #include "oview.h"
+#include "exact.h"
 
 #define VERSION "0.1"
 #define PROGRAM_BIN "sga"
@@ -43,6 +44,8 @@ int main(int argc, char** argv)
 			assembleMain(argc - 1, argv + 1);
 		else if(command == "oview")
 			oviewMain(argc - 1, argv + 1);
+		else if(command == "exact")
+			exactMain(argc - 1, argv + 1);
 		else
 		{
 			std::cerr << "Unrecognized command: " << command << "\n";

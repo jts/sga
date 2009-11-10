@@ -16,6 +16,11 @@
 #include "BWT.h"
 #include "LCPArray.h"
 #include "SGUtil.h"
+#include "OverlapQuality.h"
+
+void detectMisalignments(const ReadTable* pRT, const OverlapMap* pOM);
+void detect(const SeqItem& read, const ReadTable* pRT, const OverlapMap* pOM);
+
 
 //
 // Getopt
@@ -37,6 +42,7 @@ static const char *OVIEW_USAGE_MESSAGE =
 "      -i, --id=ID                      only show overlaps for read with ID\n"
 "      -m, --max-overhang=D             only show D overhanging bases of the alignments (default=6)\n"
 "      -c, --correct-errors             correct reads errors using overlaps\n"
+"      -d, --detect-misalign            detect misaligned reads\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -46,21 +52,23 @@ namespace opt
 	static std::string prefix;
 	static std::string readsFile;
 	static std::string readFilter;
-	static bool correct_errors;
+	static bool bErrorCorrect;
+	static bool bDetectMisalign;
 }
 
-static const char* shortopts = "p:m:i:cv";
+static const char* shortopts = "p:m:i:cvd";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-	{ "verbose",        no_argument,       NULL, 'v' },
-	{ "id",             required_argument, NULL, 'i' },
-	{ "prefix",         required_argument, NULL, 'p' },
-	{ "max-overhang",   required_argument, NULL, 'm' },
-	{ "correct-errors", no_argument,       NULL, 'c' },
-	{ "help",           no_argument,       NULL, OPT_HELP },
-	{ "version",        no_argument,       NULL, OPT_VERSION },
+	{ "verbose",         no_argument,       NULL, 'v' },
+	{ "id",              required_argument, NULL, 'i' },
+	{ "prefix",          required_argument, NULL, 'p' },
+	{ "max-overhang",    required_argument, NULL, 'm' },
+	{ "correct-errors",  no_argument,       NULL, 'c' },
+	{ "detect-misalign", no_argument,       NULL, 'd' },
+	{ "help",            no_argument,       NULL, OPT_HELP },
+	{ "version",         no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -82,7 +90,10 @@ int oviewMain(int argc, char** argv)
 	parseOverlaps(containFile, overlapMap);
 	parseOverlaps(overlapFile, overlapMap);
 
-	if(opt::correct_errors)
+
+	if(opt::bDetectMisalign)
+		detectMisalignments(pRT, &overlapMap);
+	else if(opt::bErrorCorrect)
 	{
 		correctReads(pRT, &overlapMap);
 	}
@@ -125,6 +136,33 @@ void correctReads(const ReadTable* pRT, const OverlapMap* pOM)
 	}
 	printf("corrected %zu bases out of %zu total (%lf)\n", total_corrected, total_bases, (double)total_corrected / total_bases);
 	out.close();
+}
+
+void detectMisalignments(const ReadTable* pRT, const OverlapMap* pOM)
+{
+	for(size_t i = 0; i < pRT->getCount(); ++i)
+	{
+		const SeqItem& read = pRT->getRead(i);
+		if(read.id != "35621:20150")
+			continue;
+
+		OverlapMap::const_iterator finder = pOM->find(read.id);
+		if(finder == pOM->end())
+			continue;
+
+		const OverlapVector& ov = finder->second;
+		OverlapQuality qual(read, ov, pRT);
+
+		int be_count = 0;
+		for(size_t i = 0; i < ov.size(); ++i)
+		{
+			if(debug_getReadDistFromNames(ov[i].id[0],ov[i].id[1]) > 100)
+				++be_count;
+		}
+		
+		double improve = qual.cluster();
+		printf("%d\t%lf\t%s\tBD\n", be_count, improve, read.id.c_str());
+	}
 }
 
 std::string correct(const SeqItem& read, const ReadTable* pRT, const OverlapMap* pOM, int& num_corrected)
@@ -328,7 +366,7 @@ void parseOverlaps(std::string filename, OverlapMap& overlapMap)
 	{
 		// If we are in error correcting mode, or the read filter is not set or this read matches the filter, add it to the 
 		// overlap map
-		if(opt::correct_errors || opt::readFilter.empty() || (o.id[0] == opt::readFilter || o.id[1] == opt::readFilter))
+		if(opt::bErrorCorrect || opt::bDetectMisalign || opt::readFilter.empty() || (o.id[0] == opt::readFilter || o.id[1] == opt::readFilter))
 		{
 			overlapMap[o.id[0]].push_back(o);
 			overlapMap[o.id[1]].push_back(o);
@@ -357,7 +395,8 @@ void parseOviewOptions(int argc, char** argv)
 			case 'v': opt::verbose++; break;
 			case 'i': arg >> opt::readFilter; break;
 			case 'm': arg >> opt::max_overhang; break;
-			case 'c': opt::correct_errors = true; break;
+			case 'd': opt::bDetectMisalign = true; break;
+			case 'c': opt::bErrorCorrect = true; break;
 			case OPT_HELP:
 				std::cout << OVIEW_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);

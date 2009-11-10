@@ -30,6 +30,9 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -p, --prefix=FILE                use PREFIX instead of the basename of READSFILE\n"
+"      -b, --bubble                     perform bubble removal\n"
+"      -t, --trim                       trim terminal branches\n"
+"      -c, --close                      perform transitive closure\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -37,14 +40,20 @@ namespace opt
 	static unsigned int verbose;
 	static std::string readsFile;
 	static std::string prefix;
+	static bool bTransClose;
+	static bool bTrim;
+	static bool bBubble;
 }
 
-static const char* shortopts = "p:v";
+static const char* shortopts = "p:vbtc";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
+	{ "bubble",      no_argument,       NULL, 'b' },
+	{ "trim",        no_argument,       NULL, 't' },
+	{ "close",       no_argument,       NULL, 'c' },	
 	{ "prefix",      required_argument, NULL, 'p' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
@@ -69,34 +78,69 @@ void assemble()
 	pGraph->writeDot("before.dot");
 	
 	// Visitor functors
+	SGTrimVisitor trimVisit;
 	SGIslandVisitor islandVisit;
 	SGTransRedVisitor trVisit;
 	SGVariantVisitor varVisit;
+	SGTCVisitor tcVisit;
 	SGBubbleVisitor bubbleVisit;
 	SGGraphStatsVisitor statsVisit;
+	SGEdgeClassVisitor edgeClassVisit;
 
 	// Pre-assembly graph stats
+	std::cout << "Initial graph stats\n";
 	pGraph->visit(statsVisit);
 
-	// Remove islands (unlinked vertices) from the graph
-	pGraph->visit(islandVisit);
-	
-	//pGraph->visit(trimVisit);
-	// Perform a transitive closure step
-	while(pGraph->visit(varVisit));
+/*
+	if(opt::bTrim)
+	{
+		std::cout << "Performing island/trim reduction\n";
+		pGraph->visit(islandVisit);
+		pGraph->visit(trimVisit);
+		pGraph->visit(statsVisit);
+	}
+*/
+	if(opt::bTransClose)
+	{
+		pGraph->visit(edgeClassVisit);
+		std::cout << "\nPerforming transitive closure\n";
+		int max_tc = 10;
+		while(pGraph->visit(tcVisit) && --max_tc > 0);
+		pGraph->visit(statsVisit);
+		pGraph->visit(edgeClassVisit);
+	}
 
-	// Perform trans reduction and perform an initial merge
+	if(opt::bTrim)
+	{
+		std::cout << "\nPerforming island/trim reduction\n";
+		pGraph->visit(islandVisit);
+		pGraph->visit(trimVisit);
+		pGraph->visit(trimVisit);
+		pGraph->visit(trimVisit);
+		pGraph->visit(statsVisit);
+	}
+
+
+	std::cout << "\nPerforming transitive reduction\n";
 	pGraph->visit(trVisit);
 	pGraph->simplify();
+	pGraph->visit(statsVisit);
+
 	//pGraph->visit(trimVisit);
 	//pGraph->simplify();
 	
-	// Bubble removal
-	while(pGraph->visit(bubbleVisit))
-		pGraph->simplify();
+	if(opt::bBubble)
+	{
+		std::cout << "\nPerforming bubble removal\n";
+		// Bubble removal
+		while(pGraph->visit(bubbleVisit))
+			pGraph->simplify();
+		pGraph->visit(statsVisit);
+	}
+
 	pGraph->simplify();
 
-	// Final stats and validation
+	std::cout << "\nFinal graph stats\n";
 	pGraph->visit(statsVisit);
 
 #ifdef VALIDATE
@@ -126,6 +170,9 @@ void parseAssembleOptions(int argc, char** argv)
 			case 'p': arg >> opt::prefix; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
+			case 'b': opt::bBubble = true; break;
+            case 't': opt::bTrim = true; break;
+			case 'c': opt::bTransClose = true; break;
 			case OPT_HELP:
 				std::cout << ASSEMBLE_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);

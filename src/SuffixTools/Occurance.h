@@ -11,6 +11,13 @@
 #define OCCURANCE_H
 #include "STCommon.h"
 
+// Power of 2 macros
+
+// return true if x is a power of 2
+#define IS_POWER_OF_2(x) ((x) & (x) - 1) == 0
+
+// return the x % y given that y is a power of 2
+#define MOD_POWER_2(x, y) (x) & ((y) - 1)
 class BWT;
 
 class Occurance
@@ -27,14 +34,14 @@ class Occurance
 		inline const AlphaCount get(const BWStr& bwStr, size_t idx) const
 		{
 			// Quick path
-			if(idx % m_sampleRate == 0)
-				return m_values[idx / m_sampleRate];
+			if(MOD_POWER_2(idx,m_sampleRate) == 0)
+				return m_values[idx >> m_shift];
 
 			// Calculate the nearest sample to this index
-			size_t lower_idx = idx / m_sampleRate;
+			size_t lower_idx = idx >> m_shift;
 			size_t upper_idx = lower_idx + 1;
-			size_t lower_start = lower_idx * m_sampleRate;
-			size_t upper_start = upper_idx * m_sampleRate;
+			size_t lower_start = lower_idx << m_shift;
+			size_t upper_start = upper_idx << m_shift;
 
 			AlphaCount sum;
 
@@ -61,7 +68,38 @@ class Occurance
 		
 		inline BaseCount get(const BWStr& bwStr, char a, size_t idx) const
 		{
-			return get(bwStr, idx).get(a);
+			// Quick path
+			if(MOD_POWER_2(idx,m_sampleRate) == 0)
+				return m_values[idx >> m_shift].get(a);
+
+			// Calculate the nearest sample to this index
+			size_t lower_idx = idx >> m_shift;
+			size_t upper_idx = lower_idx + 1;
+			size_t lower_start = lower_idx << m_shift;
+			size_t upper_start = upper_idx << m_shift;
+			BaseCount sum = 0;
+		
+			// Choose the closest index or force the choice to lower_idx is the upper_idx is invalid
+			if((idx - lower_start < upper_start - idx) || upper_idx == m_values.size())
+			{
+				for(size_t j = lower_start + 1; j <= idx; ++j)
+				{
+					if(bwStr[j] == a)
+						++sum;
+				}
+				return m_values[lower_idx].get(a) + sum;
+			}
+			else
+			{
+				for(size_t j = idx + 1; j <= upper_start; ++j)
+				{
+					if(bwStr[j] == a)
+						++sum;
+				}
+				return m_values[upper_idx].get(a) - sum;
+			}
+			
+			//return get(bwStr, idx).get(a);
 		}
 
 		
@@ -74,6 +112,9 @@ class Occurance
 		friend std::istream& operator>>(std::istream& in, Occurance& o);
 
 	private:
+		void calculateShiftValue();
+
+		int m_shift;
 		int m_sampleRate;
 		std::vector<AlphaCount> m_values;
 };

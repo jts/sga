@@ -18,4 +18,5 @@ sga_SOURCES = sga.cpp \
               index.cpp index.h \
 			  overlap.cpp overlap.h \
 			  assemble.cpp assemble.h \
-			  oview.cpp oview.h
+			  oview.cpp oview.h \
+			  exact.cpp exact.h

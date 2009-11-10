@@ -35,7 +35,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
-"      -m, --min-overlap=OVERLAP_LEN    minimum overlap required between two reads [30]\n"
+"      -m, --min-overlap=OVERLAP_LEN    minimum overlap required between two reads\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -d, --max-diff=D                 report all prefix-suffix matches that have at most D differences\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -76,6 +76,12 @@ int overlapMain(int argc, char** argv)
 	parseHits(hitsFile);
 	return 0;
 }
+
+int total_hits = 0;
+int output_hits = 0;
+int num_blocks = 0;
+int num_seeds = 0;
+size_t total_seed_size = 0;
 
 std::string computeHitsBWT()
 {
@@ -129,18 +135,19 @@ std::string computeHitsBWT()
 				//cost += pBWT->getInexactPrefixHits(currSeq, pRBWT, opt::maxDiff, opt::minOverlap, count, false, isRC, pHits);
 				//cost += pRBWT->getInexactPrefixHits(reverse(currSeq), pBWT, opt::maxDiff, opt::minOverlap, count, true, !isRC, pHits);
 				/*
-				Hit hitTemplate(count, 0, 0, 0, false, isRC); 
-				cost += alignInexactSuffix2(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
+				Hit hitTemplate(count, 0, 0, 0, false, isRC, 0); 
+				cost += alignSuffixMaxDiff(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
 				hitTemplate.targetRev = true;
 				hitTemplate.queryRev = !isRC;
-				cost += alignInexactSuffix2(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pRevHits);
+				cost += alignSuffixMaxDiff(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pRevHits);
 				*/
-
+			
 				Hit hitTemplate(count, 0, 0, 0, false, isRC, 0); 
 				cost += alignSuffixInexact(currSeq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
 				hitTemplate.targetRev = true;
 				hitTemplate.queryRev = !isRC;
 				cost += alignSuffixInexact(reverse(currSeq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
+				
 			}
 		}
 
@@ -154,6 +161,9 @@ std::string computeHitsBWT()
 	double align_time_secs = timer.getElapsedTime();
 	printf("[bwt] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
 	printf("[bwt] performed %d iterations in the inner loop (%lf cost/sequence)\n", cost, (double)cost / (double)count);
+	printf("[bwt] total hits: %d output hits: %d redundancy: %lf cost/hit: %lf\n", total_hits, output_hits, (double)total_hits / output_hits, (double)cost/output_hits);
+	printf("[bwt] processed %d blocks, %d seeds (avg sl: %lf)\n", num_blocks, num_seeds, (double)total_seed_size / num_seeds);
+	printf("[bwt] cost per seed: %lf\n", (double)cost / num_seeds);
 
 	delete pHits;
 	delete pRevHits;
@@ -171,13 +181,14 @@ void outputHits(std::ofstream& handle, HitVector* pHits)
 	size_t prevID = std::numeric_limits<size_t>::max();
 	size_t prevLen = 0;
 	std::sort(pHits->begin(), pHits->end());
-
+	total_hits += pHits->size();
 	for(size_t i = 0; i < pHits->size(); ++i)
 	{
 		const Hit& curr_hit = (*pHits)[i];
 		if(curr_hit.saIdx != prevID)
 		{
 			handle << curr_hit << "\n";
+			++output_hits;
 		}
 		else
 		{
@@ -376,7 +387,7 @@ void computeOverlapsLCP()
 void parseOverlapOptions(int argc, char** argv)
 {
 	// Set defaults
-	opt::minOverlap = 25;
+	opt::minOverlap = DEFAULT_MIN_OVERLAP;
 	opt::bExactAlgo = false;
 	opt::maxDiff = 0;
 

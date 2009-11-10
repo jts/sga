@@ -165,6 +165,13 @@ std::string SeqCoord::getSubstring(const std::string& str) const
 	return str.substr(left, size);
 }
 
+std::string SeqCoord::getComplementString(const std::string& str) const
+{
+	SeqCoord comp = complement();
+	return comp.getSubstring(str);
+}
+
+
 // Output
 std::ostream& operator<<(std::ostream& out, const SeqCoord& sc)
 {
@@ -289,5 +296,28 @@ void splitKeyValue(std::string in, std::string& key, std::string& value)
 	value = parts[1];
 
 	assert(key.size() > 0 && value.size() > 0 && "Invalid key-value pair");
+}
+
+// Debug function to parse the distance between two reads
+// based on their names
+// This assumes is that the read names are just the positions the reads
+// were sampled from
+size_t debug_getReadDistFromNames(const std::string& name1, const std::string& name2)
+{
+	std::string id;
+	std::string pos;
+	StringVec parts = split(name1, ':');
+	if(parts.size() != 2)
+		return 0;
+
+	int p1 = atoi(parts[1].c_str());
+	
+	parts = split(name2, ':');
+	if(parts.size() != 2)
+		return 0;
+
+	int p2 = atoi(parts[1].c_str());
+	int dist = int(abs(p1 - p2));
+	return dist;
 }
 

@@ -130,6 +130,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			}
 			edges[i]->getEnd()->setColor(GC_WHITE);
 		}
+		/*
 		if(trans_count + 1 != edges.size())
 		{
 			printf("Vertex %s could not be completely reduced (%d, %d)\n", pVertex->getID().c_str(), (int)trans_count, (int)edges.size());
@@ -139,6 +140,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					std::cout << "Remaining edge: " << *edges[i] << "\n";
 			}
 		}
+		*/
 	}
 
 	return false;
@@ -170,6 +172,7 @@ bool SGTrimVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 		EdgeDir dir = EDGE_DIRECTIONS[idx];
 		if(pVertex->countEdges(dir) == 0)
 		{
+			//std::cout << "Found terminal: " << pVertex->getID() << "\n";
 			pVertex->setColor(GC_BLACK);
 			noext[idx] = 1;
 		}
@@ -278,11 +281,6 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 					}
 					else
 					{
-						// Endpoint has not been hit, set it to visited
-						if(pBubbleEnd->getColor() == GC_RED || pWVert->getColor() == GC_RED)
-						{
-							std::cout << "Color stomp!\n";
-						}
 						pBubbleEnd->setColor(GC_BLACK);
 						pWVert->setColor(GC_BLUE);
 					}
@@ -410,8 +408,8 @@ bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				match_ij.setNumDiffs(numDiffs);
 
 				//std::cout << "diffs: " << match_ij.getNumDiffs() << "\n";
-
-				if(numDiffs < 10)
+				double error_rate = (double)numDiffs / ms_i.length();
+				if(error_rate < 0.1)
 				{
 					const std::string& id_i = p_edgeI->getEndID();
 					const std::string& id_j = p_edgeJ->getEndID();
@@ -457,6 +455,160 @@ bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 void SGVariantVisitor::postvisit(StringGraph* pGraph)
 {
 	pGraph->sweepVertices(GC_RED);
+}
+
+// 
+void SGTCVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+	SGEdgeClassVisitor ecv;
+	pGraph->visit(ecv);
+	
+	ngb = ecv.getNumGood();
+	nbb = ecv.getNumBad();
+}
+
+// 
+bool SGTCVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+	// Skip vertex if its been marked as contained
+	if(pVertex->getColor() == GC_RED)
+		return false;
+
+	bool changed_graph = false;
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];
+		EdgePtrVec edges = pVertex->getEdges(dir);
+
+		// Perform a dependent pairwise comparison between nodes that do not share an edge
+		for(size_t i = 0; i < edges.size(); ++i)
+		{
+			for(size_t j = i + 1; j < edges.size(); ++j)
+			{
+				const StringEdge* p_edgeI = CSE_CAST(edges[i]);
+				const StringEdge* p_edgeJ = CSE_CAST(edges[j]);
+
+				const StringVertex* p_vertI = CSV_CAST(p_edgeI->getEnd());
+				const StringVertex* p_vertJ = CSV_CAST(p_edgeJ->getEnd());
+
+				// Infer the edge comp
+				EdgeComp comp = (p_edgeI->getComp() == p_edgeJ->getComp()) ? EC_SAME : EC_REVERSE;
+				
+				// Infer the i->j and j->i direction
+				EdgeDir ij_dir = !p_edgeI->getTwin()->getDir();
+				EdgeDir ji_dir = !p_edgeJ->getTwin()->getDir();
+
+				// Ensure that there is not an edge between these already
+				// hasEdge is not a particularly fast operation
+				EdgeDesc ij_desc(p_edgeJ->getEndID(), ij_dir, comp);
+				EdgeDesc ji_desc(p_edgeI->getEndID(), ji_dir, comp);
+
+				if(p_edgeI->getEnd()->hasEdge(ij_desc) || p_edgeJ->getEnd()->hasEdge(ji_desc))
+					continue;
+				
+				// Set up the matches between the root vertex and i/j
+				// All coordinates are calculated from the point of view of pVertex
+				Match match_i = p_edgeI->getMatch();
+				Match match_j = p_edgeJ->getMatch();
+	
+				// Infer the match_ij based match_i and match_j
+				Match match_ij = Match::infer(match_i, match_j);
+	
+				std::string seq_i = p_vertI->getSeq();
+				std::string seq_j = p_vertJ->getSeq();
+				
+				// Expand the match outwards so that one sequence is left terminal 
+				// and one is right terminal
+				match_ij.expand();
+				
+				// Extract the unmatched portion of each strings
+				std::string cs_i = match_i.coord[1].getComplementString(seq_i);
+				std::string cs_j = match_j.coord[1].getComplementString(seq_j);
+
+				if(match_ij.isRC())
+					cs_j = reverseComplement(cs_j);
+				
+				if(match_i.coord[0].isLeftExtreme())
+				{
+					cs_i = reverse(cs_i);
+					cs_j = reverse(cs_j);
+				}
+
+				int min_size = std::min(cs_i.length(), cs_j.length());
+				
+				/*
+				std::cout << "COMP: " << comp << "\n";
+				std::cout << "match_i: " << match_i << " " << p_edgeI->getComp() << "\n";
+				std::cout << "match_j: " << match_j << " " << p_edgeJ->getComp() << "\n";
+				std::cout << "match_ij: " << match_ij << "\n";
+				std::cout << "cs_i: " << cs_i << "\n";
+				std::cout << "cs_j: " << cs_j << "\n";
+				(void)pGraph;
+				*/
+				int numDiffs = countDifferences(cs_i, cs_j, min_size);
+				match_ij.setNumDiffs(numDiffs);
+
+				//std::cout << "diffs: " << match_ij.getNumDiffs() << "\n";
+				//double error_rate = (double)numDiffs / min_size;
+				if(numDiffs <= 2)
+				{
+					const std::string& id_i = p_edgeI->getEndID();
+					const std::string& id_j = p_edgeJ->getEndID();
+					Overlap o(id_i, id_j, match_ij);
+
+					// Ensure there isnt a containment relationship
+					if(o.match.coord[0].isContained() || o.match.coord[1].isContained())
+					{
+						// Mark the contained vertex for deletion
+						size_t idx = getContainedIdx(o);
+						/*
+						std::cout << "ci: " << seq_i << "\n";
+						std::cout << "cj: " << seq_j << "\n";
+						std::cout << "ms_i: " << ms_i << "\n";
+						std::cout << "ms_j: " << ms_j << "\n";
+						*/
+						if(idx == 0)
+							p_edgeI->getEnd()->setColor(GC_RED);
+						else
+							p_edgeJ->getEnd()->setColor(GC_RED);
+						
+					}
+					else
+					{
+						// add the edges to the graph
+						StringEdge* p_edgeIJ = createEdges(pGraph, o);
+						StringEdge* p_edgeJI = SE_CAST(p_edgeIJ->getTwin());
+						p_edgeIJ->setColor(GC_BLACK);
+						p_edgeJI->setColor(GC_BLACK);
+						//std::cout << "Created edge " << *p_edgeIJ << "\n";
+						//std::cout << "Created edge " << *p_edgeJI << "\n";
+						assert(p_edgeIJ->getComp() == comp);
+					}
+					changed_graph = true;
+				}
+			}
+		}
+	}
+	return changed_graph;
+}
+
+//
+void SGTCVisitor::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepVertices(GC_RED);
+
+	SGEdgeClassVisitor ecv;
+	pGraph->visit(ecv);
+	
+	int nga = ecv.getNumGood();
+	int nba = ecv.getNumBad();
+
+	int ngc = nga - ngb;
+	int nbc = nba - nbb;
+	double rel = (double)ngc / (nbc + ngc);
+
+	printf("ng before: %d ng after: %d (%d) nb before: %d nb after: %d (%d) prop good: %lf\n", ngb, nga, ngc, nbb, nba, nbc, rel);
 }
 
 void SGErrorRemovalVisitor::previsit(StringGraph* pGraph)
@@ -536,3 +688,32 @@ void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
 	printf("Total Vertices: %d Total Edges: %d\n", num_vertex, num_edges);
 }
 
+
+void SGEdgeClassVisitor::previsit(StringGraph* /*pGraph*/)
+{
+	num_good = 0;
+	num_bad = 0;
+}
+
+// Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
+bool SGEdgeClassVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	int curr_pos = atoi(pVertex->getID().c_str());
+	EdgePtrVec edges = pVertex->getEdges();
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		int edge_pos = atoi(edges[i]->getEnd()->getID().c_str());
+		int dist = int(abs(curr_pos - edge_pos));
+		if(dist <= int(SV_CAST(pVertex)->getSeq().length() - 40))
+			++num_good;
+		else
+			++num_bad;
+	}
+	return false;
+}
+
+// Remove all the marked edges
+void SGEdgeClassVisitor::postvisit(StringGraph* /*pGraph*/)
+{
+	//printf("Num good: %d Num bad: %d\n", num_good, num_bad);
+}

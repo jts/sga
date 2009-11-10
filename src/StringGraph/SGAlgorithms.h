@@ -73,7 +73,6 @@ struct SGBubbleVisitor
 	int num_bubbles;
 };
 
-// Discover variants through a local realignment
 struct SGVariantVisitor
 {
 	SGVariantVisitor() : m_fileHandle("inferred.ovr") {}
@@ -82,6 +81,18 @@ struct SGVariantVisitor
 	void postvisit(StringGraph*);
 
 	std::ofstream m_fileHandle;						 
+};
+
+// Perform a transitive closure step
+struct SGTCVisitor
+{
+	SGTCVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+
+	int ngb;
+	int nbb;
 };
 
 // Infer an error rate for each node are mark nodes about the error threshold for removal
@@ -110,5 +121,23 @@ struct SGGraphStatsVisitor
 	int num_edges;
 	int num_vertex;	
 };
+
+// Special case debug visitor which classifies edges as correct or 
+// incorrect
+struct SGEdgeClassVisitor
+{
+	SGEdgeClassVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+
+	int getNumGood() { return num_good; }
+	int getNumBad() { return num_bad; }
+
+	int num_good;
+	int num_bad;
+};
+
+
 
 #endif

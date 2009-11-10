@@ -51,7 +51,7 @@ libutil_a_LIBADD =
 am_libutil_a_OBJECTS = libutil_a-Util.$(OBJEXT) \
 	libutil_a-Contig.$(OBJEXT) libutil_a-ReadTable.$(OBJEXT) \
 	libutil_a-SeqReader.$(OBJEXT) libutil_a-DNAString.$(OBJEXT) \
-	libutil_a-Match.$(OBJEXT)
+	libutil_a-Match.$(OBJEXT) libutil_a-Pileup.$(OBJEXT)
 libutil_a_OBJECTS = $(am_libutil_a_OBJECTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -166,7 +166,8 @@ libutil_a_SOURCES = \
 	ReadTable.h ReadTable.cpp \
 	SeqReader.h SeqReader.cpp \
 	DNAString.h DNAString.cpp \
-	Match.h Match.cpp
+	Match.h Match.cpp \
+	Pileup.h Pileup.cpp
 
 all: all-am
 
@@ -218,6 +219,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Contig.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-DNAString.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Match.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Pileup.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-ReadTable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-SeqReader.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libutil_a-Util.Po@am__quote@
@@ -319,6 +321,20 @@ libutil_a-Match.obj: Match.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Match.cpp' object='libutil_a-Match.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-Match.obj `if test -f 'Match.cpp'; then $(CYGPATH_W) 'Match.cpp'; else $(CYGPATH_W) '$(srcdir)/Match.cpp'; fi`
+
+libutil_a-Pileup.o: Pileup.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-Pileup.o -MD -MP -MF "$(DEPDIR)/libutil_a-Pileup.Tpo" -c -o libutil_a-Pileup.o `test -f 'Pileup.cpp' || echo '$(srcdir)/'`Pileup.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-Pileup.Tpo" "$(DEPDIR)/libutil_a-Pileup.Po"; else rm -f "$(DEPDIR)/libutil_a-Pileup.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Pileup.cpp' object='libutil_a-Pileup.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-Pileup.o `test -f 'Pileup.cpp' || echo '$(srcdir)/'`Pileup.cpp
+
+libutil_a-Pileup.obj: Pileup.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT libutil_a-Pileup.obj -MD -MP -MF "$(DEPDIR)/libutil_a-Pileup.Tpo" -c -o libutil_a-Pileup.obj `if test -f 'Pileup.cpp'; then $(CYGPATH_W) 'Pileup.cpp'; else $(CYGPATH_W) '$(srcdir)/Pileup.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libutil_a-Pileup.Tpo" "$(DEPDIR)/libutil_a-Pileup.Po"; else rm -f "$(DEPDIR)/libutil_a-Pileup.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Pileup.cpp' object='libutil_a-Pileup.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libutil_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o libutil_a-Pileup.obj `if test -f 'Pileup.cpp'; then $(CYGPATH_W) 'Pileup.cpp'; else $(CYGPATH_W) '$(srcdir)/Pileup.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
