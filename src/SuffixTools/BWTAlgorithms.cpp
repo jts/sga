@@ -228,8 +228,8 @@ int BWTAlgorithms::_alignBlock(const std::string& w, int block_start, int block_
 			// If the alignment is within the current block, attempt to output matching prefixes
 			if(align.left_index <= block_end)
 			{
-				int64_t t_lower = pBWT->getC('$') + pBWT->getOcc('$', align.ranges.interval[LEFT_INT_IDX].lower - 1);
-				int64_t t_upper = pBWT->getC('$') + pBWT->getOcc('$', align.ranges.interval[LEFT_INT_IDX].upper) - 1;
+				int64_t t_lower = pBWT->getPC('$') + pBWT->getOcc('$', align.ranges.interval[LEFT_INT_IDX].lower - 1);
+				int64_t t_upper = pBWT->getPC('$') + pBWT->getOcc('$', align.ranges.interval[LEFT_INT_IDX].upper) - 1;
 
 				for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
 				{

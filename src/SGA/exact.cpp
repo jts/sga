@@ -69,7 +69,8 @@ void exact()
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
 	BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
 	ReadTable* pRT = new ReadTable(opt::readsFile);
-	AssembleExact::assemble(opt::minOverlap, pBWT, pRBWT, pRT);
+	SuffixArray* pSAI = new SuffixArray(opt::prefix + SAI_EXT);
+	AssembleExact::assemble(opt::minOverlap, pBWT, pRBWT, pRT, pSAI);
 
 	delete pBWT;
 	delete pRBWT;

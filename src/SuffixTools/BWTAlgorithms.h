@@ -26,6 +26,9 @@ enum ExtendDirection
 
 struct BWTInterval
 {
+	BWTInterval() : lower(0), upper(0) {}
+	BWTInterval(int64_t l, int64_t u) : lower(l), upper(u) {}
+
 	int64_t lower;
 	int64_t upper;
 	inline bool isValid() const { return lower <= upper; }
@@ -135,7 +138,7 @@ BWTInterval findInterval(const BWT* pBWT, const std::string& w);
 // for string bS
 inline void updateInterval(BWTInterval& interval, char b, const BWT* pBWT)
 {
-	size_t pb = pBWT->getC(b);
+	size_t pb = pBWT->getPC(b);
 	interval.lower = pb + pBWT->getOcc(b, interval.lower - 1);
 	interval.upper = pb + pBWT->getOcc(b, interval.upper) - 1;
 }
@@ -175,7 +178,7 @@ inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT)
 // Initialize the interval of index idx to be the range containining all the b suffixes
 inline void initInterval(BWTInterval& interval, char b, const BWT* pB)
 {
-	interval.lower = pB->getC(b);
+	interval.lower = pB->getPC(b);
 	interval.upper = interval.lower + pB->getOcc(b, pB->getBWLen() - 1) - 1;
 }
 
