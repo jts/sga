@@ -16,7 +16,7 @@
 #include "LCPArray.h"
 #include "SGACommon.h"
 #include "Timer.h"
-#include "bwt_algorithms.h"
+#include "BWTAlgorithms.h"
 
 //
 // Getopt
@@ -143,10 +143,10 @@ std::string computeHitsBWT()
 				*/
 			
 				Hit hitTemplate(count, 0, 0, 0, false, isRC, 0); 
-				cost += alignSuffixInexact(currSeq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
+				cost += BWTAlgorithms::alignSuffixInexact(currSeq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
 				hitTemplate.targetRev = true;
 				hitTemplate.queryRev = !isRC;
-				cost += alignSuffixInexact(reverse(currSeq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
+				cost += BWTAlgorithms::alignSuffixInexact(reverse(currSeq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
 				
 			}
 		}

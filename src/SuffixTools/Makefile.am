@@ -14,6 +14,6 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 			  InverseSuffixArray.cpp InverseSuffixArray.h \
 			  LCPArray.cpp LCPArray.h \
 			  saca.h saca.cpp \
-			  bwt_algorithms.h bwt_algorithms.cpp \
+			  BWTAlgorithms.h BWTAlgorithms.cpp \
 			  OverlapQuality.h OverlapQuality.cpp \
 			  AssembleExact.h AssembleExact.cpp

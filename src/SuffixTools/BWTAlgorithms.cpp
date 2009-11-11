@@ -6,13 +6,35 @@
 //
 // bwt_algorithms.cpp - Algorithms for aligning to a bwt structure
 //
-#include "bwt_algorithms.h"
+#include "BWTAlgorithms.h"
 #include <math.h>
 
 #define SWAP_LIST(x, y) pSwap = (x); (x) = (y); (y) = pSwap;
 
+// Find the interval in pBWT corresponding to w
+// If w does not exist in the BWT, the interval 
+// coordinates [l, u] will be such that l > u
+BWTInterval BWTAlgorithms::findInterval(const BWT* pBWT, const std::string& w)
+{
+	int len = w.size();
+	int j = len - 1;
+	char curr = w[j];
+	BWTInterval interval;
+	initInterval(interval, curr, pBWT);
+	--j;
+
+	for(;j >= 0; --j)
+	{
+		curr = w[j];
+		updateInterval(interval, curr, pBWT);
+		if(!interval.isValid())
+			return interval;
+	}
+	return interval;
+}
+
 // Set up the alignment blocks and call the alignment function on each block
-int alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+int BWTAlgorithms::alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                        double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits)
 {
 	// Calculate the number of blocks and the size of each block
@@ -53,31 +75,13 @@ int alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT
 	return cost;
 }
 
-#if 0
-// Set up the alignment blocks and call the alignment function on each block
-int alignSuffixInexactExhaustive(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                       double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits)
-{
-	// Calculate the number of blocks and the size of each block
-	int len = static_cast<int>(w.length());
-	int cost = 0;
-	for(int i = minOverlap; i <= len; ++i)
-	{
-		// Calculate the maximum number of differences st diff / i < error_rate
-		int diff = int(floor((i * error_rate)));
-		cost += alignSuffixMaxDiff(w, pBWT, pRevBWT, diff, i, hitTemplate, pHits);
-	}
-	return cost;
-}
-#endif 
-
 // Seeded blockwise BWT alignment of prefix-suffix for reads
 // Each alignment is given a seed region and a block region
 // The seed region is the terminal portion of w where maxDiff + 1 seeds are created
 // at least 1 of these seeds must align exactly for there to be an alignment with 
 // at most maxDiff differences between the prefix/suffix. Only alignments within the
 // range [block_start, block_end] are output. The block_end coordinate is inclusive
-int _alignBlock(const std::string& w, int block_start, int block_end, const BWT* pBWT, const BWT* pRevBWT, 
+int BWTAlgorithms::_alignBlock(const std::string& w, int block_start, int block_end, const BWT* pBWT, const BWT* pRevBWT, 
                 int maxDiff, Hit& hitTemplate, HitVector* pHits)
 {
 	BWTAlignList* pLeftList = new BWTAlignList;
@@ -111,7 +115,7 @@ int _alignBlock(const std::string& w, int block_start, int block_end, const BWT*
 
 		// Initialize the left and right suffix array intervals
 		char b = w[pos];
-		initIntervals(align.ranges, b, pBWT, pRevBWT);		
+		initIntervalPair(align.ranges, b, pBWT, pRevBWT);		
 		pTempList->push_back(align);
 		extern int num_seeds;
 		extern size_t total_seed_size;
@@ -245,7 +249,7 @@ int _alignBlock(const std::string& w, int block_start, int block_end, const BWT*
 				if(align.z == 0)
 				{
 					char b = w[align.left_index];
-					updateLeft(align.ranges, b, pBWT);
+					updateInterval(align.ranges.interval[LEFT_INT_IDX], b, pBWT);
 					if(align.isIntervalValid(LEFT_INT_IDX))
 						pTempList->push_back(align);
 				}
@@ -256,7 +260,7 @@ int _alignBlock(const std::string& w, int block_start, int block_end, const BWT*
 						char b = ALPHABET[i];
 						BWTAlign branched = align;
 						// Only update left interval
-						updateLeft(branched.ranges, b, pBWT);
+						updateInterval(branched.ranges.interval[LEFT_INT_IDX], b, pBWT);
 
 						if(branched.isIntervalValid(LEFT_INT_IDX))
 						{
@@ -279,142 +283,3 @@ int _alignBlock(const std::string& w, int block_start, int block_end, const BWT*
 	return cost;
 }
 
-#if 0
-// Seeded BWT alignment of suffix
-// This algorithm proceeds in two phases:
-// First, for the last minOverlap characters of w
-// create maxDiff + 1 seeds. These seeds are extended
-// to the right until they hit the end of w. No mismatches
-// are allowed in the first ceil(minOverlap / (maxDiff + 1) bases
-// Once all the seeds have hit the end of the string, the extension
-// flips to going to the left, collecting all the matches prefixes
-int alignSuffixMaxDiff(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, int maxDiff, int minOverlap, Hit& hitTemplate, HitVector* pHits)
-{
-	int cost = 0;
-	BWTAlignQueue* pQueue = new BWTAlignQueue;
-	// Calculate the initial seeds
-	int len = w.length();
-	int num_seeds = maxDiff + 1;
-	int seed_len = minOverlap / num_seeds;
-	int seed_start = len - minOverlap;
-
-	// Populate the initial seeds
-	for(int i = 0; i < num_seeds; ++i)
-	{
-		int pos = seed_start + i*seed_len;
-		BWTAlign align;
-		align.left_index = pos;
-		align.right_index = pos;
-		align.dir = ED_RIGHT;
-		align.z = maxDiff;
-		align.seed_len = std::min(seed_len, len - pos);
-		//printf("Creating seed at %d to %d, str: %s\n", align.left_index, align.right_index, w.substr(pos, align.seed_len).c_str());
-
-		// Initialize the left and right suffix array intervals
-		char b = w[pos];
-		initIntervals(align, b, pBWT, pRevBWT);		
-		pQueue->push(align);
-	}
-
-	// Right extension phase
-	while(!pQueue->empty())
-	{
-		++cost;
-		BWTAlign align = pQueue->front();
-		//std::cout << "Align: "; align.print(w);
-		pQueue->pop();
-
-		//printf("Processing: "); align.print(w);
-		if(align.dir == ED_RIGHT)
-		{
-			// Update the interval using RevBWT
-			++align.right_index;
-
-			// Flip if we've reached the end of the right extension phase
-			// This does not effect the subsequent updates
-			if(align.right_index == len - 1)
-				align.dir = ED_LEFT;
-
-			// If the length of the alignment is less than the seed length, do not allow mismatches
-			if(align.isSeed() || align.z == 0)
-			{
-				char b = w[align.right_index];
-				updateBoth(align, b, pRevBWT);
-				if(align.isIntervalValid(RIGHT_INT_IDX))
-					pQueue->push(align);
-			}
-			else
-			{
-				for(int i = 0; i < 4; ++i)
-				{
-					char b = ALPHABET[i];
-					BWTAlign branched = align;
-					updateBoth(branched, b, pRevBWT);
-
-					if(branched.isIntervalValid(RIGHT_INT_IDX))
-					{
-						if(b != w[align.right_index])
-							--branched.z;
-						pQueue->push(branched);
-					}
-				}
-			}
-		}
-		else
-		{
-			// Left extension
-
-			// If the overlap is large enough, output the hit
-			int overlap_len = len - align.left_index;
-			if(overlap_len >= minOverlap)
-			{
-				int64_t t_lower = pBWT->getC('$') + pBWT->getOcc('$', align.r_lower[LEFT_INT_IDX] - 1);
-				int64_t t_upper = pBWT->getC('$') + pBWT->getOcc('$', align.r_upper[LEFT_INT_IDX]) - 1;
-
-				for(int64_t sa_idx = t_lower; sa_idx <= t_upper; ++sa_idx)
-				{
-					hitTemplate.saIdx = sa_idx;
-					hitTemplate.qstart = align.left_index;
-					hitTemplate.len = overlap_len;
-					hitTemplate.numDiff = maxDiff - align.z;
-					//std::cout << "pushing hit of length " << overlap_len << " to saIdx " << sa_idx << "\n";
-					pHits->push_back(hitTemplate);
-				}
-			}
-
-			// Extend hits
-			--align.left_index;
-			if(align.left_index < 0)
-				continue;
-
-			// If there cannot be a branch, only process the matching base
-			if(align.z == 0)
-			{
-				char b = w[align.left_index];
-				updateLeft(align, b, pBWT);
-				if(align.isIntervalValid(LEFT_INT_IDX))
-					pQueue->push(align);
-			}
-			else
-			{
-				for(int i = 0; i < 4; ++i)
-				{
-					char b = ALPHABET[i];
-					BWTAlign branched = align;
-					// Only update left interval
-					updateLeft(branched, b, pBWT);
-
-					if(branched.isIntervalValid(LEFT_INT_IDX))
-					{
-						if(ALPHABET[i] != w[align.left_index])
-							--branched.z;
-						pQueue->push(branched);
-					}
-				}
-			}
-		}
-	}
-	delete pQueue;
-	return cost;
-}
-#endif
