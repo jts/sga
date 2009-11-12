@@ -56,6 +56,12 @@ namespace AssembleExact
 	// of the contained strings is placed in pIList
 	AlphaCount collectExtensions(const unsigned int minOverlap, const std::string& w, 
                                  const BWT* pBWT, const BWT* pRevBWT, IntervalPairList* pIList);
+
+	// Find the minimal extension of w described by the overlapping reads of w
+	// or return the empty string if none exist.
+	std::string findExtension(const unsigned int minOverlap, const std::string& w, 
+                                            const BWT* pBWT, const BWT* pRevBWT, IntervalPairList* pContainList);
+
 	
 };
 

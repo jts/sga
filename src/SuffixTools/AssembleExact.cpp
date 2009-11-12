@@ -58,7 +58,7 @@ void AssembleExact::assemble(const unsigned int minOverlap, const BWT* pBWT, con
 		{
 			ReadSeed& curr = *iter;
 			if(curr.isActive)
-				leftExtend(minOverlap, curr, bv, pBWT, pRevBWT, pSAI);
+				rightExtend(minOverlap, curr, bv, pBWT, pRevBWT, pSAI);
 			
 			if(curr.isActive)
 			{
@@ -69,7 +69,7 @@ void AssembleExact::assemble(const unsigned int minOverlap, const BWT* pBWT, con
 
 		if(loop_count++ % sample_rate == 0)
 		{
-			printf("[left] num active: %d loops: %d size: %zu\n", active_count, loop_count, pSeedList->size());
+			printf("[right] num active: %d loops: %d size: %zu\n", active_count, loop_count, pSeedList->size());
 			sample_rate <<= 1;
 		}
 	}
@@ -101,7 +101,7 @@ void AssembleExact::assemble(const unsigned int minOverlap, const BWT* pBWT, con
 
 		if(loop_count++ % sample_rate == 0)
 		{
-			printf("[right] num active: %d loops: %d size: %zu\n", active_count, loop_count, pSeedList->size());
+			printf("[left] num active: %d loops: %d size: %zu\n", active_count, loop_count, pSeedList->size());
 			sample_rate <<= 1;
 		}
 	}
@@ -212,7 +212,8 @@ void AssembleExact::rightExtend(const unsigned int minOverlap, ReadSeed& seed, b
 	}
 
 	AlphaCount ext_counts = collectExtensions(minOverlap, w, pBWT, pRevBWT, pContained);
-	
+	std::string ext_str = findExtension(minOverlap, w, pBWT, pRevBWT, pContained);
+	(void)ext_str;
 	// Mark the heads of the intervals for the first entry of the pair (the intervals of pBWT) as being contained
 	markHeadContained(bv, 0, seed.read_idx, pContained, pBWT, pSAI);
 	
@@ -346,4 +347,104 @@ AlphaCount AssembleExact::collectExtensions(const unsigned int minOverlap, const
 		}
 	}
 	return ext_counts;
+}
+
+// Find the shortest extension string (the unmatched portion of read with the longest overlap of w)
+// that is consistent with all other overlapping strings. A shortest extension string is consistent
+// when it is a substring of all the other extension strings.
+// The empty string is returned if no such extension exists
+std::string AssembleExact::findExtension(const unsigned int minOverlap, const std::string& w, 
+                                            const BWT* pBWT, const BWT* pRevBWT, IntervalPairList* pContainList)
+{
+	// The algorithm is as follows:
+	// We perform a backwards search of the FM-index for the string w.
+	// As we perform the search we collect the intervals 
+	// of the significant prefixes (len >= minOverlap) that overlap w.
+	// Once all the intervals have been found, we extend them one base at a time until
+	// a) the extension is inconsistent or b) we find the end of a string.
+	// In the case of b) a minimal consistent extension has been found and it is returned.
+	// In the case of a) no such extension exists
+	IntervalPairList* pPrefixIntList = new IntervalPairList;
+	(void)pContainList;
+	BWTIntervalPair ranges;
+	size_t l = w.length();
+	int start = l - 1;
+	BWTAlgorithms::initIntervalPair(ranges, w[start], pBWT, pRevBWT);
+
+	// We only go to 1 here since we don't care about full length overlaps
+	// They are necessarily containments and should have been removed already
+	for(int i = start - 1; i >= 1; --i)
+	{
+		// Compute the range of the suffix w[i, l]
+		BWTAlgorithms::updateBothL(ranges, w[i], pBWT);
+
+		// Break if the suffix is no longer found
+		if(!(ranges.interval[0].isValid() && ranges.interval[1].isValid())) 
+			assert(false);
+
+		if((l - i) >= minOverlap)
+		{
+			// Calculate which of the prefixes that match w[i, l] are terminal
+			// These are the proper prefixes (they are the start of a read)
+			BWTIntervalPair probe = ranges;
+			BWTAlgorithms::updateBothL(probe, '$', pBWT);
+			
+			// The probe interval contains the range of proper prefixes
+			if(probe.interval[1].isValid())
+			{
+				assert(probe.interval[1].lower > 0);
+				pPrefixIntList->push_front(probe);
+			}
+		}
+	}
+
+	std::string ext_str;
+
+	// pPrefixIntList contains a list of all the intervals in the FM-index
+	// that are valid prefixs. Extend them one base at a time.
+	// The longest overlap is in 
+	bool done = false;
+	bool found = false;
+	while(!done)
+	{
+		AlphaCount ext_count;
+		for(IntervalPairList::iterator iter = pPrefixIntList->begin(); 
+			iter != pPrefixIntList->end(); ++iter)
+		{
+			ext_count += pRevBWT->getOccDiff(iter->interval[1].lower - 1, iter->interval[1].upper);
+			std::cout << "range: " << *iter << "\n";
+			// Optimistically update the range if the extension is unique so far
+			if(ext_count.hasUniqueDNAChar())
+			{
+				char b = ext_count.getUniqueDNAChar();
+				BWTAlgorithms::updateBothR(*iter, b, pRevBWT);
+			}
+			else
+				break;
+		}
+
+		// If one of the range's extension was $, then we have found the minimum prefix
+		if(ext_count.get('$') > 0)
+		{
+			done = true;
+			found = true;
+
+			// We should never have an empty extension string at this point
+			assert(!ext_str.empty());
+		}
+		else
+		{
+			if(ext_count.hasUniqueDNAChar())
+				ext_str.append(1, ext_count.getUniqueDNAChar());
+			else
+				done = true;
+		}
+	}
+
+	delete pPrefixIntList;
+
+	if(!found)
+		return std::string();
+	else
+		return ext_str;
 }
