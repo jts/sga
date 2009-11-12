@@ -17,7 +17,7 @@ void SuffixTree::construct(std::string s)
 {
 	// Create the new root and insert the first suffix, consisting of the entire string
 	m_pRoot = new STNode("", NULL);
-	m_pRoot->children[base2Idx(s[0])] = new STNode(s, m_pRoot);
+	m_pRoot->children[getBaseRank(s[0])] = new STNode(s, m_pRoot);
 	m_suffixesInserted = 1;
 
 	// Insert the rest of the suffixes
@@ -75,7 +75,7 @@ void SuffixTree::insertSuffix(std::string s)
 	if(pe.edgeMatch == 0)
 	{
 		// Create a new node, from the current node with the unmatched part of curr as the label
-		pe.pNode->children[base2Idx(unmatchedStr[0])] = new STNode(unmatchedStr, pe.pNode);
+		pe.pNode->children[getBaseRank(unmatchedStr[0])] = new STNode(unmatchedStr, pe.pNode);
 	}
 	else // Case 2: The match breaks an edge
 	{
@@ -93,16 +93,16 @@ void SuffixTree::insertSuffix(std::string s)
 		// Insert it between pe.pNode and the parent
 		STNode* pBridge = new STNode(matchedStr, pe.pNode->parent);
 		assert(matchedStr == matchedEdge);
-		pe.pNode->parent->children[ base2Idx(matchedStr[0]) ] = pBridge;
+		pe.pNode->parent->children[ getBaseRank(matchedStr[0]) ] = pBridge;
 
 		// Add the unmatched portion the edge to the newly created node
 		assert(unmatchedEdge[0] != unmatchedStr[0]); // if this was true we could extend the match further
 		pe.pNode->edgeLabel = unmatchedEdge; // update the label of the split node
 		pe.pNode->parent = pBridge;
-		pBridge->children[ base2Idx(unmatchedEdge[0]) ] = pe.pNode; // add it to the bridge node
+		pBridge->children[ getBaseRank(unmatchedEdge[0]) ] = pe.pNode; // add it to the bridge node
 
 		// Create a node consisting of the unmatched portion of this suffix and add it
-		pBridge->children[ base2Idx(unmatchedStr[0]) ] = new STNode(unmatchedStr, pBridge);
+		pBridge->children[ getBaseRank(unmatchedStr[0]) ] = new STNode(unmatchedStr, pBridge);
 	}
 	m_suffixesInserted++;
 }
@@ -127,7 +127,7 @@ PathEnd SuffixTree::findPath(std::string s) const
 	size_t i = 0;
 	while(!done && i < len)
 	{
-		STIdx childIdx = base2Idx(s[i]);
+		STIdx childIdx = getBaseRank(s[i]);
 		
 		// If the current node does not have a child starting with this letter
 		if(pCurr->children[childIdx] != NULL)

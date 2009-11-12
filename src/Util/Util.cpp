@@ -191,7 +191,7 @@ std::istream& operator>>(std::istream& in, SeqCoord& sc)
 //
 
 // Reverse complement a sequence
-Sequence reverseComplement(const Sequence& seq)
+std::string reverseComplement(const std::string& seq)
 {
 	std::string out(seq.length(), 'A');
 	size_t last_pos = seq.length() - 1;
@@ -203,16 +203,23 @@ Sequence reverseComplement(const Sequence& seq)
 }
 
 // Reverse a sequence
-Sequence reverse(const Sequence& seq)
+std::string reverse(const std::string& seq)
+{
+	return std::string(seq.rbegin(), seq.rend());
+}
+
+// Complement a sequence
+std::string complement(const std::string& seq)
 {
 	std::string out(seq.length(), 'A');
-	size_t last_pos = seq.length() - 1;
-	for(int i = last_pos; i >= 0; --i)
+	size_t l = seq.length();
+	for(size_t i = 0; i < l; ++i)
 	{
-		out[last_pos - i] = seq[i];
+		out[i] = complement(seq[i]);
 	}
 	return out;
 }
+
 
 // count the differences between s1 and s2 over the first n bases
 int countDifferences(const std::string& s1, const std::string& s2, size_t n)
@@ -226,17 +233,6 @@ int countDifferences(const std::string& s1, const std::string& s2, size_t n)
 	return numDiff;
 }
 
-// Complement a sequence
-Sequence complement(const Sequence& seq)
-{
-	std::string out(seq.length(), 'A');
-	size_t l = seq.length();
-	for(size_t i = 0; i < l; ++i)
-	{
-		out[i] = complement(seq[i]);
-	}
-	return out;
-}
 
 // Strip the leading directories and
 // the last trailling suffix from a filename

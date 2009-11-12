@@ -25,6 +25,7 @@ struct ReadSeed
 };
 
 typedef std::list<ReadSeed> RSList;
+typedef std::list<BWTIntervalPair> IntervalPairList;
 typedef std::vector<bool> bool_vec;
 
 namespace AssembleExact
@@ -45,9 +46,19 @@ namespace AssembleExact
 
 	// Extend the seed to the right by one base, if possible
 	void rightExtend(const unsigned int minOverlap, ReadSeed& seed, bool_vec& bv, const BWT* pBWT, const BWT* pRevBWT, const SuffixArray* pSAI);
+
+	// Mark in bv the read index for the head of each interval in pList as being contained 
+	void markHeadContained(bool_vec& bv, size_t int_idx, size_t read_idx, const IntervalPairList* pList, const BWT* pBWT, const SuffixArray* pSAI);
+
+
+	// Collect the number of extensions for A,C,G,T of such proper prefix that matches a suffix
+	// of w of at least length minOverlap. If any complete containments are found, the interval 
+	// of the contained strings is placed in pIList
+	AlphaCount collectExtensions(const unsigned int minOverlap, const std::string& w, 
+                                 const BWT* pBWT, const BWT* pRevBWT, IntervalPairList* pIList);
+	
 };
 
 
 
 #endif
-
