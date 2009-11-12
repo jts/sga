@@ -16,11 +16,11 @@
 
 struct ReadSeed
 {
-	ReadSeed(size_t i, const std::string& s) : read_idx(i), seq(s), stop_pos(s.length() - 1) { isActive = true; }
+	ReadSeed(size_t i, const std::string& s) : read_idx(i), seq(s), root_len(s.length()) { isActive = true; }
 
 	size_t read_idx;
 	std::string seq;
-	size_t stop_pos;
+	size_t root_len;
 	bool isActive;
 };
 

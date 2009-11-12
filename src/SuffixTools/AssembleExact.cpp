@@ -73,7 +73,6 @@ void AssembleExact::assemble(const unsigned int minOverlap, const BWT* pBWT, con
 			sample_rate <<= 1;
 		}
 	}
-	/*
 	
 	for(RSList::iterator iter = pSeedList->begin(); iter != pSeedList->end(); ++iter)
 		iter->isActive = true;
@@ -91,7 +90,7 @@ void AssembleExact::assemble(const unsigned int minOverlap, const BWT* pBWT, con
 		{
 			ReadSeed& curr = *iter;
 			if(curr.isActive)
-				leftExtend(minOverlap, curr, bv, pBWT, pRevBWT, pSAI);
+				rightExtend(minOverlap, curr, bv, pBWT, pRevBWT, pSAI);
 			
 			if(curr.isActive)
 			{
@@ -102,11 +101,11 @@ void AssembleExact::assemble(const unsigned int minOverlap, const BWT* pBWT, con
 
 		if(loop_count++ % sample_rate == 0)
 		{
-			printf("[left] num active: %d loops: %d size: %zu\n", active_count, loop_count, pSeedList->size());
+			printf("[right] num active: %d loops: %d size: %zu\n", active_count, loop_count, pSeedList->size());
 			sample_rate <<= 1;
 		}
 	}
-	*/
+	
 	std::ofstream out("assembled.fa");
 	for(RSList::iterator iter = pSeedList->begin(); iter != pSeedList->end(); ++iter)
 	{
@@ -151,7 +150,7 @@ size_t AssembleExact::bwtPos2ReadIdx(int64_t pos, const BWT* pBWT, const SuffixA
 void AssembleExact::leftExtend(const unsigned int minOverlap, ReadSeed& seed, bool_vec& bv, 
                                const BWT* pBWT, const BWT* pRevBWT, const SuffixArray* pSAI)
 {
-	std::string w = reverse(seed.seq);
+	std::string w = reverse(seed.seq.substr(0, seed.root_len));
 	IntervalPairList* pContained = new IntervalPairList;
 	if(w.empty())
 	{
@@ -167,7 +166,28 @@ void AssembleExact::leftExtend(const unsigned int minOverlap, ReadSeed& seed, bo
 	if(ext_counts.hasUniqueDNAChar())
 	{
 		char b = ext_counts.getUniqueDNAChar();
-		seed.seq.insert(0, 1, b);
+
+		// There is a unique extension from the seed sequence to B
+		// Ensure that the reverse is true and that the sequence we are extending to, extends to this one
+		std::string joined_seq = b + seed.seq;
+		std::string back_search = joined_seq.substr(0, seed.root_len);
+		assert(back_search.length() == seed.root_len);
+
+		// Get the count of bases back to the ending sequence of seed
+		// We do this in the opposite direction of extension
+		AlphaCount back_count = collectExtensions(minOverlap, back_search, pBWT, pRevBWT, NULL);
+
+		if(back_count.hasUniqueDNAChar())
+		{
+			char r = back_count.getUniqueDNAChar();
+			// Assert back is the character we are expecting
+			assert(r == seed.seq[seed.root_len - 1]);
+			seed.seq = joined_seq;
+		}
+		else
+		{
+			seed.isActive = false;
+		}		
 	}
 	else
 	{
@@ -183,13 +203,15 @@ void AssembleExact::rightExtend(const unsigned int minOverlap, ReadSeed& seed, b
                                 const BWT* pBWT, const BWT* pRevBWT, const SuffixArray* pSAI)
 {
 	IntervalPairList* pContained = new IntervalPairList;
+	std::string w = seed.seq.substr(seed.seq.length() - seed.root_len);
+
 	if(seed.seq.empty())
 	{
 		seed.isActive = false;
 		return;
 	}
 
-	AlphaCount ext_counts = collectExtensions(minOverlap, seed.seq, pBWT, pRevBWT, pContained);
+	AlphaCount ext_counts = collectExtensions(minOverlap, w, pBWT, pRevBWT, pContained);
 	
 	// Mark the heads of the intervals for the first entry of the pair (the intervals of pBWT) as being contained
 	markHeadContained(bv, 0, seed.read_idx, pContained, pBWT, pSAI);
@@ -197,13 +219,34 @@ void AssembleExact::rightExtend(const unsigned int minOverlap, ReadSeed& seed, b
 	if(ext_counts.hasUniqueDNAChar())
 	{
 		char b = ext_counts.getUniqueDNAChar();
-		seed.seq.append(1, b);
+
+		// There is a unique extension from the seed sequence to B
+		// Ensure that the reverse is true and that the sequence we are extending to, extends to this one
+		std::string joined_seq = seed.seq + b;
+		std::string back_search = joined_seq.substr(joined_seq.length() - seed.root_len);
+
+		// Get the count of bases back to the ending sequence of seed
+		// We do this in the opposite direction of extension
+		AlphaCount back_count = collectExtensions(minOverlap, reverse(back_search), pRevBWT, pBWT, NULL);
+
+		if(back_count.hasUniqueDNAChar())
+		{
+			char r = back_count.getUniqueDNAChar();
+			// Assert back is the character we are expecting
+			assert(r == seed.seq[seed.seq.length() - seed.root_len]);
+			seed.seq = joined_seq;
+		}
+		else
+		{
+			seed.isActive = false;
+		}
 	}
 	else
 	{
 		// Either there was a split in the possible extensions or there was no possible extension
 		seed.isActive = false;
 	}
+
 	delete pContained;
 }
 
