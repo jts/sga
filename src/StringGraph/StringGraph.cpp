@@ -166,6 +166,14 @@ void StringEdge::updateDifferenceCount()
 	m_numDiff = countDifferences(m_v1, m_v2, m_v1.length());
 }
 
+// 
+StringVertex::~StringVertex()
+{
+	// Inform the pair of this vertex that it is being deleted
+	if(m_pPairVertex != NULL)
+		m_pPairVertex->clearPairVertex();
+}
+
 // Merging two string vertices has two parts
 // First, the sequence of the vertex is extended
 // by the the content of the edge label

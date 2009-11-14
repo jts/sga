@@ -645,6 +645,60 @@ void SGErrorRemovalVisitor::postvisit(StringGraph* pGraph)
 	pGraph->sweepVertices(GC_BLACK);
 }
 
+// Visit each vertex in the graph, find its pair and link them
+bool SGVertexPairingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+	StringVertex* pSV = SV_CAST(pVertex);
+
+	// do nothing if the pairing was already set
+	if(pSV->getPairVertex() == NULL)
+	{
+		std::string id = pSV->getID();
+		std::string pid = getPairID(id);
+		StringVertex* pPSV = SV_CAST(pGraph->getVertex(pid));
+		if(pPSV != NULL)
+		{
+			pSV->setPairVertex(pPSV);
+			pPSV->setPairVertex(pSV);
+		}
+	}
+	return false;
+}
+
+
+// Visit each vertex in the graph, find its pair and link them
+bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	StringVertex* pSV = SV_CAST(pVertex);
+	StringVertex* pPairSV = pSV->getPairVertex();
+	if(pPairSV == NULL)
+		return false;
+
+	EdgePtrVec edges = pSV->getEdges();
+
+	// Determine which vertices that are paired to pVertex
+	// have a pair that overlaps with pPairVertex
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		StringEdge* pVWEdge = SE_CAST(edges[i]);
+		StringVertex* pW = SV_CAST(pVWEdge->getEnd());
+		StringVertex* pPairW = pW->getPairVertex();
+		if(pPairW == NULL)
+			continue;
+
+		EdgePtrVec ppw_edges = pPairW->findEdgesTo(pPairSV->getID());
+
+		if(ppw_edges.size() == 1)
+		{
+			StringEdge* pPPEdge = SE_CAST(ppw_edges.front());
+			size_t overlap_len = pVWEdge->getMatchLength();
+			size_t pair_overlap_len = pPPEdge->getMatchLength();
+			printf("pairoverlap\t%s\t%zu\t%zu\n", pSV->getID().c_str(), overlap_len, pair_overlap_len);
+		}
+	
+	}
+	return false;
+}
 
 void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
 {

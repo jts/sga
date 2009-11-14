@@ -230,6 +230,7 @@ std::string makeKeyValue(std::string key, C value)
 
 StringVec split(std::string in, char delimiter);
 void splitKeyValue(std::string in, std::string& key, std::string& value);
+std::string getPairID(const std::string& id);
 
 // Debug function to get the distance between two reads based on their names, which 
 // encodes the positions
@@ -271,7 +272,6 @@ std::string reverse(const std::string& seq);
 
 // Count the number of differences between s1 and s2 over the first n chars
 int countDifferences(const std::string& s1, const std::string& s2, size_t n);
-
 
 // Complement a base
 inline char complement(char base)

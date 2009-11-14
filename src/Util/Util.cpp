@@ -294,6 +294,26 @@ void splitKeyValue(std::string in, std::string& key, std::string& value)
 	assert(key.size() > 0 && value.size() > 0 && "Invalid key-value pair");
 }
 
+// Get the ID of the pair of a given read
+std::string getPairID(const std::string& id)
+{
+	assert(!id.empty());
+	std::string pid(id);
+
+	size_t li = id.length() - 1;
+	char last = id[li];
+	if(last == 'A')
+		pid[li] = 'B';
+	else if(last == 'B')
+		pid[li] = 'A';
+	else
+	{
+		std::cerr << "Unrecognized paired end read id format: " << id << "\n";
+		assert(false);
+	}
+	return pid;
+}
+
 // Debug function to parse the distance between two reads
 // based on their names
 // This assumes is that the read names are just the positions the reads

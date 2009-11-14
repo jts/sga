@@ -86,6 +86,8 @@ void assemble()
 	SGBubbleVisitor bubbleVisit;
 	SGGraphStatsVisitor statsVisit;
 	SGEdgeClassVisitor edgeClassVisit;
+	SGVertexPairingVisitor pairingVisit;
+	SGPairedOverlapVisitor pairedOverlapVisit;
 
 	// Pre-assembly graph stats
 	std::cout << "Initial graph stats\n";
@@ -120,6 +122,9 @@ void assemble()
 		pGraph->visit(statsVisit);
 	}
 
+	std::cout << "\nPairing vertices\n";
+	pGraph->visit(pairingVisit);
+	pGraph->visit(pairedOverlapVisit);
 
 	std::cout << "\nPerforming transitive reduction\n";
 	pGraph->visit(trVisit);

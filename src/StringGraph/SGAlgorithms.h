@@ -105,6 +105,24 @@ struct SGErrorRemovalVisitor
 	double m_maxErrorRate;
 };
 
+// Visit each node, linking the vertices with their pairs
+struct SGVertexPairingVisitor
+{
+	SGVertexPairingVisitor() {}
+	void previsit(StringGraph*) {}
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*) {}
+};
+
+// Visit each node and output the overlap between each linked edge and their pairs
+struct SGPairedOverlapVisitor
+{
+	SGPairedOverlapVisitor() {}
+	void previsit(StringGraph*) {} 
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*) {}
+};
+
 // Compile summary statistics for the graph
 struct SGGraphStatsVisitor
 {
