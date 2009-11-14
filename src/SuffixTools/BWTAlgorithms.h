@@ -124,8 +124,19 @@ struct BWTAlign
 	}
 };
 
+// Simple structure holding an interval pair and an overlap length
+struct OverlapBlock
+{
+	OverlapBlock(BWTIntervalPair r, int ol) : ranges(r), overlapLen(ol) {}
+	BWTIntervalPair ranges;
+	int overlapLen;
+};
+
+
+
 typedef std::queue<BWTAlign> BWTAlignQueue;
 typedef std::list<BWTAlign> BWTAlignList;
+typedef std::list<OverlapBlock> OverlapBlockList;
 
 // functions
 namespace BWTAlgorithms
@@ -191,19 +202,41 @@ inline void initIntervalPair(BWTIntervalPair& pair, char b, const BWT* pBWT, con
 	initInterval(pair.interval[RIGHT_INT_IDX], b, pRevBWT);
 }
 
+// Return the counts of the bases between the lower and upper interval in pBWT
+inline AlphaCount getExtCount(BWTInterval& interval, const BWT* pBWT)
+{
+	return pBWT->getOccDiff(interval.lower - 1, interval.upper);
+}
+
+
 //
 // Alignment algorithms
 //
+
+// Perform an inexact suffix overlap, allowing at most error_rate errors
 int alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                        double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits);
 
+// Perform an exact suffix overlap
 int alignSuffixExact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                      int minOverlap, Hit& hitTemplate, HitVector* pHits);
 
+// Perform an exact suffix overlap while only outputting irreducible edges (no transitive edges)
+void alignSuffixExactIrreducible(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                                 int minOverlap, Hit& hitTemplate, HitVector* pHits);
 
-// 
+
+// Align a subrange of a string against and fm-index while allowing maxDiff errors. Seeded.
 int _alignBlock(const std::string& w, int block_start, int block_end,
                 const BWT* pBWT, const BWT* pRevBWT, int maxDiff, Hit& hitTemplate, HitVector* pHits);
+
+
+// Extend each block in obl until all the irreducible overlaps have been found. 
+void processIrreducibleBlocks(OverlapBlockList& obl, const size_t qlen, const BWT* pRevBWT, Hit& hitTemplate, HitVector* pHits);
+
+// Update the overlap block list with a righthand extension to b, removing ranges that become invalid
+void updateOverlapBlockRangesRight(OverlapBlockList& obList, char b, const BWT* pRevBWT);
+
 
 };
 

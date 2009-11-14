@@ -14,13 +14,6 @@
 #include <vector>
 #include <list>
 
-struct OverlapBlock
-{
-	OverlapBlock(BWTIntervalPair r, int ol) : ranges(r), overlapLen(ol) {}
-	BWTIntervalPair ranges;
-	int overlapLen;
-};
-
 struct ReadExt
 {
 	ReadExt(size_t i, const std::string& s) : read_idx(i), seq(s), w(s), isActive(true), isContained(false) {}
@@ -36,7 +29,6 @@ struct ReadExt
 
 typedef std::list<size_t> IndexList;
 typedef std::list<BWTIntervalPair> IntervalPairList;
-typedef std::list<OverlapBlock> OverlapBlockList;
 typedef std::vector<ReadExt> REVec;
 typedef std::vector<bool> bool_vec;
 
@@ -81,19 +73,6 @@ namespace AssembleExact
 	std::string findExtension(const unsigned int minOverlap, const std::string& w, 
 	                          const BWT* pBWT, const BWT* pRevBWT, BWTIntervalPair& irr_range);
 
-
-	// Get the irreducible overlaps for a given read
-	void findIrreducibleOverlaps(const std::string& w, const BWT* pBWT, const BWT* pRevBWT,
-	                             int minOverlap, Hit& hitTemplate, HitVector* pHits);
-
-	// Extend each block in obl until all the irreducible overlaps have been found. 
-	void processIrreducibleBlocks(OverlapBlockList& obl, const size_t qlen, const BWT* pRevBWT, Hit& hitTemplate, HitVector* pHits);
-
-	// Return the counts of the bases between the lower and upper interval in pBWT
-	AlphaCount getExtCount(BWTInterval& interval, const BWT* pBWT);
-
-	// Update the overlap block list with a righthand extension to b, removing ranges that become invalid
-	void updateOverlapBlockRangesRight(OverlapBlockList& obList, char b, const BWT* pRevBWT);
 };
 
 

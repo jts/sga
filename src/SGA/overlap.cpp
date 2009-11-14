@@ -129,11 +129,6 @@ std::string computeHitsBWT()
 			Hit hitTemplateFwd(count, 0, 0, 0, false, isRC, 0); 
 			Hit hitTemplateRev(count, 0, 0, 0, true, !isRC, 0);		
 
-			if(isRC)
-			{
-				WARN_ONCE("Skipping RC alignment");
-				continue;
-			}
 			const Sequence& currSeq = seqs[sn];
 
 			// Implementation of exact-mode algorithm that only outputs the irreducible edges (those that are not transitive)
@@ -150,8 +145,8 @@ std::string computeHitsBWT()
 					continue;
 				}
 
-				AssembleExact::findIrreducibleOverlaps(currSeq,          pBWT,  pRBWT, opt::minOverlap, hitTemplateFwd, pHits);
-				AssembleExact::findIrreducibleOverlaps(reverse(currSeq), pRBWT, pBWT,  opt::minOverlap, hitTemplateRev, pRevHits);
+				BWTAlgorithms::alignSuffixExactIrreducible(currSeq,          pBWT,  pRBWT, opt::minOverlap, hitTemplateFwd, pHits);
+				BWTAlgorithms::alignSuffixExactIrreducible(reverse(currSeq), pRBWT, pBWT,  opt::minOverlap, hitTemplateRev, pRevHits);
 			}
 		}
 
