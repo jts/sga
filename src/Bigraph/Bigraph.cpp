@@ -41,15 +41,14 @@ void Bigraph::addVertex(Vertex* pVert)
 }
 
 //
-// Remove a vertex
+// Remove a vertex that is not connected to any other
 //
-void Bigraph::removeIslandVertex(VertexID id)
+void Bigraph::removeIslandVertex(Vertex* pVertex)
 {
-	// Remove the edges pointing to this Vertex
-	Vertex* pVertex = getVertex(id);
 	assert(pVertex->countEdges() == 0);
 
 	// Remove the vertex from the collection
+	VertexID id = pVertex->getID();
 	delete pVertex;
 	m_vertices.erase(id);
 }
@@ -57,13 +56,13 @@ void Bigraph::removeIslandVertex(VertexID id)
 //
 // Remove a vertex
 //
-void Bigraph::removeConnectedVertex(VertexID id)
+void Bigraph::removeConnectedVertex(Vertex* pVertex)
 {
 	// Remove the edges pointing to this Vertex
-	Vertex* pVertex = getVertex(id);
 	pVertex->deleteEdges();
 
 	// Remove the vertex from the collection
+	VertexID id = pVertex->getID();
 	delete pVertex;
 	m_vertices.erase(id);
 }
@@ -189,7 +188,7 @@ void Bigraph::merge(Edge* pEdge)
 
 	// Remove V2
 	// It is guarenteed to not be connected
-	removeIslandVertex(pV2->getID());
+	removeIslandVertex(pV2);
 	//validate();
 }
 
@@ -202,7 +201,7 @@ void Bigraph::sweepVertices(GraphColor c)
 		VertexPtrMapIter next = iter;
 		++next;
 		if(iter->second->getColor() == c)
-			removeConnectedVertex(iter->second->getID());
+			removeConnectedVertex(iter->second);
 		iter = next;
 	}
 }
@@ -220,8 +219,10 @@ void Bigraph::sweepEdges(GraphColor c)
 void Bigraph::simplify()
 {
 	bool changed = true;
+	int simp_count = 0;
 	while(changed)
 	{
+		int proc_count = 0;
 		changed = false;
 		for(VertexPtrMapIter iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
 		{
@@ -247,7 +248,11 @@ void Bigraph::simplify()
 					}
 				}
 			}
+
+			if(proc_count++ % 10000 == 0)
+				printf("processed count: %d\n", proc_count);
 		}
+		printf("simplify count %d\n", simp_count++);
 	} 
 }
 

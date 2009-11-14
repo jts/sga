@@ -54,6 +54,7 @@ struct Match
 	// bringing the matching strings into the same coordinate system
 	void canonize();
 	void decanonize();
+	bool isContainment() const { return coord[0].isContained() || coord[1].isContained(); }
 
 	// IO
 	friend std::ostream& operator<<(std::ostream& out, const Match& m);

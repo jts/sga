@@ -74,7 +74,6 @@ class StringEdge : public Edge
 		// Make the match full length
 		void extendMatchFullLength();
 
-
 		// getters
 		virtual std::string getLabel() const;
 		size_t getSeqLen() const;

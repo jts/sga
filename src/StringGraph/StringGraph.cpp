@@ -183,8 +183,9 @@ void StringVertex::merge(Edge* pEdge)
 
 	// Merge the sequence
 	std::string label = pSE->getLabel();
-	pSE->updateSeqLen(m_seq.length() + label.length());
+	size_t label_len = label.size();
 
+	pSE->updateSeqLen(m_seq.length() + label.length());
 	bool prepend = false;
 
 	if(pSE->getDir() == ED_SENSE)
@@ -193,11 +194,12 @@ void StringVertex::merge(Edge* pEdge)
 	}
 	else
 	{
-		m_seq.insert(0, label);
+		std::swap(m_seq, label);
+		m_seq.append(label);
 		prepend = true;
 	}
 
-	pSE->extendMatch(label.length());
+	pSE->extendMatch(label_len);
 	pTwinSE->extendMatchFullLength();
 
 	// All the SeqCoords for the edges must have their seqlen field updated
@@ -209,7 +211,7 @@ void StringVertex::merge(Edge* pEdge)
 		StringEdge* pSE2 = SE_CAST(*iter);
 		pSE2->updateSeqLen(newLen);
 		if(prepend && pSE2->getDir() == ED_SENSE && pSE != pSE2)
-			pSE2->offsetMatch(label.length());
+			pSE2->offsetMatch(label_len);
 	}
 
 	// Update the read count

@@ -327,7 +327,7 @@ void drawMulti(std::string rootName, int root_len, DrawVector& dv)
 	if(dv.size() < 2)
 		return;
 	std::sort(dv.begin(), dv.end());
-	int default_padding = 12;
+	int default_padding = 20;
 	std::cout << "\nDrawing overlaps for read " << rootName << "\n";
 	for(size_t i = 0; i < dv.size(); ++i)
 	{

@@ -17,6 +17,7 @@
 #include "SGACommon.h"
 #include "Timer.h"
 #include "BWTAlgorithms.h"
+#include "AssembleExact.h"
 
 //
 // Getopt
@@ -38,6 +39,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      -m, --min-overlap=OVERLAP_LEN    minimum overlap required between two reads\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -d, --max-diff=D                 report all prefix-suffix matches that have at most D differences\n"
+"      -i, --irreducible                only output the irreducible edges for each node\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -48,10 +50,10 @@ namespace opt
 	static double errorRate;
 	static std::string prefix;
 	static std::string readsFile;
-	static bool bExactAlgo;
+	static bool bIrreducibleOnly;
 }
 
-static const char* shortopts = "p:m:d:e:v";
+static const char* shortopts = "p:m:d:e:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -61,6 +63,7 @@ static const struct option longopts[] = {
 	{ "max-diff",    required_argument, NULL, 'd' },
 	{ "prefix",      required_argument, NULL, 'p' },
 	{ "error-rate",  required_argument, NULL, 'e' },
+	{ "irreducible", no_argument,       NULL, 'i' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -122,32 +125,33 @@ std::string computeHitsBWT()
 		// Get all the hits of this sequence to the forward and reverse BWT
 		for(size_t sn = 0; sn <= 1; ++sn)
 		{
-
 			bool isRC = (sn == 1) ? true : false;
-			const Sequence& currSeq = seqs[sn];
-			if(opt::bExactAlgo)
+			Hit hitTemplateFwd(count, 0, 0, 0, false, isRC, 0); 
+			Hit hitTemplateRev(count, 0, 0, 0, true, !isRC, 0);		
+
+			if(isRC)
 			{
-				pBWT->getPrefixHits(count, currSeq, opt::minOverlap, false, isRC, pHits);
-				pRBWT->getPrefixHits(count, reverse(currSeq), opt::minOverlap, true, !isRC, pHits);
+				WARN_ONCE("Skipping RC alignment");
+				continue;
+			}
+			const Sequence& currSeq = seqs[sn];
+
+			// Implementation of exact-mode algorithm that only outputs the irreducible edges (those that are not transitive)
+			if(!opt::bIrreducibleOnly)
+			{
+				cost += BWTAlgorithms::alignSuffixInexact(currSeq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplateFwd, pHits);
+				cost += BWTAlgorithms::alignSuffixInexact(reverse(currSeq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplateRev, pRevHits);
 			}
 			else
 			{
-				//cost += pBWT->getInexactPrefixHits(currSeq, pRBWT, opt::maxDiff, opt::minOverlap, count, false, isRC, pHits);
-				//cost += pRBWT->getInexactPrefixHits(reverse(currSeq), pBWT, opt::maxDiff, opt::minOverlap, count, true, !isRC, pHits);
-				/*
-				Hit hitTemplate(count, 0, 0, 0, false, isRC, 0); 
-				cost += alignSuffixMaxDiff(currSeq, pBWT, pRBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pHits);
-				hitTemplate.targetRev = true;
-				hitTemplate.queryRev = !isRC;
-				cost += alignSuffixMaxDiff(reverse(currSeq), pRBWT, pBWT, opt::maxDiff, opt::minOverlap, hitTemplate, pRevHits);
-				*/
-			
-				Hit hitTemplate(count, 0, 0, 0, false, isRC, 0); 
-				cost += BWTAlgorithms::alignSuffixInexact(currSeq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
-				hitTemplate.targetRev = true;
-				hitTemplate.queryRev = !isRC;
-				cost += BWTAlgorithms::alignSuffixInexact(reverse(currSeq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
-				
+				WARN_ONCE("Irreducible mode assumptions: All reads are the same length and they come from the same strand");
+				if(isRC)
+				{
+					continue;
+				}
+
+				AssembleExact::findIrreducibleOverlaps(currSeq,          pBWT,  pRBWT, opt::minOverlap, hitTemplateFwd, pHits);
+				AssembleExact::findIrreducibleOverlaps(reverse(currSeq), pRBWT, pBWT,  opt::minOverlap, hitTemplateRev, pRevHits);
 			}
 		}
 
@@ -241,7 +245,7 @@ void parseHits(std::string hitsFile)
 
 		//std::cout << "HIT: " << hit << " ids: " << query.id << " " << target.id << "\n";
 		// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
-		if(query.id != target.id && query.id < target.id)
+		if(query.id != target.id)
 		{	
 			// Compute the endpoints of the overlap
 			int s1 = hit.qstart;
@@ -262,6 +266,14 @@ void parseHits(std::string hitsFile)
 			bool isRC = hit.targetRev != hit.queryRev;
 
 			Overlap o(query.id, sc1, target.id, sc2, isRC, hit.numDiff);
+		
+			// The alignment logic above has the potential to produce duplicate alignments
+			// To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
+			// the second or the match is a containment and the query is reversed (containments can be 
+			// output up to 4 times total).
+			// If we are running in irreducible mode this is not necessary
+			if(o.id[0] < o.id[1] || (o.match.isContainment() && hit.queryRev))
+				continue;
 			writeOverlap(o, containHandle, overlapHandle);
 		}
 	}
@@ -319,68 +331,6 @@ void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& ove
 	overlapHandle << ovr << "\n";
 }
 
-#if 0
-void computeOverlapsLCP()
-{
-	ReadTable* pRT = new ReadTable(opt::readsFile);
-	ReadTable* pRevRT = new ReadTable();
-	pRevRT->initializeReverse(pRT);
-
-	// Load the suffix arrays
-	SuffixArray* pSA = new SuffixArray(opt::prefix + ".sa");
-	SuffixArray* pRSA = new SuffixArray(opt::prefix + ".rsa");
-
-	// Open the writers
-	std::string overlapFile = opt::prefix + ".ovr";
-	std::ofstream overlapHandle(overlapFile.c_str());
-	assert(overlapHandle.is_open());
-	std::string containFile = opt::prefix + ".ctn";
-	std::ofstream containHandle(containFile.c_str());
-	assert(containHandle.is_open());
-
-	//
-	// Remove contained reads
-	//
-	
-	// Detect all the contained reads in the forward suffix array, then use that list to remove them both
-	SAElemPairVec containedReads = pSA->detectRedundantStrings(pRT);
-
-	// Print the contained reads and build the set of suffix array ids to remove
-	NumericIDSet idSet;
-	for(size_t idx = 0; idx < containedReads.size(); ++idx)
-	{
-		std::string contained = pRT->getRead(containedReads[idx].first.getID()).id;
-		std::string container = pRT->getRead(containedReads[idx].second.getID()).id;
-		writeContainment(containHandle, contained, container);
-		idSet.insert(containedReads[idx].first.getID());
-	}
-
-	pSA->removeReads(idSet);
-	pRSA->removeReads(idSet);
-	std::cerr << "Warning: validation is turned on\n";
-	pSA->validate(pRT);
-	pRSA->validate(pRevRT);
-
-	if(opt::verbose > 0)
-		pSA->print();
-
-	//
-	// Extract overlaps
-	//
-	
-	OverlapVector overlapVec = pSA->extractPrefixSuffixOverlaps(opt::minOverlap, pRT);
-	processOverlaps(overlapVec, containHandle, overlapHandle);
-
-	// Cleanup
-	overlapHandle.close();
-	containHandle.close();
-	delete pRT;
-	delete pRevRT;
-	delete pSA;
-	delete pRSA;
-}
-#endif
-
 // 
 // Handle command line arguments
 //
@@ -388,7 +338,6 @@ void parseOverlapOptions(int argc, char** argv)
 {
 	// Set defaults
 	opt::minOverlap = DEFAULT_MIN_OVERLAP;
-	opt::bExactAlgo = false;
 	opt::maxDiff = 0;
 
 	bool die = false;
@@ -401,6 +350,7 @@ void parseOverlapOptions(int argc, char** argv)
 			case 'p': arg >> opt::prefix; break;
 			case 'e': arg >> opt::errorRate; break;
 			case 'd': arg >> opt::maxDiff; break;
+			case 'i': opt::bIrreducibleOnly = true; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:

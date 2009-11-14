@@ -46,8 +46,8 @@ class Bigraph
 		// removeIslandVertex removes a vertex that is guarenteed to
 		// not have edges
 		// removeConnectedVertex removes a (possibly) connected vertex and all the edges to/from it
-		void removeIslandVertex(VertexID id);
-		void removeConnectedVertex(VertexID id);
+		void removeIslandVertex(Vertex* pVertex);
+		void removeConnectedVertex(Vertex* pVertex);
 
 		// Check if a vertex exists
 		bool hasVertex(VertexID id);

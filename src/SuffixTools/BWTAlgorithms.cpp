@@ -33,10 +33,38 @@ BWTInterval BWTAlgorithms::findInterval(const BWT* pBWT, const std::string& w)
 	return interval;
 }
 
+// Find the intervals in pBWT/pRevBWT corresponding to w
+// If w does not exist in the BWT, the interval 
+// coordinates [l, u] will be such that l > u
+BWTIntervalPair BWTAlgorithms::findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std::string& w)
+{
+	BWTIntervalPair intervals;	
+	int len = w.size();
+	int j = len - 1;
+	char curr = w[j];
+	initIntervalPair(intervals, curr, pBWT, pRevBWT);
+	--j;
+
+	for(;j >= 0; --j)
+	{
+		curr = w[j];
+		updateBothL(intervals, curr, pBWT);
+		if(!intervals.isValid())
+			return intervals;
+	}
+	return intervals;
+}
+
 // Set up the alignment blocks and call the alignment function on each block
 int BWTAlgorithms::alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                        double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits)
 {
+	if((int)w.length() < minOverlap)
+	{
+		std::cerr << "Warning string " << w << " is shorter than minOverlap, it will not be aligned\n";
+		return 0;
+	}
+
 	// Calculate the number of blocks and the size of each block
 	int len = static_cast<int>(w.length());
 	
@@ -54,7 +82,6 @@ int BWTAlgorithms::alignSuffixInexact(const std::string& w, const BWT* pBWT, con
 
 		// Calculate the endpoint of the block, it is the amount of overlap s.t. i + 1 is less than the error rate
 		int max_overlap_size = std::min((int)ceil((i + 1) / error_rate) - 1, len);
-		
 		// If the max overlap in this block is less than the minOverlap parameter, skip the block
 		if(max_overlap_size < minOverlap)
 			continue;
@@ -282,4 +309,45 @@ int BWTAlgorithms::_alignBlock(const std::string& w, int block_start, int block_
 	delete pTempList;
 	return cost;
 }
+
+// Perform an exact overlapping alignment
+int BWTAlgorithms::alignSuffixExact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                                      int minOverlap, Hit& hitTemplate, HitVector* pHits)
+{
+	// The algorithm is as follows:
+	// We perform a backwards search using the FM-index for the string w.
+	// As we perform the search we collect the intervals matching proper prefixes and output them as hits
+	BWTIntervalPair ranges;
+	size_t l = w.length();
+	int start = l - 1;
+	int cost = 0;
+	BWTAlgorithms::initIntervalPair(ranges, w[start], pBWT, pRevBWT);
+	
+	// Collect the overlaps
+	for(int i = start - 1; i >= 0; --i)
+	{
+		++cost;
+		// Compute the range of the suffix w[i, l]
+		BWTAlgorithms::updateBothL(ranges, w[i], pBWT);
+		int overlapLen = l - i;
+		if(overlapLen >= minOverlap)
+		{
+			// Calculate which of the prefixes that match w[i, l] are terminal
+			// These are the proper prefixes (they are the start of a read)
+			BWTIntervalPair probe = ranges;
+			BWTAlgorithms::updateBothL(probe, '$', pBWT);
+			
+			for(int64_t sa_idx = probe.interval[0].lower; sa_idx <= probe.interval[0].upper; ++sa_idx)
+			{
+				hitTemplate.saIdx = sa_idx;
+				hitTemplate.qstart = i;
+				hitTemplate.len = overlapLen;
+				hitTemplate.numDiff = 0;
+				pHits->push_back(hitTemplate);
+			}
+		}
+	}
+	return cost;
+}
+
 

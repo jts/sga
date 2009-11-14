@@ -32,6 +32,7 @@ struct BWTInterval
 	int64_t lower;
 	int64_t upper;
 	inline bool isValid() const { return lower <= upper; }
+	inline int64_t size() const { return upper - lower + 1; }
 
 	static inline bool compare(const BWTInterval& a, const BWTInterval& b)
 	{
@@ -59,6 +60,8 @@ struct BWTIntervalPair
 {
 	BWTInterval& get(unsigned int idx) { return interval[idx]; }
 	BWTInterval interval[2];
+
+	bool isValid() const { return interval[0].isValid() && interval[1].isValid(); }
 
 	friend std::ostream& operator<<(std::ostream& out, BWTIntervalPair& a)
 	{
@@ -128,10 +131,9 @@ typedef std::list<BWTAlign> BWTAlignList;
 namespace BWTAlgorithms
 {
 
-//
-// get the interval in pBWT that corresponds to the string w using a backward search algorithm
-//
+// get the interval(s) in pBWT/pRevBWT that corresponds to the string w using a backward search algorithm
 BWTInterval findInterval(const BWT* pBWT, const std::string& w);
+BWTIntervalPair findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std::string& w);
 
 // Update the given interval using backwards search
 // If the interval corrsponds to string S, it will be updated 
@@ -194,6 +196,10 @@ inline void initIntervalPair(BWTIntervalPair& pair, char b, const BWT* pBWT, con
 //
 int alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                        double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits);
+
+int alignSuffixExact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                     int minOverlap, Hit& hitTemplate, HitVector* pHits);
+
 
 // 
 int _alignBlock(const std::string& w, int block_start, int block_end,

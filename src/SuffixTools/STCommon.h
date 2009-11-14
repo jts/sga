@@ -172,6 +172,20 @@ class AlphaCount
 			return nonzero;
 		}
 
+		// Returns true if any DNA char 
+		// has a non-zero count
+		inline bool hasDNAChar()
+		{
+			// index 0 is the '$' character, which we skip
+			for(int i = 1; i < ALPHABET_SIZE; ++i)
+			{
+				if(m_counts[i] > 0)
+					return true;
+			}
+			return false;
+		}
+		
+
 		// Return the unique DNA character described by the alphacount
 		// Returns '$' if no such character exists
 		// Asserts if more than one character is described by the alphacount

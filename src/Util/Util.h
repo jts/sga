@@ -24,6 +24,10 @@
 #define VALIDATION_WARNING(x) static bool validation_warn = true; if(validation_warn) \
 							   printf("[%s] Warning validation is on\n", (x)); validation_warn = false;
 
+#define WARN_ONCE(x) static bool _warn_once = true; if(_warn_once) \
+					 printf("WARNING: [%s]\n", (x)); _warn_once = false;
+
+
 //
 // Enums
 //
