@@ -122,6 +122,7 @@ std::string computeHitsBWT()
 		Sequence seqs[2];
 		seqs[0] = read.seq.toString();
 		seqs[1] = reverseComplement(seqs[0]);
+
 		// Get all the hits of this sequence to the forward and reverse BWT
 		for(size_t sn = 0; sn <= 1; ++sn)
 		{

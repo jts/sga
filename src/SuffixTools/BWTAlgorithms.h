@@ -132,8 +132,6 @@ struct OverlapBlock
 	int overlapLen;
 };
 
-
-
 typedef std::queue<BWTAlign> BWTAlignQueue;
 typedef std::list<BWTAlign> BWTAlignList;
 typedef std::list<OverlapBlock> OverlapBlockList;

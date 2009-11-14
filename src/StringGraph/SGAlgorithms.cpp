@@ -83,7 +83,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				}
 			}
 		}
-
+		
 		// Stage 2
 		for(size_t i = 0; i < edges.size(); ++i)
 		{
