@@ -5,3 +5,6 @@ configure
 autom4te.cache/
 aclocal.m4
 *.swp
+depcomp
+install-sh
+missing
