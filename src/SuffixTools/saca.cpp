@@ -108,7 +108,6 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	SuffixCompareID id_compare(pRT);
 	
 	mkqs2(&pSA->m_data[0], n1, 0, radix_compare, id_compare);
-	//histogramSort(pSA->getHead(), n1, 0, radix_compare, id_compare);
 
 	// Induction sort the remaining suffixes
 	for(size_t i = n1; i < num_suffixes; ++i)
