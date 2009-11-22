@@ -114,6 +114,16 @@ struct SGVertexPairingVisitor
 	void postvisit(StringGraph*) {}
 };
 
+// Build the paired end trust network
+struct SGPETrustVisitor
+{
+	SGPETrustVisitor() {}
+	void previsit(StringGraph*);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+};
+
+
 // Visit each node and output the overlap between each linked edge and their pairs
 struct SGPairedOverlapVisitor
 {

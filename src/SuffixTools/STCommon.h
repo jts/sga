@@ -136,8 +136,14 @@ class AlphaCount
 			return m_counts[getBaseRank(b)];
 		}
 
+		//
+		inline BaseCount getByIdx(const int i) const
+		{
+			return m_counts[i];
+		}
+
 		// Return the base for index i
-		inline char getBase(size_t i) const
+		static char getBase(size_t i)
 		{
 			return RANK_ALPHABET[i];
 		}

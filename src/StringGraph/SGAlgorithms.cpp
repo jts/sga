@@ -665,6 +665,84 @@ bool SGVertexPairingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 	return false;
 }
 
+//
+void SGPETrustVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+}
+
+
+// Visit each vertex in the graph and determine which edges are supported through
+// read pairing
+bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	StringVertex* pSVertex = SV_CAST(pVertex);
+	StringVertex* pPairVertex = pSVertex->getPairVertex();
+	if(pPairVertex == NULL)
+		return false;
+
+	// First, mark all pair vertices that overlap the pair of this node
+	// The set of marked vertices that overlap pVertex are the trusted vertices
+	EdgePtrVec pairEdgeVec = pPairVertex->getEdges();
+	for(size_t i = 0; i < pairEdgeVec.size(); ++i)
+	{
+		// Get the pair of the endpoint of this edge
+		StringVertex* pBackVertex = SV_CAST(pairEdgeVec[i]->getEnd())->getPairVertex();
+		if(pBackVertex != NULL)
+			pBackVertex->setColor(GC_RED);
+	}
+
+	EdgePtrVec vertEdgeVec = pSVertex->getEdges();
+
+	// Propogate trust
+	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
+	{
+		Vertex* pCurr = vertEdgeVec[i]->getEnd();
+
+		// If any vertex that pCurr overlaps with is red, mark it as such
+		EdgePtrVec currEdgeVec = pCurr->getEdges();
+		for(size_t j = 0; j < currEdgeVec.size(); ++j)
+		{
+			if(currEdgeVec[j]->getEnd()->getColor() == GC_RED)
+			{
+				pCurr->setColor(GC_RED);
+				break;
+			}
+		}
+	}
+
+	// 
+	int trusted = 0;
+	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
+	{
+		if(vertEdgeVec[i]->getEnd()->getColor() == GC_RED)
+		{
+			trusted++;
+		}
+	}
+
+	printf("trusted: %d total: %zu untrusted: %zu\n", trusted, vertEdgeVec.size(), vertEdgeVec.size() - trusted);
+
+	// Reset all the vertex colors
+	for(size_t i = 0; i < pairEdgeVec.size(); ++i)
+	{
+		// Get the pair of the endpoint of this edge
+		StringVertex* pBackVertex = SV_CAST(pairEdgeVec[i]->getEnd())->getPairVertex();
+		if(pBackVertex)
+			pBackVertex->setColor(GC_WHITE);
+	}
+
+	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
+		vertEdgeVec[i]->getEnd()->setColor(GC_WHITE);
+	
+	return false;
+}
+
+//
+void SGPETrustVisitor::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepEdges(GC_BLACK);
+}
 
 // Visit each vertex in the graph, find its pair and link them
 bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
@@ -687,13 +765,17 @@ bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 			continue;
 
 		EdgePtrVec ppw_edges = pPairW->findEdgesTo(pPairSV->getID());
+		size_t overlap_len = pVWEdge->getMatchLength();
 
 		if(ppw_edges.size() == 1)
 		{
 			StringEdge* pPPEdge = SE_CAST(ppw_edges.front());
-			size_t overlap_len = pVWEdge->getMatchLength();
 			size_t pair_overlap_len = pPPEdge->getMatchLength();
-			printf("pairoverlap\t%s\t%zu\t%zu\n", pSV->getID().c_str(), overlap_len, pair_overlap_len);
+			printf("pairoverlap\t%s\t%s\t%zu\t%zu\n", pSV->getID().c_str(), pW->getID().c_str(), overlap_len, pair_overlap_len);
+		}
+		else
+		{
+			printf("pairoverlap\t%s\t%s\t%zu\t%d\n", pSV->getID().c_str(), pW->getID().c_str(), overlap_len, 0);
 		}
 	
 	}

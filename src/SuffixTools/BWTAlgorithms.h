@@ -47,7 +47,7 @@ struct BWTInterval
 		   return a.lower == b.lower && a.upper == b.upper;
 	}
 
-	friend std::ostream& operator<<(std::ostream& out, BWTInterval& a)
+	friend std::ostream& operator<<(std::ostream& out, const BWTInterval& a)
 	{
 		   out << "[" << a.lower << "," << a.upper << "]";
 		   return out;
