@@ -1,0 +1,7 @@
+# ignore build files
+*.in
+*/*.in
+configure
+autom4te.cache/
+aclocal.m4
+*.swp
