@@ -67,7 +67,6 @@ void printUsage()
 	std::cout << "         overlap      compute overlaps between reads\n";
 	std::cout << "         assemble     generate contigs\n";
 	std::cout << "         oview        view overlap alignments\n";
-	std::cout << "         exact        output all exact, irreducible overlaps\n";
 	std::cout << "         extract      extract all sequences of a given length\n";
 	std::cout << "\n\n";
 }
