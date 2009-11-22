@@ -16,6 +16,7 @@
 #include <map>
 #include <set>
 #include <assert.h>
+#include <stdint.h>
 
 //
 // Constants

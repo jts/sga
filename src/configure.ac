@@ -35,7 +35,6 @@ AC_CONFIG_FILES([Makefile
 		Util/Makefile
 		Bigraph/Makefile
 		StringGraph/Makefile
-		UniEst/Makefile
 		SuffixTools/Makefile
 		Tests/Makefile
 		SGA/Makefile])

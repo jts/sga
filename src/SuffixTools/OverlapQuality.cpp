@@ -8,6 +8,7 @@
 //
 #include "OverlapQuality.h"
 #include <math.h>
+#include <limits>
 
 OverlapQuality::OverlapQuality(const SeqItem& base_read, const OverlapVector& overlaps, const ReadTable* pRT)
 {

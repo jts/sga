@@ -4,7 +4,6 @@ libbigraph_a_CPPFLAGS = \
 	-I$(top_srcdir)/Util
 
 libbigraph_a_SOURCES = \
-	Bigraph.h Bigraph.cpp \
-	Vertex.h Vertex.cpp  \
-	Edge.h Edge.cpp
-
+                       Bigraph.h Bigraph.cpp \
+                       Vertex.h Vertex.cpp  \
+                       Edge.h Edge.cpp

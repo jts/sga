@@ -14,7 +14,7 @@
 // Power of 2 macros
 
 // return true if x is a power of 2
-#define IS_POWER_OF_2(x) ((x) & (x) - 1) == 0
+#define IS_POWER_OF_2(x) ((x) & ((x) - 1)) == 0
 
 // return the x % y given that y is a power of 2
 #define MOD_POWER_2(x, y) (x) & ((y) - 1)
@@ -34,7 +34,7 @@ class Occurance
 		inline const AlphaCount get(const BWStr& bwStr, size_t idx) const
 		{
 			// Quick path
-			if(MOD_POWER_2(idx,m_sampleRate) == 0)
+			if((MOD_POWER_2(idx,m_sampleRate)) == 0)
 				return m_values[idx >> m_shift];
 
 			// Calculate the nearest sample to this index
@@ -69,7 +69,7 @@ class Occurance
 		inline BaseCount get(const BWStr& bwStr, char a, size_t idx) const
 		{
 			// Quick path
-			if(MOD_POWER_2(idx,m_sampleRate) == 0)
+			if((MOD_POWER_2(idx,m_sampleRate)) == 0)
 				return m_values[idx >> m_shift].get(a);
 
 			// Calculate the nearest sample to this index

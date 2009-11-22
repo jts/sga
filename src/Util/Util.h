@@ -17,6 +17,7 @@
 #include <sstream>
 #include <cstring>
 #include <cstdlib>
+#include <stdint.h>
 #include "DNAString.h"
 
 #define CAF_SEP ':'
