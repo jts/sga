@@ -16,6 +16,8 @@ void BWTTraverse::extract(const BWT* pBWT, unsigned int len)
 	// to the current stack elements
 	TraverseStack stack;
 	std::string rev_str;
+	size_t iter_count = 0;
+	size_t output_count = 0;
 
 	for(size_t i = 0; i < DNA_ALPHABET_SIZE; ++i)
 	{
@@ -30,6 +32,7 @@ void BWTTraverse::extract(const BWT* pBWT, unsigned int len)
 
 		while(!stack.empty())
 		{
+			++iter_count;
 			TraverseElem& curr = stack.top();
 			curr.goNext();
 			bool doPop = !curr.isValid(); 
@@ -37,8 +40,13 @@ void BWTTraverse::extract(const BWT* pBWT, unsigned int len)
 			// If rev_str is long enough output it and stop the traversal at this depth
 			if(rev_str.length() == len)
 			{
+				if(output_count % 1000000 == 0)
+					std::cerr << "output: " << output_count << "\n";
+
 				doPop = true;
-				std::cout << "kmer: " << reverse(rev_str) << "\n";
+				size_t multiplicity = curr.getRange().size();
+				printf(">%zu %u %zu\n%s\n", output_count, len, multiplicity, reverse(rev_str).c_str());
+				++output_count;
 			}
 
 			if(doPop)
@@ -60,4 +68,6 @@ void BWTTraverse::extract(const BWT* pBWT, unsigned int len)
 			}
 		}
 	}
+
+	std::cerr << "Num output: " << output_count << " num iterations: " << iter_count << " count/len: " << (double)iter_count / len << "\n";
 }
