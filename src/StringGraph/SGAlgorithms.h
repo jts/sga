@@ -75,12 +75,10 @@ struct SGBubbleVisitor
 
 struct SGVariantVisitor
 {
-	SGVariantVisitor() : m_fileHandle("inferred.ovr") {}
+	SGVariantVisitor() {}
 	void previsit(StringGraph* pGraph);
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*);
-
-	std::ofstream m_fileHandle;						 
 };
 
 // Perform a transitive closure step

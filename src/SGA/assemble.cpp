@@ -123,10 +123,12 @@ void assemble()
 		pGraph->visit(statsVisit);
 	}
 
+	/*
 	std::cout << "\nPairing vertices\n";
 	pGraph->visit(pairingVisit);
 	//pGraph->visit(pairedOverlapVisit);
 	pGraph->visit(trustVisit);
+	*/
 
 	std::cout << "\nPerforming transitive reduction\n";
 	pGraph->visit(trVisit);
