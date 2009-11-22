@@ -12,7 +12,6 @@
 #include "overlap.h"
 #include "assemble.h"
 #include "oview.h"
-#include "exact.h"
 #include "extract.h"
 
 #define VERSION "0.1"
@@ -45,8 +44,6 @@ int main(int argc, char** argv)
 			assembleMain(argc - 1, argv + 1);
 		else if(command == "oview")
 			oviewMain(argc - 1, argv + 1);
-		else if(command == "exact")
-			exactMain(argc - 1, argv + 1);
 		else if(command == "extract")
 			extractMain(argc - 1, argv + 1);
 		else
