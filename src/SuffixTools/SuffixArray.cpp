@@ -276,6 +276,7 @@ void SuffixArray::print() const
 void SuffixArray::write(std::string& filename)
 {
 	std::ofstream out(filename.c_str());
+	checkFileHandle(out, filename);
 	out << *this;
 	out.close();
 }
@@ -284,6 +285,7 @@ void SuffixArray::write(std::string& filename)
 void SuffixArray::writeIndex(std::string& filename)
 {
 	std::ofstream out(filename.c_str());
+	checkFileHandle(out, filename);
 	out << m_numStrings << "\n";
 	out << m_numStrings << "\n";
 	for(size_t i = 0; i < m_data.size(); ++i)

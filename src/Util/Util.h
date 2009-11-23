@@ -219,6 +219,7 @@ struct SeqCoord
 //
 std::string stripFilename(std::string filename);
 void checkFileHandle(std::ifstream& fh, std::string fn);
+void checkFileHandle(std::ofstream& fh, std::string fn);
 
 // Key-value operations
 template <class C>

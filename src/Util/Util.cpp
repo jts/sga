@@ -238,15 +238,21 @@ int countDifferences(const std::string& s1, const std::string& s2, size_t n)
 // the last trailling suffix from a filename
 std::string stripFilename(std::string filename)
 {
-	std::string temp(basename(filename.c_str())); // strip leading directory
-	size_t suffixPos = temp.find_last_of('.');
+	size_t lastDirPos = filename.find_last_of('/');
+	size_t suffixPos = filename.find_last_of('.');
+	
+	if(lastDirPos == std::string::npos)
+		lastDirPos = 0;
+	else
+		lastDirPos += 1;
+
 	if(suffixPos == std::string::npos)
 	{
-		return temp; // no suffix
+		return filename.substr(lastDirPos); // no suffix
 	}
 	else
 	{
-		return temp.substr(0, suffixPos);
+		return filename.substr(lastDirPos, suffixPos - lastDirPos);
 	}
 }
 
@@ -256,6 +262,16 @@ void checkFileHandle(std::ifstream& fh, std::string fn)
 	if(!fh.is_open())
 	{
 		std::cerr << "Error: could not open " << fn << " for read\n";
+		exit(1);
+	}	
+}
+
+// Ensure a filehandle is open
+void checkFileHandle(std::ofstream& fh, std::string fn)
+{
+	if(!fh.is_open())
+	{
+		std::cerr << "Error: could not open " << fn << " for write\n";
 		exit(1);
 	}	
 }

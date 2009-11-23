@@ -310,6 +310,7 @@ std::istream& operator>>(std::istream& in, BWT& bwt)
 void BWT::write(std::string& filename)
 {
 	std::ofstream out(filename.c_str());
+	checkFileHandle(out, filename);
 	out << *this;
 	out.close();
 }
