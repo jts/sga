@@ -40,6 +40,17 @@ class BWT
 		inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurance.getDiff(m_bwStr, idx0, idx1); }
 		inline size_t getBWLen() const { return m_bwStr.length(); }
 
+		// Return the first letter of the suffix starting at idx
+		inline char getF(size_t idx) const
+		{
+			size_t ci = 0;
+			while(ci < ALPHABET_SIZE && m_predCount.getByIdx(ci) <= idx)
+				ci++;
+			assert(ci != 0);
+			return RANK_ALPHABET[ci - 1];
+		}
+
+
 		// 
 		inline const BWStr* getBWStr() const
 		{

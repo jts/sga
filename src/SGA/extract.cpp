@@ -65,9 +65,12 @@ int extractMain(int argc, char** argv)
 
 	// Load the BWT for this read set
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
-	BWTTraverse::extract(pBWT, opt::length);
+	BWT* pRevBWT = new BWT(opt::prefix + RBWT_EXT);
+
+	BWTTraverse::extractSG(pBWT, pRevBWT, opt::length);
 
 	delete pBWT;
+	delete pRevBWT;
 	return 0;
 }
 

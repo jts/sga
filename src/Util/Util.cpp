@@ -220,6 +220,20 @@ std::string complement(const std::string& seq)
 	return out;
 }
 
+// 
+std::string prefix(const std::string& seq, const unsigned int len)
+{
+	assert(seq.length() >= len);
+	return seq.substr(0, len);
+}
+
+// 
+std::string suffix(const std::string& seq, const unsigned int len)
+{
+	assert(seq.length() >= len);
+	return seq.substr(seq.length() - len);
+}
+
 
 // count the differences between s1 and s2 over the first n bases
 int countDifferences(const std::string& s1, const std::string& s2, size_t n)

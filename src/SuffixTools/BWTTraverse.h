@@ -57,12 +57,19 @@ struct TraverseElem
 };
 
 typedef std::stack<TraverseElem> TraverseStack;
+typedef std::vector<bool> bool_vec;
 
 namespace BWTTraverse
 {
 
 // Extract all strings of length len from the BWT
 void extract(const BWT* pBWT, unsigned int len);
+
+// Extract the string graph which minimum component length len from the BWT
+void extractSG(const BWT* pBWT, const BWT* pRevBWT, const unsigned int len);
+bool extendLeft(const unsigned int len, std::string& str, bool_vec& visited, const BWT* pBWT, const BWT* pRevBWT);
+bool extendRight(const unsigned int len, std::string& str, bool_vec& visited, const BWT* pBWT, const BWT* pRevBWT, bool isReverse);
+void markVisited(const std::string& str, bool_vec& visited, const BWT* pBWT);
 
 };
 

@@ -235,6 +235,10 @@ void processIrreducibleBlocks(OverlapBlockList& obl, const size_t qlen, const BW
 // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
 void updateOverlapBlockRangesRight(OverlapBlockList& obList, char b, const BWT* pRevBWT);
 
+// Return the count of all the possible one base extensions of the string w.
+// This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
+// appears in the FM-index for all i s.t. length(w[i, l]) >= minOverlap.
+AlphaCount calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT);
 
 };
 

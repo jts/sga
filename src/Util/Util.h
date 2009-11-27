@@ -272,6 +272,11 @@ std::string reverseComplement(const std::string& seq);
 std::string complement(const std::string& seq);
 std::string reverse(const std::string& seq);
 
+// Return the prefix/suffix of seq of length len 
+std::string prefix(const std::string& seq, const unsigned int len);
+std::string suffix(const std::string& seq, const unsigned int len);
+
+
 // Count the number of differences between s1 and s2 over the first n chars
 int countDifferences(const std::string& s1, const std::string& s2, size_t n);
 

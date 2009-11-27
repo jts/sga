@@ -319,10 +319,11 @@ void BWT::write(std::string& filename)
 // Print the BWT
 void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 {
-	std::cout << "i\tL(i)\tO(-,i)\tSUFF\n";
+	std::cout << "i\tL(i)\tF(i)\tO(-,i)\tSUFF\n";
 	for(size_t i = 0; i < m_bwStr.size(); ++i)
 	{
-		std::cout << i << "\t" << m_bwStr[i] << "\t" << m_occurance.get(m_bwStr, i) << pSA->getSuffix(i, pRT) << "\n";
+		assert(getF(i) == pSA->getSuffix(i, pRT)[0]);
+		std::cout << i << "\t" << m_bwStr[i] << "\t" << getF(i) << "\t" << m_occurance.get(m_bwStr, i) << pSA->getSuffix(i, pRT) << "\n";
 	}
 }
 
