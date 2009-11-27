@@ -113,8 +113,8 @@ void BWTTraverse::extractSG(const BWT* pBWT, const BWT* pRevBWT, const unsigned 
 		{
 			markVisited(str, visited, pBWT);
 			//std::cout << currIdx << " interval: " << range << " string: " << str << "\n";
-			while(extendLeft(len, str, visited, pBWT, pRevBWT));
-			while(extendRight(len, str, visited, pBWT, pRevBWT, false));
+			extendLeft(len, str, visited, pBWT, pRevBWT);
+			extendRight(len, str, visited, pBWT, pRevBWT, false);
 			printf(">%zu %zu 0\n%s\n", count++, str.length(), str.c_str());
 		}
 
@@ -124,56 +124,68 @@ void BWTTraverse::extractSG(const BWT* pBWT, const BWT* pRevBWT, const unsigned 
 
 
 // Extend the sequence by finding a consensus right-ward extension base
-bool BWTTraverse::extendRight(const unsigned int len, std::string& str, bool_vec& visited, const BWT* pBWT, const BWT* pRevBWT, bool isReverse)
+void BWTTraverse::extendRight(const unsigned int len, std::string& str, bool_vec& visited, const BWT* pBWT, const BWT* pRevBWT, bool isReverse)
 {
 	// Extract the last len characters
-	std::string w = suffix(str, len);
-	//std::cout << "len: " << str.length() << " w: " << w << "\n";
 	unsigned int overlapLen = len - 1;
-	AlphaCount ext_counts = BWTAlgorithms::calculateExactExtensions(overlapLen, w, pBWT, pRevBWT);
 
-	if(ext_counts.hasUniqueDNAChar())
+	// Initialize the range for str
+	BWTIntervalPair ranges = BWTAlgorithms::findIntervalPair(pBWT, pRevBWT, str);
+
+	bool done = false;
+	while(!done)
 	{
-		char b = ext_counts.getUniqueDNAChar();
+		AlphaCount ext_counts = BWTAlgorithms::getExtCount(ranges.interval[1], pRevBWT);
 
-		// There is a unique extension from the seed sequence to B
-		// Ensure that the reverse is true and that the sequence we are extending to, extends to this one
-		std::string joined = str + b;
-		std::string back_search = suffix(joined, len);
-
-		// Get the count of bases back to the ending sequence of seed
-		// We do this in the opposite direction of extension
-		AlphaCount back_count = BWTAlgorithms::calculateExactExtensions(overlapLen, reverse(back_search), pRevBWT, pBWT);
-
-		if(back_count.hasUniqueDNAChar())
+		if(ext_counts.hasUniqueDNAChar())
 		{
-			char r = back_count.getUniqueDNAChar();
-			// Assert back is the character we are expecting
-			assert(r == str[str.length() - len]);
-			str = joined;
+			char b = ext_counts.getUniqueDNAChar();
 
-			// mark the newly visited l-mers
-			if(!isReverse)
+			// There is a unique extension from the seed sequence to B
+			// Ensure that the reverse is true and that the sequence we are extending to, extends to this one
+			std::string joined = str + b;
+			std::string back_search = suffix(joined, len);
+
+			// Get the count of bases back to the ending sequence of seed
+			// We do this in the opposite direction of extension
+			AlphaCount back_count = BWTAlgorithms::calculateExactExtensions(overlapLen, reverse(back_search), pRevBWT, pBWT);
+
+			if(back_count.hasUniqueDNAChar())
 			{
-				markVisited(back_search, visited, pBWT);
+				char r = back_count.getUniqueDNAChar();
+				// Assert back is the character we are expecting
+				assert(r == str[str.length() - len]);
+				str = joined;
+
+				// mark the newly visited l-mers
+				if(!isReverse)
+				{
+					markVisited(back_search, visited, pBWT);
+				}
+				else
+				{
+					markVisited(reverse(back_search), visited, pRevBWT);
+				}	
+				BWTAlgorithms::updateBothR(ranges, b, pRevBWT);
 			}
 			else
 			{
-				markVisited(reverse(back_search), visited, pRevBWT);
-			}	
-			return true;
+				done = true;
+			}
+		}
+		else
+		{
+			done = true;
 		}
 	}
-	return false;
 }
 
 // Extend the string to the left by reversing it and calling extendRight
-bool BWTTraverse::extendLeft(const unsigned int len, std::string& str, bool_vec& visited, const BWT* pBWT, const BWT* pRevBWT)
+void BWTTraverse::extendLeft(const unsigned int len, std::string& str, bool_vec& visited, const BWT* pBWT, const BWT* pRevBWT)
 {
 	str = reverse(str);
-	while(extendRight(len, str, visited, pRevBWT, pBWT, true));
+	extendRight(len, str, visited, pRevBWT, pBWT, true);
 	str = reverse(str);
-	return false;
 }
 
 void BWTTraverse::markVisited(const std::string& str, bool_vec& visited, const BWT* pBWT)
