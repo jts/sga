@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <vector>
 #include <map>
+#include <ext/hash_map>
 #include "GraphCommon.h"
 #include "Vertex.h"
 #include "Edge.h"
@@ -20,7 +21,25 @@
 //
 // Typedefs
 //
-typedef std::map<VertexID, Vertex*> VertexPtrMap;
+namespace __gnu_cxx {
+
+   template< typename CharT, typename Traits, typename Alloc >
+   struct hash< const std::basic_string<CharT, Traits, Alloc> > {
+      size_t operator()(const std::basic_string<CharT, Traits, Alloc>& s) const {
+         
+         const std::collate<CharT>& c = std::use_facet<std::collate<CharT> >(std::locale());
+         return c.hash(s.c_str(), s.c_str() + s.length());
+
+      }
+   };
+
+   template< typename CharT, typename Traits, typename Alloc >
+   struct hash< std::basic_string<CharT, Traits, Alloc> >
+	: hash< const std::basic_string<CharT, Traits, Alloc> > {};
+};
+
+
+typedef __gnu_cxx::hash_map<VertexID, Vertex*> VertexPtrMap;
 typedef VertexPtrMap::iterator VertexPtrMapIter;
 typedef VertexPtrMap::const_iterator VertexPtrMapConstIter;
 

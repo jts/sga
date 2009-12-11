@@ -15,12 +15,14 @@ my $bHelp = 0;
 my $bVerbose = 0;
 my $bSameStrand = 0;
 my $bTrackPos = 0;
+my $bSingleEnd = 0;
 
-GetOptions("read_length=i" => \$rl,
+GetOptions("length=i" => \$rl,
 			"pe_mean=i" => \$pe_mean,
 			"pe_sd=f" => \$pe_sd,
 			"coverage=i" => \$coverage,
-			"same_strand" => \$bSameStrand,
+			"same-strand" => \$bSameStrand,
+			"single-end" => \$bSingleEnd,
 			"track" => \$bTrackPos,
 			"help" => \$bHelp,
 			"verbose" => \$bVerbose);
@@ -31,8 +33,9 @@ if($bHelp)
 	print STDERR "Sample reads from FILE\n";
 	print STDERR "Options:\n";
 	print STDERR "--coverage=i        The depth of coverage per base in the genome (for example: 30X would be --cov 30)\n";
-	print STDERR "--read_length=i     The read length to use\n";
+	print STDERR "--length=i          The length of the reads\n";
 	print STDERR "--same_strand       Force both reads to be from the same strand\n";
+	print STDERR "--single-end        Do not make paired reads\n";
 	print STDERR "--track             Generate unpaired reads and use the position the read was sampled from as the ID\n";
 	print STDERR "--pe_mean=i         The mean fragment size for paired-reads\n";
 	print STDERR "--pe_sd=f           The standard deviation of the fragment distribution\n";
@@ -58,7 +61,7 @@ if($bVerbose)
 my $fragment_dist = Statistics::Distrib::Normal->new(mu => $pe_mean, sigma => $pe_sd);
 
 my $total = 0;
-my @buffer;
+my $buffer = "";
 
 # slurp in the file
 while(<>)
@@ -66,38 +69,38 @@ while(<>)
 	chomp;
 	if(/^>/)
 	{
-		if(scalar(@buffer) > 0)
+		if(length($buffer) > 0)
 		{
-			if($bTrackPos)
+			if($bTrackPos || $bSingleEnd)
 			{
-				outputSETrackedReads(\@buffer);
+				outputSEReads(\$buffer);
 			}
 			else
 			{
-				outputReads(\@buffer);
+				outputPEReads(\$buffer);
 			}
-			@buffer = ();
+			$buffer = "";
 		}
 	}
 	else
 	{
-		push @buffer, split('');
+		$buffer .= $_;
 	}
 }
 
-if($bTrackPos)
+if($bTrackPos || $bSingleEnd)
 {
-	outputSETrackedReads(\@buffer);
+	outputSEReads(\$buffer);
 }
 else
 {
-	outputReads(\@buffer);
+	outputPEReads(\$buffer);
 }
 
-sub outputReads
+sub outputPEReads
 {
 	my($buffer) = @_;
-	my $gl = scalar(@$buffer);
+	my $gl = length($$buffer);
 	my $num_reads = $gl * $coverage /  (2 * $rl);
 
 	for(my $i = 0; $i < $num_reads; ++$i)
@@ -117,12 +120,12 @@ sub outputReads
 	}
 }
 
-sub outputSETrackedReads
+sub outputSEReads
 {
 	my($buffer) = @_;
-	my $gl = scalar(@$buffer);
+	my $gl = length($$buffer);
 	my $num_reads = $gl * $coverage /  $rl;
-
+	
 	for(my $i = 0; $i < $num_reads; ++$i)
 	{
 		my $start = int(rand($gl));
@@ -130,8 +133,9 @@ sub outputSETrackedReads
 		next if $end >= $gl;
 
 		my $seq = getRead($buffer, $start, $end); 
-		next if($seq =~ /N/);
-		print join("\n", (">$total:$start", $seq)) . "\n";
+		my $name = $bTrackPos ? "$total:$start" : $total;
+		next if($seq =~ /N/ || length($seq) < $rl);
+		print join("\n", (">$name", $seq)) . "\n";
 		++$total;
 	}
 
@@ -140,7 +144,8 @@ sub outputSETrackedReads
 sub getRead
 {
 	my($buffer, $start, $end) = @_;
-	return uc(join("",@$buffer[$start..$end]));
+	#return uc(join("",@$buffer[$start..$end]));
+	return substr($$buffer, $start, $end - $start + 1);
 }
 
 sub rc
