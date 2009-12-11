@@ -125,6 +125,11 @@ class Edge
 
 		virtual std::string getLabel() const { return std::string(""); }
 
+		virtual size_t getMemSize() const
+		{
+			return sizeof(*this);
+		}
+
 		// Output
 		friend std::ostream& operator<<(std::ostream& out, const Edge& obj);
 

@@ -73,7 +73,7 @@ int assembleMain(int argc, char** argv)
 void assemble()
 {
 	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn");
-
+	pGraph->printMemSize();
 	//pGraph->validate();
 	pGraph->writeDot("before.dot");
 	

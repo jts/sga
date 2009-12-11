@@ -98,6 +98,7 @@ class Bigraph
 
 		// Print simple summary statistics to stdout
 		void stats() const;
+		void printMemSize() const;
 		
 		// Visit each vertex in the graph and perform the visit function
 		bool visit(VertexVisitFunction f);
@@ -122,7 +123,6 @@ class Bigraph
 
 		// Check the colors for the entire graph
 		bool checkColors(GraphColor c);
-
 
 		// Write the graph to a dot file
 		void writeDot(std::string filename, int dotFlags = 0) const;

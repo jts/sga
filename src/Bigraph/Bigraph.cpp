@@ -465,6 +465,35 @@ void Bigraph::stats() const
 }
 
 //
+// Output mem stats
+//
+void Bigraph::printMemSize() const
+{
+	size_t numVerts = 0;
+	size_t vertMem = 0;
+
+	size_t numEdges = 0;
+	size_t edgeMem = 0;
+
+	VertexPtrMapConstIter iter = m_vertices.begin(); 
+	for(; iter != m_vertices.end(); ++iter)
+	{
+		++numVerts;
+		vertMem += iter->second->getMemSize();
+
+		EdgePtrVec edges = iter->second->getEdges();
+		for(EdgePtrVecIter edgeIter = edges.begin(); edgeIter != edges.end(); ++edgeIter)
+		{
+			++numEdges;
+			edgeMem += (*edgeIter)->getMemSize();
+		}
+	}
+	printf("num verts: %zu using %zu bytes (%.2lf per vert)\n", numVerts, vertMem, double(vertMem) / numVerts);
+	printf("num edges: %zu using %zu bytes (%.2lf per edge)\n", numEdges, edgeMem, double(edgeMem) / numEdges);
+	printf("total: %zu\n", edgeMem + vertMem);
+}
+
+//
 // Dump the graph to a dot file
 //
 void Bigraph::writeDot(std::string filename, int dotFlags) const

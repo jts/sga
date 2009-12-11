@@ -78,6 +78,12 @@ class Vertex
 		void setColor(GraphColor c) { m_color = c; }
 		void setEdgeColors(GraphColor c);
 
+		//
+		virtual size_t getMemSize() const
+		{
+			return sizeof(*this) + (m_edges.size() * sizeof(Edge*));
+		}
+
 		// Output edges in graphviz format
 		void writeEdges(std::ostream& out, int dotFlags) const;
 
