@@ -12,15 +12,13 @@ enum DotFlags
 };
 
 // GraphColors are generic flags that can be used to indicate state
-enum GraphColor
-{
-	GC_WHITE,
-	GC_GRAY,
-	GC_BLACK,
-	GC_BLUE, 
-	GC_RED
-};
+typedef uint8_t GraphColor;
 
+const GraphColor GC_WHITE = 0;
+const GraphColor GC_GRAY = 1;
+const GraphColor GC_BLACK = 2;
+const GraphColor GC_BLUE = 3;
+const GraphColor GC_RED = 4;
 
 // Typedefs
 typedef std::string VertexID;

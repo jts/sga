@@ -21,7 +21,7 @@ class Edge
 {
 	public:
 		Edge(Vertex* start, Vertex* end, EdgeDir dir, EdgeComp comp) : 
-				m_pStart(start), m_pEnd(end), m_dir(dir), m_comp(comp), m_pTwin(NULL), m_color(GC_WHITE) {}
+				m_pStart(start), m_pEnd(end), m_pTwin(NULL), m_dir(dir), m_comp(comp), m_color(GC_WHITE) {}
 
 		virtual ~Edge() {}
 
@@ -139,9 +139,9 @@ class Edge
 
 		Vertex* m_pStart;
 		Vertex* m_pEnd;
+		Edge* m_pTwin;
 		EdgeDir m_dir;
 		EdgeComp m_comp;
-		Edge* m_pTwin;
 		GraphColor m_color;
 };
 
