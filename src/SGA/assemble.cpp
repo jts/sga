@@ -132,6 +132,7 @@ void assemble()
 
 	std::cout << "\nPerforming transitive reduction\n";
 	pGraph->visit(trVisit);
+
 	pGraph->visit(statsVisit);
 	printf("starting simplify\n");
 	pGraph->simplify();

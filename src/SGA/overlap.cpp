@@ -102,8 +102,10 @@ std::string computeHitsBWT()
 	// contain them. That will be the memory highwater mark so there is no point deallocating
 	// the vector after each trip through the loop.
 	// The hits to the forward and reverse BWT must be kept seperately since they use different indices
+	// if they were kept in the same structure there could be sa index collisions
 	HitVector* pHits = new HitVector;
 	HitVector* pRevHits = new HitVector;
+	OverlapBlockList* pOBList = new OverlapBlockList;
 
 	pHits->reserve(100);
 	pRevHits->reserve(100);
@@ -118,46 +120,79 @@ std::string computeHitsBWT()
 		if(opt::verbose > 0 && count % 50000 == 0)
 			printf("[overlap] Aligned %zu sequences\n", count);
 
-		// Align the read and its reverse complement
-		Sequence seqs[2];
-		seqs[0] = read.seq.toString();
-		seqs[1] = reverseComplement(seqs[0]);
+		// We wish to collect all the prefix/suffix matches for this read. We first collect all the prefixes that
+		// overlap the suffix of this read (including reverse complement reads) then find all the suffixes that match a prefix of this read.
+		std::string seq = read.seq.toString();
+		Hit hitTemplate(count, 0, 0, 0, false, false, 0); 
 
-		// Get all the hits of this sequence to the forward and reverse BWT
-		for(size_t sn = 0; sn <= 1; ++sn)
+		if(!opt::bIrreducibleOnly)
 		{
-			bool isRC = (sn == 1) ? true : false;
-			Hit hitTemplateFwd(count, 0, 0, 0, false, isRC, 0); 
-			Hit hitTemplateRev(count, 0, 0, 0, true, !isRC, 0);		
+			// Exhaustive algorithm
+			
+			/*
+			// Match the suffix of seq to prefixes
+			hitTemplate.setRev(false, false);
+			cost += BWTAlgorithms::alignSuffixInexact(seq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
 
-			const Sequence& currSeq = seqs[sn];
+			hitTemplate.setRev(true, false);
+			cost += BWTAlgorithms::alignSuffixInexact(complement(seq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
 
-			// Implementation of exact-mode algorithm that only outputs the irreducible edges (those that are not transitive)
-			if(!opt::bIrreducibleOnly)
-			{
-				cost += BWTAlgorithms::alignSuffixInexact(currSeq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplateFwd, pHits);
-				cost += BWTAlgorithms::alignSuffixInexact(reverse(currSeq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplateRev, pRevHits);
-			}
-			else
-			{
-				WARN_ONCE("Irreducible mode assumptions: All reads are the same length and they come from the same strand");
-				if(isRC)
-				{
-					continue;
-				}
+			// Match the prefix of seq to suffixes
+			hitTemplate.setRev(false, true);
+			cost += BWTAlgorithms::alignSuffixInexact(reverseComplement(seq), pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
 
-				BWTAlgorithms::alignSuffixExactIrreducible(currSeq,          pBWT,  pRBWT, opt::minOverlap, hitTemplateFwd, pHits);
-				BWTAlgorithms::alignSuffixExactIrreducible(reverse(currSeq), pRBWT, pBWT,  opt::minOverlap, hitTemplateRev, pRevHits);
-			}
+			hitTemplate.setRev(true, true);
+			cost += BWTAlgorithms::alignSuffixInexact(reverse(seq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
+			*/
+			hitTemplate.setRev(false, false);
+			cost += BWTAlgorithms::alignSuffixExact(seq, pBWT, pRBWT, opt::minOverlap, hitTemplate, pHits);
+
+			hitTemplate.setRev(true, false);
+			cost += BWTAlgorithms::alignSuffixExact(complement(seq), pRBWT, pBWT, opt::minOverlap, hitTemplate, pRevHits);
+
+			// Match the prefix of seq to suffixes
+			hitTemplate.setRev(false, true);
+			cost += BWTAlgorithms::alignSuffixExact(reverseComplement(seq), pBWT, pRBWT, opt::minOverlap, hitTemplate, pHits);
+
+			hitTemplate.setRev(true, true);
+			cost += BWTAlgorithms::alignSuffixExact(reverse(seq), pRBWT, pBWT, opt::minOverlap, hitTemplate, pRevHits);
+		}
+		else
+		{
+			// Irreducible overlaps only
+			WARN_ONCE("Irreducible-only assumptions: All reads are the same length")
+			// Match the suffix of seq to prefixes
+			hitTemplate.setRev(false, false);
+			BWTAlgorithms::findOverlapBlocks(seq, pBWT, pRBWT, opt::minOverlap, hitTemplate, false, pOBList, pHits);
+
+			hitTemplate.setRev(true, false);
+			BWTAlgorithms::findOverlapBlocks(complement(seq), pRBWT, pBWT, opt::minOverlap, hitTemplate, true, pOBList, pRevHits);
+
+			// Process the first set of blocks and output the irreducible hits to pHits
+			BWTAlgorithms::calculateIrreducibleHits(seq.length(), pOBList, pHits);
+			pOBList->clear();
+
+			// Match the prefix of seq to suffixes
+			hitTemplate.setRev(false, true);
+			BWTAlgorithms::findOverlapBlocks(reverseComplement(seq), pBWT, pRBWT, opt::minOverlap, hitTemplate, true, pOBList, pHits);
+
+			hitTemplate.setRev(true, true);
+			BWTAlgorithms::findOverlapBlocks(reverse(seq), pRBWT, pBWT, opt::minOverlap, hitTemplate, false, pOBList, pRevHits);
+
+			// Process the first set of blocks and output the irreducible hits to pHits
+			BWTAlgorithms::calculateIrreducibleHits(seq.length(), pOBList, pRevHits);
+			pOBList->clear();
 		}
 
 		// Write the hits to the file
 		outputHits(hitsHandle, pHits);
 		outputHits(hitsHandle, pRevHits);
+
 		pHits->clear();
 		pRevHits->clear();
 		++count;
 	}
+
 	double align_time_secs = timer.getElapsedTime();
 	printf("[bwt] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
 	printf("[bwt] performed %d iterations in the inner loop (%lf cost/sequence)\n", cost, (double)cost / (double)count);
@@ -167,6 +202,7 @@ std::string computeHitsBWT()
 
 	delete pHits;
 	delete pRevHits;
+	delete pOBList;
 	delete pBWT;
 	delete pRBWT;
 
@@ -185,7 +221,8 @@ void outputHits(std::ofstream& handle, HitVector* pHits)
 	for(size_t i = 0; i < pHits->size(); ++i)
 	{
 		const Hit& curr_hit = (*pHits)[i];
-		if(curr_hit.saIdx != prevID)
+		// If we are in irreducible mode don't filter hits, just output everything.
+		if(curr_hit.saIdx != prevID || opt::bIrreducibleOnly)
 		{
 			handle << curr_hit << "\n";
 			++output_hits;

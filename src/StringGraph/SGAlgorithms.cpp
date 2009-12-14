@@ -84,6 +84,8 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			}
 		}
 		
+		WARN_ONCE("Transitive Reduction stage 2 disabled")
+		/*
 		// Stage 2
 		for(size_t i = 0; i < edges.size(); ++i)
 		{
@@ -114,6 +116,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					break;
 			}
 		}
+		*/
 
 		bool trans_found = false;
 		size_t trans_count = 0;

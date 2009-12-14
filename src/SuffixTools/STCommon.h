@@ -148,6 +148,23 @@ class AlphaCount
 			return RANK_ALPHABET[i];
 		}
 
+		// Swap the (A,T) and (C,G) entries, which turns the AlphaCount
+		// into the AlphaCount for the complemented sequence
+		inline void complement()
+		{
+			BaseCount tmp;
+
+			// A,T
+			tmp = m_counts[4];
+			m_counts[4] = m_counts[1];
+			m_counts[1] = tmp;
+
+			// C,G
+			tmp = m_counts[3];
+			m_counts[3] = m_counts[2];
+			m_counts[2] = tmp;
+		}
+
 		// Return the sum of the basecounts for characters lexo. lower than b
 		inline BaseCount getLessThan(char b) const
 		{

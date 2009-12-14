@@ -161,7 +161,7 @@ void Bigraph::merge(Edge* pEdge)
 	{
 		Edge* pTransEdge = *iter;
 
-		// Remove the edge from V2, this does not destory the edge
+		// Remove the edge from V2, this does not destroy the edge
 		pV2->removeEdge(pTransEdge);
 
 		// Join pEdge to the start of transEdge

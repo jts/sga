@@ -11,6 +11,16 @@
 
 #define SWAP_LIST(x, y) pSwap = (x); (x) = (y); (y) = pSwap;
 
+// 
+AlphaCount OverlapBlock::getCanonicalExtCount() const
+{
+	AlphaCount out = BWTAlgorithms::getExtCount(ranges.interval[1], pRevBWT);
+	if(isComplement)
+		out.complement();
+	return out;
+}
+
+
 // Find the interval in pBWT corresponding to w
 // If w does not exist in the BWT, the interval 
 // coordinates [l, u] will be such that l > u
@@ -349,19 +359,16 @@ int BWTAlgorithms::alignSuffixExact(const std::string& w, const BWT* pBWT, const
 	}
 	return cost;
 }
-
-void BWTAlgorithms::alignSuffixExactIrreducible(const std::string& w, const BWT* pBWT, const BWT* pRevBWT,
-             	                           int minOverlap, Hit& hitTemplate, HitVector* pHits)
+extern bool gDebug;
+// Calculate the ranges in pBWT that contain a prefix of at least minOverlap basepairs that
+// overlaps with a suffix of w. The ranges are added to the pOBList
+void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                                            int minOverlap, Hit& hitTemplate, bool isComplement, OverlapBlockList* pOBList, HitVector* pHits)
 {
 	// The algorithm is as follows:
 	// We perform a backwards search using the FM-index for the string w.
 	// As we perform the search we collect the intervals 
 	// of the significant prefixes (len >= minOverlap) that overlap w.
-	// Once all the intervals have been found, we extend them one base at a time and output the 
-	// overlaps that are irreducible. An overlap between x,y is transitive if there is some other non-contained
-	// read z, that overlaps x and the unmatched portion of z is a prefix of the unmatched portion of y. The 
-	// read z is considered to be irreducible wrt x and is output. 
-	OverlapBlockList obList;
 	BWTIntervalPair ranges;
 	size_t l = w.length();
 	int start = l - 1;
@@ -386,7 +393,7 @@ void BWTAlgorithms::alignSuffixExactIrreducible(const std::string& w, const BWT*
 			if(probe.interval[1].isValid())
 			{
 				assert(probe.interval[1].lower > 0);
-				obList.push_front(OverlapBlock(probe, overlapLen));
+				pOBList->push_back(OverlapBlock(probe, overlapLen, pRevBWT, isComplement, hitTemplate));
 			}
 		}
 	}
@@ -399,20 +406,24 @@ void BWTAlgorithms::alignSuffixExactIrreducible(const std::string& w, const BWT*
 	// 2) It is identical to another read/string that has a lexographically lower ID.
 	
 	// Case 1 is indicated by the existance of a non-$ left or right hand extension
-	// In this case we return no alignments for the string (could do better?)
+	// In this case we return no alignments for the string
 	AlphaCount left_ext = getExtCount(ranges.interval[0], pBWT);
 	AlphaCount right_ext = getExtCount(ranges.interval[1], pRevBWT);
 	if(left_ext.hasDNAChar() || right_ext.hasDNAChar())
 	{
-		std::cout << "found substring " << w << " " << hitTemplate.readIdx << "\n";
+		// This case isn't handled yet
+		assert(false);
+		pOBList->clear();
 		return;
 	}
 	else
 	{
-		// Case 2 is handle in a slightly more tricky way. We output a hit to the head of the block of full-length strings
-		// If the current read is the head of the block of full length strings, it will be considered a self-alignment later
-		// and removed. All others will be considered proper containments since the head of the block will have the lexographically
-		// lowest ID
+		// Case 2 is handle in a slightly more tricky way. 
+		// We output a hit to the head of the block of full-length strings
+		// If the current read is the head of the block of full length strings, 
+		// it will be considered a self-alignment later and removed. 
+		// All others will be considered proper containments since the head of the block 
+		// will have the lexographically lowest ID
 		BWTAlgorithms::updateBothL(ranges, '$', pBWT);
 		if(ranges.isValid())
 		{
@@ -424,31 +435,36 @@ void BWTAlgorithms::alignSuffixExactIrreducible(const std::string& w, const BWT*
 			pHits->push_back(hitTemplate);
 		}
 	}
+	return;
+}
 
-	// pOBList contains a list of all the intervals in the FM-index
-	// that are valid prefixs. Determine the irreducible edges.
-	return processIrreducibleBlocks(obList, w.length(), pRevBWT, hitTemplate, pHits);
+// Calculate the irreducible hits from the vector of OverlapBlocks
+void BWTAlgorithms::calculateIrreducibleHits(const size_t q_len, OverlapBlockList* pOBList, HitVector* pHits)
+{
+	// processIrreducibleBlocks requires the pOBList to be sorted in descending order
+	pOBList->sort(OverlapBlock::sortSizeDescending);
+	processIrreducibleBlocks(q_len, *pOBList, pHits);
+
 }
 
 // iterate through obList and determine the overlaps that are irreducible. This function is recursive.
 // Invariant: the blocks are ordered in descending order of the overlap size so that the longest overlap is first.
 // Invariant: each block corresponds to the same extension of the root sequence w.
-void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, const size_t q_len, const BWT* pRevBWT, Hit& hitTemplate, HitVector* pHits)
+void BWTAlgorithms::processIrreducibleBlocks(const size_t q_len, OverlapBlockList& obList, HitVector* pHits)
 {
 	if(obList.empty())
 		return;
 	
-	OverlapBlockList::iterator iter = obList.begin(); 
-	AlphaCount top_count = getExtCount(iter->ranges.interval[1], pRevBWT);
-
-	AlphaCount remain_count;
-	++iter;
-	for(; iter != obList.end(); ++iter)
+	// Count the extensions in the top level (longest) blocks first
+	int topLen = obList.front().overlapLen;
+	AlphaCount ext_count;
+	OBLIter iter = obList.begin();
+	while(iter != obList.end() && iter->overlapLen == topLen)
 	{
-		remain_count += getExtCount(iter->ranges.interval[1], pRevBWT);
+		ext_count += iter->getCanonicalExtCount();
+		++iter;
 	}
-	AlphaCount total_count = top_count + remain_count;
-
+	
 	// Three cases:
 	// 1) The top level block has ended, it contains the extension $. Output TLB and end.
 	// 2) There is a singular unique extension base for all the blocks. Update all blocks and recurse.
@@ -457,46 +473,67 @@ void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, const siz
 	// or considered further. Containments are handled elsewhere.
 	// Likewise if multiple distinct strings in the TLB ended, we only output the top one. The rest
 	// must have the same sequence as the top one and are hence considered to be contained with the top element.
-	if(top_count.get('$') > 0)
+	if(ext_count.get('$') > 0)
 	{
-		// Found the irreducible extension of the blocks, return it in pHits
-		OverlapBlock& tlb = obList.front();
-		size_t sa_idx = tlb.ranges.interval[0].lower;
-		hitTemplate.saIdx = sa_idx;
-		hitTemplate.qstart = q_len - tlb.overlapLen;
-		hitTemplate.len = tlb.overlapLen;
-		hitTemplate.numDiff = 0;
-		pHits->push_back(hitTemplate);
+		// An irreducible overlap has been found. It is possible that there are two top level blocks
+		// (one in the forward and reverse direction). Since we can't decide which one
+		// contains the other at this point, we output hits to both. Under a fixed 
+		// length string assumption one will be contained within the other and removed later.
+		OBLIter tlbIter = obList.begin();
+		while(tlbIter != obList.end() && tlbIter->overlapLen == topLen)
+		{
+			size_t sa_idx = tlbIter->ranges.interval[0].lower;
+			Hit actualHit = tlbIter->hitTemplate;
+			actualHit.saIdx = sa_idx;
+			actualHit.qstart = q_len - tlbIter->overlapLen;
+			actualHit.len = tlbIter->overlapLen;
+			actualHit.numDiff = 0;
+			pHits->push_back(actualHit);
+			++tlbIter;
+		} 
 		return;
-	}
-	else if(total_count.hasUniqueDNAChar())
-	{
-		char b = total_count.getUniqueDNAChar();
-		updateOverlapBlockRangesRight(obList, b, pRevBWT);
-		return processIrreducibleBlocks(obList, q_len, pRevBWT, hitTemplate, pHits);
 	}
 	else
 	{
-		for(size_t idx = 0; idx < DNA_ALPHABET_SIZE; ++idx)
+		// Count the rest of the blocks
+		while(iter != obList.end())
 		{
-			char b = ALPHABET[idx];
-			if(total_count.get(b) > 0)
+			ext_count += iter->getCanonicalExtCount();
+			++iter;
+		}
+
+		if(ext_count.hasUniqueDNAChar())
+		{
+			// Update all the blocks using the unique extension character
+			// This character is in the canonical representation wrt to the query
+			char b = ext_count.getUniqueDNAChar();
+			updateOverlapBlockRangesRight(obList, b);
+			return processIrreducibleBlocks(q_len, obList, pHits);
+		}
+		else
+		{
+			for(size_t idx = 0; idx < DNA_ALPHABET_SIZE; ++idx)
 			{
-				OverlapBlockList branched = obList;
-				updateOverlapBlockRangesRight(branched, b, pRevBWT);
-				processIrreducibleBlocks(branched, q_len, pRevBWT, hitTemplate, pHits);
+				char b = ALPHABET[idx];
+				if(ext_count.get(b) > 0)
+				{
+					OverlapBlockList branched = obList;
+					updateOverlapBlockRangesRight(branched, b);
+					processIrreducibleBlocks(q_len, branched, pHits);
+				}
 			}
 		}
 	}
 }
 
 // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
-void BWTAlgorithms::updateOverlapBlockRangesRight(OverlapBlockList& obList, char b, const BWT* pRevBWT)
+void BWTAlgorithms::updateOverlapBlockRangesRight(OverlapBlockList& obList, char b)
 {
 	OverlapBlockList::iterator iter = obList.begin(); 
 	while(iter != obList.end())
 	{
-		BWTAlgorithms::updateBothR(iter->ranges, b, pRevBWT);
+		char cb = iter->isComplement ? complement(b) : b;
+		BWTAlgorithms::updateBothR(iter->ranges, cb, iter->pRevBWT);
 		// remove the block from the list if its no longer valid
 		if(!iter->ranges.isValid())
 			iter = obList.erase(iter);

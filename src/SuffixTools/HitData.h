@@ -27,6 +27,12 @@ struct Hit
 	bool queryRev; // Whether the query was reversed
 	int numDiff; // the number of differences in the match
 
+	void setRev(bool tr, bool qr)
+	{
+		targetRev = tr;
+		queryRev = qr;
+	}
+
 	// Sort hits by saIdx and then by overlap length
 	friend bool operator<(const Hit& h1, const Hit& h2)
 	{
