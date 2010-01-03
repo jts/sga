@@ -152,9 +152,8 @@ void BWTTraverse::extendRight(const unsigned int len, std::string& str, bool_vec
 
 			if(back_count.hasUniqueDNAChar())
 			{
-				char r = back_count.getUniqueDNAChar();
 				// Assert back is the character we are expecting
-				assert(r == str[str.length() - len]);
+				assert(back_count.getUniqueDNAChar() == str[str.length() - len]);
 				str = joined;
 
 				// mark the newly visited l-mers
