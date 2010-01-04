@@ -255,7 +255,7 @@ void Bigraph::simplify(EdgeDir dir)
 
 			if(proc_count++ % 5000 == 0)
 			{
-				printf("processed_count\t%dsimplify_time\t%lf\n", proc_count, pTimer->getElapsedTime());
+				printf("processed_count\t%d\tsimplify_time\t%lf\n", proc_count, pTimer->getElapsedTime());
 				pTimer->reset();
 			}
 			++iter;
