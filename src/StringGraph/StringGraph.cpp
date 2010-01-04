@@ -8,6 +8,7 @@
 // and their overlaps. See Myers (2005).
 //
 #include "StringGraph.h"
+#include "Timer.h"
 
 // Flip the string of an edge
 void StringEdge::flip()
@@ -15,11 +16,11 @@ void StringEdge::flip()
 	Edge::flip();
 }
 
-// Get the edge's label (for writeDot)
+// Get the edge's label
 std::string StringEdge::getLabel() const
 {
-	StringEdge* pTwin = CSE_CAST(getTwin());
-	StringVertex* pEndpoint = CSV_CAST(m_pEnd);
+	const StringEdge* pTwin = CSE_CAST(getTwin());
+	const StringVertex* pEndpoint = CSV_CAST(m_pEnd);
 	
 	// get the unmatched coordinates in V2
 	SeqCoord unmatched = pTwin->getMatchCoord().complement();
@@ -27,6 +28,7 @@ std::string StringEdge::getLabel() const
 
 	if(getComp() == EC_REVERSE)
 		seq = reverseComplement(seq);
+
 	return seq;
 }
 
@@ -40,7 +42,7 @@ std::string StringEdge::getMatchStr() const
 // Return the length of the sequence
 size_t StringEdge::getSeqLen() const
 {
-	StringEdge* pTwin = CSE_CAST(getTwin());
+	const StringEdge* pTwin = CSE_CAST(getTwin());
 	SeqCoord unmatched = pTwin->getMatchCoord().complement();
 	return unmatched.length();
 }
@@ -183,7 +185,6 @@ void StringVertex::merge(Edge* pEdge)
 {
 	// Call baseclass merge
 	Vertex::merge(pEdge);
-
 	StringEdge* pSE = SE_CAST(pEdge);
 	StringEdge* pTwinSE = SE_CAST(pSE->getTwin());
 
@@ -192,7 +193,6 @@ void StringVertex::merge(Edge* pEdge)
 	// Merge the sequence
 	std::string label = pSE->getLabel();
 	size_t label_len = label.size();
-
 	pSE->updateSeqLen(m_seq.length() + label.length());
 	bool prepend = false;
 
@@ -202,8 +202,8 @@ void StringVertex::merge(Edge* pEdge)
 	}
 	else
 	{
+		label.insert(label.size(), m_seq);
 		std::swap(m_seq, label);
-		m_seq.append(label);
 		prepend = true;
 	}
 
@@ -223,7 +223,7 @@ void StringVertex::merge(Edge* pEdge)
 	}
 
 	// Update the read count
-	StringVertex* pV2 = CSV_CAST(pSE->getEnd());
+	const StringVertex* pV2 = CSV_CAST(pSE->getEnd());
 	m_readCount += pV2->getReadCount();
 
 #ifdef VALIDATE

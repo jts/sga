@@ -11,6 +11,8 @@
 #include <fstream>
 #include <iostream>
 #include "Bigraph.h"
+#include "Timer.h"
+#include <malloc.h>
 
 //
 //
@@ -214,46 +216,52 @@ void Bigraph::sweepEdges(GraphColor c)
 		iter->second->sweepEdges(c);
 }
 
-
 //	Simplify the graph by compacting singular edges
 void Bigraph::simplify()
 {
-	bool changed = true;
-	int simp_count = 0;
-	while(changed)
+	simplify(ED_SENSE);
+	simplify(ED_ANTISENSE);
+}
+
+// Simplify the graph by compacting edges in the given direction
+void Bigraph::simplify(EdgeDir dir)
+{
+	Timer* pTimer = new Timer("simplify timer");
+	bool graph_changed = true;
+	while(graph_changed)
 	{
 		int proc_count = 0;
-		changed = false;
-		for(VertexPtrMapIter iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
+		graph_changed = false;
+		VertexPtrMapIter iter = m_vertices.begin(); 
+		while(iter != m_vertices.end())
 		{
-			for(int d = 0; d < ED_COUNT; ++d)
-			{
-				EdgeDir dir = EDGE_DIRECTIONS[d];
-				
-				// Get the edges for this direction
-				EdgePtrVec edges = iter->second->getEdges(dir);
+			// Get the edges for this direction
+			EdgePtrVec edges = iter->second->getEdges(dir);
 
-				// If there is a single edge in this direction, merge the vertices
-				// Don't merge singular self edges though
-				if(edges.size() == 1 && !edges.front()->isSelf())
+			// If there is a single edge in this direction, merge the vertices
+			// Don't merge singular self edges though
+			if(edges.size() == 1 && !edges.front()->isSelf())
+			{
+				// Check that the edge back is singular as well
+				Edge* pSingle = edges.front();
+				Edge* pTwin = pSingle->getTwin();
+				Vertex* pV2 = pSingle->getEnd();
+				if(pV2->countEdges(pTwin->getDir()) == 1)
 				{
-					// Check that the edge back is singular as well
-					Edge* pSingle = edges.front();
-					Edge* pTwin = pSingle->getTwin();
-					Vertex* pV2 = pSingle->getEnd();
-					if(pV2->countEdges(pTwin->getDir()) == 1)
-					{
-						merge(pSingle);
-						changed = true;
-					}
+					merge(pSingle);
+					graph_changed = true;
 				}
 			}
 
-			if(proc_count++ % 10000 == 0)
-				printf("processed count: %d\n", proc_count);
+			if(proc_count++ % 5000 == 0)
+			{
+				printf("processed_count\t%dsimplify_time\t%lf\n", proc_count, pTimer->getElapsedTime());
+				pTimer->reset();
+			}
+			++iter;
 		}
-		printf("simplify count %d\n", simp_count++);
 	} 
+	delete pTimer;
 }
 
 //

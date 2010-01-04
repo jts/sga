@@ -75,7 +75,7 @@ void assemble()
 	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn");
 	pGraph->printMemSize();
 	//pGraph->validate();
-	pGraph->writeDot("before.dot");
+	//pGraph->writeDot("before.dot");
 	
 	// Visitor functors
 	SGTrimVisitor trimVisit;

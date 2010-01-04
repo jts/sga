@@ -17,6 +17,8 @@ class Timer
 		Timer(std::string s, bool silent = false) : m_desc(s), m_start(clock()), m_silent(silent) {}
 		~Timer() { 	if(!m_silent) printf("[Timer] %s %.2lfs\n", m_desc.c_str(), (clock() - m_start) / CLOCKS_PER_SEC); }
 		double getElapsedTime() const { return (clock() - m_start) / CLOCKS_PER_SEC; }
+		void reset() { m_start = clock(); }
+
 	private:
 		std::string m_desc;
 		double m_start;

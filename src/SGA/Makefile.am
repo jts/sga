@@ -7,10 +7,11 @@ sga_CPPFLAGS = \
 	-I$(top_srcdir)/StringGraph
 
 sga_LDADD = \
-	$(top_builddir)/Util/libutil.a \
 	$(top_builddir)/SuffixTools/libsuffixtools.a \
 	$(top_builddir)/Bigraph/libbigraph.a \
-	$(top_builddir)/StringGraph/libstringgraph.a 
+	$(top_builddir)/StringGraph/libstringgraph.a \
+	$(top_builddir)/Util/libutil.a
+
 
 sga_SOURCES = sga.cpp \
               index.cpp index.h \

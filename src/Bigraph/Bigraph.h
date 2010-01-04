@@ -129,6 +129,9 @@ class Bigraph
 		void writeDot(std::string filename, int dotFlags = 0) const;
 
 	private:
+		
+		// Simplify the graph by compacting edges in the given direction
+		void simplify(EdgeDir dir);
 
 		void followLinear(VertexID id, EdgeDir dir, Path& outPath);
 

@@ -105,8 +105,6 @@ int BWTAlgorithms::alignSuffixInexact(const std::string& w, const BWT* pBWT, con
 		int block_end = len - min_overlap_size;
 		covered += (block_end - block_start + 1);
 		cost += _alignBlock(w, block_start, block_end, pBWT, pRevBWT, i, hitTemplate, pHits);
-		extern int num_blocks;
-		num_blocks++;
 	}
 	assert(covered == (len - minOverlap) + 1);
 	return cost;
@@ -154,10 +152,6 @@ int BWTAlgorithms::_alignBlock(const std::string& w, int block_start, int block_
 		char b = w[pos];
 		initIntervalPair(align.ranges, b, pBWT, pRevBWT);		
 		pTempList->push_back(align);
-		extern int num_seeds;
-		extern size_t total_seed_size;
-		++num_seeds;
-		total_seed_size += align.seed_len;
 	}
 
 
