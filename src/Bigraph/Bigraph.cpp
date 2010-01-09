@@ -12,7 +12,6 @@
 #include <iostream>
 #include "Bigraph.h"
 #include "Timer.h"
-#include <malloc.h>
 
 //
 //
