@@ -133,6 +133,7 @@ sub outputSEReads
 
 		my $seq = getRead($buffer, $start, $end); 
 		my $name = $bTrackPos ? "$total:$start" : $total;
+		$seq = rc($seq) unless ($bSameStrand || rand() < 0.5);
 		next if($seq =~ /N/ || length($seq) < $rl);
 		print join("\n", (">$name", $seq)) . "\n";
 		++$total;
