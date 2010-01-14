@@ -36,7 +36,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
-"      -m, --min-overlap=OVERLAP_LEN    minimum overlap required between two reads\n"
+"      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -d, --max-diff=D                 report all prefix-suffix matches that have at most D differences\n"
 "      -i, --irreducible                only output the irreducible edges for each node\n"
@@ -74,9 +74,11 @@ static const struct option longopts[] = {
 //
 int overlapMain(int argc, char** argv)
 {
+	Timer* pTimer = new Timer("sga overlap");
 	parseOverlapOptions(argc, argv);
 	std::string hitsFile = computeHitsBWT();
 	parseHits(hitsFile);
+	delete pTimer;
 	return 0;
 }
 

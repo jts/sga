@@ -57,6 +57,7 @@ void DNAString::_dealloc()
 {
 	delete [] m_data;
 	m_data = 0;
+	m_len = 0;
 }
 
 //

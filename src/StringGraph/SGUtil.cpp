@@ -72,7 +72,7 @@ size_t getContainedIdx(const Overlap& o)
 }
 
 // Construct a string graph from overlaps
-StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std::string containFile)
+StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std::string containFile, const unsigned int minOverlap)
 {
 	// Initialize the string graph
 	StringGraph* pGraph = new StringGraph;
@@ -82,7 +82,7 @@ StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std:
 	
 	// Create the graph
 	loadVertices(pGraph, readFile, containments);
-	loadEdges(pGraph, overlapFile, containments);
+	loadEdges(pGraph, overlapFile, containments, minOverlap);
 	return pGraph;
 }
 
@@ -100,7 +100,7 @@ void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& c
 	}
 }
 
-void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments)
+void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments, const unsigned int minOverlap)
 {
 	// Add the overlaps as edges
 	std::ifstream overlapReader(overlapFile.c_str());
@@ -109,7 +109,7 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 	Overlap o;
 	while(overlapReader >> o)
 	{
-		if(containments.isContained(o.id[0]) || containments.isContained(o.id[1]))
+		if(containments.isContained(o.id[0]) || containments.isContained(o.id[1]) || o.match.getMaxOverlapLength() < (int)minOverlap)
 		{
 			//std::cerr << "skipping edge that has contained vertex " << o << "\n";
 			continue;

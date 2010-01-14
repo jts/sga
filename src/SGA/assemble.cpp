@@ -12,6 +12,7 @@
 #include "assemble.h"
 #include "SGUtil.h"
 #include "SGAlgorithms.h"
+#include "Timer.h"
 
 //
 // Getopt
@@ -29,6 +30,9 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
+"      -o, --out=FILE                   write the contigs to FILE (default: contigs.fa)"
+"      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter"
+"                                       the overlap set so that the overlap step only needs to be run once."
 "      -p, --prefix=FILE                use PREFIX instead of the basename of READSFILE\n"
 "      -b, --bubble                     perform bubble removal\n"
 "      -t, --trim                       trim terminal branches\n"
@@ -40,21 +44,25 @@ namespace opt
 	static unsigned int verbose;
 	static std::string readsFile;
 	static std::string prefix;
+	static std::string outFile;
+	static unsigned int minOverlap;
 	static bool bTransClose;
 	static bool bTrim;
 	static bool bBubble;
 }
 
-static const char* shortopts = "p:vbtc";
+static const char* shortopts = "p:o:m:vbtc";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
+	{ "prefix",      required_argument, NULL, 'p' },
+	{ "out",         required_argument, NULL, 'o' },
+	{ "min-overlap", required_argument, NULL, 'm' },
 	{ "bubble",      no_argument,       NULL, 'b' },
 	{ "trim",        no_argument,       NULL, 't' },
 	{ "close",       no_argument,       NULL, 'c' },	
-	{ "prefix",      required_argument, NULL, 'p' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -65,14 +73,18 @@ static const struct option longopts[] = {
 //
 int assembleMain(int argc, char** argv)
 {
+	Timer* pTimer = new Timer("sga assemble");
 	parseAssembleOptions(argc, argv);
 	assemble();
+	delete pTimer;
+
 	return 0;
 }
 
 void assemble()
 {
-	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn");
+	Timer t("sga assemble");
+	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn", opt::minOverlap);
 	pGraph->printMemSize();
 	//pGraph->validate();
 	//pGraph->writeDot("before.dot");
@@ -173,6 +185,10 @@ void assemble()
 //
 void parseAssembleOptions(int argc, char** argv)
 {
+	// Set defaults
+	opt::outFile = "contigs.fa";
+	opt::minOverlap = 0;
+
 	bool die = false;
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{
@@ -180,6 +196,8 @@ void parseAssembleOptions(int argc, char** argv)
 		switch (c) 
 		{
 			case 'p': arg >> opt::prefix; break;
+			case 'o': arg >> opt::outFile; break;
+			case 'm': arg >> opt::minOverlap; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case 'b': opt::bBubble = true; break;
@@ -215,7 +233,6 @@ void parseAssembleOptions(int argc, char** argv)
 	opt::readsFile = argv[optind++];
 
 	if(opt::prefix.empty())
-	{
 		opt::prefix = stripFilename(opt::readsFile);
-	}
+
 }
