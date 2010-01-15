@@ -18,6 +18,8 @@
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
 
+
+
 void printUsage();
 
 int main(int argc, char** argv)

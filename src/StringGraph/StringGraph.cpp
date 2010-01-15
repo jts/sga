@@ -10,6 +10,8 @@
 #include "StringGraph.h"
 #include "Timer.h"
 
+boost::object_pool<StringEdge>* StringEdge::m_spMempool; 
+
 // Flip the string of an edge
 void StringEdge::flip()
 {

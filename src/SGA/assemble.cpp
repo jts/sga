@@ -174,7 +174,7 @@ void assemble()
 
 	// Write the results
 	pGraph->writeDot("final.dot");
-	SGFastaVisitor av("contigs.fa");
+	SGFastaVisitor av(opt::outFile);
 	pGraph->visit(av);
 
 	delete pGraph;

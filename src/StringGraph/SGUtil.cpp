@@ -110,10 +110,7 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 	while(overlapReader >> o)
 	{
 		if(containments.isContained(o.id[0]) || containments.isContained(o.id[1]) || o.match.getMaxOverlapLength() < (int)minOverlap)
-		{
-			//std::cerr << "skipping edge that has contained vertex " << o << "\n";
 			continue;
-		}
 		createEdges(pGraph, o);
 	}
 	overlapReader.close();
