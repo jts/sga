@@ -141,6 +141,9 @@ class StringVertex : public Vertex
 		virtual void validate() const;
 		virtual void sortAdjList();
 
+		// Ensure that all the edges are unique
+		void makeUnique(); 
+
 		void setPairVertex(StringVertex* pPair) { m_pPairVertex = pPair; }
 		void clearPairVertex() { m_pPairVertex = NULL; }
 
@@ -149,6 +152,11 @@ class StringVertex : public Vertex
 		const std::string& getSeq() const { return m_seq; }
 
 	private:
+
+		// 
+		void makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec);
+
+		// data
 		std::string m_seq;
 		size_t m_readCount;
 

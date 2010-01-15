@@ -197,6 +197,13 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 	printf("island: %d terminal: %d contig: %d\n", num_island, num_terminal, num_contig);
 }
 
+// Detect and remove duplicate edges
+bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	SV_CAST(pVertex)->makeUnique();
+	return false;
+}
+
 void SGIslandVisitor::previsit(StringGraph* pGraph)
 {
 	pGraph->setColors(GC_WHITE);

@@ -269,6 +269,48 @@ void StringVertex::sortAdjList()
 	std::sort(m_edges.begin(), m_edges.end(), comp);
 }
 
+// Ensure that this vertex has at most one edge per direction to any other vertex
+void StringVertex::makeUnique()
+{
+	// Sort the edge lists by length
+	sortAdjList();
+	EdgePtrVec uniqueVec;
+	makeUnique(ED_SENSE, uniqueVec);
+	makeUnique(ED_ANTISENSE, uniqueVec);
+	m_edges.swap(uniqueVec);
+}
+
+// 
+void StringVertex::makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec)
+{
+	std::set<VertexID> idSet;
+	for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		Edge* pEdge = *iter;
+		if(pEdge->getDir() == dir)
+		{
+			std::pair<std::set<VertexID>::iterator, bool> result = idSet.insert(pEdge->getEndID());
+			if(result.second == true)
+			{
+				uniqueVec.push_back(*iter);
+			}
+			else
+			{
+				std::cerr << getID() << " has a duplicate edge to " << pEdge->getEndID() << " in direction " << dir << "\n";
+				
+				// Delete the edge and remove it from the twin
+				Edge* pTwin = pEdge->getTwin();
+				Vertex* pPartner = pEdge->getEnd();
+				pPartner->removeEdge(pTwin);
+				delete pEdge;
+				pEdge = NULL;
+				delete pTwin;
+				pTwin = NULL;
+			}
+		}
+	}
+}
+
 // Compare string edge points by length
 bool StringEdgeLenComp::operator()(const Edge* pA, const Edge* pB)
 {

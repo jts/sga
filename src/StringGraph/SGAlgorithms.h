@@ -53,6 +53,15 @@ struct SGTrimVisitor
 	int num_contig;
 };
 
+// Detect and remove duplicate edges
+struct SGDuplicateVisitor
+{
+	SGDuplicateVisitor() {}
+	void previsit(StringGraph*) {}
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*) {}
+};
+
 // Detect small island vertices and removal them
 struct SGIslandVisitor
 {

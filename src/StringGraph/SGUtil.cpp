@@ -9,6 +9,7 @@
 //
 #include "SGUtil.h"
 #include "SeqReader.h"
+#include "SGAlgorithms.h"
 
 ContainMap::ContainMap(std::string file)
 {
@@ -83,6 +84,11 @@ StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std:
 	// Create the graph
 	loadVertices(pGraph, readFile, containments);
 	loadEdges(pGraph, overlapFile, containments, minOverlap);
+
+	// Validate the graph and ensure that there are no duplicate edges
+	SGDuplicateVisitor dupVisit;
+	pGraph->visit(dupVisit);
+
 	return pGraph;
 }
 
