@@ -37,6 +37,7 @@ typedef std::list<Edge*> EdgePtrList;
 typedef EdgePtrMap::iterator EdgePtrMapIter;
 typedef EdgePtrMap::const_iterator EdgePtrMapConstIter;
 typedef EdgePtrVec::iterator EdgePtrVecIter;
+typedef EdgePtrVec::const_iterator EdgePtrVecConstIter;
 typedef EdgePtrList::iterator EdgePtrListIter;
 typedef EdgePtrList::const_iterator EdgePtrListConstIter;
 
@@ -63,8 +64,8 @@ class Vertex
 		virtual void sortAdjList();
 		
 		// getters
-		EdgePtrListIter findEdge(const EdgeDesc& ed);
-		EdgePtrListConstIter findEdge(const EdgeDesc& ed) const;
+		EdgePtrVecIter findEdge(const EdgeDesc& ed);
+		EdgePtrVecConstIter findEdge(const EdgeDesc& ed) const;
 
 		EdgePtrVec findEdgesTo(VertexID id);
 		EdgePtrVec getEdges(EdgeDir dir);
@@ -90,7 +91,7 @@ class Vertex
 	protected:
 
 		VertexID m_id;
-		EdgePtrList m_edges;
+		EdgePtrVec m_edges;
 		GraphColor m_color;
 };
 

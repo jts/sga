@@ -216,7 +216,7 @@ void StringVertex::merge(Edge* pEdge)
 	// Also, if we prepended sequence to this edge, all the matches in the 
 	// SENSE direction must have their coordinates offset
 	size_t newLen = m_seq.length();
-	for(EdgePtrListIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		StringEdge* pSE2 = SE_CAST(*iter);
 		pSE2->updateSeqLen(newLen);
@@ -240,7 +240,7 @@ void StringVertex::validate() const
 {
 	Vertex::validate();
 
-	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrVecConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		StringEdge* pSE = SE_CAST(*iter);
 		pSE->validate();
@@ -266,7 +266,7 @@ void StringVertex::validate() const
 void StringVertex::sortAdjList()
 {
 	StringEdgeLenComp comp;
-	m_edges.sort(comp);
+	std::sort(m_edges.begin(), m_edges.end(), comp);
 }
 
 // Compare string edge points by length

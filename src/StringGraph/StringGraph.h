@@ -88,7 +88,7 @@ class StringEdge : public Edge
 		// Validate that the edge is sane
 		void validate() const;
 
-#if 0
+//#if 0
 		// Memory allocation/deallocation, delegate to singleton pool
 		void* operator new(size_t /*size*/)
 		{
@@ -105,7 +105,7 @@ class StringEdge : public Edge
 			(void)target;
 			//return mempool()->free((StringEdge*)target);
 		}
-#endif
+//#endif
 	private:
 
 		// Return the pointer to the memory pool

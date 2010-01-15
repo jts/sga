@@ -8,10 +8,11 @@
 //
 #include "Vertex.h"
 #include "Edge.h"
+#include <algorithm>
 
 Vertex::~Vertex()
 {
-	EdgePtrListIter iter = m_edges.begin();
+	EdgePtrVecIter iter = m_edges.begin();
 	for(; iter != m_edges.end(); ++iter)
 	{
 		delete *iter;
@@ -25,7 +26,7 @@ void Vertex::addEdge(Edge* ep)
 	assert(ep->getStart() == this);
 
 #ifdef VALIDATE
-	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrVecConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		if((*iter)->getEndID() == ep->getEndID())
 		{
@@ -51,7 +52,7 @@ void Vertex::removeEdge(Edge* pEdge)
 void Vertex::removeEdge(const EdgeDesc& ed)
 {
 
-	EdgePtrListIter iter = findEdge(ed);
+	EdgePtrVecIter iter = findEdge(ed);
 	assert(iter != m_edges.end());
 	m_edges.erase(iter);
 }
@@ -59,7 +60,7 @@ void Vertex::removeEdge(const EdgeDesc& ed)
 // Delete all the edges, and their twins, from this vertex
 void Vertex::deleteEdges()
 {
-	EdgePtrListIter iter = m_edges.begin();
+	EdgePtrVecIter iter = m_edges.begin();
 	for(; iter != m_edges.end(); ++iter)
 	{
 		Edge* pEdge = *iter;
@@ -79,7 +80,7 @@ void Vertex::deleteEdges()
 // This only deletes the edge and not its twin
 void Vertex::sweepEdges(GraphColor c)
 {
-	EdgePtrListIter iter = m_edges.begin();
+	EdgePtrVecIter iter = m_edges.begin();
 	while(iter != m_edges.end())
 	{
 		Edge* pEdge = *iter;
@@ -95,9 +96,9 @@ void Vertex::sweepEdges(GraphColor c)
 }
 
 // Return the iterator to the edge matching edgedesc
-EdgePtrListIter Vertex::findEdge(const EdgeDesc& ed)
+EdgePtrVecIter Vertex::findEdge(const EdgeDesc& ed)
 {
-	for(EdgePtrListIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		if((*iter)->getDesc() == ed)
 			return iter;
@@ -106,9 +107,9 @@ EdgePtrListIter Vertex::findEdge(const EdgeDesc& ed)
 }
 
 //
-EdgePtrListConstIter Vertex::findEdge(const EdgeDesc& ed) const
+EdgePtrVecConstIter Vertex::findEdge(const EdgeDesc& ed) const
 {
-	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrVecConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		if((*iter)->getDesc() == ed)
 			return iter;
@@ -120,7 +121,7 @@ EdgePtrListConstIter Vertex::findEdge(const EdgeDesc& ed) const
 void Vertex::sortAdjList()
 {
 	EdgeIDComp comp;
-	m_edges.sort(comp);
+	std::sort(m_edges.begin(), m_edges.end(), comp);
 }
 
 //
@@ -128,7 +129,7 @@ void Vertex::validate() const
 {
 	EdgeDescSet edSet;
 	// Ensure the twin edge exists for every edge
-	for(EdgePtrListConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrVecConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		Edge* pEdge = *iter;
 		Edge* pTwinEdge = pEdge->getTwin();
@@ -169,7 +170,7 @@ bool Vertex::hasEdge(const EdgeDesc& ed) const
 // Return the edge matching the descriptions
 Edge* Vertex::getEdge(const EdgeDesc& ed)
 {
-	 EdgePtrListIter i = findEdge(ed);
+	 EdgePtrVecIter i = findEdge(ed);
 	 assert(i != m_edges.end());
 	 return *i;
 }
@@ -177,7 +178,7 @@ Edge* Vertex::getEdge(const EdgeDesc& ed)
 // Find edges to the specified vertex
 EdgePtrVec Vertex::findEdgesTo(VertexID id)
 {
-	EdgePtrListConstIter iter = m_edges.begin();
+	EdgePtrVecConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
 	for(; iter != m_edges.end(); ++iter)
 	{
@@ -194,7 +195,7 @@ EdgePtrVec Vertex::findEdgesTo(VertexID id)
 //
 EdgePtrVec Vertex::getEdges(EdgeDir dir)
 {
-	EdgePtrListConstIter iter = m_edges.begin();
+	EdgePtrVecConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
 	for(; iter != m_edges.end(); ++iter)
 	{
@@ -208,7 +209,7 @@ EdgePtrVec Vertex::getEdges(EdgeDir dir)
 // Get the edges
 EdgePtrVec Vertex::getEdges()
 {
-	EdgePtrListConstIter iter = m_edges.begin();
+	EdgePtrVecConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
 	for(; iter != m_edges.end(); ++iter)
 		outEdges.push_back(*iter);
@@ -217,7 +218,7 @@ EdgePtrVec Vertex::getEdges()
 
 void Vertex::setEdgeColors(GraphColor c) 
 { 
-	for(EdgePtrListIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 		(*iter)->setColor(c);
 }
 
@@ -238,7 +239,7 @@ size_t Vertex::countEdges(EdgeDir dir)
 // Output edges in graphviz format
 void Vertex::writeEdges(std::ostream& out, int dotFlags) const
 {
-	EdgePtrListConstIter iter = m_edges.begin();
+	EdgePtrVecConstIter iter = m_edges.begin();
 	for(; iter != m_edges.end(); ++iter)
 	{
 		if(dotFlags & DF_UNDIRECTED)
