@@ -18,7 +18,7 @@ ContainMap::ContainMap(std::string file)
 	Overlap o;
 	while(reader >> o)
 	{
-		size_t idx = getContainedIdx(o);
+		size_t idx = o.getContainedIdx();
 		add(o.id[idx], o.id[1 - idx]);
 	}
 	reader.close();
@@ -48,28 +48,6 @@ std::string ContainMap::getContainer(std::string s) const
 		return iter->second;
 	else
 		return "";
-}
-
-// Return the index of the CONTAINED vertex
-size_t getContainedIdx(const Overlap& o)
-{
-	// The verts are mutually contained, return the lexographically lower id
-	if(o.match.coord[0].isContained() && o.match.coord[1].isContained())
-	{
-		if(o.id[0] < o.id[1])
-			return 1;
-		else
-			return 0;
-	}
-	else if(o.match.coord[0].isContained())
-	{
-		return 0;
-	}
-	else
-	{
-		assert(o.match.coord[1].isContained());
-		return 1;
-	}
 }
 
 // Construct a string graph from overlaps

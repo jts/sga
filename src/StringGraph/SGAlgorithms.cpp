@@ -429,7 +429,8 @@ bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					if(o.match.coord[0].isContained() || o.match.coord[1].isContained())
 					{
 						// Mark the contained vertex for deletion
-						size_t idx = getContainedIdx(o);
+						size_t idx = o.getContainedIdx();
+
 						/*
 						std::cout << "ci: " << seq_i << "\n";
 						std::cout << "cj: " << seq_j << "\n";
@@ -571,7 +572,7 @@ bool SGTCVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					if(o.match.coord[0].isContained() || o.match.coord[1].isContained())
 					{
 						// Mark the contained vertex for deletion
-						size_t idx = getContainedIdx(o);
+						size_t idx = o.getContainedIdx();
 						/*
 						std::cout << "ci: " << seq_i << "\n";
 						std::cout << "cj: " << seq_j << "\n";

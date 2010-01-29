@@ -228,6 +228,29 @@ Overlap::Overlap(const std::string& i1, int s1, int e1, int l1,
 	match = Match(s1, e1, l1, s2, e2, l2, isRC, nd);
 }
 
+// Return the index of the contained vertex
+// Precondition: the overlap is a containment
+size_t Overlap::getContainedIdx()
+{
+	// The verts are mutually contained, return the lexographically lower id
+	if(match.coord[0].isContained() && match.coord[1].isContained())
+	{
+		if(id[0] < id[1])
+			return 1;
+		else
+			return 0;
+	}
+	else if(match.coord[0].isContained())
+	{
+		return 0;
+	}
+	else
+	{
+		assert(match.coord[1].isContained());
+		return 1;
+	}
+}
+
 // Swap the elements
 void Overlap::swap()
 {

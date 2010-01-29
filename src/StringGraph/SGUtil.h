@@ -11,6 +11,8 @@
 #define SGUTIL_H
 
 #include "StringGraph.h"
+#include "StringVertex.h"
+#include "StringEdge.h"
 
 // typedefs
 typedef std::map<std::string, std::string> StrStrMap;
@@ -44,9 +46,5 @@ StringEdge* createEdges(StringGraph* pGraph, const Overlap& o);
 
 // Return the index (0 or 1) of the CONTAINED vertex (the discarded vertex of a containment)
 size_t getContainedIdx(const Overlap& o);
-
-
-//
-std::string getOverhangString(const SeqCoord& sc, const std::string& seq);
 
 #endif

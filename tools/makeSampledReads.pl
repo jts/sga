@@ -3,6 +3,8 @@
 
 use strict;
 use Getopt::Long;
+use lib "/nfs/team71/phd/js18/software/perl/modules";
+use Normal;
 
 my $file = "";
 my $rl = 36;
@@ -14,6 +16,7 @@ my $bVerbose = 0;
 my $bSameStrand = 0;
 my $bTrackPos = 0;
 my $bSingleEnd = 0;
+my $fragment_dist = Statistics::Distrib::Normal->new(mu => $pe_mean, sigma => $pe_sd);
 
 GetOptions("length=i" => \$rl,
 			"pe_mean=i" => \$pe_mean,
@@ -96,7 +99,6 @@ else
 sub outputPEReads
 {
 
-	die("PE mode is deprecated - Normal Distribution has been hacked out");
 
 	my($buffer) = @_;
 	my $gl = length($$buffer);
@@ -105,7 +107,8 @@ sub outputPEReads
 	for(my $i = 0; $i < $num_reads; ++$i)
 	{
 		my $start_1 = int(rand($gl));
-		my $start_2 = 200 + $start_1 - $rl;
+		my $start_2 = $fragment_dist->rand() + $start_1 - $rl;
+
 		my $end_1 = $start_1 + $rl - 1;
 		my $end_2 = $start_2 + $rl - 1;
 		next if $end_2 >= $gl;

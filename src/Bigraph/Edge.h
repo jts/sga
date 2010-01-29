@@ -101,7 +101,6 @@ class Edge
 		{
 			return m_pEnd;
 		}
-
 		
 		inline EdgeDir getDir() const
 		{
