@@ -68,6 +68,11 @@ static const struct option longopts[] = {
 	{ NULL, 0, NULL, 0 }
 };
 
+struct blah
+{
+	char a;
+};
+
 //
 // Main
 //

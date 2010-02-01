@@ -10,4 +10,5 @@ libutil_a_SOURCES = \
         SeqReader.h SeqReader.cpp \
         DNAString.h DNAString.cpp \
         Match.h Match.cpp \
-        Pileup.h Pileup.cpp 
+        Pileup.h Pileup.cpp \
+		BitChar.h BitChar.cpp

@@ -11,19 +11,69 @@
 #define EDGE_H
 
 #include <ostream>
+#include <bitset>
 #include <boost/pool/object_pool.hpp>
 #include "Match.h"
 #include "Util.h"
 #include "GraphCommon.h"
 #include "Vertex.h"
+#include "BitChar.h"
+
+// Packed structure holding the direction and comp of an edge
+// The EdgeDir/EdgeComp enums (which only have values 0/1) are used 
+// as the interface for this class so the set flags are cast to/from
+// these types.
+struct EdgeData
+{
+	public:
+		EdgeData() {}
+
+		// Setters 
+		void setDir(EdgeDir dir)
+		{
+			if(dir == ED_ANTISENSE)
+				m_data.set(DIR_BIT, true);
+			else
+				m_data.set(DIR_BIT, false);
+		}
+
+		void setComp(EdgeComp comp)
+		{
+			if(comp == EC_REVERSE)
+				m_data.set(COMP_BIT, true);
+			else
+				m_data.set(COMP_BIT, false);
+		}
+
+		void flipDir() { m_data.flip(DIR_BIT); }
+		void flipComp() { m_data.flip(COMP_BIT); }
+
+		// Getters
+		EdgeDir getDir() const
+		{
+			return m_data.test(DIR_BIT) ? ED_ANTISENSE : ED_SENSE;
+		}
+
+		EdgeComp getComp() const
+		{
+			return m_data.test(COMP_BIT) ? EC_REVERSE : EC_SAME;
+		}
+
+	private:
+		static const size_t DIR_BIT = 0;
+		static const size_t COMP_BIT = 1;
+		BitChar m_data;
+};
 
 class Edge
 {
 	public:
 		Edge(Vertex* end, EdgeDir dir, EdgeComp comp, SeqCoord m) : 
-				m_pEnd(end), 
-				m_pTwin(NULL), m_matchCoord(m), 
-				m_dir(dir), m_comp(comp), m_color(GC_WHITE) {}
+				 m_pEnd(end), m_pTwin(NULL), m_matchCoord(m), m_color(GC_WHITE)
+		{
+			m_edgeData.setDir(dir);
+			m_edgeData.setComp(comp);
+		}
 
 		~Edge() {}
 		
@@ -62,8 +112,8 @@ class Edge
 		VertexID getEndID() const { return m_pEnd->getID(); }
 		inline Vertex* getStart() const { assert(m_pTwin != NULL); return m_pTwin->getEnd(); }
 		inline Vertex* getEnd() const { return m_pEnd; }
-		inline EdgeDir getDir() const { return m_dir; }
- 		inline EdgeComp getComp() const { return m_comp; }		
+		inline EdgeDir getDir() const { return m_edgeData.getDir(); }
+ 		inline EdgeComp getComp() const { return m_edgeData.getComp(); }		
 		inline Edge* getTwin() const { assert(m_pTwin != NULL); return m_pTwin; }
 		EdgeDesc getTwinDesc() const;
 		std::string getLabel() const;
@@ -73,15 +123,15 @@ class Edge
 
 		// Returns the direction of an edge that continues in the same direction
 		// as this edge, corrected for complementary 
-		inline EdgeDir getTransitiveDir() const { return (m_comp == EC_SAME) ? m_dir : !m_dir; }
+		inline EdgeDir getTransitiveDir() const { return (getComp() == EC_SAME) ? getDir() : !getDir(); }
 
 		// Make the direction of the edge that its twin should point along 
-		inline EdgeDir getTwinDir() const { return (m_comp == EC_SAME) ? !m_dir : m_dir; }
+		inline EdgeDir getTwinDir() const { return (getComp() == EC_SAME) ? !getDir() : getDir(); }
 		inline EdgeDesc getDesc() const { return EdgeDesc(getEndID(), getDir(), getComp()); }
 		
 		// Flip the edge
-		inline void flipComp() { m_comp = !m_comp; }
-		inline void flipDir() { m_dir = !m_dir; }
+		inline void flipComp() { m_edgeData.flipComp(); }
+		inline void flipDir() { m_edgeData.flipDir(); }
 		void flip() { flipComp(); flipDir(); }
 
 		// Memory management
@@ -128,9 +178,8 @@ class Edge
 		Vertex* m_pEnd;
 		Edge* m_pTwin;
 		SeqCoord m_matchCoord;
-		EdgeDir m_dir;
-		EdgeComp m_comp;
 		GraphColor m_color;
+		EdgeData m_edgeData; // dir/comp member
 };
 
 #endif

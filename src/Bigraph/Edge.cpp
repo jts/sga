@@ -14,7 +14,7 @@ boost::object_pool<Edge>* Edge::m_spMempool;
 // 
 EdgeDesc Edge::getTwinDesc() const
 {
-	return EdgeDesc(getStartID(), getTwinDir(), m_comp);
+	return EdgeDesc(getStartID(), getTwinDir(), getComp());
 }
 
 // Get the edge's label
@@ -138,7 +138,7 @@ void Edge::validate() const
 // Output
 std::ostream& operator<<(std::ostream& out, const Edge& obj)
 {
-	out << obj.m_pEnd->getID() << "," << obj.m_dir << "," << obj.m_comp;
+	out << obj.m_pEnd->getID() << "," << obj.getDir() << "," << obj.getComp();
 	return out;
 }
 

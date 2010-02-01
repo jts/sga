@@ -32,17 +32,19 @@
 //
 // Enums
 //
+// These values must be 0/1 and should never be changed 
 enum EdgeDir
 {
         ED_SENSE = 0,
-        ED_ANTISENSE,
-        ED_COUNT
+        ED_ANTISENSE = 1,
+        ED_COUNT = 2
 };
 
+// These values must be 0/1 and should never be changed 
 enum EdgeComp
 {
         EC_SAME = 0,
-        EC_REVERSE
+        EC_REVERSE = 1
 };
 
 const EdgeDir EDGE_DIRECTIONS[ED_COUNT] = { ED_SENSE, ED_ANTISENSE };
