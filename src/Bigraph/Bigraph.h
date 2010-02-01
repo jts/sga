@@ -20,7 +20,6 @@
 //
 // Typedefs
 //
-
 typedef std::map<VertexID, Vertex*> VertexPtrMap;
 typedef VertexPtrMap::iterator VertexPtrMapIter;
 typedef VertexPtrMap::const_iterator VertexPtrMapConstIter;
@@ -82,7 +81,8 @@ class Bigraph
 		void flip(VertexID id);
 
 		// Sort all the vertex adjacency lists
-		void sortVertexAdjLists();
+		void sortVertexAdjListsByLen();
+		void sortVertexAdjListsByID();
 
 		// Get the IDs of the vertices that do not branch (both sense/antisense degree <= 1)
 		VertexIDVec getNonBranchingVertices() const;

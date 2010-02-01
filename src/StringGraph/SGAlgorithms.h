@@ -10,7 +10,7 @@
 #define SGALGORITHMS_H
 
 #include "Bigraph.h"
-#include "StringGraph.h"
+#include "SGUtil.h" 
 
 // Visit each node, writing it to a file as a fasta record
 struct SGFastaVisitor
@@ -100,16 +100,6 @@ struct SGTCVisitor
 
 	int ngb;
 	int nbb;
-};
-
-// Infer an error rate for each node are mark nodes about the error threshold for removal
-struct SGErrorRemovalVisitor
-{
-	SGErrorRemovalVisitor(double er) : m_maxErrorRate(er) {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-	double m_maxErrorRate;
 };
 
 // Visit each node, linking the vertices with their pairs

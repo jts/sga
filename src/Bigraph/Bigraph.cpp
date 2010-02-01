@@ -265,13 +265,24 @@ void Bigraph::simplify(EdgeDir dir)
 }
 
 //
-// Sort the adjacency list for each vertex
+// Sort the adjacency list for each vertex by length
 //
-void Bigraph::sortVertexAdjLists()
+void Bigraph::sortVertexAdjListsByLen()
 {
 	VertexPtrMapIter iter = m_vertices.begin();
 	for(; iter != m_vertices.end(); ++iter)
-		iter->second->sortAdjList();
+		iter->second->sortAdjListByLen();
+}
+
+
+//
+// Sort the adjacency list for each vertex by ID
+//
+void Bigraph::sortVertexAdjListsByID()
+{
+	VertexPtrMapIter iter = m_vertices.begin();
+	for(; iter != m_vertices.end(); ++iter)
+		iter->second->sortAdjListByID();
 }
 
 //

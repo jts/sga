@@ -10,12 +10,11 @@
 #ifndef SGUTIL_H
 #define SGUTIL_H
 
-#include "StringGraph.h"
-#include "StringVertex.h"
-#include "StringEdge.h"
+#include "Bigraph.h"
 
 // typedefs
 typedef std::map<std::string, std::string> StrStrMap;
+typedef Bigraph StringGraph;
 
 // data
 struct ContainMap
@@ -42,9 +41,6 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 
 // Create the edges described by the overlap. Returns a pointer to the edge
 // from the first entry of the overlap to the second. 
-StringEdge* createEdges(StringGraph* pGraph, const Overlap& o);
-
-// Return the index (0 or 1) of the CONTAINED vertex (the discarded vertex of a containment)
-size_t getContainedIdx(const Overlap& o);
+Edge* createEdges(StringGraph* pGraph, const Overlap& o);
 
 #endif
