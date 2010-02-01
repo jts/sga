@@ -56,7 +56,7 @@ class Bigraph
 		Vertex* getVertex(VertexID id) const;
 
 		// Add an edge
-		void addEdge(Edge* pEdge);
+		void addEdge(Vertex* pVertex, Edge* pEdge);
 
 		// Remove an edge
 		void removeEdge(const EdgeDesc& ed);
@@ -69,7 +69,7 @@ class Bigraph
 		void mergeVertices(VertexID id1, VertexID id2);
 
 		// Merge vertices that are joined by the specified edge
-		void merge(Edge* pEdge);		
+		void merge(Vertex* pV1, Edge* pEdge);		
 
 		// Simplify the graph by removing transitive edges
 		void simplify();

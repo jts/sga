@@ -93,10 +93,10 @@ Vertex* Bigraph::getVertex(VertexID id) const
 //
 // Add an edge
 //
-void Bigraph::addEdge(Edge* pEdge)
+void Bigraph::addEdge(Vertex* pVertex, Edge* pEdge)
 {
-	Vertex* pVert = pEdge->getStart();
-	pVert->addEdge(pEdge);
+	assert(pEdge->getStart() == pVertex);
+	pVertex->addEdge(pEdge);
 }
 
 //
@@ -134,15 +134,14 @@ void Bigraph::mergeVertices(VertexID id1, VertexID id2)
 	Edge* mergeEdge = *edgesTo.begin();
 
 	// Call the real merging function
-	merge(mergeEdge);
+	merge(pVert1, mergeEdge);
 }
 
 //
 // Merge two vertices along the specified edge
 //
-void Bigraph::merge(Edge* pEdge)
+void Bigraph::merge(Vertex* pV1, Edge* pEdge)
 {
-	Vertex* pV1 = pEdge->getStart();
 	Vertex* pV2 = pEdge->getEnd();
 	//std::cout << "Merging " << pV1->getID() << " with " << pV2->getID() << "\n";
 
@@ -248,7 +247,7 @@ void Bigraph::simplify(EdgeDir dir)
 				Vertex* pV2 = pSingle->getEnd();
 				if(pV2->countEdges(pTwin->getDir()) == 1)
 				{
-					merge(pSingle);
+					merge(iter->second, pSingle);
 					graph_changed = true;
 				}
 			}

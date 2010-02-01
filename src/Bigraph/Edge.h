@@ -20,8 +20,8 @@
 class Edge
 {
 	public:
-		Edge(Vertex* start, Vertex* end, EdgeDir dir, EdgeComp comp, SeqCoord m) : 
-				m_pStart(start), m_pEnd(end), 
+		Edge(Vertex* end, EdgeDir dir, EdgeComp comp, SeqCoord m) : 
+				m_pEnd(end), 
 				m_pTwin(NULL), m_matchCoord(m), 
 				m_dir(dir), m_comp(comp), m_color(GC_WHITE) {}
 
@@ -54,22 +54,20 @@ class Edge
 		Match getMatch() const;		
 
 		// setters
-		void setStart(Vertex* pVert) { 	m_pStart = pVert; }
 		void setTwin(Edge* pEdge) { m_pTwin = pEdge; }
 		void setColor(GraphColor c) { m_color = c; }
 
 		// getters
-		VertexID getStartID() const { return m_pStart->getID(); }
+		VertexID getStartID() const { return getStart()->getID(); }
 		VertexID getEndID() const { return m_pEnd->getID(); }
-		inline Vertex* getStart() const { return m_pStart; }
+		inline Vertex* getStart() const { assert(m_pTwin != NULL); return m_pTwin->getEnd(); }
 		inline Vertex* getEnd() const { return m_pEnd; }
 		inline EdgeDir getDir() const { return m_dir; }
  		inline EdgeComp getComp() const { return m_comp; }		
 		inline Edge* getTwin() const { assert(m_pTwin != NULL); return m_pTwin; }
 		EdgeDesc getTwinDesc() const;
 		std::string getLabel() const;
-
-		inline bool isSelf() const { return m_pStart == m_pEnd; }
+		bool isSelf() const { return getStart() == getEnd(); }
 		inline GraphColor getColor() const { return m_color; }
 		size_t getMemSize() const { return sizeof(*this); }
 
@@ -127,7 +125,6 @@ class Edge
 
 		Edge() {}; // Default constructor is not allowed
 
-		Vertex* m_pStart;
 		Vertex* m_pEnd;
 		Edge* m_pTwin;
 		SeqCoord m_matchCoord;

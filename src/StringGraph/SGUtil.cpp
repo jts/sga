@@ -121,14 +121,14 @@ Edge* createEdges(StringGraph* pGraph, const Overlap& o)
 	{
 		EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
 		const SeqCoord& coord = o.match.coord[idx];
-		pEdges[idx] = new Edge(pVerts[idx], pVerts[1 - idx], dir, comp, coord);
+		pEdges[idx] = new Edge(pVerts[1 - idx], dir, comp, coord);
 	}
 
 	pEdges[0]->setTwin(pEdges[1]);
 	pEdges[1]->setTwin(pEdges[0]);
 
-	pGraph->addEdge(pEdges[0]);
-	pGraph->addEdge(pEdges[1]);
+	pGraph->addEdge(pVerts[0], pEdges[0]);
+	pGraph->addEdge(pVerts[1], pEdges[1]);
 
 	return pEdges[0];
 }

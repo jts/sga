@@ -45,8 +45,6 @@ void Edge::join(const Edge* pEdge)
 	if(pEdge->getComp() == EC_REVERSE)
 		flip();
 
-	m_pStart = pEdge->getStart();
-
 	// Now, update the twin of this edge to extend to the twin of pEdge
 	m_pTwin->extend(pEdge->getTwin());
 }
@@ -72,7 +70,7 @@ Match Edge::getMatch() const
 // Get the matching portion of V1 described by this edge
 std::string Edge::getMatchStr() const
 {
-	return m_matchCoord.getSubstring(m_pStart->getSeq());
+	return m_matchCoord.getSubstring(getStart()->getSeq());
 }
 
 // Return the length of the sequence
@@ -140,7 +138,7 @@ void Edge::validate() const
 // Output
 std::ostream& operator<<(std::ostream& out, const Edge& obj)
 {
-	out << obj.m_pStart->getID() << "," << obj.m_pEnd->getID() << "," << obj.m_dir << "," << obj.m_comp;
+	out << obj.m_pEnd->getID() << "," << obj.m_dir << "," << obj.m_comp;
 	return out;
 }
 
