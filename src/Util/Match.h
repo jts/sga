@@ -11,6 +11,7 @@
 #define MATCH_H
 
 #include "Util.h"
+#include "SeqCoord.h"
 
 struct Match
 {

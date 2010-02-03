@@ -11,4 +11,6 @@ libutil_a_SOURCES = \
         DNAString.h DNAString.cpp \
         Match.h Match.cpp \
         Pileup.h Pileup.cpp \
-		BitChar.h BitChar.cpp
+		BitChar.h BitChar.cpp \
+		Interval.h Interval.cpp \
+		SeqCoord.h SeqCoord.cpp
