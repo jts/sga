@@ -18,6 +18,7 @@
 #include "GraphCommon.h"
 #include "Vertex.h"
 #include "BitChar.h"
+#include "SimpleAllocator.h"
 
 // Packed structure holding the direction and comp of an edge
 // The EdgeDir/EdgeComp enums (which only have values 0/1) are used 
@@ -137,15 +138,17 @@ class Edge
 		// Memory management
 		void* operator new(size_t /*size*/)
 		{
-			return mempool()->malloc();
+			return SimpleAllocator<Edge>::Instance()->alloc();
+			//return mempool()->malloc();
 		}
 
-		/*
-		void* operator new(size_t size, StringEdge* pEdge)
+		
+		void* operator new(size_t /*size*/, Edge* /*pEdge*/)
 		{
+			assert(false);
 			return mempool()->malloc();
 		}
-		*/
+		
   		void operator delete(void* target, size_t /*size*/)
 		{
 			(void)target;
