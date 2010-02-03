@@ -30,33 +30,13 @@
 
 
 //
-// Enums
-//
-// These values must be 0/1 and should never be changed 
-enum EdgeDir
-{
-        ED_SENSE = 0,
-        ED_ANTISENSE = 1,
-        ED_COUNT = 2
-};
-
-// These values must be 0/1 and should never be changed 
-enum EdgeComp
-{
-        EC_SAME = 0,
-        EC_REVERSE = 1
-};
-
-const EdgeDir EDGE_DIRECTIONS[ED_COUNT] = { ED_SENSE, ED_ANTISENSE };
-
-//
 // Typedef
 //
+typedef std::string Sequence;
+typedef std::string ContigID;
 typedef std::vector<int> IntVec;
 typedef std::vector<double> DoubleVec;
 typedef std::vector<std::string> StringVec;
-typedef std::string Sequence;
-typedef std::string ContigID;
 typedef std::vector<Sequence> SequenceVector;
 
 // SeqItem
@@ -152,25 +132,4 @@ inline char complement(char base)
 	}
 }
 
-
-//
-// Edge Operations
-//
-inline EdgeDir operator!(const EdgeDir& dir)
-{
-        return (dir == ED_SENSE) ? ED_ANTISENSE : ED_SENSE;
-}
-
-inline EdgeComp operator!(const EdgeComp& comp)
-{
-        return (comp == EC_SAME) ? EC_REVERSE : EC_SAME;
-}
-
-// Correct an edges direction, given the relationship between the nodes
-inline EdgeDir correctDir(EdgeDir dir, EdgeComp comp)
-{
-	return (comp == EC_SAME) ? dir : !dir;
-}
-
 #endif
-
