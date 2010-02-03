@@ -9,8 +9,6 @@
 #include "Edge.h"
 #include "Vertex.h"
 
-boost::object_pool<Edge>* Edge::m_spMempool; 
-
 // 
 EdgeDesc Edge::getTwinDesc() const
 {

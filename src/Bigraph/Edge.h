@@ -11,8 +11,6 @@
 #define EDGE_H
 
 #include <ostream>
-#include <bitset>
-#include <boost/pool/object_pool.hpp>
 #include "Match.h"
 #include "Util.h"
 #include "GraphCommon.h"
@@ -139,20 +137,16 @@ class Edge
 		void* operator new(size_t /*size*/)
 		{
 			return SimpleAllocator<Edge>::Instance()->alloc();
-			//return mempool()->malloc();
 		}
 
-		
 		void* operator new(size_t /*size*/, Edge* /*pEdge*/)
 		{
-			assert(false);
-			return mempool()->malloc();
+			return SimpleAllocator<Edge>::Instance()->alloc();
 		}
 		
   		void operator delete(void* target, size_t /*size*/)
 		{
-			(void)target;
-			//return mempool()->free((StringEdge*)target);
+			SimpleAllocator<Edge>::Instance()->dealloc(target);
 		}
 
 		// Validate that the edge is sane
@@ -163,19 +157,6 @@ class Edge
 
 	protected:
 			
-		// Return the pointer to the memory pool
-		// The first time this function is called the memory pool is created
-		static boost::object_pool<Edge>* mempool() 
-		{
-			if(!m_spMempool)
-			{
-				m_spMempool = new boost::object_pool<Edge>;
-			}
-			return m_spMempool;
-    	}
-
-  		static boost::object_pool<Edge>* m_spMempool; 
-
 		Edge() {}; // Default constructor is not allowed
 
 		Vertex* m_pEnd;

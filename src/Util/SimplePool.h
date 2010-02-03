@@ -50,7 +50,7 @@ class SimplePool
 		}
 
 		// Do not track deallocations
-		void dealloc()
+		void dealloc(void* /*ptr*/)
 		{
 			// does nothing
 		}
