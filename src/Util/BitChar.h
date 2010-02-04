@@ -24,7 +24,10 @@ struct BitChar
 		// flips the bit at idx
 		void flip(unsigned idx);
 
+		// I/O
 		friend std::ostream& operator<<(std::ostream& out, const BitChar& bc);
+		void write(std::ostream& out);
+		void read(std::istream& in);
 
 	private:
 		unsigned char d;

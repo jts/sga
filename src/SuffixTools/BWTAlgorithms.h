@@ -11,6 +11,8 @@
 
 #include "STCommon.h"
 #include "BWT.h"
+#include "BWTInterval.h"
+#include "OverlapData.h"
 #include <queue>
 #include <list>
 
@@ -22,55 +24,6 @@ enum ExtendDirection
 {
 	ED_LEFT,
 	ED_RIGHT
-};
-
-// A BWTInterval holds a pair of integers which delineate an alignment of some string
-// to a BWT/Suffix Array
-struct BWTInterval
-{
-	BWTInterval() : lower(0), upper(0) {}
-	BWTInterval(int64_t l, int64_t u) : lower(l), upper(u) {}
-
-	int64_t lower;
-	int64_t upper;
-	inline bool isValid() const { return lower <= upper; }
-	inline int64_t size() const { return upper - lower + 1; }
-
-	static inline bool compare(const BWTInterval& a, const BWTInterval& b)
-	{
-		   if(a.lower == b.lower)
-				   return a.upper < b.upper;
-		   else
-				   return a.lower < b.lower;
-	}
-
-	static inline bool equal(const BWTInterval& a, const BWTInterval& b)
-	{
-		   return a.lower == b.lower && a.upper == b.upper;
-	}
-
-	friend std::ostream& operator<<(std::ostream& out, const BWTInterval& a)
-	{
-		   out << "[" << a.lower << "," << a.upper << "]";
-		   return out;
-	}
-
-};
-
-// A pair of intervals, used for bidirectional searching a bwt/revbwt in lockstep
-struct BWTIntervalPair
-{
-	BWTInterval& get(unsigned int idx) { return interval[idx]; }
-	BWTInterval interval[2];
-
-	bool isValid() const { return interval[0].isValid() && interval[1].isValid(); }
-
-	friend std::ostream& operator<<(std::ostream& out, BWTIntervalPair& a)
-	{
-		out << a.interval[0] << " " << a.interval[1];
-		return out;
-	}
-
 };
 
 // Structure holding all the working variables for making an inexact alignment for a sequence
@@ -124,33 +77,6 @@ struct BWTAlign
 				seed_len, dir, z, (int)ranges.interval[0].lower, (int)ranges.interval[0].upper, 
 				(int)ranges.interval[1].lower, (int)ranges.interval[1].upper);
 	}
-};
-
-// The overlap block structure holds the information needed to perform a forward extension
-// search for irreducible overlaps
-struct OverlapBlock
-{
-	OverlapBlock(BWTIntervalPair r, int ol, const BWT* pRB, bool isComp, const Hit& ht) : ranges(r), 
-	                                                                                      overlapLen(ol), 
-																					      pRevBWT(pRB), 
-																					      isComplement(isComp), 
-																					      hitTemplate(ht) {}
-
-	// Return the spectrum of extensions given by the interval in ranges
-	// The counts are given in the canonical frame, which means that
-	// if the query string was reversed, we flip the counts
-	AlphaCount getCanonicalExtCount() const;
-
-	static bool sortSizeDescending(const OverlapBlock& ob1, const OverlapBlock& ob2)
-	{
-		return ob1.overlapLen > ob2.overlapLen;
-	}
-
-	BWTIntervalPair ranges;
-	int overlapLen;
-	const BWT* pRevBWT;
-	bool isComplement;
-	Hit hitTemplate;
 };
 
 typedef std::queue<BWTAlign> BWTAlignQueue;
@@ -239,14 +165,14 @@ inline AlphaCount getExtCount(const BWTInterval& interval, const BWT* pBWT)
 // overlap with some other string, the containment overlap will be placed in pHits for 
 // processing later
 void findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                       int minOverlap, Hit& hitTemplate, bool isComplement, OverlapBlockList* pOBVector, HitVector* pHits);
+                       int minOverlap, const AlignFlags& af, OverlapBlockList* pOBTemp, OverlapBlockList* pOBFinal);
 
 
 // Using the vector of OverlapBlocks, calculate the irreducible hits and output them to pHits
-void calculateIrreducibleHits(const size_t q_len, OverlapBlockList* pOBList, HitVector* pHits);
+void calculateIrreducibleHits(OverlapBlockList* pOBList, OverlapBlockList* pOBFinal);
 
 // Extend each block in obl until all the irreducible overlaps have been found. 
-void processIrreducibleBlocks(const size_t q_len, OverlapBlockList& obList, HitVector* pHits);
+void processIrreducibleBlocks(OverlapBlockList& obList, OverlapBlockList* pOBFinal);
 
 // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
 void updateOverlapBlockRangesRight(OverlapBlockList& obList, char b);

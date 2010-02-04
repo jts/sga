@@ -15,7 +15,7 @@
 AlphaCount OverlapBlock::getCanonicalExtCount() const
 {
 	AlphaCount out = BWTAlgorithms::getExtCount(ranges.interval[1], pRevBWT);
-	if(isComplement)
+	if(flags.isQueryComp())
 		out.complement();
 	return out;
 }
@@ -353,11 +353,11 @@ int BWTAlgorithms::alignSuffixExact(const std::string& w, const BWT* pBWT, const
 	}
 	return cost;
 }
-extern bool gDebug;
+
 // Calculate the ranges in pBWT that contain a prefix of at least minOverlap basepairs that
 // overlaps with a suffix of w. The ranges are added to the pOBList
 void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                                            int minOverlap, Hit& hitTemplate, bool isComplement, OverlapBlockList* pOBList, HitVector* pHits)
+                                      int minOverlap, const AlignFlags& af, OverlapBlockList* pOBList, OverlapBlockList* pOBFinal)
 {
 	// The algorithm is as follows:
 	// We perform a backwards search using the FM-index for the string w.
@@ -387,7 +387,7 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 			if(probe.interval[1].isValid())
 			{
 				assert(probe.interval[1].lower > 0);
-				pOBList->push_back(OverlapBlock(probe, overlapLen, pRevBWT, isComplement, hitTemplate));
+				pOBList->push_back(OverlapBlock(probe, overlapLen, pRevBWT, af));
 			}
 		}
 	}
@@ -395,9 +395,12 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 	// Determine if this sequence is contained and should not be processed further
 	BWTAlgorithms::updateBothL(ranges, w[0], pBWT);
 
-	// Two cases in which this read is contained in another and should not be processed further
-	// 1) It is a substring of a some other read/string
-	// 2) It is identical to another read/string that has a lexographically lower ID.
+	// Ranges now holds the interval for the full-length read
+	// To handle containments, we output the overlapBlock to the final overlap block list
+	// and it will be processed later
+	// Two possible containment cases:
+	// 1) This read is a substring of some other read
+	// 2) This read is identical to some other read
 	
 	// Case 1 is indicated by the existance of a non-$ left or right hand extension
 	// In this case we return no alignments for the string
@@ -412,39 +415,26 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 	}
 	else
 	{
-		// Case 2 is handle in a slightly more tricky way. 
-		// We output a hit to the head of the block of full-length strings
-		// If the current read is the head of the block of full length strings, 
-		// it will be considered a self-alignment later and removed. 
-		// All others will be considered proper containments since the head of the block 
-		// will have the lexographically lowest ID
 		BWTAlgorithms::updateBothL(ranges, '$', pBWT);
 		if(ranges.isValid())
-		{
-			size_t sa_idx = ranges.interval[0].lower; // index of the head
-			hitTemplate.saIdx = sa_idx;
-			hitTemplate.qstart = 0;
-			hitTemplate.len = w.length();
-			hitTemplate.numDiff = 0;
-			pHits->push_back(hitTemplate);
-		}
+			pOBFinal->push_back(OverlapBlock(ranges, w.length(), pRevBWT, af));
 	}
 	return;
 }
 
 // Calculate the irreducible hits from the vector of OverlapBlocks
-void BWTAlgorithms::calculateIrreducibleHits(const size_t q_len, OverlapBlockList* pOBList, HitVector* pHits)
+void BWTAlgorithms::calculateIrreducibleHits(OverlapBlockList* pOBList, OverlapBlockList* pOBFinal)
 {
 	// processIrreducibleBlocks requires the pOBList to be sorted in descending order
 	pOBList->sort(OverlapBlock::sortSizeDescending);
-	processIrreducibleBlocks(q_len, *pOBList, pHits);
-
+	processIrreducibleBlocks(*pOBList, pOBFinal);
 }
 
 // iterate through obList and determine the overlaps that are irreducible. This function is recursive.
+// The final overlap blocks corresponding to irreducible overlaps are written to pOBFinal.
 // Invariant: the blocks are ordered in descending order of the overlap size so that the longest overlap is first.
 // Invariant: each block corresponds to the same extension of the root sequence w.
-void BWTAlgorithms::processIrreducibleBlocks(const size_t q_len, OverlapBlockList& obList, HitVector* pHits)
+void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, OverlapBlockList* pOBFinal)
 {
 	if(obList.empty())
 		return;
@@ -476,13 +466,7 @@ void BWTAlgorithms::processIrreducibleBlocks(const size_t q_len, OverlapBlockLis
 		OBLIter tlbIter = obList.begin();
 		while(tlbIter != obList.end() && tlbIter->overlapLen == topLen)
 		{
-			size_t sa_idx = tlbIter->ranges.interval[0].lower;
-			Hit actualHit = tlbIter->hitTemplate;
-			actualHit.saIdx = sa_idx;
-			actualHit.qstart = q_len - tlbIter->overlapLen;
-			actualHit.len = tlbIter->overlapLen;
-			actualHit.numDiff = 0;
-			pHits->push_back(actualHit);
+			pOBFinal->push_back(OverlapBlock(*tlbIter));
 			++tlbIter;
 		} 
 		return;
@@ -502,7 +486,7 @@ void BWTAlgorithms::processIrreducibleBlocks(const size_t q_len, OverlapBlockLis
 			// This character is in the canonical representation wrt to the query
 			char b = ext_count.getUniqueDNAChar();
 			updateOverlapBlockRangesRight(obList, b);
-			return processIrreducibleBlocks(q_len, obList, pHits);
+			return processIrreducibleBlocks(obList, pOBFinal);
 		}
 		else
 		{
@@ -513,7 +497,7 @@ void BWTAlgorithms::processIrreducibleBlocks(const size_t q_len, OverlapBlockLis
 				{
 					OverlapBlockList branched = obList;
 					updateOverlapBlockRangesRight(branched, b);
-					processIrreducibleBlocks(q_len, branched, pHits);
+					processIrreducibleBlocks(branched, pOBFinal);
 				}
 			}
 		}
@@ -526,7 +510,7 @@ void BWTAlgorithms::updateOverlapBlockRangesRight(OverlapBlockList& obList, char
 	OverlapBlockList::iterator iter = obList.begin(); 
 	while(iter != obList.end())
 	{
-		char cb = iter->isComplement ? complement(b) : b;
+		char cb = iter->flags.isQueryComp() ? complement(b) : b;
 		BWTAlgorithms::updateBothR(iter->ranges, cb, iter->pRevBWT);
 		// remove the block from the list if its no longer valid
 		if(!iter->ranges.isValid())

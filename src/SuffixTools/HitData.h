@@ -7,9 +7,10 @@
 // HitData - Data structure holding all positions of
 // alignment hits of a read
 //
-#ifndef OVERLAPDATA_H
-#define OVERLAPDATA_H
+#ifndef HITDATA_H
+#define HITDATA_H
 #include "STCommon.h"
+#include "BitChar.h"
 #include <iostream>
 
 struct Hit

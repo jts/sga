@@ -45,3 +45,15 @@ std::ostream& operator<<(std::ostream& out, const BitChar& bc)
 	}
 	return out;
 }
+
+// 
+void BitChar::write(std::ostream& out)
+{
+	out.write((char*)&d, sizeof(d));
+}
+
+//
+void BitChar::read(std::istream& in)
+{
+	in.read((char*)&d, sizeof(d));
+}
