@@ -10,7 +10,7 @@
 #define BWT_H
 
 #include "STCommon.h"
-#include "Occurance.h"
+#include "Occurrence.h"
 #include "SuffixArray.h"
 #include "ReadTable.h"
 #include "HitData.h"
@@ -81,7 +81,7 @@ class BWT
 		BWT() {}
 
 		// The O(a,i) array
-		Occurance m_occurance;
+		Occurrence m_occurance;
 
 		// The C(a) array
 		AlphaCount m_predCount;
