@@ -20,8 +20,7 @@ unsigned char mask[]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
 
 // Implementation of induced copying algorithm by
 // Nong, Zhang, Chan
-// Follows implementation given as an appendix to
-// their 2008 paper
+// Follows implementation given as an appendix to their 2008 paper
 // '\0' is the sentinenl in this algorithm
 void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 {
@@ -127,8 +126,6 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	induceSAl(pRT, pSA, type_array, bucket_counts, buckets, num_suffixes, ALPHABET_SIZE, false);
 	induceSAs(pRT, pSA, type_array, bucket_counts, buckets, num_suffixes, ALPHABET_SIZE, true);
 
-	//pSA->print(pRT);
-	
 	// deallocate t array
 	for(size_t i = 0; i < num_strings; ++i)
 	{
