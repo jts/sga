@@ -154,7 +154,6 @@ inline AlphaCount getExtCount(const BWTInterval& interval, const BWT* pBWT)
 	return pBWT->getOccDiff(interval.lower - 1, interval.upper);
 }
 
-
 //
 // Exact alignment algorithms
 //

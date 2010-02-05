@@ -11,6 +11,8 @@
 #define OVERLAPDATA_H
 
 #include "BWTInterval.h"
+#include "BitChar.h"
+#include "BWT.h"
 
 // Flags indicating how a given read was aligned to the FM-index
 // Used for internal bookkeeping

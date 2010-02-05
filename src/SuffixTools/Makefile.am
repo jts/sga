@@ -17,4 +17,5 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
                            OverlapQuality.h OverlapQuality.cpp \
                            AssembleExact.h AssembleExact.cpp \
                            SuffixTree.h SuffixTree.cpp \
-                           BWTTraverse.h BWTTraverse.cpp 
+                           BWTTraverse.h BWTTraverse.cpp \
+						   IntervalSet.h IntervalSet.cpp
