@@ -36,6 +36,12 @@ struct AlignFlags
 			return out;
 		}
 
+		friend std::istream& operator>>(std::istream& in, AlignFlags& af)
+		{
+			in >> af.data;
+			return in;
+		}
+
 		void write(std::ostream& out)
 		{
 			data.write(out);
@@ -94,9 +100,14 @@ struct OverlapBlockRecord
 	// Functions
 	friend std::ostream& operator<<(std::ostream& out, const OverlapBlockRecord& obl)
 	{
-		out << "Range: " << obl.range << " overlap_length: " << obl.overlapLen;
-		out << " Flags: " << obl.flags << " num_diff: " << obl.numDiff;
+		out << obl.range << " " << obl.overlapLen << " " << obl.flags << " " << obl.numDiff;
 		return out;
+	}
+
+	friend std::istream& operator>>(std::istream& in, OverlapBlockRecord& obl)
+	{
+		in >> obl.range >> obl.overlapLen >> obl.flags >> obl.numDiff;
+		return in;
 	}
 
 	void write(std::ofstream& out)

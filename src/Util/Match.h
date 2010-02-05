@@ -28,7 +28,6 @@ struct Match
 
 	void setNumDiffs(int n) { numDiff = n; }
 	
-
 	// Calculate the translation offset from coord[0] to coord[1]
 	int calculateTranslation() const;
 	int calculateInverseTranslation() const;

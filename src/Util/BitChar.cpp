@@ -34,7 +34,7 @@ void BitChar::flip(unsigned idx)
 }
 
 //
-std::ostream& operator<<(std::ostream& out, const BitChar& bc)
+void printBinary(std::ostream& out, const BitChar& bc)
 {
 	for(int i = 7; i >= 0; i--)
 	{
@@ -43,7 +43,23 @@ std::ostream& operator<<(std::ostream& out, const BitChar& bc)
 		else
 			out << "0";
 	}
+}
+
+//
+std::ostream& operator<<(std::ostream& out, const BitChar& bc)
+{
+	int temp = bc.d;
+	out << temp;
 	return out;
+}
+
+//
+std::istream& operator>>(std::istream& in, BitChar& bc)
+{
+	int temp;
+	in >> temp;
+	bc.d = (unsigned char)temp;
+	return in;
 }
 
 // 

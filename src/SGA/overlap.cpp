@@ -94,12 +94,10 @@ std::string computeHitsBWT()
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
 	BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
 
-	// Open the writers
+	// Open the writer
 	std::string hitsFile = opt::prefix + HITS_EXT;
-	std::ofstream hitsHandle(hitsFile.c_str(), std::ios::binary);
+	std::ofstream hitsHandle(hitsFile.c_str());
 	assert(hitsHandle.is_open());
-
-	OverlapBlockList obOutputList;
 
 	// Initially, reserve enough room for 100 hits
 	// Some reads may have (many) more hits so the vector will automatically expand to
@@ -109,15 +107,14 @@ std::string computeHitsBWT()
 	// if they were kept in the same structure there could be sa index collisions
 	HitVector* pHits = new HitVector;
 	HitVector* pRevHits = new HitVector;
-
-	pHits->reserve(100);
-	pRevHits->reserve(100);
+	OverlapBlockList obOutputList;
 
 	size_t count = 0;
 	SeqReader reader(opt::readsFile);
 	SeqItem read;
 	Timer timer("BWT Alignment", true);
 	int cost = 0;
+
 	while(reader.get(read))
 	{
 		if(opt::verbose > 0 && count % 50000 == 0)
@@ -141,15 +138,15 @@ std::string computeHitsBWT()
 		{
 			// Write the header info
 			size_t numBlocks = obOutputList.size();
-			hitsHandle.write((char*)&count, sizeof(count));
-			hitsHandle.write((char*)&numBlocks, sizeof(numBlocks));
+			hitsHandle << count << " " << numBlocks << " ";
 			//std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
 			for(OBLIter iter = obOutputList.begin(); iter != obOutputList.end(); ++iter)
 			{
 				OverlapBlockRecord record(*iter);
-				record.write(hitsHandle);
+				hitsHandle << record << " ";
 				//std::cout << "\t" << record << "\n";
 			}
+			hitsHandle << "\n";
 			obOutputList.clear();
 		}
 		++count;
@@ -208,9 +205,15 @@ size_t overlapReadExhaustive(size_t index, SeqItem& read, const BWT* pBWT, const
 	return cost;
 }
 
+// Construct the set of blocks describing irreducible overlaps with READ
+// and write the blocks to pOBOut
 size_t overlapReadIrreducible(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, OverlapBlockList* pOBOut)
 {
-	static OverlapBlockList OBTemp;
+	// The complete set of overlap blocks are collected in obTemp
+	// The filtered set (containing only irreducible overlaps) are placed into pOBOut
+	// by calculateIrreducibleHits
+	static OverlapBlockList obTemp;
+
 	static AlignFlags sufPreAF(false, false, false);
 	static AlignFlags prePreAF(false, true, true);
 	static AlignFlags sufSufAF(true, false, true);
@@ -222,20 +225,20 @@ size_t overlapReadIrreducible(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, 
 	WARN_ONCE("Irreducible-only assumptions: All reads are the same length")
 
 	// Match the suffix of seq to prefixes
-	BWTAlgorithms::findOverlapBlocks(seq, pBWT, pRBWT, opt::minOverlap, sufPreAF, &OBTemp, pOBOut);
-	BWTAlgorithms::findOverlapBlocks(complement(seq), pRBWT, pBWT, opt::minOverlap, prePreAF, &OBTemp, pOBOut);
+	BWTAlgorithms::findOverlapBlocks(seq, pBWT, pRBWT, opt::minOverlap, sufPreAF, &obTemp, pOBOut);
+	BWTAlgorithms::findOverlapBlocks(complement(seq), pRBWT, pBWT, opt::minOverlap, prePreAF, &obTemp, pOBOut);
 
 	// Process the first set of blocks and output the irreducible hits to pHits
-	BWTAlgorithms::calculateIrreducibleHits(&OBTemp, pOBOut);
-	OBTemp.clear();
+	BWTAlgorithms::calculateIrreducibleHits(&obTemp, pOBOut);
+	obTemp.clear();
 
 	// Match the prefix of seq to suffixes
-	BWTAlgorithms::findOverlapBlocks(reverseComplement(seq), pBWT, pRBWT, opt::minOverlap, sufSufAF, &OBTemp, pOBOut);
-	BWTAlgorithms::findOverlapBlocks(reverse(seq), pRBWT, pBWT, opt::minOverlap, preSufAF, &OBTemp, pOBOut);
+	BWTAlgorithms::findOverlapBlocks(reverseComplement(seq), pBWT, pRBWT, opt::minOverlap, sufSufAF, &obTemp, pOBOut);
+	BWTAlgorithms::findOverlapBlocks(reverse(seq), pRBWT, pBWT, opt::minOverlap, preSufAF, &obTemp, pOBOut);
 
 	// Process the first set of blocks and output the irreducible hits to pHits
-	BWTAlgorithms::calculateIrreducibleHits(&OBTemp, pOBOut);
-	OBTemp.clear();
+	BWTAlgorithms::calculateIrreducibleHits(&obTemp, pOBOut);
+	obTemp.clear();
 	return 0;
 }
 
@@ -278,7 +281,7 @@ void parseHits(std::string hitsFile)
 	std::ofstream containHandle(containFile.c_str());
 	assert(containHandle.is_open());
 
-	std::ifstream hitsHandle(hitsFile.c_str(), std::ios::binary);
+	std::ifstream hitsHandle(hitsFile.c_str());
 	assert(hitsHandle.is_open());
 
 	// Load the suffix array index and the reverse suffix array index
@@ -292,20 +295,22 @@ void parseHits(std::string hitsFile)
 	pRevRT->initializeReverse(pFwdRT);
 	
 	// Read each hit sequentially, converting it to an overlap
-	while(hitsHandle.good() && hitsHandle.peek() != EOF)
+	std::string line;
+	while(getline(hitsHandle, line))
 	{
+		std::istringstream convertor(line);
+
 		// Read the overlap blocks for a read
 		size_t readIdx;
 		size_t numBlocks;
-		hitsHandle.read((char*)&readIdx, sizeof(readIdx));
-		hitsHandle.read((char*)&numBlocks, sizeof(numBlocks));
+		convertor >> readIdx >> numBlocks;
 
 		//std::cout << "<Read> idx: " << readIdx << " count: " << numBlocks << "\n";
 		for(size_t i = 0; i < numBlocks; ++i)
 		{
 			// Read the block
 			OverlapBlockRecord record;
-			record.read(hitsHandle);
+			convertor >> record;
 			//std::cout << "\t" << record << "\n";
 			Hit hit;
 			hit.readIdx = readIdx;

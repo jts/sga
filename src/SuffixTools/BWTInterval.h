@@ -25,21 +25,27 @@ struct BWTInterval
 
 	static inline bool compare(const BWTInterval& a, const BWTInterval& b)
 	{
-		   if(a.lower == b.lower)
-				   return a.upper < b.upper;
-		   else
-				   return a.lower < b.lower;
+	   if(a.lower == b.lower)
+			   return a.upper < b.upper;
+	   else
+			   return a.lower < b.lower;
 	}
 
 	static inline bool equal(const BWTInterval& a, const BWTInterval& b)
 	{
-		   return a.lower == b.lower && a.upper == b.upper;
+	   return a.lower == b.lower && a.upper == b.upper;
 	}
 
 	friend std::ostream& operator<<(std::ostream& out, const BWTInterval& a)
 	{
-		   out << "[" << a.lower << "," << a.upper << "]";
-		   return out;
+		out << a.lower << " " << a.upper;
+		return out;
+	}
+
+	friend std::istream& operator>>(std::istream& in, BWTInterval& a)
+	{
+		in >> a.lower >> a.upper;
+		return in;
 	}
 
 	void write(std::ostream& out)

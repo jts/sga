@@ -26,6 +26,8 @@ struct BitChar
 
 		// I/O
 		friend std::ostream& operator<<(std::ostream& out, const BitChar& bc);
+		friend std::istream& operator>>(std::istream& in, BitChar& bc);
+
 		void write(std::ostream& out);
 		void read(std::istream& in);
 
