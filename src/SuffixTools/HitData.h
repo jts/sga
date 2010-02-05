@@ -13,6 +13,7 @@
 #include "BitChar.h"
 #include <iostream>
 
+// Deprecated 
 struct Hit
 {
 	Hit() {}

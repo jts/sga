@@ -99,14 +99,6 @@ std::string computeHitsBWT()
 	std::ofstream hitsHandle(hitsFile.c_str());
 	assert(hitsHandle.is_open());
 
-	// Initially, reserve enough room for 100 hits
-	// Some reads may have (many) more hits so the vector will automatically expand to
-	// contain them. That will be the memory highwater mark so there is no point deallocating
-	// the vector after each trip through the loop.
-	// The hits to the forward and reverse BWT must be kept seperately since they use different indices
-	// if they were kept in the same structure there could be sa index collisions
-	HitVector* pHits = new HitVector;
-	HitVector* pRevHits = new HitVector;
 	OverlapBlockList obOutputList;
 
 	size_t count = 0;
@@ -126,7 +118,7 @@ std::string computeHitsBWT()
 		
 		if(!opt::bIrreducibleOnly)
 		{
-			//cost += overlapReadExhaustive(count, read, pBWT, pRBWT, pHits, pRevHits);
+			cost += overlapReadExhaustive(read, pBWT, pRBWT, &obOutputList);
 		}
 		else
 		{
@@ -158,8 +150,6 @@ std::string computeHitsBWT()
 	printf("[bwt] processed %d blocks, %d seeds (avg sl: %lf)\n", num_blocks, num_seeds, (double)total_seed_size / num_seeds);
 	printf("[bwt] cost per seed: %lf\n", (double)cost / num_seeds);
 
-	delete pHits;
-	delete pRevHits;
 	delete pBWT;
 	delete pRBWT;
 
@@ -167,8 +157,14 @@ std::string computeHitsBWT()
 	return hitsFile;
 }
 
-size_t overlapReadExhaustive(size_t index, SeqItem& read, const BWT* pBWT, const BWT* pRBWT, HitVector* pHits, HitVector* pRevHits, OverlapBlockList* /*pOBOut*/)
+size_t overlapReadExhaustive(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, OverlapBlockList* pOBOut)
 {
+	// Collect the complete set of overlaps in pOBOut
+	static AlignFlags sufPreAF(false, false, false);
+	static AlignFlags prePreAF(false, true, true);
+	static AlignFlags sufSufAF(true, false, true);
+	static AlignFlags preSufAF(true, true, false);
+
 	size_t cost = 0;
 	std::string seq = read.seq.toString();
 
@@ -188,20 +184,14 @@ size_t overlapReadExhaustive(size_t index, SeqItem& read, const BWT* pBWT, const
 	cost += BWTAlgorithms::alignSuffixInexact(reverse(seq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
 	*/
 
-	Hit hitTemplate(index, 0, 0, 0, false, false, 0); 
-
-	hitTemplate.setRev(false, false);
-	cost += BWTAlgorithms::alignSuffixExact(seq, pBWT, pRBWT, opt::minOverlap, hitTemplate, pHits);
-
-	hitTemplate.setRev(true, false);
-	cost += BWTAlgorithms::alignSuffixExact(complement(seq), pRBWT, pBWT, opt::minOverlap, hitTemplate, pRevHits);
+	// Match the suffix of seq to prefixes
+	BWTAlgorithms::findOverlapBlocks(seq, pBWT, pRBWT, opt::minOverlap, sufPreAF, pOBOut, pOBOut);
+	BWTAlgorithms::findOverlapBlocks(complement(seq), pRBWT, pBWT, opt::minOverlap, prePreAF, pOBOut, pOBOut);
 
 	// Match the prefix of seq to suffixes
-	hitTemplate.setRev(false, true);
-	cost += BWTAlgorithms::alignSuffixExact(reverseComplement(seq), pBWT, pRBWT, opt::minOverlap, hitTemplate, pHits);
+	BWTAlgorithms::findOverlapBlocks(reverseComplement(seq), pBWT, pRBWT, opt::minOverlap, sufSufAF, pOBOut, pOBOut);
+	BWTAlgorithms::findOverlapBlocks(reverse(seq), pRBWT, pBWT, opt::minOverlap, preSufAF, pOBOut, pOBOut);
 
-	hitTemplate.setRev(true, true);
-	cost += BWTAlgorithms::alignSuffixExact(reverse(seq), pRBWT, pBWT, opt::minOverlap, hitTemplate, pRevHits);
 	return cost;
 }
 
@@ -240,33 +230,6 @@ size_t overlapReadIrreducible(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, 
 	BWTAlgorithms::calculateIrreducibleHits(&obTemp, pOBOut);
 	obTemp.clear();
 	return 0;
-}
-
-// Remove duplicate hits and write them to the filehandle
-void outputHits(std::ofstream& handle, HitVector* pHits)
-{
-	// Some hits may be duplicate so only output the longest hit to a particular saIdx
-	size_t prevID = std::numeric_limits<size_t>::max();
-	size_t prevLen = 0;
-	std::sort(pHits->begin(), pHits->end());
-	total_hits += pHits->size();
-	for(size_t i = 0; i < pHits->size(); ++i)
-	{
-		const Hit& curr_hit = (*pHits)[i];
-		// If we are in irreducible mode don't filter hits, just output everything.
-		if(curr_hit.saIdx != prevID || opt::bIrreducibleOnly)
-		{
-			handle << curr_hit << "\n";
-			++output_hits;
-		}
-		else
-		{
-			assert(curr_hit.len <= prevLen); 
-		}
-
-		prevID = curr_hit.saIdx;
-		prevLen = curr_hit.len;
-	}
 }
 
 // Parse all the hits and convert them to overlaps
@@ -312,55 +275,48 @@ void parseHits(std::string hitsFile)
 			OverlapBlockRecord record;
 			convertor >> record;
 			//std::cout << "\t" << record << "\n";
-			Hit hit;
-			hit.readIdx = readIdx;
 
 			// Iterate through the range and write the overlaps
 			for(int64_t j = record.range.lower; j <= record.range.upper; ++j)
 			{
 				const ReadTable* pCurrRT = (record.flags.isTargetRev()) ? pRevRT : pFwdRT;
 				const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
-				const SeqItem& query = pCurrRT->getRead(hit.readIdx);
+				const SeqItem& query = pCurrRT->getRead(readIdx);
 
-				hit.saIdx = j;
-				hit.qstart = query.seq.length() - record.overlapLen;
-				hit.len = record.overlapLen;
-				hit.numDiff = record.numDiff;
-				hit.targetRev = record.flags.isTargetRev();
-				hit.queryRev = record.flags.isQueryRev();
+				int64_t saIdx = j;
 
 				// The index of the second read is given as the position in the SuffixArray index
-				const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(hit.saIdx).getID());
+				const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(saIdx).getID());
 
 				// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
 				if(query.id != target.id)
 				{	
 					// Compute the endpoints of the overlap
-					int s1 = hit.qstart;
-					int e1 = s1 + hit.len - 1;
+					int s1 = query.seq.length() - record.overlapLen;
+					int e1 = s1 + record.overlapLen - 1;
 					SeqCoord sc1(s1, e1, query.seq.length());
 
 					int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
-					int e2 = s2 + hit.len - 1;
+					int e2 = s2 + record.overlapLen - 1;
 					SeqCoord sc2(s2, e2, target.seq.length());
 
 					// The coordinates are always with respect to the read, so flip them if
 					// we aligned to/from the reverse of the read
-					if(hit.queryRev)
+					if(record.flags.isQueryRev())
 						sc1.flip();
-					if(hit.targetRev)
+					if(record.flags.isTargetRev())
 						sc2.flip();
 
-					bool isRC = hit.targetRev != hit.queryRev;
+					bool isRC = record.flags.isTargetRev() != record.flags.isQueryRev();
 
-					Overlap o(query.id, sc1, target.id, sc2, isRC, hit.numDiff);
+					Overlap o(query.id, sc1, target.id, sc2, isRC, record.numDiff);
 				
 					// The alignment logic above has the potential to produce duplicate alignments
 					// To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
 					// the second or the match is a containment and the query is reversed (containments can be 
 					// output up to 4 times total).
 					// If we are running in irreducible mode this is not necessary
-					if(o.id[0] < o.id[1] || (o.match.isContainment() && hit.queryRev))
+					if(o.id[0] < o.id[1] || (o.match.isContainment() && record.flags.isQueryRev()))
 						continue;
 					writeOverlap(o, containHandle, overlapHandle);
 				}

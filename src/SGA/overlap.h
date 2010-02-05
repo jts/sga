@@ -24,7 +24,7 @@ int overlapMain(int argc, char** argv);
 std::string computeHitsBWT();
 
 // Overlap functions
-size_t overlapReadExhaustive(size_t index, SeqItem& read, const BWT* pBWT, const BWT* pRBWT, HitVector* pHits, HitVector* pRevHits, OverlapBlockList* pOBOut);
+size_t overlapReadExhaustive(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, OverlapBlockList* pOBOut);
 size_t overlapReadIrreducible(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, OverlapBlockList* pOBOut);
 
 // Output processing
