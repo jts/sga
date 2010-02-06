@@ -18,4 +18,4 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
                            AssembleExact.h AssembleExact.cpp \
                            SuffixTree.h SuffixTree.cpp \
                            BWTTraverse.h BWTTraverse.cpp \
-						   IntervalSet.h IntervalSet.cpp
+						   OverlapBlock.h OverlapBlock.cpp

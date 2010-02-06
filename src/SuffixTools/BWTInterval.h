@@ -10,7 +10,9 @@
 #ifndef BWTINTERVAL_H
 #define BWTINTERVAL_H
 
+#include <list>
 #include <iostream>
+#include <inttypes.h>
 
 // A BWTInterval holds a pair of integers which delineate an alignment of some string
 // to a BWT/Suffix Array
@@ -72,7 +74,7 @@ struct BWTIntervalPair
 	BWTInterval& get(unsigned int idx) { return interval[idx]; }
 	bool isValid() const { return interval[0].isValid() && interval[1].isValid(); }
 
-	friend std::ostream& operator<<(std::ostream& out, BWTIntervalPair& a)
+	friend std::ostream& operator<<(std::ostream& out, const BWTIntervalPair& a)
 	{
 		out << a.interval[0] << " " << a.interval[1];
 		return out;

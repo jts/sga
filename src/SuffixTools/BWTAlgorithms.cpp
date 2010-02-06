@@ -359,6 +359,9 @@ int BWTAlgorithms::alignSuffixExact(const std::string& w, const BWT* pBWT, const
 void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                       int minOverlap, const AlignFlags& af, OverlapBlockList* pOBList, OverlapBlockList* pOBFinal)
 {
+	// All overlaps are added to this list and then sub-maximal overlaps are removed
+	OverlapBlockList workingList;
+
 	// The algorithm is as follows:
 	// We perform a backwards search using the FM-index for the string w.
 	// As we perform the search we collect the intervals 
@@ -368,9 +371,7 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 	int start = l - 1;
 	BWTAlgorithms::initIntervalPair(ranges, w[start], pBWT, pRevBWT);
 	
-	// Collect the blocks of overlaps
-	// Do not use full-length overlaps (which must be containments) so 
-	// stop at 1.
+	// Collect the OverlapBlocks
 	for(int i = start - 1; i >= 1; --i)
 	{
 		// Compute the range of the suffix w[i, l]
@@ -387,7 +388,7 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 			if(probe.interval[1].isValid())
 			{
 				assert(probe.interval[1].lower > 0);
-				pOBList->push_back(OverlapBlock(probe, overlapLen, pRevBWT, af));
+				workingList.push_back(OverlapBlock(probe, overlapLen, pRevBWT, af));
 			}
 		}
 	}
@@ -409,7 +410,6 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 	if(left_ext.hasDNAChar() || right_ext.hasDNAChar())
 	{
 		// This case isn't handled yet
-		assert(false);
 		pOBList->clear();
 		return;
 	}
@@ -419,6 +419,10 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 		if(ranges.isValid())
 			pOBFinal->push_back(OverlapBlock(ranges, w.length(), pRevBWT, af));
 	}
+
+	// Remove sub-maximal OverlapBlocks and move the remainder to the output list
+	removeSubMaximalBlocks(&workingList);
+	pOBList->splice(pOBList->end(), workingList);
 	return;
 }
 

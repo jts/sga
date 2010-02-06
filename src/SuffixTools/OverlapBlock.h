@@ -4,11 +4,12 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// OverlapData - Data structures for holding overlaps
-// between sequence reads
+// OverlapBlock - Data structures holding
+// the result of the alignment of a sequence read
+// to a BWT
 // 
-#ifndef OVERLAPDATA_H
-#define OVERLAPDATA_H
+#ifndef OVERLAPBLOCK_H
+#define OVERLAPBLOCK_H
 
 #include "BWTInterval.h"
 #include "BitChar.h"
@@ -70,6 +71,7 @@ struct AlignFlags
 // A BWTInterval pair and associated alignment data
 struct OverlapBlock
 {
+	OverlapBlock() {}
 	OverlapBlock(BWTIntervalPair r, int ol, const BWT* pRB, const AlignFlags& af) : ranges(r), 
 	                                                                         overlapLen(ol), 
 																			 pRevBWT(pRB), 
@@ -80,9 +82,28 @@ struct OverlapBlock
 	// if the query string was reversed, we flip the counts
 	AlphaCount getCanonicalExtCount() const;
 
+	// Comparison operator, compare by lower coordinate of 0 
+	friend bool operator<(const OverlapBlock& a, const OverlapBlock& b)
+	{
+		return a.ranges.interval[0].lower < b.ranges.interval[0].lower;	
+	}
+
 	static bool sortSizeDescending(const OverlapBlock& ob1, const OverlapBlock& ob2)
 	{
 		return ob1.overlapLen > ob2.overlapLen;
+	}
+
+	static bool sortIntervalLeft(const OverlapBlock& ob1, const OverlapBlock& ob2)
+	{
+		return ob1.ranges.interval[0].lower < ob2.ranges.interval[0].lower;
+	}
+
+
+	// Functions
+	friend std::ostream& operator<<(std::ostream& out, const OverlapBlock& obl)
+	{
+		out << "Ranges: " << obl.ranges << " Overlap: " << obl.overlapLen << " " << obl.flags;
+		return out;
 	}
 
 	BWTIntervalPair ranges;
@@ -134,5 +155,18 @@ struct OverlapBlockRecord
 	AlignFlags flags;
 	int numDiff;
 };
+
+// Collections
+typedef std::list<OverlapBlock> OverlapBlockList;
+typedef OverlapBlockList::iterator OBLIter;
+
+// Global Functions
+
+// Ensure all the overlap blocks in the list are distinct
+void removeSubMaximalBlocks(OverlapBlockList* pList);
+
+// Given the overlapping blocks A and B, construct a list of non-overlapping blocks
+OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B);
+
 
 #endif

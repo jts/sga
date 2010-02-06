@@ -12,7 +12,7 @@
 #include "STCommon.h"
 #include "BWT.h"
 #include "BWTInterval.h"
-#include "OverlapData.h"
+#include "OverlapBlock.h"
 #include <queue>
 #include <list>
 
@@ -79,10 +79,9 @@ struct BWTAlign
 	}
 };
 
+// Collections
 typedef std::queue<BWTAlign> BWTAlignQueue;
 typedef std::list<BWTAlign> BWTAlignList;
-typedef std::list<OverlapBlock> OverlapBlockList;
-typedef OverlapBlockList::iterator OBLIter;
 
 // functions
 namespace BWTAlgorithms
