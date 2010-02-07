@@ -26,12 +26,6 @@ ContainMap::ContainMap(std::string file)
 
 void ContainMap::add(std::string s1, std::string s2)
 {
-	/*
-	if(isContained(s1))
-		std::cerr << "Warning: " << s1 << " is contained in: " << getContainer(s1) << "\n";
-	if(isContained(s2))
-		std::cerr << "Warning: " << s2 << " is contained in: " << getContainer(s2) << "\n";
-	*/
 	m_data.insert(std::make_pair(s1, s2));
 }
 
@@ -41,6 +35,7 @@ bool ContainMap::isContained(std::string s) const
 	return iter != m_data.end();
 }
 
+//
 std::string ContainMap::getContainer(std::string s) const
 {
 	StrStrMap::const_iterator iter = m_data.find(s);
@@ -70,6 +65,7 @@ StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std:
 	return pGraph;
 }
 
+//
 void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& containments)
 {
 	// Add the reads as the vertices
@@ -84,6 +80,7 @@ void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& c
 	}
 }
 
+//
 void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments, const unsigned int minOverlap)
 {
 	// Add the overlaps as edges
