@@ -23,6 +23,11 @@ class LockedQueue
 			pthread_mutex_init(&m_mutex, NULL);
 		}
 
+		~LockedQueue()
+		{
+			pthread_mutex_destroy(&m_mutex);
+		}
+
 		// Pop differs here from the STL queue as it returns (a copy) of the first element
 		T pop()
 		{
