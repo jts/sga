@@ -11,16 +11,6 @@
 
 #define SWAP_LIST(x, y) pSwap = (x); (x) = (y); (y) = pSwap;
 
-// 
-AlphaCount OverlapBlock::getCanonicalExtCount() const
-{
-	AlphaCount out = BWTAlgorithms::getExtCount(ranges.interval[1], pRevBWT);
-	if(flags.isQueryComp())
-		out.complement();
-	return out;
-}
-
-
 // Find the interval in pBWT corresponding to w
 // If w does not exist in the BWT, the interval 
 // coordinates [l, u] will be such that l > u
@@ -388,7 +378,7 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 			if(probe.interval[1].isValid())
 			{
 				assert(probe.interval[1].lower > 0);
-				workingList.push_back(OverlapBlock(probe, overlapLen, pRevBWT, af));
+				workingList.push_back(OverlapBlock(probe, overlapLen, 0, af));
 			}
 		}
 	}
@@ -417,7 +407,7 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 	{
 		BWTAlgorithms::updateBothL(ranges, '$', pBWT);
 		if(ranges.isValid())
-			pOBFinal->push_back(OverlapBlock(ranges, w.length(), pRevBWT, af));
+			pOBFinal->push_back(OverlapBlock(ranges, w.length(), 0, af));
 	}
 
 	// Remove sub-maximal OverlapBlocks and move the remainder to the output list
@@ -427,18 +417,18 @@ void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, con
 }
 
 // Calculate the irreducible hits from the vector of OverlapBlocks
-void BWTAlgorithms::calculateIrreducibleHits(OverlapBlockList* pOBList, OverlapBlockList* pOBFinal)
+void BWTAlgorithms::calculateIrreducibleHits(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList* pOBList, OverlapBlockList* pOBFinal)
 {
 	// processIrreducibleBlocks requires the pOBList to be sorted in descending order
 	pOBList->sort(OverlapBlock::sortSizeDescending);
-	processIrreducibleBlocks(*pOBList, pOBFinal);
+	processIrreducibleBlocks(pBWT, pRevBWT, *pOBList, pOBFinal);
 }
 
 // iterate through obList and determine the overlaps that are irreducible. This function is recursive.
 // The final overlap blocks corresponding to irreducible overlaps are written to pOBFinal.
 // Invariant: the blocks are ordered in descending order of the overlap size so that the longest overlap is first.
 // Invariant: each block corresponds to the same extension of the root sequence w.
-void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, OverlapBlockList* pOBFinal)
+void BWTAlgorithms::processIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, OverlapBlockList* pOBFinal)
 {
 	if(obList.empty())
 		return;
@@ -449,7 +439,7 @@ void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, OverlapBl
 	OBLIter iter = obList.begin();
 	while(iter != obList.end() && iter->overlapLen == topLen)
 	{
-		ext_count += iter->getCanonicalExtCount();
+		ext_count += iter->getCanonicalExtCount(pBWT, pRevBWT);
 		++iter;
 	}
 	
@@ -480,7 +470,7 @@ void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, OverlapBl
 		// Count the rest of the blocks
 		while(iter != obList.end())
 		{
-			ext_count += iter->getCanonicalExtCount();
+			ext_count += iter->getCanonicalExtCount(pBWT, pRevBWT);
 			++iter;
 		}
 
@@ -489,8 +479,8 @@ void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, OverlapBl
 			// Update all the blocks using the unique extension character
 			// This character is in the canonical representation wrt to the query
 			char b = ext_count.getUniqueDNAChar();
-			updateOverlapBlockRangesRight(obList, b);
-			return processIrreducibleBlocks(obList, pOBFinal);
+			updateOverlapBlockRangesRight(pBWT, pRevBWT, obList, b);
+			return processIrreducibleBlocks(pBWT, pRevBWT, obList, pOBFinal);
 		}
 		else
 		{
@@ -500,8 +490,8 @@ void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, OverlapBl
 				if(ext_count.get(b) > 0)
 				{
 					OverlapBlockList branched = obList;
-					updateOverlapBlockRangesRight(branched, b);
-					processIrreducibleBlocks(branched, pOBFinal);
+					updateOverlapBlockRangesRight(pBWT, pRevBWT, branched, b);
+					processIrreducibleBlocks(pBWT, pRevBWT, branched, pOBFinal);
 				}
 			}
 		}
@@ -509,13 +499,13 @@ void BWTAlgorithms::processIrreducibleBlocks(OverlapBlockList& obList, OverlapBl
 }
 
 // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
-void BWTAlgorithms::updateOverlapBlockRangesRight(OverlapBlockList& obList, char b)
+void BWTAlgorithms::updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, char b)
 {
 	OverlapBlockList::iterator iter = obList.begin(); 
 	while(iter != obList.end())
 	{
 		char cb = iter->flags.isQueryComp() ? complement(b) : b;
-		BWTAlgorithms::updateBothR(iter->ranges, cb, iter->pRevBWT);
+		BWTAlgorithms::updateBothR(iter->ranges, cb, iter->getExtensionBWT(pBWT, pRevBWT));
 		// remove the block from the list if its no longer valid
 		if(!iter->ranges.isValid())
 			iter = obList.erase(iter);

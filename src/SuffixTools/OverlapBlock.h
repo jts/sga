@@ -72,15 +72,20 @@ struct AlignFlags
 struct OverlapBlock
 {
 	OverlapBlock() {}
-	OverlapBlock(BWTIntervalPair r, int ol, const BWT* pRB, const AlignFlags& af) : ranges(r), 
-	                                                                         overlapLen(ol), 
-																			 pRevBWT(pRB), 
-																			 flags(af) {}
+	OverlapBlock(BWTIntervalPair r, int ol, int nd, const AlignFlags& af)  : ranges(r), 
+	                                                                             overlapLen(ol), 
+																				 numDiff(nd),
+																			     flags(af) {}
+
+
+	// Return a pointer to the BWT that should be used to extend the block
+	// this is the opposite BWT that was used in the backwards search
+	const BWT* getExtensionBWT(const BWT* pBWT, const BWT* pRevBWT) const;
 
 	// Return the spectrum of extensions given by the interval in ranges
 	// The counts are given in the canonical frame, which means that
 	// if the query string was reversed, we flip the counts
-	AlphaCount getCanonicalExtCount() const;
+	AlphaCount getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBWT) const;
 
 	// Comparison operator, compare by lower coordinate of 0 
 	friend bool operator<(const OverlapBlock& a, const OverlapBlock& b)
@@ -98,62 +103,23 @@ struct OverlapBlock
 		return ob1.ranges.interval[0].lower < ob2.ranges.interval[0].lower;
 	}
 
-
-	// Functions
+	// I/O
 	friend std::ostream& operator<<(std::ostream& out, const OverlapBlock& obl)
 	{
-		out << "Ranges: " << obl.ranges << " Overlap: " << obl.overlapLen << " " << obl.flags;
+		out << obl.ranges << " " << obl.overlapLen << " " << obl.numDiff << " " << obl.flags;
 		return out;
+	}
+
+	friend std::istream& operator>>(std::istream& in, OverlapBlock& obl)
+	{
+		in >> obl.ranges >> obl.overlapLen >> obl.numDiff >> obl.flags;
+		return in;
 	}
 
 	BWTIntervalPair ranges;
 	int overlapLen;
-	const BWT* pRevBWT;
-	AlignFlags flags;
-};
-
-// The structure written to a file describing the result of the FM-index search for a read
-struct OverlapBlockRecord
-{
-	OverlapBlockRecord() {}
-	OverlapBlockRecord(const OverlapBlock& ob) : range(ob.ranges.interval[0]), 
-	                                             overlapLen(ob.overlapLen), 
-											     flags(ob.flags), 
-											     numDiff(0) {}
-	// Functions
-	friend std::ostream& operator<<(std::ostream& out, const OverlapBlockRecord& obl)
-	{
-		out << obl.range << " " << obl.overlapLen << " " << obl.flags << " " << obl.numDiff;
-		return out;
-	}
-
-	friend std::istream& operator>>(std::istream& in, OverlapBlockRecord& obl)
-	{
-		in >> obl.range >> obl.overlapLen >> obl.flags >> obl.numDiff;
-		return in;
-	}
-
-	void write(std::ofstream& out)
-	{
-		range.write(out);
-		out.write((char*)&overlapLen, sizeof(overlapLen));
-		flags.write(out);
-		out.write((char*)&numDiff, sizeof(numDiff));
-	}
-
-	void read(std::ifstream& in)
-	{
-		range.read(in);
-		in.read((char*)&overlapLen, sizeof(overlapLen));
-		flags.read(in);
-		in.read((char*)&numDiff, sizeof(numDiff));
-	}
-
-	// Data
-	BWTInterval range;
-	int overlapLen;
-	AlignFlags flags;
 	int numDiff;
+	AlignFlags flags;
 };
 
 // Collections

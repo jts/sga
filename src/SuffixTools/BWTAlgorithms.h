@@ -167,13 +167,13 @@ void findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT
 
 
 // Using the vector of OverlapBlocks, calculate the irreducible hits and output them to pHits
-void calculateIrreducibleHits(OverlapBlockList* pOBList, OverlapBlockList* pOBFinal);
+void calculateIrreducibleHits(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList* pOBList, OverlapBlockList* pOBFinal);
 
 // Extend each block in obl until all the irreducible overlaps have been found. 
-void processIrreducibleBlocks(OverlapBlockList& obList, OverlapBlockList* pOBFinal);
+void processIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, OverlapBlockList* pOBFinal);
 
 // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
-void updateOverlapBlockRangesRight(OverlapBlockList& obList, char b);
+void updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, char b);
 
 
 // Return the count of all the possible one base extensions of the string w.

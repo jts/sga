@@ -74,10 +74,17 @@ struct BWTIntervalPair
 	BWTInterval& get(unsigned int idx) { return interval[idx]; }
 	bool isValid() const { return interval[0].isValid() && interval[1].isValid(); }
 
+	// I/O
 	friend std::ostream& operator<<(std::ostream& out, const BWTIntervalPair& a)
 	{
 		out << a.interval[0] << " " << a.interval[1];
 		return out;
+	}
+
+	friend std::istream& operator>>(std::istream& in, BWTIntervalPair& a)
+	{
+		in >> a.interval[0] >> a.interval[1];
+		return in;
 	}
 	
 	// Data

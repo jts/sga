@@ -9,7 +9,29 @@
 // to a BWT
 // 
 #include "OverlapBlock.h"
+#include "BWTAlgorithms.h"
 
+// Return a pointer to the BWT that should be used to extend the block
+// this is the opposite BWT that was used in the backwards search
+const BWT* OverlapBlock::getExtensionBWT(const BWT* pBWT, const BWT* pRevBWT) const
+{
+	if(!flags.isTargetRev())
+		return pRevBWT;
+	else
+		return pBWT;
+}
+
+// 
+AlphaCount OverlapBlock::getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBWT) const
+{
+	AlphaCount out = BWTAlgorithms::getExtCount(ranges.interval[1], getExtensionBWT(pBWT, pRevBWT));
+	if(flags.isQueryComp())
+		out.complement();
+	return out;
+}
+
+
+//
 void printList(OverlapBlockList* pList)
 {
 	for(OverlapBlockList::iterator i = pList->begin(); i != pList->end(); ++i)
@@ -67,7 +89,9 @@ void removeSubMaximalBlocks(OverlapBlockList* pList)
 }
 
 // In rare cases, the overlap blocks may represent sub-maximal overlaps between reads
-// we need to distinguish these cases and remove the sub-optimal hits
+// we need to distinguish these cases and remove the sub-optimal hits. This
+// function splits two overlapping OverlapBlocks into up to three distinct
+// blocks, keeping the maximal (longest) overlap at each stage.
 OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B)
 {
 	OverlapBlockList outList;
