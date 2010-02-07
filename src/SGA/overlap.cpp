@@ -18,6 +18,7 @@
 #include "Timer.h"
 #include "BWTAlgorithms.h"
 #include "AssembleExact.h"
+#include "LockedQueue.h"
 
 //
 // Getopt
