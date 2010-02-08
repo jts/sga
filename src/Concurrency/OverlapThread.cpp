@@ -12,6 +12,7 @@
 //
 void OverlapThread::start()
 {
+	WARN_ONCE("check return codes");
 	pthread_create(&m_thread, 0, &OverlapThread::startThread, this);
 }
 
