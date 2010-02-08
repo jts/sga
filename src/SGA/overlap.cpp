@@ -19,6 +19,7 @@
 #include "BWTAlgorithms.h"
 #include "AssembleExact.h"
 #include "LockedQueue.h"
+#include "OverlapThread.h"
 
 //
 // Getopt
