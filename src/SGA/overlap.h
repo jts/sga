@@ -13,7 +13,7 @@
 #include "BWT.h"
 #include "Match.h"
 #include "BWTAlgorithms.h"
-
+#include "OverlapAlgorithm.h"
 
 // functions
 
@@ -23,9 +23,8 @@ int overlapMain(int argc, char** argv);
 // overlap computation
 std::string computeHitsBWT();
 
-// Overlap functions
-size_t overlapReadExhaustive(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, OverlapBlockList* pOBOut);
-size_t overlapReadIrreducible(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, OverlapBlockList* pOBOut);
+size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper);
+size_t computeHitsParallel(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper);
 
 // Output processing
 void outputHits(std::ofstream& handle, HitVector* pHits);

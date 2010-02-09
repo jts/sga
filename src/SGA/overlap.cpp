@@ -37,6 +37,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
+"      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
@@ -49,18 +50,20 @@ namespace opt
 	static unsigned int verbose;
 	static unsigned int minOverlap;
 	static unsigned int maxDiff;
+	static int numThreads;
 	static double errorRate;
 	static std::string prefix;
 	static std::string readsFile;
 	static bool bIrreducibleOnly;
 }
 
-static const char* shortopts = "p:m:d:e:vi";
+static const char* shortopts = "p:m:d:e:t:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
+	{ "threads",     required_argument, NULL, 't' },
 	{ "min-overlap", required_argument, NULL, 'm' },
 	{ "max-diff",    required_argument, NULL, 'd' },
 	{ "prefix",      required_argument, NULL, 'p' },
@@ -81,20 +84,23 @@ int overlapMain(int argc, char** argv)
 	std::string hitsFile = computeHitsBWT();
 	parseHits(hitsFile);
 	delete pTimer;
+
+	if(opt::numThreads > 1)
+		pthread_exit(NULL);
+
 	return 0;
 }
 
-int total_hits = 0;
-int output_hits = 0;
-int num_blocks = 0;
-int num_seeds = 0;
-size_t total_seed_size = 0;
-
 std::string computeHitsBWT()
 {
+	Timer timer("BWT Alignment", true);
+
 	// Create the BWT
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
 	BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
+
+	// Set up the overlapper
+	OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, opt::minOverlap, opt::errorRate, opt::bIrreducibleOnly);
 
 	// Open the writer
 	std::string hitsFile = opt::prefix + HITS_EXT;
@@ -105,132 +111,76 @@ std::string computeHitsBWT()
 
 	size_t count = 0;
 	SeqReader reader(opt::readsFile);
+	
+	// Perform the actual computation
+	if(opt::numThreads <= 1)
+	{
+		count = computeHitsSerial(reader, hitsHandle, pOverlapper);
+	}
+	else
+	{
+		count = computeHitsParallel(reader, hitsHandle, pOverlapper);
+	}
+
+	// Report the running time
+	double align_time_secs = timer.getElapsedTime();
+	printf("[sga::overlap] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
+
+	// 
+	delete pBWT;
+	delete pRBWT;
+	delete pOverlapper;
+	
+	hitsHandle.close();
+	return hitsFile;
+}
+
+// Compute the hits for each read in the SeqReader file without threading
+// Return the number of reads processed
+size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper)
+{
 	SeqItem read;
-	Timer timer("BWT Alignment", true);
-	int cost = 0;
+	size_t count = 0;
+	OverlapBlockList* pOutBlocks = new OverlapBlockList;
 
 	while(reader.get(read))
 	{
 		if(opt::verbose > 0 && count % 50000 == 0)
 			printf("[overlap] Aligned %zu sequences\n", count);
 
-		// We wish to collect all the prefix/suffix matches for this read. We first collect all the prefixes that
-		// overlap the suffix of this read (including reverse complement reads) then find all the suffixes that match a prefix of this read.
-		std::string seq = read.seq.toString();
-		
-		if(!opt::bIrreducibleOnly)
-		{
-			cost += overlapReadExhaustive(read, pBWT, pRBWT, &obOutputList);
-		}
-		else
-		{
-			cost += overlapReadIrreducible(read, pBWT, pRBWT, &obOutputList);
-		}
+		pOverlapper->overlapRead(read, pOutBlocks);
 
 		// Write the hits to the file
-		if(!obOutputList.empty())
+		if(!pOutBlocks->empty())
 		{
 			// Write the header info
-			size_t numBlocks = obOutputList.size();
-			hitsHandle << count << " " << numBlocks << " ";
+			size_t numBlocks = pOutBlocks->size();
+			writer << count << " " << numBlocks << " ";
 			//std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
-			for(OBLIter iter = obOutputList.begin(); iter != obOutputList.end(); ++iter)
+			for(OBLIter iter = pOutBlocks->begin(); iter != pOutBlocks->end(); ++iter)
 			{
-				hitsHandle << *iter << " ";
+				writer << *iter << " ";
 			}
-			hitsHandle << "\n";
-			obOutputList.clear();
+			writer << "\n";
+			pOutBlocks->clear();
 		}
 		++count;
 	}
-
-	double align_time_secs = timer.getElapsedTime();
-	printf("[bwt] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
-	printf("[bwt] performed %d iterations in the inner loop (%lf cost/sequence)\n", cost, (double)cost / (double)count);
-	printf("[bwt] processed %d blocks, %d seeds (avg sl: %lf)\n", num_blocks, num_seeds, (double)total_seed_size / num_seeds);
-	printf("[bwt] cost per seed: %lf\n", (double)cost / num_seeds);
-
-	delete pBWT;
-	delete pRBWT;
-
-	hitsHandle.close();
-	return hitsFile;
+	delete pOutBlocks;
+	return count;
 }
 
-size_t overlapReadExhaustive(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, OverlapBlockList* pOBOut)
+// Compute the hits for each read in the SeqReader file with threading
+// Return the number of reads processed
+size_t computeHitsParallel(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper)
 {
-	// Collect the complete set of overlaps in pOBOut
-	static AlignFlags sufPreAF(false, false, false);
-	static AlignFlags prePreAF(false, true, true);
-	static AlignFlags sufSufAF(true, false, true);
-	static AlignFlags preSufAF(true, true, false);
-
-	size_t cost = 0;
-	std::string seq = read.seq.toString();
-
-	/*
-	// Match the suffix of seq to prefixes
-	hitTemplate.setRev(false, false);
-	cost += BWTAlgorithms::alignSuffixInexact(seq, pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
-
-	hitTemplate.setRev(true, false);
-	cost += BWTAlgorithms::alignSuffixInexact(complement(seq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pHits);
-
-	// Match the prefix of seq to suffixes
-	hitTemplate.setRev(false, true);
-	cost += BWTAlgorithms::alignSuffixInexact(reverseComplement(seq), pBWT, pRBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
-
-	hitTemplate.setRev(true, true);
-	cost += BWTAlgorithms::alignSuffixInexact(reverse(seq), pRBWT, pBWT, opt::errorRate, opt::minOverlap, hitTemplate, pRevHits);
-	*/
-
-	// Match the suffix of seq to prefixes
-	BWTAlgorithms::findOverlapBlocks(seq, pBWT, pRBWT, opt::minOverlap, sufPreAF, pOBOut, pOBOut);
-	BWTAlgorithms::findOverlapBlocks(complement(seq), pRBWT, pBWT, opt::minOverlap, prePreAF, pOBOut, pOBOut);
-
-	// Match the prefix of seq to suffixes
-	BWTAlgorithms::findOverlapBlocks(reverseComplement(seq), pBWT, pRBWT, opt::minOverlap, sufSufAF, pOBOut, pOBOut);
-	BWTAlgorithms::findOverlapBlocks(reverse(seq), pRBWT, pBWT, opt::minOverlap, preSufAF, pOBOut, pOBOut);
-
-	return cost;
-}
-
-// Construct the set of blocks describing irreducible overlaps with READ
-// and write the blocks to pOBOut
-size_t overlapReadIrreducible(SeqItem& read, const BWT* pBWT, const BWT* pRBWT, OverlapBlockList* pOBOut)
-{
-	// The complete set of overlap blocks are collected in obTemp
-	// The filtered set (containing only irreducible overlaps) are placed into pOBOut
-	// by calculateIrreducibleHits
-	static OverlapBlockList obTemp;
-
-	static AlignFlags sufPreAF(false, false, false);
-	static AlignFlags prePreAF(false, true, true);
-	static AlignFlags sufSufAF(true, false, true);
-	static AlignFlags preSufAF(true, true, false);
-
-	std::string seq = read.seq.toString();
-
-	// Irreducible overlaps only
-	WARN_ONCE("Irreducible-only assumptions: All reads are the same length")
-
-	// Match the suffix of seq to prefixes
-	BWTAlgorithms::findOverlapBlocks(seq, pBWT, pRBWT, opt::minOverlap, sufPreAF, &obTemp, pOBOut);
-	BWTAlgorithms::findOverlapBlocks(complement(seq), pRBWT, pBWT, opt::minOverlap, prePreAF, &obTemp, pOBOut);
-
-	// Process the first set of blocks and output the irreducible hits to pHits
-	BWTAlgorithms::calculateIrreducibleHits(pBWT, pRBWT, &obTemp, pOBOut);
-	obTemp.clear();
-
-	// Match the prefix of seq to suffixes
-	BWTAlgorithms::findOverlapBlocks(reverseComplement(seq), pBWT, pRBWT, opt::minOverlap, sufSufAF, &obTemp, pOBOut);
-	BWTAlgorithms::findOverlapBlocks(reverse(seq), pRBWT, pBWT, opt::minOverlap, preSufAF, &obTemp, pOBOut);
-
-	// Process the first set of blocks and output the irreducible hits to pHits
-	BWTAlgorithms::calculateIrreducibleHits(pBWT, pRBWT, &obTemp, pOBOut);
-	obTemp.clear();
+	std::cerr << "Starting overlap computation using " << opt::numThreads << "threads\n";
+	(void)reader;
+	(void)writer;
+	(void)pOverlapper;
 	return 0;
 }
+
 
 // Parse all the hits and convert them to overlaps
 void parseHits(std::string hitsFile)
@@ -396,6 +346,7 @@ void parseOverlapOptions(int argc, char** argv)
 			case 'p': arg >> opt::prefix; break;
 			case 'e': arg >> opt::errorRate; break;
 			case 'd': arg >> opt::maxDiff; break;
+			case 't': arg >> opt::numThreads; break;
 			case 'i': opt::bIrreducibleOnly = true; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
@@ -416,6 +367,12 @@ void parseOverlapOptions(int argc, char** argv)
 	else if (argc - optind > 1) 
 	{
 		std::cerr << SUBPROGRAM ": too many arguments\n";
+		die = true;
+	}
+
+	if(opt::numThreads <= 0)
+	{
+		std::cerr << SUBPROGRAM ": invalid number of threads: " << opt::numThreads << "\n";
 		die = true;
 	}
 

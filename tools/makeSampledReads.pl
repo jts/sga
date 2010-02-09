@@ -98,8 +98,6 @@ else
 
 sub outputPEReads
 {
-
-
 	my($buffer) = @_;
 	my $gl = length($$buffer);
 	my $num_reads = $gl * $coverage /  (2 * $rl);
@@ -127,8 +125,7 @@ sub outputSEReads
 	my($buffer) = @_;
 	my $gl = length($$buffer);
 	my $num_reads = $gl * $coverage /  $rl;
-	
-	for(my $i = 0; $i < $num_reads; ++$i)
+	while($total < $num_reads)
 	{
 		my $start = int(rand($gl));
 		my $end = $start + $rl - 1;
