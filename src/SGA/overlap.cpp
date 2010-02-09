@@ -51,9 +51,9 @@ PACKAGE_NAME "::" SUBPROGRAM;
 namespace opt
 {
 	static unsigned int verbose;
-	static unsigned int minOverlap;
-	static unsigned int maxDiff;
-	static int numThreads;
+	static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
+	static unsigned int maxDiff = 0;
+	static int numThreads = 1;
 	static double errorRate;
 	static std::string prefix;
 	static std::string readsFile;
@@ -339,10 +339,6 @@ void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& ove
 //
 void parseOverlapOptions(int argc, char** argv)
 {
-	// Set defaults
-	opt::minOverlap = DEFAULT_MIN_OVERLAP;
-	opt::maxDiff = 0;
-
 	bool die = false;
 	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
 	{
