@@ -1,7 +1,7 @@
 //-----------------------------------------------
 // Copyright 2009 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
-// Released under the GPL license
+// Released under the GPL
 //-----------------------------------------------
 //
 // Vertex - Generic vertex class for bigraph
@@ -125,7 +125,7 @@ void Vertex::makeUnique()
 	m_edges.swap(uniqueVec);
 }
 
-// 
+// Ensure each edge of the vertex is unique
 void Vertex::makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec)
 {
 	std::set<VertexID> idSet;

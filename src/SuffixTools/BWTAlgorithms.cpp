@@ -1,7 +1,7 @@
 //-----------------------------------------------
 // Copyright 2009 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
-// Released under the GPL license
+// Released under the GPL
 //-----------------------------------------------
 //
 // bwt_algorithms.cpp - Algorithms for aligning to a bwt structure
@@ -346,8 +346,10 @@ int BWTAlgorithms::alignSuffixExact(const std::string& w, const BWT* pBWT, const
 
 // Calculate the ranges in pBWT that contain a prefix of at least minOverlap basepairs that
 // overlaps with a suffix of w. The ranges are added to the pOBList
-void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                                      int minOverlap, const AlignFlags& af, OverlapBlockList* pOBList, OverlapBlockList* pOBFinal)
+void BWTAlgorithms::findOverlapBlocks(const std::string& w, const BWT* pBWT,
+									  const BWT* pRevBWT, int minOverlap,
+									  const AlignFlags& af, OverlapBlockList* pOBList,
+                                      OverlapBlockList* pOBFinal)
 {
 	// All overlaps are added to this list and then sub-maximal overlaps are removed
 	OverlapBlockList workingList;
