@@ -35,8 +35,8 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READSFILE\n"
 "Compute pairwise overlap between all the sequences in READS\n"
 "\n"
-"  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
+"      -v, --verbose                    display verbose output\n"
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
@@ -154,23 +154,12 @@ size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const Overlap
 			printf("[%s] Aligned %zu sequences\n", PROGRAM_IDENT, count);
 
 		pOverlapper->overlapRead(read, pOutBlocks);
-
-		// Write the hits to the file
-		if(!pOutBlocks->empty())
-		{
-			// Write the header info
-			size_t numBlocks = pOutBlocks->size();
-			writer << count << " " << numBlocks << " ";
-			//std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
-			for(OBLIter iter = pOutBlocks->begin(); iter != pOutBlocks->end(); ++iter)
-			{
-				writer << *iter << " ";
-			}
-			writer << "\n";
-			pOutBlocks->clear();
-		}
+		
+		writeOverlapBlockList(writer, count, pOutBlocks);
+		pOutBlocks->clear();
 		++count;
 	}
+
 	delete pOutBlocks;
 	return count;
 }
@@ -180,10 +169,86 @@ size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const Overlap
 size_t computeHitsParallel(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper)
 {
 	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-	(void)reader;
-	(void)writer;
-	(void)pOverlapper;
-	return 0;
+
+	// Create the thread
+	OverlapThread* pThread = new OverlapThread(pOverlapper);
+	pThread->start();
+
+	int64_t numIn = 0;
+	int64_t numOut = 0;
+	int64_t maxDiffSeen = 0;
+	int64_t maxInProgress = 100;
+
+	SeqItem read;
+	while(reader.get(read))
+	{
+		// Add the read to a queue
+		pThread->getSeqQueue()->push(read);
+		++numIn;
+
+		// Check if any overlap lists need to be written out
+		do 
+		{
+			if(!pThread->getOBListQueue()->empty())
+			{
+				OverlapBlockList* pToWrite = pThread->getOBListQueue()->pop();
+
+				WARN_ONCE("MUST KEEP TRACK OF INDEX");
+				writeOverlapBlockList(writer, 0, pToWrite);
+				++numOut;
+
+				// The main thread is responsible for deallocating the list
+				delete pToWrite;
+			}
+			usleep(50);
+		} while(numIn - numOut > maxInProgress);
+
+		if(numIn - numOut > maxDiffSeen)
+			maxDiffSeen = numIn - numOut;
+	}
+
+	// Wait for threads to finish
+	while(numOut < numIn)
+	{
+		// Check if any overlap lists need to be written out
+		if(!pThread->getOBListQueue()->empty())
+		{
+			OverlapBlockList* pToWrite = pThread->getOBListQueue()->pop();
+
+			WARN_ONCE("MUST KEEP TRACK OF INDEX");
+			writeOverlapBlockList(writer, 0, pToWrite);
+			++numOut;
+
+			// The main thread is responsible for deallocating the list
+			delete pToWrite;
+		}
+	}
+
+	std::cout << "Max diff seen: " << maxDiffSeen << "\n";
+
+	// Signal threads to stop
+	pThread->stop();
+	delete pThread;
+
+	return numOut;
+}
+
+// Write the contents of pList to the handle
+void writeOverlapBlockList(std::ofstream& writer, size_t idx, const OverlapBlockList* pList)
+{
+	// Write the hits to the file
+	if(!pList->empty())
+	{
+		// Write the header info
+		size_t numBlocks = pList->size();
+		writer << idx << " " << numBlocks << " ";
+		//std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
+		for(OverlapBlockList::const_iterator iter = pList->begin(); iter != pList->end(); ++iter)
+		{
+			writer << *iter << " ";
+		}
+		writer << "\n";
+	}
 }
 
 

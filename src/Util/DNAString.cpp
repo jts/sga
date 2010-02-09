@@ -6,6 +6,7 @@
 //
 // DNAString 
 //
+#include <iostream>
 #include "DNAString.h"
 
 DNAString::DNAString() : m_len(0), m_data(0) {}
@@ -55,7 +56,8 @@ void DNAString::_alloc(const char* pData, size_t l)
 //
 void DNAString::_dealloc()
 {
-	delete [] m_data;
+	if(m_data != NULL)
+		delete [] m_data;
 	m_data = 0;
 	m_len = 0;
 }

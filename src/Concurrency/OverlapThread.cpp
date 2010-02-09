@@ -9,6 +9,18 @@
 //
 #include "OverlapThread.h"
 
+OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper) : m_pOverlapper(pOverlapper), m_stopRequested(false)
+{
+	m_pSeqItemQueue = new SeqItemQueue;
+	m_pOBListQueue = new OBListPtrQueue;
+}
+
+OverlapThread::~OverlapThread()
+{
+	delete m_pSeqItemQueue;
+	delete m_pOBListQueue;
+}
+
 //
 void OverlapThread::start()
 {
@@ -29,9 +41,20 @@ void OverlapThread::run()
 {
 	while(!m_stopRequested)
 	{
-		std::cout << "OverlapThread::work()\n";
-		sleep(1);
+		if(!m_pSeqItemQueue->empty())
+		{
+			// Take an element from the queue
+			SeqItem read = m_pSeqItemQueue->pop();
+
+			// We allocate a list here to store the result of the overlap
+			// which is deallocated by the main thread
+			OverlapBlockList* pList = new OverlapBlockList;
+			m_pOverlapper->overlapRead(read, pList);
+			m_pOBListQueue->push(pList);
+		}
 	}
+
+	std::cout << "Thread exiting\n";
 }
 
 // 
