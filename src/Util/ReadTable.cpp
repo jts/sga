@@ -21,8 +21,6 @@ ReadTable::ReadTable(std::string filename)
 	{
 		addRead(si);
 	}
-
-	std::cerr << "Read "<< getCount() << " sequences\n";
 }
 
 // 

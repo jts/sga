@@ -45,6 +45,9 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      -i, --irreducible                only output the irreducible edges for each node\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
+static const char* PROGRAM_IDENT =
+PACKAGE_NAME "::" SUBPROGRAM;
+
 namespace opt
 {
 	static unsigned int verbose;
@@ -124,7 +127,7 @@ std::string computeHitsBWT()
 
 	// Report the running time
 	double align_time_secs = timer.getElapsedTime();
-	printf("[sga::overlap] aligned %zu sequences in %lfs (%lf sequences/s)\n", count, align_time_secs, (double)count / align_time_secs);
+	printf("[%s] aligned %zu sequences in %lfs (%lf sequences/s)\n", PROGRAM_IDENT, count, align_time_secs, (double)count / align_time_secs);
 
 	// 
 	delete pBWT;
@@ -139,6 +142,8 @@ std::string computeHitsBWT()
 // Return the number of reads processed
 size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper)
 {
+	printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
+
 	SeqItem read;
 	size_t count = 0;
 	OverlapBlockList* pOutBlocks = new OverlapBlockList;
@@ -146,7 +151,7 @@ size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const Overlap
 	while(reader.get(read))
 	{
 		if(opt::verbose > 0 && count % 50000 == 0)
-			printf("[overlap] Aligned %zu sequences\n", count);
+			printf("[%s] Aligned %zu sequences\n", PROGRAM_IDENT, count);
 
 		pOverlapper->overlapRead(read, pOutBlocks);
 
@@ -174,7 +179,7 @@ size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const Overlap
 // Return the number of reads processed
 size_t computeHitsParallel(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper)
 {
-	std::cerr << "Starting overlap computation using " << opt::numThreads << "threads\n";
+	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
 	(void)reader;
 	(void)writer;
 	(void)pOverlapper;
@@ -185,6 +190,8 @@ size_t computeHitsParallel(SeqReader& reader, std::ofstream& writer, const Overl
 // Parse all the hits and convert them to overlaps
 void parseHits(std::string hitsFile)
 {
+	printf("[%s] converting suffix array intervals to overlaps\n", PROGRAM_IDENT);
+
 	// Open files
 	std::string overlapFile = opt::prefix + OVR_EXT;
 	std::ofstream overlapHandle(overlapFile.c_str());
