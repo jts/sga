@@ -83,7 +83,7 @@ static const struct option longopts[] = {
 //
 int overlapMain(int argc, char** argv)
 {
-	Timer* pTimer = new Timer("sga overlap");
+	Timer* pTimer = new Timer(PROGRAM_IDENT);
 	parseOverlapOptions(argc, argv);
 	std::string hitsFile = computeHitsBWT();
 	parseHits(hitsFile);
@@ -128,7 +128,7 @@ std::string computeHitsBWT()
 	}
 
 	// Report the running time
-	double align_time_secs = timer.getElapsedTime();
+	double align_time_secs = timer.getElapsedWallTime();
 	printf("[%s] aligned %zu sequences in %lfs (%lf sequences/s)\n", PROGRAM_IDENT, count, align_time_secs, (double)count / align_time_secs);
 
 	// 
@@ -170,65 +170,133 @@ size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const Overlap
 // Return the number of reads processed
 size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper)
 {
-	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+	size_t MAX_ITEMS = 1000;
 	
-	size_t MAX_ITEMS = 10000;
+	// Semaphore shared between all the threads indicating whether 
+	// the threads can take data
+	sem_t readySem;
+	sem_init( &readySem, PTHREAD_PROCESS_PRIVATE, 0 );
 
-	// The main thread counts as a thread
-	assert(opt::numThreads > 1);
-	size_t numWorkThreads = opt::numThreads - 1;
+	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+
 	typedef std::vector<OverlapThread*> ThreadPtrVector;
-	ThreadPtrVector threadVec(numWorkThreads, NULL);
+	typedef std::vector<OverlapWorkVector*> WorkVecPtrVec;
+	OverlapWorkVector* pWorkVector = new OverlapWorkVector;
+	pWorkVector->reserve(MAX_ITEMS);
+	
+	ThreadPtrVector threadVec(opt::numThreads, NULL);
+	WorkVecPtrVec workBuffers(opt::numThreads, NULL);
 
 	// Initialize threads
-	for(size_t i = 0; i < numWorkThreads; ++i)
+	for(int i = 0; i < opt::numThreads; ++i)
 	{
 		// Create the thread
 		std::stringstream ss;
-		ss << opt::prefix << "-t" << i+1 << HITS_EXT;
+		ss << opt::prefix << "-thread" << i << HITS_EXT;
 		std::string outfile = ss.str();
-		threadVec[i] = new OverlapThread(pOverlapper, outfile, MAX_ITEMS);
+		
+		// Allocate an incoming buffer for this thread
+		workBuffers[i] = new OverlapWorkVector;
+		workBuffers[i]->reserve(MAX_ITEMS);
+
+		// Create and start the thread
+		threadVec[i] = new OverlapThread(pOverlapper, outfile, &readySem, MAX_ITEMS);
 		threadVec[i]->start();
 	}
 
 	// Read in sequences, dispatch to threads
 	int64_t numIn = 0;
 	int next_thread = 0;
-	int num_to_use = opt::numThreads - 1;
-
-	OverlapWorkVector* pWorkVector = new OverlapWorkVector;
-	pWorkVector->reserve(MAX_ITEMS);
-
+	int num_full_buffers = 0;
+	(void)num_full_buffers;
 	SeqItem read;
-	while(reader.get(read))
+	bool done = false;
+	
+	while(!done)
 	{
-		pWorkVector->push_back(read);
-
-		if(pWorkVector->size() == MAX_ITEMS)
+		// Parse one read from the stream
+		done = !reader.get(read);
+		if(!done)
 		{
-			OverlapThread* pThread = threadVec[next_thread];
+			num_full_buffers = 0;
+			for(int i = 0; i < opt::numThreads; ++i)
+			{
+				if(workBuffers[i]->size() != MAX_ITEMS)
+					workBuffers[i]->push_back(read);
+				else
+					++num_full_buffers;
+			}
+			++numIn;
+		}
+
+		(void)next_thread;
+
+		if(num_full_buffers == opt::numThreads || done)
+		{
+			sem_wait(&readySem);
+			for(int i = 0; i < opt::numThreads; ++i)
+			{
+				OverlapThread* pThread = threadVec[i];
+				if(pThread->isReady())
+				{
+					pThread->swapBuffers(workBuffers[i]);
+					//assert(pWorkVector->empty());
+					--num_full_buffers;
+				}
+			}
+		}
+	}
+	
+	/*
+	while(!done)
+	{
+		// Parse one read from the stream
+		done = !reader.get(read);
+		if(!done)
+		{
+			pWorkVector->push_back(read);
+			++numIn;
+		}
+
+		// The buffer is full or there are no more 
+		// sequences to read, push the contents of the 
+		// buffer to a work thread
+		if(pWorkVector->size() == MAX_ITEMS || done)
+		{
+			sem_wait(&readySem);
+
+			// Select a thread to allocate the work to
+			// by checking the consumption semaphore for each thread
+			// without blocking 
+			int selected_id = -1;
+			for(int i = 0; i < opt::numThreads; ++i)
+			{
+				if(threadVec[i]->isReady())
+				{
+					selected_id = i;
+					break;
+				}
+			}
+			assert(selected_id >= 0);
+			OverlapThread* pThread = threadVec[selected_id];
 			pThread->swapBuffers(pWorkVector);
 			assert(pWorkVector->empty());
-			next_thread = (next_thread + 1) % num_to_use;
-		}
-		++numIn;
-	}
 
-	// Align the remaining reads, if any
-	if(!pWorkVector->empty())
-	{
-		OverlapThread* pThread = threadVec[next_thread];
-		pThread->swapBuffers(pWorkVector);
-		next_thread = (next_thread + 1) % num_to_use;
+			next_thread = (next_thread + 1) % opt::numThreads;
+		}
 	}
+	*/
+	assert(pWorkVector->empty());
 
 	// Done read, stop the threads and destroy them
-	for(size_t i = 0; i < numWorkThreads; ++i)
+	for(int i = 0; i < opt::numThreads; ++i)
 	{
 		threadVec[i]->stop();
+		delete workBuffers[i];
 		delete threadVec[i];
 	}
 
+	sem_destroy(&readySem);
 	delete pWorkVector;
 	return numIn;
 }

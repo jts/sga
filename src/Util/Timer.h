@@ -25,21 +25,32 @@ class Timer
 		{
 			 	
 			if(!m_silent) 
-				printf("[Timer] %s %.2lfs\n", m_desc.c_str(), getElapsedTime()); 
+				printf("[timer - %s] wall clock: %.2lfs CPU: %.2lfs\n", m_desc.c_str(), getElapsedWallTime(), getElapsedCPUTime()); 
 		}
 
-		double getElapsedTime() const 
+		double getElapsedWallTime() const 
 		{ 
-			time_t now;
-			time(&now);
-			return now - m_start;
+			timeval now;
+			gettimeofday(&now, NULL);
+			return (now.tv_sec - m_wallStart.tv_sec) + (double(now.tv_usec - m_wallStart.tv_usec) / 1000000);
 		}
 
-		void reset() { time(&m_start); }
+		double getElapsedCPUTime() const
+		{
+			double now = clock();
+			return (now - m_cpuStart) / CLOCKS_PER_SEC;
+		}
+
+		void reset() { gettimeofday(&m_wallStart, NULL); m_cpuStart = clock(); }
 
 	private:
 		std::string m_desc;
-		time_t m_start;
+		
+		// Track the wall-clock and CPU times
+		// CPU time includes all threads
+		timeval m_wallStart;
+		double m_cpuStart;
+
 		bool m_silent;
 };
 

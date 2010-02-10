@@ -10,9 +10,11 @@
 #include "OverlapThread.h"
 
 OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper, 
-							 const std::string& filename, const size_t max_items) : 
-                             m_pOverlapper(pOverlapper), 
-							 m_outfile(filename.c_str()), m_stopRequested(false)
+							 const std::string& filename, sem_t* pReadySem, 
+							 const size_t max_items) : 
+                             m_outfile(filename.c_str()), m_pOverlapper(pOverlapper),
+							 m_pReadySem(pReadySem), m_stopRequested(false), 
+							 m_isReady(true)
 {
 	m_pOBList = new OverlapBlockList;
 	m_pSharedWorkVec = new OverlapWorkVector;
@@ -42,6 +44,7 @@ void OverlapThread::swapBuffers(OverlapWorkVector* pIncoming)
 	// then lock the mutex
 	sem_wait(&m_consumedSem);
 	pthread_mutex_lock(&m_mutex);
+	m_isReady = false;
 	m_pSharedWorkVec->swap(*pIncoming);
 	
 	// Unlock the mutex and signal the work thread
@@ -69,9 +72,17 @@ void OverlapThread::stop()
     pthread_join(m_thread, NULL);
 }
 
+// 
+bool OverlapThread::isReady()
+{
+	return m_isReady;
+}
+
 //
 void OverlapThread::run()
 {
+	sem_post(m_pReadySem);
+
 	while(1)
 	{
 		sem_wait(&m_producedSem);
@@ -83,17 +94,17 @@ void OverlapThread::run()
 		// Lock the shared buffer and process all
 		// the contained reads
 		pthread_mutex_lock(&m_mutex);
-
 		size_t num_reads = m_pSharedWorkVec->size();
 		for(size_t i = 0; i < num_reads; ++i)
 		{
 			processRead((*m_pSharedWorkVec)[i]);
 		}
 		m_pSharedWorkVec->clear();
+		m_isReady = true;
 		pthread_mutex_unlock(&m_mutex);
 		sem_post(&m_consumedSem);
+		sem_post(m_pReadySem);
 	}
-	std::cout << "Found stop signal, exitting.\n";
 }
 
 // Overlap a read

@@ -11,7 +11,6 @@
 #define OVERLAPTHREAD_H
 
 #include <semaphore.h>
-#include "LockedQueue.h"
 #include "Util.h"
 #include "OverlapBlock.h"
 #include "OverlapAlgorithm.h"
@@ -26,19 +25,20 @@ struct OverlapWorkItem
 
 typedef std::vector<SeqItem> OverlapWorkVector;
 
-typedef LockedQueue<OverlapWorkItem> OverlapWorkQueue;
-
 class OverlapThread
 {
 	public:
 
 		OverlapThread(const OverlapAlgorithm* pOverlapper, 
-		              const std::string& filename, const size_t max_items);
+		              const std::string& filename, sem_t* pReadySem, const size_t max_items);
 
 		~OverlapThread();
 
 		// Exchange the contents of the shared vector with the point-to vector
 		void swapBuffers(OverlapWorkVector* pIncoming);
+
+		// Returns true if the thread is ready to receive data
+		bool isReady();
 
 		// External control functions
 		void start();
@@ -56,24 +56,28 @@ class OverlapThread
 		static void* startThread(void* obj);
 
 		// Data
-		const OverlapAlgorithm* m_pOverlapper;
-
+		
 		// Private file handle and overlap list
 		// which are only acccessed by the thread
 		std::ofstream m_outfile;
 		OverlapBlockList* m_pOBList;
 
 		// 
+		const OverlapAlgorithm* m_pOverlapper;
 		pthread_t m_thread;
+
+		// External semaphore that all threads set when they are ready
+		// to receive data
+		sem_t* m_pReadySem;
 
 		// Shared data and protection variables
 		sem_t m_producedSem;
 		sem_t m_consumedSem;
+		
 		pthread_mutex_t m_mutex;
 		OverlapWorkVector* m_pSharedWorkVec;
-
-		// The main thread will set this flag when it wants this thread to terminate
 		volatile bool m_stopRequested;
+		bool m_isReady;
 };
 
 #endif
