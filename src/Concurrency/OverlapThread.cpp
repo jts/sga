@@ -9,52 +9,45 @@
 //
 #include "OverlapThread.h"
 
-OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper, const std::string& filename) : 
-                             m_pOverlapper(pOverlapper), m_outfile(filename.c_str()), m_stopRequested(false)
+OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper, 
+							 const std::string& filename, const size_t max_items) : 
+                             m_pOverlapper(pOverlapper), 
+							 m_outfile(filename.c_str()), m_stopRequested(false)
 {
-	m_pWorkQueue = new OverlapWorkQueue;
 	m_pOBList = new OverlapBlockList;
+	m_pSharedWorkVec = new OverlapWorkVector;
+	m_pSharedWorkVec->reserve(max_items);
+
+	// Set up semaphores and mutexes
 	sem_init( &m_producedSem, PTHREAD_PROCESS_PRIVATE, 0 );
 	sem_init( &m_consumedSem, PTHREAD_PROCESS_PRIVATE, 1 );
-	m_sharedSeqVec.reserve(MAX_NUM_ITEMS);
 	pthread_mutex_init(&m_mutex, NULL);
 }
 
 OverlapThread::~OverlapThread()
 {
 	m_outfile.close();
-	delete m_pWorkQueue;
 	delete m_pOBList;
+	delete m_pSharedWorkVec;
+
 	sem_destroy(&m_producedSem);
 	sem_destroy(&m_consumedSem);
 	pthread_mutex_destroy(&m_mutex);
 }
 
-void OverlapThread::waitConsumed()
+void OverlapThread::swapBuffers(OverlapWorkVector* pIncoming)
 {
+	// Wait for the overlap thread
+	// to finish with the shared vector
+	// then lock the mutex
 	sem_wait(&m_consumedSem);
-}
-
-void OverlapThread::postProduced()
-{
-	sem_post(&m_producedSem);
-}
-
-void OverlapThread::lockMutex()
-{
 	pthread_mutex_lock(&m_mutex);
-}
-
-void OverlapThread::unlockMutex()
-{
+	m_pSharedWorkVec->swap(*pIncoming);
+	
+	// Unlock the mutex and signal the work thread
+	// that it has data
 	pthread_mutex_unlock(&m_mutex);
-}
-
-//
-void OverlapThread::add(const SeqItem& read)
-{
-	// This function assumes the mutex has been acquired already!
-	m_sharedSeqVec.push_back(read);
+	sem_post(&m_producedSem);
 }
 
 //
@@ -67,9 +60,9 @@ void OverlapThread::start()
 //
 void OverlapThread::stop()
 {
-	// Once the thread is ready to receive we know it is
-	// finished processing reads, set the stop flag
-	// and unblock it so it can terminate
+	// Wait for the work thread to finish
+	// with the data its processing then set the stop
+	// flag and unblock the work process
 	sem_wait(&m_consumedSem);
 	m_stopRequested = true;
 	sem_post(&m_producedSem);
@@ -87,15 +80,16 @@ void OverlapThread::run()
 		if(m_stopRequested)
 			break;
 
-		// Overlap all the reads in the vector
+		// Lock the shared buffer and process all
+		// the contained reads
 		pthread_mutex_lock(&m_mutex);
 
-		size_t num_reads = m_sharedSeqVec.size();
+		size_t num_reads = m_pSharedWorkVec->size();
 		for(size_t i = 0; i < num_reads; ++i)
 		{
-			processRead(m_sharedSeqVec[i]);
+			processRead((*m_pSharedWorkVec)[i]);
 		}
-		m_sharedSeqVec.clear();
+		m_pSharedWorkVec->clear();
 		pthread_mutex_unlock(&m_mutex);
 		sem_post(&m_consumedSem);
 	}

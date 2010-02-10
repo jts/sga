@@ -4,24 +4,42 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// Timer - Simple object to that prints the length of its lifetime
+// Timer - Simple object to that prints the wallclock 
+// length of its lifetime
 //
 #ifndef TIMER_H
 #define TIMER_H
 
 #include <string>
+#include <sys/time.h>
 
 class Timer
 {
 	public:
-		Timer(std::string s, bool silent = false) : m_desc(s), m_start(clock()), m_silent(silent) {}
-		~Timer() { 	if(!m_silent) printf("[Timer] %s %.2lfs\n", m_desc.c_str(), (clock() - m_start) / CLOCKS_PER_SEC); }
-		double getElapsedTime() const { return (clock() - m_start) / CLOCKS_PER_SEC; }
-		void reset() { m_start = clock(); }
+		Timer(std::string s, bool silent = false) : m_desc(s), m_silent(silent)
+		{
+			reset();
+		}
+
+		~Timer() 
+		{
+			 	
+			if(!m_silent) 
+				printf("[Timer] %s %.2lfs\n", m_desc.c_str(), getElapsedTime()); 
+		}
+
+		double getElapsedTime() const 
+		{ 
+			time_t now;
+			time(&now);
+			return now - m_start;
+		}
+
+		void reset() { time(&m_start); }
 
 	private:
 		std::string m_desc;
-		double m_start;
+		time_t m_start;
 		bool m_silent;
 };
 

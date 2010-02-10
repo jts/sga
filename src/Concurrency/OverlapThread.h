@@ -23,28 +23,22 @@ struct OverlapWorkItem
 	bool is_end;
 };
 
+
+typedef std::vector<SeqItem> OverlapWorkVector;
+
 typedef LockedQueue<OverlapWorkItem> OverlapWorkQueue;
 
 class OverlapThread
 {
 	public:
 
-		OverlapThread(const OverlapAlgorithm* pOverlapper, const std::string& filename);
+		OverlapThread(const OverlapAlgorithm* pOverlapper, 
+		              const std::string& filename, const size_t max_items);
+
 		~OverlapThread();
 
-		// 
-		void add(const SeqItem& read);
-
-		// 
-		inline OverlapWorkQueue* getWorkQueue() const
-		{
-			return m_pWorkQueue;
-		}
-
-		void waitConsumed();
-		void postProduced();
-		void lockMutex();
-		void unlockMutex();
+		// Exchange the contents of the shared vector with the point-to vector
+		void swapBuffers(OverlapWorkVector* pIncoming);
 
 		// External control functions
 		void start();
@@ -64,9 +58,6 @@ class OverlapThread
 		// Data
 		const OverlapAlgorithm* m_pOverlapper;
 
-		// Incoming queue, protected by a mutex
-		OverlapWorkQueue* m_pWorkQueue;
-
 		// Private file handle and overlap list
 		// which are only acccessed by the thread
 		std::ofstream m_outfile;
@@ -79,14 +70,10 @@ class OverlapThread
 		sem_t m_producedSem;
 		sem_t m_consumedSem;
 		pthread_mutex_t m_mutex;
-		SeqItem m_sharedSeq;
-		std::vector<SeqItem> m_sharedSeqVec;
-
-		static const int MAX_NUM_ITEMS = 50000;
+		OverlapWorkVector* m_pSharedWorkVec;
 
 		// The main thread will set this flag when it wants this thread to terminate
 		volatile bool m_stopRequested;
-
 };
 
 #endif

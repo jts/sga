@@ -172,7 +172,7 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 {
 	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
 	
-	OverlapBlockList* pOutBlocks = new OverlapBlockList;
+	size_t MAX_ITEMS = 10000;
 
 	// The main thread counts as a thread
 	assert(opt::numThreads > 1);
@@ -187,7 +187,7 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		std::stringstream ss;
 		ss << opt::prefix << "-t" << i+1 << HITS_EXT;
 		std::string outfile = ss.str();
-		threadVec[i] = new OverlapThread(pOverlapper, outfile);
+		threadVec[i] = new OverlapThread(pOverlapper, outfile, MAX_ITEMS);
 		threadVec[i]->start();
 	}
 
@@ -196,42 +196,30 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 	int next_thread = 0;
 	int num_to_use = opt::numThreads - 1;
 
-	size_t MAX_ITEMS = 1000;
-	std::vector<SeqItem> seqItemBuffer;
-	seqItemBuffer.reserve(MAX_ITEMS);
+	OverlapWorkVector* pWorkVector = new OverlapWorkVector;
+	pWorkVector->reserve(MAX_ITEMS);
 
 	SeqItem read;
 	while(reader.get(read))
 	{
-		seqItemBuffer.push_back(read);
+		pWorkVector->push_back(read);
 
-		if(seqItemBuffer.size() == MAX_ITEMS)
+		if(pWorkVector->size() == MAX_ITEMS)
 		{
 			OverlapThread* pThread = threadVec[next_thread];
-			pThread->waitConsumed();
-			pThread->lockMutex();
-		
-			for(size_t i = 0; i < seqItemBuffer.size(); ++i)
-				pThread->add(seqItemBuffer[i]);
-			pThread->unlockMutex();
-			pThread->postProduced();
-
-			seqItemBuffer.clear();
+			pThread->swapBuffers(pWorkVector);
+			assert(pWorkVector->empty());
 			next_thread = (next_thread + 1) % num_to_use;
 		}
-		/*
-		if(numIn % 2 == 0)
-		{
-			pOverlapper->overlapRead(read, pOutBlocks);
-		}
-		else
-		{
-			// Add the read to a queue
-			threadVec[next_thread]->enqueue(read);
-			next_thread = (next_thread + 1) % numWorkThreads;
-		}
-		*/
 		++numIn;
+	}
+
+	// Align the remaining reads, if any
+	if(!pWorkVector->empty())
+	{
+		OverlapThread* pThread = threadVec[next_thread];
+		pThread->swapBuffers(pWorkVector);
+		next_thread = (next_thread + 1) % num_to_use;
 	}
 
 	// Done read, stop the threads and destroy them
@@ -241,8 +229,7 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		delete threadVec[i];
 	}
 
-	delete pOutBlocks;
-
+	delete pWorkVector;
 	return numIn;
 }
 
