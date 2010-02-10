@@ -66,8 +66,8 @@ class OverlapThread
 		const OverlapAlgorithm* m_pOverlapper;
 		pthread_t m_thread;
 
-		// External semaphore that all threads set when they are ready
-		// to receive data
+		// External semaphore to post to
+		// when the thread is ready to receive data
 		sem_t* m_pReadySem;
 
 		// Shared data and protection variables

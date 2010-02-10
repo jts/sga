@@ -14,7 +14,7 @@ OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper,
 							 const size_t max_items) : 
                              m_outfile(filename.c_str()), m_pOverlapper(pOverlapper),
 							 m_pReadySem(pReadySem), m_stopRequested(false), 
-							 m_isReady(true)
+							 m_isReady(false)
 {
 	m_pOBList = new OverlapBlockList;
 	m_pSharedWorkVec = new OverlapWorkVector;
@@ -81,13 +81,18 @@ bool OverlapThread::isReady()
 //
 void OverlapThread::run()
 {
+	// Indicate that the thread is ready to receive data
+	pthread_mutex_lock(&m_mutex);
+	m_isReady = true;
 	sem_post(m_pReadySem);
+	pthread_mutex_unlock(&m_mutex);
 
 	while(1)
 	{
+		// Block until there is some data to handle
 		sem_wait(&m_producedSem);
 		
-		// If the stop flag was set while we waited, we are done
+		// If the stop flag is now set, we are done
 		if(m_stopRequested)
 			break;
 
@@ -102,6 +107,8 @@ void OverlapThread::run()
 		m_pSharedWorkVec->clear();
 		m_isReady = true;
 		pthread_mutex_unlock(&m_mutex);
+
+		// Post to the semaphores
 		sem_post(&m_consumedSem);
 		sem_post(m_pReadySem);
 	}
