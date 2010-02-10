@@ -101,16 +101,12 @@ void computeHitsBWT(StringVector& filenameVec)
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
 	BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
 	OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, opt::minOverlap, opt::errorRate, opt::bIrreducibleOnly);
+	SeqReader reader(opt::readsFile);
 
 	// Start timing
 	Timer timer("BWT Alignment", true);
 
-	// Set up the overlapper
-
 	size_t count = 0;
-	SeqReader reader(opt::readsFile);
-	
-	// Perform the actual computation
 	if(opt::numThreads <= 1)
 	{
 		count = computeHitsSerial(reader, pOverlapper, filenameVec);
@@ -120,7 +116,6 @@ void computeHitsBWT(StringVector& filenameVec)
 		count = computeHitsParallel(reader, pOverlapper, filenameVec);
 	}
 
-	// Report the running time
 	double align_time_secs = timer.getElapsedWallTime();
 	printf("[%s] aligned %zu sequences in %lfs (%lf sequences/s)\n", PROGRAM_IDENT, count, align_time_secs, (double)count / align_time_secs);
 

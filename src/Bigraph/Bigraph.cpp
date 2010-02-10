@@ -225,7 +225,7 @@ void Bigraph::simplify()
 // Simplify the graph by compacting edges in the given direction
 void Bigraph::simplify(EdgeDir dir)
 {
-	Timer* pTimer = new Timer("simplify timer");
+	Timer* pTimer = new Timer("Bigraph::simplify");
 	bool graph_changed = true;
 	while(graph_changed)
 	{
