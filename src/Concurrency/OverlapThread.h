@@ -17,13 +17,13 @@
 
 struct OverlapWorkItem
 {
-	OverlapWorkItem(const SeqItem& si, bool b) : read(si), is_end(b) {}
+	OverlapWorkItem(size_t ri, const SeqItem& si) : idx(ri), read(si) {}
+	size_t idx;
 	SeqItem read;
-	bool is_end;
 };
 
 
-typedef std::vector<SeqItem> OverlapWorkVector;
+typedef std::vector<OverlapWorkItem> OverlapWorkVector;
 
 class OverlapThread
 {
@@ -48,7 +48,7 @@ class OverlapThread
 		void run();
 
 		// Main overlap function
-		bool processRead(const SeqItem& read);
+		bool processRead(const OverlapWorkItem& read);
 	
 		// Thread entry point
 		static void* startThread(void* obj);

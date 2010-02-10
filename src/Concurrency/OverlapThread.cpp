@@ -116,27 +116,11 @@ void OverlapThread::run()
 }
 
 // Overlap a read
-bool OverlapThread::processRead(const SeqItem& read)
+bool OverlapThread::processRead(const OverlapWorkItem& item)
 {
-	// Perform the work
-	m_pOverlapper->overlapRead(read, m_pOBList);
-	
-	// Write the hits to the file
-	if(!m_pOBList->empty())
-	{
-		WARN_ONCE("Refactor the overlap hit output code AND FIX INDICES");
-
-		// Write the header info
-		size_t numBlocks = m_pOBList->size();
-		m_outfile << 0 << " " << numBlocks << " ";
-		//std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
-		for(OverlapBlockList::const_iterator iter = m_pOBList->begin(); iter != m_pOBList->end(); ++iter)
-		{
-			m_outfile << *iter << " ";
-		}
-		m_outfile << "\n";
-		m_pOBList->clear();
-	}
+	m_pOverlapper->overlapRead(item.read, m_pOBList);
+	m_pOverlapper->writeOverlapBlocks(item.idx, m_pOBList, m_outfile);
+	m_pOBList->clear();
 	return false;
 }
 

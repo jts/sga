@@ -21,17 +21,13 @@
 int overlapMain(int argc, char** argv);
 
 // overlap computation
-std::string computeHitsBWT();
+void computeHitsBWT(StringVector& filenames);
+size_t computeHitsSerial(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenames);
+size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenames);
 
-size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper);
-size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper);
-
-//
-void writeOverlapBlockList(std::ofstream& writer, size_t idx, const OverlapBlockList* pList);
 
 // Output processing
-void outputHits(std::ofstream& handle, HitVector* pHits);
-void parseHits(std::string hitsFile);
+void convertHitsToOverlaps(const StringVector& hitsFilenames);
 void writeOverlap(Overlap& overlap, std::ofstream& containHandle, std::ofstream& overlapHandle);
 
 // utility functions

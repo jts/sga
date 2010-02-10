@@ -19,7 +19,6 @@
 #include "Timer.h"
 #include "BWTAlgorithms.h"
 #include "AssembleExact.h"
-#include "LockedQueue.h"
 #include "OverlapThread.h"
 
 //
@@ -85,34 +84,28 @@ int overlapMain(int argc, char** argv)
 {
 	Timer* pTimer = new Timer(PROGRAM_IDENT);
 	parseOverlapOptions(argc, argv);
-	std::string hitsFile = computeHitsBWT();
-	parseHits(hitsFile);
-	delete pTimer;
+	
+	StringVector hitsFilenames;
+	computeHitsBWT(hitsFilenames);
+	convertHitsToOverlaps(hitsFilenames);
 
+	delete pTimer;
 	if(opt::numThreads > 1)
 		pthread_exit(NULL);
 
 	return 0;
 }
 
-std::string computeHitsBWT()
+void computeHitsBWT(StringVector& filenameVec)
 {
-	// Create the BWT
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
 	BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
+	OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, opt::minOverlap, opt::errorRate, opt::bIrreducibleOnly);
 
 	// Start timing
 	Timer timer("BWT Alignment", true);
 
 	// Set up the overlapper
-	OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, opt::minOverlap, opt::errorRate, opt::bIrreducibleOnly);
-
-	// Open the writer
-	std::string hitsFile = opt::prefix + HITS_EXT;
-	std::ofstream hitsHandle(hitsFile.c_str());
-	assert(hitsHandle.is_open());
-
-	OverlapBlockList obOutputList;
 
 	size_t count = 0;
 	SeqReader reader(opt::readsFile);
@@ -120,11 +113,11 @@ std::string computeHitsBWT()
 	// Perform the actual computation
 	if(opt::numThreads <= 1)
 	{
-		count = computeHitsSerial(reader, hitsHandle, pOverlapper);
+		count = computeHitsSerial(reader, pOverlapper, filenameVec);
 	}
 	else
 	{
-		count = computeHitsParallel(reader, pOverlapper);
+		count = computeHitsParallel(reader, pOverlapper, filenameVec);
 	}
 
 	// Report the running time
@@ -135,35 +128,37 @@ std::string computeHitsBWT()
 	delete pBWT;
 	delete pRBWT;
 	delete pOverlapper;
-	
-	hitsHandle.close();
-	return hitsFile;
 }
 
 // Compute the hits for each read in the SeqReader file without threading
 // Return the number of reads processed
-size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper)
+size_t computeHitsSerial(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
 	printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
 
-	SeqItem read;
-	size_t count = 0;
 	OverlapBlockList* pOutBlocks = new OverlapBlockList;
 
+	std::string filename = opt::prefix + HITS_EXT;
+	std::ofstream writer(filename.c_str());
+	assert(writer.is_open());
+	filenameVec.push_back(filename);
+
+	SeqItem read;
+	size_t currIdx = 0;
 	while(reader.get(read))
 	{
-		if(opt::verbose > 0 && count % 50000 == 0)
-			printf("[%s] Aligned %zu sequences\n", PROGRAM_IDENT, count);
+		if(opt::verbose > 0 && currIdx % 50000 == 0)
+			printf("[%s] Aligned %zu sequences\n", PROGRAM_IDENT, currIdx);
 
 		pOverlapper->overlapRead(read, pOutBlocks);
-		
-		writeOverlapBlockList(writer, count, pOutBlocks);
+		pOverlapper->writeOverlapBlocks(currIdx++, pOutBlocks, writer);
 		pOutBlocks->clear();
-		++count;
 	}
 
 	delete pOutBlocks;
-	return count;
+	writer.close();
+
+	return currIdx;
 }
 
 // Compute the hits for each read in the SeqReader file with threading
@@ -173,7 +168,7 @@ size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const Overlap
 // The main thread and each worker share another semaphore which blocks the worker
 // until data has been dispatched to the worker by main.
 // The total number of reads processed is returned
-size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper)
+size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
 	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
 
@@ -197,14 +192,15 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		std::stringstream ss;
 		ss << opt::prefix << "-thread" << i << HITS_EXT;
 		std::string outfile = ss.str();
-		
+		filenameVec.push_back(outfile);
+
 		// Create and start the thread
 		threadVec[i] = new OverlapThread(pOverlapper, outfile, &readySem, MAX_ITEMS);
 		threadVec[i]->start();
 	}
 
 	SeqItem read;
-	int64_t numIn = 0;
+	size_t currIdx = 0;
 	bool done = false;
 	
 	while(!done)
@@ -212,10 +208,7 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		// Parse one read from the stream
 		done = !reader.get(read);
 		if(!done)
-		{
-			pWorkVector->push_back(read);
-			++numIn;
-		}
+			pWorkVector->push_back(OverlapWorkItem(currIdx++, read));
 
 		// The buffer is full or there are no more 
 		// sequences to read, push the contents of the 
@@ -256,44 +249,13 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 
 	sem_destroy(&readySem);
 	delete pWorkVector;
-	return numIn;
+	return currIdx;
 }
 
-// Write the contents of pList to the handle
-void writeOverlapBlockList(std::ofstream& writer, size_t idx, const OverlapBlockList* pList)
+//
+void convertHitsToOverlaps(const StringVector& hitsFilenames)
 {
-	// Write the hits to the file
-	if(!pList->empty())
-	{
-		// Write the header info
-		size_t numBlocks = pList->size();
-		writer << idx << " " << numBlocks << " ";
-		//std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
-		for(OverlapBlockList::const_iterator iter = pList->begin(); iter != pList->end(); ++iter)
-		{
-			writer << *iter << " ";
-		}
-		writer << "\n";
-	}
-}
-
-
-// Parse all the hits and convert them to overlaps
-void parseHits(std::string hitsFile)
-{
-	printf("[%s] converting suffix array intervals to overlaps\n", PROGRAM_IDENT);
-
-	// Open files
-	std::string overlapFile = opt::prefix + OVR_EXT;
-	std::ofstream overlapHandle(overlapFile.c_str());
-	assert(overlapHandle.is_open());
-
-	std::string containFile = opt::prefix + CTN_EXT;
-	std::ofstream containHandle(containFile.c_str());
-	assert(containHandle.is_open());
-
-	std::ifstream hitsHandle(hitsFile.c_str());
-	assert(hitsHandle.is_open());
+	printf("[%s] converting suffix array interval hits to overlaps\n", PROGRAM_IDENT);
 
 	// Load the suffix array index and the reverse suffix array index
 	// Note these are not the full suffix arrays
@@ -304,69 +266,84 @@ void parseHits(std::string hitsFile)
 	ReadTable* pFwdRT = new ReadTable(opt::readsFile);
 	ReadTable* pRevRT = new ReadTable();
 	pRevRT->initializeReverse(pFwdRT);
-	
-	// Read each hit sequentially, converting it to an overlap
-	std::string line;
-	while(getline(hitsHandle, line))
+
+	// Open files output files
+	std::string overlapFile = opt::prefix + OVR_EXT;
+	std::ofstream overlapHandle(overlapFile.c_str());
+	assert(overlapHandle.is_open());
+
+	std::string containFile = opt::prefix + CTN_EXT;
+	std::ofstream containHandle(containFile.c_str());
+	assert(containHandle.is_open());
+
+	for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
 	{
-		std::istringstream convertor(line);
-
-		// Read the overlap blocks for a read
-		size_t readIdx;
-		size_t numBlocks;
-		convertor >> readIdx >> numBlocks;
-
-		//std::cout << "<Read> idx: " << readIdx << " count: " << numBlocks << "\n";
-		for(size_t i = 0; i < numBlocks; ++i)
+		printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
+		std::ifstream reader(iter->c_str());
+	
+		// Read each hit sequentially, converting it to an overlap
+		std::string line;
+		while(getline(reader, line))
 		{
-			// Read the block
-			OverlapBlock record;
-			convertor >> record;
-			//std::cout << "\t" << record << "\n";
+			std::istringstream convertor(line);
 
-			// Iterate through the range and write the overlaps
-			for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
+			// Read the overlap blocks for a read
+			size_t readIdx;
+			size_t numBlocks;
+			convertor >> readIdx >> numBlocks;
+
+			//std::cout << "<Read> idx: " << readIdx << " count: " << numBlocks << "\n";
+			for(size_t i = 0; i < numBlocks; ++i)
 			{
-				const ReadTable* pCurrRT = (record.flags.isTargetRev()) ? pRevRT : pFwdRT;
-				const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
-				const SeqItem& query = pCurrRT->getRead(readIdx);
+				// Read the block
+				OverlapBlock record;
+				convertor >> record;
+				//std::cout << "\t" << record << "\n";
 
-				int64_t saIdx = j;
+				// Iterate through the range and write the overlaps
+				for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
+				{
+					const ReadTable* pCurrRT = (record.flags.isTargetRev()) ? pRevRT : pFwdRT;
+					const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
+					const SeqItem& query = pCurrRT->getRead(readIdx);
 
-				// The index of the second read is given as the position in the SuffixArray index
-				const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(saIdx).getID());
+					int64_t saIdx = j;
 
-				// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
-				if(query.id != target.id)
-				{	
-					// Compute the endpoints of the overlap
-					int s1 = query.seq.length() - record.overlapLen;
-					int e1 = s1 + record.overlapLen - 1;
-					SeqCoord sc1(s1, e1, query.seq.length());
+					// The index of the second read is given as the position in the SuffixArray index
+					const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(saIdx).getID());
 
-					int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
-					int e2 = s2 + record.overlapLen - 1;
-					SeqCoord sc2(s2, e2, target.seq.length());
+					// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
+					if(query.id != target.id)
+					{	
+						// Compute the endpoints of the overlap
+						int s1 = query.seq.length() - record.overlapLen;
+						int e1 = s1 + record.overlapLen - 1;
+						SeqCoord sc1(s1, e1, query.seq.length());
 
-					// The coordinates are always with respect to the read, so flip them if
-					// we aligned to/from the reverse of the read
-					if(record.flags.isQueryRev())
-						sc1.flip();
-					if(record.flags.isTargetRev())
-						sc2.flip();
+						int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
+						int e2 = s2 + record.overlapLen - 1;
+						SeqCoord sc2(s2, e2, target.seq.length());
 
-					bool isRC = record.flags.isTargetRev() != record.flags.isQueryRev();
+						// The coordinates are always with respect to the read, so flip them if
+						// we aligned to/from the reverse of the read
+						if(record.flags.isQueryRev())
+							sc1.flip();
+						if(record.flags.isTargetRev())
+							sc2.flip();
 
-					Overlap o(query.id, sc1, target.id, sc2, isRC, record.numDiff);
-				
-					// The alignment logic above has the potential to produce duplicate alignments
-					// To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
-					// the second or the match is a containment and the query is reversed (containments can be 
-					// output up to 4 times total).
-					// If we are running in irreducible mode this is not necessary
-					if(o.id[0] < o.id[1] || (o.match.isContainment() && record.flags.isQueryRev()))
-						continue;
-					writeOverlap(o, containHandle, overlapHandle);
+						bool isRC = record.flags.isTargetRev() != record.flags.isQueryRev();
+
+						Overlap o(query.id, sc1, target.id, sc2, isRC, record.numDiff);
+					
+						// The alignment logic above has the potential to produce duplicate alignments
+						// To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
+						// the second or the match is a containment and the query is reversed (containments can be 
+						// output up to 4 times total).
+						// If we are running in irreducible mode this is not necessary
+						if(o.id[0] < o.id[1] || (o.match.isContainment() && record.flags.isQueryRev()))
+							continue;
+						writeOverlap(o, containHandle, overlapHandle);
+					}
 				}
 			}
 		}
@@ -381,7 +358,6 @@ void parseHits(std::string hitsFile)
 	// Close files
 	overlapHandle.close();
 	containHandle.close();
-	hitsHandle.close();
 }
 
 // Before sanity checks on the overlaps and write them out

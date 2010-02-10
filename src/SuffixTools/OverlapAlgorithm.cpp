@@ -89,3 +89,20 @@ void OverlapAlgorithm::overlapReadIrreducible(const SeqItem& read, OverlapBlockL
 	BWTAlgorithms::calculateIrreducibleHits(m_pBWT, m_pRevBWT, &obTemp, pOBOut);
 }
 
+void OverlapAlgorithm::writeOverlapBlocks(size_t readIdx, const OverlapBlockList* pList, std::ofstream& writer) const
+{
+	// Write the hits to the file
+	if(!pList->empty())
+	{
+		// Write the header info
+		size_t numBlocks = pList->size();
+		writer << readIdx << " " << numBlocks << " ";
+		//std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
+		for(OverlapBlockList::const_iterator iter = pList->begin(); iter != pList->end(); ++iter)
+		{
+			writer << *iter << " ";
+		}
+		writer << "\n";
+	}
+}
+
