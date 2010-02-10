@@ -167,18 +167,22 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 {
 	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
 
-	size_t MAX_ITEMS = 500;
+	size_t MAX_ITEMS = 10;
 	
 	// Semaphore shared between all the threads indicating whether 
 	// the thread is read to take data
 	sem_t readySem;
 	sem_init( &readySem, PTHREAD_PROCESS_PRIVATE, 0 );
 
-	// Work queue
 	typedef std::vector<OverlapThread*> ThreadPtrVector;
+	typedef std::queue<OverlapWorkVector*> WorkPtrList;
+	
 	OverlapWorkVector* pWorkVector = new OverlapWorkVector;
 	pWorkVector->reserve(MAX_ITEMS);
 	
+	WorkPtrList freeQueue;
+	WorkPtrList fullQueue;
+
 	// Initialize threads
 	ThreadPtrVector threadVec(opt::numThreads, NULL);
 	for(int i = 0; i < opt::numThreads; ++i)
@@ -192,12 +196,119 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		// Create and start the thread
 		threadVec[i] = new OverlapThread(pOverlapper, outfile, &readySem, MAX_ITEMS);
 		threadVec[i]->start();
+
+		OverlapWorkVector* pWorkVec = new OverlapWorkVector;
+		pWorkVec->reserve(MAX_ITEMS);
+		freeQueue.push(pWorkVec);
 	}
 
 	SeqItem read;
 	size_t currIdx = 0;
 	bool done = false;
 	
+	while(!done)
+	{
+		assert(!freeQueue.empty());
+		// Parse one read from the stream
+		done = !reader.get(read);
+		if(!done)
+		{
+			freeQueue.front()->push_back(OverlapWorkItem(currIdx++, read));
+			if(freeQueue.front()->size() == MAX_ITEMS)
+			{
+				fullQueue.push(freeQueue.front());
+				freeQueue.pop();
+			}
+		}
+		else
+		{
+			// Move all the buffers to the full list
+			while(!freeQueue.empty())
+			{
+				fullQueue.push(freeQueue.front());
+				freeQueue.pop();
+			}
+		}
+
+		// All the buffers are full, dispatch the work to the threads
+		if(!fullQueue.empty())
+		{			
+			// Block on the semaphore if there are no free queues
+			// to read data into, otherwise just do trywait
+			int code = 0;
+			while(!fullQueue.empty() && (code == 0 || done))
+			{
+				if(freeQueue.empty())
+					code = sem_wait(&readySem);
+				else
+					code = sem_trywait(&readySem);
+				
+				// sem_wait/trywait returns 0 if the semaphore was successfully 
+				// acquired and decremented
+				if(code == 0)
+				{
+					// Determine which thread is now available and dispatch the
+					// data to it
+					int selected_id = -1;
+					for(int i = 0; i < opt::numThreads; ++i)
+					{
+						if(threadVec[i]->isReady())
+						{
+							selected_id = i;
+							break;
+						}
+					}
+
+					assert(selected_id >= 0);
+					OverlapThread* pThread = threadVec[selected_id];
+					OverlapWorkVector* pCurrBuffer = fullQueue.front();
+					fullQueue.pop();
+
+					pThread->swapBuffers(pCurrBuffer);
+					assert(pCurrBuffer->empty());
+					freeQueue.push(pCurrBuffer);
+				}
+			}
+		}
+		
+		/*
+		// All the buffers are full, dispatch the work to the threads
+		if(freeQueue.empty() || done)
+		{
+			while(!fullQueue.empty())
+			{
+				// Wait for one of the work threads to become available
+				sem_wait(&readySem);
+
+				// Determine which thread is now available and dispatch the
+				// data to it
+				int selected_id = -1;
+				for(int i = 0; i < opt::numThreads; ++i)
+				{
+					if(threadVec[i]->isReady())
+					{
+						selected_id = i;
+						break;
+					}
+				}
+
+				assert(selected_id >= 0);
+				OverlapThread* pThread = threadVec[selected_id];
+				OverlapWorkVector* pCurrBuffer = fullQueue.front();
+				fullQueue.pop();
+
+
+				pThread->swapBuffers(pCurrBuffer);
+				assert(pCurrBuffer->empty());
+				freeQueue.push(pCurrBuffer);
+			}
+		}
+		*/
+	}
+	assert(pWorkVector->empty());
+	
+
+	/*
 	while(!done)
 	{
 		// Parse one read from the stream
@@ -234,6 +345,7 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		}
 	}
 	assert(pWorkVector->empty());
+	*/
 
 	// Stop the threads and destroy them
 	for(int i = 0; i < opt::numThreads; ++i)
@@ -242,6 +354,13 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		delete threadVec[i];
 	}
 
+	assert(fullQueue.empty());
+	while(!freeQueue.empty())
+	{
+		OverlapWorkVector* pCurr = freeQueue.front();
+		freeQueue.pop();
+		delete pCurr;
+	}
 	sem_destroy(&readySem);
 	delete pWorkVector;
 	return currIdx;
