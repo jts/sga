@@ -37,12 +37,10 @@ class OverlapThread
 		// Exchange the contents of the shared vector with the point-to vector
 		void swapBuffers(OverlapWorkVector* pIncoming);
 
-		// Returns true if the thread is ready to receive data
-		bool isReady();
-
 		// External control functions
 		void start();
 		void stop();
+		bool isReady();
 
 	private:
 
@@ -55,14 +53,13 @@ class OverlapThread
 		// Thread entry point
 		static void* startThread(void* obj);
 
-		// Data
 		
 		// Private file handle and overlap list
 		// which are only acccessed by the thread
 		std::ofstream m_outfile;
 		OverlapBlockList* m_pOBList;
 
-		// 
+		// Handles
 		const OverlapAlgorithm* m_pOverlapper;
 		pthread_t m_thread;
 
@@ -70,10 +67,11 @@ class OverlapThread
 		// when the thread is ready to receive data
 		sem_t* m_pReadySem;
 
-		// Shared data and protection variables
+		// Semaphore the external caller posts to when
+		// data is ready to consume
 		sem_t m_producedSem;
-		sem_t m_consumedSem;
 		
+		// Shared data
 		pthread_mutex_t m_mutex;
 		OverlapWorkVector* m_pSharedWorkVec;
 		volatile bool m_stopRequested;

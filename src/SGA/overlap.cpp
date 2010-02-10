@@ -167,25 +167,30 @@ size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const Overlap
 }
 
 // Compute the hits for each read in the SeqReader file with threading
-// Return the number of reads processed
+// Design: The worker threads are encapsulated in the OverlapThread class
+// The main thread reads in data and dispatches to a waiting worker thread.
+// All threads share a semaphore indicating whether they can accept data or not
+// The main thread and each worker share another semaphore which blocks the worker
+// until data has been dispatched to the worker by main.
+// The total number of reads processed is returned
 size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper)
 {
-	size_t MAX_ITEMS = 5000;
+	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+
+	size_t MAX_ITEMS = 500;
 	
 	// Semaphore shared between all the threads indicating whether 
-	// the threads can take data
+	// the thread is read to take data
 	sem_t readySem;
 	sem_init( &readySem, PTHREAD_PROCESS_PRIVATE, 0 );
 
-	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-
+	// Work queue
 	typedef std::vector<OverlapThread*> ThreadPtrVector;
 	OverlapWorkVector* pWorkVector = new OverlapWorkVector;
 	pWorkVector->reserve(MAX_ITEMS);
 	
-	ThreadPtrVector threadVec(opt::numThreads, NULL);
-
 	// Initialize threads
+	ThreadPtrVector threadVec(opt::numThreads, NULL);
 	for(int i = 0; i < opt::numThreads; ++i)
 	{
 		// Create the thread
@@ -198,9 +203,8 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		threadVec[i]->start();
 	}
 
-	// Read in sequences, dispatch to threads
-	int64_t numIn = 0;
 	SeqItem read;
+	int64_t numIn = 0;
 	bool done = false;
 	
 	while(!done)
@@ -233,14 +237,17 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 				}
 			}
 			assert(selected_id >= 0);
+
 			OverlapThread* pThread = threadVec[selected_id];
+			
+			// Dispatch the data to the work thread which clears the buffer
 			pThread->swapBuffers(pWorkVector);
 			assert(pWorkVector->empty());
 		}
 	}
 	assert(pWorkVector->empty());
 
-	// Done read, stop the threads and destroy them
+	// Stop the threads and destroy them
 	for(int i = 0; i < opt::numThreads; ++i)
 	{
 		threadVec[i]->stop();
