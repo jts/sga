@@ -14,10 +14,12 @@
 #include <queue>
 #include <pthread.h>
 #include "Util.h"
+
 template<class T>
 class LockedQueue
 {
 	public:
+	
 		LockedQueue()
 		{
 			pthread_mutex_init(&m_mutex, NULL);

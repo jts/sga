@@ -24,7 +24,7 @@ int overlapMain(int argc, char** argv);
 std::string computeHitsBWT();
 
 size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper);
-size_t computeHitsParallel(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper);
+size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper);
 
 //
 void writeOverlapBlockList(std::ofstream& writer, size_t idx, const OverlapBlockList* pList);

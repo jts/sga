@@ -8,6 +8,7 @@
 //
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <iterator>
 #include "Util.h"
 #include "overlap.h"
@@ -96,11 +97,12 @@ int overlapMain(int argc, char** argv)
 
 std::string computeHitsBWT()
 {
-	Timer timer("BWT Alignment", true);
-
 	// Create the BWT
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
 	BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
+
+	// Start timing
+	Timer timer("BWT Alignment", true);
 
 	// Set up the overlapper
 	OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, opt::minOverlap, opt::errorRate, opt::bIrreducibleOnly);
@@ -122,7 +124,7 @@ std::string computeHitsBWT()
 	}
 	else
 	{
-		count = computeHitsParallel(reader, hitsHandle, pOverlapper);
+		count = computeHitsParallel(reader, pOverlapper);
 	}
 
 	// Report the running time
@@ -166,71 +168,82 @@ size_t computeHitsSerial(SeqReader& reader, std::ofstream& writer, const Overlap
 
 // Compute the hits for each read in the SeqReader file with threading
 // Return the number of reads processed
-size_t computeHitsParallel(SeqReader& reader, std::ofstream& writer, const OverlapAlgorithm* pOverlapper)
+size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper)
 {
 	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+	
+	OverlapBlockList* pOutBlocks = new OverlapBlockList;
 
-	// Create the thread
-	OverlapThread* pThread = new OverlapThread(pOverlapper);
-	pThread->start();
+	// The main thread counts as a thread
+	assert(opt::numThreads > 1);
+	size_t numWorkThreads = opt::numThreads - 1;
+	typedef std::vector<OverlapThread*> ThreadPtrVector;
+	ThreadPtrVector threadVec(numWorkThreads, NULL);
 
+	// Initialize threads
+	for(size_t i = 0; i < numWorkThreads; ++i)
+	{
+		// Create the thread
+		std::stringstream ss;
+		ss << opt::prefix << "-t" << i+1 << HITS_EXT;
+		std::string outfile = ss.str();
+		threadVec[i] = new OverlapThread(pOverlapper, outfile);
+		threadVec[i]->start();
+	}
+
+	// Read in sequences, dispatch to threads
 	int64_t numIn = 0;
-	int64_t numOut = 0;
-	int64_t maxDiffSeen = 0;
-	int64_t maxInProgress = 100;
+	int next_thread = 0;
+	int num_to_use = opt::numThreads - 1;
+
+	size_t MAX_ITEMS = 1000;
+	std::vector<SeqItem> seqItemBuffer;
+	seqItemBuffer.reserve(MAX_ITEMS);
 
 	SeqItem read;
 	while(reader.get(read))
 	{
-		// Add the read to a queue
-		pThread->getSeqQueue()->push(read);
-		++numIn;
+		seqItemBuffer.push_back(read);
 
-		// Check if any overlap lists need to be written out
-		do 
+		if(seqItemBuffer.size() == MAX_ITEMS)
 		{
-			if(!pThread->getOBListQueue()->empty())
-			{
-				OverlapBlockList* pToWrite = pThread->getOBListQueue()->pop();
+			OverlapThread* pThread = threadVec[next_thread];
+			pThread->waitConsumed();
+			pThread->lockMutex();
+		
+			for(size_t i = 0; i < seqItemBuffer.size(); ++i)
+				pThread->add(seqItemBuffer[i]);
+			pThread->unlockMutex();
+			pThread->postProduced();
 
-				WARN_ONCE("MUST KEEP TRACK OF INDEX");
-				writeOverlapBlockList(writer, 0, pToWrite);
-				++numOut;
-
-				// The main thread is responsible for deallocating the list
-				delete pToWrite;
-			}
-			usleep(50);
-		} while(numIn - numOut > maxInProgress);
-
-		if(numIn - numOut > maxDiffSeen)
-			maxDiffSeen = numIn - numOut;
-	}
-
-	// Wait for threads to finish
-	while(numOut < numIn)
-	{
-		// Check if any overlap lists need to be written out
-		if(!pThread->getOBListQueue()->empty())
-		{
-			OverlapBlockList* pToWrite = pThread->getOBListQueue()->pop();
-
-			WARN_ONCE("MUST KEEP TRACK OF INDEX");
-			writeOverlapBlockList(writer, 0, pToWrite);
-			++numOut;
-
-			// The main thread is responsible for deallocating the list
-			delete pToWrite;
+			seqItemBuffer.clear();
+			next_thread = (next_thread + 1) % num_to_use;
 		}
+		/*
+		if(numIn % 2 == 0)
+		{
+			pOverlapper->overlapRead(read, pOutBlocks);
+		}
+		else
+		{
+			// Add the read to a queue
+			threadVec[next_thread]->enqueue(read);
+			next_thread = (next_thread + 1) % numWorkThreads;
+		}
+		*/
+		++numIn;
 	}
 
-	std::cout << "Max diff seen: " << maxDiffSeen << "\n";
+	// Done read, stop the threads and destroy them
+	for(size_t i = 0; i < numWorkThreads; ++i)
+	{
+		threadVec[i]->stop();
+		delete threadVec[i];
+	}
 
-	// Signal threads to stop
-	pThread->stop();
-	delete pThread;
+	delete pOutBlocks;
 
-	return numOut;
+	return numIn;
 }
 
 // Write the contents of pList to the handle
