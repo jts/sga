@@ -139,9 +139,8 @@ void assemble()
 
 	pGraph->visit(resolveVisit);
 
-
 	//std::cout << "Paired overlap distance\n";
-	//pGraph->visit(pairedOverlapVisit);
+	pGraph->visit(pairedOverlapVisit);
 
 	return;
 /*

@@ -39,7 +39,6 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 	for(size_t idx = 0; idx < ED_COUNT; idx++)
 	{
 		EdgeDir dir = EDGE_DIRECTIONS[idx];
-		//std::cout << pVertex->getID() << "," << dir << "\n";
 		EdgePtrVec edges = pVertex->getEdges(dir); // These edges are already sorted
 
 		if(edges.size() == 0)
@@ -697,6 +696,7 @@ bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 			{
 				trusted++;
 				vertEdgeVec[i]->setColor(GC_RED);
+				vertEdgeVec[i]->isTrusted = true;
 			}
 			else
 			{
@@ -876,7 +876,6 @@ void SGEdgeClassVisitor::previsit(StringGraph* /*pGraph*/)
 	num_bad = 0;
 }
 
-// Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
 bool SGEdgeClassVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
 	int curr_pos = atoi(pVertex->getID().c_str());

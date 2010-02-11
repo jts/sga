@@ -68,7 +68,7 @@ class Edge
 {
 	public:
 		Edge(Vertex* end, EdgeDir dir, EdgeComp comp, SeqCoord m) : 
-				 m_pEnd(end), m_pTwin(NULL), m_matchCoord(m), m_color(GC_WHITE)
+				 m_pEnd(end), m_pTwin(NULL), m_matchCoord(m), m_color(GC_WHITE), isTrusted(false)
 		{
 			m_edgeData.setDir(dir);
 			m_edgeData.setComp(comp);
@@ -164,6 +164,9 @@ class Edge
 		SeqCoord m_matchCoord;
 		GraphColor m_color;
 		EdgeData m_edgeData; // dir/comp member
+
+	public:
+		bool isTrusted;
 };
 
 #endif
