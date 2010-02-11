@@ -620,6 +620,13 @@ void SGTCVisitor::postvisit(StringGraph* pGraph)
 	printf("ng before: %d ng after: %d (%d) nb before: %d nb after: %d (%d) prop good: %lf\n", ngb, nga, ngc, nbb, nba, nbc, rel);
 }
 
+void SGVertexPairingVisitor::previsit(StringGraph* pGraph)
+{
+	num_paired = 0;
+	num_unpaired = 0;
+	pGraph->setColors(GC_WHITE);
+}
+
 // Visit each vertex in the graph, find its pair and link them
 bool SGVertexPairingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
@@ -633,15 +640,28 @@ bool SGVertexPairingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 		{
 			pVertex->setPairVertex(pPairV);
 			pPairV->setPairVertex(pVertex);
+			num_paired++;
+		}
+		else
+		{
+			pVertex->setColor(GC_BLACK);
+			num_unpaired++;
 		}
 	}
 	return false;
+}
+
+void SGVertexPairingVisitor::postvisit(StringGraph* pGraph)
+{
+	printf("Graph has %d paired vertices, removed %d verts with no pairs\n", num_paired, num_unpaired);
+	pGraph->sweepVertices(GC_BLACK);
 }
 
 //
 void SGPETrustVisitor::previsit(StringGraph* pGraph)
 {
 	pGraph->setColors(GC_WHITE);
+	printf("TOKEN\tTRUSTED\tNOT\tDIFFSTRAND\tTOTAL\n");
 }
 
 
@@ -685,15 +705,25 @@ bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 
 	// 
 	int trusted = 0;
+	int nottrusted = 0;
+	int diffstrand = 0;
+
 	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
 	{
-		if(vertEdgeVec[i]->getEnd()->getColor() == GC_RED)
+		if(vertEdgeVec[i]->getComp() == EC_SAME)
 		{
-			trusted++;
+			if(vertEdgeVec[i]->getEnd()->getColor() == GC_RED)
+				trusted++;
+			else
+				nottrusted++;
+		}
+		else
+		{
+			++diffstrand;
 		}
 	}
 
-	printf("trusted: %d total: %zu untrusted: %zu\n", trusted, vertEdgeVec.size(), vertEdgeVec.size() - trusted);
+	printf("TOKEN\t%d\t%d\t%d\t%zu\n", trusted, nottrusted, diffstrand, vertEdgeVec.size());
 
 	// Reset all the vertex colors
 	for(size_t i = 0; i < pairEdgeVec.size(); ++i)
@@ -716,7 +746,6 @@ void SGPETrustVisitor::postvisit(StringGraph* pGraph)
 	pGraph->sweepEdges(GC_BLACK);
 }
 
-// Visit each vertex in the graph, find its pair and link them
 bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
 	Vertex* pPairSV = pVertex->getPairVertex();
@@ -738,17 +767,19 @@ bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 		EdgePtrVec ppw_edges = pPairW->findEdgesTo(pPairSV->getID());
 		size_t overlap_len = pVWEdge->getMatchLength();
 
-		if(ppw_edges.size() == 1)
+		if(pVWEdge->getComp() == EC_SAME)
 		{
-			Edge* pPPEdge = ppw_edges.front();
-			size_t pair_overlap_len = pPPEdge->getMatchLength();
-			printf("pairoverlap\t%s\t%s\t%zu\t%zu\n", pVertex->getID().c_str(), pW->getID().c_str(), overlap_len, pair_overlap_len);
+			if(ppw_edges.size() == 1)
+			{
+				Edge* pPPEdge = ppw_edges.front();
+				size_t pair_overlap_len = pPPEdge->getMatchLength();
+				printf("pairoverlap\t%s\t%s\t%zu\t%zu\n", pVertex->getID().c_str(), pW->getID().c_str(), overlap_len, pair_overlap_len);
+			}
+			else
+			{
+				printf("pairoverlap\t%s\t%s\t%zu\t%d\n", pVertex->getID().c_str(), pW->getID().c_str(), overlap_len, 0);
+			}
 		}
-		else
-		{
-			printf("pairoverlap\t%s\t%s\t%zu\t%d\n", pVertex->getID().c_str(), pW->getID().c_str(), overlap_len, 0);
-		}
-	
 	}
 	return false;
 }

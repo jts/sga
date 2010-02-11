@@ -107,7 +107,7 @@ void computeHitsBWT(StringVector& filenameVec)
 	Timer timer("BWT Alignment", true);
 
 	size_t count = 0;
-	if(opt::numThreads <= 1 && false)
+	if(opt::numThreads <= 1)
 	{
 		count = computeHitsSerial(reader, pOverlapper, filenameVec);
 	}

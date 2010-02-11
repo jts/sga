@@ -106,9 +106,12 @@ struct SGTCVisitor
 struct SGVertexPairingVisitor
 {
 	SGVertexPairingVisitor() {}
-	void previsit(StringGraph*) {}
+	void previsit(StringGraph*);
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*) {}
+	void postvisit(StringGraph*);
+
+	int num_paired;
+	int num_unpaired;
 };
 
 // Build the paired end trust network

@@ -106,6 +106,16 @@ void assemble()
 	std::cout << "Initial graph stats\n";
 	pGraph->visit(statsVisit);
 
+	std::cout << "Pairing reads\n";
+	pGraph->visit(pairingVisit);
+
+	std::cout << "Processing trust network\n";
+	pGraph->visit(trustVisit);
+
+	std::cout << "Paired overlap distance\n";
+	pGraph->visit(pairedOverlapVisit);
+
+
 /*
 	if(opt::bTrim)
 	{

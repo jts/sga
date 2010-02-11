@@ -13,7 +13,7 @@ AC_PROG_CC
 AC_PROG_RANLIB
 
 # Set compiler flags.
-AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
+AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra')
 
 AC_CONFIG_FILES([Makefile
 		Util/Makefile

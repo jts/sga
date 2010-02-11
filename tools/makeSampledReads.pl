@@ -16,7 +16,6 @@ my $bVerbose = 0;
 my $bSameStrand = 0;
 my $bTrackPos = 0;
 my $bSingleEnd = 0;
-my $fragment_dist = Statistics::Distrib::Normal->new(mu => $pe_mean, sigma => $pe_sd);
 
 GetOptions("length=i" => \$rl,
 			"pe_mean=i" => \$pe_mean,
@@ -28,6 +27,8 @@ GetOptions("length=i" => \$rl,
 			"help" => \$bHelp,
 			"verbose" => \$bVerbose);
 
+open(POS, ">read-positions.p$pe_mean.txt");
+
 if($bHelp)
 {
 	print STDERR "makeSampledReads.pl [OPTIONS] <FILE>\n";
@@ -37,7 +38,7 @@ if($bHelp)
 	print STDERR "--length=i          The length of the reads\n";
 	print STDERR "--same_strand       Force both reads to be from the same strand\n";
 	print STDERR "--single-end        Do not make paired reads\n";
-	print STDERR "--track             Generate unpaired reads and use the position the read was sampled from as the ID\n";
+	print STDERR "--track             Use the position the read was sampled from as the ID\n";
 	print STDERR "--pe_mean=i         The mean fragment size for paired-reads\n";
 	print STDERR "--pe_sd=f           The standard deviation of the fragment distribution\n";
 	print STDERR "                       if this is <= 1.0 it is interpreted to be a fraction\n";
@@ -49,6 +50,8 @@ if($pe_sd <= 1.0)
 {
 	$pe_sd = $pe_sd * $pe_mean;
 }
+
+my $fragment_dist = Statistics::Distrib::Normal->new(mu => $pe_mean, sigma => $pe_sd);
 
 if($bVerbose)
 {
@@ -87,7 +90,7 @@ while(<>)
 	}
 }
 
-if($bTrackPos || $bSingleEnd)
+if($bSingleEnd)
 {
 	outputSEReads(\$buffer);
 }
@@ -95,6 +98,8 @@ else
 {
 	outputPEReads(\$buffer);
 }
+
+close(POS);
 
 sub outputPEReads
 {
@@ -105,7 +110,8 @@ sub outputPEReads
 	for(my $i = 0; $i < $num_reads; ++$i)
 	{
 		my $start_1 = int(rand($gl));
-		my $start_2 = $fragment_dist->rand() + $start_1 - $rl;
+		my $frag_size = int($fragment_dist->rand());
+		my $start_2 = $frag_size + $start_1 - $rl;
 
 		my $end_1 = $start_1 + $rl - 1;
 		my $end_2 = $start_2 + $rl - 1;
@@ -113,9 +119,18 @@ sub outputPEReads
 
 		my $seq_1 = getRead($buffer, $start_1, $end_1); 
 		my $seq_2 = getRead($buffer, $start_2, $end_2);
+		my $name_1 = "$total/A";
+		my $name_2 = "$total/B";
+		
+		print POS "$name_1\t$start_1\t$frag_size\n";
+		print POS "$name_2\t$start_2\t$frag_size\n";
+
+		#$name_1 .= ":$start_1" if $bTrackPos;
+		#$name_2 .= ":$start_2" if $bTrackPos;
+
 		$seq_2 = rc($seq_2) unless $bSameStrand;
 		next if($seq_1 =~ /N/ || $seq_2 =~ /N/);
-		print join("\n", (">$total/A", $seq_1, ">$total/B", $seq_2)) . "\n";
+		print join("\n", (">$name_1", $seq_1, ">$name_2", $seq_2)) . "\n";
 		++$total;
 	}
 }
