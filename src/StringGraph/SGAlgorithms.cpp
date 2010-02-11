@@ -643,24 +643,24 @@ bool SGVertexPairingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 		}
 		else
 		{
-			pVertex->setColor(GC_BLACK);
+			//pVertex->setColor(GC_BLACK);
 			num_unpaired++;
 		}
 	}
 	return false;
 }
 
-void SGVertexPairingVisitor::postvisit(StringGraph* pGraph)
+void SGVertexPairingVisitor::postvisit(StringGraph* /*pGraph*/)
 {
-	printf("Graph has %d paired vertices, removed %d verts with no pairs\n", num_paired, num_unpaired);
-	pGraph->sweepVertices(GC_BLACK);
+	printf("Graph has %d paired vertices, %d verts with no pairs\n", num_paired, num_unpaired);
+	//pGraph->sweepVertices(GC_BLACK);
 }
 
 //
 void SGPETrustVisitor::previsit(StringGraph* pGraph)
 {
 	pGraph->setColors(GC_WHITE);
-	printf("TOKEN\tTRUSTED\tNOT\tDIFFSTRAND\tTOTAL\n");
+	//printf("TOKEN\tTRUSTED\tNOT\tDIFFSTRAND\tTOTAL\n");
 }
 
 
@@ -683,35 +683,52 @@ bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 			pBackVertex->setColor(GC_RED);
 	}
 
+	EdgePtrVec vertEdgeVec = pVertex->getEdges();
+	
+	bool changed = true;
+	while(changed)
+	{
+		changed = false;
+		// Propogate trust
+		for(size_t i = 0; i < vertEdgeVec.size(); ++i)
+		{
+			Vertex* pCurr = vertEdgeVec[i]->getEnd();
+			if(pCurr->getColor() != GC_RED)
+			{
+				// If any vertex that pCurr overlaps with is red, mark it red too
+				EdgePtrVec currEdgeVec = pCurr->getEdges();
+				for(size_t j = 0; j < currEdgeVec.size(); ++j)
+				{
+					if(currEdgeVec[j]->getEnd()->getColor() == GC_RED)
+					{
+						pCurr->setColor(GC_RED);
+						changed = true;
+						break;
+					}
+				}
+			}
+		}
+	}
+
 	// 
 	int trusted = 0;
 	int nottrusted = 0;
 	int diffstrand = 0;
-	EdgePtrVec vertEdgeVec = pVertex->getEdges();
 	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
 	{
-		if(vertEdgeVec[i]->getComp() == EC_SAME)
+		if(vertEdgeVec[i]->getEnd()->getColor() == GC_RED)
 		{
-			if(vertEdgeVec[i]->getEnd()->getColor() == GC_RED)
-			{
-				trusted++;
-				vertEdgeVec[i]->setColor(GC_RED);
-				vertEdgeVec[i]->isTrusted = true;
-			}
-			else
-			{
-				nottrusted++;
-				vertEdgeVec[i]->setColor(GC_BLACK);
-			}
+			trusted++;
+			vertEdgeVec[i]->isTrusted = true;
 		}
 		else
 		{
-			vertEdgeVec[i]->setColor(GC_BLACK);
-			++diffstrand;
+			nottrusted++;
 		}
 	}
 
-	printf("TOKEN\t%d\t%d\t%d\t%zu\n", trusted, nottrusted, diffstrand, vertEdgeVec.size());
+	(void)diffstrand;
+	//printf("TOKEN\t%d\t%d\t%d\t%zu\n", trusted, nottrusted, diffstrand, vertEdgeVec.size());
 
 	// Reset all the vertex colors
 	for(size_t i = 0; i < pairEdgeVec.size(); ++i)
@@ -802,23 +819,23 @@ bool SGPEResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 			bool isGood = false;
 			if(sum == (int)pVertex->getSeq().size())
 			{
-				if(pVWEdge->getColor() == GC_BLACK)
+				if(!pVWEdge->isTrusted)
 					num_good_black++;
-				if(pVWEdge->getColor() == GC_RED)
+				else
 					num_good_red++;
 				isGood = true;
 			}
 			else
 			{
-				if(pVWEdge->getColor() == GC_BLACK)
+				if(pVWEdge->isTrusted)
 					num_bad_black++;
-				if(pVWEdge->getColor() == GC_RED)
+				else
 					num_bad_red++;			
 				isGood = false;
 			}
 		}
 
-		bool isConflicted = num_bad_red > 0 || num_bad_black > 0;
+		bool isConflicted = edges.size() > 1;
 		bool isResolvable = isConflicted && num_good_red > 0 && num_bad_red == 0;
 
 		printf("RESOLVE\t%zu\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", idx, pVertex->dbg_position, num_good_red, num_good_black, num_bad_red, num_bad_black, (int)edges.size(), isConflicted, isResolvable);
@@ -826,6 +843,58 @@ bool SGPEResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 	return false;
 }
 
+void SGPEConflictRemover::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+	num_same = 0;
+	num_diff = 0;
+}
+
+bool SGPEConflictRemover::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+	(void)pGraph;
+	(void)pVertex;
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];
+		EdgePtrVec edges = pVertex->getEdges(dir);
+
+		if(edges.size() > 1)
+		{
+			bool hasTrusted = false;
+			for(size_t j = 0; j < edges.size(); ++j)
+			{
+				if(edges[j]->isTrusted)
+				{
+					hasTrusted = true;
+				}
+			}
+			
+			if(hasTrusted)
+			{
+				for(size_t j = 0; j < edges.size(); ++j)
+				{
+					if(!edges[j]->isTrusted)
+					{
+						edges[j]->setColor(GC_BLACK);
+						edges[j]->getTwin()->setColor(GC_BLACK);
+					}
+					if(edges[j]->getComp() == EC_SAME)
+						num_same++;
+					else
+						num_diff++;
+				}
+			}
+		}	
+	}
+	return 0;
+}
+
+void SGPEConflictRemover::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepEdges(GC_BLACK);
+	printf("Removed %d diff %d same\n", num_diff, num_same);
+}
 
 void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
 {
@@ -874,20 +943,35 @@ void SGEdgeClassVisitor::previsit(StringGraph* /*pGraph*/)
 {
 	num_good = 0;
 	num_bad = 0;
+	num_conflicted = 0;
+	num_trusted = 0;
+	num_nottrusted = 0;
 }
 
 bool SGEdgeClassVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	int curr_pos = atoi(pVertex->getID().c_str());
+	int curr_pos = pVertex->dbg_position;
 	EdgePtrVec edges = pVertex->getEdges();
+
+	if(pVertex->countEdges(ED_SENSE) > 1 || pVertex->countEdges(ED_ANTISENSE) > 1)
+		num_conflicted++;
+
 	for(size_t i = 0; i < edges.size(); ++i)
 	{
-		int edge_pos = atoi(edges[i]->getEnd()->getID().c_str());
-		int dist = int(abs(curr_pos - edge_pos));
-		if(dist <= int(pVertex->getSeq().length() - 40))
+		int edge_pos = edges[i]->getEnd()->dbg_position;
+		int distance = abs(curr_pos - edge_pos);
+		int overlap_len = edges[i]->getMatchLength();
+		int sum = distance + overlap_len;
+		
+		if(sum == (int)pVertex->getSeq().size())
 			++num_good;
 		else
 			++num_bad;
+
+		if(edges[i]->isTrusted)
+			num_trusted++;
+		else
+			num_nottrusted++;
 	}
 	return false;
 }
@@ -895,5 +979,5 @@ bool SGEdgeClassVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 // Remove all the marked edges
 void SGEdgeClassVisitor::postvisit(StringGraph* /*pGraph*/)
 {
-	//printf("Num good: %d Num bad: %d\n", num_good, num_bad);
+	printf("Num good: %d Num bad: %d Num conflicted: %d Num trusted: %d Num not trusted: %d\n", num_good, num_bad, num_conflicted, num_trusted, num_nottrusted);
 }

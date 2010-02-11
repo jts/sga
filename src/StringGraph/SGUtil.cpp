@@ -74,7 +74,7 @@ void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& c
 	SeqItem si;
 	while(reader.get(si))
 	{
-		//if(!containments.isContained(si.id))
+		if(!containments.isContained(si.id))
 		{
 			pGraph->addVertex(new Vertex(si.id, si.seq.toString()));
 		}
@@ -94,8 +94,8 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 	while(overlapReader >> o)
 	{
 		WARN_ONCE("ALLOWING CONTAINED READS");
-		//if(containments.isContained(o.id[0]) || containments.isContained(o.id[1]) || o.match.getMaxOverlapLength() < (int)minOverlap)
-		//	continue;
+		if(containments.isContained(o.id[0]) || containments.isContained(o.id[1]) || o.match.getMaxOverlapLength() < (int)minOverlap)
+			continue;
 		createEdges(pGraph, o);
 	}
 	overlapReader.close();

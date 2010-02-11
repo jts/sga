@@ -123,7 +123,9 @@ void assemble()
 			ss >> vertID;
 			ss >> position;
 			ss >> distance;
-			pGraph->getVertex(vertID)->dbg_position = position;
+			Vertex* pVertex = pGraph->getVertex(vertID);
+			if(pVertex != NULL)
+				pVertex->dbg_position = position;
 		}
 	}
 
@@ -137,12 +139,20 @@ void assemble()
 	std::cout << "Processing trust network\n";
 	pGraph->visit(trustVisit);
 
-	pGraph->visit(resolveVisit);
-
 	//std::cout << "Paired overlap distance\n";
-	pGraph->visit(pairedOverlapVisit);
+	//pGraph->visit(pairedOverlapVisit);
 
-	return;
+	std::cout << "\nPerforming transitive reduction\n";
+	pGraph->visit(edgeClassVisit);
+	pGraph->visit(trVisit);
+	pGraph->visit(edgeClassVisit);
+	SGPEConflictRemover conflictVisit;
+	pGraph->visit(conflictVisit);
+	pGraph->visit(edgeClassVisit);
+	pGraph->visit(statsVisit);
+	//pGraph->visit(resolveVisit);
+
+
 /*
 	if(opt::bTrim)
 	{
