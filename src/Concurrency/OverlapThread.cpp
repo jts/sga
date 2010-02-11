@@ -119,7 +119,7 @@ void OverlapThread::run()
 bool OverlapThread::processRead(const OverlapWorkItem& item)
 {
 	m_pOverlapper->overlapRead(item.read, m_pOBList);
-	//m_pOverlapper->writeOverlapBlocks(item.idx, m_pOBList, m_outfile);
+	m_pOverlapper->writeOverlapBlocks(item.idx, m_pOBList, m_outfile);
 	m_pOBList->clear();
 	return false;
 }

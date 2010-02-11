@@ -370,7 +370,7 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
 	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-	size_t MAX_ITEMS = 10000;
+	size_t MAX_ITEMS = 1000;
 	
 	// Semaphore shared between all the threads indicating whether 
 	// the thread is read to take data
@@ -406,6 +406,7 @@ size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOver
 	size_t currIdx = 0;
 	bool done = false;
 	int next_thread = 0;
+	int	num_buffers_full = 0;
 
 	while(!done)
 	{
@@ -414,32 +415,38 @@ size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOver
 		if(!done)
 		{
 			workVec[next_thread]->push_back(OverlapWorkItem(currIdx++, read));
-			next_thread = (next_thread + 1) % opt::numThreads;
+			if(workVec[next_thread]->size() == MAX_ITEMS)
+			{
+				++num_buffers_full;
+				++next_thread;
+			}
+		}
+
+		if(num_buffers_full == opt::numThreads || done)
+		{
+			// Wait for all threads to be ready to receive
+			for(int i = 0; i < opt::numThreads; ++i)
+			{
+				sem_wait(semVec[i]);
+				OverlapThread* pThread = threadVec[i];
+				pThread->swapBuffers(workVec[i]);
+				assert(workVec[i]->empty());
+			}
+			num_buffers_full = 0;
+			next_thread = 0;
 		}
 	}
 
-	// Wait for all threads to be ready to receive
-	for(int i = 0; i < opt::numThreads; ++i)
-	{
-		sem_wait(semVec[i]);
-	}
-	std::cout << "Done read, dispatching\n";
-
-	// Dispatch work
-	for(int i = 0; i < opt::numThreads; ++i)
-	{
-		OverlapThread* pThread = threadVec[i];
-		pThread->swapBuffers(workVec[i]);
-		assert(workVec[i]->empty());
-	}
-		
 	// Stop the threads and destroy them
 	for(int i = 0; i < opt::numThreads; ++i)
 	{
 		threadVec[i]->stop();
 		delete threadVec[i];
+
 		sem_destroy(semVec[i]);
 		delete semVec[i];
+
+		assert(workVec[i]->empty());
 		delete workVec[i];
 	}
 
