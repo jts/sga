@@ -107,13 +107,13 @@ void computeHitsBWT(StringVector& filenameVec)
 	Timer timer("BWT Alignment", true);
 
 	size_t count = 0;
-	if(opt::numThreads <= 1)
+	if(opt::numThreads <= 1 && false)
 	{
 		count = computeHitsSerial(reader, pOverlapper, filenameVec);
 	}
 	else
 	{
-		count = computeHitsParallel(reader, pOverlapper, filenameVec);
+		count = computeHitsParallelBatch(reader, pOverlapper, filenameVec);
 	}
 
 	double align_time_secs = timer.getElapsedWallTime();
@@ -167,7 +167,7 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 {
 	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
 
-	size_t MAX_ITEMS = 10;
+	size_t MAX_ITEMS = 100;
 	
 	// Semaphore shared between all the threads indicating whether 
 	// the thread is read to take data
@@ -365,6 +365,88 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 	delete pWorkVector;
 	return currIdx;
 }
+
+// Compute the hits for each read in the SeqReader file with threading
+size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
+{
+	printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+	size_t MAX_ITEMS = 10000;
+	
+	// Semaphore shared between all the threads indicating whether 
+	// the thread is read to take data
+	typedef std::vector<OverlapThread*> ThreadPtrVector;
+	typedef std::vector<OverlapWorkVector*> WorkPtrVector;
+	typedef std::vector<sem_t*> SemaphorePtrVector;
+
+	// Initialize threads
+	ThreadPtrVector threadVec(opt::numThreads, NULL);
+	WorkPtrVector workVec(opt::numThreads, NULL);
+	SemaphorePtrVector semVec(opt::numThreads, NULL);
+
+	for(int i = 0; i < opt::numThreads; ++i)
+	{
+		// Create the thread
+		std::stringstream ss;
+		ss << opt::prefix << "-thread" << i << HITS_EXT;
+		std::string outfile = ss.str();
+		filenameVec.push_back(outfile);
+
+		semVec[i] = new sem_t;
+		sem_init( semVec[i], PTHREAD_PROCESS_PRIVATE, 0 );
+
+		// Create and start the thread
+		threadVec[i] = new OverlapThread(pOverlapper, outfile, semVec[i], MAX_ITEMS);
+		threadVec[i]->start();
+
+		workVec[i] = new OverlapWorkVector;
+		workVec[i]->reserve(MAX_ITEMS);
+	}
+
+	SeqItem read;
+	size_t currIdx = 0;
+	bool done = false;
+	int next_thread = 0;
+
+	while(!done)
+	{
+		// Parse one read from the stream
+		done = !reader.get(read);
+		if(!done)
+		{
+			workVec[next_thread]->push_back(OverlapWorkItem(currIdx++, read));
+			next_thread = (next_thread + 1) % opt::numThreads;
+		}
+	}
+
+	// Wait for all threads to be ready to receive
+	for(int i = 0; i < opt::numThreads; ++i)
+	{
+		sem_wait(semVec[i]);
+	}
+	std::cout << "Done read, dispatching\n";
+
+	// Dispatch work
+	for(int i = 0; i < opt::numThreads; ++i)
+	{
+		OverlapThread* pThread = threadVec[i];
+		pThread->swapBuffers(workVec[i]);
+		assert(workVec[i]->empty());
+	}
+		
+	// Stop the threads and destroy them
+	for(int i = 0; i < opt::numThreads; ++i)
+	{
+		threadVec[i]->stop();
+		delete threadVec[i];
+		sem_destroy(semVec[i]);
+		delete semVec[i];
+		delete workVec[i];
+	}
+
+	return currIdx;
+}
+
+
 
 //
 void convertHitsToOverlaps(const StringVector& hitsFilenames)

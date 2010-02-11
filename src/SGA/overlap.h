@@ -24,6 +24,7 @@ int overlapMain(int argc, char** argv);
 void computeHitsBWT(StringVector& filenames);
 size_t computeHitsSerial(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenames);
 size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenames);
+size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenames);
 
 
 // Output processing
