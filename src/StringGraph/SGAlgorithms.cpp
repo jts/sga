@@ -684,41 +684,29 @@ bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 			pBackVertex->setColor(GC_RED);
 	}
 
-	EdgePtrVec vertEdgeVec = pVertex->getEdges();
-
-	// Propogate trust
-	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
-	{
-		Vertex* pCurr = vertEdgeVec[i]->getEnd();
-
-		// If any vertex that pCurr overlaps with is red, mark it as such
-		EdgePtrVec currEdgeVec = pCurr->getEdges();
-		for(size_t j = 0; j < currEdgeVec.size(); ++j)
-		{
-			if(currEdgeVec[j]->getEnd()->getColor() == GC_RED)
-			{
-				pCurr->setColor(GC_RED);
-				break;
-			}
-		}
-	}
-
 	// 
 	int trusted = 0;
 	int nottrusted = 0;
 	int diffstrand = 0;
-
+	EdgePtrVec vertEdgeVec = pVertex->getEdges();
 	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
 	{
 		if(vertEdgeVec[i]->getComp() == EC_SAME)
 		{
 			if(vertEdgeVec[i]->getEnd()->getColor() == GC_RED)
+			{
 				trusted++;
+				vertEdgeVec[i]->setColor(GC_RED);
+			}
 			else
+			{
 				nottrusted++;
+				vertEdgeVec[i]->setColor(GC_BLACK);
+			}
 		}
 		else
 		{
+			vertEdgeVec[i]->setColor(GC_BLACK);
 			++diffstrand;
 		}
 	}
@@ -741,9 +729,9 @@ bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 }
 
 //
-void SGPETrustVisitor::postvisit(StringGraph* pGraph)
+void SGPETrustVisitor::postvisit(StringGraph* /*pGraph*/)
 {
-	pGraph->sweepEdges(GC_BLACK);
+
 }
 
 bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
@@ -783,6 +771,61 @@ bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 	}
 	return false;
 }
+
+void SGPEResolveVisitor::previsit(StringGraph*)
+{
+	printf("RESOLVE\tDIR\tPOS\tGOOD_RED\tGOOD_BLACK\tBAD_RED\tBAD_BLACK\tTOTAL\tCONFLICTED\tRESOLVABLE\n");
+}
+
+bool SGPEResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];
+		EdgePtrVec edges = pVertex->getEdges(dir);
+
+		int num_bad_black = 0;
+		int num_good_black = 0;
+		int num_bad_red = 0;
+		int num_good_red = 0;
+		
+		for(size_t i = 0; i < edges.size(); ++i)
+		{
+			Edge* pVWEdge = edges[i];
+			Vertex* pW = pVWEdge->getEnd();
+
+			// Get the distance between the vertices using the debug positions
+			int distance = abs(pW->dbg_position - pVertex->dbg_position);
+			int overlap_len = pVWEdge->getMatchLength();
+			int sum = distance + overlap_len;
+			
+			bool isGood = false;
+			if(sum == (int)pVertex->getSeq().size())
+			{
+				if(pVWEdge->getColor() == GC_BLACK)
+					num_good_black++;
+				if(pVWEdge->getColor() == GC_RED)
+					num_good_red++;
+				isGood = true;
+			}
+			else
+			{
+				if(pVWEdge->getColor() == GC_BLACK)
+					num_bad_black++;
+				if(pVWEdge->getColor() == GC_RED)
+					num_bad_red++;			
+				isGood = false;
+			}
+		}
+
+		bool isConflicted = num_bad_red > 0 || num_bad_black > 0;
+		bool isResolvable = isConflicted && num_good_red > 0 && num_bad_red == 0;
+
+		printf("RESOLVE\t%zu\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", idx, pVertex->dbg_position, num_good_red, num_good_black, num_bad_red, num_bad_black, (int)edges.size(), isConflicted, isResolvable);
+	}
+	return false;
+}
+
 
 void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
 {

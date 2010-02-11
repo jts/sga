@@ -133,6 +133,14 @@ struct SGPairedOverlapVisitor
 	void postvisit(StringGraph*) {}
 };
 
+struct SGPEResolveVisitor
+{
+	SGPEResolveVisitor() {}
+	void previsit(StringGraph*);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*) {}
+};
+
 // Compile summary statistics for the graph
 struct SGGraphStatsVisitor
 {

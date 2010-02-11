@@ -59,6 +59,9 @@ class Vertex
 													m_color(GC_WHITE) {}
 		~Vertex();
 
+
+		int dbg_position;
+
 		// High-level modification functions
 		
 		// Merge another vertex into this vertex, as specified by pEdge

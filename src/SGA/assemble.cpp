@@ -45,13 +45,14 @@ namespace opt
 	static std::string readsFile;
 	static std::string prefix;
 	static std::string outFile;
+	static std::string positionsFile;
 	static unsigned int minOverlap;
 	static bool bTransClose;
 	static bool bTrim;
 	static bool bBubble;
 }
 
-static const char* shortopts = "p:o:m:vbtc";
+static const char* shortopts = "p:o:m:d:vbtc";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -60,6 +61,7 @@ static const struct option longopts[] = {
 	{ "prefix",      required_argument, NULL, 'p' },
 	{ "out",         required_argument, NULL, 'o' },
 	{ "min-overlap", required_argument, NULL, 'm' },
+	{ "debug-file",  required_argument, NULL, 'd' },
 	{ "bubble",      no_argument,       NULL, 'b' },
 	{ "trim",        no_argument,       NULL, 't' },
 	{ "close",       no_argument,       NULL, 'c' },	
@@ -86,6 +88,7 @@ void assemble()
 	Timer t("sga assemble");
 	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn", opt::minOverlap);
 	pGraph->printMemSize();
+
 	//pGraph->validate();
 	//pGraph->writeDot("before.dot");
 	
@@ -100,7 +103,29 @@ void assemble()
 	SGEdgeClassVisitor edgeClassVisit;
 	SGVertexPairingVisitor pairingVisit;
 	SGPairedOverlapVisitor pairedOverlapVisit;
+
 	SGPETrustVisitor trustVisit;
+	SGPEResolveVisitor resolveVisit;
+
+	if(!opt::positionsFile.empty())
+	{
+		WARN_ONCE("Using positions file");
+		std::cout << "Loading debug positions from file " << opt::positionsFile << "\n";
+		std::ifstream reader(opt::positionsFile.c_str());
+		std::string line;
+		std::string vertID;
+		int position;
+		int distance;
+
+		while(getline(reader, line))
+		{
+			std::istringstream ss(line);
+			ss >> vertID;
+			ss >> position;
+			ss >> distance;
+			pGraph->getVertex(vertID)->dbg_position = position;
+		}
+	}
 
 	// Pre-assembly graph stats
 	std::cout << "Initial graph stats\n";
@@ -112,10 +137,13 @@ void assemble()
 	std::cout << "Processing trust network\n";
 	pGraph->visit(trustVisit);
 
-	std::cout << "Paired overlap distance\n";
-	pGraph->visit(pairedOverlapVisit);
+	pGraph->visit(resolveVisit);
 
 
+	//std::cout << "Paired overlap distance\n";
+	//pGraph->visit(pairedOverlapVisit);
+
+	return;
 /*
 	if(opt::bTrim)
 	{
@@ -208,6 +236,7 @@ void parseAssembleOptions(int argc, char** argv)
 			case 'p': arg >> opt::prefix; break;
 			case 'o': arg >> opt::outFile; break;
 			case 'm': arg >> opt::minOverlap; break;
+			case 'd': arg >> opt::positionsFile; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case 'b': opt::bBubble = true; break;
@@ -241,8 +270,7 @@ void parseAssembleOptions(int argc, char** argv)
 
 	// Parse the input filenames
 	opt::readsFile = argv[optind++];
-
+	
 	if(opt::prefix.empty())
 		opt::prefix = stripFilename(opt::readsFile);
-
 }
