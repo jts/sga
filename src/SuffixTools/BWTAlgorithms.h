@@ -109,12 +109,17 @@ inline void updateInterval(BWTInterval& interval, char b, const BWT* pBWT)
 inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 {
 	// Update the left index using the difference between the AlphaCounts in the reverse table
-	AlphaCount diff = pRevBWT->getOccDiff(pair.interval[1].lower - 1, pair.interval[1].upper);
+	AlphaCount l = pRevBWT->getFullOcc(pair.interval[1].lower - 1);
+	AlphaCount u = pRevBWT->getFullOcc(pair.interval[1].upper);
+	AlphaCount diff = u - l;
+
 	pair.interval[0].lower = pair.interval[0].lower + diff.getLessThan(b);
 	pair.interval[0].upper = pair.interval[0].lower + diff.get(b) - 1;
 
 	// Update the right index directly
-	updateInterval(pair.interval[1], b, pRevBWT);
+	size_t pb = pRevBWT->getPC(b);
+	pair.interval[1].lower = pb + l.get(b);
+	pair.interval[1].upper = pb + u.get(b) - 1;
 }
 
 //
@@ -124,13 +129,17 @@ inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT)
 {
 	// Update the left index using the difference between the AlphaCounts in the reverse table
-	AlphaCount diff = pBWT->getOccDiff(pair.interval[0].lower - 1, pair.interval[0].upper);
+	AlphaCount l = pBWT->getFullOcc(pair.interval[0].lower - 1);
+	AlphaCount u = pBWT->getFullOcc(pair.interval[0].upper);
+	AlphaCount diff = u - l;
+
 	pair.interval[1].lower = pair.interval[1].lower + diff.getLessThan(b);
 	pair.interval[1].upper = pair.interval[1].lower + diff.get(b) - 1;
 
 	// Update the left index directly
-	updateInterval(pair.interval[0], b, pBWT);
-
+	size_t pb = pBWT->getPC(b);
+	pair.interval[0].lower = pb + l.get(b);
+	pair.interval[0].upper = pb + u.get(b) - 1;
 }
 
 // Initialize the interval of index idx to be the range containining all the b suffixes

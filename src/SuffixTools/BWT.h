@@ -35,6 +35,7 @@ class BWT
 		inline char getChar(size_t idx) const { return m_bwStr[idx]; }
 		inline BaseCount getPC(char b) const { return m_predCount.get(b); }
 		inline BaseCount getOcc(char b, size_t idx) const { return m_occurrence.get(m_bwStr, b, idx); }
+		inline AlphaCount getFullOcc(size_t idx) const { return m_occurrence.get(m_bwStr, idx); }
 		inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
 		inline size_t getBWLen() const { return m_bwStr.length(); }
 
