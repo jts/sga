@@ -13,6 +13,8 @@
 #include <utility>
 #include <stdint.h>
 #include <limits>
+#include <emmintrin.h>
+#include <xmmintrin.h>
 
 //
 // Functions
@@ -232,18 +234,54 @@ class AlphaCount
 		friend std::ostream& operator<<(std::ostream& out, const AlphaCount& ac);
 		friend std::istream& operator>>(std::istream& in, AlphaCount& ac);
 		
+#define USE_SSE 0
+
 		inline friend AlphaCount operator+(const AlphaCount& left, const AlphaCount& right)
 		{
 			AlphaCount out;
-			for(int i = 0; i < ALPHABET_SIZE; ++i)
-				out.m_counts[i] = left.m_counts[i] + right.m_counts[i];
+
+#if USE_SSE	
+			__m128i a = _mm_loadu_si128( (__m128i *) &left.m_counts[0]);
+			__m128i b = _mm_loadu_si128( (__m128i *) &right.m_counts[0]);
+		    __m128i c = _mm_add_epi64(a, b);
+			_mm_store_si128( (__m128i *) &out.m_counts[0], c);
+
+			a = _mm_loadu_si128( (__m128i *) &left.m_counts[2]);
+			b = _mm_loadu_si128( (__m128i *) &right.m_counts[2]);
+		    c = _mm_add_epi64(a, b);
+			_mm_store_si128( (__m128i *) &out.m_counts[2], c);
+			out.m_counts[4] = left.m_counts[4] + right.m_counts[4];
+#else
+			out.m_counts[0] = left.m_counts[0] + right.m_counts[0];
+			out.m_counts[1] = left.m_counts[1] + right.m_counts[1];
+			out.m_counts[2] = left.m_counts[2] + right.m_counts[2];
+			out.m_counts[3] = left.m_counts[3] + right.m_counts[3];
+			out.m_counts[4] = left.m_counts[4] + right.m_counts[4];
+#endif
 			return out;
 		}
 
-		inline AlphaCount& operator+=(const AlphaCount& a)
+		inline AlphaCount& operator+=(const AlphaCount& other)
 		{
-			for(int i = 0; i < ALPHABET_SIZE; ++i)
-				m_counts[i] += a.m_counts[i];
+
+#if USE_SSE
+			__m128i a = _mm_loadu_si128( (__m128i *) &m_counts[0]);
+			__m128i b = _mm_loadu_si128( (__m128i *) &other.m_counts[0]);
+		    __m128i c = _mm_add_epi64(a, b);
+			_mm_store_si128( (__m128i *) &m_counts[0], c);
+
+			a = _mm_loadu_si128( (__m128i *) &m_counts[2]);
+			b = _mm_loadu_si128( (__m128i *) &other.m_counts[2]);
+		    c = _mm_add_epi64(a, b);
+			_mm_store_si128( (__m128i *) &m_counts[2], c);
+#else
+			
+			m_counts[0] += other.m_counts[0];
+			m_counts[1] += other.m_counts[1];
+			m_counts[2] += other.m_counts[2];
+			m_counts[3] += other.m_counts[3];
+			m_counts[4] += other.m_counts[4];
+#endif
 			return *this;
 		}
 
@@ -253,8 +291,24 @@ class AlphaCount
 		friend AlphaCount operator-(const AlphaCount& left, const AlphaCount& right)
 		{
 			AlphaCount out;
-			for(int i = 0; i < ALPHABET_SIZE; ++i)
-				out.m_counts[i] = left.m_counts[i] - right.m_counts[i];
+#if USE_SSE
+			__m128i a = _mm_loadu_si128( (__m128i *) &left.m_counts[0]);
+			__m128i b = _mm_loadu_si128( (__m128i *) &right.m_counts[0]);
+		    __m128i c = _mm_sub_epi64(a, b);
+			_mm_store_si128( (__m128i *) &out.m_counts[0], c);
+
+			a = _mm_loadu_si128( (__m128i *) &left.m_counts[2]);
+			b = _mm_loadu_si128( (__m128i *) &right.m_counts[2]);
+		    c = _mm_sub_epi64(a, b);
+			_mm_store_si128( (__m128i *) &out.m_counts[2], c);
+			out.m_counts[4] = left.m_counts[4] - right.m_counts[4];
+#else
+			out.m_counts[0] = left.m_counts[0] - right.m_counts[0];
+			out.m_counts[1] = left.m_counts[1] - right.m_counts[1];
+			out.m_counts[2] = left.m_counts[2] - right.m_counts[2];
+			out.m_counts[3] = left.m_counts[3] - right.m_counts[3];
+			out.m_counts[4] = left.m_counts[4] - right.m_counts[4];
+#endif
 			return out;
 		}
 

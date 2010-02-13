@@ -34,8 +34,8 @@ class BWT
 
 		inline char getChar(size_t idx) const { return m_bwStr[idx]; }
 		inline BaseCount getPC(char b) const { return m_predCount.get(b); }
-		inline BaseCount getOcc(char b, size_t idx) const { return m_occurance.get(m_bwStr, b, idx); }
-		inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurance.getDiff(m_bwStr, idx0, idx1); }
+		inline BaseCount getOcc(char b, size_t idx) const { return m_occurrence.get(m_bwStr, b, idx); }
+		inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
 		inline size_t getBWLen() const { return m_bwStr.length(); }
 
 		// Return the first letter of the suffix starting at idx
@@ -79,7 +79,7 @@ class BWT
 		BWT() {}
 
 		// The O(a,i) array
-		Occurrence m_occurance;
+		Occurrence m_occurrence;
 
 		// The C(a) array
 		AlphaCount m_predCount;

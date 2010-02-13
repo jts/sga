@@ -24,7 +24,7 @@ struct PartialAlign
 typedef std::queue<PartialAlign> PAQueue;
 
 // macros
-#define OCC(c,i) m_occurance.get(m_bwStr, (c), (i))
+#define OCC(c,i) m_occurrence.get(m_bwStr, (c), (i))
 #define PRED(c) m_predCount.get((c))
 
 // Parse a BWT from a file
@@ -57,7 +57,7 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	}
 
 	// initialize the occurance table
-	m_occurance.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
+	m_occurrence.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
 
 	// Calculate the C(a) array
 	
@@ -163,7 +163,7 @@ void BWT::calculateD(std::string w, int minOverlap, const BWT* pRevBWT, bool con
 void BWT::validate() const
 {
 	std::cerr << "Warning BWT validation is turned on\n";
-	m_occurance.validate(m_bwStr);
+	m_occurrence.validate(m_bwStr);
 }
 
 // Output operator
@@ -174,7 +174,7 @@ std::ostream& operator<<(std::ostream& out, const BWT& bwt)
 	out << bwt.m_bwStr.size() << "\n";
 	out << bwt.m_bwStr << "\n";
 	out << bwt.m_predCount << "\n";
-	out << bwt.m_occurance;
+	out << bwt.m_occurrence;
 	return out;
 }
 
@@ -188,7 +188,7 @@ std::istream& operator>>(std::istream& in, BWT& bwt)
 	bwt.m_bwStr.resize(n);
 	in >> bwt.m_bwStr;
 	in >> bwt.m_predCount;
-	in >> bwt.m_occurance;
+	in >> bwt.m_occurrence;
 	return in;
 }
 
@@ -209,14 +209,14 @@ void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 	for(size_t i = 0; i < m_bwStr.size(); ++i)
 	{
 		assert(getF(i) == pSA->getSuffix(i, pRT)[0]);
-		std::cout << i << "\t" << m_bwStr[i] << "\t" << getF(i) << "\t" << m_occurance.get(m_bwStr, i) << pSA->getSuffix(i, pRT) << "\n";
+		std::cout << i << "\t" << m_bwStr[i] << "\t" << getF(i) << "\t" << m_occurrence.get(m_bwStr, i) << pSA->getSuffix(i, pRT) << "\n";
 	}
 }
 
 // Print information about the BWT
 void BWT::printInfo() const
 {
-	size_t o_size = m_occurance.getByteSize();
+	size_t o_size = m_occurrence.getByteSize();
 	size_t p_size = sizeof(m_predCount);
 
 	size_t bwStr_size = sizeof(m_bwStr) + m_bwStr.size();

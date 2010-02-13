@@ -133,6 +133,7 @@ void assemble()
 	std::cout << "Initial graph stats\n";
 	pGraph->visit(statsVisit);
 
+	/*
 	std::cout << "Pairing reads\n";
 	pGraph->visit(pairingVisit);
 
@@ -142,6 +143,7 @@ void assemble()
 	//std::cout << "Paired overlap distance\n";
 	//pGraph->visit(pairedOverlapVisit);
 
+	
 	std::cout << "\nPerforming transitive reduction\n";
 	pGraph->visit(edgeClassVisit);
 	pGraph->visit(trVisit);
@@ -151,7 +153,7 @@ void assemble()
 	pGraph->visit(edgeClassVisit);
 	pGraph->visit(statsVisit);
 	//pGraph->visit(resolveVisit);
-
+	*/
 
 /*
 	if(opt::bTrim)
