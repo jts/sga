@@ -40,6 +40,21 @@ class OverlapAlgorithm
 
 	private:
 
+		// Calculate the ranges in pBWT that contain a prefix of at least minOverlap basepairs that
+		// overlaps with a suffix of w.
+		static void findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+		                       int minOverlap, const AlignFlags& af, OverlapBlockList* pOBTemp, 
+							   OverlapBlockList* pOBFinal);
+
+		// Using the vector of OverlapBlocks, calculate the irreducible hits
+		static void calculateIrreducibleHits(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList* pOBList, OverlapBlockList* pOBFinal);
+		
+		// Extend each block in obl until all the irreducible overlaps have been found. 
+		static void processIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, OverlapBlockList* pOBFinal);
+
+		// Update the overlap block list with a righthand extension to b, removing ranges that become invalid
+		static void updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, char b);
+
 		// Data
 		const BWT* m_pBWT;
 		const BWT* m_pRevBWT;

@@ -166,25 +166,6 @@ inline AlphaCount getExtCount(const BWTInterval& interval, const BWT* pBWT)
 // Exact alignment algorithms
 //
 
-
-// Calculate the ranges in pBWT that contain a prefix of at least minOverlap basepairs that
-// overlaps with a suffix of w. The ranges are added to the pOBList. If w has a full-length
-// overlap with some other string, the containment overlap will be placed in pHits for 
-// processing later
-void findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                       int minOverlap, const AlignFlags& af, OverlapBlockList* pOBTemp, OverlapBlockList* pOBFinal);
-
-
-// Using the vector of OverlapBlocks, calculate the irreducible hits and output them to pHits
-void calculateIrreducibleHits(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList* pOBList, OverlapBlockList* pOBFinal);
-
-// Extend each block in obl until all the irreducible overlaps have been found. 
-void processIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, OverlapBlockList* pOBFinal);
-
-// Update the overlap block list with a righthand extension to b, removing ranges that become invalid
-void updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, char b);
-
-
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
 // appears in the FM-index for all i s.t. length(w[i, l]) >= minOverlap.
