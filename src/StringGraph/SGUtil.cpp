@@ -93,7 +93,6 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 	Overlap o;
 	while(overlapReader >> o)
 	{
-		WARN_ONCE("ALLOWING CONTAINED READS");
 		if(containments.isContained(o.id[0]) || containments.isContained(o.id[1]) || o.match.getMaxOverlapLength() < (int)minOverlap)
 			continue;
 		createEdges(pGraph, o);
@@ -112,9 +111,6 @@ Edge* createEdges(StringGraph* pGraph, const Overlap& o)
 	{
 		pVerts[idx] = pGraph->getVertex(o.id[idx]);
 		assert(pVerts[idx]);		
-		// Ensure the reads are not identical
-		if(o.match.coord[idx].isContained())
-			return NULL;
 		assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
 	}
 

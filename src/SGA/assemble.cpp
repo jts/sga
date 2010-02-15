@@ -12,6 +12,7 @@
 #include "assemble.h"
 #include "SGUtil.h"
 #include "SGAlgorithms.h"
+#include "SGPairedAlgorithms.h"
 #include "Timer.h"
 
 //
@@ -96,7 +97,6 @@ void assemble()
 	SGTrimVisitor trimVisit;
 	SGIslandVisitor islandVisit;
 	SGTransRedVisitor trVisit;
-	SGVariantVisitor varVisit;
 	SGTCVisitor tcVisit;
 	SGBubbleVisitor bubbleVisit;
 	SGGraphStatsVisitor statsVisit;
@@ -105,7 +105,6 @@ void assemble()
 	SGPairedOverlapVisitor pairedOverlapVisit;
 
 	SGPETrustVisitor trustVisit;
-	SGPEResolveVisitor resolveVisit;
 
 	if(!opt::positionsFile.empty())
 	{

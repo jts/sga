@@ -9,7 +9,10 @@
 #include "SGAlgorithms.h"
 #include "SGUtil.h"
 
-// Visitor which outputs the graph in fasta format
+//
+// SGFastaVisitor - output the vertices in the graph in 
+// fasta format
+//
 bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
 	m_fileHandle << ">" << pVertex->getID() << " " <<  pVertex->getSeq().length() 
@@ -18,6 +21,11 @@ bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 	return false;
 }
 
+
+//
+// SGTransRedVisitor - Perform a transitive reduction about this vertex
+// This uses Myers' algorithm (2005, The fragment assembly string graph)
+// Precondition: the edge list is sorted by length (ascending)
 void SGTransRedVisitor::previsit(StringGraph* pGraph)
 {
 	// Set all the vertices in the graph to "vacant"
@@ -28,9 +36,6 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 	marked_edges = 0;
 }
 
-// Perform a transitive reduction about this vertex
-// This uses Myers' algorithm (2005, The fragment assembly string graph)
-// Precondition: the edge list is sorted by length (ascending)
 bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
@@ -155,6 +160,9 @@ void SGTransRedVisitor::postvisit(StringGraph* pGraph)
 	assert(pGraph->checkColors(GC_WHITE));
 }
 
+//
+// SGTrimVisitor - Remove "dead-end" vertices from the graph
+//
 void SGTrimVisitor::previsit(StringGraph* pGraph)
 {
 	num_island = 0;
@@ -195,13 +203,18 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 	printf("island: %d terminal: %d contig: %d\n", num_island, num_terminal, num_contig);
 }
 
-// Detect and remove duplicate edges
+//
+// SGDuplicateVisitor - Detect and remove duplicate edges
+//
 bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
 	pVertex->makeUnique();
 	return false;
 }
 
+//
+// SGIslandVisitor - Remove island (unconnected) vertices
+//
 void SGIslandVisitor::previsit(StringGraph* pGraph)
 {
 	pGraph->setColors(GC_WHITE);
@@ -226,7 +239,8 @@ void SGIslandVisitor::postvisit(StringGraph* pGraph)
 
 
 //
-// Bubble visit
+// SGBubbleVisitor - Find and collapse variant
+// "bubbles" in the graph
 //
 void SGBubbleVisitor::previsit(StringGraph* pGraph)
 {
@@ -331,141 +345,9 @@ void SGBubbleVisitor::postvisit(StringGraph* pGraph)
 	assert(pGraph->checkColors(GC_WHITE));
 }
 
-// 
-void SGVariantVisitor::previsit(StringGraph* pGraph)
-{
-	pGraph->setColors(GC_WHITE);
-}
-
-// 
-bool SGVariantVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
-{
-	// Skip vertex if its been marked as contained
-	if(pVertex->getColor() == GC_RED)
-		return false;
-	bool changed_graph = false;
-	for(size_t idx = 0; idx < ED_COUNT; idx++)
-	{
-		EdgeDir dir = EDGE_DIRECTIONS[idx];
-		EdgePtrVec edges = pVertex->getEdges(dir);
-
-		// Perform a dependent pairwise comparison between nodes that do not share an edge
-		for(size_t i = 0; i < edges.size(); ++i)
-		{
-			for(size_t j = i + 1; j < edges.size(); ++j)
-			{
-				const Edge* p_edgeI = edges[i];
-				const Edge* p_edgeJ = edges[j];
-
-				/*
-				if(p_edgeI->getColor() == GC_BLACK || p_edgeJ->getColor() == GC_BLACK)
-				{
-					//std::cout << "Skipping newly created edges\n";
-					continue;
-				}
-				*/
-				const Vertex* p_vertI = p_edgeI->getEnd();
-				const Vertex* p_vertJ = p_edgeJ->getEnd();
-
-				// Infer the edge comp
-				EdgeComp comp = (p_edgeI->getComp() == p_edgeJ->getComp()) ? EC_SAME : EC_REVERSE;
-				
-				// Infer the i->j and j->i direction
-				EdgeDir ij_dir = !p_edgeI->getTwin()->getDir();
-				EdgeDir ji_dir = !p_edgeJ->getTwin()->getDir();
-
-				// Ensure that there is not an edge between these already
-				// hasEdge is not a particularly fast operation
-				EdgeDesc ij_desc(p_edgeJ->getEndID(), ij_dir, comp);
-				EdgeDesc ji_desc(p_edgeI->getEndID(), ji_dir, comp);
-
-				if(p_edgeI->getEnd()->hasEdge(ij_desc) || p_edgeJ->getEnd()->hasEdge(ji_desc))
-					continue;
-				
-				// Set up the matches between the root vertex and i/j
-				// All coordinates are calculated from the point of view of pVertex
-				Match match_i = p_edgeI->getMatch();
-				Match match_j = p_edgeJ->getMatch();
-	
-				// Infer the match_ij based match_i and match_j
-				Match match_ij = Match::infer(match_i, match_j);
-	
-				std::string seq_i = p_vertI->getSeq();
-				std::string seq_j = p_vertJ->getSeq();
-				
-				// Expand the match outwards so that one sequence is left terminal 
-				// and one is right terminal
-				match_ij.expand();
-				
-				// Extract the match strings
-				std::string ms_i = match_ij.coord[0].getSubstring(seq_i);
-				std::string ms_j = match_ij.coord[1].getSubstring(seq_j);
-
-				if(match_ij.isRC())
-					ms_j = reverseComplement(ms_j);
-				
-				/*
-				std::cout << "COMP: " << comp << "\n";
-				std::cout << "match_i: " << match_i << " " << p_edgeI->getComp() << "\n";
-				std::cout << "match_j: " << match_j << " " << p_edgeJ->getComp() << "\n";
-				std::cout << "match_ij: " << match_ij << "\n";
-				std::cout << "ms_i: " << ms_i << "\n";
-				std::cout << "ms_j: " << ms_j << "\n";
-				*/
-				int numDiffs = countDifferences(ms_i, ms_j, ms_i.length());
-				match_ij.setNumDiffs(numDiffs);
-
-				//std::cout << "diffs: " << match_ij.getNumDiffs() << "\n";
-				double error_rate = (double)numDiffs / ms_i.length();
-				if(error_rate < 0.1)
-				{
-					const std::string& id_i = p_edgeI->getEndID();
-					const std::string& id_j = p_edgeJ->getEndID();
-					Overlap o(id_i, id_j, match_ij);
-
-					// Ensure there isnt a containment relationship
-					if(o.match.coord[0].isContained() || o.match.coord[1].isContained())
-					{
-						// Mark the contained vertex for deletion
-						size_t idx = o.getContainedIdx();
-
-						/*
-						std::cout << "ci: " << seq_i << "\n";
-						std::cout << "cj: " << seq_j << "\n";
-						std::cout << "ms_i: " << ms_i << "\n";
-						std::cout << "ms_j: " << ms_j << "\n";
-						*/
-						if(idx == 0)
-							p_edgeI->getEnd()->setColor(GC_RED);
-						else
-							p_edgeJ->getEnd()->setColor(GC_RED);
-						
-					}
-					else
-					{
-						// add the edges to the graph
-						Edge* p_edgeIJ = createEdges(pGraph, o);
-						Edge* p_edgeJI = p_edgeIJ->getTwin();
-						p_edgeIJ->setColor(GC_BLACK);
-						p_edgeJI->setColor(GC_BLACK);
-						//std::cout << "Created edge " << *p_edgeIJ << "\n";
-						//std::cout << "Created edge " << *p_edgeJI << "\n";
-						assert(p_edgeIJ->getComp() == comp);
-					}
-					changed_graph = true;
-				}
-			}
-		}
-	}
-	return changed_graph;
-}
-
 //
-void SGVariantVisitor::postvisit(StringGraph* pGraph)
-{
-	pGraph->sweepVertices(GC_RED);
-}
-
+// SGTCVisitor - Perform a transitive closure on the graph, 
+// inferring edges that are missing because of inexact overlaps
 // 
 void SGTCVisitor::previsit(StringGraph* pGraph)
 {
@@ -619,283 +501,11 @@ void SGTCVisitor::postvisit(StringGraph* pGraph)
 	printf("ng before: %d ng after: %d (%d) nb before: %d nb after: %d (%d) prop good: %lf\n", ngb, nga, ngc, nbb, nba, nbc, rel);
 }
 
-void SGVertexPairingVisitor::previsit(StringGraph* pGraph)
-{
-	num_paired = 0;
-	num_unpaired = 0;
-	pGraph->setColors(GC_WHITE);
-}
-
-// Visit each vertex in the graph, find its pair and link them
-bool SGVertexPairingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
-{
-	// do nothing if the pairing was already set
-	if(pVertex->getPairVertex() == NULL)
-	{
-		std::string id = pVertex->getID();
-		std::string pid = getPairID(id);
-		Vertex* pPairV = pGraph->getVertex(pid);
-		if(pPairV != NULL)
-		{
-			pVertex->setPairVertex(pPairV);
-			pPairV->setPairVertex(pVertex);
-			num_paired++;
-		}
-		else
-		{
-			//pVertex->setColor(GC_BLACK);
-			num_unpaired++;
-		}
-	}
-	return false;
-}
-
-void SGVertexPairingVisitor::postvisit(StringGraph* /*pGraph*/)
-{
-	printf("Graph has %d paired vertices, %d verts with no pairs\n", num_paired, num_unpaired);
-	//pGraph->sweepVertices(GC_BLACK);
-}
 
 //
-void SGPETrustVisitor::previsit(StringGraph* pGraph)
-{
-	pGraph->setColors(GC_WHITE);
-	//printf("TOKEN\tTRUSTED\tNOT\tDIFFSTRAND\tTOTAL\n");
-}
-
-
-// Visit each vertex in the graph and determine which edges are supported through
-// read pairing
-bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
-{
-	Vertex* pPairVertex = pVertex->getPairVertex();
-	if(pPairVertex == NULL)
-		return false;
-
-	// First, mark all pair vertices that overlap the pair of this node
-	// The set of marked vertices that overlap pVertex are the trusted vertices
-	EdgePtrVec pairEdgeVec = pPairVertex->getEdges();
-	for(size_t i = 0; i < pairEdgeVec.size(); ++i)
-	{
-		// Get the pair of the endpoint of this edge
-		Vertex* pBackVertex = pairEdgeVec[i]->getEnd()->getPairVertex();
-		if(pBackVertex != NULL)
-			pBackVertex->setColor(GC_RED);
-	}
-
-	EdgePtrVec vertEdgeVec = pVertex->getEdges();
-	
-	bool changed = true;
-	while(changed)
-	{
-		changed = false;
-		// Propogate trust
-		for(size_t i = 0; i < vertEdgeVec.size(); ++i)
-		{
-			Vertex* pCurr = vertEdgeVec[i]->getEnd();
-			if(pCurr->getColor() != GC_RED)
-			{
-				// If any vertex that pCurr overlaps with is red, mark it red too
-				EdgePtrVec currEdgeVec = pCurr->getEdges();
-				for(size_t j = 0; j < currEdgeVec.size(); ++j)
-				{
-					if(currEdgeVec[j]->getEnd()->getColor() == GC_RED)
-					{
-						pCurr->setColor(GC_RED);
-						changed = true;
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	// 
-	int trusted = 0;
-	int nottrusted = 0;
-	int diffstrand = 0;
-	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
-	{
-		if(vertEdgeVec[i]->getEnd()->getColor() == GC_RED)
-		{
-			trusted++;
-			vertEdgeVec[i]->isTrusted = true;
-		}
-		else
-		{
-			nottrusted++;
-		}
-	}
-
-	(void)diffstrand;
-	//printf("TOKEN\t%d\t%d\t%d\t%zu\n", trusted, nottrusted, diffstrand, vertEdgeVec.size());
-
-	// Reset all the vertex colors
-	for(size_t i = 0; i < pairEdgeVec.size(); ++i)
-	{
-		// Get the pair of the endpoint of this edge
-		Vertex* pBackVertex = pairEdgeVec[i]->getEnd()->getPairVertex();
-		if(pBackVertex)
-			pBackVertex->setColor(GC_WHITE);
-	}
-
-	for(size_t i = 0; i < vertEdgeVec.size(); ++i)
-		vertEdgeVec[i]->getEnd()->setColor(GC_WHITE);
-	
-	return false;
-}
-
+// SGGraphStatsVisitor - Collect summary stasitics
+// about the graph
 //
-void SGPETrustVisitor::postvisit(StringGraph* /*pGraph*/)
-{
-
-}
-
-bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
-{
-	Vertex* pPairSV = pVertex->getPairVertex();
-	if(pPairSV == NULL)
-		return false;
-
-	EdgePtrVec edges = pVertex->getEdges();
-
-	// Determine which vertices that are paired to pVertex
-	// have a pair that overlaps with pPairVertex
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		Edge* pVWEdge = edges[i];
-		Vertex* pW = pVWEdge->getEnd();
-		Vertex* pPairW = pW->getPairVertex();
-		if(pPairW == NULL)
-			continue;
-
-		EdgePtrVec ppw_edges = pPairW->findEdgesTo(pPairSV->getID());
-		size_t overlap_len = pVWEdge->getMatchLength();
-
-		if(pVWEdge->getComp() == EC_SAME)
-		{
-			if(ppw_edges.size() == 1)
-			{
-				Edge* pPPEdge = ppw_edges.front();
-				size_t pair_overlap_len = pPPEdge->getMatchLength();
-				printf("pairoverlap\t%s\t%s\t%zu\t%zu\n", pVertex->getID().c_str(), pW->getID().c_str(), overlap_len, pair_overlap_len);
-			}
-			else
-			{
-				printf("pairoverlap\t%s\t%s\t%zu\t%d\n", pVertex->getID().c_str(), pW->getID().c_str(), overlap_len, 0);
-			}
-		}
-	}
-	return false;
-}
-
-void SGPEResolveVisitor::previsit(StringGraph*)
-{
-	printf("RESOLVE\tDIR\tPOS\tGOOD_RED\tGOOD_BLACK\tBAD_RED\tBAD_BLACK\tTOTAL\tCONFLICTED\tRESOLVABLE\n");
-}
-
-bool SGPEResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
-{
-	for(size_t idx = 0; idx < ED_COUNT; idx++)
-	{
-		EdgeDir dir = EDGE_DIRECTIONS[idx];
-		EdgePtrVec edges = pVertex->getEdges(dir);
-
-		int num_bad_black = 0;
-		int num_good_black = 0;
-		int num_bad_red = 0;
-		int num_good_red = 0;
-		
-		for(size_t i = 0; i < edges.size(); ++i)
-		{
-			Edge* pVWEdge = edges[i];
-			Vertex* pW = pVWEdge->getEnd();
-
-			// Get the distance between the vertices using the debug positions
-			int distance = abs(pW->dbg_position - pVertex->dbg_position);
-			int overlap_len = pVWEdge->getMatchLength();
-			int sum = distance + overlap_len;
-			
-			bool isGood = false;
-			if(sum == (int)pVertex->getSeq().size())
-			{
-				if(!pVWEdge->isTrusted)
-					num_good_black++;
-				else
-					num_good_red++;
-				isGood = true;
-			}
-			else
-			{
-				if(pVWEdge->isTrusted)
-					num_bad_black++;
-				else
-					num_bad_red++;			
-				isGood = false;
-			}
-		}
-
-		bool isConflicted = edges.size() > 1;
-		bool isResolvable = isConflicted && num_good_red > 0 && num_bad_red == 0;
-
-		printf("RESOLVE\t%zu\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n", idx, pVertex->dbg_position, num_good_red, num_good_black, num_bad_red, num_bad_black, (int)edges.size(), isConflicted, isResolvable);
-	}
-	return false;
-}
-
-void SGPEConflictRemover::previsit(StringGraph* pGraph)
-{
-	pGraph->setColors(GC_WHITE);
-	num_same = 0;
-	num_diff = 0;
-}
-
-bool SGPEConflictRemover::visit(StringGraph* pGraph, Vertex* pVertex)
-{
-	(void)pGraph;
-	(void)pVertex;
-	for(size_t idx = 0; idx < ED_COUNT; idx++)
-	{
-		EdgeDir dir = EDGE_DIRECTIONS[idx];
-		EdgePtrVec edges = pVertex->getEdges(dir);
-
-		if(edges.size() > 1)
-		{
-			bool hasTrusted = false;
-			for(size_t j = 0; j < edges.size(); ++j)
-			{
-				if(edges[j]->isTrusted)
-				{
-					hasTrusted = true;
-				}
-			}
-			
-			if(hasTrusted)
-			{
-				for(size_t j = 0; j < edges.size(); ++j)
-				{
-					if(!edges[j]->isTrusted)
-					{
-						edges[j]->setColor(GC_BLACK);
-						edges[j]->getTwin()->setColor(GC_BLACK);
-					}
-					if(edges[j]->getComp() == EC_SAME)
-						num_same++;
-					else
-						num_diff++;
-				}
-			}
-		}	
-	}
-	return 0;
-}
-
-void SGPEConflictRemover::postvisit(StringGraph* pGraph)
-{
-	pGraph->sweepEdges(GC_BLACK);
-	printf("Removed %d diff %d same\n", num_diff, num_same);
-}
-
 void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
 {
 	num_terminal = 0;
@@ -938,7 +548,10 @@ void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
 	printf("Total Vertices: %d Total Edges: %d\n", num_vertex, num_edges);
 }
 
-
+//
+// SGEdgeClassVisitor - Collect statistics about the graph
+// using debug information about simulated reads
+//
 void SGEdgeClassVisitor::previsit(StringGraph* /*pGraph*/)
 {
 	num_good = 0;

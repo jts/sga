@@ -82,15 +82,8 @@ struct SGBubbleVisitor
 	int num_bubbles;
 };
 
-struct SGVariantVisitor
-{
-	SGVariantVisitor() {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-};
-
 // Perform a transitive closure step
+// by inferring missing edges in the graph 
 struct SGTCVisitor
 {
 	SGTCVisitor() {}
@@ -100,65 +93,6 @@ struct SGTCVisitor
 
 	int ngb;
 	int nbb;
-};
-
-// Visit each node, linking the vertices with their pairs
-struct SGVertexPairingVisitor
-{
-	SGVertexPairingVisitor() {}
-	void previsit(StringGraph*);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	int num_paired;
-	int num_unpaired;
-};
-
-// Build the paired end trust network
-struct SGPETrustVisitor
-{
-	SGPETrustVisitor() {}
-	void previsit(StringGraph*);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-};
-
-// Build the paired end trust network
-struct SGPETrustPropogationVisitor
-{
-	SGPETrustPropogationVisitor() {}
-	void previsit(StringGraph*);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-};
-
-struct SGPEConflictRemover
-{
-	SGPEConflictRemover() {}
-	void previsit(StringGraph*);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	int num_same;
-	int num_diff;
-
-};
-
-// Visit each node and output the overlap between each linked edge and their pairs
-struct SGPairedOverlapVisitor
-{
-	SGPairedOverlapVisitor() {}
-	void previsit(StringGraph*) {} 
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*) {}
-};
-
-struct SGPEResolveVisitor
-{
-	SGPEResolveVisitor() {}
-	void previsit(StringGraph*);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*) {}
 };
 
 // Compile summary statistics for the graph
