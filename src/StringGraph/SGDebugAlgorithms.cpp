@@ -24,7 +24,8 @@ void SGDebugEdgeClassificationVisitor::previsit(StringGraph* /*pGraph*/)
 
 bool SGDebugEdgeClassificationVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	int curr_pos = pVertex->dbg_position;
+	assert(false && "Todo: reimplement");
+	int curr_pos = 0; //pVertex->dbg_position;
 	EdgePtrVec edges = pVertex->getEdges();
 
 	if(pVertex->countEdges(ED_SENSE) > 1 || pVertex->countEdges(ED_ANTISENSE) > 1)
@@ -32,7 +33,7 @@ bool SGDebugEdgeClassificationVisitor::visit(StringGraph* /*pGraph*/, Vertex* pV
 
 	for(size_t i = 0; i < edges.size(); ++i)
 	{
-		int edge_pos = edges[i]->getEnd()->dbg_position;
+		int edge_pos = 0; //edges[i]->getEnd()->dbg_position;
 		int distance = abs(curr_pos - edge_pos);
 		int overlap_len = edges[i]->getMatchLength();
 		int sum = distance + overlap_len;

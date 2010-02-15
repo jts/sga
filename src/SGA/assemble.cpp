@@ -108,6 +108,7 @@ void assemble()
 
 	SGPETrustVisitor trustVisit;
 
+	/*
 	if(!opt::positionsFile.empty())
 	{
 		WARN_ONCE("Using positions file");
@@ -129,6 +130,7 @@ void assemble()
 				pVertex->dbg_position = position;
 		}
 	}
+	*/
 
 	// Pre-assembly graph stats
 	std::cout << "Initial graph stats\n";

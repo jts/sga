@@ -59,9 +59,6 @@ class Vertex
 													m_color(GC_WHITE) {}
 		~Vertex();
 
-
-		int dbg_position;
-
 		// High-level modification functions
 		
 		// Merge another vertex into this vertex, as specified by pEdge
@@ -75,7 +72,6 @@ class Vertex
 
 		// Ensure that all the edges are unique
 		void makeUnique(); 
-
 
 		// Edge list operations
 		void addEdge(Edge* ep);
