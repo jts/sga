@@ -352,11 +352,6 @@ void SGBubbleVisitor::postvisit(StringGraph* pGraph)
 void SGTCVisitor::previsit(StringGraph* pGraph)
 {
 	pGraph->setColors(GC_WHITE);
-	SGEdgeClassVisitor ecv;
-	pGraph->visit(ecv);
-	
-	ngb = ecv.getNumGood();
-	nbb = ecv.getNumBad();
 }
 
 // 
@@ -487,18 +482,6 @@ bool SGTCVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 void SGTCVisitor::postvisit(StringGraph* pGraph)
 {
 	pGraph->sweepVertices(GC_RED);
-
-	SGEdgeClassVisitor ecv;
-	pGraph->visit(ecv);
-	
-	int nga = ecv.getNumGood();
-	int nba = ecv.getNumBad();
-
-	int ngc = nga - ngb;
-	int nbc = nba - nbb;
-	double rel = (double)ngc / (nbc + ngc);
-
-	printf("ng before: %d ng after: %d (%d) nb before: %d nb after: %d (%d) prop good: %lf\n", ngb, nga, ngc, nbb, nba, nbc, rel);
 }
 
 
@@ -548,49 +531,3 @@ void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
 	printf("Total Vertices: %d Total Edges: %d\n", num_vertex, num_edges);
 }
 
-//
-// SGEdgeClassVisitor - Collect statistics about the graph
-// using debug information about simulated reads
-//
-void SGEdgeClassVisitor::previsit(StringGraph* /*pGraph*/)
-{
-	num_good = 0;
-	num_bad = 0;
-	num_conflicted = 0;
-	num_trusted = 0;
-	num_nottrusted = 0;
-}
-
-bool SGEdgeClassVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
-{
-	int curr_pos = pVertex->dbg_position;
-	EdgePtrVec edges = pVertex->getEdges();
-
-	if(pVertex->countEdges(ED_SENSE) > 1 || pVertex->countEdges(ED_ANTISENSE) > 1)
-		num_conflicted++;
-
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		int edge_pos = edges[i]->getEnd()->dbg_position;
-		int distance = abs(curr_pos - edge_pos);
-		int overlap_len = edges[i]->getMatchLength();
-		int sum = distance + overlap_len;
-		
-		if(sum == (int)pVertex->getSeq().size())
-			++num_good;
-		else
-			++num_bad;
-
-		if(edges[i]->isTrusted)
-			num_trusted++;
-		else
-			num_nottrusted++;
-	}
-	return false;
-}
-
-// Remove all the marked edges
-void SGEdgeClassVisitor::postvisit(StringGraph* /*pGraph*/)
-{
-	printf("Num good: %d Num bad: %d Num conflicted: %d Num trusted: %d Num not trusted: %d\n", num_good, num_bad, num_conflicted, num_trusted, num_nottrusted);
-}

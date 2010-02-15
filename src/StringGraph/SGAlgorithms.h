@@ -112,25 +112,4 @@ struct SGGraphStatsVisitor
 	int num_vertex;	
 };
 
-// Special case debug visitor which classifies edges as correct or 
-// incorrect
-struct SGEdgeClassVisitor
-{
-	SGEdgeClassVisitor() {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	int getNumGood() { return num_good; }
-	int getNumBad() { return num_bad; }
-
-	int num_good;
-	int num_bad;
-	int num_conflicted;
-	int	num_trusted;
-	int num_nottrusted;
-};
-
-
-
 #endif

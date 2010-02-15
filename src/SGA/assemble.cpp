@@ -13,7 +13,9 @@
 #include "SGUtil.h"
 #include "SGAlgorithms.h"
 #include "SGPairedAlgorithms.h"
+#include "SGDebugAlgorithms.h"
 #include "Timer.h"
+
 
 //
 // Getopt
@@ -100,7 +102,7 @@ void assemble()
 	SGTCVisitor tcVisit;
 	SGBubbleVisitor bubbleVisit;
 	SGGraphStatsVisitor statsVisit;
-	SGEdgeClassVisitor edgeClassVisit;
+	SGDebugEdgeClassificationVisitor edgeClassVisit;
 	SGVertexPairingVisitor pairingVisit;
 	SGPairedOverlapVisitor pairedOverlapVisit;
 

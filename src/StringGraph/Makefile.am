@@ -7,5 +7,6 @@ libstringgraph_a_CPPFLAGS = \
 libstringgraph_a_SOURCES = \
         SGUtil.cpp SGUtil.h \
         SGAlgorithms.cpp SGAlgorithms.h \
-		SGPairedAlgorithms.cpp SGPairedAlgorithms.h
+		SGPairedAlgorithms.cpp SGPairedAlgorithms.h \
+		SGDebugAlgorithms.cpp SGDebugAlgorithms.h
 
