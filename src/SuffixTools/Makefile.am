@@ -19,4 +19,5 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
                            SuffixTree.h SuffixTree.cpp \
                            BWTTraverse.h BWTTraverse.cpp \
 						   OverlapBlock.h OverlapBlock.cpp \
-						   OverlapAlgorithm.h OverlapAlgorithm.cpp
+						   OverlapAlgorithm.h OverlapAlgorithm.cpp \
+						   OverlapSeed.h OverlapSeed.cpp

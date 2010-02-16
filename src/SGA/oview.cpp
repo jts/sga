@@ -143,8 +143,6 @@ void detectMisalignments(const ReadTable* pRT, const OverlapMap* pOM)
 	for(size_t i = 0; i < pRT->getCount(); ++i)
 	{
 		const SeqItem& read = pRT->getRead(i);
-		if(read.id != "35621:20150")
-			continue;
 
 		OverlapMap::const_iterator finder = pOM->find(read.id);
 		if(finder == pOM->end())

@@ -1,7 +1,7 @@
 //-----------------------------------------------
 // Copyright 2009 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
-// Released under the GPL license
+// Released under the GPL
 //-----------------------------------------------
 //
 // bwt_algorithms.h - Algorithms for aligning to a bwt structure
@@ -19,69 +19,6 @@
 #define LEFT_INT_IDX 0
 #define RIGHT_INT_IDX 1
 
-// types
-enum ExtendDirection
-{
-	ED_LEFT,
-	ED_RIGHT
-};
-
-// Structure holding all the working variables for making an inexact alignment for a sequence
-// to a BWT
-struct BWTAlign
-{
-	inline int length() const { return right_index - left_index + 1; }
-	inline bool isSeed() const { return length() < seed_len; }
-	inline bool isIntervalValid(int idx) { return ranges.interval[idx].isValid(); }
-
-	int left_index; // inclusive
-	int right_index; // inclusive
-	int seed_len;
-	ExtendDirection dir; // the direction that this alignment is being extended in
-	int z;
-
-	BWTIntervalPair ranges; // ranges.interval[0] is the left interval, 1 is the right 
-	
-	// Sort the alignments based on their r_lower/r_upper
-	static inline bool compareLeftRange(const BWTAlign& a, const BWTAlign& b)
-	{
-		return BWTInterval::compare(a.ranges.interval[0], b.ranges.interval[0]);
-	}
-
-	// Compare for equality based on the left range
-	// If the length of the alignment is equal, then if the left ranges
-	// are a match, the two alignment objects are redundant and one can be removed
-	static inline bool equalLeftRange(const BWTAlign& a, const BWTAlign& b)
-	{
-#ifdef VALIDATE
-		if(BWTInterval::equal(a.ranges.inteval[0], b.ranges.interval[0]))
-			assert(a.length() == b.length() && a.z == b.z);
-#endif
-		return BWTInterval::equal(a.ranges.interval[0], b.ranges.interval[0]);
-	}
-	
-
-	void print() const
-	{
-		printf("li: %d ri: %d sl: %d dir: %d z: %d lrl: %d lru: %d rlr: %d rlu: %d\n", 
-		        left_index, right_index, seed_len, dir, z, 
-				(int)ranges.interval[0].lower, (int)ranges.interval[0].upper, 
-				(int)ranges.interval[1].lower, (int)ranges.interval[1].upper);
-	}
-
-
-	void print(const std::string& w) const
-	{
-		printf("sub: %s li: %d ri: %d sl: %d dir: %d z: %d lrl: %d lru: %d rlr: %d rlu: %d\n", 
-		        w.substr(left_index, length()).c_str(), left_index, right_index,
-				seed_len, dir, z, (int)ranges.interval[0].lower, (int)ranges.interval[0].upper, 
-				(int)ranges.interval[1].lower, (int)ranges.interval[1].upper);
-	}
-};
-
-// Collections
-typedef std::queue<BWTAlign> BWTAlignQueue;
-typedef std::list<BWTAlign> BWTAlignList;
 
 // functions
 namespace BWTAlgorithms
@@ -162,33 +99,10 @@ inline AlphaCount getExtCount(const BWTInterval& interval, const BWT* pBWT)
 	return pBWT->getOccDiff(interval.lower - 1, interval.upper);
 }
 
-//
-// Exact alignment algorithms
-//
-
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
 // appears in the FM-index for all i s.t. length(w[i, l]) >= minOverlap.
 AlphaCount calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT);
-
-// Perform an exact suffix overlap
-int alignSuffixExact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                     int minOverlap, Hit& hitTemplate, HitVector* pHits);
-
-
-//
-// Inexact alignment algorithms
-//
-
-// Perform an inexact suffix overlap, allowing at most error_rate errors
-int alignSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                       double error_rate, int minOverlap, Hit& hitTemplate, HitVector* pHits);
-
-
-// Align a subrange of a string against and fm-index while allowing maxDiff errors. Seeded.
-int _alignBlock(const std::string& w, int block_start, int block_end,
-                const BWT* pBWT, const BWT* pRevBWT, int maxDiff, Hit& hitTemplate, HitVector* pHits);
-
 
 };
 
