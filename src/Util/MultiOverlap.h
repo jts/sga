@@ -33,9 +33,11 @@ class MultiOverlap
 		MultiOverlap(const std::string& rootID, const std::string& rootSeq);
 		void add(const std::string& seq, const Overlap& ovr);
 		void print(int default_padding, int max_overhang);
+		void printPileup();
 
 	private:
 
+		std::string getPileup(int idx) const;
 		void printRow(int default_padding, int max_overhang, int root_len, 
 		              int offset, int overlap_len, const std::string& seq, 
 					  const std::string& id);

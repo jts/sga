@@ -39,6 +39,28 @@ void MultiOverlap::add(const std::string& seq, const Overlap& ovr)
 	m_overlaps.push_back(mod);
 }
 
+// Get the "stack" of bases that aligns to
+// a single position of the root seq, including
+// the root base
+std::string MultiOverlap::getPileup(int idx) const
+{
+	std::string s;
+
+	s.push_back(m_rootSeq[idx]);
+
+	for(size_t i  = 0; i < m_overlaps.size(); ++i)
+	{
+		const MOData& curr = m_overlaps[i];
+		// translate idx into the frame of the current sequence
+		int trans_idx = idx - curr.offset;
+		if(trans_idx >= 0 && size_t(trans_idx) < curr.seq.size())
+		{
+			s.push_back(curr.seq[trans_idx]);
+		}
+	}
+	return s;
+}
+
 // Print the MultiOverlap to stdout
 void MultiOverlap::print(int default_padding, int max_overhang)
 {
@@ -86,6 +108,17 @@ void MultiOverlap::printRow(int default_padding, int max_overhang,
 	std::string padding_str(padding, ' ');
 	std::string outstr = padding_str + leader + clipped + trailer;
 	printf("%s\t%d\t%d\t%lf\tID:%s\n", outstr.c_str(), overlap_len, -1, 0.0f, id.c_str());
+}
+
+// Print the MultiOverlap horizontally, in a pileup format
+void MultiOverlap::printPileup()
+{
+	std::cout << "\nDrawing overlap pileup for read " << m_rootID << "\n";
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		std::string p = getPileup(i);
+		printf("%zu\t%s\n", i, p.c_str());
+	}
 }
 
 //

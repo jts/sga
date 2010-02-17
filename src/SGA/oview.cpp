@@ -300,7 +300,8 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 		std::string otherSeq = pRT->getRead(curr.id[1]).seq.toString();
 		multi_overlap.add(otherSeq, curr);
 	}
-	multi_overlap.print(20, opt::max_overhang);
+	//multi_overlap.print(20, opt::max_overhang);
+	multi_overlap.printPileup();
 }
 
 void parseOverlaps(std::string filename, OverlapMap& overlapMap)
