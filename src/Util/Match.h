@@ -23,8 +23,8 @@ struct Match
 	// Accessors
 	inline bool isRC() const { return isReverse; }
 	inline int getNumDiffs() const { return numDiff; }
-	inline int getMinOverlapLength() { return std::min(coord[0].length(), coord[1].length()); }
-	inline int getMaxOverlapLength() { return std::max(coord[0].length(), coord[1].length()); }
+	inline int getMinOverlapLength() const { return std::min(coord[0].length(), coord[1].length()); }
+	inline int getMaxOverlapLength() const { return std::max(coord[0].length(), coord[1].length()); }
 
 	void setNumDiffs(int n) { numDiff = n; }
 	

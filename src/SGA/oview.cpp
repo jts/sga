@@ -17,6 +17,7 @@
 #include "LCPArray.h"
 #include "SGUtil.h"
 #include "OverlapQuality.h"
+#include "MultiOverlap.h"
 
 void detectMisalignments(const ReadTable* pRT, const OverlapMap* pOM);
 void detect(const SeqItem& read, const ReadTable* pRT, const OverlapMap* pOM);
@@ -281,79 +282,25 @@ std::string correct(const SeqItem& read, const ReadTable* pRT, const OverlapMap*
 void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* pOM)
 {
 	std::string rootSeq = pRT->getRead(rootID).seq.toString();
-	DrawVector draw_vector;
-
-	DrawData rootData(0, rootID, rootSeq, 0, 0);
-	draw_vector.push_back(rootData);
+	MultiOverlap multi_overlap(rootID, rootSeq);
 
 	// Get all the overlaps for this read
 	OverlapMap::const_iterator finder = pOM->find(rootID);
 	if(finder == pOM->end())
 		return;
-	
-	const OverlapVector& overlaps = finder->second;
 
-	// Convert each overlap into an offset and string
+	const OverlapVector& overlaps = finder->second;
 	for(size_t j = 0; j < overlaps.size(); ++j)
 	{
 		Overlap curr = overlaps[j];
-
 		// Swap root read into first position if necessary
 		if(curr.id[0] != rootID)
 			curr.swap();
 		assert(curr.id[0] == rootID);
-
 		std::string otherSeq = pRT->getRead(curr.id[1]).seq.toString();
-
-		// 
-		if(curr.match.isRC())
-		{
-			otherSeq = reverseComplement(otherSeq);
-			curr.match.canonize();
-		}
-		
-		// Calculate the offset between position 0 of otherSeq and the start of the root
-		int offset = curr.match.inverseTranslate(0);
-		draw_vector.push_back(DrawData(offset, curr.id[1], otherSeq, curr.match.getNumDiffs(), curr.match.coord[0].length()));
+		multi_overlap.add(otherSeq, curr);
 	}
-	drawMulti(rootData.name, rootData.seq.size(), draw_vector);
-}
-
-//
-void drawMulti(std::string rootName, int root_len, DrawVector& dv)
-{
-	if(dv.size() < 2)
-		return;
-	std::sort(dv.begin(), dv.end());
-	int default_padding = 20;
-	std::cout << "\nDrawing overlaps for read " << rootName << "\n";
-	for(size_t i = 0; i < dv.size(); ++i)
-	{
-		int c_offset = dv[i].offset;
-		int c_len = dv[i].seq.length();
-
-		// This string runs from c_offset to c_offset + len
-		// Clip the string at -max_overhang to root_len + max_overhang
-		int left_clip = std::max(c_offset, -opt::max_overhang);
-		int right_clip = std::min(c_offset + c_len, root_len + opt::max_overhang);
-		
-		// translate the clipping coordinates to the string coords
-		int t_left_clip = left_clip - c_offset;
-		int t_right_clip = right_clip - c_offset;
-		// Calculate the length of the left padding
-		int padding = default_padding + left_clip;
-		std::string leader = (t_left_clip > 0) ? "..." : "";
-		std::string trailer = (t_right_clip < c_len) ? "..." : ""; 
-		std::string clipped = dv[i].seq.substr(t_left_clip, t_right_clip - t_left_clip);
-		padding -= leader.size();
-		//padding -= dv[i].name.size();
-		//printf("offset: %d lc: %d rc: %d pad: %d\n", c_offset, left_clip, right_clip, padding);
-		assert(padding >= 0);
-		std::string padding_str(padding, ' ');
-		std::string outstr = padding_str + leader + clipped + trailer;
-		printf("%s\t%d\t%d\t%lf\t%s\n", outstr.c_str(), dv[i].overlapLen, dv[i].numDiff, (double)dv[i].numDiff / dv[i].overlapLen, dv[i].name.c_str());
-		//std::cout /*<< dv[i].name*/ << padding_str << leader << clipped << trailer << "\t" << dv[i].name << "\n";		
-	}
+	multi_overlap.print(20, opt::max_overhang);
 }
 
 void parseOverlaps(std::string filename, OverlapMap& overlapMap)

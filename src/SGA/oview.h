@@ -38,7 +38,6 @@ int oviewMain(int argc, char** argv);
 void correctReads(const ReadTable* pRT, const OverlapMap* pOM);
 std::string correct(const SeqItem& read, const ReadTable* pRT, const OverlapMap* pOM, int& num_corrected);
 void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* pOM);
-void drawMulti(std::string rootName, int root_len, DrawVector& dv);
 void parseOverlaps(std::string filename, OverlapMap& overlapMap);
 void parseOviewOptions(int argc, char** argv);
 

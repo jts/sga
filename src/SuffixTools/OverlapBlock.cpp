@@ -96,6 +96,23 @@ OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B)
 {
 	OverlapBlockList outList;
 
+	// Check if A and B have the same overlap length, if so they must be 
+	// identical blocks (resulting from different seeds) and we can remove one
+	if(A.overlapLen == B.overlapLen)
+	{
+		if(A.ranges.interval[0].lower == B.ranges.interval[0].lower &&
+		   A.ranges.interval[0].upper == B.ranges.interval[0].upper)
+		{
+			outList.push_back(A);
+			return outList;
+		}
+		else
+		{
+			std::cerr << "Error in resolveOverlap: Overlap blocks with same length do not \
+			have same coordinates\n";
+			assert(false);
+		}	
+	}
 	// A and B must have different overlap lengths
 	assert(A.overlapLen != B.overlapLen);
 

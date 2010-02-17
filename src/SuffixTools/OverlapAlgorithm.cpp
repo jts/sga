@@ -480,7 +480,7 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 
 	pCurrList->clear();
 	pCurrList->swap(*pNextList);
-	assert(pNextList.empty());
+	assert(pNextList->empty());
 
 	while(!pCurrList->empty())
 	{
@@ -501,6 +501,7 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 			}
 			pCurrList->erase(iter++);
 		}
+		assert(pCurrList->empty());
 		pCurrList->swap(*pNextList);
 	}
 
@@ -550,7 +551,6 @@ void OverlapAlgorithm::extendSeedsExactRight(const std::string& w, const BWT* /*
                                              ExtendDirection /*dir*/, const OverlapSeedList* pInList, 
 											 OverlapSeedList* pOutList)
 {
-
 	for(OverlapSeedList::const_iterator iter = pInList->begin(); iter != pInList->end(); ++iter)
 	{
 		OverlapSeed align = *iter;
@@ -582,32 +582,30 @@ void OverlapAlgorithm::extendSeedInexactRight(OverlapSeed& seed, const std::stri
 	{
 		seed.dir = ED_LEFT;
 		pOutList->push_back(seed);
+		return;
+	}
+
+	++seed.right_index;
+	
+	if(seed.z == 0)
+	{
+		char b = w[seed.right_index];
+		BWTAlgorithms::updateBothR(seed.ranges, b, pRevBWT);
+		if(seed.isIntervalValid(RIGHT_INT_IDX))
+			pOutList->push_back(seed);
 	}
 	else
 	{
-		++seed.right_index;
-		
-		if(seed.z == 0)
+		for(int i = 0; i < 4; ++i)
 		{
-			char b = w[seed.right_index];
-			BWTAlgorithms::updateBothR(seed.ranges, b, pRevBWT);
-			if(seed.isIntervalValid(RIGHT_INT_IDX))
-				pOutList->push_back(seed);
-		}
-		else
-		{
-			for(int i = 0; i < 4; ++i)
+			char b = ALPHABET[i];
+			OverlapSeed branched = seed;
+			BWTAlgorithms::updateBothR(branched.ranges, b, pRevBWT);
+			if(branched.isIntervalValid(RIGHT_INT_IDX))
 			{
-				char b = ALPHABET[i];
-				OverlapSeed branched = seed;
-				WARN_ONCE("UPDATEBOTHL????");
-				BWTAlgorithms::updateBothR(branched.ranges, b, pRevBWT);
-				if(branched.isIntervalValid(RIGHT_INT_IDX))
-				{
-					if(b != w[seed.right_index])
-						--branched.z;
-					pOutList->push_back(branched);
-				}
+				if(b != w[seed.right_index])
+					--branched.z;
+				pOutList->push_back(branched);
 			}
 		}
 	}
@@ -635,7 +633,6 @@ void OverlapAlgorithm::extendSeedInexactLeft(OverlapSeed& seed, const std::strin
 			int len = w.length();
 			int overlapLen = len - seed.left_index;
 			OverlapBlock nBlock(OverlapBlock(probe, overlapLen, maxDiff - seed.z, af));
-
 			if(overlapLen == len)
 				pOBFullList->push_back(nBlock);
 			else
@@ -661,11 +658,10 @@ void OverlapAlgorithm::extendSeedInexactLeft(OverlapSeed& seed, const std::strin
 			{
 				char b = ALPHABET[i];
 				OverlapSeed branched = seed;
-				// Only update left interval
-				BWTAlgorithms::updateBothL(seed.ranges, b, pBWT);
+				BWTAlgorithms::updateBothL(branched.ranges, b, pBWT);
 				if(branched.isIntervalValid(LEFT_INT_IDX))
 				{
-					if(ALPHABET[i] != w[seed.left_index])
+					if(b != w[seed.left_index])
 						--branched.z;
 					pOutList->push_back(branched);
 				}

@@ -13,4 +13,5 @@ libutil_a_SOURCES = \
         Pileup.h Pileup.cpp \
 		BitChar.h BitChar.cpp \
 		Interval.h Interval.cpp \
-		SeqCoord.h SeqCoord.cpp
+		SeqCoord.h SeqCoord.cpp \
+		MultiOverlap.h MultiOverlap.cpp
