@@ -26,11 +26,30 @@ struct SGDebugEdgeClassificationVisitor
 	int getNumGood() { return num_good; }
 	int getNumBad() { return num_bad; }
 
+	// Data
 	int num_good;
 	int num_bad;
 	int num_conflicted;
 	int	num_trusted;
 	int num_nottrusted;
 };
+
+//
+// Compare the visited graph to the graph loaded
+// in the constructor
+//
+struct SGDebugGraphCompareVisitor
+{
+	SGDebugGraphCompareVisitor(std::string readsFile);
+	~SGDebugGraphCompareVisitor();
+
+	void previsit(StringGraph*) {}
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*) {}
+
+	// Data
+	StringGraph* m_pCompareGraph;
+};
+
 
 #endif

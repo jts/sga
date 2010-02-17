@@ -48,7 +48,7 @@ namespace opt
 	static std::string readsFile;
 	static std::string prefix;
 	static std::string outFile;
-	static std::string positionsFile;
+	static std::string debugFile;
 	static unsigned int minOverlap;
 	static bool bTransClose;
 	static bool bTrim;
@@ -105,9 +105,15 @@ void assemble()
 	SGDebugEdgeClassificationVisitor edgeClassVisit;
 	SGVertexPairingVisitor pairingVisit;
 	SGPairedOverlapVisitor pairedOverlapVisit;
-
 	SGPETrustVisitor trustVisit;
 
+	if(!opt::debugFile.empty())
+	{
+		SGDebugGraphCompareVisitor* pDebugGraphVisit = new SGDebugGraphCompareVisitor(opt::debugFile);
+		pGraph->visit(*pDebugGraphVisit);
+		delete pDebugGraphVisit;
+		return;
+	}
 	/*
 	if(!opt::positionsFile.empty())
 	{
@@ -250,7 +256,7 @@ void parseAssembleOptions(int argc, char** argv)
 			case 'p': arg >> opt::prefix; break;
 			case 'o': arg >> opt::outFile; break;
 			case 'm': arg >> opt::minOverlap; break;
-			case 'd': arg >> opt::positionsFile; break;
+			case 'd': arg >> opt::debugFile; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case 'b': opt::bBubble = true; break;
