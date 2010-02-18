@@ -65,6 +65,12 @@ Match Edge::getMatch() const
 	return Match(sc, tsc, getComp() == EC_REVERSE, -1);
 }
 
+// The overlap structure implied by this edge
+Overlap Edge::getOverlap() const
+{
+	return Overlap(getStartID(), getEndID(), getMatch());
+}
+
 // Get the matching portion of V1 described by this edge
 std::string Edge::getMatchStr() const
 {

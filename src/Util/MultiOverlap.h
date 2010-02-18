@@ -32,7 +32,7 @@ class MultiOverlap
 
 		MultiOverlap(const std::string& rootID, const std::string& rootSeq);
 		void add(const std::string& seq, const Overlap& ovr);
-		void print(int default_padding, int max_overhang);
+		void print(int default_padding = DEFAULT_PADDING, int max_overhang = DEFAULT_MAX_OVERHANG);
 		void printPileup();
 
 	private:
@@ -43,6 +43,9 @@ class MultiOverlap
 					  const std::string& id);
 
 		// data
+		static const int DEFAULT_PADDING = 20;
+		static const int DEFAULT_MAX_OVERHANG = 3;
+
 		std::string m_rootID;
 		std::string m_rootSeq;
 

@@ -1,7 +1,7 @@
 //-----------------------------------------------
 // Copyright 2009 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
-// Released under the GPL license
+// Released under the GPL
 //-----------------------------------------------
 //
 // SGDebugAlgorithms - Methods used for the 
@@ -46,6 +46,9 @@ struct SGDebugGraphCompareVisitor
 	void previsit(StringGraph*) {}
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*) {}
+
+	void compareErrorRates(StringGraph* pGraph, Vertex* pVertex);
+	void compareTransitiveGroups(StringGraph* pGraph, Vertex* pVertex);
 
 	// Data
 	StringGraph* m_pCompareGraph;

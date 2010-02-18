@@ -19,6 +19,7 @@
 #include <iostream>
 #include <iterator>
 #include "GraphCommon.h"
+#include "TransitiveGroupCollection.h"
 
 // Forward declare
 class Edge;
@@ -72,6 +73,12 @@ class Vertex
 
 		// Ensure that all the edges are unique
 		void makeUnique(); 
+
+		// Compute the transitive groups for this vertex
+		// A transitive group is a set of edges s.t. one
+		// edge is irreducible and the other edges in the set
+		// are transitive w.r.t. the irreducible edge.
+		TransitiveGroupCollection computeTransitiveGroups(EdgeDir dir);
 
 		// Edge list operations
 		void addEdge(Edge* ep);

@@ -100,7 +100,8 @@ class Edge
 		size_t getMatchLength() const { return m_matchCoord.length(); }
 		const SeqCoord& getMatchCoord() const { return m_matchCoord; }
 		std::string getMatchStr() const;
-		Match getMatch() const;		
+		Match getMatch() const;
+		Overlap getOverlap() const;
 
 		// setters
 		void setTwin(Edge* pEdge) { m_pTwin = pEdge; }

@@ -81,12 +81,61 @@ SGDebugGraphCompareVisitor::~SGDebugGraphCompareVisitor()
 //
 bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
+	compareTransitiveGroups(pGraph, pVertex);
+	return false;
+}
+
+void SGDebugGraphCompareVisitor::compareTransitiveGroups(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
+	if(pCompareVertex == NULL)
+	{
+		return;
+	}
+
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];	
+		TransitiveGroupCollection actualTGC = pVertex->computeTransitiveGroups(dir);
+		TransitiveGroupCollection compareTGC = pCompareVertex->computeTransitiveGroups(dir);
+
+		if(actualTGC.numGroups() != compareTGC.numGroups())
+		{
+			printf("TGVMISMATCH\t%zu\t%zu\n", actualTGC.numGroups(), compareTGC.numGroups());
+			for(size_t actualGroupIdx = 0; actualGroupIdx < actualTGC.numGroups(); ++actualGroupIdx)
+			{
+				Edge* pIrr = actualTGC.getGroup(actualGroupIdx).getIrreducible();
+				size_t compareGroupIdx = compareTGC.findGroup(pIrr->getDesc());
+				
+				if(actualGroupIdx != compareGroupIdx)
+				{
+					TransitiveGroup& compareGroup = compareTGC.getGroup(compareGroupIdx);
+					TransitiveGroup& actualGroup = actualTGC.getGroup(actualGroupIdx);
+
+					size_t actualGroupSize = actualGroup.numTransitive() + 1;
+					size_t compareGroupSize = compareGroup.numTransitive() + 1;
+					std::cout << "MPE\t" << *pIrr << "\t" << actualGroupIdx << "\t" << actualGroupSize << "\t"
+                    << compareGroupIdx << "\t" << compareGroupSize << "\n";
+
+					std::cout << "Compare collection:\n";
+					compareTGC.print();
+
+					std::cout << "Actual collection:\n";
+					actualTGC.print();
+				}
+			}
+		}
+	}
+}
+
+void SGDebugGraphCompareVisitor::compareErrorRates(StringGraph* pGraph, Vertex* pVertex)
+{
 	// Retreive the vertex in the comparison graph
 	Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
 	if(pCompareVertex == NULL)
 	{
 		std::cerr << "Compare vertex " << pVertex->getID() << " not found!\n";
-		return false;
+		return;
 	}
 	EdgePtrVec compareEdges = pCompareVertex->getEdges();
 
@@ -122,6 +171,4 @@ bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			//std::cout << "MATCH2: " << match2 << "\n";
 		}
 	}
-
-	return false;
 }
