@@ -54,6 +54,9 @@ struct Match
 	// Expand a match outwards so each end is terminal for both coordinates
 	void expand();
 
+	// Count the number of differences between the strings
+	int countDifferences(const std::string& s1, const std::string& s2) const;
+
 	// Flip coord[1] if isReverse is true, effectively
 	// bringing the matching strings into the same coordinate system
 	void canonize();
@@ -83,11 +86,11 @@ struct Overlap
 	Overlap(const std::string& i1, int s1, int e1, int l1, 
 	        const std::string& i2, int s2, int e2, int l2, bool isRC, int nd); 
 
+	// functions
+	
 	// Swap the order of the elements
 	void swap();
 
-	// functions
-	
 	// Return the index (0 or 1) of the CONTAINED vertex (the discarded vertex of a containment)
 	size_t getContainedIdx();
 
@@ -99,6 +102,7 @@ struct Overlap
 	Match match;
 };
 
+// Collections
 typedef std::vector<Overlap> OverlapVector;
 
 #endif

@@ -400,12 +400,14 @@ bool SGTCVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				// Infer the match_ij based match_i and match_j
 				Match match_ij = Match::infer(match_i, match_j);
 	
-				std::string seq_i = p_vertI->getSeq();
-				std::string seq_j = p_vertJ->getSeq();
-				
 				// Expand the match outwards so that one sequence is left terminal 
 				// and one is right terminal
 				match_ij.expand();
+
+				std::string seq_i = p_vertI->getSeq();
+				std::string seq_j = p_vertJ->getSeq();
+				
+
 				
 				// Extract the unmatched portion of each strings
 				std::string cs_i = match_i.coord[1].getComplementString(seq_i);

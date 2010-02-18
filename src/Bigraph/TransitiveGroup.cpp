@@ -10,43 +10,45 @@
 #include "Edge.h"
 #include "TransitiveGroup.h"
 
-TransitiveGroup::TransitiveGroup(Vertex* pVertex, Edge* pIrreducible) : m_pVertex(pVertex), m_pIrreducibleEdge(pIrreducible)
+TransitiveGroup::TransitiveGroup(Vertex* pVertex, Edge* pIrreducible) : m_pVertex(pVertex)
 {
-
+	m_edges.push_back(pIrreducible);
 }
 
 //
-void TransitiveGroup::addTransitive(Edge* pTransitive)
+void TransitiveGroup::add(Edge* pEdge)
 {
-	m_transitivePVec.push_back(pTransitive);
+	m_edges.push_back(pEdge);
 }
 
 //
-size_t TransitiveGroup::numTransitive() const
+size_t TransitiveGroup::numElements() const
 {
-	return m_transitivePVec.size();
+	return m_edges.size();
 }
 
 //
 Edge* TransitiveGroup::getIrreducible() const
 {
-	return m_pIrreducibleEdge;
+	assert(!m_edges.empty());
+	// The irreducible edge is the first one in the group
+	return m_edges[0];
 }
 
 //
-Edge* TransitiveGroup::getTransitive(size_t idx) const
+Edge* TransitiveGroup::getEdge(size_t idx) const
 {
-	assert(idx < m_transitivePVec.size());
-	return m_transitivePVec[idx];
+	assert(idx < m_edges.size());
+	return m_edges[idx];
 }
 
 //
-Edge* TransitiveGroup::getTransitive(EdgeDesc ed) const
+Edge* TransitiveGroup::getEdge(EdgeDesc ed) const
 {
-	for(size_t i = 0; i < m_transitivePVec.size(); ++i)
+	for(size_t i = 0; i < m_edges.size(); ++i)
 	{
-		if(m_transitivePVec[i]->getDesc() == ed)
-			return m_transitivePVec[i];
+		if(m_edges[i]->getDesc() == ed)
+			return m_edges[i];
 	}
 
 	return NULL;
@@ -56,29 +58,28 @@ Edge* TransitiveGroup::getTransitive(EdgeDesc ed) const
 MultiOverlap TransitiveGroup::getMultiOverlap() const
 {
 	MultiOverlap mo(m_pVertex->getID(), m_pVertex->getSeq());
-	mo.add(m_pIrreducibleEdge->getEnd()->getSeq(), m_pIrreducibleEdge->getOverlap());
 
-	for(size_t i = 0; i < m_transitivePVec.size(); ++i)
+	for(size_t i = 0; i < m_edges.size(); ++i)
 	{
-		Edge* pEdge = m_transitivePVec[i];
+		Edge* pEdge = m_edges[i];
 		mo.add(pEdge->getEnd()->getSeq(), pEdge->getOverlap());
 	}
 	return mo;
 }
 //
-bool TransitiveGroup::hasTransitive(EdgeDesc ed) const
+bool TransitiveGroup::hasEdge(EdgeDesc ed) const
 {
-	Edge* pe = getTransitive(ed);
+	Edge* pe = getEdge(ed);
 	return pe != NULL;
 }
 
 //
 void TransitiveGroup::print() const
 {
-	std::cout << "\tIrr: " << *m_pIrreducibleEdge << "\n";
-	for(size_t i = 0; i < m_transitivePVec.size(); ++i)
+	std::cout << "\tIrr: " << *m_edges[0] << "\n";
+	for(size_t i = 1; i < m_edges.size(); ++i)
 	{
-		std::cout << "\tTrans: " << *m_transitivePVec[i] << "\n";
+		std::cout << "\tTrans: " << *m_edges[i] << "\n";
 	}
 }
 
@@ -86,5 +87,5 @@ void TransitiveGroup::print() const
 void TransitiveGroup::printMultiOverlap() const
 {
 	MultiOverlap mo = getMultiOverlap();
-	mo.print();
+	mo.printPileup();
 }

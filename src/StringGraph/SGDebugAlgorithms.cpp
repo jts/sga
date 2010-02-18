@@ -112,16 +112,55 @@ void SGDebugGraphCompareVisitor::compareTransitiveGroups(StringGraph* /*pGraph*/
 					TransitiveGroup& compareGroup = compareTGC.getGroup(compareGroupIdx);
 					TransitiveGroup& actualGroup = actualTGC.getGroup(actualGroupIdx);
 
+					size_t actualGroupSize = actualGroup.numElements();
+					size_t compareGroupSize = compareGroup.numElements();
+
+					std::cout << "MPE\t" << *pIrr << "\t" << actualGroupIdx << "\t" << actualGroupSize << "\t"
+					 << compareGroupIdx << "\t" << compareGroupSize << "\n";
+
+					/*
+					TransitiveGroup& compareGroup = compareTGC.getGroup(compareGroupIdx);
+					TransitiveGroup& actualGroup = actualTGC.getGroup(actualGroupIdx);
+
 					size_t actualGroupSize = actualGroup.numTransitive() + 1;
 					size_t compareGroupSize = compareGroup.numTransitive() + 1;
-					std::cout << "MPE\t" << *pIrr << "\t" << actualGroupIdx << "\t" << actualGroupSize << "\t"
-                    << compareGroupIdx << "\t" << compareGroupSize << "\n";
 
 					std::cout << "Compare collection:\n";
 					compareTGC.print();
 
 					std::cout << "Actual collection:\n";
 					actualTGC.print();
+
+					*/
+					
+					// Compute the number of differences between the irreducible edge
+					// at the head of the incorrect group and all the elements of the 
+					// group it should be in
+					TransitiveGroup& expectedGroup = actualTGC.getGroup(compareGroupIdx);
+
+					MultiOverlap mo(pIrr->getEnd()->getID(), pIrr->getEnd()->getSeq());
+
+					for(size_t i = 0; i < expectedGroup.numElements(); ++i)
+					{
+						Edge* pEdge = expectedGroup.getEdge(i);
+
+						// Set up the matches between the root vertex and i/j
+						// All coordinates are calculated from the point of view of pVertex
+						Match match_i = pIrr->getMatch();
+						Match match_j = pEdge->getMatch();
+
+						// Infer the match_ij based match_i and match_j
+						Match match_ij = Match::infer(match_i, match_j);
+						match_ij.expand();
+
+						// Convert the match to an overlap
+						Overlap ovr(pIrr->getEndID(), pEdge->getEndID(), match_ij);
+						mo.add(pEdge->getEnd()->getSeq(), ovr);
+						int numDiff = ovr.match.countDifferences(pIrr->getEnd()->getSeq(), pEdge->getEnd()->getSeq());
+						std::cout << "MSE: " << pIrr->getEndID() << "\tInferred to: " << pEdge->getEndID() << "Num diff: ";
+						std::cout << numDiff << " error rate: " << double(numDiff) / double(ovr.match.getMinOverlapLength()) << "\n";
+					}
+					mo.print();
 				}
 			}
 		}

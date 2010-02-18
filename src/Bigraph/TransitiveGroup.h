@@ -25,14 +25,14 @@ class TransitiveGroup
 	public:
 		TransitiveGroup(Vertex* pVertex, Edge* pIrreducible);
 		
-		void addTransitive(Edge* pTransitive);
+		void add(Edge* pEdge);
 		
 		Edge* getIrreducible() const;
-		Edge* getTransitive(size_t idx) const;
-		Edge* getTransitive(EdgeDesc ed) const;
+		Edge* getEdge(size_t idx) const;
+		Edge* getEdge(EdgeDesc ed) const;
 		MultiOverlap getMultiOverlap() const;
-		bool  hasTransitive(EdgeDesc ed) const;
-		size_t numTransitive() const;
+		bool hasEdge(EdgeDesc ed) const;
+		size_t numElements() const;
 
 		// IO
 		void print() const;
@@ -42,11 +42,7 @@ class TransitiveGroup
 
 		// data
 		Vertex* m_pVertex;
-		Edge* m_pIrreducibleEdge;
-		EdgePtrVec m_transitivePVec;
+		EdgePtrVec m_edges;
 };
-
-// Collection
-typedef std::vector<TransitiveGroup> TransitiveGroupVector;
 
 #endif

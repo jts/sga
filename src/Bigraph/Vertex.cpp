@@ -250,7 +250,7 @@ TransitiveGroupCollection Vertex::computeTransitiveGroups(EdgeDir dir)
 		{
 			if(edges[j]->getEnd()->getColor() == GC_BLACK)
 			{
-				group.addTransitive(edges[j]);
+				group.add(edges[j]);
 			}
 		}
 

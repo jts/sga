@@ -159,7 +159,7 @@ void Match::expand()
 {
 	assert(coord[0].isValid() && coord[1].isValid());
 
-	// This is simple if the coordinates are in canonical form, so here were canonize
+	// This is simpler if the coordinates are in canonical form, so here were canonize
 	// them and decanonize after
 	bool flipped = false;
 	if(isRC())
@@ -187,7 +187,20 @@ void Match::expand()
 	if(flipped)
 		decanonize();
 	assert(coord[0].isValid() && coord[1].isValid());
-}	
+}
+
+// Count the number of differences between the two strings based on the match
+int Match::countDifferences(const std::string& s1, const std::string& s2) const
+{
+	std::string matched1 = coord[0].getSubstring(s1);
+	std::string matched2 = coord[1].getSubstring(s2);
+
+	if(isReverse)
+		matched2 = reverseComplement(matched2);
+
+	return ::countDifferences(matched1, matched2, matched1.length());
+}
+
 
 // Output
 std::ostream& operator<<(std::ostream& out, const Match& m)

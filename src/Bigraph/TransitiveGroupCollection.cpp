@@ -37,7 +37,7 @@ size_t TransitiveGroupCollection::findGroup(EdgeDesc ed) const
 {
 	for(size_t i = 0; i < numGroups(); ++i)
 	{
-		if(m_groups[i].getIrreducible()->getDesc() == ed || m_groups[i].hasTransitive(ed))
+		if(m_groups[i].hasEdge(ed))
 			return i;
 	}
 	assert(false);
