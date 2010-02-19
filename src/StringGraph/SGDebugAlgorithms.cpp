@@ -83,9 +83,34 @@ bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
 	//compareTransitiveGroups(pGraph, pVertex);
-	MultiOverlap mo = pVertex->getMultiOverlap();
-	mo.calcProb();
+	Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
+	if(pCompareVertex != NULL)
+	{
+		std::string compareSeq = pCompareVertex->getSeq();
+		std::string actualSeq = pVertex->getSeq();
+		MultiOverlap mo = pVertex->getMultiOverlap();
+		for(size_t i = 0; i < actualSeq.size(); ++i)
+		{
+			if(compareSeq[i] != actualSeq[i])
+			{
+				char refBase = actualSeq[i];
+				char compBase = compareSeq[i];
 
+				// true mismatch found
+				AlphaProb ap = mo.calcAlphaProb(i);
+				AlphaCount ac = mo.calcAlphaCount(i);
+
+				int refC = ac.get(refBase);
+				int compC = ac.get(compBase);
+				double refP = ap.get(refBase);
+				double compP = ap.get(compBase);
+				double refO = ap.getOdds(refBase);
+				double compO = ap.getOdds(compBase);
+
+				printf("APB\t%d\t%lf\t%lf\t%d\t%lf\t%lf\n", refC, refP, refO, compC, compP, compO);
+			}
+		}
+	}
 	return false;
 }
 

@@ -10,6 +10,7 @@
 #ifndef PILEUP_H
 #define PILEUP_H
 #include "Util.h"
+#include "Alphabet.h"
 
 #define DEFAULT_PROB 0.01
 
@@ -33,11 +34,12 @@ class Pileup
 		Pileup(size_t n) { m_data.reserve(n); }
 
 		char calculateSimpleConsensus() const;
+		AlphaCount getAlphaCount() const;
+		AlphaProb calculateSimpleAlphaProb() const;
 
 		void add(char b);
 		void add(char b, double lp);
 
-	
 		char getBase(size_t idx) const;
 		char getCount(char base) const;
 		size_t getDepth() const;

@@ -34,6 +34,9 @@ class MultiOverlap
 		MultiOverlap(const std::string& rootID, const std::string& rootSeq);
 		
 		void add(const std::string& seq, const Overlap& ovr);
+		AlphaProb calcAlphaProb(size_t idx) const;
+		AlphaCount calcAlphaCount(size_t idx) const;
+
 		void calcProb() const;
 
 		// IO

@@ -40,6 +40,23 @@ void MultiOverlap::add(const std::string& seq, const Overlap& ovr)
 	m_overlaps.push_back(mod);
 }
 
+// Calculate the probability of the 4 bases given the multi-overlap
+// for a single position
+AlphaProb MultiOverlap::calcAlphaProb(size_t idx) const
+{
+	Pileup pileup = getPileup(idx);
+	return pileup.calculateSimpleAlphaProb();
+}
+
+// Get the number of times each base appears at position
+// idx in the multi-align
+AlphaCount MultiOverlap::calcAlphaCount(size_t idx) const
+{
+	Pileup pileup = getPileup(idx);
+	return pileup.getAlphaCount();
+}
+
+
 // Calculate the probability of this multioverlap
 void MultiOverlap::calcProb() const
 {
@@ -48,13 +65,18 @@ void MultiOverlap::calcProb() const
 		Pileup pileup = getPileup(i);
 		if(pileup.getDepth() > 1)
 		{
-			char consensus = pileup.calculateSimpleConsensus();
-			if(pileup.getBase(0) != consensus)
+			char cnsBase = pileup.calculateSimpleConsensus();
+			AlphaProb ap = pileup.calculateSimpleAlphaProb();
+			char refBase = pileup.getBase(0);
+			
+			if(refBase != cnsBase)
 			{
 				int ref_count = pileup.getCount(pileup.getBase(0));
-				int cons_count = pileup.getCount(consensus);
+				int cons_count = pileup.getCount(cnsBase);
 				int depth = pileup.getDepth();
-				printf("CNS\t%d\t%d\t%d\n", ref_count, cons_count, depth);
+				double rp = ap.get(refBase);
+				double cp = ap.get(cnsBase);
+				printf("CNS\t%d\t%d\t%d\t%lf\t%lf\n", ref_count, cons_count, depth, rp, cp);
 			}
 		}
 	}

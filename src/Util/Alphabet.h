@@ -14,6 +14,7 @@
 #include <utility>
 #include <stdint.h>
 #include <limits>
+#include <math.h>
 #include <emmintrin.h>
 #include <xmmintrin.h>
 #include "Util.h"
@@ -250,6 +251,51 @@ class AlphaCount
 
 	private:
 		BaseCount m_counts[ALPHABET_SIZE];
+};
+
+// Log-scaled probability of the 4 possible bases
+class AlphaProb
+{
+	public:
+		//
+		inline AlphaProb()
+		{
+			memset(m_probs, 0, ALPHABET_SIZE * sizeof(double));
+		}
+
+		//
+		inline void set(char b, double lp)
+		{
+			m_probs[getBaseRank(b)] = lp;
+		}
+
+		// 
+		inline double get(char b) const
+		{
+			return m_probs[getBaseRank(b)];
+		}
+
+		//
+		inline double getOdds(char b) const
+		{
+			double p = exp(m_probs[getBaseRank(b)]);
+			return p / (1.0f - p);
+		}
+
+		//
+		inline double getByIdx(const int i) const
+		{
+			return m_probs[i];
+		}
+
+		// Return the base for index i
+		static char getBase(size_t i)
+		{
+			return RANK_ALPHABET[i];
+		}
+
+	private:
+		double m_probs[ALPHABET_SIZE];
 };
 
 #endif
