@@ -262,6 +262,17 @@ TransitiveGroupCollection Vertex::computeTransitiveGroups(EdgeDir dir)
 	return tgc;
 }
 
+// Get a multioverlap object representing the overlaps for this vertex
+MultiOverlap Vertex::getMultiOverlap() const
+{
+	MultiOverlap mo(getID(), getSeq());
+	for(size_t i = 0; i < m_edges.size(); ++i)
+	{
+		Edge* pEdge = m_edges[i];
+		mo.add(pEdge->getEnd()->getSeq(), pEdge->getOverlap());
+	}
+	return mo;
+}
 
 // Ensure each edge of the vertex is unique
 void Vertex::makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec)

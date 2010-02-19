@@ -81,7 +81,11 @@ SGDebugGraphCompareVisitor::~SGDebugGraphCompareVisitor()
 //
 bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
-	compareTransitiveGroups(pGraph, pVertex);
+	(void)pGraph;
+	//compareTransitiveGroups(pGraph, pVertex);
+	MultiOverlap mo = pVertex->getMultiOverlap();
+	mo.calcProb();
+
 	return false;
 }
 

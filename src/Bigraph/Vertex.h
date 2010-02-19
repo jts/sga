@@ -80,6 +80,9 @@ class Vertex
 		// are transitive w.r.t. the irreducible edge.
 		TransitiveGroupCollection computeTransitiveGroups(EdgeDir dir);
 
+		// Get a multioverlap object representing the overlaps for this vertex
+		MultiOverlap getMultiOverlap() const;
+
 		// Edge list operations
 		void addEdge(Edge* ep);
 		void removeEdge(Edge* pEdge);
