@@ -157,10 +157,11 @@ void SGDebugGraphCompareVisitor::compareTransitiveGroups(StringGraph* /*pGraph*/
 						Overlap ovr(pIrr->getEndID(), pEdge->getEndID(), match_ij);
 						mo.add(pEdge->getEnd()->getSeq(), ovr);
 						int numDiff = ovr.match.countDifferences(pIrr->getEnd()->getSeq(), pEdge->getEnd()->getSeq());
-						std::cout << "MSE: " << pIrr->getEndID() << "\tInferred to: " << pEdge->getEndID() << "Num diff: ";
+						std::cout << "MSE: " << pIrr->getEndID() << "\tInferred to: " << pEdge->getEndID() << " Num diff: ";
 						std::cout << numDiff << " error rate: " << double(numDiff) / double(ovr.match.getMinOverlapLength()) << "\n";
 					}
-					mo.print();
+					//mo.print();
+					mo.calcProb();
 				}
 			}
 		}

@@ -31,13 +31,20 @@ class MultiOverlap
 	public:
 
 		MultiOverlap(const std::string& rootID, const std::string& rootSeq);
+		
 		void add(const std::string& seq, const Overlap& ovr);
+		void calcProb() const;
+
+		// IO
 		void print(int default_padding = DEFAULT_PADDING, int max_overhang = DEFAULT_MAX_OVERHANG);
 		void printPileup();
 
 	private:
 
+		
 		std::string getPileup(int idx) const;
+		char calculateConsensus(const std::string& pileup) const;
+
 		void printRow(int default_padding, int max_overhang, int root_len, 
 		              int offset, int overlap_len, const std::string& seq, 
 					  const std::string& id);

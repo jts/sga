@@ -4,7 +4,8 @@ libutil_a_CPPFLAGS = \
 	-I$(top_srcdir)/Bigraph
 
 libutil_a_SOURCES = \
-        Util.cpp Util.h \
+        Util.h Util.cpp \
+		Alphabet.h Alphabet.cpp \
         Contig.h Contig.cpp \
         ReadTable.h ReadTable.cpp \
         SeqReader.h SeqReader.cpp \

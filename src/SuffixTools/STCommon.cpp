@@ -7,6 +7,7 @@
 // STCommon.cpp - Implementation of basic data structures
 //
 #include "STCommon.h"
+#include <iterator>
 
 //
 // SAId
@@ -45,25 +46,6 @@ std::ostream& operator<<(std::ostream& out, const SAElem& s)
 		out << -1;
 	return out;
 }
-
-//
-// AlphaCount
-//
-
-//
-std::ostream& operator<<(std::ostream& out, const AlphaCount& ac)
-{
-	std::copy(ac.m_counts, ac.m_counts+ALPHABET_SIZE, std::ostream_iterator<BaseCount>(out, " "));
-	return out;
-}
-
-std::istream& operator>>(std::istream& in, AlphaCount& ac)
-{
-	for(size_t i = 0; i < ALPHABET_SIZE; ++i)
-		in >> ac.m_counts[i];
-	return in;
-}
-
 
 //
 // Global functions

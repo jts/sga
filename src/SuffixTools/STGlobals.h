@@ -11,20 +11,12 @@
 #define STGLOBALS_H
 #include <iostream>
 #include <vector>
-#include <iterator>
 #include <algorithm>
 #include <map>
 #include <set>
 #include <assert.h>
 #include <stdint.h>
-
-//
-// Constants
-//
-const uint8_t ALPHABET_SIZE = 5;
-const char ALPHABET[ALPHABET_SIZE] = {'A', 'C', 'G', 'T', '$'};
-const char RANK_ALPHABET[ALPHABET_SIZE] = {'$', 'A', 'C', 'G', 'T'};
-const uint8_t DNA_ALPHABET_SIZE = 4;
+#include "Alphabet.h"
 
 //
 // Basic typedefs

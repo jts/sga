@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <iostream>
 #include "MultiOverlap.h"
+#include "Alphabet.h"
 
 MultiOverlap::MultiOverlap(const std::string& rootID, const std::string& rootSeq) : m_rootID(rootID), m_rootSeq(rootSeq)
 {
@@ -39,6 +40,35 @@ void MultiOverlap::add(const std::string& seq, const Overlap& ovr)
 	m_overlaps.push_back(mod);
 }
 
+// Calculate the probability of this multioverlap
+void MultiOverlap::calcProb() const
+{
+	int numMismatches = 0;
+	int numAlignedBases = 0;
+	double errorRate = 0.01;
+
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		std::string pileup = getPileup(i);
+		if(pileup.size() > 1)
+		{
+			char consensus = calculateConsensus(pileup);
+			
+			// Calculate the number of bases in the pileup that do not match the consensus
+			for(size_t j = 0; j < pileup.size(); ++j)
+			{
+				if(pileup[j] != consensus)
+					++numMismatches;
+				++numAlignedBases;
+			}
+		}
+	}
+
+	double actualRate = double(numMismatches) / double(numAlignedBases);
+	double expectedMismatches = errorRate * double(numAlignedBases);
+	printf("MM\t%d\t%lf\t%d\t%lf\t%lf\n", numMismatches, expectedMismatches, numAlignedBases, actualRate, errorRate);
+}
+
 // Get the "stack" of bases that aligns to
 // a single position of the root seq, including
 // the root base
@@ -48,7 +78,7 @@ std::string MultiOverlap::getPileup(int idx) const
 
 	s.push_back(m_rootSeq[idx]);
 
-	for(size_t i  = 0; i < m_overlaps.size(); ++i)
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
 	{
 		const MOData& curr = m_overlaps[i];
 		// translate idx into the frame of the current sequence
@@ -59,6 +89,18 @@ std::string MultiOverlap::getPileup(int idx) const
 		}
 	}
 	return s;
+}
+
+// Calculate the consensus base from a pileup string
+char MultiOverlap::calculateConsensus(const std::string& pileup) const
+{
+	assert(!pileup.empty());
+	AlphaCount ac;
+	for(size_t i = 0; i < pileup.size(); ++i)
+	{
+		ac.increment(pileup[i]);
+	}
+	return ac.getMaxBase();
 }
 
 // Print the MultiOverlap to stdout
