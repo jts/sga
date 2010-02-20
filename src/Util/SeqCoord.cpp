@@ -20,6 +20,13 @@ SeqCoord SeqCoord::complement() const
 	SeqCoord out;
 	out.seqlen = seqlen;
 
+	if(isContained())
+	{
+		out.interval.start = 0;
+		out.interval.end = -1;
+		return out;
+	}
+
 	if(isLeftExtreme())
 	{
 		out.interval.start = std::max(interval.start, interval.end) + 1;
@@ -38,7 +45,10 @@ SeqCoord SeqCoord::complement() const
 std::string SeqCoord::getSubstring(const std::string& str) const
 {
 	int left;
-	int size; 
+	int size;
+	if(interval.end == -1 || interval.start == -1)
+		return std::string("");
+
 	if(interval.start < interval.end)
 	{
 		left = interval.start;
@@ -56,7 +66,10 @@ std::string SeqCoord::getSubstring(const std::string& str) const
 QualityVector SeqCoord::getSubvector(const QualityVector& vec) const
 {
 	int left;
-	int size; 
+	int size;
+	if(interval.end == -1 || interval.start == -1)
+		return QualityVector();
+	
 	if(interval.start < interval.end)
 	{
 		left = interval.start;

@@ -56,6 +56,7 @@ AlphaProb Pileup::calculateSimpleAlphaProb() const
 	AlphaProb ap;
 	assert(!m_data.empty());
 	WARN_ONCE("Fix Pileup::calculateSimpleAlphaProb numerical stability");
+	assert(false);
 	for(size_t i = 0; i < DNA_ALPHABET_SIZE; ++i)
 	{
 		// Calculate the posterior probability of the data given that

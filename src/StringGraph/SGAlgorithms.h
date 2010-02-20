@@ -40,6 +40,19 @@ struct SGTransRedVisitor
 	int marked_edges;
 };
 
+// Close transitive groups by inferring missing edges
+struct SGGroupCloseVisitor
+{
+	SGGroupCloseVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+
+	int numGroupsClosed;
+	int numGroupsOpen;
+	int numEdgesRejected;
+};
+
 // Detect whether vertices are dead ends and mark them for removal
 struct SGTrimVisitor
 {

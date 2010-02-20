@@ -106,11 +106,21 @@ void assemble()
 	SGVertexPairingVisitor pairingVisit;
 	SGPairedOverlapVisitor pairedOverlapVisit;
 	SGPETrustVisitor trustVisit;
+	SGGroupCloseVisitor groupCloseVisit;
 
 	if(!opt::debugFile.empty())
 	{
+		// Pre-assembly graph stats
+		std::cout << "Initial graph stats\n";
+		pGraph->visit(statsVisit);
+
 		SGDebugGraphCompareVisitor* pDebugGraphVisit = new SGDebugGraphCompareVisitor(opt::debugFile);
 		pGraph->visit(*pDebugGraphVisit);
+		while(pGraph->visit(groupCloseVisit))
+			pGraph->visit(*pDebugGraphVisit);
+
+		pGraph->visit(statsVisit);
+
 		delete pDebugGraphVisit;
 		return;
 	}

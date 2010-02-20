@@ -276,6 +276,22 @@ class AlphaProb
 		}
 
 		//
+		inline char getMaxBase() const
+		{
+			double max = -std::numeric_limits<double>::max();
+			int maxIdx = 0;
+			for(int i = 1; i < ALPHABET_SIZE; ++i)
+			{
+				if(m_probs[i] > max)
+				{
+					max = m_probs[i];
+					maxIdx = i;
+				}
+			}
+			return RANK_ALPHABET[maxIdx];
+		}
+
+		//
 		inline double getOdds(char b) const
 		{
 			double p = exp(m_probs[getBaseRank(b)]);

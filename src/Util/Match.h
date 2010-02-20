@@ -57,6 +57,9 @@ struct Match
 	// Count the number of differences between the strings
 	int countDifferences(const std::string& s1, const std::string& s2) const;
 
+	// Print the matched strings
+	void printMatch(const std::string& s1, const std::string& s2) const;
+
 	// Flip coord[1] if isReverse is true, effectively
 	// bringing the matching strings into the same coordinate system
 	void canonize();

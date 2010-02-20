@@ -43,9 +43,11 @@ struct SGDebugGraphCompareVisitor
 	SGDebugGraphCompareVisitor(std::string readsFile);
 	~SGDebugGraphCompareVisitor();
 
-	void previsit(StringGraph*) {}
+	void previsit(StringGraph*);
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*) {}
+	void postvisit(StringGraph*);
+
+	void summarize(StringGraph* pGraph, Vertex* pVertex);
 
 	void compareOverlapQuality(StringGraph* /*pGraph*/, Vertex* pVertex);
 	void compareInferredQuality(StringGraph* pGraph, Vertex* pVertex);
@@ -54,6 +56,9 @@ struct SGDebugGraphCompareVisitor
 
 	// Data
 	StringGraph* m_pCompareGraph;
+	int m_numFound;
+	int m_numMissing;
+	int m_numWrong;
 };
 
 

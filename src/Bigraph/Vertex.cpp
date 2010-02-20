@@ -288,6 +288,39 @@ QualityVector Vertex::getInferredQuality() const
 	return out;
 }
 
+//
+std::string Vertex::getInferredConsensus() const
+{
+	WARN_ONCE("Vertex consensus is heurestic"); 
+	MultiOverlap mo = getMultiOverlap();
+	std::string out;
+	out.reserve(m_seq.size());
+	for(size_t i = 0; i < m_seq.size(); ++i)
+	{
+		AlphaCount ac = mo.calcAlphaCount(i);
+		char b = ac.getMaxBase();
+		if(ac.get(b) > ac.get(m_seq[i]))
+			out.push_back(b);
+		else
+			out.push_back(m_seq[i]);
+	}
+	return out;
+
+	/*
+	MultiOverlap mo = getMultiOverlap();
+	std::string out;
+	out.reserve(m_seq.size());
+	for(size_t i = 0; i < m_seq.size(); ++i)
+	{
+		AlphaProb ap = mo.calcAlphaProb(i);
+		char b = ap.getMaxBase();
+		out.push_back(b);
+	}
+	return out;
+	*/
+}
+
+
 // Get the prior probability of each base of the sequence
 // based on either quality scores or a flat prior
 QualityVector Vertex::getPriorQuality() const

@@ -79,13 +79,63 @@ SGDebugGraphCompareVisitor::~SGDebugGraphCompareVisitor()
 }
 
 //
+void SGDebugGraphCompareVisitor::previsit(StringGraph*)
+{
+	m_numFound = 0;
+	m_numMissing = 0;
+	m_numWrong = 0;
+}
+
+//
+void SGDebugGraphCompareVisitor::postvisit(StringGraph*)
+{
+	std::cout << "[DebugSummary] NF: " << m_numFound << " NM: " << m_numMissing << " NW: " << m_numWrong << "\n";
+	std::cout << "[DebugSummary] MissRate: " << double(m_numMissing) / double(m_numFound + m_numMissing) << "\n";
+}
+
+
+//
 bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
 	//compareTransitiveGroups(pGraph, pVertex);
 	//compareInferredQuality(pGraph, pVertex);
-	compareOverlapQuality(pGraph, pVertex);
+	//compareOverlapQuality(pGraph, pVertex);
+	//compareErrorRates(pGraph, pVertex);
+	summarize(pGraph, pVertex);
 	return false;
+}
+
+//
+void SGDebugGraphCompareVisitor::summarize(StringGraph* , Vertex* pVertex)
+{
+	// Retreive the vertex in the comparison graph
+	Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
+	if(pCompareVertex == NULL)
+	{
+		return;
+	}
+
+	EdgePtrVec compareEdges = pCompareVertex->getEdges();
+	for(size_t i = 0; i < compareEdges.size(); ++i)
+	{
+		Edge* pCompareEdge = compareEdges[i];
+		EdgeDesc ed = pCompareEdge->getDesc();
+		if(pVertex->hasEdge(ed))
+			++m_numFound;
+		else
+			++m_numMissing;
+	}
+
+	EdgePtrVec actualEdges = pVertex->getEdges();
+	for(size_t i = 0; i < actualEdges.size(); ++i)
+	{
+		Edge* pActualEdge = actualEdges[i];
+		EdgeDesc ed = pActualEdge->getDesc();
+		if(m_pCompareGraph->getVertex(pActualEdge->getEndID()) != NULL && !pCompareVertex->hasEdge(ed))
+			++m_numWrong;
+	}
+
 }
 
 //

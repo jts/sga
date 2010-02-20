@@ -101,7 +101,7 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 }
 
 // add edges to the graph for the given overlap
-Edge* createEdges(StringGraph* pGraph, const Overlap& o)
+Edge* createEdges(StringGraph* pGraph, const Overlap& o, bool allowContained)
 {
 	// Initialize data and perform checks
 	Vertex* pVerts[2];
@@ -111,7 +111,8 @@ Edge* createEdges(StringGraph* pGraph, const Overlap& o)
 	{
 		pVerts[idx] = pGraph->getVertex(o.id[idx]);
 		assert(pVerts[idx]);		
-		assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
+		if(!allowContained)
+			assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
 	}
 
 	// Allocated the edges

@@ -41,6 +41,6 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 
 // Create the edges described by the overlap. Returns a pointer to the edge
 // from the first entry of the overlap to the second. 
-Edge* createEdges(StringGraph* pGraph, const Overlap& o);
+Edge* createEdges(StringGraph* pGraph, const Overlap& o, bool allowContained = false);
 
 #endif

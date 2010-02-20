@@ -88,6 +88,9 @@ class Vertex
 		// using the overlap information
 		QualityVector getInferredQuality() const;
 
+		//
+		std::string getInferredConsensus() const;
+
 		// Return the prior probabiltiy based on quality scores
 		QualityVector getPriorQuality() const;
 

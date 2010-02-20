@@ -47,7 +47,6 @@ class MultiOverlap
 
 		
 		Pileup getPileup(int idx) const;
-		char calculateConsensus(const std::string& pileup) const;
 
 		void printRow(int default_padding, int max_overhang, int root_len, 
 		              int offset, int overlap_len, const std::string& seq, 

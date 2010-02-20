@@ -161,6 +161,123 @@ void SGTransRedVisitor::postvisit(StringGraph* pGraph)
 }
 
 //
+// SGCloseGroupVisitor - Attempt to close transitive groups
+// by inferring missing edges from the graph that result from a 
+// high error rate.
+//
+void SGGroupCloseVisitor::previsit(StringGraph* /*pGraph*/)
+{
+	numGroupsOpen = 0;
+	numGroupsClosed = 0;
+	numEdgesRejected = 0;
+}
+
+bool SGGroupCloseVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+	(void)pGraph;
+	bool changed = false;
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];
+		TransitiveGroupCollection tgc = pVertex->computeTransitiveGroups(dir);
+		if(tgc.numGroups() <= 1)
+		{
+			++numGroupsClosed;
+			continue;
+		}
+		else
+		{
+			++numGroupsOpen;
+		}
+
+		TransitiveGroup& headGroup = tgc.getGroup(0);
+		for(size_t j = 1; j < tgc.numGroups(); ++j)
+		{
+			TransitiveGroup& secondGroup = tgc.getGroup(j);
+
+			WARN_ONCE("SGGroupCloseVisitor -- DIFF GROUPS and HANDLE CONTAINMENTS");
+
+			Edge* pCandidate = secondGroup.getIrreducible();
+			std::string candCons = pCandidate->getEnd()->getInferredConsensus();
+
+			for(size_t i = 0; i < headGroup.numElements(); ++i)
+			{
+				Edge* pTarget = headGroup.getEdge(i);
+
+				// Ensure these vertices dont already have an edge
+				// Infer the edge comp
+				EdgeComp comp = (pCandidate->getComp() == pTarget->getComp()) ? EC_SAME : EC_REVERSE;
+				
+				// Infer the i->j and j->i direction
+				EdgeDir ij_dir = !pCandidate->getTwin()->getDir();
+				EdgeDir ji_dir = !pTarget->getTwin()->getDir();
+
+				// Ensure that there is not an edge between these already
+				// hasEdge is not a particularly fast operation
+				EdgeDesc ij_desc(pTarget->getEndID(), ij_dir, comp);
+				EdgeDesc ji_desc(pCandidate->getEndID(), ji_dir, comp);
+
+				if(pCandidate->getEnd()->hasEdge(ij_desc) || pTarget->getEnd()->hasEdge(ji_desc))
+					continue;
+				
+				std::string targetCons = pTarget->getEnd()->getInferredConsensus();
+				
+				// Construct the match
+				Match match_i = pCandidate->getMatch();
+				Match match_j = pTarget->getMatch();
+
+				// Infer the match_ij based match_i and match_j
+				Match match_ij = Match::infer(match_i, match_j);
+				match_ij.expand();
+
+				// Convert the match to an overlap
+				Overlap ovr(pCandidate->getEndID(), pTarget->getEndID(), match_ij);
+				//std::cout << "CANDCONS: " << candCons << "\n";
+				//std::cout << "TARGCONS: " << targetCons << "\n";
+
+				//
+				int numDiffCons = ovr.match.countDifferences(candCons, targetCons);
+				bool accepted = (numDiffCons < 3);
+				/*
+				if(numDiffCons > 5)
+				{
+					std::cout << "Consensus:\n";
+					ovr.match.printMatch(candCons, targetCons);
+				
+					std::cout << "Actual:\n";
+					ovr.match.printMatch(pCandidate->getEnd()->getSeq(), pTarget->getEnd()->getSeq());
+					
+					int numDiffActual = ovr.match.countDifferences(pCandidate->getEnd()->getSeq(), pTarget->getEnd()->getSeq());
+					printf("GCV\t%d\t%d\t%d\n", numDiffActual, numDiffCons, accepted);
+				}
+				*/
+				//printf("GCV\t%d\t%d\t%d\n", numDiffActual, numDiffCons, accepted);
+				
+				if(accepted)
+				{
+					Edge* p_edgeIJ = createEdges(pGraph, ovr, true);
+					Edge* p_edgeJI = p_edgeIJ->getTwin();
+					p_edgeIJ->setColor(GC_BLACK);
+					p_edgeJI->setColor(GC_BLACK);
+					changed = true;
+				}
+				else
+				{
+					++numEdgesRejected;
+				}
+			}
+		}
+	}
+	return changed;
+}
+
+// Remove all the marked edges
+void SGGroupCloseVisitor::postvisit(StringGraph* /*pGraph*/)
+{
+	printf("Num groups closed: %d Num groups open: %d Num edges rejected: %d\n", numGroupsClosed, numGroupsOpen, numEdgesRejected);
+}
+
+//
 // SGTrimVisitor - Remove "dead-end" vertices from the graph
 //
 void SGTrimVisitor::previsit(StringGraph* pGraph)
