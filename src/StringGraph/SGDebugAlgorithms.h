@@ -47,6 +47,8 @@ struct SGDebugGraphCompareVisitor
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*) {}
 
+	void compareOverlapQuality(StringGraph* /*pGraph*/, Vertex* pVertex);
+	void compareInferredQuality(StringGraph* pGraph, Vertex* pVertex);
 	void compareErrorRates(StringGraph* pGraph, Vertex* pVertex);
 	void compareTransitiveGroups(StringGraph* pGraph, Vertex* pVertex);
 

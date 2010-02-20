@@ -83,6 +83,110 @@ bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
 	//compareTransitiveGroups(pGraph, pVertex);
+	//compareInferredQuality(pGraph, pVertex);
+	compareOverlapQuality(pGraph, pVertex);
+	return false;
+}
+
+//
+void SGDebugGraphCompareVisitor::compareOverlapQuality(StringGraph* pGraph, Vertex* pVertex)
+{
+	// Retreive the vertex in the comparison graph
+	Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
+	if(pCompareVertex == NULL)
+	{
+		return;
+	}
+
+	EdgePtrVec compareEdges = pCompareVertex->getEdges();
+
+	for(size_t i = 0; i < compareEdges.size(); ++i)
+	{
+		Edge* pCompareEdge = compareEdges[i];
+		EdgeDesc ed = pCompareEdge->getDesc();
+		bool is_missing = !pVertex->hasEdge(ed);
+
+		//if(!pVertex->hasEdge(ed))
+		{
+			//std::cout << "Graph is missing edge " << ed << "\n";
+
+			// Get the expected match between the sequences
+			Match exp_match = pCompareEdge->getMatch();
+
+			// Get the sequences of the endpoints for the current graph
+			Vertex* pVertex2 = pGraph->getVertex(pCompareEdge->getEndID());
+
+			std::string match1 = exp_match.coord[0].getSubstring(pVertex->getSeq());
+			std::string match2 = exp_match.coord[1].getSubstring(pVertex2->getSeq());
+			if(exp_match.isRC())
+				match2 = reverseComplement(match2);
+			
+			// 
+			std::string ms = is_missing ? "MISSING" : "FOUND";
+			int num_diffs = countDifferences(match1, match2, match1.size());
+			double mm_rate = double(num_diffs) / double(match1.size());
+
+			// Compute quality
+			QualityVector qvX = pVertex->getInferredQuality();
+			QualityVector qvY = pVertex2->getInferredQuality();
+			
+			//QualityVector qvX = pVertex->getPriorQuality();
+			//QualityVector qvY = pVertex2->getPriorQuality();
+			
+			QualityVector mqvX = exp_match.coord[0].getSubvector(qvX);
+			QualityVector mqvY = exp_match.coord[1].getSubvector(qvY);
+
+			if(exp_match.isRC())
+				mqvY.reverseComplement();
+
+			assert(mqvX.size() == mqvY.size() && match1.size() == match2.size() && mqvX.size() == match1.size());
+			//double qual = 0.0f;
+			double score = 0.0f;
+			for(size_t i = 0; i < match1.size(); ++i)
+			{
+				if(match1[i] != match2[i])
+				{
+					double lpx = mqvX.get(i).get(match1[i]);
+					double lpy = mqvY.get(i).get(match2[i]);
+					
+					// Calc prob. base is wrong
+					double wx = 1.0f - exp(lpx);
+					double wy = 1.0f - exp(lpy);
+					double both = wx * wy;
+					double p = wx + wy - both;
+					score += log(p);
+				}
+			}
+
+			/*
+			for(size_t i = 0; i < match1.size(); ++i)
+			{
+				AlphaProb lpx = mqvX.get(i);
+				AlphaProb lpy = mqvY.get(i);
+				double tmp = 0.0f;
+				//std::cout << "B1: " << match1[i] << "\n";
+				//std::cout << "B2: " << match2[i] << "\n";
+				for(size_t j = 0; j < DNA_ALPHABET_SIZE; ++j)
+				{
+					//std::cout << "AP1[" << ALPHABET[j] << "]: " << lpx.get(ALPHABET[j]) << "\n";
+					//std::cout << "AP2[" << ALPHABET[j] << "]: " << lpy.get(ALPHABET[j]) << "\n";
+					//tmp += exp(log(1.0f - exp(lpx.get(ALPHABET[j]))) + log(1.0f - exp(lpy.get(ALPHABET[j]))));
+					tmp += exp(lpx.get(ALPHABET[j]) + lpy.get(ALPHABET[j]));
+				}
+				qual += log(tmp);
+			}
+			*/
+			printf("OQ\t%s\t%d\t%zu\t%lf\t%lf\n", ms.c_str(), num_diffs, match1.size(), mm_rate, score);
+			//std::cout << "SEQ1: " << pVertex->getSeq() << "\n";
+			//std::cout << "SEQ2: " << pVertex2->getSeq() << "\n";
+			//std::cout << "MATCH1: " << match1 << "\n";
+			//std::cout << "MATCH2: " << match2 << "\n";
+		}
+	}
+}
+
+void SGDebugGraphCompareVisitor::compareInferredQuality(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
 	Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
 	if(pCompareVertex != NULL)
 	{
@@ -111,7 +215,6 @@ bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			}
 		}
 	}
-	return false;
 }
 
 void SGDebugGraphCompareVisitor::compareTransitiveGroups(StringGraph* /*pGraph*/, Vertex* pVertex)

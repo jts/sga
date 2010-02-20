@@ -15,4 +15,5 @@ libutil_a_SOURCES = \
 		BitChar.h BitChar.cpp \
 		Interval.h Interval.cpp \
 		SeqCoord.h SeqCoord.cpp \
-		MultiOverlap.h MultiOverlap.cpp
+		MultiOverlap.h MultiOverlap.cpp \
+		QualityVector.h QualityVector.cpp

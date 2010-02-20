@@ -294,6 +294,22 @@ class AlphaProb
 			return RANK_ALPHABET[i];
 		}
 
+		// Swap the (A,T) and (C,G) entries
+		inline void complement()
+		{
+			double tmp;
+
+			// A,T
+			tmp = m_probs[4];
+			m_probs[4] = m_probs[1];
+			m_probs[1] = tmp;
+
+			// C,G
+			tmp = m_probs[3];
+			m_probs[3] = m_probs[2];
+			m_probs[2] = tmp;
+		}
+
 	private:
 		double m_probs[ALPHABET_SIZE];
 };

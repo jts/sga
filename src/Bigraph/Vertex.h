@@ -20,6 +20,7 @@
 #include <iterator>
 #include "GraphCommon.h"
 #include "TransitiveGroupCollection.h"
+#include "QualityVector.h"
 
 // Forward declare
 class Edge;
@@ -82,6 +83,13 @@ class Vertex
 
 		// Get a multioverlap object representing the overlaps for this vertex
 		MultiOverlap getMultiOverlap() const;
+
+		// Return the inferred quality value for each base in the sequence
+		// using the overlap information
+		QualityVector getInferredQuality() const;
+
+		// Return the prior probabiltiy based on quality scores
+		QualityVector getPriorQuality() const;
 
 		// Edge list operations
 		void addEdge(Edge* ep);

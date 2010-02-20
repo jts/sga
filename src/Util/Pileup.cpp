@@ -87,7 +87,7 @@ AlphaProb Pileup::calculateSimpleAlphaProb() const
 	{
 		char b = ALPHABET[i];
 		double lp = ap.get(b);
-		std::cout << "Marginal: " << marginal << " lp: " << lp << " scaled: " << lp - marginal << "\n";
+		//std::cout << "Marginal: " << marginal << " lp: " << lp << " scaled: " << lp - marginal << "\n";
 		ap.set(b, lp - marginal);
 	}
 	return ap;	

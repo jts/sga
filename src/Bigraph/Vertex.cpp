@@ -274,6 +274,49 @@ MultiOverlap Vertex::getMultiOverlap() const
 	return mo;
 }
 
+// Get the inferred probabilty of each base for this sequence
+// base on the multioverlap
+QualityVector Vertex::getInferredQuality() const
+{
+	MultiOverlap mo = getMultiOverlap();
+	QualityVector out;
+	for(size_t i = 0; i < m_seq.size(); ++i)
+	{
+		AlphaProb ap = mo.calcAlphaProb(i);
+		out.add(ap);
+	}
+	return out;
+}
+
+// Get the prior probability of each base of the sequence
+// based on either quality scores or a flat prior
+QualityVector Vertex::getPriorQuality() const
+{
+	WARN_ONCE("Using flat prior of 0.99");
+	QualityVector out;
+	for(size_t i = 0; i < m_seq.size(); ++i)
+	{
+		AlphaProb ap;
+		double p_correct_match = 0.99;
+		double p_correct_mm = (1.0f - p_correct_match) / 3;
+		for(size_t j = 0; j < DNA_ALPHABET_SIZE; ++j)
+		{
+			char b = ALPHABET[j];
+			if(b == m_seq[i])
+			{
+				ap.set(b, log(p_correct_match));
+			}
+			else
+			{
+				ap.set(b, log(p_correct_mm));
+			}
+		}
+		out.add(ap);
+	}
+	return out;
+}
+
+
 // Ensure each edge of the vertex is unique
 void Vertex::makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec)
 {

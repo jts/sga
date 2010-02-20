@@ -52,6 +52,24 @@ std::string SeqCoord::getSubstring(const std::string& str) const
 	return str.substr(left, size);
 }
 
+// Returns the subvector described by the seqcoord
+QualityVector SeqCoord::getSubvector(const QualityVector& vec) const
+{
+	int left;
+	int size; 
+	if(interval.start < interval.end)
+	{
+		left = interval.start;
+		size = interval.end - interval.start + 1;
+	}
+	else
+	{
+		left = interval.end;
+		size = interval.start - interval.end + 1;
+	}
+	return QualityVector(vec, left, size);
+}
+
 // Returns the substring of STR that is NOT contained in the interval
 // described by this seqcoord
 std::string SeqCoord::getComplementString(const std::string& str) const

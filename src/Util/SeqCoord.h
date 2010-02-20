@@ -13,6 +13,7 @@
 
 #include "Util.h"
 #include "Interval.h"
+#include "QualityVector.h"
 
 struct SeqCoord
 {
@@ -85,6 +86,7 @@ struct SeqCoord
 
 	// Get the substring described by the interval
 	std::string getSubstring(const std::string& str) const;
+	QualityVector getSubvector(const QualityVector& vec) const;
 
 	// Get the substring described by the complement of the interval
 	std::string getComplementString(const std::string& str) const;
