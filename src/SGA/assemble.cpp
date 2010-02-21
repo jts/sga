@@ -119,6 +119,8 @@ void assemble()
 		pGraph->visit(*pDebugGraphVisit);
 		while(pGraph->visit(realignVisitor))
 			pGraph->visit(*pDebugGraphVisit);
+		pDebugGraphVisit->m_showMissing = true;
+		pGraph->visit(*pDebugGraphVisit);
 		pGraph->visit(statsVisit);
 
 		delete pDebugGraphVisit;

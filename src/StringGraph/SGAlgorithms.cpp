@@ -203,7 +203,7 @@ void SGRealignVisitor::previsit(StringGraph* pGraph)
 bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	bool graph_changed = false;
-	const int MIN_OVERLAP = 43;
+	const int MIN_OVERLAP = 29;
 	const double MAX_ERROR = 0.20;
 	static int visited = 0;
 	++visited;
@@ -241,6 +241,13 @@ bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				graph_changed = true;
 			}
 		}
+		else
+		{
+			std::cout << "Rejected actual:\n";
+			c.ovr.match.printMatch(pVertex->getSeq(), c.pEndpoint->getSeq());
+			std::cout << "ER: " << error_rate << "\n";
+			std::cout << "OVR:\t" << c.ovr << "\n";
+		}
 	}
 	return graph_changed;
 }
@@ -272,6 +279,7 @@ SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringG
 					Overlap ovr_xz = SGAlgorithms::inferTransitiveOverlap(pXY, pYZ);
 					if(ovr_xz.match.getMinOverlapLength() >= minOverlap)
 						out.push_back(Candidate(pYZ->getEnd(), ovr_xz));
+					pYZ->getEnd()->setColor(GC_BLACK);
 				}
 			}
 		}
@@ -282,6 +290,8 @@ SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringG
 	for(size_t i = 0; i < edges.size(); ++i)
 		edges[i]->getEnd()->setColor(GC_WHITE);
 	pVertex->setColor(GC_WHITE);
+	for(size_t i = 0; i < out.size(); ++i)
+		out[i].pEndpoint->setColor(GC_WHITE);
 
 	return out;
 }
