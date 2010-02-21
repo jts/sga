@@ -118,7 +118,8 @@ void assemble()
 		pGraph->visit(*pDebugGraphVisit);
 		while(pGraph->visit(groupCloseVisit))
 			pGraph->visit(*pDebugGraphVisit);
-
+		pDebugGraphVisit->m_showMissing = true;
+		pGraph->visit(*pDebugGraphVisit);
 		pGraph->visit(statsVisit);
 
 		delete pDebugGraphVisit;

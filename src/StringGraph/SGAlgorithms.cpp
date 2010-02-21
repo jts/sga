@@ -165,8 +165,9 @@ void SGTransRedVisitor::postvisit(StringGraph* pGraph)
 // by inferring missing edges from the graph that result from a 
 // high error rate.
 //
-void SGGroupCloseVisitor::previsit(StringGraph* /*pGraph*/)
+void SGGroupCloseVisitor::previsit(StringGraph* pGraph)
 {
+	pGraph->setColors(GC_WHITE);
 	numGroupsOpen = 0;
 	numGroupsClosed = 0;
 	numEdgesRejected = 0;
@@ -183,13 +184,15 @@ bool SGGroupCloseVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 		if(tgc.numGroups() <= 1)
 		{
 			++numGroupsClosed;
-			continue;
+			//continue;
 		}
 		else
 		{
 			++numGroupsOpen;
 		}
 
+		EdgePtrVec edges = pVertex->getEdges(dir);
+/*
 		TransitiveGroup& headGroup = tgc.getGroup(0);
 		for(size_t j = 1; j < tgc.numGroups(); ++j)
 		{
@@ -203,6 +206,14 @@ bool SGGroupCloseVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			for(size_t i = 0; i < headGroup.numElements(); ++i)
 			{
 				Edge* pTarget = headGroup.getEdge(i);
+*/
+		// Perform a dependent pairwise comparison between nodes that do not share an edge
+		for(size_t i = 0; i < edges.size(); ++i)
+		{
+			for(size_t j = i + 1; j < edges.size(); ++j)
+			{
+				Edge* pCandidate = edges[i];
+				Edge* pTarget = edges[j];
 
 				// Ensure these vertices dont already have an edge
 				// Infer the edge comp
@@ -219,7 +230,8 @@ bool SGGroupCloseVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
 				if(pCandidate->getEnd()->hasEdge(ij_desc) || pTarget->getEnd()->hasEdge(ji_desc))
 					continue;
-				
+
+				std::string candCons = pCandidate->getEnd()->getInferredConsensus();
 				std::string targetCons = pTarget->getEnd()->getInferredConsensus();
 				
 				// Construct the match
@@ -255,11 +267,20 @@ bool SGGroupCloseVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				
 				if(accepted)
 				{
-					Edge* p_edgeIJ = createEdges(pGraph, ovr, true);
-					Edge* p_edgeJI = p_edgeIJ->getTwin();
-					p_edgeIJ->setColor(GC_BLACK);
-					p_edgeJI->setColor(GC_BLACK);
-					changed = true;
+					if(ovr.match.isContainment())
+					{
+						// Mark edge and vertex for removal
+						//pCandidate->setColor(GC_BLACK);
+						//pCandidate->getEnd()->setColor(GC_BLACK);
+					}
+					else
+					{
+						Edge* p_edgeIJ = createEdges(pGraph, ovr);
+						Edge* p_edgeJI = p_edgeIJ->getTwin();
+						p_edgeIJ->setColor(GC_WHITE);
+						p_edgeJI->setColor(GC_WHITE);
+						changed = true;
+					}
 				}
 				else
 				{
@@ -272,8 +293,9 @@ bool SGGroupCloseVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 }
 
 // Remove all the marked edges
-void SGGroupCloseVisitor::postvisit(StringGraph* /*pGraph*/)
+void SGGroupCloseVisitor::postvisit(StringGraph* pGraph)
 {
+	pGraph->sweepVertices(GC_BLACK);
 	printf("Num groups closed: %d Num groups open: %d Num edges rejected: %d\n", numGroupsClosed, numGroupsOpen, numEdgesRejected);
 }
 

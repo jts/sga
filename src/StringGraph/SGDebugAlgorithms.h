@@ -48,6 +48,7 @@ struct SGDebugGraphCompareVisitor
 	void postvisit(StringGraph*);
 
 	void summarize(StringGraph* pGraph, Vertex* pVertex);
+	void showMissing(StringGraph* pGraph, Vertex* pVertex);
 
 	void compareOverlapQuality(StringGraph* /*pGraph*/, Vertex* pVertex);
 	void compareInferredQuality(StringGraph* pGraph, Vertex* pVertex);
@@ -57,8 +58,10 @@ struct SGDebugGraphCompareVisitor
 	// Data
 	StringGraph* m_pCompareGraph;
 	int m_numFound;
+	int m_numMissingNull;
 	int m_numMissing;
 	int m_numWrong;
+	bool m_showMissing;
 };
 
 
