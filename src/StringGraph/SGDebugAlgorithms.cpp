@@ -8,6 +8,7 @@
 // development of algorithms.
 //
 #include "SGDebugAlgorithms.h"
+#include "SGAlgorithms.h"
 
 //
 // SGDebugEdgeClassificationVisitor - Collect statistics about the graph
@@ -80,8 +81,9 @@ SGDebugGraphCompareVisitor::~SGDebugGraphCompareVisitor()
 }
 
 //
-void SGDebugGraphCompareVisitor::previsit(StringGraph*)
+void SGDebugGraphCompareVisitor::previsit(StringGraph* pGraph)
 {
+	pGraph->setColors(GC_WHITE);
 	m_numFound = 0;
 	m_numMissing = 0;
 	m_numMissingNull = 0;
@@ -109,6 +111,7 @@ bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 	//compareInferredQuality(pGraph, pVertex);
 	//compareOverlapQuality(pGraph, pVertex);
 	//compareErrorRates(pGraph, pVertex);
+
 	if(!m_showMissing)
 		summarize(pGraph, pVertex);
 	else

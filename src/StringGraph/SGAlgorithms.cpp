@@ -203,7 +203,7 @@ void SGRealignVisitor::previsit(StringGraph* pGraph)
 bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	bool graph_changed = false;
-	const int MIN_OVERLAP = 29;
+	const int MIN_OVERLAP = 31;
 	const double MAX_ERROR = 0.20;
 	static int visited = 0;
 	++visited;
@@ -253,7 +253,7 @@ bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 }
 
 // Explore the neighborhood around a vertex looking for missing overlaps
-SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringGraph*, Vertex* pVertex, int minOverlap) const
+SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringGraph* /*pGraph*/, Vertex* pVertex, int minOverlap) const
 {
 	CandidateVector out;
 
@@ -261,7 +261,9 @@ SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringG
 	// they already are overlapping
 	EdgePtrVec edges = pVertex->getEdges();
 	for(size_t i = 0; i < edges.size(); ++i)
+	{
 		edges[i]->getEnd()->setColor(GC_BLACK);
+	}
 	pVertex->setColor(GC_BLACK);
 
 	for(size_t i = 0; i < edges.size(); ++i)
@@ -278,21 +280,21 @@ SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringG
 				{
 					Overlap ovr_xz = SGAlgorithms::inferTransitiveOverlap(pXY, pYZ);
 					if(ovr_xz.match.getMinOverlapLength() >= minOverlap)
+					{
 						out.push_back(Candidate(pYZ->getEnd(), ovr_xz));
-					pYZ->getEnd()->setColor(GC_BLACK);
+						pYZ->getEnd()->setColor(GC_BLACK);
+					}
 				}
 			}
 		}
 	}
 
 	// Reset colors
-	edges = pVertex->getEdges();
 	for(size_t i = 0; i < edges.size(); ++i)
 		edges[i]->getEnd()->setColor(GC_WHITE);
 	pVertex->setColor(GC_WHITE);
 	for(size_t i = 0; i < out.size(); ++i)
 		out[i].pEndpoint->setColor(GC_WHITE);
-
 	return out;
 }
 
