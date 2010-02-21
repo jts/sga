@@ -9,6 +9,37 @@
 #include "SGAlgorithms.h"
 #include "SGUtil.h"
 
+// Infer an overlap from two edges
+// The input edges are between X->Y Y->Z
+// and the returned overlap is X->Z
+Overlap SGAlgorithms::inferTransitiveOverlap(const Edge* pXY, const Edge* pYZ)
+{
+	// Construct the match
+	Match match_yx = pXY->getMatch();
+	match_yx.swap(); 
+	Match match_yz = pYZ->getMatch();
+
+	// Infer the match_ij based match_i and match_j
+	Match match_xz = Match::infer(match_yx, match_yz);
+	match_xz.expand();
+
+	// Convert the match to an overlap
+	Overlap ovr(pXY->getStartID(), pYZ->getEndID(), match_xz);
+	return ovr;
+}
+
+// Return true if XZ has an overlap
+bool SGAlgorithms::hasTransitiveOverlap(const Edge* pXY, const Edge* pYZ)
+{
+	// ensure the y component is the first one in the seqcoord
+	// as the match algorithms expect the common basis to be the first
+	// component
+	Match match_yx = pXY->getMatch();
+	match_yx.swap(); 
+	Match match_yz = pYZ->getMatch();
+	return Match::doMatchesIntersect(match_yx, match_yz);
+}
+
 //
 // SGFastaVisitor - output the vertices in the graph in 
 // fasta format
@@ -159,6 +190,107 @@ void SGTransRedVisitor::postvisit(StringGraph* pGraph)
 	pGraph->sweepEdges(GC_BLACK);
 	assert(pGraph->checkColors(GC_WHITE));
 }
+
+//
+// SGRealignVisitor - Infer locations of potentially
+// missing edges and add them to the graph
+//
+void SGRealignVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+}
+
+bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+	bool graph_changed = false;
+	const int MIN_OVERLAP = 43;
+	const double MAX_ERROR = 0.20;
+	static int visited = 0;
+	++visited;
+	if(visited % 50000 == 0)
+		std::cout << "visited: " << visited << "\n";
+
+	// Explore the neighborhood around this graph for potentially missing overlaps
+	CandidateVector candidates = getMissingCandidates(pGraph, pVertex, MIN_OVERLAP);
+
+	for(size_t i = 0; i < candidates.size(); ++i)
+	{
+		Candidate& c = candidates[i];
+		int numDiff = c.ovr.match.countDifferences(pVertex->getSeq(), c.pEndpoint->getSeq());
+		double error_rate = double(numDiff) / double(c.ovr.match.getMinOverlapLength());
+
+		//std::cout << "Actual:\n";
+		//c.ovr.match.printMatch(pVertex->getSeq(), c.pEndpoint->getSeq());
+		//std::cout << "ER: " << error_rate << "\n";
+		//std::cout << "OVR:\t" << c.ovr << "\n";
+		
+		if(error_rate < MAX_ERROR)
+		{
+			if(c.ovr.match.isContainment())
+			{
+				// Mark edge and vertex for removal
+				//pCandidate->setColor(GC_BLACK);
+				//pCandidate->getEnd()->setColor(GC_BLACK);
+			}
+			else
+			{
+				Edge* p_edgeXZ = createEdges(pGraph, c.ovr);
+				Edge* p_edgeZX = p_edgeXZ->getTwin();
+				p_edgeXZ->setColor(GC_WHITE);
+				p_edgeZX->setColor(GC_WHITE);
+				graph_changed = true;
+			}
+		}
+	}
+	return graph_changed;
+}
+
+// Explore the neighborhood around a vertex looking for missing overlaps
+SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringGraph*, Vertex* pVertex, int minOverlap) const
+{
+	CandidateVector out;
+
+	// Mark the vertices that are reached from this vertex as black to indicate
+	// they already are overlapping
+	EdgePtrVec edges = pVertex->getEdges();
+	for(size_t i = 0; i < edges.size(); ++i)
+		edges[i]->getEnd()->setColor(GC_BLACK);
+	pVertex->setColor(GC_BLACK);
+
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Edge* pXY = edges[i];
+		EdgePtrVec neighborEdges = pXY->getEnd()->getEdges();
+		for(size_t j = 0; j < neighborEdges.size(); ++j)
+		{
+			Edge* pYZ = neighborEdges[j];
+			if(pYZ->getEnd()->getColor() != GC_BLACK)
+			{
+				// Infer the overlap object from the edges
+				if(SGAlgorithms::hasTransitiveOverlap(pXY, pYZ))
+				{
+					Overlap ovr_xz = SGAlgorithms::inferTransitiveOverlap(pXY, pYZ);
+					if(ovr_xz.match.getMinOverlapLength() >= minOverlap)
+						out.push_back(Candidate(pYZ->getEnd(), ovr_xz));
+				}
+			}
+		}
+	}
+
+	// Reset colors
+	edges = pVertex->getEdges();
+	for(size_t i = 0; i < edges.size(); ++i)
+		edges[i]->getEnd()->setColor(GC_WHITE);
+	pVertex->setColor(GC_WHITE);
+
+	return out;
+}
+
+// Remove all the marked edges
+void SGRealignVisitor::postvisit(StringGraph*)
+{
+}
+
 
 //
 // SGCloseGroupVisitor - Attempt to close transitive groups

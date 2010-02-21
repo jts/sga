@@ -12,6 +12,17 @@
 #include "Bigraph.h"
 #include "SGUtil.h" 
 
+namespace SGAlgorithms
+{
+	// Infer an overlap from two edges
+	// The input edges are between X->Y Y->Z
+	// and the returned overlap is of the form X->Z
+	Overlap inferTransitiveOverlap(const Edge* pXY, const Edge* pYZ);
+
+	// Returns true if XZ has a non-zero length overlap
+	bool hasTransitiveOverlap(const Edge* pXY, const Edge* pYZ);
+};
+
 // Visit each node, writing it to a file as a fasta record
 struct SGFastaVisitor
 {
@@ -38,6 +49,26 @@ struct SGTransRedVisitor
 
 	int marked_verts;
 	int marked_edges;
+};
+
+// Infer missing edges in the graph
+struct SGRealignVisitor
+{
+	struct Candidate
+	{
+		Candidate(Vertex* pv, const Overlap& o) : pEndpoint(pv), ovr(o) {}
+		Vertex* pEndpoint;
+		Overlap ovr;
+	};
+	typedef std::vector<Candidate> CandidateVector;
+
+	SGRealignVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+
+	CandidateVector getMissingCandidates(StringGraph* pGraph, Vertex* pVertex, int minOverlap) const;
+
 };
 
 // Close transitive groups by inferring missing edges

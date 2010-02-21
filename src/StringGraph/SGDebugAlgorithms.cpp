@@ -86,13 +86,17 @@ void SGDebugGraphCompareVisitor::previsit(StringGraph*)
 	m_numMissing = 0;
 	m_numMissingNull = 0;
 	m_numWrong = 0;
+	m_numContained = 0;
+	m_numOpen = 0;
+	m_numClosed = 0;
 }
 
 //
 void SGDebugGraphCompareVisitor::postvisit(StringGraph*)
 {
 	std::cout << "[DebugSummary] NF: " << m_numFound << " NM: " << m_numMissing << 
-	             " (" << m_numMissingNull << " NULL) " << " NW: " << m_numWrong << "\n";
+	             " (" << m_numMissingNull << " NULL) " << " NW: " << m_numWrong <<
+				 " NC: " << m_numContained << " NGO: " << m_numOpen << " NGC: " << m_numClosed << "\n";
 	std::cout << "[DebugSummary] MissRate: " << double(m_numMissing) / double(m_numFound + m_numMissing) << "\n";
 }
 
@@ -166,7 +170,18 @@ void SGDebugGraphCompareVisitor::summarize(StringGraph* pGraph, Vertex* pVertex)
 	Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
 	if(pCompareVertex == NULL)
 	{
+		++m_numContained;
 		return;
+	}
+
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];	
+		TransitiveGroupCollection tgc = pVertex->computeTransitiveGroups(dir);
+		if(tgc.numGroups() > 1)
+			++m_numOpen;
+		else
+			++m_numClosed;
 	}
 
 	EdgePtrVec compareEdges = pCompareVertex->getEdges();

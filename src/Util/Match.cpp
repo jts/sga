@@ -134,23 +134,37 @@ int Match::inverseTranslate(int c) const
 	return c + t;
 }
 
-// Given two matches, match_i and match_j
-// infer the match between match_i.coord[1] and match_j.coord[1]
-// This assumes that match_i.coord[0] and match_j.coord[0] are the same frame of
-// reference
+// Given two matches, match_xy and match_xz infer the 
+// match between yz. This requies coord[0] of the input 
+// matches to be referring to the same sequence
 // This returns the minimal matching region, it could possibly be extended
-Match Match::infer(const Match& match_i, const Match& match_j)
+Match Match::infer(const Match& match_xy, const Match& match_xz)
 {
 	// Calculate the max/min start/end coordinates of coord[0]
-	int s = std::max(match_i.coord[0].interval.start, match_j.coord[0].interval.start);
-	int e = std::min(match_i.coord[0].interval.end, match_j.coord[0].interval.end);
+	int s = std::max(match_xy.coord[0].interval.start, match_xz.coord[0].interval.start);
+	int e = std::min(match_xy.coord[0].interval.end, match_xz.coord[0].interval.end);
 	
-	SeqCoord r_i(s, e, match_i.coord[1].seqlen);
-	SeqCoord r_j(s, e, match_j.coord[1].seqlen);
+	SeqCoord r_y(s, e, match_xy.coord[1].seqlen);
+	SeqCoord r_z(s, e, match_xz.coord[1].seqlen);
+	
+	// The coordinates are in the frame of coord[0], translate into the desired frame
+	SeqCoord t_y = match_xy.translate(r_y);
+	SeqCoord t_z = match_xz.translate(r_z);
+	return Match(t_y, t_z, match_xy.isRC() != match_xz.isRC(), -1);
+}
 
-	SeqCoord t_i = match_i.translate(r_i);
-	SeqCoord t_j = match_j.translate(r_j);
-	return Match(t_i, t_j, match_i.isRC() != match_j.isRC(), -1);
+// Given two matches, match_xy and match_xz, return
+// true if the match coordinates intersect. Assumes
+// that the matches have a common basis which is 
+// coord[0]
+bool Match::doMatchesIntersect(const Match& match_xy, const Match& match_xz)
+{
+	int s = std::max(match_xy.coord[0].interval.start, match_xz.coord[0].interval.start);
+	int e = std::min(match_xy.coord[0].interval.end, match_xz.coord[0].interval.end);
+	if(s > e)
+		return false;
+	else
+		return true;	
 }
 
 // Expand the match outwards so one sequence is left terminal and one sequence

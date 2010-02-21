@@ -57,10 +57,14 @@ struct SGDebugGraphCompareVisitor
 
 	// Data
 	StringGraph* m_pCompareGraph;
+	int m_numContained;
 	int m_numFound;
 	int m_numMissingNull;
 	int m_numMissing;
 	int m_numWrong;
+	int m_numClosed;
+	int m_numOpen;
+
 	bool m_showMissing;
 };
 

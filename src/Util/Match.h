@@ -47,9 +47,9 @@ struct Match
 	// Swap the coords of this element
 	void swap();
 
-	// Infer an overlap between match_i.coord[1] and match_j.coord[1]
-	// based on coord[0] being shared
-	static Match infer(const Match& match_i, const Match& match_j);
+	// Infer an overlap between yz given matches xy and xz
+	static Match infer(const Match& match_xy, const Match& match_xz);
+	static bool doMatchesIntersect(const Match& match_xy, const Match& match_xz);
 
 	// Expand a match outwards so each end is terminal for both coordinates
 	void expand();

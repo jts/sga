@@ -107,6 +107,7 @@ void assemble()
 	SGPairedOverlapVisitor pairedOverlapVisit;
 	SGPETrustVisitor trustVisit;
 	SGGroupCloseVisitor groupCloseVisit;
+	SGRealignVisitor realignVisitor;
 
 	if(!opt::debugFile.empty())
 	{
@@ -116,10 +117,8 @@ void assemble()
 
 		SGDebugGraphCompareVisitor* pDebugGraphVisit = new SGDebugGraphCompareVisitor(opt::debugFile);
 		pGraph->visit(*pDebugGraphVisit);
-		while(pGraph->visit(groupCloseVisit))
+		while(pGraph->visit(realignVisitor))
 			pGraph->visit(*pDebugGraphVisit);
-		pDebugGraphVisit->m_showMissing = true;
-		pGraph->visit(*pDebugGraphVisit);
 		pGraph->visit(statsVisit);
 
 		delete pDebugGraphVisit;

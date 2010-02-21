@@ -22,9 +22,7 @@ SeqCoord SeqCoord::complement() const
 
 	if(isContained())
 	{
-		out.interval.start = 0;
-		out.interval.end = -1;
-		return out;
+		assert(false && "Complement not handled for containments");
 	}
 
 	if(isLeftExtreme())
