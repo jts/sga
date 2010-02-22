@@ -125,7 +125,7 @@ void assemble()
 		pGraph->visit(statsVisit);
 
 		delete pDebugGraphVisit;
-		return;
+		//return;
 	}
 	/*
 	if(!opt::positionsFile.empty())

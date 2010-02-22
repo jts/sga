@@ -239,7 +239,7 @@ void SGRealignVisitor::previsit(StringGraph* pGraph)
 bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	bool graph_changed = false;
-	const int MIN_OVERLAP = 31;
+	const int MIN_OVERLAP = 41;
 	const double MAX_ERROR = 0.20;
 	static int visited = 0;
 	++visited;
@@ -262,20 +262,11 @@ bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 		
 		if(error_rate < MAX_ERROR)
 		{
-			if(c.ovr.match.isContainment())
-			{
-				// Mark edge and vertex for removal
-				//pCandidate->setColor(GC_BLACK);
-				//pCandidate->getEnd()->setColor(GC_BLACK);
-			}
-			else
-			{
-				Edge* p_edgeXZ = createEdges(pGraph, c.ovr);
-				Edge* p_edgeZX = p_edgeXZ->getTwin();
-				p_edgeXZ->setColor(GC_WHITE);
-				p_edgeZX->setColor(GC_WHITE);
-				graph_changed = true;
-			}
+			Edge* p_edgeXZ = createEdges(pGraph, c.ovr, true);
+			Edge* p_edgeZX = p_edgeXZ->getTwin();
+			p_edgeXZ->setColor(GC_WHITE);
+			p_edgeZX->setColor(GC_WHITE);
+			graph_changed = true;
 		}
 		else
 		{

@@ -472,7 +472,9 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 {
 	OverlapSeedList* pCurrList = new OverlapSeedList;
 	OverlapSeedList* pNextList = new OverlapSeedList;
-	OverlapBlockList blockWorkingList;
+	OverlapBlockList partialWorkingList;
+	OverlapBlockList fullWorkingList;
+
 	OverlapSeedList::iterator iter;
 
 	createOverlapSeeds(w, pBWT, pRevBWT, block_start, block_end, maxDiff, pCurrList);
@@ -496,7 +498,7 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 			else
 			{
                 extendSeedInexactLeft(align, w, pBWT, pRevBWT, ED_LEFT, block_start, block_end, maxDiff,
-				                      af, pNextList, &blockWorkingList, pOBFinal);
+				                      af, pNextList, &partialWorkingList, &fullWorkingList);
 
 			}
 			pCurrList->erase(iter++);
@@ -505,9 +507,13 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 		pCurrList->swap(*pNextList);
 	}
 
-	// Remove sub-maximal OverlapBlocks and move the remainder to the output list
-	removeSubMaximalBlocks(&blockWorkingList);
-	pOBList->splice(pOBList->end(), blockWorkingList);
+	// parse the full working list, which has containment overlaps
+	removeSubMaximalBlocks(&fullWorkingList);
+	pOBFinal->splice(pOBFinal->end(), fullWorkingList);
+
+	// parse the partial block working list, which has the proper overlaps
+	removeSubMaximalBlocks(&partialWorkingList);
+	pOBList->splice(pOBList->end(), partialWorkingList);
 
 	delete pCurrList;
 	delete pNextList;
