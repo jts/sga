@@ -39,6 +39,21 @@ struct SGFastaVisitor
 	std::ofstream m_fileHandle;
 };
 
+// Visit each node and write the overlaps to the specified file
+struct SGOverlapWriterVisitor
+{
+	SGOverlapWriterVisitor(std::string filename) : m_fileHandle(filename.c_str()) {}
+	~SGOverlapWriterVisitor() { m_fileHandle.close(); }
+
+	// functions
+	void previsit(StringGraph* /*pGraph*/) {}
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph* /*pGraph*/) {}
+
+	// data
+	std::ofstream m_fileHandle;
+};
+
 // Run the Myers transitive reduction algorithm on each node
 struct SGTransRedVisitor
 {

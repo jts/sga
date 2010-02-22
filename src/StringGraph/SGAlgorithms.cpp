@@ -54,6 +54,24 @@ bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 
 
 //
+// SGOverlapWriterVisitor - write all the overlaps in the graph to a file 
+//
+bool SGOverlapWriterVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	EdgePtrVec edges = pVertex->getEdges();
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Overlap ovr = edges[i]->getOverlap();
+		if(ovr.id[0] < ovr.id[1])
+			m_fileHandle << ovr << "\n";
+	}
+	return false;
+}
+
+
+
+
+//
 // SGTransRedVisitor - Perform a transitive reduction about this vertex
 // This uses Myers' algorithm (2005, The fragment assembly string graph)
 // Precondition: the edge list is sorted by length (ascending)
@@ -268,13 +286,13 @@ bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			p_edgeZX->setColor(GC_WHITE);
 			graph_changed = true;
 		}
-		else
+		/*else
 		{
 			std::cout << "Rejected actual:\n";
 			c.ovr.match.printMatch(pVertex->getSeq(), c.pEndpoint->getSeq());
 			std::cout << "ER: " << error_rate << "\n";
 			std::cout << "OVR:\t" << c.ovr << "\n";
-		}
+		}*/
 	}
 	return graph_changed;
 }
