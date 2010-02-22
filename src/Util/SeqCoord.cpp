@@ -15,74 +15,53 @@
 // this returns a seqcoord of the unmatched portion
 SeqCoord SeqCoord::complement() const
 {
-	assert(isExtreme());
-
 	SeqCoord out;
 	out.seqlen = seqlen;
 
-	if(isContained())
+	if(isFull())
 	{
-		assert(false && "Complement not handled for containments");
+		out.setEmpty();
 	}
-
-	if(isLeftExtreme())
+	else if(isEmpty())
+	{
+		out.setFull();
+	}
+	else if(isLeftExtreme())
 	{
 		out.interval.start = std::max(interval.start, interval.end) + 1;
 		out.interval.end = out.seqlen - 1;
 	}
 	else
 	{
+		assert(isRightExtreme());
 		out.interval.start = 0;
 		out.interval.end = std::min(interval.start, interval.end) - 1;
 	}
-	assert(out.interval.start <= out.interval.end);
+	assert(out.isValid());
 	return out;
 }
 
 // Returns the substring of STR described by this seqcoord
 std::string SeqCoord::getSubstring(const std::string& str) const
 {
-	int left;
-	int size;
-	if(interval.end == -1 || interval.start == -1)
+	assert(isValid());
+	if(isEmpty())
 		return std::string("");
-
-	if(interval.start < interval.end)
-	{
-		left = interval.start;
-		size = interval.end - interval.start + 1;
-	}
 	else
-	{
-		left = interval.end;
-		size = interval.start - interval.end + 1;
-	}
-	return str.substr(left, size);
+		return str.substr(interval.start, length());
 }
 
 // Returns the subvector described by the seqcoord
 QualityVector SeqCoord::getSubvector(const QualityVector& vec) const
 {
-	int left;
-	int size;
-	if(interval.end == -1 || interval.start == -1)
+	assert(isValid());
+	if(isEmpty())
 		return QualityVector();
-	
-	if(interval.start < interval.end)
-	{
-		left = interval.start;
-		size = interval.end - interval.start + 1;
-	}
 	else
-	{
-		left = interval.end;
-		size = interval.start - interval.end + 1;
-	}
-	return QualityVector(vec, left, size);
+		return QualityVector(vec, interval.start, length());
 }
 
-// Returns the substring of STR that is NOT contained in the interval
-// described by this seqcoord
+//
 std::string SeqCoord::getComplementString(const std::string& str) const
 {
 	SeqCoord comp = complement();

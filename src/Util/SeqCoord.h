@@ -18,8 +18,8 @@
 struct SeqCoord
 {
 	// constructor
-	SeqCoord() {}
-	SeqCoord(int s, int e, int l) : interval(s, e), seqlen(l) { assert(s <= e); }
+	SeqCoord() : seqlen(0) { setEmpty(); }
+	SeqCoord(int s, int e, int l) : interval(s, e), seqlen(l) { assert(isValid()); }
 
 	// functions
 	inline bool isLeftExtreme() const
@@ -42,6 +42,36 @@ struct SeqCoord
 		return (isLeftExtreme() && isRightExtreme());
 	}
 
+	inline bool isFull() const
+	{
+		return length() == seqlen;
+	}
+
+	inline bool isEmpty() const
+	{
+		return interval.start == 0 && interval.end == -1;
+	}
+
+	inline bool isValid() const
+	{
+		return isEmpty() || (interval.start <= interval.end && interval.start >= 0 && interval.end < seqlen);
+	}
+
+	// Special coordinate denoting the interval is empty
+	// length() will return 0
+	inline void setEmpty()
+	{
+		interval.start = 0;
+		interval.end = -1;
+	}
+
+	// Set the seqcoord to be a full-length match
+	inline void setFull()
+	{
+		interval.start = 0;
+		interval.end = seqlen - 1;
+	}
+
 	// Return the length of the interval, which is inclusive
 	inline int length() const 
 	{ 
@@ -60,14 +90,7 @@ struct SeqCoord
 		return seqlen - interval.end - 1;
 	}
 
-	// Ensure the interval is within in valid range [0, seqlen)
-	inline bool isValid() const
-	{
-		return interval.start >= 0 && interval.end < seqlen;
-	}
-
 	// Flip mirrors the coordinates so they are on the other strand
-	// The coordinates are naturally reversed to indicate its the other strand
 	inline void flip()
 	{
 		int tmp = seqlen - interval.start - 1;
