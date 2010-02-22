@@ -89,7 +89,7 @@ int assembleMain(int argc, char** argv)
 void assemble()
 {
 	Timer t("sga assemble");
-	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn", opt::minOverlap);
+	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn", opt::minOverlap, true);
 	pGraph->printMemSize();
 
 	//pGraph->validate();
@@ -108,6 +108,7 @@ void assemble()
 	SGPETrustVisitor trustVisit;
 	SGGroupCloseVisitor groupCloseVisit;
 	SGRealignVisitor realignVisitor;
+	SGContainRemoveVisitor containVisit;
 
 	if(!opt::debugFile.empty())
 	{
@@ -154,6 +155,12 @@ void assemble()
 	std::cout << "Initial graph stats\n";
 	pGraph->visit(statsVisit);
 
+	// Remove containments from the graph
+	pGraph->visit(containVisit);
+	
+	std::cout << "Post-contain removal stats\n";
+	pGraph->visit(statsVisit);
+	
 	/*
 	std::cout << "Pairing reads\n";
 	pGraph->visit(pairingVisit);

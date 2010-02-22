@@ -17,7 +17,7 @@
 //
 //
 //
-Bigraph::Bigraph()
+Bigraph::Bigraph() : m_hasContainment(false)
 {
 }
 
@@ -218,6 +218,7 @@ void Bigraph::sweepEdges(GraphColor c)
 //	Simplify the graph by compacting singular edges
 void Bigraph::simplify()
 {
+	assert(!hasContainment());
 	simplify(ED_SENSE);
 	simplify(ED_ANTISENSE);
 }
@@ -445,6 +446,20 @@ void Bigraph::setColors(GraphColor c)
 		iter->second->setColor(c);
 		iter->second->setEdgeColors(c);
 	}
+}
+
+//
+// Get/Set the containment flag
+//
+void Bigraph::setContainmentFlag(bool b)
+{
+	m_hasContainment = b;
+}
+
+//
+bool Bigraph::hasContainment() const
+{
+	return m_hasContainment;
 }
 
 //

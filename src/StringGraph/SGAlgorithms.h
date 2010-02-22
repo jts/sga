@@ -51,6 +51,15 @@ struct SGTransRedVisitor
 	int marked_edges;
 };
 
+// Remove contained vertices from the graph
+struct SGContainRemoveVisitor
+{
+	SGContainRemoveVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph* pGraph);
+};
+
 // Infer missing edges in the graph
 struct SGRealignVisitor
 {

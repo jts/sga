@@ -70,7 +70,7 @@ SGDebugGraphCompareVisitor::SGDebugGraphCompareVisitor(std::string readsFile)
 	m_showMissing = false;
 	std::string prefix = stripFilename(readsFile);
 	std::cout << "Loading graph of " << readsFile << " for comparison\n";
-	m_pCompareGraph = loadStringGraph(readsFile, prefix + ".ovr", prefix + ".ctn", 0);
+	m_pCompareGraph = loadStringGraph(readsFile, prefix + ".ovr", prefix + ".ctn", 0, true);
 }
 
 //

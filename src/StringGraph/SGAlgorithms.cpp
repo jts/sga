@@ -59,6 +59,9 @@ bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 // Precondition: the edge list is sorted by length (ascending)
 void SGTransRedVisitor::previsit(StringGraph* pGraph)
 {
+	// The graph must not have containments
+	assert(!pGraph->hasContainment());
+
 	// Set all the vertices in the graph to "vacant"
 	pGraph->setColors(GC_WHITE);
 	pGraph->sortVertexAdjListsByLen();
@@ -192,6 +195,39 @@ void SGTransRedVisitor::postvisit(StringGraph* pGraph)
 }
 
 //
+// SGContainRemoveVisitor - Removes contained
+// vertices from the graph
+//
+void SGContainRemoveVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+}
+
+//
+bool SGContainRemoveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	EdgePtrVec edges = pVertex->getEdges();
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Match m = edges[i]->getMatch();
+		if(m.isContainment())
+		{
+			if(pVertex->getID() > edges[i]->getEnd()->getID())
+			{
+				pVertex->setColor(GC_BLACK);
+				break;
+			}
+		}
+	}
+	return false;
+}
+
+void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepVertices(GC_BLACK);
+	pGraph->setContainmentFlag(false);
+}
+//
 // SGRealignVisitor - Infer locations of potentially
 // missing edges and add them to the graph
 //
@@ -298,7 +334,7 @@ SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringG
 	return out;
 }
 
-// Remove all the marked edges
+//
 void SGRealignVisitor::postvisit(StringGraph*)
 {
 }

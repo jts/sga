@@ -46,7 +46,7 @@ std::string ContainMap::getContainer(std::string s) const
 }
 
 // Construct a string graph from overlaps
-StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std::string containFile, const unsigned int minOverlap)
+StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std::string containFile, const unsigned int minOverlap, bool allowContainments)
 {
 	// Initialize the string graph
 	StringGraph* pGraph = new StringGraph;
@@ -55,8 +55,11 @@ StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std:
 	ContainMap containments(containFile);
 	
 	// Create the graph
-	loadVertices(pGraph, readFile, containments);
-	loadEdges(pGraph, overlapFile, containments, minOverlap);
+	loadVertices(pGraph, readFile, containments, allowContainments);
+	loadEdges(pGraph, overlapFile, containments, minOverlap, allowContainments);
+
+	if(allowContainments)
+		loadEdges(pGraph, containFile, containments, minOverlap, allowContainments);
 
 	// Validate the graph and ensure that there are no duplicate edges
 	SGDuplicateVisitor dupVisit;
@@ -66,7 +69,7 @@ StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std:
 }
 
 //
-void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& containments)
+void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& containments, bool allowContainments)
 {
 	(void)containments;
 	// Add the reads as the vertices
@@ -74,7 +77,7 @@ void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& c
 	SeqItem si;
 	while(reader.get(si))
 	{
-		if(!containments.isContained(si.id))
+		if(allowContainments || !containments.isContained(si.id))
 		{
 			pGraph->addVertex(new Vertex(si.id, si.seq.toString()));
 		}
@@ -82,10 +85,9 @@ void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& c
 }
 
 //
-void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments, const unsigned int minOverlap)
+void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments, 
+               const unsigned int minOverlap, bool allowContainments)
 {
-	(void)containments;
-	(void)minOverlap;
 	// Add the overlaps as edges
 	std::ifstream overlapReader(overlapFile.c_str());
 	checkFileHandle(overlapReader, overlapFile);
@@ -93,9 +95,12 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 	Overlap o;
 	while(overlapReader >> o)
 	{
-		if(containments.isContained(o.id[0]) || containments.isContained(o.id[1]) || o.match.getMaxOverlapLength() < (int)minOverlap)
+	    if((!allowContainments && (containments.isContained(o.id[0]) || containments.isContained(o.id[1])))
+			|| o.match.getMaxOverlapLength() < (int)minOverlap)
+		{
 			continue;
-		createEdges(pGraph, o);
+		}
+		createEdges(pGraph, o, allowContainments);
 	}
 	overlapReader.close();
 }
@@ -126,9 +131,13 @@ Edge* createEdges(StringGraph* pGraph, const Overlap& o, bool allowContained)
 
 	pEdges[0]->setTwin(pEdges[1]);
 	pEdges[1]->setTwin(pEdges[0]);
-
+	
+	bool isContainment = o.match.isContainment();
 	pGraph->addEdge(pVerts[0], pEdges[0]);
 	pGraph->addEdge(pVerts[1], pEdges[1]);
+
+	if(isContainment)
+		pGraph->setContainmentFlag(true);
 
 	return pEdges[0];
 }

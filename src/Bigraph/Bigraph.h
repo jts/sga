@@ -125,6 +125,10 @@ class Bigraph
 		// Check the colors for the entire graph
 		bool checkColors(GraphColor c);
 
+		// Get/Set the containment flag
+		void setContainmentFlag(bool b);
+		bool hasContainment() const;
+
 		// Write the graph to a dot file
 		void writeDot(std::string filename, int dotFlags = 0) const;
 
@@ -137,6 +141,7 @@ class Bigraph
 
 		// Vertex collection
 		VertexPtrMap m_vertices;
+		bool m_hasContainment;
 };
 
 #endif
