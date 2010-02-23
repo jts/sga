@@ -111,13 +111,13 @@ bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 	//compareInferredQuality(pGraph, pVertex);
 	//compareOverlapQuality(pGraph, pVertex);
 	//compareErrorRates(pGraph, pVertex);
-	compareSplitGroups(pGraph, pVertex);
-	/*
+	//compareSplitGroups(pGraph, pVertex);
+	
 	if(!m_showMissing)
 		summarize(pGraph, pVertex);
 	else
 		showMissing(pGraph, pVertex);
-	*/
+	
 	return false;
 }
 

@@ -118,10 +118,10 @@ void assemble()
 
 		SGDebugGraphCompareVisitor* pDebugGraphVisit = new SGDebugGraphCompareVisitor(opt::debugFile);
 		pGraph->visit(*pDebugGraphVisit);
-		//while(pGraph->visit(realignVisitor))
-		//	pGraph->visit(*pDebugGraphVisit);
-		//SGOverlapWriterVisitor overlapWriter("final-overlaps.ovr");
-		//pGraph->visit(overlapWriter);
+		while(pGraph->visit(realignVisitor))
+			pGraph->visit(*pDebugGraphVisit);
+		SGOverlapWriterVisitor overlapWriter("final-overlaps.ovr");
+		pGraph->visit(overlapWriter);
 
 		//pDebugGraphVisit->m_showMissing = true;
 		//pGraph->visit(*pDebugGraphVisit);
