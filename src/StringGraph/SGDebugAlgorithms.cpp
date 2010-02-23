@@ -111,11 +111,13 @@ bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 	//compareInferredQuality(pGraph, pVertex);
 	//compareOverlapQuality(pGraph, pVertex);
 	//compareErrorRates(pGraph, pVertex);
-
+	compareSplitGroups(pGraph, pVertex);
+	/*
 	if(!m_showMissing)
 		summarize(pGraph, pVertex);
 	else
 		showMissing(pGraph, pVertex);
+	*/
 	return false;
 }
 
@@ -214,6 +216,53 @@ void SGDebugGraphCompareVisitor::summarize(StringGraph* pGraph, Vertex* pVertex)
 			++m_numWrong;
 	}
 
+}
+
+//
+void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	// Retreive the vertex in the comparison graph
+	Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
+	if(pCompareVertex == NULL)
+	{
+		return;
+	}
+
+	bool hasWrong = false;
+	EdgePtrVec actualEdges = pVertex->getEdges();
+	MultiOverlap mo = pVertex->getMultiOverlap();
+
+	std::vector<int> maskVector(actualEdges.size() + 1, 0);
+	maskVector[0] = 1;
+	for(size_t i = 0; i < actualEdges.size(); ++i)
+	{
+		Edge* pActualEdge = actualEdges[i];
+		EdgeDesc ed = pActualEdge->getDesc();
+		if(m_pCompareGraph->getVertex(pActualEdge->getEndID()) != NULL && !pCompareVertex->hasEdge(ed))
+		{
+			hasWrong = true;
+			maskVector[i + 1] = 0;
+		}
+		else
+		{
+			maskVector[i + 1] = 1;
+		}
+		assert(mo.getOverlap(i).id[1] == pActualEdge->getEndID());
+	}
+	
+
+	// Build the multioverlap for the vertex
+	size_t numBases = mo.getNumBases();
+	double likelihood = mo.calculateLikelihood();
+	if(hasWrong)
+		mo.printGroups(maskVector);
+	double groupedLikelihood = mo.calculateGroupedLikelihood(maskVector);
+
+	double nl = likelihood / double(numBases);
+	double ngl = groupedLikelihood / double(numBases);
+	double ratio = groupedLikelihood - likelihood;
+
+	std::cout << "SPL\t" << likelihood << "\t" << nl << "\t" << hasWrong << "\t" << groupedLikelihood << "\t" << ngl << "\t" << ratio << "\n";
 }
 
 //
@@ -329,17 +378,15 @@ void SGDebugGraphCompareVisitor::compareInferredQuality(StringGraph* /*pGraph*/,
 				char compBase = compareSeq[i];
 
 				// true mismatch found
-				AlphaProb ap = mo.calcAlphaProb(i);
+				DNADouble ap = mo.calcAlphaProb(i);
 				AlphaCount ac = mo.calcAlphaCount(i);
 
 				int refC = ac.get(refBase);
 				int compC = ac.get(compBase);
 				double refP = ap.get(refBase);
 				double compP = ap.get(compBase);
-				double refO = ap.getOdds(refBase);
-				double compO = ap.getOdds(compBase);
 
-				printf("APB\t%d\t%lf\t%lf\t%d\t%lf\t%lf\n", refC, refP, refO, compC, compP, compO);
+				printf("APB\t%d\t%lf\t%d\t%lf\n", refC, refP, compC, compP);
 			}
 		}
 	}

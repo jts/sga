@@ -51,13 +51,13 @@ AlphaCount Pileup::getAlphaCount() const
 
 // Calculate the consensus base at this position
 // using a simple model where all bases are treated equally
-AlphaProb Pileup::calculateSimpleAlphaProb() const
+DNADouble Pileup::calculateSimpleAlphaProb() const
 {
-	AlphaProb ap;
+	DNADouble ap;
 	assert(!m_data.empty());
-	WARN_ONCE("Fix Pileup::calculateSimpleAlphaProb numerical stability");
+	WARN_ONCE("Fix Pileup::calculateSimpleDNADouble numerical stability");
 	assert(false);
-	for(size_t i = 0; i < DNA_ALPHABET_SIZE; ++i)
+	for(size_t i = 0; i < ap.getAlphabetSize(); ++i)
 	{
 		// Calculate the posterior probability of the data given that
 		// b is the true base
@@ -84,15 +84,45 @@ AlphaProb Pileup::calculateSimpleAlphaProb() const
 
 	// Scale the posterior probabilites by the marginal
 	marginal = log(marginal);
-	for(size_t i = 0; i < DNA_ALPHABET_SIZE; ++i)
+	for(size_t i = 0; i < ap.getAlphabetSize(); ++i)
 	{
-		char b = ALPHABET[i];
+		char b = DNA_ALPHABET::getBase(i);
 		double lp = ap.get(b);
 		//std::cout << "Marginal: " << marginal << " lp: " << lp << " scaled: " << lp - marginal << "\n";
 		ap.set(b, lp - marginal);
 	}
 	return ap;	
 }
+
+// Calculate the likelihood of the data given the base call is 
+// {A,C,G,T}. 
+DNADouble Pileup::calculateLikelihoodNoQuality(double p_error) const
+{
+	DNADouble ap;
+	assert(!m_data.empty());
+	double p_correct = 1.0 - p_error;
+	
+	double log_error = log(p_error);
+	double log_correct = log(p_correct);
+
+	for(size_t i = 0; i < ap.getAlphabetSize(); ++i)
+	{
+		// Calculate the posterior probability of the data given that
+		// b is the true base
+		char b = ap.getBase(i);
+		double likelihood = 0.0f;
+		for(size_t i = 0; i < m_data.size(); ++i)
+		{
+			if(m_data[i].base == b)
+				likelihood += log_correct;
+			else
+				likelihood += log_error;
+		}
+		ap.set(b, likelihood);
+	}
+	return ap;	
+}
+
 
 //
 char Pileup::getCount(char base) const

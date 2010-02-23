@@ -12,8 +12,9 @@
 
 #include <vector>
 #include "Alphabet.h"
+#include "DNADouble.h"
 
-typedef std::vector<AlphaProb> APVec;
+typedef std::vector<DNADouble> APVec;
 
 class QualityVector
 {
@@ -24,9 +25,9 @@ class QualityVector
 		QualityVector(const QualityVector& vec, int start, int size);
 
 		//
-		void add(AlphaProb v);
-		void set(size_t idx, AlphaProb v);
-		AlphaProb get(size_t idx) const;
+		void add(DNADouble v);
+		void set(size_t idx, DNADouble v);
+		DNADouble get(size_t idx) const;
 		size_t size() const;
 		bool empty() const;
 

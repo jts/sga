@@ -11,6 +11,7 @@
 #define PILEUP_H
 #include "Util.h"
 #include "Alphabet.h"
+#include "DNADouble.h"
 
 #define DEFAULT_PROB 0.01
 
@@ -35,7 +36,8 @@ class Pileup
 
 		char calculateSimpleConsensus() const;
 		AlphaCount getAlphaCount() const;
-		AlphaProb calculateSimpleAlphaProb() const;
+		DNADouble calculateSimpleAlphaProb() const;
+		DNADouble calculateLikelihoodNoQuality(double p_error) const;
 
 		void add(char b);
 		void add(char b, double lp);

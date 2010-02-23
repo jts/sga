@@ -17,16 +17,53 @@
 #include <math.h>
 #include <emmintrin.h>
 #include <xmmintrin.h>
+#include <iostream>
 #include "Util.h"
 
 //
 // Constants
 //
+// TODO: Refactor these into a namespaced alphabet like DNA_ALPHABET below
 const uint8_t ALPHABET_SIZE = 5;
 const char ALPHABET[ALPHABET_SIZE] = {'A', 'C', 'G', 'T', '$'};
 const char RANK_ALPHABET[ALPHABET_SIZE] = {'$', 'A', 'C', 'G', 'T'};
 const uint8_t DNA_ALPHABET_SIZE = 4;
 typedef uint64_t BaseCount;
+
+namespace DNA_ALPHABET
+{
+	static const uint8_t s_dnaLexoRankLUT[256] = {
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,1,0,0,0,2,0,0,0,0,0,0,0,0,
+		0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	};
+
+	inline static uint8_t getBaseRank(char b)
+	{
+		return s_dnaLexoRankLUT[static_cast<uint8_t>(b)];
+	}
+	
+	inline char getBase(size_t idx)
+	{
+		assert(idx < DNA_ALPHABET_SIZE);
+		return ALPHABET[idx];
+	}
+
+	static const uint8_t size = 4;
+};
 
 //
 // A simple class holding the count for each base of a DNA string (plus the terminator)
@@ -251,83 +288,6 @@ class AlphaCount
 
 	private:
 		BaseCount m_counts[ALPHABET_SIZE];
-};
-
-// Log-scaled probability of the 4 possible bases
-class AlphaProb
-{
-	public:
-		//
-		inline AlphaProb()
-		{
-			memset(m_probs, 0, ALPHABET_SIZE * sizeof(double));
-		}
-
-		//
-		inline void set(char b, double lp)
-		{
-			m_probs[getBaseRank(b)] = lp;
-		}
-
-		// 
-		inline double get(char b) const
-		{
-			return m_probs[getBaseRank(b)];
-		}
-
-		//
-		inline char getMaxBase() const
-		{
-			double max = -std::numeric_limits<double>::max();
-			int maxIdx = 0;
-			for(int i = 1; i < ALPHABET_SIZE; ++i)
-			{
-				if(m_probs[i] > max)
-				{
-					max = m_probs[i];
-					maxIdx = i;
-				}
-			}
-			return RANK_ALPHABET[maxIdx];
-		}
-
-		//
-		inline double getOdds(char b) const
-		{
-			double p = exp(m_probs[getBaseRank(b)]);
-			return p / (1.0f - p);
-		}
-
-		//
-		inline double getByIdx(const int i) const
-		{
-			return m_probs[i];
-		}
-
-		// Return the base for index i
-		static char getBase(size_t i)
-		{
-			return RANK_ALPHABET[i];
-		}
-
-		// Swap the (A,T) and (C,G) entries
-		inline void complement()
-		{
-			double tmp;
-
-			// A,T
-			tmp = m_probs[4];
-			m_probs[4] = m_probs[1];
-			m_probs[1] = tmp;
-
-			// C,G
-			tmp = m_probs[3];
-			m_probs[3] = m_probs[2];
-			m_probs[2] = tmp;
-		}
-
-	private:
-		double m_probs[ALPHABET_SIZE];
 };
 
 #endif

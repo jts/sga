@@ -50,10 +50,12 @@ struct SGDebugGraphCompareVisitor
 	void summarize(StringGraph* pGraph, Vertex* pVertex);
 	void showMissing(StringGraph* pGraph, Vertex* pVertex);
 
+	void compareSplitGroups(StringGraph* /*pGraph*/, Vertex* pVertex);
 	void compareOverlapQuality(StringGraph* /*pGraph*/, Vertex* pVertex);
 	void compareInferredQuality(StringGraph* pGraph, Vertex* pVertex);
 	void compareErrorRates(StringGraph* pGraph, Vertex* pVertex);
 	void compareTransitiveGroups(StringGraph* pGraph, Vertex* pVertex);
+	
 
 	// Data
 	StringGraph* m_pCompareGraph;

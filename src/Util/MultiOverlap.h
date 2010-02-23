@@ -12,6 +12,7 @@
 
 #include "Match.h"
 #include "Pileup.h"
+#include "DNADouble.h"
 
 class MultiOverlap
 {
@@ -34,19 +35,26 @@ class MultiOverlap
 		MultiOverlap(const std::string& rootID, const std::string& rootSeq);
 		
 		void add(const std::string& seq, const Overlap& ovr);
-		AlphaProb calcAlphaProb(size_t idx) const;
-		AlphaCount calcAlphaCount(size_t idx) const;
+		Overlap getOverlap(size_t idx) const;
 
+		double calculateLikelihood() const;
+		double calculateGroupedLikelihood(const IntVec& groups) const;
+
+		DNADouble calcAlphaProb(size_t idx) const;
+		AlphaCount calcAlphaCount(size_t idx) const;
+		size_t getNumBases() const;
 		void calcProb() const;
 
 		// IO
 		void print(int default_padding = DEFAULT_PADDING, int max_overhang = DEFAULT_MAX_OVERHANG);
 		void printPileup();
+		void printGroups(const IntVec& groups);
 
 	private:
 
 		
 		Pileup getPileup(int idx) const;
+		void getGroupedPileup(int idx, const IntVec& groups, Pileup& g0, Pileup& g1) const;
 
 		void printRow(int default_padding, int max_overhang, int root_len, 
 		              int offset, int overlap_len, const std::string& seq, 

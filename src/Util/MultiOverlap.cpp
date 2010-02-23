@@ -40,9 +40,51 @@ void MultiOverlap::add(const std::string& seq, const Overlap& ovr)
 	m_overlaps.push_back(mod);
 }
 
+//
+Overlap MultiOverlap::getOverlap(size_t idx) const
+{
+	assert(idx < m_overlaps.size());
+	return m_overlaps[idx].ovr;
+}
+
+// Compute the likelihood of the multioverlap
+double MultiOverlap::calculateLikelihood() const
+{
+	WARN_ONCE("Compute likelihood using fixed error rate");
+
+	double likelihood = 0.0f;
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup pileup = getPileup(i);
+		DNADouble ap = pileup.calculateLikelihoodNoQuality(0.01);
+		likelihood += ap.marginalize();
+	}
+	return likelihood;
+}
+
+// Calculate the likelihood of the multioverlap given the groups defined by IntVector
+// There are only two possible groups, 0 and 1. The root_sequence (index 0 in the vector) is assumed to belong
+// to group 1
+double MultiOverlap::calculateGroupedLikelihood(const IntVec& groups) const
+{
+	double likelihood = 0.0f;
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup g0;
+		Pileup g1;
+		getGroupedPileup(i, groups, g0, g1);
+		if(g0.getDepth() > 0)
+			likelihood += g0.calculateLikelihoodNoQuality(0.01).marginalize();
+		if(g1.getDepth() > 0)
+			likelihood += g1.calculateLikelihoodNoQuality(0.01).marginalize();
+	}
+	return likelihood;
+}
+
+
 // Calculate the probability of the 4 bases given the multi-overlap
 // for a single position
-AlphaProb MultiOverlap::calcAlphaProb(size_t idx) const
+DNADouble MultiOverlap::calcAlphaProb(size_t idx) const
 {
 	Pileup pileup = getPileup(idx);
 	return pileup.calculateSimpleAlphaProb();
@@ -66,7 +108,7 @@ void MultiOverlap::calcProb() const
 		if(pileup.getDepth() > 1)
 		{
 			char cnsBase = pileup.calculateSimpleConsensus();
-			AlphaProb ap = pileup.calculateSimpleAlphaProb();
+			DNADouble ap = pileup.calculateSimpleAlphaProb();
 			char refBase = pileup.getBase(0);
 			
 			if(refBase != cnsBase)
@@ -109,6 +151,17 @@ void MultiOverlap::calcProb() const
 	*/
 }
 
+size_t MultiOverlap::getNumBases() const
+{
+	size_t count = 0;
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p = getPileup(i);
+		count += p.getDepth();
+	}
+	return count;
+}
+
 // Get the "stack" of bases that aligns to
 // a single position of the root seq, including
 // the root base
@@ -130,6 +183,26 @@ Pileup MultiOverlap::getPileup(int idx) const
 	return p;
 }
 
+// Fill in the pileup groups g0 and g1 based on the IntVector
+void MultiOverlap::getGroupedPileup(int idx, const IntVec& groups, Pileup& g0, Pileup& g1) const
+{
+	g1.add(m_rootSeq[idx]);
+
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		const MOData& curr = m_overlaps[i];
+		// translate idx into the frame of the current sequence
+		int trans_idx = idx - curr.offset;
+		if(trans_idx >= 0 && size_t(trans_idx) < curr.seq.size())
+		{
+			if(groups[i] == 0)
+				g0.add(curr.seq[trans_idx]);
+			else
+				g1.add(curr.seq[trans_idx]);
+		}
+	}
+}
+
 // Print the MultiOverlap to stdout
 void MultiOverlap::print(int default_padding, int max_overhang)
 {
@@ -149,6 +222,23 @@ void MultiOverlap::print(int default_padding, int max_overhang)
 		         curr.offset, overlap_len, curr.seq, curr.ovr.id[1].c_str());
 	}	
 }
+
+// Print the MultiOverlap groups specified by the IntVec to stdout
+void MultiOverlap::printGroups(const IntVec& groups)
+{
+	for(size_t i = 0; i <= 1; ++i)
+	{
+		MultiOverlap mo_group(m_rootID, m_rootSeq);
+		for(size_t j = 0; j < m_overlaps.size(); ++j)
+		{
+			if(groups[j] == (int)i)
+				mo_group.add(m_overlaps[j].seq, m_overlaps[j].ovr);
+		}
+		std::cout << "MO GROUP " << i << "\n";
+		mo_group.print();
+	}
+}
+
 
 // Print a single row of a multi-overlap to stdout
 void MultiOverlap::printRow(int default_padding, int max_overhang, 

@@ -28,13 +28,13 @@ QualityVector::QualityVector(const QualityVector& vec, int start, int size)
 }
 
 //
-void QualityVector::add(AlphaProb v)
+void QualityVector::add(DNADouble v)
 {
 	m_data.push_back(v);
 }
 
 //
-void QualityVector::set(size_t idx, AlphaProb v)
+void QualityVector::set(size_t idx, DNADouble v)
 {
 	if(m_data.size() < idx)
 		m_data.resize(idx + 1);
@@ -42,7 +42,7 @@ void QualityVector::set(size_t idx, AlphaProb v)
 }
 
 //
-AlphaProb QualityVector::get(size_t idx) const
+DNADouble QualityVector::get(size_t idx) const
 {
 	assert(idx < m_data.size());
 	return m_data[idx];

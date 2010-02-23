@@ -1,17 +1,13 @@
-#include "StatsCommon.h"
+#include "Stats.h"
 #include <math.h>
 #include <iostream>
 
 //
-// Probability functions
-//
-
-//
 // Poisson in log space
 //
-double log_poisson(unsigned int k, double m)
+double Stats::logPoisson(unsigned int k, double m)
 {
-	double f_k = log_factorial(k);
+	double f_k = logFactorial(k);
 	double p = (double)k * log(m) - m - f_k;
 	//std::cout << "k: " << k << " f: " << f_k << " m: " << m << " p: " << p << std::endl;
 	return p;
@@ -20,11 +16,10 @@ double log_poisson(unsigned int k, double m)
 //
 // Factorial in log space
 //
-double log_factorial(unsigned int k)
+double Stats::logFactorial(unsigned int k)
 {
 	double result = 0;
 	while(k > 0)
 		result += log(k--); //slow
 	return result;
 }
-

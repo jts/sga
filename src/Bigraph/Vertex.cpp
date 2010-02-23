@@ -282,7 +282,7 @@ QualityVector Vertex::getInferredQuality() const
 	QualityVector out;
 	for(size_t i = 0; i < m_seq.size(); ++i)
 	{
-		AlphaProb ap = mo.calcAlphaProb(i);
+		DNADouble ap = mo.calcAlphaProb(i);
 		out.add(ap);
 	}
 	return out;
@@ -329,7 +329,7 @@ QualityVector Vertex::getPriorQuality() const
 	QualityVector out;
 	for(size_t i = 0; i < m_seq.size(); ++i)
 	{
-		AlphaProb ap;
+		DNADouble ap;
 		double p_correct_match = 0.99;
 		double p_correct_mm = (1.0f - p_correct_match) / 3;
 		for(size_t j = 0; j < DNA_ALPHABET_SIZE; ++j)
