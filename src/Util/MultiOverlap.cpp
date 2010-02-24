@@ -171,6 +171,8 @@ void MultiOverlap::partitionMP(double p_error)
 //
 void MultiOverlap::partitionLI(double p_error)
 {
+	double initial_likelihood = calculateGroupedLikelihood();
+
 	// Compute the likelihood of the alignment between the root sequence
 	// and every member of the multioverlap
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
@@ -184,10 +186,9 @@ void MultiOverlap::partitionLI(double p_error)
 			likelihood += ap.marginalize(0.25f);
 			total_bases += pileup.getDepth();
 		}
+
 		m_overlaps[i].score = likelihood / total_bases;
-		
-		// Initially set all elements to the "other" partition
-		//m_overlaps[i].partitionID = 1;
+		m_overlaps[i].partitionID = 1;
 	}
 
 	// Sort the overlaps by score
@@ -207,6 +208,7 @@ void MultiOverlap::partitionLI(double p_error)
 
 	double max = -std::numeric_limits<double>::max();
 	size_t num_elems_max = 0;
+
 	double prev_likelihood = calculateGroupedLikelihood();
 
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
@@ -216,36 +218,32 @@ void MultiOverlap::partitionLI(double p_error)
 		//double improvement = likelihood - prev_likelihood;
 		//if(improvement < 5)
 		//	m_overlaps[i].partitionID = 0;
-	//	std::cout << "Elem: " << i << " prev: " << prev_likelihood << " likelihood: " << likelihood << " improvement: " << improvement << "\n";
-		prev_likelihood = likelihood;
+		//std::cout << "Elem: " << i << " prev: " << prev_likelihood << " likelihood: " << likelihood << " improvement: " << improvement << "\n";
 		if(likelihood > max)
 		{
 			max = likelihood;
-			num_elems_max = i;
+			num_elems_max = i + 1;
 		}
+		prev_likelihood = likelihood;
 	}
 
 	//std::cout << "MAX: " << max << " NUM ELEMS: " << num_elems_max << "\n";
 	// Put the selected into the partition with the root seq
 	for(size_t j = 0; j < m_overlaps.size(); ++j)
 	{
-		if(j < num_elems_max)
-			m_overlaps[j].partitionID = 0;
+		if(max > initial_likelihood)
+		{
+			if(j < num_elems_max)
+				m_overlaps[j].partitionID = 0;
+			else
+				m_overlaps[j].partitionID = 1;
+		}
 		else
-			m_overlaps[j].partitionID = 1;
+		{
+			m_overlaps[j].partitionID = 0;
+		}
 	}
-	
-	/*
-	double prev_likelihood = calculateGroupedLikelihood();
-	for(size_t i = 0; i < m_overlaps.size(); ++i)
-	{
-		m_overlaps[i].partitionID = 0;
-		double likelihood = calculateGroupedLikelihood();
-		double improvement = likelihood - prev_likelihood;
-		std::cout << "Elem: " << i << " likelihood: " << likelihood << " improvement: " << improvement << "\n";
-		prev_likelihood = likelihood;
-	}
-	*/
+	std::cout << "INIT: " << initial_likelihood << " MAX: " << max << " FINAL GL: " << calculateGroupedLikelihood() << "\n";	
 }
 
 //

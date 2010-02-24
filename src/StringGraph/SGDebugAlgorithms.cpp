@@ -251,7 +251,7 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	
 	//if(hasWrong)
-	mo.partitionMP(0.01);
+	mo.partitionLI(0.01);
 
 	std::string original = pVertex->getSeq();
 	std::string consensus = mo.calculateConsensusFromPartition(0.01);
