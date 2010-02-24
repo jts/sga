@@ -92,8 +92,18 @@ struct SGRealignVisitor
 	void postvisit(StringGraph*);
 
 	CandidateVector getMissingCandidates(StringGraph* pGraph, Vertex* pVertex, int minOverlap) const;
-
 };
+
+// Remove edges from the graph that have an error rate higher than the parameter
+struct SGEdgeCutVisitor
+{
+	SGEdgeCutVisitor(double er) : m_errorRate(er) {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+	double m_errorRate;
+};
+
 
 // Close transitive groups by inferring missing edges
 struct SGGroupCloseVisitor

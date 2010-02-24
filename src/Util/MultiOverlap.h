@@ -52,6 +52,7 @@ class MultiOverlap
 		// Partition the multioverlap into groups
 		void partitionMP(double p_error);
 		void partitionLI(double p_error);
+		void partitionSL(double p_error);
 
 		double calculateLikelihood() const;
 		double calculateGroupedLikelihood() const;
@@ -74,6 +75,7 @@ class MultiOverlap
 		Pileup getSingletonPileup(int base_idx, int ovr_idx) const;
 
 		void getPartitionedPileup(int idx, Pileup& g0, Pileup& g1) const;
+		PileupVector getPartitionedPileup(int idx, int num_parts) const;
 
 		void printRow(int default_padding, int max_overhang, int root_len, 
 		              int offset, int overlap_len, int pid, double score,

@@ -165,6 +165,12 @@ void assemble()
 	
 	std::cout << "Post-contain removal stats\n";
 	pGraph->visit(statsVisit);
+
+	SGEdgeCutVisitor ecVisit(0.0f);
+	pGraph->visit(ecVisit);
+
+	std::cout << "Post-edge remove stats\n";
+	pGraph->visit(statsVisit);
 	
 	/*
 	std::cout << "Pairing reads\n";

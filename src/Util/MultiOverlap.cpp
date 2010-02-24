@@ -193,7 +193,7 @@ void MultiOverlap::partitionLI(double p_error)
 	// Sort the overlaps by score
 	std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
 
-	
+	/*
 	std::cout << "Print score list\n";
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
 	{
@@ -203,7 +203,8 @@ void MultiOverlap::partitionLI(double p_error)
 		m_overlaps[i].partitionID = 1;
 		
 	}
-	
+	*/
+
 	double max = -std::numeric_limits<double>::max();
 	size_t num_elems_max = 0;
 	double prev_likelihood = calculateGroupedLikelihood();
@@ -234,7 +235,6 @@ void MultiOverlap::partitionLI(double p_error)
 			m_overlaps[j].partitionID = 1;
 	}
 	
-
 	/*
 	double prev_likelihood = calculateGroupedLikelihood();
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
@@ -247,6 +247,21 @@ void MultiOverlap::partitionLI(double p_error)
 	}
 	*/
 }
+
+//
+void MultiOverlap::partitionSL(double /*p_error*/)
+{
+	/*
+	int numPartitions = 1;
+
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		PileupVector partPileup = getPartitionedPileup(i, numPartitions);
+
+	}
+	*/
+}
+
 
 
 std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
@@ -447,7 +462,7 @@ Pileup MultiOverlap::getSingletonPileup(int base_idx, int ovr_idx) const
 	return p;
 }
 
-// Fill in the pileup groups g0 and g1 based on the IntVector
+// Fill in the pileup groups g0 and g1
 void MultiOverlap::getPartitionedPileup(int idx, Pileup& g0, Pileup& g1) const
 {
 	g0.add(m_rootSeq[idx]);
@@ -466,6 +481,32 @@ void MultiOverlap::getPartitionedPileup(int idx, Pileup& g0, Pileup& g1) const
 		}
 	}
 }
+
+
+// Fill in the pileup groups g0 and g1
+PileupVector MultiOverlap::getPartitionedPileup(int idx, int num_parts) const
+{
+	assert(false && "untested");
+	PileupVector pv(num_parts);
+	pv.push_back(Pileup());
+	
+	// the root always goes in partition 0
+	pv.back().add(m_rootSeq[idx]);
+
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		const MOData& curr = m_overlaps[i];
+		// translate idx into the frame of the current sequence
+		int trans_idx = idx - curr.offset;
+		if(trans_idx >= 0 && size_t(trans_idx) < curr.seq.size())
+		{
+			assert(curr.partitionID < num_parts);
+			pv[curr.partitionID].add(curr.seq[trans_idx]);
+		}
+	}
+	return pv;
+}
+
 
 // Print the MultiOverlap to stdout
 void MultiOverlap::print(int default_padding, int max_overhang)

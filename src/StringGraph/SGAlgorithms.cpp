@@ -348,6 +348,37 @@ void SGRealignVisitor::postvisit(StringGraph*)
 {
 }
 
+//
+// Remove edges from the graph based on the error rate of the overlap
+//
+void SGEdgeCutVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+}
+
+//
+bool SGEdgeCutVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+	EdgePtrVec edges = pVertex->getEdges();
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Overlap ovr = edges[i]->getOverlap();
+		int ol = ovr.match.getMinOverlapLength();
+		int nd = ovr.match.countDifferences(pVertex->getSeq(), edges[i]->getEnd()->getSeq());
+		double er = (double)nd / (double)ol;
+		std::cout << "CUT\t" << pVertex->getID() << "\t" << ol << "\t" << nd << "\t" << er << "\n";
+		if(er > m_errorRate)
+			edges[i]->setColor(GC_RED);
+	}
+	return false;
+}
+
+//
+void SGEdgeCutVisitor::postvisit(StringGraph* pGraph)
+{
+	pGraph->sweepEdges(GC_RED);
+}
+
 
 //
 // SGCloseGroupVisitor - Attempt to close transitive groups

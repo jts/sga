@@ -119,8 +119,9 @@ class Vertex
 		// setters
 		void setPairVertex(Vertex* pPair);
 		void clearPairVertex();
-		void setColor(GraphColor c) { m_color = c; }
 		void setEdgeColors(GraphColor c);
+		void setSeq(const std::string& s) { m_seq = s; }
+		void setColor(GraphColor c) { m_color = c; }
 
 		// getters
 		VertexID getID() const { return m_id; }
