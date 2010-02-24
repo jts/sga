@@ -82,7 +82,7 @@ size_t MultiOverlap::getNumBases() const
 }
 
 //
-void MultiOverlap::partition(double p_error)
+void MultiOverlap::partitionMP(double p_error)
 {
 	// Compute the likelihood of the alignment between the root sequence
 	// and every member of the multioverlap
@@ -159,7 +159,7 @@ void MultiOverlap::partition(double p_error)
 		}
 		//std::cout << "NE: " << j << " post sum: " << post_max_sum << "\n";
 	}
-	WARN_ONCE("UNDERFLOW");
+	WARN_ONCE("WATCH FOR UNDERFLOW");
 	//std::cout << "MAX: " << max << " num elems: " << num_elems_max << "\n";
 	// Put the selected into the partition with the root seq
 	for(size_t j = 1; j < num_elems_max; ++j)
@@ -168,10 +168,94 @@ void MultiOverlap::partition(double p_error)
 	}
 }
 
+//
+void MultiOverlap::partitionLI(double p_error)
+{
+	// Compute the likelihood of the alignment between the root sequence
+	// and every member of the multioverlap
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		double likelihood = 0.0f;
+		double total_bases = 0;
+		for(size_t j = 0; j < m_rootSeq.size(); ++j)
+		{
+			Pileup pileup = getSingletonPileup(j, i);
+			DNADouble ap = pileup.calculateLikelihoodNoQuality(p_error);
+			likelihood += ap.marginalize(0.25f);
+			total_bases += pileup.getDepth();
+		}
+		m_overlaps[i].score = likelihood / total_bases;
+		
+		// Initially set all elements to the "other" partition
+		//m_overlaps[i].partitionID = 1;
+	}
+
+	// Sort the overlaps by score
+	std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
+
+	
+	std::cout << "Print score list\n";
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		MOData& curr = m_overlaps[i];
+		std::cout << i << "\t" << curr.ovr.id[1] << "\t" << curr.score << "\t" << curr.partitionID << "\n";
+		//Initially set all elements to the "other" partition
+		m_overlaps[i].partitionID = 1;
+		
+	}
+	
+	double max = -std::numeric_limits<double>::max();
+	size_t num_elems_max = 0;
+	double prev_likelihood = calculateGroupedLikelihood();
+
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		m_overlaps[i].partitionID = 0;
+		double likelihood = calculateGroupedLikelihood();
+		//double improvement = likelihood - prev_likelihood;
+		//if(improvement < 5)
+		//	m_overlaps[i].partitionID = 0;
+	//	std::cout << "Elem: " << i << " prev: " << prev_likelihood << " likelihood: " << likelihood << " improvement: " << improvement << "\n";
+		prev_likelihood = likelihood;
+		if(likelihood > max)
+		{
+			max = likelihood;
+			num_elems_max = i;
+		}
+	}
+
+	//std::cout << "MAX: " << max << " NUM ELEMS: " << num_elems_max << "\n";
+	// Put the selected into the partition with the root seq
+	for(size_t j = 0; j < m_overlaps.size(); ++j)
+	{
+		if(j < num_elems_max)
+			m_overlaps[j].partitionID = 0;
+		else
+			m_overlaps[j].partitionID = 1;
+	}
+	
+
+	/*
+	double prev_likelihood = calculateGroupedLikelihood();
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		m_overlaps[i].partitionID = 0;
+		double likelihood = calculateGroupedLikelihood();
+		double improvement = likelihood - prev_likelihood;
+		std::cout << "Elem: " << i << " likelihood: " << likelihood << " improvement: " << improvement << "\n";
+		prev_likelihood = likelihood;
+	}
+	*/
+}
+
+
 std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
 {
 	std::string out;
 	out.reserve(m_rootSeq.size());
+
+	// require the best base call to be above this above to correct it
+	double epsilon = 0.01;
 	for(size_t i = 0; i < m_rootSeq.size(); ++i)
 	{
 		Pileup p0;
@@ -185,7 +269,7 @@ std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
 
 		// Require the called value to be substantially better than the
 		// current base
-		if(best_c == curr_c || (best_c != curr_c && max - ap.get(curr_c) < 10))
+		if(best_c == curr_c || (best_c != curr_c && max - ap.get(curr_c) < epsilon))
 		{
 			out.push_back(curr_c);
 		}

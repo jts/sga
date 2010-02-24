@@ -49,9 +49,10 @@ class MultiOverlap
 		int getPartition(size_t idx) const;
 		void setPartition(size_t idx, int p);
 		
-		// Partition the multioverlap into two
-		// groups based on the likelihood
-		void partition(double p_error);
+		// Partition the multioverlap into groups
+		void partitionMP(double p_error);
+		void partitionLI(double p_error);
+
 		double calculateLikelihood() const;
 		double calculateGroupedLikelihood() const;
 		std::string calculateConsensusFromPartition(double p_error);

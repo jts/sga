@@ -245,11 +245,13 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 		}
 
 		assert(mo.getOverlap(i).id[1] == pActualEdge->getEndID());
+		//mo.setPartition(i, 0);
 		mo.setPartition(i, partition);
 	}
 
-	//if(hasWrong)
-	//mo.partition(0.01);
+	
+//	if(hasWrong)
+		mo.partitionLI(0.01);
 
 	std::string original = pVertex->getSeq();
 	std::string consensus = mo.calculateConsensusFromPartition(0.01);
