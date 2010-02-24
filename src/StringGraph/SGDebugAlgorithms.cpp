@@ -260,7 +260,7 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	int numDiffsNC = countDifferences(original, base, base.size());
 	int numDiffsEC = countDifferences(consensus, base, base.size());
-	std::cout << "EC\t" << numDiffsNC << "\t" << numDiffsEC << "\n";
+	std::cout << "EC\t" << numDiffsNC << "\t" << numDiffsEC << "\t" << hasWrong << "\n";
 
 	/*
 	int correct = 0;
