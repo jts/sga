@@ -248,9 +248,18 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 		mo.setPartition(i, partition);
 	}
 
-	if(hasWrong)
-		mo.partition(0.01);
-	
+	//if(hasWrong)
+	//mo.partition(0.01);
+
+	std::string original = pVertex->getSeq();
+	std::string consensus = mo.calculateConsensusFromPartition(0.01);
+	std::string base = pCompareVertex->getSeq();
+
+	int numDiffsNC = countDifferences(original, base, base.size());
+	int numDiffsEC = countDifferences(consensus, base, base.size());
+	std::cout << "EC\t" << numDiffsNC << "\t" << numDiffsEC << "\n";
+
+	/*
 	int correct = 0;
 	int wrong = 0;
 
@@ -271,8 +280,7 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 		else
 			wrong++;
 	}
-
-	// Build the multioverlap for the vertex
+	*/
 	size_t numBases = mo.getNumBases();
 	double likelihood = mo.calculateLikelihood();
 	//if(hasWrong)
@@ -282,9 +290,9 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 	double nl = likelihood / double(numBases);
 	double ngl = groupedLikelihood / double(numBases);
 	double ratio = groupedLikelihood - likelihood;
-	double group_ratio = double(correct) / double(correct + wrong);
+	//double group_ratio = double(correct) / double(correct + wrong);
 	std::cout << "SPL\t" << likelihood << "\t" << nl << "\t" << hasWrong << "\t" << groupedLikelihood << "\t" << ngl << "\t" << ratio << "\n";
-	std::cout << "GRP\t" << correct << "\t" << wrong << "\t" << group_ratio << "\n";	
+	//std::cout << "GRP\t" << correct << "\t" << wrong << "\t" << group_ratio << "\n";	
 }
 
 //

@@ -94,23 +94,27 @@ void MultiOverlap::partition(double p_error)
 		{
 			Pileup pileup = getSingletonPileup(j, i);
 			DNADouble ap = pileup.calculateLikelihoodNoQuality(p_error);
-			likelihood += ap.marginalize();
+			likelihood += ap.marginalize(0.25f);
 			total_bases += pileup.getDepth();
 		}
 		m_overlaps[i].score = likelihood / total_bases;
+		
+		// Initially set all elements to the "other" partition
+		m_overlaps[i].partitionID = 1;
 	}
 
 	// Sort the overlaps by score
 	std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
 
+	/*
 	std::cout << "Print score list\n";
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
 	{
 		MOData& curr = m_overlaps[i];
 		std::cout << i << "\t" << curr.ovr.id[1] << "\t" << curr.score << "\t" << curr.partitionID << "\n";
-		m_overlaps[i].partitionID = 1;
 	}
-
+	*/
+	/*
 	double prev_likelihood = calculateGroupedLikelihood();
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
 	{
@@ -120,9 +124,15 @@ void MultiOverlap::partition(double p_error)
 		std::cout << "Elem: " << i << " likelihood: " << likelihood << " improvement: " << improvement << "\n";
 		prev_likelihood = likelihood;
 	}
+	*/
 
-	/*
+	double max = -std::numeric_limits<double>::max();
+	size_t num_elems_max = 0;
 	size_t num_total = m_overlaps.size();
+	double prior = 0.25f;
+	double log_prior = log(prior);
+
+	std::cout.precision(10);
 	for(size_t j = 1; j < num_total; ++j)
 	{
 		double post_max_sum = 0.0f;
@@ -130,16 +140,61 @@ void MultiOverlap::partition(double p_error)
 		{
 			Pileup pileup = getPileup(i, j);
 			DNADouble ap = pileup.calculateLikelihoodNoQuality(p_error);
-			double marginal = ap.marginalize();
-			ap.subtract(marginal);
-			post_max_sum += ap.getMaxVal();
+			double marginal = ap.marginalize(prior);
+			//double marginal = ap.marginalize(prior);
+			double ratio = log_prior - marginal;
+			ap.add(ratio);
+			double mv = ap.getMaxVal();
+			if(mv > 0.0f)
+				mv = 0.0f;
+			//std::cout << "postmax: " << ap.getMaxVal() << " clamped: " << mv << "\n";
+			post_max_sum += mv;
+			//std::cout << "sumnow: " << post_max_sum << "\n";
 		}
-
-		//posterior.subtract(likelihood);
-		std::cout << "Num Elems: " << j << " posterior sum: " << post_max_sum << " exp_post: " << exp(post_max_sum) << " pid: " << m_overlaps[j - 1].partitionID << "\n";
+		
+		if(post_max_sum > max)
+		{
+			max = post_max_sum;
+			num_elems_max = j;
+		}
+		//std::cout << "NE: " << j << " post sum: " << post_max_sum << "\n";
 	}
-	*/
-	printGroups();
+	WARN_ONCE("UNDERFLOW");
+	//std::cout << "MAX: " << max << " num elems: " << num_elems_max << "\n";
+	// Put the selected into the partition with the root seq
+	for(size_t j = 1; j < num_elems_max; ++j)
+	{
+		m_overlaps[j - 1].partitionID = 0;
+	}
+}
+
+std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
+{
+	std::string out;
+	out.reserve(m_rootSeq.size());
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p0;
+		Pileup p1;
+		getPartitionedPileup(i, p0, p1);
+		DNADouble ap = p0.calculateLikelihoodNoQuality(p_error);
+		char best_c;
+		char curr_c = m_rootSeq[i];
+		double max;
+		ap.getMax(best_c, max);
+
+		// Require the called value to be substantially better than the
+		// current base
+		if(best_c == curr_c || (best_c != curr_c && max - ap.get(curr_c) < 10))
+		{
+			out.push_back(curr_c);
+		}
+		else
+		{
+			out.push_back(best_c);
+		}
+	}
+	return out;
 }
 
 // Compute the likelihood of the multioverlap
@@ -152,7 +207,7 @@ double MultiOverlap::calculateLikelihood() const
 	{
 		Pileup pileup = getPileup(i);
 		DNADouble ap = pileup.calculateLikelihoodNoQuality(0.01);
-		likelihood += ap.marginalize();
+		likelihood += ap.marginalize(0.25f);
 	}
 	return likelihood;
 }
@@ -167,11 +222,11 @@ double MultiOverlap::calculateGroupedLikelihood() const
 	{
 		Pileup g0;
 		Pileup g1;
-		getGroupedPileup(i, g0, g1);
+		getPartitionedPileup(i, g0, g1);
 		if(g0.getDepth() > 0)
-			likelihood += g0.calculateLikelihoodNoQuality(0.01).marginalize();
+			likelihood += g0.calculateLikelihoodNoQuality(0.01).marginalize(0.25f);
 		if(g1.getDepth() > 0)
-			likelihood += g1.calculateLikelihoodNoQuality(0.01).marginalize();
+			likelihood += g1.calculateLikelihoodNoQuality(0.01).marginalize(0.25f);
 	}
 	return likelihood;
 }
@@ -309,7 +364,7 @@ Pileup MultiOverlap::getSingletonPileup(int base_idx, int ovr_idx) const
 }
 
 // Fill in the pileup groups g0 and g1 based on the IntVector
-void MultiOverlap::getGroupedPileup(int idx, Pileup& g0, Pileup& g1) const
+void MultiOverlap::getPartitionedPileup(int idx, Pileup& g0, Pileup& g1) const
 {
 	g0.add(m_rootSeq[idx]);
 

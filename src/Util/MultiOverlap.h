@@ -54,6 +54,7 @@ class MultiOverlap
 		void partition(double p_error);
 		double calculateLikelihood() const;
 		double calculateGroupedLikelihood() const;
+		std::string calculateConsensusFromPartition(double p_error);
 
 		DNADouble calcAlphaProb(size_t idx) const;
 		AlphaCount calcAlphaCount(size_t idx) const;
@@ -71,7 +72,7 @@ class MultiOverlap
 		Pileup getPileup(int idx, int numElems) const;
 		Pileup getSingletonPileup(int base_idx, int ovr_idx) const;
 
-		void getGroupedPileup(int idx, Pileup& g0, Pileup& g1) const;
+		void getPartitionedPileup(int idx, Pileup& g0, Pileup& g1) const;
 
 		void printRow(int default_padding, int max_overhang, int root_len, 
 		              int offset, int overlap_len, int pid, double score,

@@ -63,7 +63,7 @@ class DNADouble
 		{
 			double max = -std::numeric_limits<double>::max();
 			int maxIdx = 0;
-			for(int i = 0; i < DNA_ALPHABET_SIZE; ++i)
+			for(int i = 0; i < DNA_ALPHABET::size; ++i)
 			{
 				if(m_vals[i] > max)
 				{
@@ -106,17 +106,44 @@ class DNADouble
 		}
 
 		// Interpret the DNADouble as a log-probabilty vector of some 
-		// event occurring and marginalize out 
-		double marginalize() const
+		// event occurring and marginalize using a flat prior 
+		double marginalize(double prior) const
 		{
 			double direct = 0.0f;
 			for(int i = 0; i < DNA_ALPHABET::size; ++i)
 			{
 				direct += exp(m_vals[i]);
 			}
+			double ld = log(direct) + log(prior);
+			/*
+			double max = -std::numeric_limits<double>::max();
+			int max_idx = 0;
+			for(int i = 0; i < DNA_ALPHABET::size; ++i)
+			{
+				if(m_vals[i] > max)
+				{
+					max = m_vals[i];
+					max_idx = i;
+				}
+			}
 
-			double ld = log(direct);
+			double sum = prior;
+			for(int i = 0; i < DNA_ALPHABET::size; ++i)
+			{
+				if(i != max_idx)
+					sum += exp(m_vals[i] - max) * prior;
+			}
+			double ld = max + log(sum);*/
 			return ld;
+		}
+
+		// Add VAL to each element
+		inline void add(double val)
+		{
+			m_vals[0] += val;
+			m_vals[1] += val;
+			m_vals[2] += val;
+			m_vals[3] += val;
 		}
 
 		// Subtract VAL from each element
