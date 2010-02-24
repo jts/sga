@@ -17,6 +17,7 @@ MultiOverlap::MultiOverlap(const std::string& rootID, const std::string& rootSeq
 	
 }
 
+//
 void MultiOverlap::add(const std::string& seq, const Overlap& ovr)
 {
 	MOData mod(seq, ovr);
@@ -41,10 +42,104 @@ void MultiOverlap::add(const std::string& seq, const Overlap& ovr)
 }
 
 //
+void MultiOverlap::add(const MOData& mod)
+{
+	assert(mod.ovr.id[0] == m_rootID);
+	m_overlaps.push_back(mod);
+}
+
+//
 Overlap MultiOverlap::getOverlap(size_t idx) const
 {
 	assert(idx < m_overlaps.size());
 	return m_overlaps[idx].ovr;
+}
+
+// Returns true if the overlap at idx has the include flag set
+int MultiOverlap::getPartition(size_t idx) const
+{
+	assert(idx < m_overlaps.size());
+	return m_overlaps[idx].partitionID;
+}
+
+// Returns true if the overlap at idx has the include flag set
+void MultiOverlap::setPartition(size_t idx, int p)
+{
+	assert(idx < m_overlaps.size());
+	m_overlaps[idx].partitionID = p;
+}
+
+// Return the total number of bases in the multioverlap
+size_t MultiOverlap::getNumBases() const
+{
+	size_t count = 0;
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p = getPileup(i);
+		count += p.getDepth();
+	}
+	return count;
+}
+
+//
+void MultiOverlap::partition(double p_error)
+{
+	// Compute the likelihood of the alignment between the root sequence
+	// and every member of the multioverlap
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		double likelihood = 0.0f;
+		double total_bases = 0;
+		for(size_t j = 0; j < m_rootSeq.size(); ++j)
+		{
+			Pileup pileup = getSingletonPileup(j, i);
+			DNADouble ap = pileup.calculateLikelihoodNoQuality(p_error);
+			likelihood += ap.marginalize();
+			total_bases += pileup.getDepth();
+		}
+		m_overlaps[i].score = likelihood / total_bases;
+	}
+
+	// Sort the overlaps by score
+	std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
+
+	std::cout << "Print score list\n";
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		MOData& curr = m_overlaps[i];
+		std::cout << i << "\t" << curr.ovr.id[1] << "\t" << curr.score << "\t" << curr.partitionID << "\n";
+		m_overlaps[i].partitionID = 1;
+	}
+
+	double prev_likelihood = calculateGroupedLikelihood();
+	for(size_t i = 0; i < m_overlaps.size(); ++i)
+	{
+		m_overlaps[i].partitionID = 0;
+		double likelihood = calculateGroupedLikelihood();
+		double improvement = likelihood - prev_likelihood;
+		std::cout << "Elem: " << i << " likelihood: " << likelihood << " improvement: " << improvement << "\n";
+		prev_likelihood = likelihood;
+	}
+
+	/*
+	size_t num_total = m_overlaps.size();
+	for(size_t j = 1; j < num_total; ++j)
+	{
+		double post_max_sum = 0.0f;
+		for(size_t i = 0; i < m_rootSeq.size(); ++i)
+		{
+			Pileup pileup = getPileup(i, j);
+			DNADouble ap = pileup.calculateLikelihoodNoQuality(p_error);
+			double marginal = ap.marginalize();
+			ap.subtract(marginal);
+			post_max_sum += ap.getMaxVal();
+		}
+
+		//posterior.subtract(likelihood);
+		std::cout << "Num Elems: " << j << " posterior sum: " << post_max_sum << " exp_post: " << exp(post_max_sum) << " pid: " << m_overlaps[j - 1].partitionID << "\n";
+	}
+	*/
+	printGroups();
 }
 
 // Compute the likelihood of the multioverlap
@@ -65,14 +160,14 @@ double MultiOverlap::calculateLikelihood() const
 // Calculate the likelihood of the multioverlap given the groups defined by IntVector
 // There are only two possible groups, 0 and 1. The root_sequence (index 0 in the vector) is assumed to belong
 // to group 1
-double MultiOverlap::calculateGroupedLikelihood(const IntVec& groups) const
+double MultiOverlap::calculateGroupedLikelihood() const
 {
 	double likelihood = 0.0f;
 	for(size_t i = 0; i < m_rootSeq.size(); ++i)
 	{
 		Pileup g0;
 		Pileup g1;
-		getGroupedPileup(i, groups, g0, g1);
+		getGroupedPileup(i, g0, g1);
 		if(g0.getDepth() > 0)
 			likelihood += g0.calculateLikelihoodNoQuality(0.01).marginalize();
 		if(g1.getDepth() > 0)
@@ -151,17 +246,6 @@ void MultiOverlap::calcProb() const
 	*/
 }
 
-size_t MultiOverlap::getNumBases() const
-{
-	size_t count = 0;
-	for(size_t i = 0; i < m_rootSeq.size(); ++i)
-	{
-		Pileup p = getPileup(i);
-		count += p.getDepth();
-	}
-	return count;
-}
-
 // Get the "stack" of bases that aligns to
 // a single position of the root seq, including
 // the root base
@@ -183,10 +267,51 @@ Pileup MultiOverlap::getPileup(int idx) const
 	return p;
 }
 
-// Fill in the pileup groups g0 and g1 based on the IntVector
-void MultiOverlap::getGroupedPileup(int idx, const IntVec& groups, Pileup& g0, Pileup& g1) const
+// Get the "stack" of bases that aligns to
+// a single position of the root seq, including
+// the root base only including the first numElems items
+Pileup MultiOverlap::getPileup(int idx, int numElems) const
 {
-	g1.add(m_rootSeq[idx]);
+	assert((size_t)numElems < m_overlaps.size());
+	Pileup p;
+	p.add(m_rootSeq[idx]);
+
+	for(int i = 0; i < numElems; ++i)
+	{
+		const MOData& curr = m_overlaps[i];
+		// translate idx into the frame of the current sequence
+		int trans_idx = idx - curr.offset;
+		if(trans_idx >= 0 && (size_t)trans_idx < curr.seq.size())
+		{
+			p.add(curr.seq[trans_idx]);
+		}
+	}
+	return p;
+}
+
+
+// Get the pileup between the root sequence and one of the sequences in the MO
+Pileup MultiOverlap::getSingletonPileup(int base_idx, int ovr_idx) const
+{
+	assert(ovr_idx < (int)m_overlaps.size());
+
+	Pileup p;
+	p.add(m_rootSeq[base_idx]);
+
+	const MOData& curr = m_overlaps[ovr_idx];
+	// translate idx into the frame of the current sequence
+	int trans_idx = base_idx - curr.offset;
+	if(trans_idx >= 0 && size_t(trans_idx) < curr.seq.size())
+	{
+		p.add(curr.seq[trans_idx]);
+	}
+	return p;
+}
+
+// Fill in the pileup groups g0 and g1 based on the IntVector
+void MultiOverlap::getGroupedPileup(int idx, Pileup& g0, Pileup& g1) const
+{
+	g0.add(m_rootSeq[idx]);
 
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
 	{
@@ -195,7 +320,7 @@ void MultiOverlap::getGroupedPileup(int idx, const IntVec& groups, Pileup& g0, P
 		int trans_idx = idx - curr.offset;
 		if(trans_idx >= 0 && size_t(trans_idx) < curr.seq.size())
 		{
-			if(groups[i] == 0)
+			if(curr.partitionID == 0)
 				g0.add(curr.seq[trans_idx]);
 			else
 				g1.add(curr.seq[trans_idx]);
@@ -211,7 +336,7 @@ void MultiOverlap::print(int default_padding, int max_overhang)
 	int root_len = int(m_rootSeq.size());
 	
 	// Print the root row at the bottom
-	printRow(default_padding, max_overhang, root_len, 0, root_len, m_rootSeq, m_rootID);
+	printRow(default_padding, max_overhang, root_len, 0, root_len, 0, 0.0f, m_rootSeq, m_rootID);
 
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
 	{
@@ -219,20 +344,22 @@ void MultiOverlap::print(int default_padding, int max_overhang)
 		int overlap_len = curr.ovr.match.getMaxOverlapLength();
 
 		printRow(default_padding, max_overhang, root_len, 
-		         curr.offset, overlap_len, curr.seq, curr.ovr.id[1].c_str());
+		         curr.offset, overlap_len, curr.partitionID, 
+				 curr.score, curr.seq, curr.ovr.id[1].c_str());
 	}	
 }
 
 // Print the MultiOverlap groups specified by the IntVec to stdout
-void MultiOverlap::printGroups(const IntVec& groups)
+void MultiOverlap::printGroups()
 {
-	for(size_t i = 0; i <= 1; ++i)
+	for(int i = 0; i <= 1; ++i)
 	{
 		MultiOverlap mo_group(m_rootID, m_rootSeq);
 		for(size_t j = 0; j < m_overlaps.size(); ++j)
 		{
-			if(groups[j] == (int)i)
-				mo_group.add(m_overlaps[j].seq, m_overlaps[j].ovr);
+			const MOData& curr = m_overlaps[j];
+			if(curr.partitionID == i)
+				mo_group.add(curr);
 		}
 		std::cout << "MO GROUP " << i << "\n";
 		mo_group.print();
@@ -242,8 +369,8 @@ void MultiOverlap::printGroups(const IntVec& groups)
 
 // Print a single row of a multi-overlap to stdout
 void MultiOverlap::printRow(int default_padding, int max_overhang, 
-                            int root_len, int offset, int overlap_len, 
-							const std::string& seq, const std::string& id)
+                            int root_len, int offset, int overlap_len, int pid, 
+							double score, const std::string& seq, const std::string& id)
 {
 	int c_len = seq.length();
 
@@ -266,7 +393,7 @@ void MultiOverlap::printRow(int default_padding, int max_overhang,
 	assert(padding >= 0);
 	std::string padding_str(padding, ' ');
 	std::string outstr = padding_str + leader + clipped + trailer;
-	printf("%s\t%d\t%d\t%lf\tID:%s\n", outstr.c_str(), overlap_len, -1, 0.0f, id.c_str());
+	printf("%s\t%d\t%d\t%lf\tID:%s\n", outstr.c_str(), overlap_len, pid, score, id.c_str());
 }
 
 // Print the MultiOverlap horizontally, in a pileup format

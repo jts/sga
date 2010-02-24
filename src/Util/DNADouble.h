@@ -43,6 +43,24 @@ class DNADouble
 		//
 		inline char getMaxBase() const
 		{
+			char base;
+			double val;
+			getMax(base, val);
+			return base;
+		}
+
+		//
+		inline double getMaxVal() const
+		{
+			char base;
+			double val;
+			getMax(base, val);
+			return val;
+		}
+
+		//
+		inline void getMax(char& base, double& val) const
+		{
 			double max = -std::numeric_limits<double>::max();
 			int maxIdx = 0;
 			for(int i = 0; i < DNA_ALPHABET_SIZE; ++i)
@@ -53,8 +71,10 @@ class DNADouble
 					maxIdx = i;
 				}
 			}
-			return DNA_ALPHABET::getBase(maxIdx);
+			base = DNA_ALPHABET::getBase(maxIdx);
+			val = max;
 		}
+
 
 		//
 		inline double getByIdx(const int i) const
@@ -99,6 +119,39 @@ class DNADouble
 			return ld;
 		}
 
+		// Subtract VAL from each element
+		inline void subtract(double val)
+		{
+			m_vals[0] -= val;
+			m_vals[1] -= val;
+			m_vals[2] -= val;
+			m_vals[3] -= val;
+		}
+
+		inline DNADouble& operator+=(const DNADouble& other)
+		{
+			assert(DNA_ALPHABET::size == 4);
+			// Manually unrolled
+			m_vals[0] += other.m_vals[0];
+			m_vals[1] += other.m_vals[1];
+			m_vals[2] += other.m_vals[2];
+			m_vals[3] += other.m_vals[3];
+			return *this;
+		}
+
+		inline DNADouble& operator-=(const DNADouble& other)
+		{
+			assert(DNA_ALPHABET::size == 4);
+			// Manually unrolled
+			m_vals[0] -= other.m_vals[0];
+			m_vals[1] -= other.m_vals[1];
+			m_vals[2] -= other.m_vals[2];
+			m_vals[3] -= other.m_vals[3];
+			return *this;
+		}
+		
+		
+		//
 		void printVerbose() const
 		{
 			std::cout << "AP ";

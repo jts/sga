@@ -107,8 +107,7 @@ DNADouble Pileup::calculateLikelihoodNoQuality(double p_error) const
 
 	for(size_t i = 0; i < ap.getAlphabetSize(); ++i)
 	{
-		// Calculate the posterior probability of the data given that
-		// b is the true base
+		// Calculate the likelihood of the data given b is the true base
 		char b = ap.getBase(i);
 		double likelihood = 0.0f;
 		for(size_t i = 0; i < m_data.size(); ++i)

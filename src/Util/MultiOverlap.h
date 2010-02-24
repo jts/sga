@@ -18,7 +18,7 @@ class MultiOverlap
 {
 	struct MOData
 	{
-		MOData(const std::string& s, const Overlap& o) : seq(s), ovr(o), offset(0) {}
+		MOData(const std::string& s, const Overlap& o) : seq(s), ovr(o), offset(0), partitionID(0), score(0.0f) {}
 		static bool sortOffset(const MOData& a, const MOData& b);
 		static bool sortID(const MOData& a, const MOData& b);
 		
@@ -26,6 +26,13 @@ class MultiOverlap
 		std::string seq;
 		Overlap ovr;
 		int offset;
+		int partitionID;
+		double score;
+
+		static bool compareScore(const MOData& a, const MOData& b)
+		{
+			return a.score > b.score;
+		}
 	};
 
 	typedef std::vector<MOData> MODVector;
@@ -35,30 +42,40 @@ class MultiOverlap
 		MultiOverlap(const std::string& rootID, const std::string& rootSeq);
 		
 		void add(const std::string& seq, const Overlap& ovr);
-		Overlap getOverlap(size_t idx) const;
+		void add(const MOData& mod);
 
+		Overlap getOverlap(size_t idx) const;
+		size_t getNumBases() const;
+		int getPartition(size_t idx) const;
+		void setPartition(size_t idx, int p);
+		
+		// Partition the multioverlap into two
+		// groups based on the likelihood
+		void partition(double p_error);
 		double calculateLikelihood() const;
-		double calculateGroupedLikelihood(const IntVec& groups) const;
+		double calculateGroupedLikelihood() const;
 
 		DNADouble calcAlphaProb(size_t idx) const;
 		AlphaCount calcAlphaCount(size_t idx) const;
-		size_t getNumBases() const;
 		void calcProb() const;
 
 		// IO
 		void print(int default_padding = DEFAULT_PADDING, int max_overhang = DEFAULT_MAX_OVERHANG);
 		void printPileup();
-		void printGroups(const IntVec& groups);
+		void printGroups();
 
 	private:
 
 		
 		Pileup getPileup(int idx) const;
-		void getGroupedPileup(int idx, const IntVec& groups, Pileup& g0, Pileup& g1) const;
+		Pileup getPileup(int idx, int numElems) const;
+		Pileup getSingletonPileup(int base_idx, int ovr_idx) const;
+
+		void getGroupedPileup(int idx, Pileup& g0, Pileup& g1) const;
 
 		void printRow(int default_padding, int max_overhang, int root_len, 
-		              int offset, int overlap_len, const std::string& seq, 
-					  const std::string& id);
+		              int offset, int overlap_len, int pid, double score,
+					  const std::string& seq, const std::string& id);
 
 		// data
 		static const int DEFAULT_PADDING = 20;

@@ -111,13 +111,13 @@ bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 	//compareInferredQuality(pGraph, pVertex);
 	//compareOverlapQuality(pGraph, pVertex);
 	//compareErrorRates(pGraph, pVertex);
-	//compareSplitGroups(pGraph, pVertex);
-	
+	compareSplitGroups(pGraph, pVertex);
+	/*
 	if(!m_showMissing)
 		summarize(pGraph, pVertex);
 	else
 		showMissing(pGraph, pVertex);
-	
+	*/
 	return false;
 }
 
@@ -228,41 +228,63 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 		return;
 	}
 
+	MultiOverlap mo = pVertex->getMultiOverlap();	
+
 	bool hasWrong = false;
 	EdgePtrVec actualEdges = pVertex->getEdges();
-	MultiOverlap mo = pVertex->getMultiOverlap();
 
-	std::vector<int> maskVector(actualEdges.size() + 1, 0);
-	maskVector[0] = 1;
 	for(size_t i = 0; i < actualEdges.size(); ++i)
 	{
 		Edge* pActualEdge = actualEdges[i];
 		EdgeDesc ed = pActualEdge->getDesc();
+		int partition = 0;
 		if(m_pCompareGraph->getVertex(pActualEdge->getEndID()) != NULL && !pCompareVertex->hasEdge(ed))
 		{
 			hasWrong = true;
-			maskVector[i + 1] = 0;
+			partition = 1;
 		}
-		else
-		{
-			maskVector[i + 1] = 1;
-		}
+
 		assert(mo.getOverlap(i).id[1] == pActualEdge->getEndID());
+		mo.setPartition(i, partition);
 	}
+
+	if(hasWrong)
+		mo.partition(0.01);
 	
+	int correct = 0;
+	int wrong = 0;
+
+	for(size_t i = 0; i < actualEdges.size(); ++i)
+	{
+		Edge* pActualEdge = actualEdges[i];
+		EdgeDesc ed = pActualEdge->getDesc();
+		int partitionActual = 0;
+		if(m_pCompareGraph->getVertex(pActualEdge->getEndID()) != NULL && !pCompareVertex->hasEdge(ed))
+		{
+			partitionActual = 1;
+		}
+
+		int partitionInferred = mo.getPartition(i);
+		
+		if(partitionActual == partitionInferred)
+			correct++;
+		else
+			wrong++;
+	}
 
 	// Build the multioverlap for the vertex
 	size_t numBases = mo.getNumBases();
 	double likelihood = mo.calculateLikelihood();
-	if(hasWrong)
-		mo.printGroups(maskVector);
-	double groupedLikelihood = mo.calculateGroupedLikelihood(maskVector);
+	//if(hasWrong)
+	//	mo.printGroups();
+	double groupedLikelihood = mo.calculateGroupedLikelihood();
 
 	double nl = likelihood / double(numBases);
 	double ngl = groupedLikelihood / double(numBases);
 	double ratio = groupedLikelihood - likelihood;
-
+	double group_ratio = double(correct) / double(correct + wrong);
 	std::cout << "SPL\t" << likelihood << "\t" << nl << "\t" << hasWrong << "\t" << groupedLikelihood << "\t" << ngl << "\t" << ratio << "\n";
+	std::cout << "GRP\t" << correct << "\t" << wrong << "\t" << group_ratio << "\n";	
 }
 
 //
