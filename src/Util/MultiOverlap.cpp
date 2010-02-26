@@ -287,8 +287,7 @@ void MultiOverlap::partitionBest(double p_error, size_t n)
 			total_bases += pileup.getDepth();
 		}
 
-		m_overlaps[i].score = 1.0f - (mismatches / overlap_len);
-		likelihood = likelihood / total_bases;
+		m_overlaps[i].score = likelihood / total_bases;
 		m_overlaps[i].partitionID = 1;
 		//std::cout << "ERS\t" << m_overlaps[i].score << "\t" << likelihood << "\n";
 	}
