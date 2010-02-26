@@ -128,6 +128,8 @@ void assemble()
 		//pDebugGraphVisit->m_showMissing = true;
 		pGraph->visit(*pDebugGraphVisit);
 		pGraph->visit(statsVisit);
+		SGFastaVisitor fastaVisitor("corrected.fa");
+		pGraph->visit(fastaVisitor);
 
 		delete pDebugGraphVisit;
 		//return;

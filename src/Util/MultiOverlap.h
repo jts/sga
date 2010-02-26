@@ -53,6 +53,10 @@ class MultiOverlap
 		void partitionMP(double p_error);
 		void partitionLI(double p_error);
 		void partitionSL(double p_error);
+		void partitionBest(double p_error, size_t n);
+
+		// Count the number of members in the given partition
+		size_t countPartition(int id) const;
 
 		double calculateLikelihood() const;
 		double calculateGroupedLikelihood() const;

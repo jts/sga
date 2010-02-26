@@ -245,13 +245,15 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 		}
 
 		assert(mo.getOverlap(i).id[1] == pActualEdge->getEndID());
-		//mo.setPartition(i, 0);
+		mo.setPartition(i, 0);
 		//mo.setPartition(i, partition);
 	}
 
 	
 	//if(hasWrong)
-	mo.partitionLI(0.01);
+	//mo.partitionLI(0.01);
+	//mo.partitionBest(0.01, 20);
+	mo.partitionMP(0.01);
 
 	std::string original = pVertex->getSeq();
 	std::string consensus = mo.calculateConsensusFromPartition(0.01);
@@ -260,7 +262,9 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	int numDiffsNC = countDifferences(original, base, base.size());
 	int numDiffsEC = countDifferences(consensus, base, base.size());
-	std::cout << "EC\t" << numDiffsNC << "\t" << numDiffsEC << "\t" << hasWrong << "\n";
+	size_t numEdges = actualEdges.size();
+	size_t numGroup0 = mo.countPartition(0);
+	std::cout << "EC\t" << numDiffsNC << "\t" << numDiffsEC << "\t" << hasWrong << "\t" << numEdges << "\t" << numGroup0 << "\n";
 
 	/*
 	int correct = 0;
@@ -286,6 +290,7 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 	*/
 	size_t numBases = mo.getNumBases();
 	double likelihood = mo.calculateLikelihood();
+
 	//if(hasWrong)
 	//	mo.printGroups();
 	double groupedLikelihood = mo.calculateGroupedLikelihood();
