@@ -196,19 +196,21 @@ void MultiOverlap::partitionLI(double p_error)
 		for(size_t j = 0; j < m_rootSeq.size(); ++j)
 		{
 			Pileup pileup = getSingletonPileup(j, i);
-			DNADouble ap = pileup.calculateLikelihoodNoQuality(p_error);
-			likelihood += ap.marginalize(0.25f);
-			total_bases += pileup.getDepth();
+			if(pileup.getDepth() > 1)
+			{
+				DNADouble ap = pileup.calculateLikelihoodNoQuality(p_error);
+				likelihood += ap.marginalize(0.25f);
+				++total_bases;
+			}
 		}
 
 		m_overlaps[i].score = likelihood / total_bases;
-		m_overlaps[i].partitionID = 1;
+		//m_overlaps[i].partitionID = 1;
 	}
 
 	// Sort the overlaps by score
 	std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
 
-	/*
 	std::cout << "Print score list\n";
 	for(size_t i = 0; i < m_overlaps.size(); ++i)
 	{
@@ -218,7 +220,6 @@ void MultiOverlap::partitionLI(double p_error)
 		m_overlaps[i].partitionID = 1;
 		
 	}
-	*/
 
 	double max = -std::numeric_limits<double>::max();
 	size_t num_elems_max = 0;
@@ -241,7 +242,7 @@ void MultiOverlap::partitionLI(double p_error)
 		prev_likelihood = likelihood;
 	}
 
-	//std::cout << "MAX: " << max << " NUM ELEMS: " << num_elems_max << "\n";
+	std::cout << "MAX: " << max << " NUM ELEMS: " << num_elems_max << "\n";
 	// Put the selected into the partition with the root seq
 	for(size_t j = 0; j < m_overlaps.size(); ++j)
 	{
@@ -259,6 +260,85 @@ void MultiOverlap::partitionLI(double p_error)
 	}
 	std::cout << "INIT: " << initial_likelihood << " MAX: " << max << " FINAL GL: " << calculateGroupedLikelihood() << "\n";	
 }
+
+//
+void MultiOverlap::partitionSL(double p_error, std::string dbg)
+{
+	(void)p_error;
+
+	std::string before;
+	for(size_t j = 0; j < m_overlaps.size(); ++j)
+	{
+		if(m_overlaps[j].partitionID == 0)
+			before.push_back('1');
+		else
+			before.push_back('0');
+	}
+	
+	for(size_t j = 0; j < m_overlaps.size(); ++j)
+	{
+		m_overlaps[j].partitionID = 0;
+	}
+
+
+	std::cout << "\n\n **PartitionSL** \n\n";
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p = getPileup(i);
+		AlphaCount ac = p.getAlphaCount();
+
+		// Estimate whether this pileup is a mixture between 
+		// different source sequences
+		// TODO: this is grossly oversimplified
+		char sorted[ALPHABET_SIZE];
+		ac.getSorted(sorted, ALPHABET_SIZE);
+		//int most = ac.get(sorted[0]);
+		int second = ac.get(sorted[1]);
+
+		int cutoff = 3;
+		if(second > cutoff)
+		{
+			// Generate mask
+			//char refBase = m_rootSeq[i];
+			char refBase = dbg[i];
+			std::string mask;
+			std::string str;
+			for(size_t j = 0; j < m_overlaps.size(); ++j)
+			{
+				char b = getMODBase(m_overlaps[j], i);
+				if(b == '\0' || b == refBase || (int)ac.get(refBase) < cutoff)
+				{
+					mask.push_back('1');
+				}
+				else
+				{
+					m_overlaps[j].partitionID = 1;
+					mask.push_back('0');
+				}
+
+				if(b == '\0')
+					str.push_back('-');
+				else
+					str.push_back(b);
+			}
+			std::cout << i << " " << refBase << dbg[i] << " MASK: " << mask << "\n";
+			std::cout << i << " " << refBase << dbg[i] << " STR : " << str << "\n";
+		}
+	}
+
+	std::string after;
+	for(size_t j = 0; j < m_overlaps.size(); ++j)
+	{
+		if(m_overlaps[j].partitionID == 0)
+			after.push_back('1');
+		else
+			after.push_back('0');
+	}
+
+	std::cout << "BEFORE: " << before << "\n";
+	std::cout << " AFTER: " << after << "\n";
+}
+
 
 // Partition the MO using the best N elements only.
 void MultiOverlap::partitionBest(double p_error, size_t n)
@@ -300,6 +380,28 @@ void MultiOverlap::partitionBest(double p_error, size_t n)
 	}
 }
 
+// Calculate the log probability that the string specified by mod originated from the string tmpStr
+// base is the same frame of reference as m_rootSeq. The template string is assumed to be
+// correct.
+double MultiOverlap::calcTemplateProb(const std::string& tmpStr, double p_error, const MOData& mod) const
+{
+	double lp = 0.0f;
+	double le = log(p_error);
+	double lc = log(1 - p_error);
+	for(size_t i = 0; i < tmpStr.size(); ++i)
+	{
+		char b = getMODBase(mod, i);
+		if(b != '\0')
+		{
+			if(b == tmpStr[i])
+				lp += lc;
+			else
+				lp += le;
+		}	
+	}
+	return lp;
+}
+
 size_t MultiOverlap::countPartition(int id) const
 {
 	size_t count = 0;
@@ -311,20 +413,11 @@ size_t MultiOverlap::countPartition(int id) const
 	return count;
 }
 
-//
-void MultiOverlap::partitionSL(double /*p_error*/)
+void MultiOverlap::partitionTemplate(const StringVec& templateVec)
 {
-	/*
-	int numPartitions = 1;
+	(void)templateVec;
 
-	for(size_t i = 0; i < m_rootSeq.size(); ++i)
-	{
-		PileupVector partPileup = getPartitionedPileup(i, numPartitions);
-
-	}
-	*/
 }
-
 
 
 std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
@@ -461,6 +554,18 @@ void MultiOverlap::calcProb() const
 	double expectedMismatches = errorRate * double(numAlignedBases);
 	printf("MM\t%d\t%lf\t%d\t%lf\t%lf\n", numMismatches, expectedMismatches, numAlignedBases, actualRate, errorRate);
 	*/
+}
+
+// Return the base in mod that matches the base at
+// idx in the root seq. If mod does not overlap 
+// the root at this position, returns '\0'
+char MultiOverlap::getMODBase(const MOData& mod, int idx) const
+{
+	int trans_idx = idx - mod.offset;
+	if(trans_idx >= 0 && size_t(trans_idx) < mod.seq.size())
+		return mod.seq[trans_idx];
+	else
+		return '\0';
 }
 
 // Get the "stack" of bases that aligns to

@@ -16,6 +16,7 @@
 
 class MultiOverlap
 {
+	public:
 	struct MOData
 	{
 		MOData(const std::string& s, const Overlap& o) : seq(s), ovr(o), offset(0), partitionID(0), score(0.0f) {}
@@ -52,8 +53,11 @@ class MultiOverlap
 		// Partition the multioverlap into groups
 		void partitionMP(double p_error);
 		void partitionLI(double p_error);
-		void partitionSL(double p_error);
+		void partitionSL(double p_error, std::string dbg);
 		void partitionBest(double p_error, size_t n);
+		void partitionTemplate(const StringVec& templateVec);
+
+		double calcTemplateProb(const std::string& tmpStr, double p_error, const MOData& mod) const;
 
 		// Count the number of members in the given partition
 		size_t countPartition(int id) const;
@@ -66,6 +70,8 @@ class MultiOverlap
 		AlphaCount calcAlphaCount(size_t idx) const;
 		void calcProb() const;
 
+		char getMODBase(const MOData& mod, int idx) const;
+
 		// IO
 		void print(int default_padding = DEFAULT_PADDING, int max_overhang = DEFAULT_MAX_OVERHANG);
 		void printPileup();
@@ -73,7 +79,7 @@ class MultiOverlap
 
 	private:
 
-		
+
 		Pileup getPileup(int idx) const;
 		Pileup getPileup(int idx, int numElems) const;
 		Pileup getSingletonPileup(int base_idx, int ovr_idx) const;

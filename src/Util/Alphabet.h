@@ -18,6 +18,7 @@
 #include <emmintrin.h>
 #include <xmmintrin.h>
 #include <iostream>
+#include <algorithm>
 #include "Util.h"
 
 //
@@ -167,9 +168,26 @@ class AlphaCount
 			return false;
 		}
 
-		// Returns the character of the base with the highest count
-		// Ties are broken by lexographic rank
-		char getMaxBase() const
+		//
+		inline char getMaxBase() const
+		{
+			char base;
+			BaseCount val;
+			getMax(base, val);
+			return base;
+		}
+
+		//
+		inline BaseCount getMaxCount() const
+		{
+			char base;
+			BaseCount val;
+			getMax(base, val);
+			return val;
+		}
+
+		//
+		inline void getMax(char& base, BaseCount& val) const
 		{
 			BaseCount max = 0;
 			int maxIdx = 0;
@@ -181,9 +199,19 @@ class AlphaCount
 					maxIdx = i;
 				}
 			}
-			return RANK_ALPHABET[maxIdx];
+			base = RANK_ALPHABET[maxIdx];
+			val = max;
 		}
-		
+
+		// Sort the DNA bases into count order and
+		// write them to pOut. This does not include the '$' symbol
+		inline void getSorted(char* pOut, size_t len)
+		{
+			assert(len >= ALPHABET_SIZE);
+			for(size_t i = 0; i < ALPHABET_SIZE; ++i)
+				pOut[i] = RANK_ALPHABET[i];
+			std::sort(pOut, pOut+ALPHABET_SIZE, AlphaCountCompareDesc(this));
+		}
 
 		// Return the unique DNA character described by the alphacount
 		// Returns '$' if no such character exists
@@ -288,6 +316,17 @@ class AlphaCount
 
 	private:
 		BaseCount m_counts[ALPHABET_SIZE];
+
+		struct AlphaCountCompareDesc
+		{
+			AlphaCountCompareDesc(AlphaCount* p) : pAC(p) {}
+			bool operator()(char a, char b)
+			{
+				return pAC->get(a) > pAC->get(b);
+			}
+			const AlphaCount* pAC;
+		};
+
 };
 
 #endif

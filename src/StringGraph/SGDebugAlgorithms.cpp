@@ -9,6 +9,7 @@
 //
 #include "SGDebugAlgorithms.h"
 #include "SGAlgorithms.h"
+#include <algorithm>
 
 //
 // SGDebugEdgeClassificationVisitor - Collect statistics about the graph
@@ -245,22 +246,75 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 		}
 
 		assert(mo.getOverlap(i).id[1] == pActualEdge->getEndID());
-		mo.setPartition(i, 0);
+		//mo.setPartition(i, 0);
 		mo.setPartition(i, partition);
 	}
 
 	double perfect_likelihood = mo.calculateGroupedLikelihood();
 	
-	//if(hasWrong)
+	/*
+	if(hasWrong)
+	{
+		// Generate vector of templates using the correct sequences
+		StringVec templateVec;
+		std::string vert_seq = pVertex->getSeq();
+		std::cout << "MSTER: " << vert_seq << "\n";
+		for(size_t i = 0; i < actualEdges.size(); ++i)
+		{
+			std::string t = vert_seq;
+			Overlap ovr = actualEdges[i]->getOverlap();
+			std::string compare_seq = m_pCompareGraph->getVertex(actualEdges[i]->getEndID())->getSeq();
+
+			MultiOverlap::MOData hack(compare_seq, ovr);
+			// RC the sequence if it is different orientation than the root
+			if(ovr.match.isRC())
+			{
+				hack.seq = reverseComplement(compare_seq);
+				hack.ovr.match.canonize();
+			}
+			hack.offset = hack.ovr.match.inverseTranslate(0);
+
+			for(size_t j = 0; j < vert_seq.size(); ++j)
+			{
+				char b = mo.getMODBase(hack, j);
+				if(b != '\0')
+					t[j] = b;
+			}
+			templateVec.push_back(t);
+			std::cout << "TMPLT: " << t << "\n";
+		}
+		std::sort(templateVec.begin(), templateVec.end());
+		StringVec::iterator it = std::unique(templateVec.begin(), templateVec.end());
+		templateVec.resize(it - templateVec.begin());
+		std::cout << "Unique template seqs: \n";
+		for(size_t i = 0; i < templateVec.size(); ++i)
+		{
+			std::cout << "UT:    " << templateVec[i] << "\n";
+		}
+
+		mo.partitionTemplate(templateVec);
+	}
+	else
+	{
+		return;
+	}
+	*/
 	//mo.partitionLI(0.01);
-	mo.partitionBest(0.01, 17);
+	//mo.partitionSL(0.01);
 	//mo.partitionMP(0.01);
+	std::string base = pCompareVertex->getSeq();
+
+	if(hasWrong)
+	{
+		//mo.partitionBest(0.01, 15);
+		mo.partitionSL(0.01, base);
+	}
+
 	double calculated_likelihood = mo.calculateGroupedLikelihood();
 
 	std::string original = pVertex->getSeq();
 	std::string consensus = mo.calculateConsensusFromPartition(0.01);
-	std::string base = pCompareVertex->getSeq();
-	pVertex->setSeq(consensus);
+	//pVertex->setSeq(consensus);
 
 	int numDiffsNC = countDifferences(original, base, base.size());
 	int numDiffsEC = countDifferences(consensus, base, base.size());
@@ -271,11 +325,12 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	if(numDiffsEC != 0)
 	{
+		/*
 		std::cout << "NOT FIXED!!\n";
 		mo.print();
 		std::cout << "GROUPS!!\n";
 		mo.printGroups();
-
+		*/
 		for(size_t i = 0; i < consensus.size(); ++i)
 		{
 			if(consensus[i] != base[i])
