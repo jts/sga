@@ -303,11 +303,11 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 	//mo.partitionSL(0.01);
 	//mo.partitionMP(0.01);
 	std::string base = pCompareVertex->getSeq();
-
+	bool discMM = false;
 	if(hasWrong)
 	{
 		//mo.partitionBest(0.01, 15);
-		mo.partitionSL(0.01, base);
+		discMM = mo.partitionSL(0.01, base);
 	}
 
 	double calculated_likelihood = mo.calculateGroupedLikelihood();
@@ -335,7 +335,7 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 		{
 			if(consensus[i] != base[i])
 			{
-				std::cout << "MM\t" << i << "\t" << numDiffsEC << "\n";
+				std::cout << "MM\t" << i << "\t" << numDiffsEC << "\t" << discMM << "\n";
 			}
 		}
 	}

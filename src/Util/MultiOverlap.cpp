@@ -262,10 +262,10 @@ void MultiOverlap::partitionLI(double p_error)
 }
 
 //
-void MultiOverlap::partitionSL(double p_error, std::string dbg)
+bool MultiOverlap::partitionSL(double p_error, std::string dbg)
 {
 	(void)p_error;
-
+	bool ret = false;
 	std::string before;
 	for(size_t j = 0; j < m_overlaps.size(); ++j)
 	{
@@ -299,8 +299,9 @@ void MultiOverlap::partitionSL(double p_error, std::string dbg)
 		if(second > cutoff)
 		{
 			// Generate mask
-			//char refBase = m_rootSeq[i];
-			char refBase = dbg[i];
+			char refBase = m_rootSeq[i];
+			if(m_rootSeq[i] != dbg[i])
+				ret = true;
 			std::string mask;
 			std::string str;
 			for(size_t j = 0; j < m_overlaps.size(); ++j)
@@ -337,7 +338,33 @@ void MultiOverlap::partitionSL(double p_error, std::string dbg)
 
 	std::cout << "BEFORE: " << before << "\n";
 	std::cout << " AFTER: " << after << "\n";
+	return true;
 }
+
+std::string MultiOverlap::consensusTemplate(const StringVec& templateVec)
+{
+	(void)templateVec;
+	int maxScore = 0;
+	int maxIdx = 0;
+	for(size_t i = 0; i < templateVec.size(); ++i)
+	{
+		const std::string& tmpStr = templateVec[i];
+		int score = 0;
+		for(size_t j = 0; j < m_rootSeq.size(); ++j)
+		{
+			if(tmpStr[j] == m_rootSeq[j])
+				++score;
+		}
+
+		if(score > maxScore)
+		{
+			maxScore = score;
+			maxIdx = i;
+		}
+	}
+	return templateVec[maxIdx];
+}
+
 
 
 // Partition the MO using the best N elements only.
@@ -412,13 +439,6 @@ size_t MultiOverlap::countPartition(int id) const
 	}
 	return count;
 }
-
-void MultiOverlap::partitionTemplate(const StringVec& templateVec)
-{
-	(void)templateVec;
-
-}
-
 
 std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
 {

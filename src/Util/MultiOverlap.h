@@ -53,9 +53,9 @@ class MultiOverlap
 		// Partition the multioverlap into groups
 		void partitionMP(double p_error);
 		void partitionLI(double p_error);
-		void partitionSL(double p_error, std::string dbg);
+		bool partitionSL(double p_error, std::string dbg);
 		void partitionBest(double p_error, size_t n);
-		void partitionTemplate(const StringVec& templateVec);
+		std::string consensusTemplate(const StringVec& templateVec);
 
 		double calcTemplateProb(const std::string& tmpStr, double p_error, const MOData& mod) const;
 
