@@ -274,6 +274,35 @@ MultiOverlap Vertex::getMultiOverlap() const
 	return mo;
 }
 
+// Get a SeqTrie of the overlaps of this vertex
+SeqTrie Vertex::getSeqTrie() const
+{
+	SeqTrie st;
+	if(m_edges.empty())
+		return st;
+
+	// Add the vertex sequence to the ST
+	// This acts as a guide for adding the overlapping strings
+	// and is subtracted later
+	st.insert(getSeq());
+
+	for(size_t i = 0; i < m_edges.size(); ++i)
+	{
+		Edge* pEdge = m_edges[i];
+		std::string overlapped = pEdge->getTwin()->getMatchStr();
+		if(pEdge->getComp() == EC_REVERSE)
+			overlapped = reverseComplement(overlapped);
+		size_t depth = pEdge->getMatchCoord().interval.start;
+		std::cout << "DEPTH " << depth << " INSERTING " << overlapped << "\n";
+		st.insertAtDepth(overlapped, depth);
+	}
+	
+	st.remove(getSeq());
+	st.reap(2);
+	return st;
+}
+
+
 // Get the inferred probabilty of each base for this sequence
 // base on the multioverlap
 QualityVector Vertex::getInferredQuality() const

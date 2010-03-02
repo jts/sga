@@ -13,6 +13,7 @@
 #include "Match.h"
 #include "Pileup.h"
 #include "DNADouble.h"
+#include "SeqTrie.h"
 
 class MultiOverlap
 {
@@ -49,7 +50,7 @@ class MultiOverlap
 		size_t getNumBases() const;
 		int getPartition(size_t idx) const;
 		void setPartition(size_t idx, int p);
-		
+
 		// Partition the multioverlap into groups
 		void partitionMP(double p_error);
 		void partitionLI(double p_error);

@@ -9,6 +9,7 @@
 //
 #include "SGDebugAlgorithms.h"
 #include "SGAlgorithms.h"
+#include "SeqTrie.h"
 #include <algorithm>
 
 //
@@ -230,6 +231,11 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 	}
 
 	MultiOverlap mo = pVertex->getMultiOverlap();	
+	SeqTrie st = pVertex->getSeqTrie();
+
+	mo.print();
+	st.writeDot("vertex.dot");
+	assert(false);
 
 	bool hasWrong = false;
 	EdgePtrVec actualEdges = pVertex->getEdges();

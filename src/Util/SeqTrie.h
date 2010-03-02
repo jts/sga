@@ -10,7 +10,7 @@
 #define SEQTRIE_H
 
 #include "Util.h"
-
+#include <list>
 class SeqTrie
 {
 	// Internal datastructures
@@ -18,15 +18,16 @@ class SeqTrie
 	struct Link
 	{
 		// functions
-		void addWeight(double w);
+		void increment();
+		void decrement();
 
 		// data
 		Node* pNode;
 		char label;
-		double weight;
+		int count;
 	};
-
-	typedef std::vector<Link> LinkVector;
+	
+	typedef std::list<Link> LinkList;
 
 	struct Node
 	{
@@ -36,11 +37,12 @@ class SeqTrie
 
 		Link* getLink(char label);
 		Link* createChild(char label);
+		void removeChildren(int cutoff);
 		void writeDot(std::ostream& out) const;
 
 		//data
 		Link parentLink;
-		std::vector<Link> pChildLinks;
+		LinkList pChildLinks;
 	};
 	
 	// 
@@ -51,14 +53,24 @@ class SeqTrie
 
 		// Creation functions
 		void insert(const std::string& s);
+		void insertAtDepth(const std::string& s, size_t depth);
+		
+		// Remove the string s from the trie
+		void remove(const std::string& s);
+		void reap(int cutoff);
 
 		// I/O
 		void writeDot(std::string filename);
 
 	private:
+		
+		//
+		bool insert(Node* pNode, const std::string& s, size_t idx);
+		bool insertAtDepth(Node* pNode, const std::string& s, size_t depth);
+		bool remove(Node* pNode, const std::string& s, size_t idx);
+		void reap(Node* pNode, int cutoff);
 
-		void insert(Node* pNode, const std::string& s, size_t idx);
-
+		// Data
 		Node* m_pRoot;
 };
 
