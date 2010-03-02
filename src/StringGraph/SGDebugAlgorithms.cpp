@@ -252,68 +252,28 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	double perfect_likelihood = mo.calculateGroupedLikelihood();
 	
-	/*
-	if(hasWrong)
-	{
-		// Generate vector of templates using the correct sequences
-		StringVec templateVec;
-		std::string vert_seq = pVertex->getSeq();
-		std::cout << "MSTER: " << vert_seq << "\n";
-		for(size_t i = 0; i < actualEdges.size(); ++i)
-		{
-			std::string t = vert_seq;
-			Overlap ovr = actualEdges[i]->getOverlap();
-			std::string compare_seq = m_pCompareGraph->getVertex(actualEdges[i]->getEndID())->getSeq();
-
-			MultiOverlap::MOData hack(compare_seq, ovr);
-			// RC the sequence if it is different orientation than the root
-			if(ovr.match.isRC())
-			{
-				hack.seq = reverseComplement(compare_seq);
-				hack.ovr.match.canonize();
-			}
-			hack.offset = hack.ovr.match.inverseTranslate(0);
-
-			for(size_t j = 0; j < vert_seq.size(); ++j)
-			{
-				char b = mo.getMODBase(hack, j);
-				if(b != '\0')
-					t[j] = b;
-			}
-			templateVec.push_back(t);
-			std::cout << "TMPLT: " << t << "\n";
-		}
-		std::sort(templateVec.begin(), templateVec.end());
-		StringVec::iterator it = std::unique(templateVec.begin(), templateVec.end());
-		templateVec.resize(it - templateVec.begin());
-		std::cout << "Unique template seqs: \n";
-		for(size_t i = 0; i < templateVec.size(); ++i)
-		{
-			std::cout << "UT:    " << templateVec[i] << "\n";
-		}
-
-		mo.partitionTemplate(templateVec);
-	}
-	else
-	{
-		return;
-	}
-	*/
 	//mo.partitionLI(0.01);
 	//mo.partitionSL(0.01);
 	//mo.partitionMP(0.01);
+	std::string original = pVertex->getSeq();
 	std::string base = pCompareVertex->getSeq();
+	std::string consensus;
+
 	bool discMM = false;
 	if(hasWrong)
 	{
 		//mo.partitionBest(0.01, 15);
 		discMM = mo.partitionSL(0.01, base);
+		consensus = mo.calculateConsensusFromPartition(0.01);
+	}
+	else
+	{
+		//discMM = mo.partitionSL(0.01, base);
+		consensus = mo.calculateConsensusFromPartition(0.01);
 	}
 
 	double calculated_likelihood = mo.calculateGroupedLikelihood();
 
-	std::string original = pVertex->getSeq();
-	std::string consensus = mo.calculateConsensusFromPartition(0.01);
 	//pVertex->setSeq(consensus);
 
 	int numDiffsNC = countDifferences(original, base, base.size());

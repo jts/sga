@@ -15,6 +15,7 @@
 #include "SGPairedAlgorithms.h"
 #include "SGDebugAlgorithms.h"
 #include "Timer.h"
+#include "SeqTrie.h"
 
 
 //
@@ -80,7 +81,12 @@ int assembleMain(int argc, char** argv)
 {
 	Timer* pTimer = new Timer("sga assemble");
 	parseAssembleOptions(argc, argv);
-	assemble();
+	SeqTrie st;
+	st.insert("AGACAT");
+	st.insert("AGAGAT");
+	st.insert("AGACTA");
+	st.writeDot("trie.dot");
+	//assemble();
 	delete pTimer;
 
 	return 0;

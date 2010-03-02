@@ -349,11 +349,23 @@ std::string MultiOverlap::consensusTemplate(const StringVec& templateVec)
 	for(size_t i = 0; i < templateVec.size(); ++i)
 	{
 		const std::string& tmpStr = templateVec[i];
+		std::string m_str1;
+		std::string m_str2;
+
 		int score = 0;
 		for(size_t j = 0; j < m_rootSeq.size(); ++j)
 		{
 			if(tmpStr[j] == m_rootSeq[j])
+			{
 				++score;
+				m_str1.push_back('-');
+				m_str2.push_back('-');
+			}
+			else
+			{
+				m_str1.push_back(m_rootSeq[j]);
+				m_str2.push_back(tmpStr[j]);
+			}
 		}
 
 		if(score > maxScore)
@@ -361,7 +373,11 @@ std::string MultiOverlap::consensusTemplate(const StringVec& templateVec)
 			maxScore = score;
 			maxIdx = i;
 		}
+
+		std::cout << "root\t" << m_str1 << "\n";
+		std::cout << "tmpl\t" << m_str2 << "\t" << score << "\n";
 	}
+	std::cout << "selected " << maxIdx << " " << maxScore << "\n";
 	return templateVec[maxIdx];
 }
 
