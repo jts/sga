@@ -81,12 +81,7 @@ int assembleMain(int argc, char** argv)
 {
 	Timer* pTimer = new Timer("sga assemble");
 	parseAssembleOptions(argc, argv);
-	SeqTrie st;
-	st.insert("AGACAT");
-	st.insert("AGAGAT");
-	st.insert("AGACTA");
-	st.writeDot("trie.dot");
-	//assemble();
+	assemble();
 	delete pTimer;
 
 	return 0;
