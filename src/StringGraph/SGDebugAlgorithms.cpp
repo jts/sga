@@ -231,11 +231,6 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 	}
 
 	MultiOverlap mo = pVertex->getMultiOverlap();	
-	SeqTrie st = pVertex->getSeqTrie();
-
-	mo.print();
-	st.writeDot("vertex.dot");
-	assert(false);
 
 	bool hasWrong = false;
 	EdgePtrVec actualEdges = pVertex->getEdges();
@@ -268,9 +263,42 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 	bool discMM = false;
 	if(hasWrong)
 	{
-		//mo.partitionBest(0.01, 15);
-		discMM = mo.partitionSL(0.01, base);
-		consensus = mo.calculateConsensusFromPartition(0.01);
+		if(pVertex->countEdges() < 1)
+		{
+			std::cout << "EDGES: " << pVertex->countEdges() << "\n";
+			SeqTrie st = pVertex->getSeqTrie();
+			st.cull(2);
+			
+			PathScoreVector psv;
+			st.score(original, 0.01, psv);
+			std::cout << "ORIGINAL:          " << original << "\n";
+			std::cout << "TRUTH:             " << base << "\n";
+
+			double max = -std::numeric_limits<double>::max();
+			size_t maxIdx = 0;
+			for(size_t i = 0; i < psv.size(); ++i)
+			{
+				if(psv[i].score > max)
+				{
+					max = psv[i].score;
+					maxIdx = i;
+				}
+
+				bool c = (psv[i].path == base);
+				std::cout << "SCORE: " << psv[i].score << " P: " << psv[i].path << " " << c << "\n";
+			}
+			
+			//mo.partitionBest(0.01, 15);
+			discMM = mo.partitionSL(0.01, base);
+			if(psv[maxIdx].path.size() == 100)
+				consensus = psv[maxIdx].path;
+			else
+				consensus = mo.calculateConsensusFromPartition(0.01);
+		}
+		else
+		{
+			consensus = mo.calculateConsensusFromPartition(0.01);
+		}
 	}
 	else
 	{

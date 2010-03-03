@@ -280,11 +280,11 @@ SeqTrie Vertex::getSeqTrie() const
 	SeqTrie st;
 	if(m_edges.empty())
 		return st;
-
+	
 	// Add the vertex sequence to the ST
 	// This acts as a guide for adding the overlapping strings
 	// and is subtracted later
-	st.insert(getSeq());
+	st.insert(getSeq(), 0.0f);
 
 	for(size_t i = 0; i < m_edges.size(); ++i)
 	{
@@ -294,11 +294,10 @@ SeqTrie Vertex::getSeqTrie() const
 			overlapped = reverseComplement(overlapped);
 		size_t depth = pEdge->getMatchCoord().interval.start;
 		std::cout << "DEPTH " << depth << " INSERTING " << overlapped << "\n";
-		st.insertAtDepth(overlapped, depth);
+		st.insertAtDepth(overlapped, log(0.01), depth);
 	}
 	
 	st.remove(getSeq());
-	st.reap(2);
 	return st;
 }
 

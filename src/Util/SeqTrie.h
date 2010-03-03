@@ -11,6 +11,15 @@
 
 #include "Util.h"
 #include <list>
+
+struct PathScore
+{
+	std::string path;
+	double score;
+};
+typedef std::vector<PathScore> PathScoreVector;
+
+
 class SeqTrie
 {
 	// Internal datastructures
@@ -18,31 +27,46 @@ class SeqTrie
 	struct Link
 	{
 		// functions
+		Link();
+		Link(Node* p, char l);
 		void increment();
 		void decrement();
+		void addWeight(double w);
 
 		// data
 		Node* pNode;
 		char label;
 		int count;
+		double weight;
 	};
-	
+
 	typedef std::list<Link> LinkList;
 
-	struct Node
+	class Node
 	{
-		// functions
-		Node(Node* pParent, char parentLabel);
-		~Node();
+		public:
+			// functions
+			Node(Node* pParent, char parentLabel);
+			~Node();
 
-		Link* getLink(char label);
-		Link* createChild(char label);
-		void removeChildren(int cutoff);
-		void writeDot(std::ostream& out) const;
+			Link* getLink(char label);
 
-		//data
-		Link parentLink;
-		LinkList pChildLinks;
+			bool insert(const std::string& s, double weight, size_t idx);
+			bool insertAtDepth(const std::string& s, double weight, size_t depth);
+			bool remove(const std::string& s, size_t idx);
+			
+			void score(const std::string& s, double p_error, size_t idx, const PathScore& curr, PathScoreVector& out);
+
+			void cullChildren(int cutoff);
+			void writeDot(std::ostream& out) const;
+
+		private:
+	
+			Link* createChild(char label);
+				
+			//data
+			Link parentLink;
+			LinkList pChildLinks;
 	};
 	
 	// 
@@ -51,13 +75,15 @@ class SeqTrie
 		SeqTrie();
 		~SeqTrie();
 
+		void score(const std::string& s, double p_error, PathScoreVector& out);
+	
 		// Creation functions
-		void insert(const std::string& s);
-		void insertAtDepth(const std::string& s, size_t depth);
-		
+		void insert(const std::string& s, double weight);
+		void insertAtDepth(const std::string& s, double weight, size_t depth);
+	
 		// Remove the string s from the trie
 		void remove(const std::string& s);
-		void reap(int cutoff);
+		void cull(int cutoff);
 
 		// I/O
 		void writeDot(std::string filename);
