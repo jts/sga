@@ -267,8 +267,9 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 		if(pVertex->countEdges() < 40)
 		{
 			std::cout << "EDGES: " << pVertex->countEdges() << "\n";
+			//SeqTrie st = pCompareVertex->getSeqTrie();
 			SeqTrie st = pVertex->getSeqTrie();
-			st.cull(2);
+			//st.cull(2);
 			
 			PathScoreVector psv;
 			st.score(original, 0.01, psv);
@@ -314,7 +315,7 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	double calculated_likelihood = mo.calculateGroupedLikelihood();
 
-	//pVertex->setSeq(consensus);
+	pVertex->setSeq(consensus);
 
 	int numDiffsNC = countDifferences(original, base, base.size());
 	int numDiffsEC = countDifferences(consensus, base, base.size());
