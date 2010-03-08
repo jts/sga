@@ -262,14 +262,14 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	bool discMM = false;
 	bool usedST = false;
-	if(hasWrong)
+	if(hasWrong || true)
 	{
-		if(pVertex->countEdges() < 40)
+		if(pVertex->countEdges() < 60)
 		{
 			std::cout << "EDGES: " << pVertex->countEdges() << "\n";
-			//SeqTrie st = pCompareVertex->getSeqTrie();
-			SeqTrie st = pVertex->getSeqTrie();
-			//st.cull(2);
+			SeqTrie st = pCompareVertex->getSeqTrie();
+			//SeqTrie st = pVertex->getSeqTrie();
+			st.cull(2);
 			
 			PathScoreVector psv;
 			st.score(original, 0.01, psv);
