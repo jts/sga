@@ -15,7 +15,7 @@
 #include "SGPairedAlgorithms.h"
 #include "SGDebugAlgorithms.h"
 #include "Timer.h"
-#include "SeqTrie.h"
+#include "SeqDAVG.h"
 
 
 //

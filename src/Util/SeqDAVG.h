@@ -45,17 +45,10 @@ class SeqDAVG
 				~Node();
 
 				Link* getLink(char label);
-
-				bool insert(const std::string& s, double weight, size_t idx);
-				//bool remove(const std::string& s, size_t idx);
-				//void score(const std::string& s, double p_error, size_t idx, const PathScore& curr, PathScoreVector& out);
-
-				void cullChildren(int cutoff);
+				Link* addLink(Node* pNode, double weight, char label);
 				void writeDot(std::ostream& out) const;
 
 			private:
-		
-				Link* createChild(char label);
 					
 				//data
 				LinkList pChildLinks;
@@ -63,23 +56,22 @@ class SeqDAVG
 
 
 		//
-		SeqDAVG(const int size);
+		SeqDAVG(const size_t len);
 		~SeqDAVG();
 
 		//
-		void insert(const std::string& s);
-		void insertAtDepth(const std::string& s);
-
-		void cull(int cutoff);
+		void insert(const std::string& s, double weight);
+		void insertAtDepth(const std::string& s, double weight, size_t depth);
 		
 		// I/O
 		void writeDot(std::string filename);
 
 
 	private:
+		static Link* find(LinkList& list, char label);
 
 		std::vector<LinkList> m_data;
-
+		Node* m_pRoot;
 };
 
 #endif

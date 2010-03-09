@@ -18,4 +18,5 @@ libutil_a_SOURCES = \
 		MultiOverlap.h MultiOverlap.cpp \
 		QualityVector.h QualityVector.cpp \
 		Stats.h Stats.cpp \
-		SeqTrie.h SeqTrie.cpp
+		SeqTrie.h SeqTrie.cpp \
+		SeqDAVG.h SeqDAVG.cpp
