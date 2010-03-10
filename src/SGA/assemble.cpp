@@ -16,7 +16,7 @@
 #include "SGDebugAlgorithms.h"
 #include "Timer.h"
 #include "SeqDAVG.h"
-
+#include "SuffixTree.h"
 
 //
 // Getopt

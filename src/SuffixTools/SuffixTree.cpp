@@ -11,6 +11,14 @@ SuffixTree::SuffixTree(std::string str)
 }
 
 //
+//
+//
+SuffixTree::~SuffixTree()
+{
+	assert(false);
+}
+
+//
 // Naive O(n^2) suffix tree construction algorithm from Gusfield
 //
 void SuffixTree::construct(std::string s) 

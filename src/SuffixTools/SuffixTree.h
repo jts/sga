@@ -66,7 +66,7 @@ class SuffixTree
 {
 	public:
 		SuffixTree(std::string str);
-
+		~SuffixTree();
 		// Insert a string into the suffix tree
 		void insert(std::string s);
 

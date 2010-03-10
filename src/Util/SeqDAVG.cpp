@@ -119,8 +119,7 @@ void SeqDAVG::insert(const std::string& s, double weight, size_t depth)
 		m_data.resize(depth + s.size());
 	}
 
-	char prev_label = '*';
-
+	// Create any new nodes
 	for(size_t i = 0; i < s.size(); ++i)
 	{
 		size_t curr_depth = depth + i;
@@ -133,23 +132,50 @@ void SeqDAVG::insert(const std::string& s, double weight, size_t depth)
 			// Create the new node
 			Node* pNode = new Node;
 			m_data[curr_depth].push_back(Link(pNode, label));
-			pNodeLink = &m_data[curr_depth].back();
 		}
+	}
 
-		// Link this node to previous nodes - the '*' label matches everything. 
-		// If depth is zero just link to the root
-		if(curr_depth == 0)
+	// Create links between parent and children nodes
+	// This starts at the node before the inserted string
+	// and continues up to the last node of string
+	char parentLabel = '*';
+	char childLabel = '*';
+	
+	for(size_t i = 0; i <= s.size() && i + depth < m_data.size(); ++i)
+	{
+		if(i == s.size())
+			childLabel = '*';
+		else
+			childLabel = s[i];
+
+		int childDepth = depth + i;
+		int parentDepth = childDepth - 1;
+
+		LinkList childList = findList(m_data[childDepth], childLabel);
+		assert(!childList.empty());
+
+		// Add to parents or root
+		if(parentDepth < 0)
 		{
-			m_pRoot->addLink(pNodeLink->pNode, weight, pNodeLink->label);
+			for(LinkList::iterator childIter = childList.begin(); 
+			                       childIter != childList.end(); ++childIter)
+				m_pRoot->addLink(childIter->pNode, weight, childIter->label);
+
 		}
 		else
 		{
-			LinkList& list = m_data[curr_depth - 1];
-			for(LinkList::iterator iter = list.begin(); iter != list.end(); ++iter)
-				if(prev_label == '*' || iter->label == prev_label)
-					iter->pNode->addLink(pNodeLink->pNode, weight, pNodeLink->label);
+			LinkList parentList = findList(m_data[parentDepth], parentLabel);
+			for(LinkList::iterator parentIter = parentList.begin(); 
+								   parentIter != parentList.end(); ++parentIter)
+			{
+				for(LinkList::iterator childIter = childList.begin(); 
+									   childIter != childList.end(); ++childIter)
+				{
+					parentIter->pNode->addLink(childIter->pNode, weight, childIter->label);
+				}
+			}
 		}
-		prev_label = label;
+		parentLabel = childLabel;
 	}
 }
 
@@ -161,6 +187,15 @@ SeqDAVG::Link* SeqDAVG::find(LinkList& list, char label)
 			return &(*iter);
 	return NULL;
 
+}
+
+SeqDAVG::LinkList SeqDAVG::findList(LinkList& list, char label)
+{
+	LinkList out;
+	for(LinkList::iterator iter = list.begin(); iter != list.end(); ++iter)
+		if(label == '*' || iter->label == label)
+			out.push_back(*iter);
+	return out;
 }
 
 // Write the trie to a dot file

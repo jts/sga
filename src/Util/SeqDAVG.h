@@ -53,7 +53,8 @@ class SeqDAVG
 				//data
 				LinkList pChildLinks;
 		};
-
+	
+		typedef std::list<Node*> NodePList;
 
 		//
 		SeqDAVG();
@@ -68,6 +69,7 @@ class SeqDAVG
 
 	private:
 		static Link* find(LinkList& list, char label);
+		static LinkList findList(LinkList& list, char label);
 
 		std::vector<LinkList> m_data;
 		Node* m_pRoot;
