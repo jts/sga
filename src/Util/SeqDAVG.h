@@ -56,12 +56,11 @@ class SeqDAVG
 
 
 		//
-		SeqDAVG(const size_t len);
+		SeqDAVG();
 		~SeqDAVG();
 
 		//
-		void insert(const std::string& s, double weight);
-		void insertAtDepth(const std::string& s, double weight, size_t depth);
+		void insert(const std::string& s, double weight, size_t depth = 0);
 		
 		// I/O
 		void writeDot(std::string filename);

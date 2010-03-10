@@ -88,9 +88,8 @@ void SeqDAVG::Node::writeDot(std::ostream& out) const
 //
 
 //
-SeqDAVG::SeqDAVG(const size_t len)
+SeqDAVG::SeqDAVG()
 {
-	m_data.resize(len);
 	m_pRoot = new Node();
 }
 
@@ -105,40 +104,52 @@ SeqDAVG::~SeqDAVG()
 	}
 }
 
-// insert the string s into the trie
-void SeqDAVG::insert(const std::string& s, double weight)
-{
-	if(s.empty())
-		return;
-	insertAtDepth(s, weight, 0);
-}
-
 // insert the string s into the trie so that it is a child 
 // of the node(s) at DEPTH. Children of the root (the first
 // nodes) are depth 0. If depth is higher than the deepest
 // node in the trie, this will do nothing.
-void SeqDAVG::insertAtDepth(const std::string& s, double weight, size_t depth)
+void SeqDAVG::insert(const std::string& s, double weight, size_t depth)
 {
-	assert(depth == 0);
-	Node* prev = m_pRoot;
+	if(s.empty())
+		return;
+
+	// Expand the data vector if necessary
+	if(depth + s.size() > m_data.size())
+	{
+		m_data.resize(depth + s.size());
+	}
+
+	char prev_label = '*';
+
 	for(size_t i = 0; i < s.size(); ++i)
 	{
+		size_t curr_depth = depth + i;
 		char label = s[i];
 
 		// Find the node, if it doesnt exist create it
-		Link* pNodeLink = find(m_data[i], label);
+		Link* pNodeLink = find(m_data[curr_depth], label);
 		if(pNodeLink == NULL)
 		{
 			// Create the new node
 			Node* pNode = new Node;
-			m_data[i].push_back(Link(pNode, label));
-			pNodeLink = &m_data[i].back();
+			m_data[curr_depth].push_back(Link(pNode, label));
+			pNodeLink = &m_data[curr_depth].back();
 		}
 
-		// Add the link to the node from the previous node
-		prev->addLink(pNodeLink->pNode, weight, pNodeLink->label);
-
-		prev = pNodeLink->pNode;
+		// Link this node to previous nodes - the '*' label matches everything. 
+		// If depth is zero just link to the root
+		if(curr_depth == 0)
+		{
+			m_pRoot->addLink(pNodeLink->pNode, weight, pNodeLink->label);
+		}
+		else
+		{
+			LinkList& list = m_data[curr_depth - 1];
+			for(LinkList::iterator iter = list.begin(); iter != list.end(); ++iter)
+				if(prev_label == '*' || iter->label == prev_label)
+					iter->pNode->addLink(pNodeLink->pNode, weight, pNodeLink->label);
+		}
+		prev_label = label;
 	}
 }
 
