@@ -341,6 +341,43 @@ bool MultiOverlap::partitionSL(double p_error, std::string dbg)
 	return true;
 }
 
+//
+SeqTrie MultiOverlap::toSeqTrie(double p_error)
+{
+	(void)p_error;
+	std::cout << "\n\n **PartitionSL2** \n\n";
+	std::vector<AlphaCount> acVec;
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p = getPileup(i);
+		AlphaCount ac = p.getAlphaCount();
+		acVec.push_back(ac);
+	}
+
+	for(size_t j = 0; j < m_overlaps.size(); ++j)
+	{
+		std::string cstr;
+		for(size_t i = 0; i < acVec.size(); ++i)
+		{
+			char sorted[ALPHABET_SIZE];
+			acVec[i].getSorted(sorted, ALPHABET_SIZE);
+			int second = acVec[i].get(sorted[1]);
+			bool isConflict = second > 3;
+			char b = getMODBase(m_overlaps[j], i);
+
+			if(isConflict && (b == sorted[0] || b == sorted[1]))
+				cstr.push_back(b);
+			else
+				cstr.push_back(' ');	
+		}
+
+		std::cout << "CFLCT " << j << ":\t" << cstr << "\n";
+	}
+
+	SeqTrie out;
+	return out;
+}
+
 std::string MultiOverlap::consensusTemplate(const StringVec& templateVec)
 {
 	(void)templateVec;

@@ -58,6 +58,8 @@ class MultiOverlap
 		void partitionBest(double p_error, size_t n);
 		std::string consensusTemplate(const StringVec& templateVec);
 
+		SeqTrie toSeqTrie(double p_error);
+
 		double calcTemplateProb(const std::string& tmpStr, double p_error, const MOData& mod) const;
 
 		// Count the number of members in the given partition
