@@ -262,52 +262,11 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	bool discMM = false;
 	bool usedST = false;
-	if(hasWrong || true)
+	if(hasWrong)
 	{
-		if(pVertex->countEdges() < 60 && pVertex->countEdges() > 20 && false)
-		{
-			std::cout << "EDGES: " << pVertex->countEdges() << "\n";
-			//SeqTrie st = pCompareVertex->getSeqTrie();
-			SeqTrie st = pVertex->getSeqTrie();
-			st.cull(2);
-			
-			PathScoreVector psv;
-			st.score(original, 0.01, psv);
-			std::cout << "ORIGINAL:          " << original << "\n";
-			std::cout << "TRUTH:             " << base << "\n";
-
-			double max = -std::numeric_limits<double>::max();
-			size_t maxIdx = 0;
-			for(size_t i = 0; i < psv.size(); ++i)
-			{
-				if(psv[i].score > max)
-				{
-					max = psv[i].score;
-					maxIdx = i;
-				}
-
-				bool c = (psv[i].path == base);
-				std::cout << "SCORE: " << psv[i].score << " P: " << psv[i].path << " " << c << "\n";
-			}
-			
-			//mo.partitionBest(0.01, 15);
-			if(psv[maxIdx].path.size() == 100)
-			{
-				consensus = psv[maxIdx].path; 
-				usedST = true;
-			}
-			else
-			{
-				consensus = mo.calculateConsensusFromPartition(0.01);
-			}
-		}
-		else
-		{
-			SeqTrie st = mo.toSeqTrie(0.01);
-			(void) st;
-			discMM = mo.partitionSL(0.01, base);
-			consensus = mo.calculateConsensusFromPartition(0.01);
-		}
+		mo.partitionConflict(0.01, base);
+		//discMM = mo.partitionSL(0.01, base);
+		consensus = mo.calculateConsensusFromPartition(0.01);
 	}
 	else
 	{

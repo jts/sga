@@ -342,7 +342,7 @@ bool MultiOverlap::partitionSL(double p_error, std::string dbg)
 }
 
 //
-SeqTrie MultiOverlap::toSeqTrie(double p_error)
+bool MultiOverlap::partitionConflict(double p_error, std::string dbg)
 {
 	(void)p_error;
 	std::cout << "\n\n **PartitionSL2** \n\n";
@@ -354,28 +354,63 @@ SeqTrie MultiOverlap::toSeqTrie(double p_error)
 		acVec.push_back(ac);
 	}
 
+	printf("ROOT\t*%s\t%d\n", m_rootSeq.c_str(), 0);
+	printf("BASE\t*%s\t%d\n", dbg.c_str(), 0);
+
 	for(size_t j = 0; j < m_overlaps.size(); ++j)
 	{
 		std::string cstr;
+		std::string sc;
+		int score = 0;
+		int sum = 0;
+		int wrong = 0;
 		for(size_t i = 0; i < acVec.size(); ++i)
 		{
+			char rootBase = m_rootSeq[i];
 			char sorted[ALPHABET_SIZE];
 			acVec[i].getSorted(sorted, ALPHABET_SIZE);
 			int second = acVec[i].get(sorted[1]);
+			
 			bool isConflict = second > 3;
 			char b = getMODBase(m_overlaps[j], i);
 
-			if(isConflict && (b == sorted[0] || b == sorted[1]))
+			if(isConflict && b != '\0')
+			{
 				cstr.push_back(b);
+				if(rootBase == sorted[0] || rootBase == sorted[1])
+				{
+					if(b == rootBase)
+						++score;
+					else
+						++wrong;
+					++sum;
+				}
+			}
 			else
+			{
 				cstr.push_back(' ');	
+			}
 		}
-
-		std::cout << "CFLCT " << j << ":\t" << cstr << "\n";
+		double frac;
+		if(sum == 0)
+			frac = 1.0f;
+		else
+			frac = (double)score/(double)sum;
+		m_overlaps[j].score = frac;
+		if(sum > 0)
+			m_overlaps[j].partitionID = 1;
+		else
+			m_overlaps[j].partitionID = 0;
+		printf("CFT\t*%s\t%d,%lf\n", cstr.c_str(), (int)j, frac);
 	}
 
-	SeqTrie out;
-	return out;
+	std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
+	for(size_t i = 0; i < m_overlaps.size() && i < 20; ++i)
+	{
+			m_overlaps[i].partitionID = 0;
+	}
+
+	return false;
 }
 
 std::string MultiOverlap::consensusTemplate(const StringVec& templateVec)

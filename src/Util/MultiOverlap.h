@@ -55,6 +55,8 @@ class MultiOverlap
 		void partitionMP(double p_error);
 		void partitionLI(double p_error);
 		bool partitionSL(double p_error, std::string dbg);
+		bool partitionConflict(double p_error, std::string dbg);
+
 		void partitionBest(double p_error, size_t n);
 		std::string consensusTemplate(const StringVec& templateVec);
 
