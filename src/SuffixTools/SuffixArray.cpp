@@ -62,6 +62,7 @@ void SuffixArray::initialize(const ReadTable& rt)
 
 void SuffixArray::initialize(size_t num_suffixes, size_t num_strings)
 {
+	std::cout << "Making room for " << num_suffixes << " and " << num_strings << "\n";
 	m_data.resize(num_suffixes);
 	m_numStrings = num_strings;
 }

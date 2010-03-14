@@ -60,8 +60,8 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 
 	// setup buckets
 	const int ALPHABET_SIZE = 5;
-	int bucket_counts[ALPHABET_SIZE];
-	int buckets[ALPHABET_SIZE];
+	int64_t bucket_counts[ALPHABET_SIZE];
+	int64_t buckets[ALPHABET_SIZE];
 
 	// find the ends of the buckets
 	countBuckets(pRT, bucket_counts, ALPHABET_SIZE);
@@ -134,7 +134,7 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	delete [] type_array;
 }
 
-void induceSAl(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int* counts, int* buckets, size_t n, int K, bool end)
+void induceSAl(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int64_t* counts, int64_t* buckets, size_t n, int K, bool end)
 {
 	getBuckets(counts, buckets, K, end);
 	for(size_t i = 0; i < n; ++i)
@@ -154,7 +154,7 @@ void induceSAl(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int* coun
 	}
 }
 
-void induceSAs(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int* counts, int* buckets, size_t n, int K, bool end)
+void induceSAs(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int64_t* counts, int64_t* buckets, size_t n, int K, bool end)
 {
 	getBuckets(counts, buckets, K, end);
 	for(int64_t i = n - 1; i >= 0; --i)
@@ -176,7 +176,7 @@ void induceSAs(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int* coun
 
 
 // Calculate the number of items that should be in each bucket
-void countBuckets(const ReadTable* pRT, int* counts, int K)
+void countBuckets(const ReadTable* pRT, int64_t* counts, int K)
 {
 	for(int i = 0; i < K; ++i)
 		counts[i] = 0;
@@ -193,7 +193,7 @@ void countBuckets(const ReadTable* pRT, int* counts, int K)
 
 // If end is true, calculate the end of the buckets, otherwise 
 // calculate the starts
-void getBuckets(int* counts, int* buckets, int K, bool end)
+void getBuckets(int64_t* counts, int64_t* buckets, int K, bool end)
 {
 	for(int i = 0; i < K; ++i)
 		buckets[i] = 0;
