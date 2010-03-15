@@ -275,30 +275,30 @@ MultiOverlap Vertex::getMultiOverlap() const
 }
 
 // Get a SeqTrie of the overlaps of this vertex
-SeqTrie Vertex::getSeqTrie() const
+void Vertex::fillTries(double p_error, SeqTrie* pSenseTrie, SeqTrie* pAntisenseTrie) const
 {
-	SeqTrie st;
-	if(m_edges.empty())
-		return st;
-	
-	// Add the vertex sequence to the ST
-	// This acts as a guide for adding the overlapping strings
-	// and is subtracted later
-	st.insert(getSeq(), 0.0f);
+	double lp = log(p_error);
 
+	if(m_edges.empty())
+		return;
+	
 	for(size_t i = 0; i < m_edges.size(); ++i)
 	{
 		Edge* pEdge = m_edges[i];
 		std::string overlapped = pEdge->getTwin()->getMatchStr();
 		if(pEdge->getComp() == EC_REVERSE)
 			overlapped = reverseComplement(overlapped);
-		size_t depth = pEdge->getMatchCoord().interval.start;
-		std::cout << "DEPTH " << depth << " INSERTING " << overlapped << "\n";
-		st.insertAtDepth(overlapped, log(0.01), depth);
+
+		if(pEdge->getDir() == ED_SENSE)
+		{
+			overlapped = reverse(overlapped);
+			pSenseTrie->insert(overlapped, lp);
+		}
+		else
+		{
+			pAntisenseTrie->insert(overlapped, lp);
+		}
 	}
-	
-	st.remove(getSeq());
-	return st;
 }
 
 

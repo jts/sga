@@ -84,8 +84,8 @@ class Vertex
 		// Get a multioverlap object representing the overlaps for this vertex
 		MultiOverlap getMultiOverlap() const;
 
-		// Get a SeqTrie object of the overlaps for this vertex
-		SeqTrie getSeqTrie() const;
+		// Construct a trie from the edges, one for each each direction
+		void fillTries(double p_error, SeqTrie* pSenseTrie, SeqTrie* pAntisenseTrie) const;
 
 		// Return the inferred quality value for each base in the sequence
 		// using the overlap information

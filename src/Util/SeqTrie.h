@@ -52,9 +52,9 @@ class SeqTrie
 			Link* getLink(char label);
 
 			bool insert(const std::string& s, double weight, size_t idx);
-			bool insertAtDepth(const std::string& s, double weight, size_t depth);
 			bool remove(const std::string& s, size_t idx);
-			
+			size_t countNodes() const;
+
 			void score(const std::string& s, double p_error, size_t idx, const PathScore& curr, PathScoreVector& out);
 
 			void cullChildren(int cutoff);
@@ -76,10 +76,10 @@ class SeqTrie
 		~SeqTrie();
 
 		void score(const std::string& s, double p_error, PathScoreVector& out);
-	
+		size_t countNodes() const;
+
 		// Creation functions
 		void insert(const std::string& s, double weight);
-		void insertAtDepth(const std::string& s, double weight, size_t depth);
 	
 		// Remove the string s from the trie
 		void remove(const std::string& s);

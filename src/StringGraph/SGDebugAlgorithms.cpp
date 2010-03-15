@@ -259,14 +259,22 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 	std::string original = pVertex->getSeq();
 	std::string base = pCompareVertex->getSeq();
 	std::string consensus;
+	size_t numEdges = actualEdges.size();
 
 	bool discMM = false;
 	bool usedST = false;
-	if(hasWrong)
+	if(hasWrong || true)
 	{
-		mo.partitionConflict(0.01, base);
+		SeqTrie leftTrie;
+		SeqTrie rightTrie;
+		pVertex->fillTries(0.01, &leftTrie, &rightTrie);
+		size_t count = leftTrie.countNodes() + rightTrie.countNodes();
+		printf("TRIE\t%zu\t%zu\n", count, numEdges);
+
+		//mo.partitionConflict(0.01, base);
 		//discMM = mo.partitionSL(0.01, base);
-		consensus = mo.calculateConsensusFromPartition(0.01);
+		//consensus = mo.calculateConsensusFromPartition(0.01);
+		//consensus = mo.consensusConflict(0.01);
 	}
 	else
 	{
@@ -276,11 +284,11 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
 
 	double calculated_likelihood = mo.calculateGroupedLikelihood();
 
-	pVertex->setSeq(consensus);
+	//pVertex->setSeq(consensus);
 
 	int numDiffsNC = countDifferences(original, base, base.size());
 	int numDiffsEC = countDifferences(consensus, base, base.size());
-	size_t numEdges = actualEdges.size();
+	
 	size_t numGroup0 = mo.countPartition(0);
 	std::cout << "EC\t" << numDiffsNC << "\t" << numDiffsEC << "\t" << hasWrong << 
 	             "\t" << numEdges << "\t" << numGroup0 << "\t" << usedST <<  "\n";

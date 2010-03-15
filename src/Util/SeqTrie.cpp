@@ -115,23 +115,6 @@ bool SeqTrie::Node::insert(const std::string& s, double weight, size_t idx)
 		return true;
 }
 
-// Recursive function, descend into child branches until the
-// insertion point has been found
-bool SeqTrie::Node::insertAtDepth(const std::string& s, double weight, size_t depth)
-{
-	if(depth == 0)
-	{
-		return insert(s, weight, 0);
-	}
-	else
-	{
-		bool rc = false;
-		for(LinkList::iterator iter = pChildLinks.begin(); iter != pChildLinks.end(); ++iter)
-			rc = iter->pNode->insertAtDepth(s, weight, depth - 1) || rc;
-		return rc;
-	}
-}
-
 // remove the string s from the trie starting at pNode and character idx
 bool SeqTrie::Node::remove(const std::string& s, size_t idx)
 {
@@ -164,6 +147,15 @@ void SeqTrie::Node::cullChildren(int cutoff)
 			++iter;
 		}
 	}
+}
+
+// Return the number of nodes in the trie rooted at this node
+size_t SeqTrie::Node::countNodes() const
+{
+	size_t count = 1;
+	for(LinkList::const_iterator iter = pChildLinks.begin(); iter != pChildLinks.end(); ++iter)
+		count += iter->pNode->countNodes();
+	return count;
 }
 
 // Recursive dot writer function
@@ -210,6 +202,12 @@ void SeqTrie::remove(const std::string& s)
 	m_pRoot->remove(s, 0);
 }
 
+// return the number of nodes in the trie
+size_t SeqTrie::countNodes() const
+{
+	return m_pRoot->countNodes();
+}
+
 // remove all sub-tries that have a link less than cutoff
 void SeqTrie::cull(int cutoff)
 {
@@ -222,20 +220,6 @@ void SeqTrie::score(const std::string& s, double p_error, PathScoreVector& out)
 {
 	PathScore start = {"", 0};
 	m_pRoot->score(s, p_error, 0, start, out);
-}
-
-// insert the string s into the trie so that it is a child 
-// of the node(s) at DEPTH. Children of the root (the first
-// nodes) are depth 0. If depth is higher than the deepest
-// node in the trie, this will do nothing.
-void SeqTrie::insertAtDepth(const std::string& s, double weight, size_t depth)
-{
-	bool inserted = m_pRoot->insertAtDepth(s, weight, depth);
-	if(!inserted)
-	{
-		std::cerr << "Error: Could not insert string at depth " << depth << "\n";
-		assert(false);
-	}
 }
 
 // Write the trie to a dot file

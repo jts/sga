@@ -352,6 +352,9 @@ bool MultiOverlap::partitionConflict(double p_error, std::string dbg)
 		Pileup p = getPileup(i);
 		AlphaCount ac = p.getAlphaCount();
 		acVec.push_back(ac);
+	
+		char sorted[ALPHABET_SIZE];
+		acVec[i].getSorted(sorted, ALPHABET_SIZE);
 	}
 
 	printf("ROOT\t*%s\t%d\n", m_rootSeq.c_str(), 0);
@@ -361,6 +364,8 @@ bool MultiOverlap::partitionConflict(double p_error, std::string dbg)
 	{
 		std::string cstr;
 		std::string sc;
+		std::string nc;
+
 		int score = 0;
 		int sum = 0;
 		int wrong = 0;
@@ -370,14 +375,12 @@ bool MultiOverlap::partitionConflict(double p_error, std::string dbg)
 			char sorted[ALPHABET_SIZE];
 			acVec[i].getSorted(sorted, ALPHABET_SIZE);
 			int second = acVec[i].get(sorted[1]);
-			
 			bool isConflict = second > 3;
 			char b = getMODBase(m_overlaps[j], i);
 
-			if(isConflict && b != '\0')
+			if(isConflict)
 			{
-				cstr.push_back(b);
-				if(rootBase == sorted[0] || rootBase == sorted[1])
+				if(b != '\0' && (rootBase == sorted[0] || rootBase == sorted[1]))
 				{
 					if(b == rootBase)
 						++score;
@@ -385,32 +388,144 @@ bool MultiOverlap::partitionConflict(double p_error, std::string dbg)
 						++wrong;
 					++sum;
 				}
+
+				if(b == sorted[0] || b == sorted[1])
+				{
+					nc.push_back(b);
+				}
+				else
+				{
+					nc.push_back('N');
+				}
 			}
+			
+			if(b != '\0')
+				cstr.push_back(b);	
 			else
-			{
-				cstr.push_back(' ');	
-			}
+				cstr.push_back('N');
+			
 		}
+
 		double frac;
 		if(sum == 0)
 			frac = 1.0f;
 		else
 			frac = (double)score/(double)sum;
+
 		m_overlaps[j].score = frac;
-		if(sum > 0)
+		if((sum == 1 && wrong > 0) || (sum == 2 && wrong > 1) || wrong >= 2)
 			m_overlaps[j].partitionID = 1;
 		else
 			m_overlaps[j].partitionID = 0;
-		printf("CFT\t*%s\t%d,%lf\n", cstr.c_str(), (int)j, frac);
+
+		printf("CFT\t*%s\t%d,%lf\t%s\n", cstr.c_str(), (int)j, frac, nc.c_str());
 	}
 
+	/*
 	std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
 	for(size_t i = 0; i < m_overlaps.size() && i < 20; ++i)
 	{
 			m_overlaps[i].partitionID = 0;
 	}
-
+	*/
 	return false;
+}
+
+//
+std::string MultiOverlap::consensusConflict(double p_error)
+{
+	(void)p_error;
+
+	const int CONFLICT_CUTOFF = 3;
+
+	std::vector<AlphaCount> acVec;
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p = getPileup(i);
+		AlphaCount ac = p.getAlphaCount();
+		acVec.push_back(ac);
+	}
+
+	for(size_t j = 0; j < m_overlaps.size(); ++j)
+	{
+		std::string cstr;
+		std::string sc;
+		std::string nc;
+
+		int score = 0;
+		int sum = 0;
+		int wrong = 0;
+		for(size_t i = 0; i < acVec.size(); ++i)
+		{
+			char rootBase = m_rootSeq[i];
+			char sorted[ALPHABET_SIZE];
+			acVec[i].getSorted(sorted, ALPHABET_SIZE);
+			int second = acVec[i].get(sorted[1]);
+			bool isConflict = second > CONFLICT_CUTOFF;
+			char b = getMODBase(m_overlaps[j], i);
+
+			if(isConflict)
+			{
+				if(b != '\0' && (rootBase == sorted[0] || rootBase == sorted[1]))
+				{
+					if(b == rootBase)
+						++score;
+					else
+						++wrong;
+					++sum;
+				}
+
+				if(b == sorted[0] || b == sorted[1])
+				{
+					nc.push_back(b);
+				}
+				else
+				{
+					nc.push_back('N');
+				}
+			}
+			
+			if(b != '\0')
+				cstr.push_back(b);	
+			else
+				cstr.push_back('N');
+		}
+
+		double frac;
+		if(sum == 0)
+			frac = 1.0f;
+		else
+			frac = (double)score/(double)sum;
+
+		m_overlaps[j].score = frac;
+		if(sum > 0 && wrong > 0)
+			m_overlaps[j].partitionID = 1;
+		else
+			m_overlaps[j].partitionID = 0;
+
+		printf("CFT\t*%s\t%d,%lf\t%s\n", cstr.c_str(), (int)j, frac, nc.c_str());
+	}
+
+	std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
+	for(size_t i = 0; i < m_overlaps.size() && i < 15; ++i)
+	{
+		m_overlaps[i].partitionID = 0;
+	}
+
+	std::string consensus = calculateConsensusFromPartition(p_error);
+	for(size_t i = 0; i < acVec.size(); ++i)
+	{
+		char sorted[ALPHABET_SIZE];
+		acVec[i].getSorted(sorted, ALPHABET_SIZE);
+		int second = acVec[i].get(sorted[1]);
+		bool isConflict = second > CONFLICT_CUTOFF;
+		if(!isConflict)
+		{
+			consensus[i] = sorted[0];
+		}
+	}
+	
+	return consensus;
 }
 
 std::string MultiOverlap::consensusTemplate(const StringVec& templateVec)
