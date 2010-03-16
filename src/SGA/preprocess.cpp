@@ -140,8 +140,6 @@ int preprocessMain(int argc, char** argv)
 			if(record.seq.length() < opt::minLength)
 				continue;
 
-
-			std::cout << "LEN: " << record.seq.length() << "\n";
 			record.write(writer);
 
 			++numReadsKept;
