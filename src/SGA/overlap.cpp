@@ -138,7 +138,7 @@ size_t computeHitsSerial(SeqReader& reader, const OverlapAlgorithm* pOverlapper,
 	assert(writer.is_open());
 	filenameVec.push_back(filename);
 
-	SeqItem read;
+	SeqRecord read;
 	size_t currIdx = 0;
 	while(reader.get(read))
 	{
@@ -202,7 +202,7 @@ size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlappe
 		freeQueue.push(pWorkVec);
 	}
 
-	SeqItem read;
+	SeqRecord read;
 	size_t currIdx = 0;
 	bool done = false;
 	
@@ -402,7 +402,7 @@ size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOver
 		workVec[i]->reserve(MAX_ITEMS);
 	}
 
-	SeqItem read;
+	SeqRecord read;
 	size_t currIdx = 0;
 	bool done = false;
 	int next_thread = 0;

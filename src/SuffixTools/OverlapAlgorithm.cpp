@@ -9,7 +9,7 @@
 #define SWAP_LIST(x, y) pSwap = (x); (x) = (y); (y) = pSwap;
 
 // Perform the overlap
-void OverlapAlgorithm::overlapRead(const SeqItem& read, OverlapBlockList* pOutList) const
+void OverlapAlgorithm::overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const
 {
 	if(!m_bIrreducible)
 	{
@@ -23,7 +23,7 @@ void OverlapAlgorithm::overlapRead(const SeqItem& read, OverlapBlockList* pOutLi
 }
 
 //
-void OverlapAlgorithm::overlapReadExhaustive(const SeqItem& read, OverlapBlockList* pOBOut) const
+void OverlapAlgorithm::overlapReadExhaustive(const SeqRecord& read, OverlapBlockList* pOBOut) const
 {
 	// Collect the complete set of overlaps in pOBOut
 	static const AlignFlags sufPreAF(false, false, false);
@@ -42,7 +42,7 @@ void OverlapAlgorithm::overlapReadExhaustive(const SeqItem& read, OverlapBlockLi
 	findOverlapBlocks(reverse(seq), m_pRevBWT, m_pBWT, m_minOverlap, preSufAF, pOBOut, pOBOut);
 }
 
-void OverlapAlgorithm::overlapReadInexact(const SeqItem& read, OverlapBlockList* pOBOut) const
+void OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, OverlapBlockList* pOBOut) const
 {
 	// Collect the complete set of overlaps in pOBOut
 	static const AlignFlags sufPreAF(false, false, false);
@@ -63,7 +63,7 @@ void OverlapAlgorithm::overlapReadInexact(const SeqItem& read, OverlapBlockList*
 
 // Construct the set of blocks describing irreducible overlaps with READ
 // and write the blocks to pOBOut
-void OverlapAlgorithm::overlapReadIrreducible(const SeqItem& read, OverlapBlockList* pOBOut) const
+void OverlapAlgorithm::overlapReadIrreducible(const SeqRecord& read, OverlapBlockList* pOBOut) const
 {
 	// The complete set of overlap blocks are collected in obTemp
 	// The filtered set (containing only irreducible overlaps) are placed into pOBOut

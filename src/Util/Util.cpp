@@ -74,7 +74,7 @@ int countDifferences(const std::string& s1, const std::string& s2, size_t n)
 
 // Strip the leading directories and
 // the last trailling suffix from a filename
-std::string stripFilename(std::string filename)
+std::string stripFilename(const std::string& filename)
 {
 	size_t lastDirPos = filename.find_last_of('/');
 	size_t suffixPos = filename.find_last_of('.');
@@ -92,6 +92,17 @@ std::string stripFilename(std::string filename)
 	{
 		return filename.substr(lastDirPos, suffixPos - lastDirPos);
 	}
+}
+
+// Return the file extension
+std::string getFileExtension(const std::string& filename)
+{
+	size_t suffixPos = filename.find_last_of('.');
+	
+	if(suffixPos == std::string::npos)
+		return "";
+	else
+		return filename.substr(suffixPos + 1);
 }
 
 // Ensure a filehandle is open

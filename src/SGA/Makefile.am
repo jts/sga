@@ -21,4 +21,5 @@ sga_SOURCES = sga.cpp \
               overlap.cpp overlap.h \
               assemble.cpp assemble.h \
               oview.cpp oview.h \
-              extract.cpp extract.h
+              extract.cpp extract.h \
+			  preprocess.cpp preprocess.h

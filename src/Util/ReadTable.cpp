@@ -16,10 +16,10 @@ ReadTable::ReadTable(std::string filename)
 {
 	m_pIndex = NULL; // not built by default
 	SeqReader reader(filename);
-	SeqItem si;
-	while(reader.get(si))
+	SeqRecord sr;
+	while(reader.get(sr))
 	{
-		addRead(si);
+		addRead(sr.toSeqItem());
 	}
 }
 

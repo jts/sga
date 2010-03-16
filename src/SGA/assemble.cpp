@@ -305,7 +305,7 @@ void parseAssembleOptions(int argc, char** argv)
 	}
 
 	if (argc - optind < 1) 
-	{
+{
 		std::cerr << SUBPROGRAM ": missing arguments\n";
 		die = true;
 	} 

@@ -22,7 +22,7 @@ SeqReader::~SeqReader()
 
 // Extract an element from the file
 // Return true if successful
-bool SeqReader::get(SeqItem& si)
+bool SeqReader::get(SeqRecord& sr)
 {
 	RecordType rt = RT_UNKNOWN;
 	std::string header;
@@ -53,6 +53,7 @@ bool SeqReader::get(SeqItem& si)
 	// Parse the rest of the record
 	bool validRecord = false;
 	std::string seq;
+	std::string qual;
 
 	if(rt == RT_FASTA)
 	{
@@ -73,10 +74,10 @@ bool SeqReader::get(SeqItem& si)
 		std::string temp;
 		getline(m_fileHandle, seq);
 		getline(m_fileHandle, temp); //discard
-		getline(m_fileHandle, temp); //discard
+		getline(m_fileHandle, qual);
 
 		// FASTQ is required to have 4 fields, we must not have hit the EOF by this point
-		validRecord = seq.size() > 0 && !m_fileHandle.eof();
+		validRecord = seq.size() > 0 && seq.size() == qual.size() && !m_fileHandle.eof();
 	}
 
 	if(validRecord)
@@ -86,13 +87,14 @@ bool SeqReader::get(SeqItem& si)
 		if(endPos != std::string::npos)
 		{
 			assert(endPos > 0);
-			si.id = header.substr(1, endPos - 1);
+			sr.id = header.substr(1, endPos - 1);
 		}
 		else
 		{
-			si.id = header.substr(1);
+			sr.id = header.substr(1);
 		}
-		si.seq = seq;
+		sr.seq = seq;
+		sr.qual = qual;
 	}
 
 	return validRecord;

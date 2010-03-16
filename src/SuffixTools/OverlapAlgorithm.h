@@ -28,16 +28,16 @@ class OverlapAlgorithm
 
 		// Perform the overlap
 		// This function is threaded so everything must be const
-		void overlapRead(const SeqItem& read, OverlapBlockList* pOutList) const;
+		void overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const;
 	
 		// Perform an irreducible overlap
-		void overlapReadIrreducible(const SeqItem& read, OverlapBlockList* pOBOut) const;
+		void overlapReadIrreducible(const SeqRecord& read, OverlapBlockList* pOBOut) const;
 
 		// Perform an exhaustive overlap
-		void overlapReadExhaustive(const SeqItem& read, OverlapBlockList* pOBOut) const;
+		void overlapReadExhaustive(const SeqRecord& read, OverlapBlockList* pOBOut) const;
 
 		// Perform an inexact overlap
-		void overlapReadInexact(const SeqItem& read, OverlapBlockList* pOBOut) const;
+		void overlapReadInexact(const SeqRecord& read, OverlapBlockList* pOBOut) const;
 
 		// Write all the overlap blocks pList to the filehandle
 		void writeOverlapBlocks(size_t readIdx, const OverlapBlockList* pList, std::ofstream& writer) const;

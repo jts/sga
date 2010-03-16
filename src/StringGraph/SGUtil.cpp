@@ -74,12 +74,12 @@ void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& c
 	(void)containments;
 	// Add the reads as the vertices
 	SeqReader reader(readFile);
-	SeqItem si;
-	while(reader.get(si))
+	SeqRecord sr;
+	while(reader.get(sr))
 	{
-		if(allowContainments || !containments.isContained(si.id))
+		if(allowContainments || !containments.isContained(sr.id))
 		{
-			pGraph->addVertex(new Vertex(si.id, si.seq.toString()));
+			pGraph->addVertex(new Vertex(sr.id, sr.seq.toString()));
 		}
 	}
 }

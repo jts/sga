@@ -18,6 +18,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <stdint.h>
+#include <iostream>
 #include "DNAString.h"
 
 #define CAF_SEP ':'
@@ -39,7 +40,7 @@ typedef std::vector<double> DoubleVec;
 typedef std::vector<std::string> StringVec;
 typedef std::vector<Sequence> SequenceVector;
 
-// SeqItem
+// SeqItem is just an id, sequence pair
 struct SeqItem
 {
 	// data
@@ -47,10 +48,47 @@ struct SeqItem
 	DNAString seq;
 };
 
+
+// SeqRecord is a id,sequence pair with an associated quality value
+struct SeqRecord
+{
+	SeqItem toSeqItem()
+	{
+		SeqItem r;
+		r.id = id;
+		r.seq = seq;
+		return r;
+	}
+
+	void write(std::ostream& out)
+	{
+		// If there is a quality string write the record as fastq, otherwise fasta
+		if(!qual.empty())
+		{
+			out << "@" << id << "\n";
+			out << seq.toString() << "\n";
+			out << "+" << "\n"; // this field is optional
+			out << qual << "\n";
+		}
+		else
+		{
+			out << ">" << id << "\n";
+			out << seq.toString() << "\n";
+		}
+	}
+
+	// data
+	std::string id;
+	DNAString seq;
+	std::string qual;
+};
+
 //
 // Functions
 //
-std::string stripFilename(std::string filename);
+std::string stripFilename(const std::string& filename);
+std::string getFileExtension(const std::string& filename);
+
 void checkFileHandle(std::ifstream& fh, std::string fn);
 void checkFileHandle(std::ofstream& fh, std::string fn);
 

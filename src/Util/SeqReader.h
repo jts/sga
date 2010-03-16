@@ -25,7 +25,7 @@ class SeqReader
 	public:
 		SeqReader(std::string filename);
 		~SeqReader();
-		bool get(SeqItem& si);
+		bool get(SeqRecord& sr);
 
 	private:
 		std::ifstream m_fileHandle;

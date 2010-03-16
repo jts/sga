@@ -17,9 +17,9 @@
 
 struct OverlapWorkItem
 {
-	OverlapWorkItem(size_t ri, const SeqItem& si) : idx(ri), read(si) {}
+	OverlapWorkItem(size_t ri, const SeqRecord& sr) : idx(ri), read(sr) {}
 	size_t idx;
-	SeqItem read;
+	SeqRecord read;
 };
 
 

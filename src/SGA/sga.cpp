@@ -13,12 +13,11 @@
 #include "assemble.h"
 #include "oview.h"
 #include "extract.h"
+#include "preprocess.h"
 
 #define VERSION "0.1"
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
-
-
 
 void printUsage();
 
@@ -48,6 +47,8 @@ int main(int argc, char** argv)
 			oviewMain(argc - 1, argv + 1);
 		else if(command == "extract")
 			extractMain(argc - 1, argv + 1);
+		else if(command == "preprocess")
+			preprocessMain(argc - 1, argv + 1);
 		else
 		{
 			std::cerr << "Unrecognized command: " << command << "\n";
