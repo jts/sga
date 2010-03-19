@@ -55,6 +55,47 @@ Overlap MultiOverlap::getOverlap(size_t idx) const
 	return m_overlaps[idx].ovr;
 }
 
+//
+std::string MultiOverlap::simpleConsensus() const
+{
+	std::string out;
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p = getPileup(i);
+		AlphaCount ac = p.getAlphaCount();
+		char maxBase;
+		BaseCount maxCount;
+		ac.getMax(maxBase, maxCount);
+		BaseCount rootCount = ac.get(m_rootSeq[i]);
+
+		if(rootCount == maxCount)
+			out.push_back(m_rootSeq[i]);
+		else
+			out.push_back(maxBase);
+	}
+	return out;
+}
+
+// Determine if this multi-overlap has a conflicted position,
+// a position in the multioverlap where the second-most 
+// prevalent base has a frequency greater than cutoff
+bool MultiOverlap::isConflicted(size_t cutoff) const
+{
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p = getPileup(i);
+		AlphaCount ac = p.getAlphaCount();
+
+		char order[5];
+		ac.getSorted(order, 5);
+	
+		// If the second-most prevalent base is great
+		if(ac.get(order[1]) > cutoff)
+			return true;
+	}
+	return false;
+}
+
 // Returns true if the overlap at idx has the include flag set
 int MultiOverlap::getPartition(size_t idx) const
 {
@@ -641,26 +682,6 @@ size_t MultiOverlap::countPartition(int id) const
 			++count;
 	}
 	return count;
-}
-
-std::string MultiOverlap::simpleConsensus() const
-{
-	std::string out;
-	for(size_t i = 0; i < m_rootSeq.size(); ++i)
-	{
-		Pileup p = getPileup(i);
-		AlphaCount ac = p.getAlphaCount();
-		char maxBase;
-		BaseCount maxCount;
-		ac.getMax(maxBase, maxCount);
-		BaseCount rootCount = ac.get(m_rootSeq[i]);
-
-		if(rootCount == maxCount)
-			out.push_back(m_rootSeq[i]);
-		else
-			out.push_back(maxBase);
-	}
-	return out;
 }
 
 std::string MultiOverlap::calculateConsensusFromPartition(double p_error)

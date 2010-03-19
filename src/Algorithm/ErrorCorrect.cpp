@@ -9,12 +9,13 @@
 #include "ErrorCorrect.h"
 
 // Perform error correction on the given vertex
-std::string ErrorCorrect::correctVertex(Vertex* pVertex, size_t simpleCutoff)
+std::string ErrorCorrect::correctVertex(Vertex* pVertex, size_t /*simpleCutoff*/)
 {
-	if(pVertex->countEdges() < simpleCutoff)
-		return simpleCorrect(pVertex);
-	else
+	MultiOverlap mo = pVertex->getMultiOverlap();
+	if(mo.isConflicted(3))
 		return trieCorrect(pVertex);
+	else
+		return mo.calculateConsensusFromPartition(0.01);
 }
 
 // simpleCorrect calls a straightforward consensus sequence

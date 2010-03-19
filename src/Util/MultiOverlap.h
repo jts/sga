@@ -48,10 +48,15 @@ class MultiOverlap
 
 		Overlap getOverlap(size_t idx) const;
 		size_t getNumBases() const;
-		int getPartition(size_t idx) const;
-		void setPartition(size_t idx, int p);
+
+		//
+		bool isConflicted(size_t cutoff) const;
+		std::string simpleConsensus() const;
+
 
 		// Partition the multioverlap into groups
+		int getPartition(size_t idx) const;
+		void setPartition(size_t idx, int p);
 		void partitionMP(double p_error);
 		void partitionLI(double p_error);
 		bool partitionSL(double p_error, std::string dbg);
@@ -71,7 +76,6 @@ class MultiOverlap
 		double calculateLikelihood() const;
 		double calculateGroupedLikelihood() const;
 		std::string calculateConsensusFromPartition(double p_error);
-		std::string simpleConsensus() const;
 
 		DNADouble calcAlphaProb(size_t idx) const;
 		AlphaCount calcAlphaCount(size_t idx) const;

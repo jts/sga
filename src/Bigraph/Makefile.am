@@ -8,4 +8,4 @@ libbigraph_a_SOURCES = \
                        Vertex.h Vertex.cpp  \
                        Edge.h Edge.cpp \
 					   TransitiveGroup.h TransitiveGroup.cpp \
-					   TransitiveGroupCollection.h TransitiveGroupCollection.cpp
+					   TransitiveGroupCollection.h TransitiveGroupCollection.cpp 
