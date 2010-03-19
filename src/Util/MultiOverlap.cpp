@@ -528,7 +528,7 @@ std::string MultiOverlap::consensusConflict(double p_error)
 	return consensus;
 }
 
-std::string MultiOverlap::consensusTemplate(const StringVec& templateVec)
+std::string MultiOverlap::consensusTemplate(const StringVector& templateVec)
 {
 	(void)templateVec;
 	int maxScore = 0;

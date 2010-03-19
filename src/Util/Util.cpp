@@ -58,7 +58,6 @@ std::string suffix(const std::string& seq, const unsigned int len)
 	return seq.substr(seq.length() - len);
 }
 
-
 // count the differences between s1 and s2 over the first n bases
 int countDifferences(const std::string& s1, const std::string& s2, size_t n)
 {
@@ -71,6 +70,15 @@ int countDifferences(const std::string& s1, const std::string& s2, size_t n)
 	return numDiff;
 }
 
+// count the differences between s1 and s2 over the first n bases
+std::string getDiffString(const std::string& s1, const std::string& s2)
+{
+	std::string out;
+	size_t stop = std::min(s1.size(), s2.size());
+	for(size_t i = 0; i < stop; ++i)
+		out.push_back(s1[i] == s2[i] ? '.' : s1[i]);
+	return out;
+}
 
 // Strip the leading directories and
 // the last trailling suffix from a filename
@@ -127,9 +135,9 @@ void checkFileHandle(std::ofstream& fh, std::string fn)
 
 
 // Split a string into parts based on the delimiter
-StringVec split(std::string in, char delimiter)
+StringVector split(std::string in, char delimiter)
 {
-	StringVec out;
+	StringVector out;
 	size_t lastPos = 0;
 	size_t pos = in.find_first_of(delimiter);
 
@@ -146,7 +154,7 @@ StringVec split(std::string in, char delimiter)
 // Split a key-value pair
 void splitKeyValue(std::string in, std::string& key, std::string& value)
 {
-	StringVec parts = split(in, CAF_SEP);
+	StringVector parts = split(in, CAF_SEP);
 	if(parts.size() != 2)
 	{
 		std::cerr << "Invalid key-value pair " << in << std::endl;
@@ -187,7 +195,7 @@ size_t debug_getReadDistFromNames(const std::string& name1, const std::string& n
 {
 	std::string id;
 	std::string pos;
-	StringVec parts = split(name1, ':');
+	StringVector parts = split(name1, ':');
 	if(parts.size() != 2)
 		return 0;
 

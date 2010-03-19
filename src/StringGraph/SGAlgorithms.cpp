@@ -140,7 +140,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 		}
 		
 		WARN_ONCE("Transitive Reduction stage 2 disabled")
-		/*
+		
 		// Stage 2
 		for(size_t i = 0; i < edges.size(); ++i)
 		{
@@ -171,7 +171,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					break;
 			}
 		}
-		*/
+		
 
 		bool trans_found = false;
 		size_t trans_count = 0;
@@ -257,8 +257,8 @@ void SGRealignVisitor::previsit(StringGraph* pGraph)
 bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	bool graph_changed = false;
-	const int MIN_OVERLAP = 41;
-	const double MAX_ERROR = 0.20;
+	const int MIN_OVERLAP = 39;
+	const double MAX_ERROR = 0.1;
 	static int visited = 0;
 	++visited;
 	if(visited % 50000 == 0)
@@ -267,24 +267,30 @@ bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 	// Explore the neighborhood around this graph for potentially missing overlaps
 	CandidateVector candidates = getMissingCandidates(pGraph, pVertex, MIN_OVERLAP);
 
+	MultiOverlap addedMO(pVertex->getID(), pVertex->getSeq());
+
 	for(size_t i = 0; i < candidates.size(); ++i)
 	{
 		Candidate& c = candidates[i];
 		int numDiff = c.ovr.match.countDifferences(pVertex->getSeq(), c.pEndpoint->getSeq());
 		double error_rate = double(numDiff) / double(c.ovr.match.getMinOverlapLength());
 
-		//std::cout << "Actual:\n";
-		//c.ovr.match.printMatch(pVertex->getSeq(), c.pEndpoint->getSeq());
-		//std::cout << "ER: " << error_rate << "\n";
-		//std::cout << "OVR:\t" << c.ovr << "\n";
-		
+		/*
+		std::cout << "Actual:\n";
+		c.ovr.match.printMatch(pVertex->getSeq(), c.pEndpoint->getSeq());
+		std::cout << "ER: " << error_rate << "\n";
+		*/
+
 		if(error_rate < MAX_ERROR)
 		{
+			//std::cout << "OVR:\t" << c.ovr << "\n";
 			Edge* p_edgeXZ = createEdges(pGraph, c.ovr, true);
 			Edge* p_edgeZX = p_edgeXZ->getTwin();
 			p_edgeXZ->setColor(GC_WHITE);
 			p_edgeZX->setColor(GC_WHITE);
 			graph_changed = true;
+
+			addedMO.add(p_edgeXZ->getEnd()->getSeq(), p_edgeXZ->getOverlap());
 		}
 		/*else
 		{
@@ -294,6 +300,15 @@ bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			std::cout << "OVR:\t" << c.ovr << "\n";
 		}*/
 	}
+
+	/*
+	if(graph_changed)
+	{
+		std::cout << "NEW MO:\n";
+		addedMO.print();
+	}
+	*/
+
 	return graph_changed;
 }
 

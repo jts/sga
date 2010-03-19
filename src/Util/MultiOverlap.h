@@ -59,7 +59,7 @@ class MultiOverlap
 		std::string consensusConflict(double p_error);
 
 		void partitionBest(double p_error, size_t n);
-		std::string consensusTemplate(const StringVec& templateVec);
+		std::string consensusTemplate(const StringVector& templateVec);
 
 		SeqTrie toSeqTrie(double p_error);
 

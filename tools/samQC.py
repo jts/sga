@@ -12,6 +12,7 @@ class ReportType:
 	POS=1
 	COUNT=2
 	QUAL=3
+	LENGTH=4
 
 def reverseComplement(seq):
 	intab = "ACGT"
@@ -43,6 +44,12 @@ def readFasta(filename):
 		out[name] = sequence
 	return out
 
+def getReadCoverage(data, s1):
+	for i, x in enumerate(s1):
+		if i not in data:
+			data[i] = 1
+		else:
+			data[i] += 1
 
 def getErrorPositions(data, s1, s2):
 	for i, x in enumerate(zip(s1, s2)):
@@ -82,18 +89,19 @@ def sangerQual2Score(c):
 	return q
 
 def score2prob(q):
-	p = 1.0 / (1.0 + 10 ** (q / 10.0))
+	p = 10 ** (-q / 10.0)
 	return p
 
 def usage():
-	print 'usage: samQC.py [-p|-c|-s] [-t val] [-n num] [-d filename] [--range chr:start:stop] in.bam|in.sam ref.fasta'
+	print 'usage: samQC.py [-p|-c|-s|-l] [-t val] [-n num] [-d filename] [--range chr:start:stop] in.bam|in.sam ref.fasta'
 	print 'Options:'
 	print '    -p       Output summary of number of base calling errors per read-position'
 	print '    -c       Output summary of number of base calling errors per read'
+	print '    -l       Output summary of read lengths'
 	print '    -q       Output the number of mismatches at each quality symbol'
 	print '    -s       Output general summary (total reads, total error rate, etc)'
-	print '    -t=VAL   Only use the first VAL bases for calculating stats'
-	print '    -n=VAL   Only use the first VAL reads to calculate statistics'
+	print '    -t=INT   Only use the first INT bases of each read'
+	print '    -n=INT   Only use INT reads to calculate statistics'
 	print '    -d=FILE  Plot the result and save the figure in FILE'
 	print '             If FILE is "-" the figure will be displayed immediately'
 	print '    --range  The region of the reference to process stats for, in format chr:start:end'
@@ -110,7 +118,7 @@ trim = None
 drawFile = None
 
 try:
-	opts, args = getopt.gnu_getopt(sys.argv[1:], 'pcshqt:d:n:', ["range="])
+	opts, args = getopt.gnu_getopt(sys.argv[1:], 'pcshqtl:d:n:', ["range="])
 except getopt.GetoptError, err:
 		print str(err)
 		usage()
@@ -123,6 +131,8 @@ for (oflag, oarg) in opts:
 			reportType = ReportType.COUNT
 		if oflag == '-q':
 			reportType = ReportType.QUAL
+		if oflag == '-l':
+			reportType = ReportType.LENGTH
 		if oflag == '-s':
 			bOutputSummary = True
 		if oflag == '-t':
@@ -130,7 +140,7 @@ for (oflag, oarg) in opts:
 		if oflag == '-d':
 			drawFile = oarg
 		if oflag == '-n':
-			limit = int(oarg)
+			numMaxReads = int(oarg)
 		if oflag == '-h':
 			usage()
 			sys.exit(0)
@@ -155,6 +165,8 @@ samfile = pysam.Samfile(samFilename, "rb")
 
 # Intialize the count
 data = dict()
+readCoverage = dict()
+readLength = dict()
 
 nb = 0
 nr = 0
@@ -181,9 +193,11 @@ for alignment in iter:
 		ref_slice = reverseComplement(ref_slice)
 
 	if alignment.seq.find("N") == -1:
-		nb += len(seq_slice)
+		rl = len(seq_slice)
+		nb += rl
 		nr += 1
 	
+		# Parse the stats
 		if reportType == ReportType.POS:
 			getErrorPositions(data, seq_slice, ref_slice)
 		elif reportType == ReportType.COUNT:
@@ -191,11 +205,37 @@ for alignment in iter:
 		elif reportType == ReportType.QUAL:
 			getErrorQual(data, seq_slice, ref_slice, qual_slice)
 
+		# Accumulate read coverage
+		getReadCoverage(readCoverage, seq_slice)
+
+		# Accumulate read length
+		if rl not in readLength:
+			readLength[rl] = 1
+		else:
+			readLength[rl] += 1
+
 # Set up the output and plotting
 plot_x = []
 plot_y = []
 
-if reportType == ReportType.POS or reportType == ReportType.COUNT:
+if reportType == ReportType.POS:
+	so = 0
+	eo = max(data.keys())
+	sum = 0
+	
+	plot_x = [0] * (eo + 1)
+	plot_y = [0] * (eo + 1)
+
+	for i in range(so, eo+1):
+		v1 = data[i] if i in data else 0
+		v2 = readCoverage[i] if i in readCoverage else 1
+		er = float(v1) / float(v2)
+		sum +=  v1
+		print i,v1,v2,er
+		plot_x[i] = i
+		plot_y[i] = er
+
+if reportType == ReportType.COUNT:
 	so = 0
 	eo = max(data.keys())
 	sum = 0
@@ -211,7 +251,21 @@ if reportType == ReportType.POS or reportType == ReportType.COUNT:
 		plot_x[i] = i
 		plot_y[i] = er
 
-elif reportType == ReportType.QUAL:
+if reportType == ReportType.LENGTH:
+	so = 0
+	eo = max(readLength.keys())
+	sum = 0
+	
+	plot_x = [0] * (eo + 1)
+	plot_y = [0] * (eo + 1)
+
+	for i in range(so, eo+1):
+		v = readLength[i] if i in readLength else 0
+		print i,v
+		plot_x[i] = i
+		plot_y[i] = v		
+
+if reportType == ReportType.QUAL:
 	# Sort the dicttion
 	s_keys = data.keys()
 	s_keys.sort()
@@ -229,17 +283,17 @@ elif reportType == ReportType.QUAL:
 			print i, score, prob, prop, lprob, lprop
 			plot_x[idx] = lprop
 			plot_y[idx] = lprob
-	
-if drawFile != None:
-	pylab.scatter(plot_x, plot_y)
-	if drawFile != '-':
-		pylab.savefig(drawFile)
-	else:
-		pylab.show()
 
 if reportType == ReportType.POS and bOutputSummary:
 	ter = float(sum) / float(nb)
 	print "Total reads:", nr
 	print "Total bases:", nb
 	print "Total error rate:", ter
+
+if drawFile != None:
+	pylab.scatter(plot_x, plot_y)
+	if drawFile != '-':
+		pylab.savefig(drawFile)
+	else:
+		pylab.show()
 

@@ -19,4 +19,5 @@ libutil_a_SOURCES = \
 		QualityVector.h QualityVector.cpp \
 		Stats.h Stats.cpp \
 		SeqTrie.h SeqTrie.cpp \
-		SeqDAVG.h SeqDAVG.cpp
+		SeqDAVG.h SeqDAVG.cpp \
+		Quality.h Quality.cpp

@@ -140,6 +140,7 @@ int Match::inverseTranslate(int c) const
 // This returns the minimal matching region, it could possibly be extended
 Match Match::infer(const Match& match_xy, const Match& match_xz)
 {
+	assert(match_xy.coord[1].seqlen == match_xz.coord[1].seqlen);
 	// Calculate the max/min start/end coordinates of coord[0]
 	int s = std::max(match_xy.coord[0].interval.start, match_xz.coord[0].interval.start);
 	int e = std::min(match_xy.coord[0].interval.end, match_xz.coord[0].interval.end);

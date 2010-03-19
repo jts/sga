@@ -37,7 +37,7 @@ typedef std::string Sequence;
 typedef std::string ContigID;
 typedef std::vector<int> IntVec;
 typedef std::vector<double> DoubleVec;
-typedef std::vector<std::string> StringVec;
+typedef std::vector<std::string> StringVector;
 typedef std::vector<Sequence> SequenceVector;
 
 // SeqItem is just an id, sequence pair
@@ -101,7 +101,7 @@ std::string makeKeyValue(std::string key, C value)
 	return ss.str();
 }
 
-StringVec split(std::string in, char delimiter);
+StringVector split(std::string in, char delimiter);
 void splitKeyValue(std::string in, std::string& key, std::string& value);
 std::string getPairID(const std::string& id);
 
@@ -150,6 +150,9 @@ std::string suffix(const std::string& seq, const unsigned int len);
 
 // Count the number of differences between s1 and s2 over the first n chars
 int countDifferences(const std::string& s1, const std::string& s2, size_t n);
+
+// Construct a string encoding the differences between s1 and s2
+std::string getDiffString(const std::string& s1, const std::string& s2);
 
 // Complement a base
 inline char complement(char base)

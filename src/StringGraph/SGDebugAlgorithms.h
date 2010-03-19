@@ -56,8 +56,6 @@ struct SGDebugGraphCompareVisitor
 	void compareErrorRates(StringGraph* pGraph, Vertex* pVertex);
 	void compareTransitiveGroups(StringGraph* pGraph, Vertex* pVertex);
 	
-	StringVec getSourceSequences(Vertex* pVertex, const MultiOverlap& mo);
-
 	// Data
 	StringGraph* m_pCompareGraph;
 	int m_numContained;

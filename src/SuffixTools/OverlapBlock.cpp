@@ -59,7 +59,6 @@ void removeSubMaximalBlocks(OverlapBlockList* pList)
 
 	while(iter != pList->end())
 	{
-
 		OverlapBlockList::iterator next = iter;
 		++next;
 

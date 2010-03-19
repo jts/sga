@@ -19,7 +19,10 @@ struct SeqCoord
 {
 	// constructor
 	SeqCoord() : seqlen(0) { setEmpty(); }
-	SeqCoord(int s, int e, int l) : interval(s, e), seqlen(l) { assert(isValid()); }
+	SeqCoord(int s, int e, int l) : interval(s, e), seqlen(l) 
+	{ 
+		assert(isValid()); 
+	}
 
 	// functions
 	inline bool isLeftExtreme() const

@@ -108,7 +108,7 @@ void assemble()
 	SGPairedOverlapVisitor pairedOverlapVisit;
 	SGPETrustVisitor trustVisit;
 	SGGroupCloseVisitor groupCloseVisit;
-	SGRealignVisitor realignVisitor;
+	SGRealignVisitor realignVisit;
 	SGContainRemoveVisitor containVisit;
 
 	if(!opt::debugFile.empty())
@@ -162,18 +162,25 @@ void assemble()
 	// Pre-assembly graph stats
 	std::cout << "Initial graph stats\n";
 	pGraph->visit(statsVisit);
+	
+	pGraph->visit(trimVisit);
+
+	// Realign reads
+	int numRealign = 1;
+	while(numRealign--)
+		pGraph->visit(realignVisit);
 
 	// Remove containments from the graph
 	pGraph->visit(containVisit);
-	
-	std::cout << "Post-contain removal stats\n";
-	pGraph->visit(statsVisit);
 
-	SGEdgeCutVisitor ecVisit(0.01f);
-	pGraph->visit(ecVisit);
+	//std::cout << "Post-contain removal stats\n";
+	//pGraph->visit(statsVisit);
 
-	std::cout << "Post-edge remove stats\n";
-	pGraph->visit(statsVisit);
+	//SGEdgeCutVisitor ecVisit(0.01f);
+	//pGraph->visit(ecVisit);
+
+	//std::cout << "Post-edge remove stats\n";
+	//pGraph->visit(statsVisit);
 	
 	/*
 	std::cout << "Pairing reads\n";
@@ -220,9 +227,9 @@ void assemble()
 	{
 		std::cout << "\nPerforming island/trim reduction\n";
 		pGraph->visit(islandVisit);
-		pGraph->visit(trimVisit);
-		pGraph->visit(trimVisit);
-		pGraph->visit(trimVisit);
+		int numTrim = 3;
+		while(numTrim-- > 0)
+			pGraph->visit(trimVisit);
 		pGraph->visit(statsVisit);
 	}
 
