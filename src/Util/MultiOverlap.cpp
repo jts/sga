@@ -643,6 +643,26 @@ size_t MultiOverlap::countPartition(int id) const
 	return count;
 }
 
+std::string MultiOverlap::simpleConsensus() const
+{
+	std::string out;
+	for(size_t i = 0; i < m_rootSeq.size(); ++i)
+	{
+		Pileup p = getPileup(i);
+		AlphaCount ac = p.getAlphaCount();
+		char maxBase;
+		BaseCount maxCount;
+		ac.getMax(maxBase, maxCount);
+		BaseCount rootCount = ac.get(m_rootSeq[i]);
+
+		if(rootCount == maxCount)
+			out.push_back(m_rootSeq[i]);
+		else
+			out.push_back(maxBase);
+	}
+	return out;
+}
+
 std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
 {
 	std::string out;

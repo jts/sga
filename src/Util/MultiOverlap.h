@@ -71,6 +71,7 @@ class MultiOverlap
 		double calculateLikelihood() const;
 		double calculateGroupedLikelihood() const;
 		std::string calculateConsensusFromPartition(double p_error);
+		std::string simpleConsensus() const;
 
 		DNADouble calcAlphaProb(size_t idx) const;
 		AlphaCount calcAlphaCount(size_t idx) const;
