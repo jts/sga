@@ -9,6 +9,7 @@
 #ifndef QUALITY_H
 #define QUALITY_H
 
+#include <inttypes.h>
 #include <vector>
 #include <math.h>
 #include <assert.h>

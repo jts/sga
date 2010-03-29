@@ -11,7 +11,7 @@
 
 #include "Util.h"
 #include "Quality.h"
-
+#include <algorithm>
 #include <list>
 
 struct PathScore
