@@ -40,6 +40,7 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "                                       note: this does not discard the pair of the read\n"
 "      -h, --hard-clip=INT              clip all reads to be length INT. In most cases it is better to use\n"
 "                                       the soft clip (quality-trim) option.\n"
+"      -s, --sample=FLOAT               Randomly sample sequences with acceptance probability FLOAT.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -49,11 +50,12 @@ namespace opt
 	static unsigned int qualityTrim = 0;
 	static unsigned int hardClip = 0;
 	static unsigned int minLength = 0;
+	static double sampleFreq = 1.0f;
 	static bool bDiscardUncalled = true;
 	static bool bIlluminaScaling = false;
 }
 
-static const char* shortopts = "o:q:m:h:vi";
+static const char* shortopts = "o:q:m:h:s:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -63,6 +65,7 @@ static const struct option longopts[] = {
 	{ "quality-trim", required_argument, NULL, 'q' },
 	{ "hard-clip",    required_argument, NULL, 'h' },
 	{ "min-length",   required_argument, NULL, 'm' },
+	{ "sample",       required_argument, NULL, 's' },
 	{ "help",         no_argument,       NULL, OPT_HELP },
 	{ "version",      no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -96,6 +99,7 @@ int preprocessMain(int argc, char** argv)
 	std::cerr << "QualTrim: " << opt::qualityTrim << "\n";
 	std::cerr << "HardClip: " << opt::hardClip << "\n";
 	std::cerr << "Min length: " << opt::minLength << "\n";
+	std::cerr << "Sample freq: " << opt::sampleFreq << "\n";
 	std::cerr << "Outfile: " << opt::outFile << "\n";
 	if(opt::bDiscardUncalled)
 		std::cerr << "Discarding sequences with uncalled bases\n";
@@ -140,10 +144,13 @@ int preprocessMain(int argc, char** argv)
 			if(record.seq.length() < opt::minLength)
 				continue;
 
-			record.write(writer);
-
-			++numReadsKept;
-			numBasesKept += record.seq.length();
+			double r = rand() / (RAND_MAX + 1.0f);
+			if(opt::sampleFreq < 1.0f && r < opt::sampleFreq)
+			{
+				record.write(writer);
+				++numReadsKept;
+				numBasesKept += record.seq.length();
+			}
 		}
 	}
 	
@@ -207,6 +214,7 @@ void parsePreprocessOptions(int argc, char** argv)
 			case 'i': arg >> opt::bIlluminaScaling; break;
 			case 'm': arg >> opt::minLength; break;
 			case 'h': arg >> opt::hardClip; break;
+			case 's': arg >> opt::sampleFreq; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:
