@@ -93,6 +93,83 @@ void assemble()
 	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn", opt::minOverlap, true);
 	pGraph->printMemSize();
 
+	// Visitor functors
+	SGTransRedVisitor trVisit;
+	SGGraphStatsVisitor statsVisit;
+	SGRemodelVisitor remodelVisit;
+	SGRealignVisitor realignVisit;
+	SGContainRemoveVisitor containVisit;
+
+	if(!opt::debugFile.empty())
+	{
+		// Pre-assembly graph stats
+		std::cout << "Initial graph stats\n";
+		pGraph->visit(statsVisit);
+
+		SGDebugGraphCompareVisitor* pDebugGraphVisit = new SGDebugGraphCompareVisitor(opt::debugFile);
+		
+		/*
+		pGraph->visit(*pDebugGraphVisit);
+		while(pGraph->visit(realignVisitor))
+			pGraph->visit(*pDebugGraphVisit);
+		SGOverlapWriterVisitor overlapWriter("final-overlaps.ovr");
+		pGraph->visit(overlapWriter);
+		*/
+		//pDebugGraphVisit->m_showMissing = true;
+		pGraph->visit(*pDebugGraphVisit);
+		pGraph->visit(statsVisit);
+		SGFastaVisitor fastaVisitor("corrected.fa");
+		pGraph->visit(fastaVisitor);
+
+		delete pDebugGraphVisit;
+		//return;
+	}
+
+	// Pre-assembly graph stats
+	std::cout << "Initial graph stats\n";
+	pGraph->visit(statsVisit);
+
+	// Remove containments from the graph
+	pGraph->visit(containVisit);
+
+	// Remove transitive edges from the graph
+	std::cout << "Removing transitive edges\n";
+	pGraph->visit(trVisit);
+
+	std::cout << "Pre-remodelling graph stats\n";
+	pGraph->visit(statsVisit);
+
+	// Remodel graph here
+	std::cout << "Remodelling graph\n";
+	pGraph->visit(remodelVisit);
+
+	// Simplify the graph by compacting edges
+	std::cout << "Pre-simplify graph stats\n";
+	pGraph->visit(statsVisit);
+	pGraph->simplify();
+
+	std::cout << "\nFinal graph stats\n";
+	pGraph->visit(statsVisit);
+
+#ifdef VALIDATE
+	VALIDATION_WARNING("SGA/assemble")
+	pGraph->validate();
+#endif
+
+	// Write the results
+	pGraph->writeDot("final.dot");
+	SGFastaVisitor av(opt::outFile);
+	pGraph->visit(av);
+
+	delete pGraph;
+}
+
+void assemble2()
+{
+	Timer t("sga assemble");
+	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn", opt::minOverlap, true);
+	pGraph->printMemSize();
+
 	//pGraph->validate();
 	//pGraph->writeDot("before.dot");
 	

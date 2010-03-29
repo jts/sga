@@ -75,6 +75,15 @@ struct SGContainRemoveVisitor
 	void postvisit(StringGraph* pGraph);
 };
 
+// Remodel the graph to infer missing edges or remove erroneous edges
+struct SGRemodelVisitor
+{
+	SGRemodelVisitor() {}
+	void previsit(StringGraph* pGraph);
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*);
+};
+
 // Infer missing edges in the graph
 struct SGRealignVisitor
 {

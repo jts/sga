@@ -16,8 +16,9 @@
 #include "GraphCommon.h"
 #include "Vertex.h"
 #include "Edge.h"
-#include <ext/hash_map>
+#include <tr1/unordered_map>
 
+/*
 namespace __gnu_cxx                                                                              
 {                                                                                             
   template<> struct hash< std::string >                                                       
@@ -28,12 +29,13 @@ namespace __gnu_cxx
     }                                                                                         
   };                                                                                          
 }
-
+*/
 //
 // Typedefs
 //
 //typedef std::map<VertexID, Vertex*> VertexPtrMap;
-typedef __gnu_cxx::hash_map<VertexID, Vertex*> VertexPtrMap;
+//typedef __gnu_cxx::hash_map<VertexID, Vertex*> VertexPtrMap;
+typedef std::tr1::unordered_map<VertexID, Vertex*> VertexPtrMap;
 typedef VertexPtrMap::iterator VertexPtrMapIter;
 typedef VertexPtrMap::const_iterator VertexPtrMapConstIter;
 

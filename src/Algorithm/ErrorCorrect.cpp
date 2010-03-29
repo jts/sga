@@ -85,7 +85,7 @@ std::string ErrorCorrect::trieCorrect(Vertex* pVertex)
 		}
 	}
 	double cutoff = -40;
-	if(left_psv.empty() && right_psv.empty() || (leftBestScore < cutoff && rightBestScore < cutoff))
+	if( (left_psv.empty() && right_psv.empty()) || (leftBestScore < cutoff && rightBestScore < cutoff))
 	{
 		consensus = original;
 	}

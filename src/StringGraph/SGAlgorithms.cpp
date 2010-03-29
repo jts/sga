@@ -245,6 +245,37 @@ void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
 	pGraph->sweepVertices(GC_BLACK);
 	pGraph->setContainmentFlag(false);
 }
+
+//
+// SGRemodelVisitor - Remodel the graph to infer missing edges or remove erroneous edges
+//
+void SGRemodelVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+}
+
+bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+	bool graph_changed = false;
+	(void)pGraph;
+	for(size_t idx = 0; idx < ED_COUNT; idx++)
+	{
+		EdgeDir dir = EDGE_DIRECTIONS[idx];
+		if(pVertex->countEdges(dir) > 1)
+		{
+			MultiOverlap mo = pVertex->getMultiOverlap();
+			mo.print();
+		}
+	}
+	return graph_changed;
+}
+
+//
+void SGRemodelVisitor::postvisit(StringGraph*)
+{
+}
+
+
 //
 // SGRealignVisitor - Infer locations of potentially
 // missing edges and add them to the graph
