@@ -7,45 +7,44 @@
 // ErrorCorrect - Methods to identify and correct read errors
 //
 #include "ErrorCorrect.h"
+#include "SGAlgorithms.h"
 
-// Perform error correction on the given vertex
-std::string ErrorCorrect::correctVertex(Vertex* pVertex, size_t /*simpleCutoff*/)
+// Correct the sequence of a vertex in a transitively reduced string graph
+std::string ErrorCorrect::correctVertex(Vertex* pVertex, size_t simpleCutoff, double p_error)
 {
-	MultiOverlap mo = pVertex->getMultiOverlap();
-	if(mo.isConflicted(3))
-		return trieCorrect(pVertex);
+	// Construct a multioverlap containing all the reads that have an overlap to
+	// this vertex
+	MultiOverlap mo = SGAlgorithms::makeExtendedMultiOverlap(pVertex);
+	if(mo.isConflicted(simpleCutoff))
+	{
+		SeqTrie leftTrie;
+		SeqTrie rightTrie;
+		SGAlgorithms::makeExtendedSeqTries(pVertex, p_error, &leftTrie, &rightTrie);
+		return trieCorrect(pVertex, p_error, leftTrie, rightTrie);
+	}
 	else
-		return mo.calculateConsensusFromPartition(0.01);
-}
-
-// simpleCorrect calls a straightforward consensus sequence
-// based on all the reads overlapping pVertex
-std::string ErrorCorrect::simpleCorrect(Vertex* pVertex)
-{
-	MultiOverlap mo = pVertex->getMultiOverlap();
-	return mo.calculateConsensusFromPartition(0.01);
+	{
+		return mo.calculateConsensusFromPartition(p_error);
+	}
 }
 
 // trieCorrect builds tries from the overlapping reads
 // to attempt to account for overcollapsed repeats 
-std::string ErrorCorrect::trieCorrect(Vertex* pVertex)
+std::string ErrorCorrect::trieCorrect(Vertex* pVertex, double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie)
 {
 	std::string consensus;
-	SeqTrie leftTrie;
-	SeqTrie rightTrie;
-	pVertex->fillTries(0.01, &leftTrie, &rightTrie);
 	
 	// Re-map low quality branches in the tries
-	leftTrie.remodel(2, log(0.01));
-	rightTrie.remodel(2, log(0.01));
+	leftTrie.remodel(2, log(p_error));
+	rightTrie.remodel(2, log(p_error));
 
 	std::string original = pVertex->getSeq();
 
 	PathScoreVector left_psv;
 	PathScoreVector right_psv;
 
-	leftTrie.score(reverse(original), 0.01, left_psv);
-	rightTrie.score(original, 0.01, right_psv);
+	leftTrie.score(original, p_error, left_psv);
+	rightTrie.score(reverse(original), p_error, right_psv);
 
 	size_t leftBestIdx = 0;
 	size_t rightBestIdx = 0;
@@ -55,7 +54,6 @@ std::string ErrorCorrect::trieCorrect(Vertex* pVertex)
 	std::cout << "\nLEFTPSV:\n";
 	for(size_t i = 0; i < left_psv.size(); ++i)
 	{
-		left_psv[i].reverse();
 		left_psv[i].print();
 
 		std::string path_str = left_psv[i].path_corrected;
@@ -72,6 +70,7 @@ std::string ErrorCorrect::trieCorrect(Vertex* pVertex)
 	std::cout << "\nRIGHTPSV:\n";
 	for(size_t i = 0; i < right_psv.size(); ++i)
 	{
+		right_psv[i].reverse();
 		right_psv[i].print();
 		std::string path_str = right_psv[i].path_corrected;
 

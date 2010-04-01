@@ -85,6 +85,7 @@ class MultiOverlap
 
 		// IO
 		void print(int default_padding = DEFAULT_PADDING, int max_overhang = DEFAULT_MAX_OVERHANG);
+		void printMasked();
 		void printPileup();
 		void printGroups();
 

@@ -15,15 +15,11 @@
 namespace ErrorCorrect
 {
 	// Perform error correction on the given vertex
-	std::string correctVertex(Vertex* pVertex, size_t simpleCutoff);
-
-	// simpleCorrect calls a straightforward consensus sequence
-	// based on all the reads overlapping pVertex
-	std::string simpleCorrect(Vertex* pVertex);
+	std::string correctVertex(Vertex* pVertex, size_t simpleCutoff, double p_error);
 
 	// trieCorrect builds tries from the overlapping reads
 	// to attempt to account for overcollapsed repeats 
-	std::string trieCorrect(Vertex* pVertex);
+	std::string trieCorrect(Vertex* pVertex, double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie);
 }
 
 #endif

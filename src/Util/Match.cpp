@@ -156,8 +156,7 @@ Match Match::infer(const Match& match_xy, const Match& match_xz)
 
 // Given two matches, match_xy and match_xz, return
 // true if the match coordinates intersect. Assumes
-// that the matches have a common basis which is 
-// coord[0]
+// that the matches have a common basis which is coord[0]
 bool Match::doMatchesIntersect(const Match& match_xy, const Match& match_xz)
 {
 	int s = std::max(match_xy.coord[0].interval.start, match_xz.coord[0].interval.start);

@@ -8,36 +8,131 @@
 //
 #include "SGAlgorithms.h"
 #include "SGUtil.h"
+#include "ErrorCorrect.h"
 
 // Infer an overlap from two edges
 // The input edges are between X->Y Y->Z
 // and the returned overlap is X->Z
-Overlap SGAlgorithms::inferTransitiveOverlap(const Edge* pXY, const Edge* pYZ)
+Overlap SGAlgorithms::inferTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ)
 {
 	// Construct the match
-	Match match_yx = pXY->getMatch();
+	Match match_yx = ovrXY.match;
 	match_yx.swap(); 
-	Match match_yz = pYZ->getMatch();
+	Match match_yz = ovrYZ.match;
 
 	// Infer the match_ij based match_i and match_j
 	Match match_xz = Match::infer(match_yx, match_yz);
 	match_xz.expand();
 
 	// Convert the match to an overlap
-	Overlap ovr(pXY->getStartID(), pYZ->getEndID(), match_xz);
+	Overlap ovr(ovrXY.id[0], ovrYZ.id[1], match_xz);
 	return ovr;
 }
 
 // Return true if XZ has an overlap
-bool SGAlgorithms::hasTransitiveOverlap(const Edge* pXY, const Edge* pYZ)
+bool SGAlgorithms::hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ)
 {
 	// ensure the y component is the first one in the seqcoord
 	// as the match algorithms expect the common basis to be the first
 	// component
-	Match match_yx = pXY->getMatch();
+	Match match_yx = ovrXY.match;
 	match_yx.swap(); 
-	Match match_yz = pYZ->getMatch();
+	Match match_yz = ovrYZ.match;
 	return Match::doMatchesIntersect(match_yx, match_yz);
+}
+
+// Construct an extended multioverlap for a vertex
+MultiOverlap SGAlgorithms::makeExtendedMultiOverlap(const Vertex* pVertex)
+{
+	VertexOverlapSet overlapSet;
+	findOverlapSet(pVertex, overlapSet);
+
+	MultiOverlap mo(pVertex->getID(), pVertex->getSeq());
+	for(VertexOverlapSet::const_iterator iter = overlapSet.begin();
+	    iter != overlapSet.end(); ++iter)
+	{
+		mo.add(iter->pVertex->getSeq(), iter->ovr);
+	}
+	return mo;
+}
+
+//
+void SGAlgorithms::makeExtendedSeqTries(const Vertex* pVertex, double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie)
+{
+	double lp = log(p_error);
+	VertexOverlapSet overlapSet;
+	findOverlapSet(pVertex, overlapSet);
+
+	for(VertexOverlapSet::const_iterator iter = overlapSet.begin();
+	    iter != overlapSet.end(); ++iter)
+	{
+		// Coord[0] of the match is wrt pVertex, coord[1] is the other read
+		std::string overlapped = iter->ovr.match.coord[1].getSubstring(iter->pVertex->getSeq());
+		if(iter->ovr.match.isRC())
+			overlapped = reverseComplement(overlapped);
+
+		if(iter->ovr.match.coord[0].isRightExtreme())
+		{
+			overlapped = reverse(overlapped);
+			pRightTrie->insert(overlapped, lp);
+		}
+		else
+		{
+			assert(iter->ovr.match.coord[0].isLeftExtreme());
+			pLeftTrie->insert(overlapped, lp);
+		}
+	}		
+}
+
+
+// Get the complete set of overlaps for the given vertex
+void SGAlgorithms::findOverlapSet(const Vertex* pVertex, VertexOverlapSet& VOSet)
+{
+	EdgePtrVec edges = pVertex->getEdges();
+
+	// Add the primary overlaps to the map, and all the nodes reachable from the primaries
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Edge* pEdge = edges[i];
+		Vertex* pEnd = pEdge->getEnd();
+		EdgeDir transDir = pEdge->getTransitiveDir();
+		Overlap ovr = pEdge->getOverlap();
+		VertexOverlapPair pair = {pEnd, ovr};
+		VOSet.insert(pair);
+
+		// Recursively add nodes attached to pEnd
+		SGAlgorithms::_discoverOverlaps(pVertex, pEnd, transDir, ovr, VOSet);
+	}
+}
+
+// Find overlaps to vertex X via the edges of vertex Y
+void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const Vertex* pY, EdgeDir dir, 
+                                    const Overlap& ovrXY, VertexOverlapSet& outSet)
+{
+	EdgePtrVec edges = pY->getEdges(dir);
+
+	// 
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Edge* pYZ = edges[i];
+		Overlap ovrYZ = pYZ->getOverlap();
+		Vertex* pZ = pYZ->getEnd();
+		EdgeDir dirZ = pYZ->getTransitiveDir();
+	
+		// Check that this vertex actually overlaps pX
+		if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+		{
+			Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+			VertexOverlapPair pair = { pZ, ovrXZ };
+			std::pair<VertexOverlapSet::iterator, bool> ret = outSet.insert(pair);
+
+			if(ret.second)
+			{
+				// The pair was actually inserted, recursively add neighbors
+				_discoverOverlaps(pX, pZ, dirZ, ovrXZ, outSet);
+			}
+		}
+	}
 }
 
 //
@@ -138,8 +233,6 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				}
 			}
 		}
-		
-		WARN_ONCE("Transitive Reduction stage 2 disabled")
 		
 		// Stage 2
 		for(size_t i = 0; i < edges.size(); ++i)
@@ -264,7 +357,39 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 		if(pVertex->countEdges(dir) > 1)
 		{
 			MultiOverlap mo = pVertex->getMultiOverlap();
+			std::cout << "Primary MO: \n";
 			mo.print();
+
+			std::cout << "\nPrimary masked\n";
+			mo.printMasked();
+			
+			EdgePtrVec edges = pVertex->getEdges(dir);
+			for(size_t i = 0; i < edges.size(); ++i)
+			{
+				Edge* pXY = edges[i];
+				Vertex* pY = pXY->getEnd();
+				EdgeDir forwardDir = pXY->getTransitiveDir();
+				EdgeDir backDir = !forwardDir;
+
+				EdgePtrVec y_fwd_edges = pY->getEdges(forwardDir);
+				EdgePtrVec y_back_edges = pY->getEdges(backDir);
+				std::cout << pY->getID() << " forward edges: ";
+				for(size_t j = 0; j < y_fwd_edges.size(); ++j)
+					std::cout << y_fwd_edges[j]->getEndID() << ",";
+				std::cout << "\n";
+				
+				std::cout << pY->getID() << " back edges: ";
+				for(size_t j = 0; j < y_back_edges.size(); ++j)
+					std::cout << y_back_edges[j]->getEndID() << ",";
+				std::cout << "\n";
+				std::cout << pY->getID() << " label " << pXY->getLabel() << "\n";
+			}
+
+			MultiOverlap extendedMO = SGAlgorithms::makeExtendedMultiOverlap(pVertex);
+			std::cout << "\nExtended MO: \n";
+			extendedMO.printMasked();
+
+			ErrorCorrect::correctVertex(pVertex, 3, 0.01);
 		}
 	}
 	return graph_changed;
@@ -367,9 +492,12 @@ SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringG
 			if(pYZ->getEnd()->getColor() != GC_BLACK)
 			{
 				// Infer the overlap object from the edges
-				if(SGAlgorithms::hasTransitiveOverlap(pXY, pYZ))
+				Overlap ovrXY = pXY->getOverlap();
+				Overlap ovrYZ = pYZ->getOverlap();
+
+				if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
 				{
-					Overlap ovr_xz = SGAlgorithms::inferTransitiveOverlap(pXY, pYZ);
+					Overlap ovr_xz = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
 					if(ovr_xz.match.getMinOverlapLength() >= minOverlap)
 					{
 						out.push_back(Candidate(pYZ->getEnd(), ovr_xz));

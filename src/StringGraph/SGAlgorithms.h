@@ -14,13 +14,49 @@
 
 namespace SGAlgorithms
 {
+	//
+	// Overlap discovery algorithms
+	//
+	struct VertexOverlapPair
+	{
+		Vertex* pVertex;
+		Overlap ovr;
+
+		friend bool operator<(const VertexOverlapPair& a, const VertexOverlapPair& b)
+		{
+			return a.pVertex->getID() < b.pVertex->getID();
+		}
+	};
+
+	typedef std::set<VertexOverlapPair> VertexOverlapSet;
+
+	// Discover the complete set of overlaps for pVertex
+	void findOverlapSet(const Vertex* pVertex, VertexOverlapSet& VOSet);
+
+	// recursive function to discover overlaps of pX from pY
+	void _discoverOverlaps(const Vertex* pX, const Vertex* pY, EdgeDir dir, const Overlap& ovrXY, 
+	                      VertexOverlapSet& outSet);
+
+	//
+	// Overlap inference algorithms
+	//
 	// Infer an overlap from two edges
 	// The input edges are between X->Y Y->Z
 	// and the returned overlap is of the form X->Z
-	Overlap inferTransitiveOverlap(const Edge* pXY, const Edge* pYZ);
+	Overlap inferTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);
 
 	// Returns true if XZ has a non-zero length overlap
-	bool hasTransitiveOverlap(const Edge* pXY, const Edge* pYZ);
+	bool hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);
+
+	//
+	// Construct an extended multioverlap for a vertex
+	//
+	MultiOverlap makeExtendedMultiOverlap(const Vertex* pVertex);
+
+	//
+	// Construct SeqTries from the extended overlap set
+	//
+	void makeExtendedSeqTries(const Vertex* pVertex, double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie);
 };
 
 // Visit each node, writing it to a file as a fasta record

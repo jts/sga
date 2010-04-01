@@ -939,6 +939,22 @@ PileupVector MultiOverlap::getPartitionedPileup(int idx, int num_parts) const
 	return pv;
 }
 
+// Print the MultiOverlap groups specified by the IntVec to stdout
+void MultiOverlap::printGroups()
+{
+	for(int i = 0; i <= 1; ++i)
+	{
+		MultiOverlap mo_group(m_rootID, m_rootSeq);
+		for(size_t j = 0; j < m_overlaps.size(); ++j)
+		{
+			const MOData& curr = m_overlaps[j];
+			if(curr.partitionID == i)
+				mo_group.add(curr);
+		}
+		std::cout << "MO GROUP " << i << "\n";
+		mo_group.print();
+	}
+}
 
 // Print the MultiOverlap to stdout
 void MultiOverlap::print(int default_padding, int max_overhang)
@@ -960,24 +976,6 @@ void MultiOverlap::print(int default_padding, int max_overhang)
 				 curr.score, curr.seq, curr.ovr.id[1].c_str());
 	}	
 }
-
-// Print the MultiOverlap groups specified by the IntVec to stdout
-void MultiOverlap::printGroups()
-{
-	for(int i = 0; i <= 1; ++i)
-	{
-		MultiOverlap mo_group(m_rootID, m_rootSeq);
-		for(size_t j = 0; j < m_overlaps.size(); ++j)
-		{
-			const MOData& curr = m_overlaps[j];
-			if(curr.partitionID == i)
-				mo_group.add(curr);
-		}
-		std::cout << "MO GROUP " << i << "\n";
-		mo_group.print();
-	}
-}
-
 
 // Print a single row of a multi-overlap to stdout
 void MultiOverlap::printRow(int default_padding, int max_overhang, 
@@ -1006,6 +1004,27 @@ void MultiOverlap::printRow(int default_padding, int max_overhang,
 	std::string padding_str(padding, ' ');
 	std::string outstr = padding_str + leader + clipped + trailer;
 	printf("%s\t%d\t%d\t%lf\tID:%s\n", outstr.c_str(), overlap_len, pid, score, id.c_str());
+}
+
+void MultiOverlap::printMasked()
+{
+	printf("ROOT\t%s\t%s\n", m_rootSeq.c_str(), m_rootID.c_str());
+
+	for(size_t j = 0; j < m_overlaps.size(); ++j)
+	{
+		std::string out;
+		for(size_t i = 0; i < m_rootSeq.length(); ++i)
+		{
+			char b = getMODBase(m_overlaps[j], i);
+			if(b == '\0')
+				out.push_back('.');
+			else if(b == m_rootSeq[i])
+				out.push_back('-');
+			else
+				out.push_back(b);
+		}
+		printf("OVRL\t%s\t%s\n", out.c_str(), m_overlaps[j].ovr.id[1].c_str());
+	}
 }
 
 // Print the MultiOverlap horizontally, in a pileup format

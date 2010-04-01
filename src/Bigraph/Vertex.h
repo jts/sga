@@ -108,8 +108,8 @@ class Vertex
 
 		Edge* getEdge(const EdgeDesc& ed);
 		EdgePtrVec findEdgesTo(VertexID id);
-		EdgePtrVec getEdges(EdgeDir dir);
-		EdgePtrVec getEdges();
+		EdgePtrVec getEdges(EdgeDir dir) const;
+		EdgePtrVec getEdges() const;
 		EdgePtrVecIter findEdge(const EdgeDesc& ed);
 		EdgePtrVecConstIter findEdge(const EdgeDesc& ed) const;
 

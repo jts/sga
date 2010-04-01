@@ -11,7 +11,6 @@
 #include "TransitiveGroup.h"
 #include <algorithm>
 
-
 Vertex::~Vertex()
 {
 	EdgePtrVecIter iter = m_edges.begin();
@@ -558,7 +557,7 @@ void Vertex::clearPairVertex()
 // Get the edges in a particular direction
 // This preserves the ordering of the edges
 //
-EdgePtrVec Vertex::getEdges(EdgeDir dir)
+EdgePtrVec Vertex::getEdges(EdgeDir dir) const
 {
 	EdgePtrVecConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
@@ -572,7 +571,7 @@ EdgePtrVec Vertex::getEdges(EdgeDir dir)
 
 
 // Get the edges
-EdgePtrVec Vertex::getEdges()
+EdgePtrVec Vertex::getEdges() const
 {
 	EdgePtrVecConstIter iter = m_edges.begin();
 	EdgePtrVec outEdges;
