@@ -9,6 +9,8 @@
 #include "ErrorCorrect.h"
 #include "SGAlgorithms.h"
 
+#define VERBOSE_CORRECT 0
+
 // Correct the sequence of a vertex in a transitively reduced string graph
 std::string ErrorCorrect::correctVertex(Vertex* pVertex, size_t simpleCutoff, double p_error)
 {
@@ -51,15 +53,19 @@ std::string ErrorCorrect::trieCorrect(Vertex* pVertex, double p_error, SeqTrie& 
 	double leftBestScore = -std::numeric_limits<double>::max();
 	double rightBestScore = -std::numeric_limits<double>::max();
 
+#if VERBOSE_CORRECT
 	std::cout << "\nLEFTPSV:\n";
+#endif
+
 	for(size_t i = 0; i < left_psv.size(); ++i)
 	{
-		left_psv[i].print();
 
 		std::string path_str = left_psv[i].path_corrected;
 		std::string ods = getDiffString(path_str, original);
+#if VERBOSE_CORRECT
+		left_psv[i].print();
 		printf("CDO: %s\n", ods.c_str());
-
+#endif
 		if(left_psv[i].path_score > leftBestScore)
 		{
 			leftBestScore = left_psv[i].path_score;
@@ -67,22 +73,29 @@ std::string ErrorCorrect::trieCorrect(Vertex* pVertex, double p_error, SeqTrie& 
 		}
 	}
 
+#if VERBOSE_CORRECT
 	std::cout << "\nRIGHTPSV:\n";
+#endif
+
 	for(size_t i = 0; i < right_psv.size(); ++i)
 	{
 		right_psv[i].reverse();
-		right_psv[i].print();
 		std::string path_str = right_psv[i].path_corrected;
 
 		std::string ods = getDiffString(path_str, original);
-		printf("CDO: %s\n", ods.c_str());
 
+
+#if VERBOSE_CORRECT
+		right_psv[i].print();
+		printf("CDO: %s\n", ods.c_str());
+#endif
 		if(right_psv[i].path_score > rightBestScore)
 		{
 			rightBestScore = right_psv[i].path_score;
 			rightBestIdx = i;
 		}
 	}
+
 	double cutoff = -40;
 	if( (left_psv.empty() && right_psv.empty()) || (leftBestScore < cutoff && rightBestScore < cutoff))
 	{
@@ -99,11 +112,14 @@ std::string ErrorCorrect::trieCorrect(Vertex* pVertex, double p_error, SeqTrie& 
 	else
 	{
 		consensus.reserve(original.size());
-		std::cout << "\nComputing consensus from paths\n";
 		PathScore& left = left_psv[leftBestIdx];
 		PathScore& right = right_psv[rightBestIdx];
+
+#if VERBOSE_CORRECT
+		std::cout << "\nComputing consensus from paths\n";
 		left.print();
 		right.print();
+#endif
 
 		// Compute the combined consensus
 		for(size_t i = 0; i < original.size(); ++i)

@@ -253,7 +253,7 @@ void Bigraph::simplify(EdgeDir dir)
 				}
 			}
 
-			if(proc_count++ % 20000 == 0)
+			if(proc_count++ % 200000 == 0)
 			{
 				printf("processed_count\t%d\tsimplify_time\t%lf\n", proc_count, pTimer->getElapsedWallTime());
 				pTimer->reset();

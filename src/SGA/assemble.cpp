@@ -34,13 +34,13 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"      -o, --out=FILE                   write the contigs to FILE (default: contigs.fa)"
-"      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter"
-"                                       the overlap set so that the overlap step only needs to be run once."
+"      -o, --out=FILE                   write the contigs to FILE (default: contigs.fa)\n"
+"      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
+"                                       the overlap set so that the overlap step only needs to be run once.\n"
 "      -p, --prefix=FILE                use PREFIX instead of the basename of READSFILE\n"
 "      -b, --bubble                     perform bubble removal\n"
 "      -t, --trim                       trim terminal branches\n"
-"      -c, --close                      perform transitive closure\n"
+"      -c, --correct                    error correct reads and write to correctedReads.fa\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -51,7 +51,8 @@ namespace opt
 	static std::string outFile;
 	static std::string debugFile;
 	static unsigned int minOverlap;
-	static bool bTransClose;
+	static bool bCorrectReads;
+	static bool bRemodelGraph;
 	static bool bTrim;
 	static bool bBubble;
 }
@@ -68,7 +69,8 @@ static const struct option longopts[] = {
 	{ "debug-file",  required_argument, NULL, 'd' },
 	{ "bubble",      no_argument,       NULL, 'b' },
 	{ "trim",        no_argument,       NULL, 't' },
-	{ "close",       no_argument,       NULL, 'c' },	
+	{ "correct",     no_argument,       NULL, 'c' },	
+	{ "remodel",     no_argument,       NULL, 'r' },	
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -98,7 +100,9 @@ void assemble()
 	SGGraphStatsVisitor statsVisit;
 	SGRemodelVisitor remodelVisit;
 	SGRealignVisitor realignVisit;
+	SGTrimVisitor trimVisit;
 	SGContainRemoveVisitor containVisit;
+	SGErrorCorrectVisitor errorCorrectVisit;
 
 	if(!opt::debugFile.empty())
 	{
@@ -118,9 +122,6 @@ void assemble()
 		//pDebugGraphVisit->m_showMissing = true;
 		pGraph->visit(*pDebugGraphVisit);
 		pGraph->visit(statsVisit);
-		SGFastaVisitor fastaVisitor("corrected.fa");
-		pGraph->visit(fastaVisitor);
-
 		delete pDebugGraphVisit;
 		//return;
 	}
@@ -139,9 +140,29 @@ void assemble()
 	std::cout << "Pre-remodelling graph stats\n";
 	pGraph->visit(statsVisit);
 
-	// Remodel graph here
-	std::cout << "Remodelling graph\n";
-	pGraph->visit(remodelVisit);
+	if(opt::bCorrectReads)
+	{
+		std::cout << "Correcting reads\n";
+		pGraph->visit(errorCorrectVisit);
+
+		std::cout << "Writing corrected reads\n";
+		SGFastaVisitor correctedVisitor("correctedReads.fa");
+		pGraph->visit(correctedVisitor);
+	}
+
+	if(opt::bRemodelGraph)
+	{
+		// Remodel graph
+		std::cout << "Remodelling graph\n";
+		pGraph->visit(remodelVisit);
+	}
+
+	if(opt::bTrim)
+	{
+		WARN_ONCE("USING NAIVE TRIMMING");
+		std::cout << "Trimming bad vertices\n"; 
+		pGraph->visit(trimVisit);
+	}
 
 	// Simplify the graph by compacting edges
 	std::cout << "Pre-simplify graph stats\n";
@@ -177,14 +198,12 @@ void assemble2()
 	SGTrimVisitor trimVisit;
 	SGIslandVisitor islandVisit;
 	SGTransRedVisitor trVisit;
-	SGTCVisitor tcVisit;
 	SGBubbleVisitor bubbleVisit;
 	SGGraphStatsVisitor statsVisit;
 	SGDebugEdgeClassificationVisitor edgeClassVisit;
 	SGVertexPairingVisitor pairingVisit;
 	SGPairedOverlapVisitor pairedOverlapVisit;
 	SGPETrustVisitor trustVisit;
-	SGGroupCloseVisitor groupCloseVisit;
 	SGRealignVisitor realignVisit;
 	SGContainRemoveVisitor containVisit;
 
@@ -290,16 +309,6 @@ void assemble2()
 		pGraph->visit(statsVisit);
 	}
 */
-	if(opt::bTransClose)
-	{
-		pGraph->visit(edgeClassVisit);
-		std::cout << "\nPerforming transitive closure\n";
-		int max_tc = 10;
-		while(pGraph->visit(tcVisit) && --max_tc > 0);
-		pGraph->visit(statsVisit);
-		pGraph->visit(edgeClassVisit);
-	}
-
 	if(opt::bTrim)
 	{
 		std::cout << "\nPerforming island/trim reduction\n";
@@ -378,7 +387,8 @@ void parseAssembleOptions(int argc, char** argv)
 			case 'v': opt::verbose++; break;
 			case 'b': opt::bBubble = true; break;
             case 't': opt::bTrim = true; break;
-			case 'c': opt::bTransClose = true; break;
+			case 'c': opt::bCorrectReads = true; break;
+			case 'r': opt::bRemodelGraph = true; break;
 			case OPT_HELP:
 				std::cout << ASSEMBLE_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);

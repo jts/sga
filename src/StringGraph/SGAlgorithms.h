@@ -120,6 +120,15 @@ struct SGRemodelVisitor
 	void postvisit(StringGraph*);
 };
 
+// 
+struct SGErrorCorrectVisitor
+{
+	SGErrorCorrectVisitor() {}
+	void previsit(StringGraph*) {}
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*) {}
+};
+
 // Infer missing edges in the graph
 struct SGRealignVisitor
 {
@@ -137,30 +146,6 @@ struct SGRealignVisitor
 	void postvisit(StringGraph*);
 
 	CandidateVector getMissingCandidates(StringGraph* pGraph, Vertex* pVertex, int minOverlap) const;
-};
-
-// Remove edges from the graph that have an error rate higher than the parameter
-struct SGEdgeCutVisitor
-{
-	SGEdgeCutVisitor(double er) : m_errorRate(er) {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-	double m_errorRate;
-};
-
-
-// Close transitive groups by inferring missing edges
-struct SGGroupCloseVisitor
-{
-	SGGroupCloseVisitor() {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	int numGroupsClosed;
-	int numGroupsOpen;
-	int numEdgesRejected;
 };
 
 // Detect whether vertices are dead ends and mark them for removal
@@ -203,19 +188,6 @@ struct SGBubbleVisitor
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*);
 	int num_bubbles;
-};
-
-// Perform a transitive closure step
-// by inferring missing edges in the graph 
-struct SGTCVisitor
-{
-	SGTCVisitor() {}
-	void previsit(StringGraph* pGraph);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
-
-	int ngb;
-	int nbb;
 };
 
 // Compile summary statistics for the graph
