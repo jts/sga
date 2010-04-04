@@ -126,6 +126,43 @@ void Vertex::makeUnique()
 	m_edges.swap(uniqueVec);
 }
 
+// Ensure each edge of the vertex is unique, assumes all vertices in the graph
+// are initially colored white
+void Vertex::makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec)
+{
+	for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+	{
+		Edge* pEdge = *iter;
+		if(pEdge->getDir() == dir)
+		{
+			Vertex* pY = pEdge->getEnd();
+			if(pY->getColor() == GC_BLACK)
+			{
+				std::cerr << getID() << " has a duplicate edge to " << pEdge->getEndID() << " in direction " << dir << "\n";
+				// This vertex is the endpoint of some other (longer) edge
+				// Delete the edge and remove it from the twin
+				Edge* pTwin = pEdge->getTwin();
+				Vertex* pPartner = pEdge->getEnd();
+				pPartner->removeEdge(pTwin);
+				delete pEdge;
+				pEdge = NULL;
+				delete pTwin;
+				pTwin = NULL;
+			}
+			else
+			{
+				assert(pY->getColor() == GC_WHITE);
+				pY->setColor(GC_BLACK);
+				uniqueVec.push_back(*iter);
+			}
+		}
+	}
+
+	for(EdgePtrVecIter iter = uniqueVec.begin(); iter != uniqueVec.end(); ++iter)
+		(*iter)->getEnd()->setColor(GC_WHITE);
+}
+
+
 // Compute the transitive groups for this vertex
 // A transitive group is a set of edges s.t. one
 // edge is irreducible and the other edges in the set
@@ -375,39 +412,6 @@ QualityVector Vertex::getPriorQuality() const
 	}
 	return out;
 }
-
-
-// Ensure each edge of the vertex is unique
-void Vertex::makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec)
-{
-	std::set<VertexID> idSet;
-	for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
-	{
-		Edge* pEdge = *iter;
-		if(pEdge->getDir() == dir)
-		{
-			std::pair<std::set<VertexID>::iterator, bool> result = idSet.insert(pEdge->getEndID());
-			if(result.second == true)
-			{
-				uniqueVec.push_back(*iter);
-			}
-			else
-			{
-				std::cerr << getID() << " has a duplicate edge to " << pEdge->getEndID() << " in direction " << dir << "\n";
-				
-				// Delete the edge and remove it from the twin
-				Edge* pTwin = pEdge->getTwin();
-				Vertex* pPartner = pEdge->getEnd();
-				pPartner->removeEdge(pTwin);
-				delete pEdge;
-				pEdge = NULL;
-				delete pTwin;
-				pTwin = NULL;
-			}
-		}
-	}
-}
-
 
 // Add an edge
 void Vertex::addEdge(Edge* ep)

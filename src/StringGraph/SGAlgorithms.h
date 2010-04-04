@@ -165,7 +165,7 @@ struct SGTrimVisitor
 struct SGDuplicateVisitor
 {
 	SGDuplicateVisitor() {}
-	void previsit(StringGraph*) {}
+	void previsit(StringGraph*);
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*) {}
 };

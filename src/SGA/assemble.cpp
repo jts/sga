@@ -131,6 +131,7 @@ void assemble()
 	pGraph->visit(statsVisit);
 
 	// Remove containments from the graph
+	std::cout << "Removing contained vertices\n";
 	pGraph->visit(containVisit);
 
 	// Remove transitive edges from the graph

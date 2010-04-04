@@ -583,6 +583,11 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 //
 // SGDuplicateVisitor - Detect and remove duplicate edges
 //
+void SGDuplicateVisitor::previsit(StringGraph* pGraph)
+{
+	pGraph->setColors(GC_WHITE);
+}
+
 bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
 	pVertex->makeUnique();
