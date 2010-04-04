@@ -405,8 +405,14 @@ void SGRemodelVisitor::postvisit(StringGraph*)
 //
 bool SGErrorCorrectVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
+	static size_t numCorrected = 0;
+
+	if(numCorrected > 0 && numCorrected % 50000 == 0)
+		std::cerr << "Corrected " << numCorrected << " reads\n";
+
 	std::string corrected = ErrorCorrect::correctVertex(pVertex, 5, 0.01);
 	pVertex->setSeq(corrected);
+	++numCorrected;
 	return false;
 }
 
