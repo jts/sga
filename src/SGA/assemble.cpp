@@ -163,6 +163,7 @@ void assemble()
 		WARN_ONCE("USING NAIVE TRIMMING");
 		std::cout << "Trimming bad vertices\n"; 
 		pGraph->visit(trimVisit);
+		pGraph->visit(trimVisit);
 	}
 
 	// Simplify the graph by compacting edges
