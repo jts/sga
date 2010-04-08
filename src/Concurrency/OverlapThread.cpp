@@ -25,7 +25,12 @@ OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper,
 
 	// Set up semaphores and mutexes
 	sem_init( &m_producedSem, PTHREAD_PROCESS_PRIVATE, 0 );
-	pthread_mutex_init(&m_mutex, NULL);
+	int ret = pthread_mutex_init(&m_mutex, NULL);
+	if(ret != 0)
+	{
+		std::cerr << "Mutex initialization failed with error " << ret << ", aborting" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 }
 
 //
@@ -36,7 +41,13 @@ OverlapThread::~OverlapThread()
 	delete m_pSharedWorkVec;
 
 	sem_destroy(&m_producedSem);
-	pthread_mutex_destroy(&m_mutex);
+	int ret = pthread_mutex_destroy(&m_mutex);
+	if(ret != 0)
+	{
+		std::cerr << "Mutex destruction failed with error " << ret << ", aborting" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	
 }
 
 // Externally-called function from the main thread
@@ -56,8 +67,13 @@ void OverlapThread::swapBuffers(OverlapWorkVector* pIncoming)
 // Externally-called function to start the worker
 void OverlapThread::start()
 {
-	WARN_ONCE("check return codes");
-	pthread_create(&m_thread, 0, &OverlapThread::startThread, this);
+	int ret = pthread_create(&m_thread, 0, &OverlapThread::startThread, this);
+	if(ret != 0)
+	{
+		std::cerr << "Thread creation failed with error " << ret << ", aborting" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+	
 }
 
 // Externally-called function to tell the worker to stop
@@ -69,7 +85,13 @@ void OverlapThread::stop()
 	sem_wait(m_pReadySem);
 	m_stopRequested = true;
 	sem_post(&m_producedSem);
-    pthread_join(m_thread, NULL);
+    int ret = pthread_join(m_thread, NULL);
+	if(ret != 0)
+	{
+		std::cerr << "Thread join failed with error " << ret << ", aborting" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
 }
 
 // 

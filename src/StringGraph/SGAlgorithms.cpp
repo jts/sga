@@ -128,7 +128,7 @@ void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const Vertex* pY, EdgeDir
 
 			if(ret.second)
 			{
-				// The pair was actually inserted, recursively add neighbors
+				// The pair was inserted, recursively add neighbors
 				_discoverOverlaps(pX, pZ, dirZ, ovrXZ, outSet);
 			}
 		}
@@ -320,10 +320,12 @@ bool SGContainRemoveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 	EdgePtrVec edges = pVertex->getEdges();
 	for(size_t i = 0; i < edges.size(); ++i)
 	{
+		Overlap ovr = edges[i]->getOverlap();
 		Match m = edges[i]->getMatch();
-		if(m.isContainment())
+		if(ovr.match.isContainment())
 		{
-			if(pVertex->getID() > edges[i]->getEnd()->getID())
+			// If containedIdx is 0, then this vertex is the one to remove
+			if(ovr.getContainedIdx() == 0)
 			{
 				pVertex->setColor(GC_BLACK);
 				break;
