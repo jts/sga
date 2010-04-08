@@ -118,7 +118,7 @@ void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const Vertex* pY, EdgeDir
 		Overlap ovrYZ = pYZ->getOverlap();
 		Vertex* pZ = pYZ->getEnd();
 		EdgeDir dirZ = pYZ->getTransitiveDir();
-	
+
 		// Check that this vertex actually overlaps pX
 		if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
 		{

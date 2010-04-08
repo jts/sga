@@ -145,13 +145,19 @@ Match Match::infer(const Match& match_xy, const Match& match_xz)
 	// Calculate the max/min start/end coordinates of coord[0]
 	int s = std::max(match_xy.coord[0].interval.start, match_xz.coord[0].interval.start);
 	int e = std::min(match_xy.coord[0].interval.end, match_xz.coord[0].interval.end);
-	
-	SeqCoord r_y(s, e, match_xy.coord[1].seqlen);
-	SeqCoord r_z(s, e, match_xz.coord[1].seqlen);
-	
-	// The coordinates are in the frame of coord[0], translate into the desired frame
+
+	// These are the coordinates in frame X
+	SeqCoord r_y(s, e, match_xy.coord[0].seqlen);
+	SeqCoord r_z(s, e, match_xz.coord[0].seqlen);
+
+	// Translate into the desired frame
 	SeqCoord t_y = match_xy.translate(r_y);
 	SeqCoord t_z = match_xz.translate(r_z);
+
+	// Set the new lengths of the seqcoords
+	t_y.seqlen = match_xy.coord[1].seqlen;
+	t_z.seqlen = match_xz.coord[1].seqlen;
+
 	return Match(t_y, t_z, match_xy.isRC() != match_xz.isRC(), -1);
 }
 
