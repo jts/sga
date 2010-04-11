@@ -1,2 +1,2 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = Util Bigraph Algorithm StringGraph Tests Concurrency SuffixTools SGA
+SUBDIRS = Util SQG Bigraph Algorithm StringGraph Tests Concurrency SuffixTools SGA

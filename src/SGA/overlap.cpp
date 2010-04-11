@@ -20,6 +20,13 @@
 #include "BWTAlgorithms.h"
 #include "AssembleExact.h"
 #include "OverlapThread.h"
+#include "ASQG.h"
+
+enum OutputType
+{
+	OT_ASQG,
+	OT_RAW
+};
 
 //
 // Getopt
@@ -54,6 +61,7 @@ namespace opt
 	static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
 	static unsigned int maxDiff = 0;
 	static int numThreads = 1;
+	static OutputType outputType = OT_ASQG;
 	static double errorRate;
 	static std::string prefix;
 	static std::string readsFile;
@@ -87,7 +95,11 @@ int overlapMain(int argc, char** argv)
 	
 	StringVector hitsFilenames;
 	computeHitsBWT(hitsFilenames);
-	convertHitsToOverlaps(hitsFilenames);
+
+	if(opt::outputType == OT_ASQG)
+		convertHitsToASQG(hitsFilenames);
+	else
+		convertHitsToOverlaps(hitsFilenames);
 
 	delete pTimer;
 	if(opt::numThreads > 1)
@@ -453,7 +465,71 @@ size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOver
 	return currIdx;
 }
 
+//
+void convertHitsToASQG(const StringVector& hitsFilenames)
+{
+	printf("[%s] constructing ASQG file\n", PROGRAM_IDENT);
 
+	// Open output file
+	std::string asqgFile = opt::prefix + ASQG_EXT;
+	std::ofstream asqgHandle(asqgFile.c_str());
+	assert(asqgHandle.is_open());
+
+	// Build the header
+	ASQG::HeaderRecord headerRecord;
+	headerRecord.addTag(SQG::TagValue::makeIntTag("OL", opt::minOverlap));
+	headerRecord.addTag(SQG::TagValue::makeFloatTag("ER", opt::errorRate));
+	headerRecord.addTag(SQG::TagValue::makeStringTag("RF", opt::readsFile));
+	ASQG::writeHeaderRecord(asqgHandle, headerRecord);
+
+	// Load the suffix array index and the reverse suffix array index
+	// Note these are not the full suffix arrays
+	SuffixArray* pFwdSAI = new SuffixArray(opt::prefix + SAI_EXT);
+	SuffixArray* pRevSAI = new SuffixArray(opt::prefix + RSAI_EXT);
+
+	// Load the read table and output the initial vertex set, consisting of all the reads
+	ReadTable* pFwdRT = new ReadTable();
+	ReadTable* pRevRT = new ReadTable();
+	SeqReader reader(opt::readsFile);
+	SeqRecord sr;
+	while(reader.get(sr))
+	{
+		ASQG::VertexRecord vr(sr.id, sr.seq.toString());
+		ASQG::writeVertexRecord(asqgHandle, vr);
+		pFwdRT->addRead(sr.toSeqItem());
+	}
+
+	// 
+	pRevRT->initializeReverse(pFwdRT);
+
+	// Convert the hits to overlaps and write them to the asqg file as initial edges
+	for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
+	{
+		printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
+		std::ifstream reader(iter->c_str());
+	
+		// Read each hit sequentially, converting it to an overlap
+		std::string line;
+		while(getline(reader, line))
+		{
+			OverlapVector ov = hitStringToOverlaps(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI);
+			for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
+			{
+				ASQG::EdgeRecord edgeRecord(*iter);
+				ASQG::writeEdgeRecord(asqgHandle, edgeRecord);
+			}
+		}
+	}
+
+	// Delete allocated data
+	delete pFwdSAI;
+	delete pRevSAI;
+	delete pFwdRT;
+	delete pRevRT;
+
+	// Close files
+	asqgHandle.close();
+}
 
 //
 void convertHitsToOverlaps(const StringVector& hitsFilenames)
@@ -488,67 +564,9 @@ void convertHitsToOverlaps(const StringVector& hitsFilenames)
 		std::string line;
 		while(getline(reader, line))
 		{
-			std::istringstream convertor(line);
-
-			// Read the overlap blocks for a read
-			size_t readIdx;
-			size_t numBlocks;
-			convertor >> readIdx >> numBlocks;
-
-			//std::cout << "<Read> idx: " << readIdx << " count: " << numBlocks << "\n";
-			for(size_t i = 0; i < numBlocks; ++i)
-			{
-				// Read the block
-				OverlapBlock record;
-				convertor >> record;
-				//std::cout << "\t" << record << "\n";
-
-				// Iterate through the range and write the overlaps
-				for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
-				{
-					const ReadTable* pCurrRT = (record.flags.isTargetRev()) ? pRevRT : pFwdRT;
-					const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
-					const SeqItem& query = pCurrRT->getRead(readIdx);
-
-					int64_t saIdx = j;
-
-					// The index of the second read is given as the position in the SuffixArray index
-					const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(saIdx).getID());
-
-					// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
-					if(query.id != target.id)
-					{	
-						// Compute the endpoints of the overlap
-						int s1 = query.seq.length() - record.overlapLen;
-						int e1 = s1 + record.overlapLen - 1;
-						SeqCoord sc1(s1, e1, query.seq.length());
-
-						int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
-						int e2 = s2 + record.overlapLen - 1;
-						SeqCoord sc2(s2, e2, target.seq.length());
-
-						// The coordinates are always with respect to the read, so flip them if
-						// we aligned to/from the reverse of the read
-						if(record.flags.isQueryRev())
-							sc1.flip();
-						if(record.flags.isTargetRev())
-							sc2.flip();
-
-						bool isRC = record.flags.isTargetRev() != record.flags.isQueryRev();
-
-						Overlap o(query.id, sc1, target.id, sc2, isRC, record.numDiff);
-					
-						// The alignment logic above has the potential to produce duplicate alignments
-						// To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
-						// the second or the match is a containment and the query is reversed (containments can be 
-						// output up to 4 times total).
-						// If we are running in irreducible mode this is not necessary
-						if(o.id[0] < o.id[1] || (o.match.isContainment() && record.flags.isQueryRev()))
-							continue;
-						writeOverlap(o, containHandle, overlapHandle);
-					}
-				}
-			}
+			OverlapVector ov = hitStringToOverlaps(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI);
+			for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
+				writeOverlap(*iter, containHandle, overlapHandle);
 		}
 	}
 
@@ -562,6 +580,78 @@ void convertHitsToOverlaps(const StringVector& hitsFilenames)
 	overlapHandle.close();
 	containHandle.close();
 }
+
+// Convert a line from a hits file into a vector of overlaps
+OverlapVector hitStringToOverlaps(const std::string& hitString, 
+                                  const ReadTable* pFwdRT, const ReadTable* pRevRT, 
+								  const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI)
+{
+	OverlapVector outvec;
+	std::istringstream convertor(hitString);
+
+	// Read the overlap blocks for a read
+	size_t readIdx;
+	size_t numBlocks;
+	convertor >> readIdx >> numBlocks;
+
+	//std::cout << "<Read> idx: " << readIdx << " count: " << numBlocks << "\n";
+	for(size_t i = 0; i < numBlocks; ++i)
+	{
+		// Read the block
+		OverlapBlock record;
+		convertor >> record;
+		//std::cout << "\t" << record << "\n";
+
+		// Iterate through the range and write the overlaps
+		for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
+		{
+			const ReadTable* pCurrRT = (record.flags.isTargetRev()) ? pRevRT : pFwdRT;
+			const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
+			const SeqItem& query = pCurrRT->getRead(readIdx);
+
+			int64_t saIdx = j;
+
+			// The index of the second read is given as the position in the SuffixArray index
+			const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(saIdx).getID());
+
+			// Skip self alignments and non-canonical (where the query read has a lexo. higher name)
+			if(query.id != target.id)
+			{	
+				// Compute the endpoints of the overlap
+				int s1 = query.seq.length() - record.overlapLen;
+				int e1 = s1 + record.overlapLen - 1;
+				SeqCoord sc1(s1, e1, query.seq.length());
+
+				int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
+				int e2 = s2 + record.overlapLen - 1;
+				SeqCoord sc2(s2, e2, target.seq.length());
+
+				// The coordinates are always with respect to the read, so flip them if
+				// we aligned to/from the reverse of the read
+				if(record.flags.isQueryRev())
+					sc1.flip();
+				if(record.flags.isTargetRev())
+					sc2.flip();
+
+				bool isRC = record.flags.isTargetRev() != record.flags.isQueryRev();
+
+				Overlap o(query.id, sc1, target.id, sc2, isRC, record.numDiff);
+			
+				// The alignment logic above has the potential to produce duplicate alignments
+				// To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
+				// the second or the match is a containment and the query is reversed (containments can be 
+				// output up to 4 times total).
+				// If we are running in irreducible mode this is not necessary
+				if(o.id[0] < o.id[1] || (o.match.isContainment() && record.flags.isQueryRev()))
+					continue;
+
+				outvec.push_back(o);
+			}
+		}
+	}
+	return outvec;
+}
+
 
 // Before sanity checks on the overlaps and write them out
 void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& overlapHandle)

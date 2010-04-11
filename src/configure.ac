@@ -17,6 +17,7 @@ AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 
 AC_CONFIG_FILES([Makefile
 		Util/Makefile
+		SQG/Makefile
 		Bigraph/Makefile
 		Algorithm/Makefile
 		StringGraph/Makefile

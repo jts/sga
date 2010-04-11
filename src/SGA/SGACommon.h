@@ -15,6 +15,7 @@
 #define OVR_EXT ".ovr"
 #define HITS_EXT ".hits"
 #define CTN_EXT ".ctn"
+#define ASQG_EXT ".asqg"
 #define SA_EXT ".sa"
 #define RSA_EXT ".rsa"
 #define BWT_EXT ".bwt"

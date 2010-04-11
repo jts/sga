@@ -28,8 +28,15 @@ size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOver
 
 
 // Output processing
+void convertHitsToASQG(const StringVector& hitsFilenames);
 void convertHitsToOverlaps(const StringVector& hitsFilenames);
+
 void writeOverlap(Overlap& overlap, std::ofstream& containHandle, std::ofstream& overlapHandle);
+
+// Convert a line from a hits file into a vector of overlaps
+OverlapVector hitStringToOverlaps(const std::string& hitString, 
+                                  const ReadTable* pFwdRT, const ReadTable* pRevRT, 
+								  const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI);
 
 // utility functions
 void flipCoords(const int len, int& s, int &e);

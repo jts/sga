@@ -6,4 +6,5 @@ libsqg_a_CPPFLAGS = \
 
 
 libsqg_a_SOURCES = \
-        ASQGUtil.h ASQGUtil.cpp 
+        SQG.h SQG.cpp \
+		ASQG.h ASQG.cpp
