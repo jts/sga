@@ -66,10 +66,12 @@ void printUsage()
 	std::cout << "Version: " << PACKAGE_VERSION << "\n";
 	std::cout << "Contact: " << AUTHOR << " [" << PACKAGE_BUGREPORT << "]\n";
 	std::cout << "Usage: " << PROGRAM_BIN << " <command> [options]\n\n";
-	std::cout << "Command: index        index reads\n";
-	std::cout << "         overlap      compute overlaps between reads\n";
-	std::cout << "         assemble     generate contigs\n";
-	std::cout << "         oview        view overlap alignments\n";
-	std::cout << "         extract      extract all sequences of a given length\n";
-	std::cout << "\n\n";
+	std::cout << "Commands:\n";
+	std::cout << "           preprocess   filter and quality-trim reads\n";
+	std::cout << "           index        build the BWT and FM-index for a set of reads\n";
+	std::cout << "           overlap      compute overlaps between reads\n";
+	std::cout << "           assemble     generate contigs\n";
+	std::cout << "           oview        view overlap alignments\n";
+	//std::cout << "           extract      extract all sequences of a given length\n";
+		std::cout << "\n\n";
 }

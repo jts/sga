@@ -14,7 +14,7 @@
 ContainMap::ContainMap(std::string file)
 {
 	std::ifstream reader(file.c_str());
-	checkFileHandle(reader, file);
+	assertFileOpen(reader, file);
 	Overlap o;
 	while(reader >> o)
 	{
@@ -90,7 +90,7 @@ void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& c
 {
 	// Add the overlaps as edges
 	std::ifstream overlapReader(overlapFile.c_str());
-	checkFileHandle(overlapReader, overlapFile);
+	assertFileOpen(overlapReader, overlapFile);
 
 	Overlap o;
 	while(overlapReader >> o)

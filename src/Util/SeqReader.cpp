@@ -12,7 +12,7 @@
 
 SeqReader::SeqReader(std::string filename) : m_fileHandle(filename.c_str())
 {
-	checkFileHandle(m_fileHandle, filename);
+	assertFileOpen(m_fileHandle, filename);
 }
 	
 SeqReader::~SeqReader()

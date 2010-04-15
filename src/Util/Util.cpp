@@ -114,22 +114,22 @@ std::string getFileExtension(const std::string& filename)
 }
 
 // Ensure a filehandle is open
-void checkFileHandle(std::ifstream& fh, std::string fn)
+void assertFileOpen(std::ifstream& fh, const std::string& fn)
 {
 	if(!fh.is_open())
 	{
 		std::cerr << "Error: could not open " << fn << " for read\n";
-		exit(1);
+		exit(EXIT_FAILURE);
 	}	
 }
 
 // Ensure a filehandle is open
-void checkFileHandle(std::ofstream& fh, std::string fn)
+void assertFileOpen(std::ofstream& fh, const std::string& fn)
 {
 	if(!fh.is_open())
 	{
 		std::cerr << "Error: could not open " << fn << " for write\n";
-		exit(1);
+		exit(EXIT_FAILURE);
 	}	
 }
 
@@ -175,15 +175,17 @@ std::string getPairID(const std::string& id)
 
 	size_t li = id.length() - 1;
 	char last = id[li];
+
 	if(last == 'A')
 		pid[li] = 'B';
 	else if(last == 'B')
 		pid[li] = 'A';
+	else if(last == '1')
+		pid[li] = '2';
+	else if(last == '2')
+		pid[li] = '1';
 	else
-	{
-		std::cerr << "Unrecognized paired end read id format: " << id << "\n";
-		assert(false);
-	}
+		pid = "";
 	return pid;
 }
 

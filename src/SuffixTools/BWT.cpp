@@ -31,7 +31,7 @@ typedef std::queue<PartialAlign> PAQueue;
 BWT::BWT(const std::string& filename)
 {
 	std::ifstream in(filename.c_str());
-	checkFileHandle(in, filename);	
+	assertFileOpen(in, filename);	
 	in >> *this;
 	in.close();
 }
@@ -196,7 +196,7 @@ std::istream& operator>>(std::istream& in, BWT& bwt)
 void BWT::write(std::string& filename)
 {
 	std::ofstream out(filename.c_str());
-	checkFileHandle(out, filename);
+	assertFileOpen(out, filename);
 	out << *this;
 	out.close();
 }

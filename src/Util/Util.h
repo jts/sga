@@ -89,8 +89,8 @@ struct SeqRecord
 std::string stripFilename(const std::string& filename);
 std::string getFileExtension(const std::string& filename);
 
-void checkFileHandle(std::ifstream& fh, std::string fn);
-void checkFileHandle(std::ofstream& fh, std::string fn);
+void assertFileOpen(std::ifstream& fh, const std::string& fn);
+void assertFileOpen(std::ofstream& fh, const std::string& fn);
 
 // Key-value operations
 template <class C>

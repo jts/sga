@@ -15,6 +15,8 @@
 // functions
 int preprocessMain(int argc, char** argv);
 void parsePreprocessOptions(int argc, char** argv);
+bool processRead(SeqRecord& record);
+bool samplePass();
 void softClip(int qualTrim, std::string& seq, std::string& qual);
 
 #endif

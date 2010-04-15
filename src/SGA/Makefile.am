@@ -10,10 +10,10 @@ sga_CPPFLAGS = \
 	-I$(top_srcdir)/SQG
 
 sga_LDADD = \
+    $(top_builddir)/StringGraph/libstringgraph.a \
+    $(top_builddir)/Algorithm/libalgorithm.a \
 	$(top_builddir)/SuffixTools/libsuffixtools.a \
 	$(top_builddir)/Bigraph/libbigraph.a \
-	$(top_builddir)/StringGraph/libstringgraph.a \
-	$(top_builddir)/Algorithm/libalgorithm.a \
 	$(top_builddir)/Util/libutil.a \
 	$(top_builddir)/Concurrency/libconcurrency.a \
 	$(top_builddir)/SQG/libsqg.a 
