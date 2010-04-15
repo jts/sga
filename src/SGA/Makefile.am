@@ -6,6 +6,7 @@ sga_CPPFLAGS = \
 	-I$(top_srcdir)/SuffixTools \
 	-I$(top_srcdir)/StringGraph \
 	-I$(top_srcdir)/Concurrency \
+	-I$(top_srcdir)/Algorithm \
 	-I$(top_srcdir)/SQG
 
 sga_LDADD = \

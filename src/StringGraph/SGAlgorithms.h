@@ -204,7 +204,8 @@ struct SGGraphStatsVisitor
 	int num_dibranch;
 	int num_transitive;
 	int num_edges;
-	int num_vertex;	
+	int num_vertex;
+	size_t sum_edgeLen;
 };
 
 #endif

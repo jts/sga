@@ -145,7 +145,7 @@ int preprocessMain(int argc, char** argv)
 				continue;
 
 			double r = rand() / (RAND_MAX + 1.0f);
-			if(opt::sampleFreq < 1.0f && r < opt::sampleFreq)
+			if(opt::sampleFreq >= 1.0f || r < opt::sampleFreq)
 			{
 				record.write(writer);
 				++numReadsKept;

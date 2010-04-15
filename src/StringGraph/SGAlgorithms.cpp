@@ -742,6 +742,7 @@ void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
 	num_transitive = 0;
 	num_edges = 0;
 	num_vertex = 0;
+	sum_edgeLen = 0;
 }
 
 // Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
@@ -764,6 +765,11 @@ bool SGGraphStatsVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 
 	num_edges += (s_count + as_count);
 	++num_vertex;
+
+	EdgePtrVec edges = pVertex->getEdges();
+	for(size_t i = 0; i < edges.size(); ++i)
+		sum_edgeLen += edges[i]->getSeqLen();
+
 	return false;
 }
 
@@ -772,6 +778,6 @@ void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
 {
 	printf("island: %d terminal: %d monobranch: %d dibranch: %d transitive: %d\n", num_island, num_terminal,
 	                                                                               num_monobranch, num_dibranch, num_transitive);
-	printf("Total Vertices: %d Total Edges: %d\n", num_vertex, num_edges);
+	printf("Total Vertices: %d Total Edges: %d Sum edge length: %zu\n", num_vertex, num_edges, sum_edgeLen);
 }
 

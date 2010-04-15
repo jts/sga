@@ -101,6 +101,7 @@ void assemble()
 	SGRemodelVisitor remodelVisit;
 	SGRealignVisitor realignVisit;
 	SGTrimVisitor trimVisit;
+	SGBubbleVisitor bubbleVisit;
 	SGContainRemoveVisitor containVisit;
 	SGErrorCorrectVisitor errorCorrectVisit;
 
@@ -170,6 +171,15 @@ void assemble()
 	std::cout << "Pre-simplify graph stats\n";
 	pGraph->visit(statsVisit);
 	pGraph->simplify();
+
+	if(opt::bBubble)
+	{
+		std::cout << "\nPerforming bubble removal\n";
+		// Bubble removal
+		while(pGraph->visit(bubbleVisit))
+			pGraph->simplify();
+		pGraph->visit(statsVisit);
+	}	
 
 	std::cout << "\nFinal graph stats\n";
 	pGraph->visit(statsVisit);
