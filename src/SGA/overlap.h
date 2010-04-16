@@ -21,26 +21,24 @@
 int overlapMain(int argc, char** argv);
 
 // overlap computation
-void computeHitsBWT(StringVector& filenames);
-size_t computeHitsSerial(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenames);
-size_t computeHitsParallel(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenames);
-size_t computeHitsParallelBatch(SeqReader& reader, const OverlapAlgorithm* pOverlapper, StringVector& filenames);
+void computeHitsBWT(std::ostream* pASQGWriter, StringVector& filenames);
 
+size_t computeHitsSerial(SeqReader& reader, std::ostream* pASQGWriter, 
+                         const OverlapAlgorithm* pOverlapper, StringVector& filenameVec);
+
+size_t computeHitsParallel(SeqReader& reader, std::ostream* pASQGWriter, 
+                           const OverlapAlgorithm* pOverlapper, StringVector& filenameVec);
 
 // Output processing
-void convertHitsToASQG(const StringVector& hitsFilenames);
-void convertHitsToOverlaps(const StringVector& hitsFilenames);
+void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWriter);
 
+void convertHitsToOverlaps(const StringVector& hitsFilenames);
 void writeOverlap(Overlap& overlap, std::ofstream& containHandle, std::ofstream& overlapHandle);
 
 // Convert a line from a hits file into a vector of overlaps
 OverlapVector hitStringToOverlaps(const std::string& hitString, 
                                   const ReadTable* pFwdRT, const ReadTable* pRevRT, 
 								  const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI);
-
-// utility functions
-void flipCoords(const int len, int& s, int &e);
-void swap(int& s, int& e);
 
 // options
 void parseOverlapOptions(int argc, char** argv);

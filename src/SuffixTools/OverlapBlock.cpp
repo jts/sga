@@ -107,8 +107,8 @@ OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B)
 		}
 		else
 		{
-			std::cerr << "Error in resolveOverlap: Overlap blocks with same length do not \
-			have same coordinates\n";
+			std::cerr << "Error in resolveOverlap: Overlap blocks with same length do not "
+			"the have same coordinates\n";
 			assert(false);
 		}	
 	}

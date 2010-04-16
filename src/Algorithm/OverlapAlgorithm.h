@@ -4,8 +4,8 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// OverlapAlgorithm - Wrapper class used to find the overlaps
-// for a given read using the BWT/FM-index
+// OverlapAlgorithm - This class implements all the logic
+// for finding and outputting overlaps for sequence reads
 //
 #ifndef OVERLAPALGORITHM_H
 #define OVERLAPALGORITHM_H
@@ -15,6 +15,12 @@
 #include "OverlapSeed.h"
 #include "BWTAlgorithms.h"
 #include "Util.h"
+
+struct OverlapResult
+{
+	OverlapResult() : isSubstring(false) {}
+	bool isSubstring;
+};
 
 class OverlapAlgorithm
 {
@@ -28,19 +34,22 @@ class OverlapAlgorithm
 
 		// Perform the overlap
 		// This function is threaded so everything must be const
-		void overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const;
+		OverlapResult overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const;
 	
 		// Perform an irreducible overlap
-		void overlapReadIrreducible(const SeqRecord& read, OverlapBlockList* pOBOut) const;
+		OverlapResult overlapReadIrreducible(const SeqRecord& read, OverlapBlockList* pOBOut) const;
 
 		// Perform an exhaustive overlap
-		void overlapReadExhaustive(const SeqRecord& read, OverlapBlockList* pOBOut) const;
+		OverlapResult overlapReadExhaustive(const SeqRecord& read, OverlapBlockList* pOBOut) const;
 
 		// Perform an inexact overlap
-		void overlapReadInexact(const SeqRecord& read, OverlapBlockList* pOBOut) const;
+		OverlapResult overlapReadInexact(const SeqRecord& read, OverlapBlockList* pOBOut) const;
+
+		// Write the result of an overlap to an ASQG file
+		void writeResultASQG(std::ostream& writer, const SeqRecord& read, const OverlapResult& result) const;
 
 		// Write all the overlap blocks pList to the filehandle
-		void writeOverlapBlocks(size_t readIdx, const OverlapBlockList* pList, std::ofstream& writer) const;
+		void writeOverlapBlocks(std::ostream& writer, size_t readIdx, const OverlapBlockList* pList) const;
 
 	private:
 
@@ -48,26 +57,20 @@ class OverlapAlgorithm
 		// overlaps with a suffix of w.
 		static void findOverlapBlocks(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
 		                              int minOverlap, const AlignFlags& af, OverlapBlockList* pOBTemp, 
-							          OverlapBlockList* pOBFinal);
+							          OverlapBlockList* pOBFinal, OverlapResult& result);
 
 
 		// Perform an inexact suffix overlap, allowing at most error_rate difference
 		static int overlapSuffixInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                         double error_rate, int minOverlap, const AlignFlags& af, 
-										OverlapBlockList* pOBList, OverlapBlockList* pOBFinal);
+										OverlapBlockList* pOBList, OverlapBlockList* pOBFinal,
+										OverlapResult& result);
 
-
-		// Align a subrange of a string against and fm-index while allowing maxDiff errors. Seeded.
-		static int _alignSegment(const std::string& w, int block_start, int block_end,
-                                 const BWT* pBWT, const BWT* pRevBWT, int maxDiff, 
-								 const AlignFlags& af, OverlapBlockList* pOBList, 
-								 OverlapBlockList* pOBFinal);
 
 		static int _alignSegmentSimple(const std::string& w, int block_start, int block_end,
                                        const BWT* pBWT, const BWT* pRevBWT, int maxDiff, 
 									   const AlignFlags& af, OverlapBlockList* pOBList, 
-									   OverlapBlockList* pOBFinal);
-
+									   OverlapBlockList* pOBFinal, OverlapResult& result);
 
 
 		// Using the vector of OverlapBlocks, calculate the irreducible hits
@@ -88,14 +91,11 @@ class OverlapAlgorithm
                                                  ExtendDirection dir, const OverlapSeedList* pInList, 
 												 OverlapSeedList* pOutList);
 
-		static inline void extendSeedInexactRight(OverlapSeed& seed, const std::string& w, const BWT* /*pBWT*/, 
-                                                  const BWT* pRevBWT, ExtendDirection /*dir*/, OverlapSeedList* pOutList);
+		static inline void extendSeedInexactRight(OverlapSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+		                                          OverlapSeedList* pOutList);
 
-		static inline void extendSeedInexactLeft(OverlapSeed& seed, const std::string& w, const BWT* pBWT, 
-                                                 const BWT* /*pRevBWT*/, ExtendDirection /*dir*/,
-                                                 int block_start, int block_end, int maxDiff, const AlignFlags& af,
-												 OverlapSeedList* pOutList, OverlapBlockList* pOBPartialList, 
-												 OverlapBlockList* pOBFullList);
+        static inline void extendSeedInexactLeft(OverlapSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT,
+                                                 int block_start, OverlapSeedList* pOutList);
 
 		// Data
 		const BWT* m_pBWT;

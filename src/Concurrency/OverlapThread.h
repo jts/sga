@@ -20,6 +20,7 @@ struct OverlapWorkItem
 	OverlapWorkItem(size_t ri, const SeqRecord& sr) : idx(ri), read(sr) {}
 	size_t idx;
 	SeqRecord read;
+	OverlapResult result;
 };
 
 
@@ -48,7 +49,7 @@ class OverlapThread
 		void run();
 
 		// Main overlap function
-		bool processRead(const OverlapWorkItem& read);
+		void processRead(OverlapWorkItem& read);
 	
 		// Thread entry point
 		static void* startThread(void* obj);

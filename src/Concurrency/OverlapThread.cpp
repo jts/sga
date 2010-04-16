@@ -124,26 +124,22 @@ void OverlapThread::run()
 
 		size_t num_reads = m_pSharedWorkVec->size();
 		for(size_t i = 0; i < num_reads; ++i)
-		{
 			processRead((*m_pSharedWorkVec)[i]);
-		}
-		m_pSharedWorkVec->clear();
 		
 		m_isReady = true;
 		pthread_mutex_unlock(&m_mutex);
 
-		// Post to the semaphores
+		// Post to the semaphore
 		sem_post(m_pReadySem);
 	}
 }
 
 // Overlap a read
-bool OverlapThread::processRead(const OverlapWorkItem& item)
+void OverlapThread::processRead(OverlapWorkItem& item)
 {
-	m_pOverlapper->overlapRead(item.read, m_pOBList);
-	m_pOverlapper->writeOverlapBlocks(item.idx, m_pOBList, m_outfile);
+	item.result = m_pOverlapper->overlapRead(item.read, m_pOBList);
+	m_pOverlapper->writeOverlapBlocks(m_outfile, item.idx, m_pOBList);
 	m_pOBList->clear();
-	return false;
 }
 
 // Thread entry point

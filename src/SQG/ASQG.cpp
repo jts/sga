@@ -13,9 +13,51 @@
 namespace ASQG
 {
 
+const int HEADER_VERSION = 1;
+
 static char HeaderTag[] = "HT";
 static char VertexTag[] = "VT";
 static char EdgeTag[] = "ED";
+
+//
+// Header Record
+//
+HeaderRecord::HeaderRecord()
+{
+	addVersionTag(HEADER_VERSION);
+}
+
+//
+void HeaderRecord::addVersionTag(int version)
+{
+	addTag(SQG::TagValue::makeIntTag("VN", version));
+}
+
+//
+void HeaderRecord::addOverlapTag(int overlapLen)
+{
+	addTag(SQG::TagValue::makeIntTag("OL", overlapLen));
+}
+
+//
+void HeaderRecord::addInputFileTag(const std::string& name)
+{
+	addTag(SQG::TagValue::makeStringTag("IN", name));
+}
+
+//
+void HeaderRecord::addErrorRateTag(float errorRate)
+{
+	addTag(SQG::TagValue::makeFloatTag("ER", errorRate));
+}
+
+//
+// Vertex Record
+//
+void VertexRecord::addSubstringTag(bool b)
+{
+	addTag(SQG::TagValue::makeIntTag("SS", b));
+}
 
 //
 RecordType getRecordType(const std::string& record)

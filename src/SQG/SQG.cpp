@@ -29,8 +29,6 @@ TagValue TagValue::makeIntTag(const char* tag, int value)
 	std::stringstream ss;
 	ss << value;
 	ret.value = ss.str();
-
-	std::cout << "INT TAG, name: " << ret.name << " type: " << ret.type << " val: " << ret.value << "\n";
 	return ret;
 }
 
@@ -123,7 +121,6 @@ std::string makeTagString(const TagValue& tv)
 {
 	std::stringstream ss;
 	ss << tv.name << TAG_SEP << TagCodes[tv.type] << TAG_SEP << tv.value;
-	std::cout << "Constructed tagstring: " << ss.str() << "\n";
 	return ss.str();
 }
 

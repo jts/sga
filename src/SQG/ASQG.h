@@ -25,8 +25,14 @@ namespace ASQG
 	// A header record is just a tag:value pairs
 	struct HeaderRecord
 	{
+		HeaderRecord();
 		void addTag(const SQG::TagValue& tag) { tags.push_back(tag); }
 		
+		void addVersionTag(int version);
+		void addOverlapTag(int overlapLen);
+		void addInputFileTag(const std::string& name);
+		void addErrorRateTag(float errorRate);
+
 		//
 		SQG::TagValueVector tags;
 	};
@@ -37,7 +43,10 @@ namespace ASQG
 	{
 		VertexRecord() {}
 		VertexRecord(const std::string& i, const std::string& s) : id(i), seq(s) {}
+
+		//
 		void addTag(const SQG::TagValue& tag) { tags.push_back(tag); }
+		void addSubstringTag(bool b);
 
 		//
 		std::string id;

@@ -226,7 +226,7 @@ bool processRead(SeqRecord& record)
 		record.qual = qualStr;
 	}
 
-	if(record.seq.length() < opt::minLength)
+	if(record.seq.length() == 0 || record.seq.length() < opt::minLength)
 		return false;
 	return true;
 }

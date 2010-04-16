@@ -24,7 +24,7 @@ class Timer
 		~Timer() 
 		{
 			if(!m_silent) 
-				printf("[timer - %s] wall clock: %.2lfs CPU: %.2lfs\n", m_desc.c_str(), getElapsedWallTime(), getElapsedCPUTime()); 
+				fprintf(stderr, "[timer - %s] wall clock: %.2lfs CPU: %.2lfs\n", m_desc.c_str(), getElapsedWallTime(), getElapsedCPUTime()); 
 		}
 
 		double getElapsedWallTime() const 
