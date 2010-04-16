@@ -99,8 +99,8 @@ void buildIndex(std::string prefix, const ReadTable* pRT, bool isReverse)
 		pBWT->print(pRT, pSA);
 	}
 
-	std::string sa_filename = prefix + (!isReverse ? SA_EXT : RSA_EXT);
-	pSA->write(sa_filename);
+	//std::string sa_filename = prefix + (!isReverse ? SA_EXT : RSA_EXT);
+	//pSA->write(sa_filename);
 
 	std::string bwt_filename = prefix + (!isReverse ? BWT_EXT : RBWT_EXT);
 	pBWT->write(bwt_filename);

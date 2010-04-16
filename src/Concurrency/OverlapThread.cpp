@@ -13,12 +13,16 @@
 OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper, 
 							 const std::string& filename, 
 							 sem_t* pReadySem, 
-							 const size_t max_items) : m_outfile(filename.c_str()), 
-							 m_pOverlapper(pOverlapper),
+							 const size_t max_items) : m_pOverlapper(pOverlapper),
 							 m_pReadySem(pReadySem), 
 							 m_stopRequested(false), 
 							 m_isReady(false)
 {
+	if(isGzip(filename))
+		m_pOutfile = new ogzstream(filename.c_str());
+	else
+		m_pOutfile = new std::ofstream(filename.c_str());
+	
 	m_pOBList = new OverlapBlockList;
 	m_pSharedWorkVec = new OverlapWorkVector;
 	m_pSharedWorkVec->reserve(max_items);
@@ -36,7 +40,7 @@ OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper,
 //
 OverlapThread::~OverlapThread()
 {
-	m_outfile.close();
+	delete m_pOutfile;
 	delete m_pOBList;
 	delete m_pSharedWorkVec;
 
@@ -138,7 +142,7 @@ void OverlapThread::run()
 void OverlapThread::processRead(OverlapWorkItem& item)
 {
 	item.result = m_pOverlapper->overlapRead(item.read, m_pOBList);
-	m_pOverlapper->writeOverlapBlocks(m_outfile, item.idx, m_pOBList);
+	m_pOverlapper->writeOverlapBlocks(*m_pOutfile, item.idx, m_pOBList);
 	m_pOBList->clear();
 }
 

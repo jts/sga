@@ -21,6 +21,7 @@
 #include "AssembleExact.h"
 #include "OverlapThread.h"
 #include "ASQG.h"
+#include "gzstream.h"
 
 enum OutputType
 {
@@ -97,9 +98,9 @@ int overlapMain(int argc, char** argv)
 	assert(opt::outputType == OT_ASQG);
 
 	// Open output file
-	std::string asqgFilename = opt::prefix + ASQG_EXT;
-	std::ofstream* pASQGWriter = new std::ofstream(asqgFilename.c_str());
-	assertFileOpen(*pASQGWriter, asqgFilename);
+	std::string asqgFilename = opt::prefix + ASQG_EXT + GZIP_EXT;
+	ogzstream* pASQGWriter = new ogzstream(asqgFilename.c_str());
+	assertGZOpen(*pASQGWriter, asqgFilename);
 
 	// Build and write the ASQG header
 	ASQG::HeaderRecord headerRecord;
@@ -162,9 +163,10 @@ size_t computeHitsSerial(SeqReader& reader, std::ostream* pASQGWriter,
 
 	// Prepare output
 	OverlapBlockList* pOutBlocks = new OverlapBlockList;
-	std::string filename = opt::prefix + HITS_EXT;
-	std::ofstream hitsWriter(filename.c_str());
-	assertFileOpen(hitsWriter, filename);
+
+	std::string filename = opt::prefix + HITS_EXT + GZIP_EXT;
+	ogzstream hitsWriter(filename.c_str());
+	assertGZOpen(hitsWriter, filename);
 	filenameVec.push_back(filename);
 
 	// Overlap each read
@@ -210,7 +212,7 @@ size_t computeHitsParallel(SeqReader& reader, std::ostream* pASQGWriter,
 	{
 		// Create the thread
 		std::stringstream ss;
-		ss << opt::prefix << "-thread" << i << HITS_EXT;
+		ss << opt::prefix << "-thread" << i << HITS_EXT << GZIP_EXT;
 		std::string outfile = ss.str();
 		filenameVec.push_back(outfile);
 
@@ -317,11 +319,15 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
 	for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
 	{
 		printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
-		std::ifstream reader(iter->c_str());
+		std::istream* pReader;
+		if(isGzip(iter->c_str()))
+			pReader = new igzstream(iter->c_str());
+		else
+			pReader = new std::ifstream(iter->c_str());
 	
 		// Read each hit sequentially, converting it to an overlap
 		std::string line;
-		while(getline(reader, line))
+		while(getline(*pReader, line))
 		{
 			OverlapVector ov = hitStringToOverlaps(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI);
 			for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
@@ -330,6 +336,8 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
 				ASQG::writeEdgeRecord(*pASQGWriter, edgeRecord);
 			}
 		}
+
+		delete pReader;
 	}
 
 	// Delete allocated data

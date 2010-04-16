@@ -84,22 +84,32 @@ std::string getDiffString(const std::string& s1, const std::string& s2)
 // the last trailling suffix from a filename
 std::string stripFilename(const std::string& filename)
 {
-	size_t lastDirPos = filename.find_last_of('/');
+	std::string out = stripDirectories(filename);
+	// Remove the gzip extension if necessary
+	if(isGzip(out))
+		out = stripExtension(out);
+	return stripExtension(out);
+}
+
+// Remove a single file extension from the filename
+std::string stripExtension(const std::string& filename)
+{
 	size_t suffixPos = filename.find_last_of('.');
+	if(suffixPos == std::string::npos)
+		return filename; // no suffix
+	else
+		return filename.substr(0, suffixPos);
+}
+
+// Strip the leadering directories from a filename
+std::string stripDirectories(const std::string& filename)
+{
+	size_t lastDirPos = filename.find_last_of('/');
 	
 	if(lastDirPos == std::string::npos)
-		lastDirPos = 0;
+		return filename; // no directories
 	else
-		lastDirPos += 1;
-
-	if(suffixPos == std::string::npos)
-	{
-		return filename.substr(lastDirPos); // no suffix
-	}
-	else
-	{
-		return filename.substr(lastDirPos, suffixPos - lastDirPos);
-	}
+		return filename.substr(lastDirPos + 1);
 }
 
 // Return the file extension
@@ -112,6 +122,14 @@ std::string getFileExtension(const std::string& filename)
 	else
 		return filename.substr(suffixPos + 1);
 }
+
+// Returns true if the filename has an extension indicating it is compressed
+bool isGzip(const std::string& filename)
+{
+	std::string extension = suffix(filename, sizeof(GZIP_EXT) - 1);
+	return extension == GZIP_EXT;
+}
+
 
 // Ensure a filehandle is open
 void assertFileOpen(std::ifstream& fh, const std::string& fn)
@@ -133,6 +151,14 @@ void assertFileOpen(std::ofstream& fh, const std::string& fn)
 	}	
 }
 
+void assertGZOpen(gzstreambase& gh, const std::string& fn)
+{
+	if(!gh.good())
+	{
+		std::cerr << "Error: could not open " << fn << std::endl;
+		exit(EXIT_FAILURE);
+	}
+}
 
 // Split a string into parts based on the delimiter
 StringVector split(std::string in, char delimiter)

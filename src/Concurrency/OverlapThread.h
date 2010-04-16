@@ -57,7 +57,7 @@ class OverlapThread
 		
 		// Private file handle and overlap list
 		// which are only acccessed by the thread
-		std::ofstream m_outfile;
+		std::ostream* m_pOutfile;
 		OverlapBlockList* m_pOBList;
 
 		// Handles

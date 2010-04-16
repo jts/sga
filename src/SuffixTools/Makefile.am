@@ -2,6 +2,7 @@ noinst_LIBRARIES = libsuffixtools.a
 
 libsuffixtools_a_CPPFLAGS = \
 	-I$(top_srcdir)/Util \
+	-I$(top_srcdir)/Thirdparty \
 	-I$(top_srcdir)/Bigraph 
 
 libsuffixtools_a_SOURCES = BWT.cpp BWT.h \

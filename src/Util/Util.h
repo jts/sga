@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <iostream>
 #include "DNAString.h"
+#include "gzstream.h"
 
 #define CAF_SEP ':'
 #define FUNCTION_TIMER Timer functionTimer(__PRETTY_FUNCTION__);
@@ -29,6 +30,7 @@
 #define WARN_ONCE(x) static bool _warn_once = true; if(_warn_once) \
 					 printf("WARNING: [%s]\n", (x)); _warn_once = false;
 
+#define GZIP_EXT ".gz"
 
 //
 // Typedef
@@ -87,10 +89,14 @@ struct SeqRecord
 // Functions
 //
 std::string stripFilename(const std::string& filename);
+std::string stripExtension(const std::string& filename);
+std::string stripDirectories(const std::string& filename);
 std::string getFileExtension(const std::string& filename);
+bool isGzip(const std::string& filename);
 
 void assertFileOpen(std::ifstream& fh, const std::string& fn);
 void assertFileOpen(std::ofstream& fh, const std::string& fn);
+void assertGZOpen(gzstreambase& gh, const std::string& fn);
 
 // Key-value operations
 template <class C>

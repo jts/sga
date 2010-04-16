@@ -7,7 +7,8 @@ sga_CPPFLAGS = \
 	-I$(top_srcdir)/StringGraph \
 	-I$(top_srcdir)/Concurrency \
 	-I$(top_srcdir)/Algorithm \
-	-I$(top_srcdir)/SQG
+	-I$(top_srcdir)/SQG \
+	-I$(top_srcdir)/Thirdparty
 
 sga_LDADD = \
     $(top_builddir)/StringGraph/libstringgraph.a \
@@ -16,7 +17,8 @@ sga_LDADD = \
 	$(top_builddir)/Bigraph/libbigraph.a \
 	$(top_builddir)/Util/libutil.a \
 	$(top_builddir)/Concurrency/libconcurrency.a \
-	$(top_builddir)/SQG/libsqg.a 
+	$(top_builddir)/SQG/libsqg.a \
+	$(top_builddir)/Thirdparty/libthirdparty.a
 
 sga_LDFLAGS = -pthread
 
