@@ -129,7 +129,7 @@ void OverlapThread::run()
 		size_t num_reads = m_pSharedWorkVec->size();
 		for(size_t i = 0; i < num_reads; ++i)
 			processRead((*m_pSharedWorkVec)[i]);
-		
+		//m_pSharedWorkVec->clear();
 		m_isReady = true;
 		pthread_mutex_unlock(&m_mutex);
 

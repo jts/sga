@@ -25,47 +25,59 @@ namespace ASQG
 	// A header record is just a tag:value pairs
 	struct HeaderRecord
 	{
-		HeaderRecord();
-		void addTag(const SQG::TagValue& tag) { tags.push_back(tag); }
-		
-		void addVersionTag(int version);
-		void addOverlapTag(int overlapLen);
-		void addInputFileTag(const std::string& name);
-		void addErrorRateTag(float errorRate);
+		public:
+			HeaderRecord();
+			
+			void setVersionTag(int version);
+			void setOverlapTag(int overlapLen);
+			void setInputFileTag(const std::string& name);
+			void setErrorRateTag(float errorRate);
 
-		//
-		SQG::TagValueVector tags;
+			void write(std::ostream& out);
+			void parse(const std::string& record);
+
+		private:
+			
+			SQG::IntTag m_versionTag;
+			SQG::FloatTag m_errorRateTag;
+			SQG::StringTag m_infileTag;
+			SQG::IntTag m_overlapTag;
 	};
 
 	// A vertex record is an id, sequence and an array of
 	// tag:value 
 	struct VertexRecord
 	{
-		VertexRecord() {}
-		VertexRecord(const std::string& i, const std::string& s) : id(i), seq(s) {}
+		public:
+			VertexRecord() {}
+			VertexRecord(const std::string& i, const std::string& s) : m_id(i), m_seq(s) {}
 
-		//
-		void addTag(const SQG::TagValue& tag) { tags.push_back(tag); }
-		void addSubstringTag(bool b);
+			void setSubstringTag(bool b);
 
-		//
-		std::string id;
-		std::string seq;
-		SQG::TagValueVector tags;
+			void write(std::ostream& out);
+			void parse(const std::string& record);
+
+		private:
+
+			std::string m_id;
+			std::string m_seq;
+			SQG::IntTag m_substringTag;
 	};
 
 	// An edge record is just an overlap object and tag:values
 	struct EdgeRecord
 	{
-		EdgeRecord() {}
-		EdgeRecord(const Overlap& o) : overlap(o) {}
-		void addTag(const SQG::TagValue& tag) { tags.push_back(tag); }
+		public:
+			EdgeRecord() {}
+			EdgeRecord(const Overlap& o) : m_overlap(o) {}
 
-		//
-		Overlap overlap;
-		SQG::TagValueVector tags;
+			void write(std::ostream& out);
+			void parse(const std::string& record);
+
+		private:
+		
+			Overlap m_overlap;
 	};
-
 
 	// Parsing functions
 	RecordType getRecordType(const std::string& record);
@@ -74,9 +86,6 @@ namespace ASQG
 	EdgeRecord parseEdgeRecord(const std::string& record);
 
 	// Writing functions
-	void writeHeaderRecord(std::ostream& out, const HeaderRecord& record);
-	void writeVertexRecord(std::ostream& out, const VertexRecord& record);
-	void writeEdgeRecord(std::ostream& out, const EdgeRecord& record);
 	void writeFields(std::ostream& out, const StringVector& fields);
 };
 

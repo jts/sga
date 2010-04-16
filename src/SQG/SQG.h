@@ -35,6 +35,110 @@ namespace SQG
 	// Ordering matches above
 	const char TagCodes[] = {'A', 'i', 'f', 'Z', 'H'};
 
+	// getTypeCode must be defined for every type that TagValue can take
+	static inline char getTypeCode(int)                 { return 'i'; }
+	static inline char getTypeCode(char)                { return 'A'; }
+	static inline char getTypeCode(const std::string&)  { return 'Z'; }
+	static inline char getTypeCode(float)               { return 'f'; }
+
+	// Two-state TagValue that allows the data value to be not set
+	template<typename T>
+	class TagValue2
+	{
+		public:
+			TagValue2() : m_isSet(false) {}
+			TagValue2(const T& v) : m_isSet(true), m_value(v) {}
+
+			T get()
+			{
+				assert(m_isSet);
+				return m_value;
+			}
+
+			void set(T v)
+			{
+				m_isSet = true;
+				m_value = v;
+			}
+
+			bool isSet()
+			{
+				return m_isSet;
+			}
+
+			std::string toTagString(const char* tag)
+			{
+				std::stringstream ss;
+				char type_code = getTypeCode(m_value);
+				ss << tag << TAG_SEP << type_code << TAG_SEP << m_value;
+				return ss.str();
+			}
+		
+		private:
+			T m_value;
+			bool m_isSet;
+	};
+
+	// These are the valid tags that can be used
+	typedef TagValue2<char> CharTag;
+	typedef TagValue2<int> IntTag;
+	typedef TagValue2<float> FloatTag;
+	typedef TagValue2<std::string> StringTag;
+
+/*
+	class CharTag
+	{
+		public:
+			bool isSet();
+			int get();
+			void set(int v);
+			std::string toString();
+
+		private:
+			int value;
+			bool m_isSet;
+	}	
+
+	class IntTag
+	{
+		public:
+			bool isSet();
+			int get();
+			void set(int v);
+			std::string toString();
+
+		private:
+			int value;
+			bool m_isSet;
+	}
+
+	class FloatTag
+	{
+		public:
+			bool isSet();
+			void set(float v);
+			float get();
+			std::string toString();
+
+		private:
+			float value;
+			bool m_isSet;
+	}
+
+	class StringTag
+	{
+		public:
+			bool isSet();
+			void set(std::string v);
+			float get();
+			std::string toString();
+
+		private:
+			std::string value;
+			bool m_isSet;
+	}
+*/
+
 	//
 	struct TagValue
 	{

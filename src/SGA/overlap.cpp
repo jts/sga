@@ -104,10 +104,10 @@ int overlapMain(int argc, char** argv)
 
 	// Build and write the ASQG header
 	ASQG::HeaderRecord headerRecord;
-	headerRecord.addOverlapTag(opt::minOverlap);
-	headerRecord.addErrorRateTag(opt::errorRate);
-	headerRecord.addInputFileTag(opt::readsFile);
-	ASQG::writeHeaderRecord(*pASQGWriter, headerRecord);
+	headerRecord.setOverlapTag(opt::minOverlap);
+	headerRecord.setErrorRateTag(opt::errorRate);
+	headerRecord.setInputFileTag(opt::readsFile);
+	headerRecord.write(*pASQGWriter);
 
 	// Compute the overlap hits
 	StringVector hitsFilenames;
@@ -165,6 +165,7 @@ size_t computeHitsSerial(SeqReader& reader, std::ostream* pASQGWriter,
 	OverlapBlockList* pOutBlocks = new OverlapBlockList;
 
 	std::string filename = opt::prefix + HITS_EXT + GZIP_EXT;
+	//std::ofstream hitsWriter(filename.c_str());
 	ogzstream hitsWriter(filename.c_str());
 	assertGZOpen(hitsWriter, filename);
 	filenameVec.push_back(filename);
@@ -333,7 +334,7 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
 			for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
 			{
 				ASQG::EdgeRecord edgeRecord(*iter);
-				ASQG::writeEdgeRecord(*pASQGWriter, edgeRecord);
+				edgeRecord.write(*pASQGWriter);
 			}
 		}
 

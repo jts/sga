@@ -104,8 +104,8 @@ OverlapResult OverlapAlgorithm::overlapReadIrreducible(const SeqRecord& read, Ov
 void OverlapAlgorithm::writeResultASQG(std::ostream& writer, const SeqRecord& read, const OverlapResult& result) const
 {
 	ASQG::VertexRecord record(read.id, read.seq.toString());
-	record.addSubstringTag(result.isSubstring);
-	ASQG::writeVertexRecord(writer, record);
+	record.setSubstringTag(result.isSubstring);
+	record.write(writer);
 }
 
 // Write overlap blocks out to a file
