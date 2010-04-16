@@ -83,7 +83,7 @@ class OverlapAlgorithm
 		static void updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, OverlapBlockList& obList, char b);
 
 
-		static inline void createOverlapSeeds(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+		static inline int createOverlapSeeds(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                               int block_start, int block_end, int maxDiff, 
 											  OverlapSeedList* pOutList);
 

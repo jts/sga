@@ -264,11 +264,13 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 	OverlapSeedList::iterator iter;
 
 	// Create and extend the initial seeds
-	createOverlapSeeds(w, pBWT, pRevBWT, block_start, block_end, maxDiff, pCurrList);
+	int seed_len = createOverlapSeeds(w, pBWT, pRevBWT, block_start, block_end, maxDiff, pCurrList);
 	extendSeedsExactRight(w, pBWT, pRevBWT, ED_RIGHT, pCurrList, pNextList);
 	pCurrList->clear();
 	pCurrList->swap(*pNextList);
 	assert(pNextList->empty());
+
+	int num_steps = 0;
 
 	// Perform the inexact extensions
 	while(!pCurrList->empty())
@@ -322,6 +324,15 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 		}
 		assert(pCurrList->empty());
 		pCurrList->swap(*pNextList);
+
+		// Remove identical seeds after we have performed seed_len steps
+		// as there is now the chance of identical seeds
+		++num_steps;
+		if(num_steps <= block_end && num_steps % seed_len == 0)
+		{
+			pCurrList->sort(OverlapSeed::compareLeftRange);
+			pCurrList->unique(OverlapSeed::equalLeftRange);
+		}
 	}
 
 	// parse the full working list, which has containment overlaps
@@ -337,7 +348,7 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 	return 0;
 }
 
-void OverlapAlgorithm::createOverlapSeeds(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+int OverlapAlgorithm::createOverlapSeeds(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                           int /*block_start*/, int block_end, int maxDiff, 
 										  OverlapSeedList* pOutList)
 {
@@ -368,6 +379,7 @@ void OverlapAlgorithm::createOverlapSeeds(const std::string& w, const BWT* pBWT,
 		BWTAlgorithms::initIntervalPair(align.ranges, b, pBWT, pRevBWT);		
 		pOutList->push_back(align);
 	}
+	return seed_len;
 }
 
 //
