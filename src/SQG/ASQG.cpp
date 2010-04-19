@@ -16,6 +16,7 @@ namespace ASQG
 const int HEADER_VERSION = 1;
 
 // Record ID tags
+static int RECORD_TAG_SIZE = 2; // do not include null terminator 
 static char HEADER_TAG[] = "HT";
 static char VERTEX_TAG[] = "VT";
 static char EDGE_TAG[] = "ED";
@@ -35,6 +36,12 @@ static char SUBSTRING_TAG[] = "SS";
 HeaderRecord::HeaderRecord()
 {
 	setVersionTag(HEADER_VERSION);
+}
+
+//
+HeaderRecord::HeaderRecord(const std::string& recordLine)
+{
+	parse(recordLine);
 }
 
 //
@@ -68,7 +75,7 @@ void HeaderRecord::write(std::ostream& out)
 	fields.push_back(HEADER_TAG);
 
 	// Check for mandatory tags
-	if(!m_versionTag.isSet())
+	if(!m_versionTag.isInitialized())
 	{
 		std::cerr << "Error: Header version tag not set, aborting." << std::endl;
 		exit(EXIT_FAILURE);
@@ -78,13 +85,13 @@ void HeaderRecord::write(std::ostream& out)
 		fields.push_back(m_versionTag.toTagString(VERSION_TAG));
 	}
 
-	if(m_errorRateTag.isSet())
+	if(m_errorRateTag.isInitialized())
 		fields.push_back(m_errorRateTag.toTagString(ERROR_RATE_TAG));
 
-	if(m_overlapTag.isSet())
+	if(m_overlapTag.isInitialized())
 		fields.push_back(m_overlapTag.toTagString(OVERLAP_TAG));
 	
-	if(m_infileTag.isSet())
+	if(m_infileTag.isInitialized())
 		fields.push_back(m_infileTag.toTagString(INPUT_FILE_TAG));
 
 	writeFields(out, fields);
@@ -110,11 +117,36 @@ void HeaderRecord::parse(const std::string& record)
 		exit(EXIT_FAILURE);
 	}
 
-	assert(false);
+	for(size_t i = 1; i < tokens.size(); ++i)
+	{
+		static char VERSION_TAG[] = "VN";
+		static char OVERLAP_TAG[] = "OL";
+		static char INPUT_FILE_TAG[] = "IN";
+		static char ERROR_RATE_TAG[] = "ER";
+		
+		if(tokens[i].compare(VERSION_TAG) == 0)
+			m_versionTag.fromString(tokens[i]);
+
+		if(tokens[i].compare(OVERLAP_TAG) == 0)
+			m_overlapTag.fromString(tokens[i]);
+
+		if(tokens[i].compare(INPUT_FILE_TAG) == 0)
+			m_infileTag.fromString(tokens[i]);
+
+		if(tokens[i].compare(ERROR_RATE_TAG) == 0)
+			m_errorRateTag.fromString(tokens[i]);
+	}
 }
 
 //
 // Vertex Record
+//
+//
+VertexRecord::VertexRecord(const std::string& recordLine)
+{
+	parse(recordLine);
+}
+
 //
 void VertexRecord::setSubstringTag(bool b)
 {
@@ -129,7 +161,7 @@ void VertexRecord::write(std::ostream& out)
 	fields.push_back(m_id);
 	fields.push_back(m_seq);
 
-	if(m_substringTag.isSet())
+	if(m_substringTag.isInitialized())
 		fields.push_back(m_substringTag.toTagString(SUBSTRING_TAG));
 
 	writeFields(out, fields);
@@ -158,13 +190,24 @@ void VertexRecord::parse(const std::string& record)
 
 	m_id = tokens[1];
 	m_seq = tokens[2];
-	assert(false);
+
+	for(size_t i = 2; i < tokens.size(); ++i)
+	{
+		if(tokens[i].compare(SUBSTRING_TAG) == 0)
+			m_substringTag.fromString(tokens[i]);
+	}	
 }
 
 
 
 //
 // EdgeRecord
+//
+EdgeRecord::EdgeRecord(const std::string& recordLine)
+{
+	parse(recordLine);
+}
+
 //
 void EdgeRecord::write(std::ostream& out)
 {
@@ -214,20 +257,20 @@ RecordType getRecordType(const std::string& record)
 		exit(EXIT_FAILURE);
 	}
 
-	char recordTag[2];
-	record.copy(recordTag, 2);
+	char recordTag[RECORD_TAG_SIZE];
+	record.copy(recordTag, RECORD_TAG_SIZE);
 
-	if(strncmp(recordTag, HEADER_TAG, 2) == 0)
+	if(strncmp(recordTag, HEADER_TAG, RECORD_TAG_SIZE) == 0)
 	{
 		return RT_HEADER;
 	}
 
-	if(strncmp(recordTag, VERTEX_TAG, 2) == 0)
+	if(strncmp(recordTag, VERTEX_TAG, RECORD_TAG_SIZE) == 0)
 	{
 		return RT_VERTEX;
 	}
 
-	if(strncmp(recordTag, EDGE_TAG, 2) == 0)
+	if(strncmp(recordTag, EDGE_TAG, RECORD_TAG_SIZE) == 0)
 	{
 		return RT_EDGE;
 	}

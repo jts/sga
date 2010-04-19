@@ -31,24 +31,24 @@ namespace SQG
 	class TagValue
 	{
 		public:
-			TagValue() : m_isSet(false) {}
-			TagValue(const T& v) : m_isSet(true), m_value(v) {}
+			TagValue() : m_isInitialized(false) {}
+			TagValue(const T& v) : m_isInitialized(true), m_value(v) {}
 
-			T get()
+			T get() const
 			{
-				assert(m_isSet);
+				assert(m_isInitialized);
 				return m_value;
 			}
 
 			void set(T v)
 			{
-				m_isSet = true;
+				m_isInitialized = true;
 				m_value = v;
 			}
 
-			bool isSet()
+			bool isInitialized() const
 			{
-				return m_isSet;
+				return m_isInitialized;
 			}
 
 			std::string toTagString(const char* tag)
@@ -58,10 +58,16 @@ namespace SQG
 				ss << tag << TAG_SEP << type_code << TAG_SEP << m_value;
 				return ss.str();
 			}
+
+			void fromString(const std::string& str)
+			{
+				std::stringstream ss(str);
+				ss >> m_value;
+			}
 		
 		private:
 			T m_value;
-			bool m_isSet;
+			bool m_isInitialized;
 	};
 
 	// These are the valid tags that can be used

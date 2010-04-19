@@ -95,7 +95,8 @@ struct Overlap
 	void swap();
 
 	// Return the index (0 or 1) of the CONTAINED vertex (the discarded vertex of a containment)
-	size_t getContainedIdx();
+	size_t getContainedIdx() const;
+	std::string getContainedID() const;
 
 	friend std::ostream& operator<<(std::ostream& out, const Overlap& o);
 	friend std::istream& operator>>(std::istream& in, Overlap& o);

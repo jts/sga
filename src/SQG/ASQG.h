@@ -27,11 +27,17 @@ namespace ASQG
 	{
 		public:
 			HeaderRecord();
+			HeaderRecord(const std::string& recordLine);
 			
 			void setVersionTag(int version);
 			void setOverlapTag(int overlapLen);
 			void setInputFileTag(const std::string& name);
 			void setErrorRateTag(float errorRate);
+
+			const SQG::IntTag& getVersionTag() const { return m_versionTag; }
+			const SQG::FloatTag& getErrorRateTag() const { return m_errorRateTag; }
+			const SQG::StringTag& getInfileTag() const { return m_infileTag; }
+			const SQG::IntTag& getOverlapTag() const { return m_overlapTag; }
 
 			void write(std::ostream& out);
 			void parse(const std::string& record);
@@ -50,9 +56,14 @@ namespace ASQG
 	{
 		public:
 			VertexRecord() {}
+			VertexRecord(const std::string& recordLine);
 			VertexRecord(const std::string& i, const std::string& s) : m_id(i), m_seq(s) {}
 
 			void setSubstringTag(bool b);
+			
+			const std::string& getID() const { return m_id; }
+			const std::string& getSeq() const { return m_seq; }
+			const SQG::IntTag& getSubstringTag() const { return m_substringTag; }
 
 			void write(std::ostream& out);
 			void parse(const std::string& record);
@@ -69,7 +80,10 @@ namespace ASQG
 	{
 		public:
 			EdgeRecord() {}
+			EdgeRecord(const std::string& recordLine);
 			EdgeRecord(const Overlap& o) : m_overlap(o) {}
+
+			const Overlap& getOverlap() const { return m_overlap; }
 
 			void write(std::ostream& out);
 			void parse(const std::string& record);

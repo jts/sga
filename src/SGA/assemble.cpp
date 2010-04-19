@@ -29,15 +29,14 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2009 Wellcome Trust Sanger Institute\n";
 
 static const char *ASSEMBLE_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READSFILE\n"
-"Create contigs for the reads in READSFILE. Overlaps are read from PREFIX.ovr. PREFIX defaults to the basename of READSFILE\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... ASQGFILE\n"
+"Create contigs from the assembly graph ASQGFILE.\n"
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -o, --out=FILE                   write the contigs to FILE (default: contigs.fa)\n"
 "      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
-"      -p, --prefix=FILE                use PREFIX instead of the basename of READSFILE\n"
 "      -b, --bubble                     perform bubble removal\n"
 "      -t, --trim                       trim terminal branches\n"
 "      -c, --correct                    error correct reads and write to correctedReads.fa\n"
@@ -46,7 +45,7 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 namespace opt
 {
 	static unsigned int verbose;
-	static std::string readsFile;
+	static std::string asqgFile;
 	static std::string prefix;
 	static std::string outFile;
 	static std::string debugFile;
@@ -92,7 +91,7 @@ int assembleMain(int argc, char** argv)
 void assemble()
 {
 	Timer t("sga assemble");
-	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn", opt::minOverlap, true);
+	StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, opt::minOverlap, true);
 	pGraph->printMemSize();
 
 	// Visitor functors
@@ -197,185 +196,6 @@ void assemble()
 	delete pGraph;
 }
 
-void assemble2()
-{
-	Timer t("sga assemble");
-	StringGraph* pGraph = loadStringGraph(opt::readsFile, opt::prefix + ".ovr", opt::prefix + ".ctn", opt::minOverlap, true);
-	pGraph->printMemSize();
-
-	//pGraph->validate();
-	//pGraph->writeDot("before.dot");
-	
-	// Visitor functors
-	SGTrimVisitor trimVisit;
-	SGIslandVisitor islandVisit;
-	SGTransRedVisitor trVisit;
-	SGBubbleVisitor bubbleVisit;
-	SGGraphStatsVisitor statsVisit;
-	SGDebugEdgeClassificationVisitor edgeClassVisit;
-	SGVertexPairingVisitor pairingVisit;
-	SGPairedOverlapVisitor pairedOverlapVisit;
-	SGPETrustVisitor trustVisit;
-	SGRealignVisitor realignVisit;
-	SGContainRemoveVisitor containVisit;
-
-	if(!opt::debugFile.empty())
-	{
-		// Pre-assembly graph stats
-		std::cout << "Initial graph stats\n";
-		pGraph->visit(statsVisit);
-
-		SGDebugGraphCompareVisitor* pDebugGraphVisit = new SGDebugGraphCompareVisitor(opt::debugFile);
-		
-		/*
-		pGraph->visit(*pDebugGraphVisit);
-		while(pGraph->visit(realignVisitor))
-			pGraph->visit(*pDebugGraphVisit);
-		SGOverlapWriterVisitor overlapWriter("final-overlaps.ovr");
-		pGraph->visit(overlapWriter);
-		*/
-		//pDebugGraphVisit->m_showMissing = true;
-		pGraph->visit(*pDebugGraphVisit);
-		pGraph->visit(statsVisit);
-		SGFastaVisitor fastaVisitor("corrected.fa");
-		pGraph->visit(fastaVisitor);
-
-		delete pDebugGraphVisit;
-		//return;
-	}
-	/*
-	if(!opt::positionsFile.empty())
-	{
-		WARN_ONCE("Using positions file");
-		std::cout << "Loading debug positions from file " << opt::positionsFile << "\n";
-		std::ifstream reader(opt::positionsFile.c_str());
-		std::string line;
-		std::string vertID;
-		int position;
-		int distance;
-
-		while(getline(reader, line))
-		{
-			std::istringstream ss(line);
-			ss >> vertID;
-			ss >> position;
-			ss >> distance;
-			Vertex* pVertex = pGraph->getVertex(vertID);
-			if(pVertex != NULL)
-				pVertex->dbg_position = position;
-		}
-	}
-	*/
-
-	// Pre-assembly graph stats
-	std::cout << "Initial graph stats\n";
-	pGraph->visit(statsVisit);
-	
-	pGraph->visit(trimVisit);
-
-	// Realign reads
-	int numRealign = 1;
-	while(numRealign--)
-		pGraph->visit(realignVisit);
-
-	// Remove containments from the graph
-	pGraph->visit(containVisit);
-
-	//std::cout << "Post-contain removal stats\n";
-	//pGraph->visit(statsVisit);
-
-	//SGEdgeCutVisitor ecVisit(0.01f);
-	//pGraph->visit(ecVisit);
-
-	//std::cout << "Post-edge remove stats\n";
-	//pGraph->visit(statsVisit);
-	
-	/*
-	std::cout << "Pairing reads\n";
-	pGraph->visit(pairingVisit);
-
-	std::cout << "Processing trust network\n";
-	pGraph->visit(trustVisit);
-
-	//std::cout << "Paired overlap distance\n";
-	//pGraph->visit(pairedOverlapVisit);
-
-	
-	std::cout << "\nPerforming transitive reduction\n";
-	pGraph->visit(edgeClassVisit);
-	pGraph->visit(trVisit);
-	pGraph->visit(edgeClassVisit);
-	SGPEConflictRemover conflictVisit;
-	pGraph->visit(conflictVisit);
-	pGraph->visit(edgeClassVisit);
-	pGraph->visit(statsVisit);
-	//pGraph->visit(resolveVisit);
-	*/
-
-/*
-	if(opt::bTrim)
-	{
-		std::cout << "Performing island/trim reduction\n";
-		pGraph->visit(islandVisit);
-		pGraph->visit(trimVisit);
-		pGraph->visit(statsVisit);
-	}
-*/
-	if(opt::bTrim)
-	{
-		std::cout << "\nPerforming island/trim reduction\n";
-		pGraph->visit(islandVisit);
-		int numTrim = 3;
-		while(numTrim-- > 0)
-			pGraph->visit(trimVisit);
-		pGraph->visit(statsVisit);
-	}
-
-	/*
-	std::cout << "\nPairing vertices\n";
-	pGraph->visit(pairingVisit);
-	//pGraph->visit(pairedOverlapVisit);
-	pGraph->visit(trustVisit);
-	*/
-
-	std::cout << "\nPerforming transitive reduction\n";
-	pGraph->visit(trVisit);
-
-	pGraph->visit(statsVisit);
-	printf("starting simplify\n");
-	pGraph->simplify();
-	printf("done simplify\n");
-
-	//pGraph->visit(trimVisit);
-	//pGraph->simplify();
-	
-	if(opt::bBubble)
-	{
-		std::cout << "\nPerforming bubble removal\n";
-		// Bubble removal
-		while(pGraph->visit(bubbleVisit))
-			pGraph->simplify();
-		pGraph->visit(statsVisit);
-	}
-
-	pGraph->simplify();
-
-	std::cout << "\nFinal graph stats\n";
-	pGraph->visit(statsVisit);
-
-#ifdef VALIDATE
-	VALIDATION_WARNING("SGA/assemble")
-	pGraph->validate();
-#endif
-
-	// Write the results
-	pGraph->writeDot("final.dot");
-	SGFastaVisitor av(opt::outFile);
-	pGraph->visit(av);
-
-	delete pGraph;
-}
-
 // 
 // Handle command line arguments
 //
@@ -427,9 +247,6 @@ void parseAssembleOptions(int argc, char** argv)
 		exit(EXIT_FAILURE);
 	}
 
-	// Parse the input filenames
-	opt::readsFile = argv[optind++];
-	
-	if(opt::prefix.empty())
-		opt::prefix = stripFilename(opt::readsFile);
+	// Parse the input filename
+	opt::asqgFile = argv[optind++];
 }

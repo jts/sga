@@ -68,12 +68,11 @@ void SGDebugEdgeClassificationVisitor::postvisit(StringGraph* /*pGraph*/)
 // Compare the visited graph to the graph loaded
 // in the constructor
 //
-SGDebugGraphCompareVisitor::SGDebugGraphCompareVisitor(std::string readsFile)
+SGDebugGraphCompareVisitor::SGDebugGraphCompareVisitor(std::string filename)
 {
 	m_showMissing = false;
-	std::string prefix = stripFilename(readsFile);
-	std::cout << "Loading graph of " << readsFile << " for comparison\n";
-	m_pCompareGraph = loadStringGraph(readsFile, prefix + ".ovr", prefix + ".ctn", 0, true);
+	std::cout << "Loading graph " << filename << " for comparison\n";
+	m_pCompareGraph = SGUtil::loadASQG(filename, 0, true);
 }
 
 //

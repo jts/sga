@@ -457,7 +457,7 @@ bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 		if(error_rate < MAX_ERROR)
 		{
 			//std::cout << "OVR:\t" << c.ovr << "\n";
-			Edge* p_edgeXZ = createEdges(pGraph, c.ovr, true);
+			Edge* p_edgeXZ = SGUtil::createEdges(pGraph, c.ovr, true);
 			Edge* p_edgeZX = p_edgeXZ->getTwin();
 			p_edgeXZ->setColor(GC_WHITE);
 			p_edgeZX->setColor(GC_WHITE);

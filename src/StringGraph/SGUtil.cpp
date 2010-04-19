@@ -11,102 +11,110 @@
 #include "SeqReader.h"
 #include "SGAlgorithms.h"
 
-ContainMap::ContainMap(std::string file)
+StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int minOverlap, 
+                              bool allowContainments)
 {
-	std::ifstream reader(file.c_str());
-	assertFileOpen(reader, file);
-	Overlap o;
-	while(reader >> o)
-	{
-		size_t idx = o.getContainedIdx();
-		add(o.id[idx], o.id[1 - idx]);
-	}
-	reader.close();
-}
-
-void ContainMap::add(std::string s1, std::string s2)
-{
-	m_data.insert(std::make_pair(s1, s2));
-}
-
-bool ContainMap::isContained(std::string s) const
-{
-	StrStrMap::const_iterator iter = m_data.find(s);
-	return iter != m_data.end();
-}
-
-//
-std::string ContainMap::getContainer(std::string s) const
-{
-	StrStrMap::const_iterator iter = m_data.find(s);
-	if(iter != m_data.end())
-		return iter->second;
-	else
-		return "";
-}
-
-// Construct a string graph from overlaps
-StringGraph* loadStringGraph(std::string readFile, std::string overlapFile, std::string containFile, const unsigned int minOverlap, bool allowContainments)
-{
-	// Initialize the string graph
+	// Initialize graph
 	StringGraph* pGraph = new StringGraph;
 
-	// Load the containment mappings
-	ContainMap containments(containFile);
-	
-	// Create the graph
-	loadVertices(pGraph, readFile, containments, allowContainments);
-	loadEdges(pGraph, overlapFile, containments, minOverlap, allowContainments);
+	std::istream* pReader;
+	if(isGzip(filename))
+		pReader = new igzstream(filename.c_str());
+	else
+		pReader = new std::ifstream(filename.c_str());
 
-	if(allowContainments)
-		loadEdges(pGraph, containFile, containments, minOverlap, allowContainments);
+	int stage = 0;
+	int line = 0;
+	std::string recordLine;
+	while(getline(*pReader, recordLine))
+	{
+		ASQG::RecordType rt = ASQG::getRecordType(recordLine);
+		switch(rt)
+		{
+			case ASQG::RT_HEADER:
+			{
+				if(stage != 0)
+				{
+					std::cerr << "Error: Unexpected header record found at line " << line << "\n";
+					exit(EXIT_FAILURE);
+				}
 
-	// Validate the graph and ensure that there are no duplicate edges
+				ASQG::HeaderRecord headerRecord(recordLine);
+				(void)headerRecord; // do nothing with the header at this point
+				break;
+			}
+			case ASQG::RT_VERTEX:
+			{
+				// progress the stage if we are done the header
+				if(stage == 0)
+					stage = 1;
+
+				if(stage != 1)
+				{
+					std::cerr << "Error: Unexpected vertex record found at line " << line << "\n";
+					exit(EXIT_FAILURE);
+				}
+
+				ASQG::VertexRecord vertexRecord(recordLine);
+				const SQG::IntTag& ssTag = vertexRecord.getSubstringTag();
+
+				// If the substring tag is set and equals zero, the vertex is a substring
+				// of some other vertex and should be skipped
+				if(!ssTag.isInitialized() || ssTag.get() == 0)
+				{
+					pGraph->addVertex(new Vertex(vertexRecord.getID(), vertexRecord.getSeq()));
+				}
+				break;
+			}
+			case ASQG::RT_EDGE:
+			{
+				if(stage == 1)
+					stage = 2;
+				
+				if(stage != 2)
+				{
+					std::cerr << "Error: Unexpected edge record found at line " << line << "\n";
+					exit(EXIT_FAILURE);
+				}
+
+				ASQG::EdgeRecord edgeRecord(recordLine);
+				const Overlap& ovr = edgeRecord.getOverlap();
+				if(!allowContainments && ovr.match.isContainment())
+				{
+					// Mark the contained read for subsequent removal
+					const std::string& containedID = ovr.getContainedID();
+
+					Vertex* pVertex = pGraph->getVertex(containedID);
+					if(pVertex != NULL)
+					{
+						pVertex->setColor(GC_BLACK);
+					}
+				}
+				else
+				{
+					// Add the edge to the graph
+					if(ovr.match.getMinOverlapLength() >= (int)minOverlap)
+					{
+						SGUtil::createEdges(pGraph, ovr, allowContainments);
+					}
+				}
+				break;
+			}
+		}
+		++line;
+	}
+
+	// Done loading the ASQG file, remove containment vertices if necessary and validate the graph
+	pGraph->sweepVertices(GC_BLACK);
+
+	// Remove any duplicate edges
 	SGDuplicateVisitor dupVisit;
 	pGraph->visit(dupVisit);
-
 	return pGraph;
 }
 
-//
-void loadVertices(StringGraph* pGraph, std::string readFile, const ContainMap& containments, bool allowContainments)
-{
-	(void)containments;
-	// Add the reads as the vertices
-	SeqReader reader(readFile);
-	SeqRecord sr;
-	while(reader.get(sr))
-	{
-		if(allowContainments || !containments.isContained(sr.id))
-		{
-			pGraph->addVertex(new Vertex(sr.id, sr.seq.toString()));
-		}
-	}
-}
-
-//
-void loadEdges(StringGraph* pGraph, std::string overlapFile, const ContainMap& containments, 
-               const unsigned int minOverlap, bool allowContainments)
-{
-	// Add the overlaps as edges
-	std::ifstream overlapReader(overlapFile.c_str());
-	assertFileOpen(overlapReader, overlapFile);
-
-	Overlap o;
-	while(overlapReader >> o)
-	{
-	    if((!allowContainments && (containments.isContained(o.id[0]) || containments.isContained(o.id[1])))
-			|| o.match.getMaxOverlapLength() < (int)minOverlap)
-		{
-			continue;
-		}
-		createEdges(pGraph, o, allowContainments);
-	}
-	overlapReader.close();
-}
-
 // add edges to the graph for the given overlap
-Edge* createEdges(StringGraph* pGraph, const Overlap& o, bool allowContained)
+Edge* SGUtil::createEdges(StringGraph* pGraph, const Overlap& o, bool allowContained)
 {
 	// Initialize data and perform checks
 	Vertex* pVerts[2];
