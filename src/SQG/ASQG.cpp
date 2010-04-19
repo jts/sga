@@ -22,6 +22,7 @@ static char VERTEX_TAG[] = "VT";
 static char EDGE_TAG[] = "ED";
 
 // Header tags
+const int FIELD_TAG_SIZE = 2;
 static char VERSION_TAG[] = "VN";
 static char OVERLAP_TAG[] = "OL";
 static char INPUT_FILE_TAG[] = "IN";
@@ -110,7 +111,7 @@ void HeaderRecord::parse(const std::string& record)
 	StringVector tokens = SQG::tokenizeRecord(record);
 
 	// Ensure the first token indicates this is a valid header record
-	if(tokens[0].compare(HEADER_TAG) != 0)
+	if(tokens[0].compare(0, RECORD_TAG_SIZE, HEADER_TAG) != 0)
 	{
 		std::cerr << "Error: Record does not have a header tag" << std::endl;
 		std::cerr << "Record: " << record << std::endl;
@@ -124,16 +125,16 @@ void HeaderRecord::parse(const std::string& record)
 		static char INPUT_FILE_TAG[] = "IN";
 		static char ERROR_RATE_TAG[] = "ER";
 		
-		if(tokens[i].compare(VERSION_TAG) == 0)
+		if(tokens[i].compare(0, FIELD_TAG_SIZE, VERSION_TAG) == 0)
 			m_versionTag.fromString(tokens[i]);
 
-		if(tokens[i].compare(OVERLAP_TAG) == 0)
+		if(tokens[i].compare(0, FIELD_TAG_SIZE, OVERLAP_TAG) == 0)
 			m_overlapTag.fromString(tokens[i]);
 
-		if(tokens[i].compare(INPUT_FILE_TAG) == 0)
+		if(tokens[i].compare(0, FIELD_TAG_SIZE, INPUT_FILE_TAG) == 0)
 			m_infileTag.fromString(tokens[i]);
 
-		if(tokens[i].compare(ERROR_RATE_TAG) == 0)
+		if(tokens[i].compare(0, FIELD_TAG_SIZE, ERROR_RATE_TAG) == 0)
 			m_errorRateTag.fromString(tokens[i]);
 	}
 }
@@ -181,7 +182,7 @@ void VertexRecord::parse(const std::string& record)
 	StringVector tokens = SQG::tokenizeRecord(record);
 
 	// Ensure the first token indicates this is a valid vertex record
-	if(tokens[0].compare(VERTEX_TAG) != 0)
+	if(tokens[0].compare(0, RECORD_TAG_SIZE, VERTEX_TAG) != 0)
 	{
 		std::cerr << "Error: Record does not have a vertex tag" << std::endl;
 		std::cerr << "Record: " << record << std::endl;
@@ -190,10 +191,10 @@ void VertexRecord::parse(const std::string& record)
 
 	m_id = tokens[1];
 	m_seq = tokens[2];
-
-	for(size_t i = 2; i < tokens.size(); ++i)
+	
+	for(size_t i = 3; i < tokens.size(); ++i)
 	{
-		if(tokens[i].compare(SUBSTRING_TAG) == 0)
+		if(tokens[i].compare(0, FIELD_TAG_SIZE, SUBSTRING_TAG) == 0)
 			m_substringTag.fromString(tokens[i]);
 	}	
 }
@@ -282,10 +283,12 @@ RecordType getRecordType(const std::string& record)
 
 void writeFields(std::ostream& out, const StringVector& fields)
 {
-	char delim[2];
-	delim[0] = SQG::FIELD_SEP;
-	delim[1] = '\0';
-	std::copy(fields.begin(), fields.end(), std::ostream_iterator<std::string>(out, delim));
+	for(size_t i = 0; i < fields.size(); ++i)
+	{
+		out << fields[i];
+		if(i != fields.size() - 1)
+			out << SQG::FIELD_SEP;
+	}
 	out << "\n";
 }
 

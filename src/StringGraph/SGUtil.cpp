@@ -94,9 +94,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 				{
 					// Add the edge to the graph
 					if(ovr.match.getMinOverlapLength() >= (int)minOverlap)
-					{
 						SGUtil::createEdges(pGraph, ovr, allowContainments);
-					}
 				}
 				break;
 			}
@@ -110,6 +108,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 	// Remove any duplicate edges
 	SGDuplicateVisitor dupVisit;
 	pGraph->visit(dupVisit);
+
 	return pGraph;
 }
 
@@ -123,12 +122,17 @@ Edge* SGUtil::createEdges(StringGraph* pGraph, const Overlap& o, bool allowConta
 	for(size_t idx = 0; idx < 2; ++idx)
 	{
 		pVerts[idx] = pGraph->getVertex(o.id[idx]);
-		assert(pVerts[idx]);		
+
+		// If one of the vertices is not in the graph, skip this edge
+		// This can occur if one of the verts is a strict substring of some other vertex so it will
+		// never be added to the graph
+		if(pVerts[idx] == NULL)
+			return NULL;
 		if(!allowContained)
 			assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
 	}
 
-	// Allocated the edges
+	// Allocate the edges
 	Edge* pEdges[2];
 	for(size_t idx = 0; idx < 2; ++idx)
 	{

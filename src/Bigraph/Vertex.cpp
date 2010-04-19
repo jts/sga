@@ -78,8 +78,6 @@ void Vertex::merge(Edge* pEdge)
 
 void Vertex::validate() const
 {
-	Vertex::validate();
-
 	for(EdgePtrVecConstIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
 	{
 		(*iter)->validate();
@@ -436,17 +434,26 @@ void Vertex::addEdge(Edge* ep)
 // Remove an edge
 void Vertex::removeEdge(Edge* pEdge)
 {
-	// Check if the edge exists
-	assert(pEdge != NULL);
-	removeEdge(pEdge->getDesc());
+	EdgePtrVecIter iter = m_edges.begin();
+	while(iter != m_edges.end())
+	{
+		if(*iter == pEdge)
+			break;
+		++iter;
+	}
+	assert(iter != m_edges.end());
+	m_edges.erase(iter);	
 }
 
 // Remove edge
 // Note - this does not delete the edge through the pointer
 void Vertex::removeEdge(const EdgeDesc& ed)
 {
-
 	EdgePtrVecIter iter = findEdge(ed);
+	if(iter == m_edges.end())
+	{
+		std::cout << "EDGE NOT FOUND: " << ed << "\n";
+	}
 	assert(iter != m_edges.end());
 	m_edges.erase(iter);
 }

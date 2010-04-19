@@ -26,6 +26,11 @@ namespace SQG
 	static inline char getTypeCode(const std::string&)  { return 'Z'; }
 	static inline char getTypeCode(float)               { return 'f'; }
 
+
+	// Tokenize functions
+	StringVector tokenizeRecord(const std::string& record);
+	StringVector tokenizeTagValue(const std::string& tagValue);
+
 	// Two-state TagValue that allows the data value to be not set
 	template<typename T>
 	class TagValue
@@ -61,8 +66,24 @@ namespace SQG
 
 			void fromString(const std::string& str)
 			{
-				std::stringstream ss(str);
+				StringVector tokens = tokenizeTagValue(str);
+				if(tokens.size() != 3)
+				{
+					std::cerr << "Incorrect format for tagged value\n";
+					std::cerr << "Field: " << str << "\n";
+					exit(EXIT_FAILURE);
+				}
+
+				if(tokens[1].size() != 1 && tokens[1][0] != getTypeCode(m_value))
+				{
+					std::cerr << "Unexpected type in tagged value. Expected: " << getTypeCode(m_value);
+					std::cerr << " Found: " << tokens[1] << "\n";
+					exit(EXIT_FAILURE);
+				}
+
+				std::stringstream ss(tokens[2]);
 				ss >> m_value;
+				m_isInitialized = true;
 			}
 		
 		private:
@@ -75,8 +96,6 @@ namespace SQG
 	typedef TagValue<int> IntTag;
 	typedef TagValue<float> FloatTag;
 	typedef TagValue<std::string> StringTag;
-
-	StringVector tokenizeRecord(const std::string& record);
 };
 
 #endif
