@@ -18,11 +18,7 @@ OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper,
 							 m_stopRequested(false), 
 							 m_isReady(false)
 {
-	if(isGzip(filename))
-		m_pOutfile = new ogzstream(filename.c_str());
-	else
-		m_pOutfile = new std::ofstream(filename.c_str());
-	
+	m_pOutfile = createWriter(filename);
 	m_pOBList = new OverlapBlockList;
 	m_pSharedWorkVec = new OverlapWorkVector;
 	m_pSharedWorkVec->reserve(max_items);

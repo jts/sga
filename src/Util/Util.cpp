@@ -130,7 +130,7 @@ bool isGzip(const std::string& filename)
 	return extension == GZIP_EXT;
 }
 
-// Open a file that may or may not be gzipped
+// Open a file that may or may not be gzipped for reading
 // The caller is responsible for freeing the handle
 std::istream* createReader(const std::string& filename)
 {
@@ -143,6 +143,24 @@ std::istream* createReader(const std::string& filename)
 	else
 	{
 		std::ifstream* pReader = new std::ifstream(filename.c_str());
+		assertFileOpen(*pReader, filename);
+		return pReader;
+	}
+}
+
+// Open a file that may or may not be gzipped for writing
+// The caller is responsible for freeing the handle
+std::ostream* createWriter(const std::string& filename)
+{
+	if(isGzip(filename))
+	{
+		ogzstream* pGZ = new ogzstream(filename.c_str());
+		assertGZOpen(*pGZ, filename);
+		return pGZ;
+	}
+	else
+	{
+		std::ofstream* pReader = new std::ofstream(filename.c_str());
 		assertFileOpen(*pReader, filename);
 		return pReader;
 	}

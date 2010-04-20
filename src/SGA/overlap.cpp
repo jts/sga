@@ -99,8 +99,7 @@ int overlapMain(int argc, char** argv)
 
 	// Open output file
 	std::string asqgFilename = opt::prefix + ASQG_EXT + GZIP_EXT;
-	ogzstream* pASQGWriter = new ogzstream(asqgFilename.c_str());
-	assertGZOpen(*pASQGWriter, asqgFilename);
+	std::ostream* pASQGWriter = createWriter(asqgFilename);
 
 	// Build and write the ASQG header
 	ASQG::HeaderRecord headerRecord;
@@ -165,9 +164,7 @@ size_t computeHitsSerial(SeqReader& reader, std::ostream* pASQGWriter,
 	OverlapBlockList* pOutBlocks = new OverlapBlockList;
 
 	std::string filename = opt::prefix + HITS_EXT + GZIP_EXT;
-	//std::ofstream hitsWriter(filename.c_str());
-	ogzstream hitsWriter(filename.c_str());
-	assertGZOpen(hitsWriter, filename);
+	std::ostream* pHitsWriter = createWriter(filename);
 	filenameVec.push_back(filename);
 
 	// Overlap each read
@@ -180,12 +177,12 @@ size_t computeHitsSerial(SeqReader& reader, std::ostream* pASQGWriter,
 
 		OverlapResult result = pOverlapper->overlapRead(read, pOutBlocks);
 		pOverlapper->writeResultASQG(*pASQGWriter, read, result);
-		pOverlapper->writeOverlapBlocks(hitsWriter, currIdx++, pOutBlocks);
+		pOverlapper->writeOverlapBlocks(*pHitsWriter, currIdx++, pOutBlocks);
 		pOutBlocks->clear();
 	}
 
 	delete pOutBlocks;
-	hitsWriter.close();
+	delete pHitsWriter; 
 
 	return currIdx;
 }

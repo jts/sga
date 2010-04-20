@@ -96,6 +96,7 @@ bool isGzip(const std::string& filename);
 
 // Wrapper function for opening a reader of compressed or uncompressed file
 std::istream* createReader(const std::string& filename);
+std::ostream* createWriter(const std::string& filename);
 
 void assertFileOpen(std::ifstream& fh, const std::string& fn);
 void assertFileOpen(std::ofstream& fh, const std::string& fn);
