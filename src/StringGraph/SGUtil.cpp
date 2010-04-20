@@ -109,6 +109,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 	SGDuplicateVisitor dupVisit;
 	pGraph->visit(dupVisit);
 
+	delete pReader;
 	return pGraph;
 }
 

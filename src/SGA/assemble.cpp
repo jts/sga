@@ -175,9 +175,8 @@ void assemble()
 	{
 		std::cout << "\nPerforming bubble removal\n";
 		// Bubble removal
-		while(pGraph->visit(bubbleVisit))
-			pGraph->simplify();
-		pGraph->visit(statsVisit);
+		pGraph->visit(bubbleVisit);
+		pGraph->simplify();
 	}	
 
 	std::cout << "\nFinal graph stats\n";

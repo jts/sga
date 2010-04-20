@@ -35,10 +35,10 @@ typedef std::vector<DrawData> DrawVector;
 // functions
 
 int oviewMain(int argc, char** argv);
-void correctReads(const ReadTable* pRT, const OverlapMap* pOM);
-std::string correct(const SeqItem& read, const ReadTable* pRT, const OverlapMap* pOM, int& num_corrected);
 void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* pOM);
-void parseOverlaps(std::string filename, OverlapMap& overlapMap);
+
+
+void parseASQG(std::string filename, ReadTable* pRT, OverlapMap* pOM);
 void parseOviewOptions(int argc, char** argv);
 
 #endif

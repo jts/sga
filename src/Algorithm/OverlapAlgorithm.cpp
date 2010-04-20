@@ -359,7 +359,6 @@ int OverlapAlgorithm::createOverlapSeeds(const std::string& w, const BWT* pBWT, 
 	int seed_len = (seed_end - seed_start) / num_seeds;
 
 	//printf("srs: %d sre: %d bs: %d be: %d d: %d\n", seed_start, seed_end, block_start, block_end, maxDiff);
-
 	// Populate the initial seeds
 	for(int i = 0; i < num_seeds; ++i)
 	{
