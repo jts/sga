@@ -30,10 +30,9 @@ typedef std::queue<PartialAlign> PAQueue;
 // Parse a BWT from a file
 BWT::BWT(const std::string& filename)
 {
-	std::ifstream in(filename.c_str());
-	assertFileOpen(in, filename);	
-	in >> *this;
-	in.close();
+	std::istream* pReader = createReader(filename);
+	*pReader >> *this;
+	delete pReader;
 }
 
 // Construct the BWT from a suffix array
@@ -192,15 +191,13 @@ std::istream& operator>>(std::istream& in, BWT& bwt)
 	return in;
 }
 
-// write the suffix array to a file
+// write the BWT to a file
 void BWT::write(std::string& filename)
 {
-	std::ofstream out(filename.c_str());
-	assertFileOpen(out, filename);
-	out << *this;
-	out.close();
+	std::ostream* pWriter = createWriter(filename);
+	*pWriter << *this;
+	delete pWriter;
 }
-
 
 // Print the BWT
 void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
