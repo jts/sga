@@ -17,11 +17,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 	// Initialize graph
 	StringGraph* pGraph = new StringGraph;
 
-	std::istream* pReader;
-	if(isGzip(filename))
-		pReader = new igzstream(filename.c_str());
-	else
-		pReader = new std::ifstream(filename.c_str());
+	std::istream* pReader = createReader(filename);
 
 	int stage = 0;
 	int line = 0;

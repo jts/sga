@@ -320,11 +320,7 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
 	for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
 	{
 		printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
-		std::istream* pReader;
-		if(isGzip(iter->c_str()))
-			pReader = new igzstream(iter->c_str());
-		else
-			pReader = new std::ifstream(iter->c_str());
+		std::istream* pReader = createReader(*iter);
 	
 		// Read each hit sequentially, converting it to an overlap
 		std::string line;

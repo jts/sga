@@ -130,12 +130,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 
 void parseASQG(std::string filename, ReadTable* pRT, OverlapMap* pOM)
 {
-	std::istream* pReader;
-	if(isGzip(filename))
-		pReader = new igzstream(filename.c_str());
-	else
-		pReader = new std::ifstream(filename.c_str());
-
+	std::istream* pReader = createReader(filename);
 	int stage = 0;
 	int line = 0;
 	std::string recordLine;
