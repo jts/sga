@@ -24,17 +24,31 @@ enum ExtendDirection
 // to a BWT
 struct OverlapSeed
 {
+	// Functions
 	inline int length() const { return right_index - left_index + 1; }
 	inline bool isSeed() const { return length() < seed_len; }
 	inline bool isIntervalValid(int idx) { return ranges.interval[idx].isValid(); }
-
-	int left_index; // inclusive
-	int right_index; // inclusive
+	inline bool allowMismatches() const { return z < maxDiff; }
+	inline double calcErrorRate() const { return static_cast<double>(z) / static_cast<double>(length()); }
+	 
+	// Data
+	
+	// Index range is inclusive on both ends
+	int left_index;
+	int right_index;
 	int seed_len;
-	ExtendDirection dir; // the direction that this alignment is being extended in
+
+	// The direction the alignment is currently being extended
+	ExtendDirection dir; 
+	
+	// The current number of mismatches in the block
 	int z;
 
-	BWTIntervalPair ranges; // ranges.interval[0] is the left interval, 1 is the right 
+	// The total number of allowed mismatches
+	int maxDiff;
+
+	// BWT interval coordinates, the first element of the pair is the left range
+	BWTIntervalPair ranges; 
 	
 	// Sort the alignments based on their r_lower/r_upper
 	static inline bool compareLeftRange(const OverlapSeed& a, const OverlapSeed& b)

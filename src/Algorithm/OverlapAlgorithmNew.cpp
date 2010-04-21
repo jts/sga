@@ -3,7 +3,7 @@
 // Written by Jared Simpson (js18@sanger.ac.uk)
 // Released under the GPL
 //-----------------------------------------------
-#include "OverlapAlgorithm.h"
+#include "OverlapAlgorithmNew.h"
 #include "ASQG.h"
 #include <math.h>
 
@@ -203,13 +203,17 @@ int OverlapAlgorithm::overlapSuffixInexact(const std::string& w, const BWT* pBWT
                                            double error_rate, int minOverlap, const AlignFlags& af, 
 										   OverlapBlockList* pOBList, OverlapBlockList* pOBFinal, OverlapResult& result)
 {
+	/*
 	if((int)w.length() < minOverlap)
 	{
 		std::cerr << "Warning string " << w << " is shorter than minOverlap, it will not be aligned\n";
 		return 0;
 	}
 
+	// Calculate the number of blocks and the size of each block
 	int len = static_cast<int>(w.length());
+	
+	// Calculate the shortest overlap s.t. 1 difference in the overlap region is less than error_rate
 	int max_differences = (int)floor(error_rate * (double)len);
 
 	// Align the reads in segments of shortest_overlap
@@ -239,6 +243,8 @@ int OverlapAlgorithm::overlapSuffixInexact(const std::string& w, const BWT* pBWT
 	}
 	assert(covered == (len - minOverlap) + 1);
 	return cost;
+	*/
+	return _alignSegmentSimple(w, pBWT, pRevBWT, error_rate, minOverlap, af, pOBList, pOBFinal, result);
 }
 
 // Seeded blockwise BWT alignment of prefix-suffix for reads
@@ -247,12 +253,12 @@ int OverlapAlgorithm::overlapSuffixInexact(const std::string& w, const BWT* pBWT
 // at least 1 of these seeds must align exactly for there to be an alignment with 
 // at most maxDiff differences between the prefix/suffix. Only alignments within the
 // range [block_start, block_end] are output. The block_end coordinate is inclusive
-int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start, int block_end,
-                                           const BWT* pBWT, const BWT* pRevBWT, int maxDiff, 
-										   const AlignFlags& af, OverlapBlockList* pOBList, 
-										   OverlapBlockList* pOBFinal, OverlapResult& result)
+int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                                          double error_rate, int minOverlap, const AlignFlags& af, OverlapBlockList* pOBList, 
+                                          OverlapBlockList* pOBFinal, OverlapResult& result)
 {
 	int len = w.length();
+	int overlap_region_left = len - minOverlap;
 	OverlapSeedList* pCurrList = new OverlapSeedList;
 	OverlapSeedList* pNextList = new OverlapSeedList;
 	OverlapBlockList partialWorkingList;
@@ -260,7 +266,7 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 	OverlapSeedList::iterator iter;
 
 	// Create and extend the initial seeds
-	int seed_len = createOverlapSeeds(w, pBWT, pRevBWT, block_start, block_end, maxDiff, pCurrList);
+	int seed_len = createOverlapSeeds(w, pBWT, pRevBWT, error_rate, minOverlap, pCurrList);
 	extendSeedsExactRight(w, pBWT, pRevBWT, ED_RIGHT, pCurrList, pNextList);
 	pCurrList->clear();
 	pCurrList->swap(*pNextList);
@@ -276,11 +282,15 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 		{
 			OverlapSeed& align = *iter;
 
-			// Check for overlaps
+			// If the current aligned region is right-terminal
+			// and the overlap is greater than minOverlap, try to find overlaps
+			// or containments
 			if(align.right_index == len - 1)
 			{
-				// Output overlaps
-				if(align.left_index <= block_end)
+				double align_error = align.calcErrorRate();
+
+				// Check for overlaps
+				if(align.left_index <= overlap_region_left && align_error <= error_rate)
 				{
 					int overlapLen = len - align.left_index;
 					BWTIntervalPair probe = align.ranges;
@@ -290,7 +300,7 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 					if(probe.interval[1].isValid())
 					{
 						assert(probe.interval[1].lower > 0);
-						OverlapBlock nBlock(OverlapBlock(probe, overlapLen, maxDiff - align.z, af));
+						OverlapBlock nBlock(OverlapBlock(probe, overlapLen, align.z, af));
 						if(overlapLen == len)
 							fullWorkingList.push_back(nBlock);
 						else
@@ -314,7 +324,7 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 			if(align.dir == ED_RIGHT)
 				extendSeedInexactRight(align, w, pBWT, pRevBWT, pNextList);
 			else
-                extendSeedInexactLeft(align, w, pBWT, pRevBWT, block_start, pNextList);
+                extendSeedInexactLeft(align, w, pBWT, pRevBWT, pNextList);
 
 			pCurrList->erase(iter++);
 		}
@@ -324,7 +334,7 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 		// Remove identical seeds after we have performed seed_len steps
 		// as there is now the chance of identical seeds
 		++num_steps;
-		if(num_steps <= block_end && num_steps % seed_len == 0)
+		if(num_steps % seed_len == 0)
 		{
 			pCurrList->sort(OverlapSeed::compareLeftRange);
 			pCurrList->unique(OverlapSeed::equalLeftRange);
@@ -344,37 +354,78 @@ int OverlapAlgorithm::_alignSegmentSimple(const std::string& w, int block_start,
 	return 0;
 }
 
+// To overlap two reads allowing for d errors, we create d+1 seeds so that at least one seed will match
+// exactly. d is a function of the overlap length so we define the seed length using the minimum overlap
+// parameter. We then tile seeds across the read starting from the end such that for every overlap length
+// x, there are at least floor(x * error_rate) + 1 seeds.
 int OverlapAlgorithm::createOverlapSeeds(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                                          int /*block_start*/, int block_end, int maxDiff, 
-										  OverlapSeedList* pOutList)
+                                         double error_rate, int minOverlap, OverlapSeedList* pOutList)
 {
-	int len = w.length();
-	int seed_start = block_end;
-	int seed_end = len;
-	int num_seeds = maxDiff + 1;
-	int seed_len = (seed_end - seed_start) / num_seeds;
+	static int once = 0;
+	int read_len = w.length();
+	int seed_length = 0;
+	
+	// The maximum possible number of differences occurs for a fully-aligned read
+	int max_diff_high = static_cast<int>(error_rate * read_len);
 
-	//printf("srs: %d sre: %d bs: %d be: %d d: %d\n", seed_start, seed_end, block_start, block_end, maxDiff);
-	// Populate the initial seeds
-	for(int i = 0; i < num_seeds; ++i)
+	// Calculate the seed length to use
+	// If the error rate is so low that no differences are possible just seed
+	// over the entire minOverlap region
+	if(max_diff_high > 0)
 	{
-		int pos = seed_start + i*seed_len;
-		OverlapSeed align;
-		align.left_index = pos;
-		align.right_index = pos;
-		align.dir = ED_RIGHT;
-		align.z = maxDiff;
-		align.seed_len = std::min(seed_len, len - pos);
-		assert(pos < len);
+		// Calculate the maximum number of differences between two sequences that overlap
+		// by minOverlap
+		int max_diff_low = static_cast<int>(error_rate * minOverlap);
 
-		//printf("Creating seed at %d to %d, str: %s\n", align.left_index, align.left_index + align.seed_len, w.substr(pos, align.seed_len).c_str());
+		// Calculate the length of the region such that max_diff_low / region <= error_rate
+		// If max_diff_low is zero, calculate the minimal region to find one error
+		if(max_diff_low == 0)
+			max_diff_low = 1;
+		
+		int seed_region_length = ceil(max_diff_low / error_rate);
+		int num_seeds_low = max_diff_low + 1;
+		seed_length = static_cast<int>(seed_region_length / num_seeds_low);
+
+		// Calculate the number of differences allowed between two completely-matched reads
+		if(!once)
+			printf("rl: %d sl: %d mdl: %d mdh: %d\n", seed_region_length, seed_length, max_diff_low, max_diff_high);
+		assert(seed_length <= minOverlap);
+	}
+	else
+	{
+		seed_length = minOverlap;
+	}
+
+	// Start the seeds at the end of the read
+	int seed_start = read_len - seed_length;
+
+	//printf("rl: %d sl: %d mdl: %d mdh: %d\n", region_length, seed_len, max_diff_low, max_diff_high);
+
+	while(seed_start >= 0)
+	{
+		OverlapSeed seed;
+		seed.left_index = seed_start;
+		seed.right_index = seed_start;
+		seed.dir = ED_RIGHT;
+		seed.seed_len = seed_length;
+		seed.z = 0;
+		seed.maxDiff = max_diff_high;
 
 		// Initialize the left and right suffix array intervals
-		char b = w[pos];
-		BWTAlgorithms::initIntervalPair(align.ranges, b, pBWT, pRevBWT);		
-		pOutList->push_back(align);
+		char b = w[seed.left_index];
+		BWTAlgorithms::initIntervalPair(seed.ranges, b, pBWT, pRevBWT);		
+		pOutList->push_back(seed);
+
+		if(!once)
+			printf("Created seed at %d to %d, len: %d\n", seed.left_index, seed.left_index + seed.seed_len, seed.seed_len);
+		seed_start -= seed_length;
+
+		// Only create one seed in the exact case
+		if(max_diff_high == 0)
+			break;
 	}
-	return seed_len;
+	once = 1;
+	return seed_length;
 }
 
 //
@@ -418,7 +469,7 @@ void OverlapAlgorithm::extendSeedInexactRight(OverlapSeed& seed, const std::stri
 
 	++seed.right_index;
 	
-	if(seed.z == 0)
+	if(!seed.allowMismatches())
 	{
 		char b = w[seed.right_index];
 		BWTAlgorithms::updateBothR(seed.ranges, b, pRevBWT);
@@ -435,7 +486,7 @@ void OverlapAlgorithm::extendSeedInexactRight(OverlapSeed& seed, const std::stri
 			if(branched.isIntervalValid(RIGHT_INT_IDX))
 			{
 				if(b != w[seed.right_index])
-					--branched.z;
+					++branched.z;
 				pOutList->push_back(branched);
 			}
 		}
@@ -444,13 +495,13 @@ void OverlapAlgorithm::extendSeedInexactRight(OverlapSeed& seed, const std::stri
 
 void OverlapAlgorithm::extendSeedInexactLeft(OverlapSeed& seed, const std::string& w, 
                                              const BWT* pBWT, const BWT* /*pRevBWT*/,
-                                             int block_start, OverlapSeedList* pOutList)
+                                             OverlapSeedList* pOutList)
 {
 	//printf("ProcessingLEFT: "); align.print(w);
 	--seed.left_index;
-	if(seed.left_index >= block_start)
+	if(seed.left_index >= 0)
 	{
-		if(seed.z == 0)
+		if(!seed.allowMismatches())
 		{
 			// Extend exact
 			char b = w[seed.left_index];
@@ -468,7 +519,7 @@ void OverlapAlgorithm::extendSeedInexactLeft(OverlapSeed& seed, const std::strin
 				if(branched.isIntervalValid(LEFT_INT_IDX))
 				{
 					if(b != w[seed.left_index])
-						--branched.z;
+						++branched.z;
 					pOutList->push_back(branched);
 				}
 			}

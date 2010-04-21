@@ -549,6 +549,9 @@ void parseOverlapOptions(int argc, char** argv)
 		die = true;
 	}
 
+	if(opt::errorRate <= 0)
+		opt::errorRate = 0.0f;
+
 	if (die) 
 	{
 		std::cout << "\n" << OVERLAP_USAGE_MESSAGE;
