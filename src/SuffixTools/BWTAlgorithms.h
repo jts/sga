@@ -12,7 +12,6 @@
 #include "STCommon.h"
 #include "BWT.h"
 #include "BWTInterval.h"
-#include "OverlapBlock.h"
 #include <queue>
 #include <list>
 

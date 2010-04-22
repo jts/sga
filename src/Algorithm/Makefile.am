@@ -9,5 +9,7 @@ libalgorithm_a_CPPFLAGS = \
 	-I$(top_srcdir)/Thirdparty
 
 libalgorithm_a_SOURCES = \
-        OverlapAlgorithmNew.h OverlapAlgorithmNew.cpp \
-        ErrorCorrect.h ErrorCorrect.cpp 
+        OverlapAlgorithm.h OverlapAlgorithm.cpp \
+        ErrorCorrect.h ErrorCorrect.cpp \
+		SearchSeed.h SearchSeed.cpp \
+		OverlapBlock.h OverlapBlock.cpp
