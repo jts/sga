@@ -419,74 +419,122 @@ bool SGErrorCorrectVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 }
 
 //
-// SGRealignVisitor - Infer locations of potentially
-// missing edges and add them to the graph
+// SGEdgeStatsVisitor - Compute and display summary statistics of 
+// the overlaps in the graph, including edges that were potentially missed
 //
-void SGRealignVisitor::previsit(StringGraph* pGraph)
+void SGEdgeStatsVisitor::previsit(StringGraph* pGraph)
 {
 	pGraph->setColors(GC_WHITE);
+	maxDiff = 0;
+	minOverlap = pGraph->getMinOverlap();
+	maxOverlap = 0;
+
 }
 
-bool SGRealignVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+bool SGEdgeStatsVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
-	bool graph_changed = false;
-	const int MIN_OVERLAP = 39;
-	const double MAX_ERROR = 0.1;
+	const int MIN_OVERLAP = pGraph->getMinOverlap();
+	const double MAX_ERROR = pGraph->getErrorRate();
+
 	static int visited = 0;
 	++visited;
 	if(visited % 50000 == 0)
 		std::cout << "visited: " << visited << "\n";
 
+	// Add stats for the found overlaps
+	EdgePtrVec edges = pVertex->getEdges();
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Overlap ovr = edges[i]->getOverlap();
+		int numDiff = ovr.match.countDifferences(pVertex->getSeq(), edges[i]->getEnd()->getSeq());
+		int overlapLen = ovr.match.getMinOverlapLength();
+		addOverlapToCount(overlapLen, numDiff, foundCounts);
+	}
+		
 	// Explore the neighborhood around this graph for potentially missing overlaps
 	CandidateVector candidates = getMissingCandidates(pGraph, pVertex, MIN_OVERLAP);
-
 	MultiOverlap addedMO(pVertex->getID(), pVertex->getSeq());
-
 	for(size_t i = 0; i < candidates.size(); ++i)
 	{
 		Candidate& c = candidates[i];
 		int numDiff = c.ovr.match.countDifferences(pVertex->getSeq(), c.pEndpoint->getSeq());
 		double error_rate = double(numDiff) / double(c.ovr.match.getMinOverlapLength());
 
-		/*
-		std::cout << "Actual:\n";
-		c.ovr.match.printMatch(pVertex->getSeq(), c.pEndpoint->getSeq());
-		std::cout << "ER: " << error_rate << "\n";
-		*/
-
 		if(error_rate < MAX_ERROR)
 		{
-			//std::cout << "OVR:\t" << c.ovr << "\n";
-			Edge* p_edgeXZ = SGUtil::createEdges(pGraph, c.ovr, true);
-			Edge* p_edgeZX = p_edgeXZ->getTwin();
-			p_edgeXZ->setColor(GC_WHITE);
-			p_edgeZX->setColor(GC_WHITE);
-			graph_changed = true;
+			std::cout << "Edge " << c.ovr << " is missing with error rate: " << error_rate << "\n";
 
-			addedMO.add(p_edgeXZ->getEnd()->getSeq(), p_edgeXZ->getOverlap());
+			int overlapLen = c.ovr.match.getMinOverlapLength();
+			addOverlapToCount(overlapLen, numDiff, missingCounts);
 		}
-		/*else
-		{
-			std::cout << "Rejected actual:\n";
-			c.ovr.match.printMatch(pVertex->getSeq(), c.pEndpoint->getSeq());
-			std::cout << "ER: " << error_rate << "\n";
-			std::cout << "OVR:\t" << c.ovr << "\n";
-		}*/
 	}
+	
+	return false;
+}
 
-	/*
-	if(graph_changed)
+//
+void SGEdgeStatsVisitor::postvisit(StringGraph* /*pGraph*/)
+{	
+	printf("FoundOverlaps\n");
+	printCounts(foundCounts);
+
+	printf("\nPotentially Missing Overlaps\n\n");
+	printCounts(missingCounts);
+}
+
+//
+void SGEdgeStatsVisitor::printCounts(CountMatrix& matrix)
+{
+	// Header row
+	printf("OL\t");
+	for(int j = 0; j <= maxDiff; ++j)
 	{
-		std::cout << "NEW MO:\n";
-		addedMO.print();
+		printf("%d\t", j);
 	}
-	*/
 
-	return graph_changed;
+	printf("sum\n");
+	IntIntMap columnTotal;
+	for(int i = minOverlap; i <= maxOverlap; ++i)
+	{
+		printf("%d\t", i);
+		int sum = 0;
+		for(int j = 0; j <= maxDiff; ++j)
+		{
+			int v = matrix[i][j];
+			printf("%d\t", v);
+			sum += v;
+			columnTotal[j] += v;
+		}
+		printf("%d\n", sum);
+	}
+
+	printf("total\t");
+	int total = 0;
+	for(int j = 0; j <= maxDiff; ++j)
+	{
+		int v = columnTotal[j];
+		printf("%d\t", v);
+		total += v;
+	}
+	printf("%d\n", total);
+}
+
+//
+void SGEdgeStatsVisitor::addOverlapToCount(int ol, int nd, CountMatrix& matrix)
+{
+	matrix[ol][nd]++;
+
+	if(nd > maxDiff)
+		maxDiff = nd;
+
+	if(ol > maxOverlap)
+		maxOverlap = ol;
 }
 
 // Explore the neighborhood around a vertex looking for missing overlaps
-SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringGraph* /*pGraph*/, Vertex* pVertex, int minOverlap) const
+SGEdgeStatsVisitor::CandidateVector SGEdgeStatsVisitor::getMissingCandidates(StringGraph* /*pGraph*/, 
+                                                                             Vertex* pVertex, 
+																			 int minOverlap) const
 {
 	CandidateVector out;
 
@@ -532,11 +580,6 @@ SGRealignVisitor::CandidateVector SGRealignVisitor::getMissingCandidates(StringG
 	for(size_t i = 0; i < out.size(); ++i)
 		out[i].pEndpoint->setColor(GC_WHITE);
 	return out;
-}
-
-//
-void SGRealignVisitor::postvisit(StringGraph*)
-{
 }
 
 //

@@ -144,6 +144,15 @@ class Bigraph
 		void setContainmentFlag(bool b);
 		bool hasContainment() const;
 
+		//
+		void setMinOverlap(int mo);
+		int getMinOverlap() const;
+
+		//
+		void setErrorRate(double er);
+		double getErrorRate() const;
+
+
 		// Write the graph to a dot file
 		void writeDot(std::string filename, int dotFlags = 0) const;
 
@@ -154,9 +163,15 @@ class Bigraph
 
 		void followLinear(VertexID id, EdgeDir dir, Path& outPath);
 
-		// Vertex collection
+		//
+		// data
+		//
 		VertexPtrMap m_vertices;
+
+		// Graph parameters
 		bool m_hasContainment;
+		int m_minOverlap;
+		double m_errorRate;
 };
 
 #endif

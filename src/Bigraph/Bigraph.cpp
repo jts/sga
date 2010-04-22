@@ -17,7 +17,7 @@
 //
 //
 //
-Bigraph::Bigraph() : m_hasContainment(false)
+Bigraph::Bigraph() : m_hasContainment(false), m_minOverlap(0), m_errorRate(0.0f)
 {
 }
 
@@ -460,6 +460,34 @@ void Bigraph::setContainmentFlag(bool b)
 bool Bigraph::hasContainment() const
 {
 	return m_hasContainment;
+}
+
+//
+//
+//
+void Bigraph::setMinOverlap(int mo)
+{
+	m_minOverlap = mo;
+}
+
+//
+int Bigraph::getMinOverlap() const
+{
+	return m_minOverlap;
+}
+
+//
+//
+//
+void Bigraph::setErrorRate(double er)
+{
+	m_errorRate = er;
+}
+
+//
+double Bigraph::getErrorRate() const
+{
+	return m_errorRate;
 }
 
 //

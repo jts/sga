@@ -129,8 +129,8 @@ struct SGErrorCorrectVisitor
 	void postvisit(StringGraph*) {}
 };
 
-// Infer missing edges in the graph
-struct SGRealignVisitor
+// Compute edge summary statistics 
+struct SGEdgeStatsVisitor
 {
 	struct Candidate
 	{
@@ -139,13 +139,25 @@ struct SGRealignVisitor
 		Overlap ovr;
 	};
 	typedef std::vector<Candidate> CandidateVector;
+	typedef std::map<int, int> IntIntMap;
+	typedef std::map<int, IntIntMap> CountMatrix;
 
-	SGRealignVisitor() {}
+	//
+	SGEdgeStatsVisitor() {}
 	void previsit(StringGraph* pGraph);
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*);
 
 	CandidateVector getMissingCandidates(StringGraph* pGraph, Vertex* pVertex, int minOverlap) const;
+	void addOverlapToCount(int ol, int nd, CountMatrix& matrix);
+	void printCounts(CountMatrix& matrix);
+
+	//
+	CountMatrix foundCounts;
+	CountMatrix missingCounts;
+	int maxDiff;
+	int minOverlap;
+	int maxOverlap;
 };
 
 // Detect whether vertices are dead ends and mark them for removal

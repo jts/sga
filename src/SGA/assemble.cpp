@@ -40,6 +40,8 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -b, --bubble                     perform bubble removal\n"
 "      -t, --trim                       trim terminal branches\n"
 "      -c, --correct                    error correct reads and write to correctedReads.fa\n"
+"      --edge-stats                     print out the distribution of overlap lengths and number of errors\n"
+"                                       for edges found in the overlap step.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -50,6 +52,7 @@ namespace opt
 	static std::string outFile;
 	static std::string debugFile;
 	static unsigned int minOverlap;
+	static bool bEdgeStats;
 	static bool bCorrectReads;
 	static bool bRemodelGraph;
 	static bool bTrim;
@@ -61,17 +64,18 @@ static const char* shortopts = "p:o:m:d:vbtc";
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-	{ "verbose",     no_argument,       NULL, 'v' },
-	{ "prefix",      required_argument, NULL, 'p' },
-	{ "out",         required_argument, NULL, 'o' },
-	{ "min-overlap", required_argument, NULL, 'm' },
-	{ "debug-file",  required_argument, NULL, 'd' },
-	{ "bubble",      no_argument,       NULL, 'b' },
-	{ "trim",        no_argument,       NULL, 't' },
-	{ "correct",     no_argument,       NULL, 'c' },	
-	{ "remodel",     no_argument,       NULL, 'r' },	
-	{ "help",        no_argument,       NULL, OPT_HELP },
-	{ "version",     no_argument,       NULL, OPT_VERSION },
+	{ "verbose",        no_argument,       NULL, 'v' },
+	{ "prefix",         required_argument, NULL, 'p' },
+	{ "out",            required_argument, NULL, 'o' },
+	{ "min-overlap",    required_argument, NULL, 'm' },
+	{ "debug-file",     required_argument, NULL, 'd' },
+	{ "bubble",         no_argument,       NULL, 'b' },
+	{ "trim",           no_argument,       NULL, 't' },
+	{ "correct",        no_argument,       NULL, 'c' },	
+	{ "remodel",        no_argument,       NULL, 'r' },
+	{ "edge-stats",     no_argument,       NULL, 'x' },
+	{ "help",           no_argument,       NULL, OPT_HELP },
+	{ "version",        no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -98,7 +102,7 @@ void assemble()
 	SGTransRedVisitor trVisit;
 	SGGraphStatsVisitor statsVisit;
 	SGRemodelVisitor remodelVisit;
-	SGRealignVisitor realignVisit;
+	SGEdgeStatsVisitor edgeStatsVisit;
 	SGTrimVisitor trimVisit;
 	SGBubbleVisitor bubbleVisit;
 	SGContainRemoveVisitor containVisit;
@@ -129,6 +133,12 @@ void assemble()
 	// Pre-assembly graph stats
 	std::cout << "Initial graph stats\n";
 	pGraph->visit(statsVisit);
+
+	if(opt::bEdgeStats)
+	{
+		std::cout << "Computing edge stats\n";
+		pGraph->visit(edgeStatsVisit);
+	}
 
 	// Remove containments from the graph
 	std::cout << "Removing contained vertices\n";
@@ -220,6 +230,7 @@ void parseAssembleOptions(int argc, char** argv)
             case 't': opt::bTrim = true; break;
 			case 'c': opt::bCorrectReads = true; break;
 			case 'r': opt::bRemodelGraph = true; break;
+			case 'x': opt::bEdgeStats = true; break;
 			case OPT_HELP:
 				std::cout << ASSEMBLE_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
