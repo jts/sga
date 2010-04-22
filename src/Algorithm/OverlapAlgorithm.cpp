@@ -280,7 +280,6 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 
 		// Remove identical seeds after we have performed seed_len steps
 		// as there is now the chance of identical seeds
-		++num_steps;
 		if(num_steps % actual_seed_stride == 0)
 		{
 			std::sort(pCurrVector->begin(), pCurrVector->end(), SearchSeed::compareLeftRange);
@@ -288,6 +287,7 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 			                                                       SearchSeed::equalLeftRange);
 			pCurrVector->resize(end_iter - pCurrVector->begin());
 		}
+		++num_steps;
 	}
 
 	// parse the full working list, which has containment overlaps
