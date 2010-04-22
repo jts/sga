@@ -462,8 +462,6 @@ bool SGEdgeStatsVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
 		if(error_rate < MAX_ERROR)
 		{
-			std::cout << "Edge " << c.ovr << " is missing with error rate: " << error_rate << "\n";
-
 			int overlapLen = c.ovr.match.getMinOverlapLength();
 			addOverlapToCount(overlapLen, numDiff, missingCounts);
 		}

@@ -36,7 +36,15 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 				}
 
 				ASQG::HeaderRecord headerRecord(recordLine);
-				(void)headerRecord; // do nothing with the header at this point
+				const SQG::IntTag& overlapTag = headerRecord.getOverlapTag();
+				if(overlapTag.isInitialized())
+					pGraph->setMinOverlap(overlapTag.get());
+
+
+				const SQG::FloatTag& errorRateTag = headerRecord.getErrorRateTag();
+				if(errorRateTag.isInitialized())
+					pGraph->setErrorRate(errorRateTag.get());
+
 				break;
 			}
 			case ASQG::RT_VERTEX:

@@ -49,8 +49,13 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
-"      -d, --max-diff=D                 report all prefix-suffix matches that have at most D differences\n"
 "      -i, --irreducible                only output the irreducible edges for each node\n"
+"      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
+"                                       is calculated to guarantee all overlaps with --error-rate differences are found.\n"
+"                                       This option removes the guarantee but will be (much) faster. As SGA can tolerate some\n"
+"                                       missing edges, this option may be preferable for some data sets.\n"
+"      -s, --seed-stride=LEN            force the seed stride to be LEN. This parameter will be ignored unless --seed-length\n"
+"                                       is specified (see above). This parameter defaults to the same value as --seed-length\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -59,17 +64,19 @@ PACKAGE_NAME "::" SUBPROGRAM;
 namespace opt
 {
 	static unsigned int verbose;
-	static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
-	static unsigned int maxDiff = 0;
 	static int numThreads = 1;
 	static OutputType outputType = OT_ASQG;
-	static double errorRate;
 	static std::string prefix;
 	static std::string readsFile;
+	
+	static double errorRate;
+	static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
+	static int seedLength = 0;
+	static int seedStride = 0;
 	static bool bIrreducibleOnly;
 }
 
-static const char* shortopts = "p:m:d:e:t:vi";
+static const char* shortopts = "p:m:d:e:t:l:s:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -80,6 +87,8 @@ static const struct option longopts[] = {
 	{ "max-diff",    required_argument, NULL, 'd' },
 	{ "prefix",      required_argument, NULL, 'p' },
 	{ "error-rate",  required_argument, NULL, 'e' },
+	{ "seed-length", required_argument, NULL, 'l' },
+	{ "seed-stride", required_argument, NULL, 's' },
 	{ "irreducible", no_argument,       NULL, 'i' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
@@ -129,7 +138,8 @@ void computeHitsBWT(std::ostream* pASQGWriter, StringVector& filenameVec)
 	BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
 	BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
 	OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
-	                                                     opt::minOverlap, opt::errorRate, 
+	                                                     opt::minOverlap, opt::errorRate,
+														 opt::seedLength, opt::seedStride,
 														 opt::bIrreducibleOnly);
 
 	SeqReader reader(opt::readsFile);
@@ -518,8 +528,9 @@ void parseOverlapOptions(int argc, char** argv)
 			case 'm': arg >> opt::minOverlap; break;
 			case 'p': arg >> opt::prefix; break;
 			case 'e': arg >> opt::errorRate; break;
-			case 'd': arg >> opt::maxDiff; break;
 			case 't': arg >> opt::numThreads; break;
+			case 'l': arg >> opt::seedLength; break;
+			case 's': arg >> opt::seedStride; break;
 			case 'i': opt::bIrreducibleOnly = true; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
@@ -549,14 +560,21 @@ void parseOverlapOptions(int argc, char** argv)
 		die = true;
 	}
 
-	if(opt::errorRate <= 0)
-		opt::errorRate = 0.0f;
-
 	if (die) 
 	{
 		std::cout << "\n" << OVERLAP_USAGE_MESSAGE;
 		exit(EXIT_FAILURE);
 	}
+
+	// Validate parameters
+	if(opt::errorRate <= 0)
+		opt::errorRate = 0.0f;
+
+	if(opt::seedLength < 0)
+		opt::seedLength = 0;
+
+	if(opt::seedLength > 0 && opt::seedStride <= 0)
+		opt::seedStride = opt::seedLength;
 
 	// Parse the input filenames
 	opt::readsFile = argv[optind++];

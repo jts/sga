@@ -203,7 +203,16 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 	SearchSeedVector::iterator iter;
 
 	// Create and extend the initial seeds
-	int seed_len = createSearchSeeds(w, pBWT, pRevBWT, pCurrVector);
+	int actual_seed_length = m_seedLength;
+	int actual_seed_stride = m_seedStride;
+	if(actual_seed_length == 0)
+	{
+		// Calculate a seed length and stride that will guarantee all overlaps
+		// with error rate m_errorRate will be found
+		calculateSeedParameters(w, actual_seed_length, actual_seed_stride);
+	}
+
+	createSearchSeeds(w, pBWT, pRevBWT, actual_seed_length, actual_seed_stride, pCurrVector);
 	extendSeedsExactRight(w, pBWT, pRevBWT, ED_RIGHT, pCurrVector, pNextVector);
 	pCurrVector->clear();
 	pCurrVector->swap(*pNextVector);
@@ -272,14 +281,12 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 		// Remove identical seeds after we have performed seed_len steps
 		// as there is now the chance of identical seeds
 		++num_steps;
-		if(num_steps % seed_len == 0)
+		if(num_steps % actual_seed_stride == 0)
 		{
 			std::sort(pCurrVector->begin(), pCurrVector->end(), SearchSeed::compareLeftRange);
 			SearchSeedVector::iterator end_iter = std::unique(pCurrVector->begin(), pCurrVector->end(), 
 			                                                       SearchSeed::equalLeftRange);
 			pCurrVector->resize(end_iter - pCurrVector->begin());
-			//pCurrVector->sort(SearchSeed::compareLeftRange);
-			//pCurrVector->unique(SearchSeed::equalLeftRange);
 		}
 	}
 
@@ -295,16 +302,16 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 	delete pNextVector;
 }
 
+// Calculate the seed length and stride to ensure that we will find all 
+// all overlaps with error rate at most m_errorRate.
 // To overlap two reads allowing for d errors, we create d+1 seeds so that at least one seed will match
 // exactly. d is a function of the overlap length so we define the seed length using the minimum overlap
 // parameter. We then tile seeds across the read starting from the end such that for every overlap length
 // x, there are at least floor(x * error_rate) + 1 seeds.
-int OverlapAlgorithm::createSearchSeeds(const std::string& w, const BWT* pBWT, 
-                                        const BWT* pRevBWT, SearchSeedVector* pOutVector) const
+void OverlapAlgorithm::calculateSeedParameters(const std::string& w, int& seed_length, int& seed_stride) const
 {
-	static int once = 0;
 	int read_len = w.length();
-	int seed_length = 0;
+	seed_length = 0;
 	
 	// The maximum possible number of differences occurs for a fully-aligned read
 	int max_diff_high = static_cast<int>(m_errorRate * read_len);
@@ -326,21 +333,34 @@ int OverlapAlgorithm::createSearchSeeds(const std::string& w, const BWT* pBWT,
 		int seed_region_length = ceil(max_diff_low / m_errorRate);
 		int num_seeds_low = max_diff_low + 1;
 		seed_length = static_cast<int>(seed_region_length / num_seeds_low);
-
-		// Calculate the number of differences allowed between two completely-matched reads
-		if(!once)
-			printf("rl: %d sl: %d mdl: %d mdh: %d\n", seed_region_length, seed_length, max_diff_low, max_diff_high);
 		assert(seed_length <= static_cast<int>(m_minOverlap));
 	}
 	else
 	{
 		seed_length = m_minOverlap;
 	}
+	seed_stride = seed_length;	
+
+}
+
+// Create and intialize the search seeds
+int OverlapAlgorithm::createSearchSeeds(const std::string& w, const BWT* pBWT, 
+                                        const BWT* pRevBWT, int seed_length, int seed_stride,
+										SearchSeedVector* pOutVector) const
+{
+	// The maximum possible number of differences occurs for a fully-aligned read
+	int read_len = w.length();
+	int max_diff_high = static_cast<int>(m_errorRate * read_len);
+
+	static int once = 1;
+	if(once)
+	{
+		printf("Using seed length %d, seed stride %d, max diff %d\n", seed_length, seed_stride, max_diff_high);
+		once = 0;
+	}	
 
 	// Start the seeds at the end of the read
 	int seed_start = read_len - seed_length;
-
-	//printf("rl: %d sl: %d mdl: %d mdh: %d\n", region_length, seed_len, max_diff_low, max_diff_high);
 
 	while(seed_start >= 0)
 	{
@@ -357,15 +377,12 @@ int OverlapAlgorithm::createSearchSeeds(const std::string& w, const BWT* pBWT,
 		BWTAlgorithms::initIntervalPair(seed.ranges, b, pBWT, pRevBWT);		
 		pOutVector->push_back(seed);
 
-		if(!once)
-			printf("Created seed at %d to %d, len: %d\n", seed.left_index, seed.left_index + seed.seed_len, seed.seed_len);
-		seed_start -= seed_length;
+		seed_start -= seed_stride;
 
 		// Only create one seed in the exact case
 		if(max_diff_high == 0)
 			break;
 	}
-	once = 1;
 	return seed_length;
 }
 

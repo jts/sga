@@ -26,11 +26,15 @@ class OverlapAlgorithm
 {
 	public:
 		OverlapAlgorithm(const BWT* pBWT, const BWT* pRevBWT, 
-		                 size_t minO, double er, bool irrOnly) : m_pBWT(pBWT), 
-	                                                            m_pRevBWT(pRevBWT),
-																m_minOverlap(minO),
-																m_errorRate(er),
-																m_bIrreducible(irrOnly) {}
+		                 size_t minO, double er,
+						 int seedLen, int seedStride,
+						  bool irrOnly) : m_pBWT(pBWT), 
+		                                  m_pRevBWT(pRevBWT),
+										  m_minOverlap(minO),
+										  m_errorRate(er),
+										  m_seedLength(seedLen),
+										  m_seedStride(seedStride),
+										  m_bIrreducible(irrOnly) {}
 
 		// Perform the overlap
 		// This function is threaded so everything must be const
@@ -75,8 +79,12 @@ class OverlapAlgorithm
 		                                   OverlapBlockList& obList, char b) const;
 
 		//
-        inline int createSearchSeeds(const std::string& w, const BWT* pBWT, 
-		                             const BWT* pRevBWT, SearchSeedVector* pOutVector) const;
+		inline void calculateSeedParameters(const std::string& w, int& seed_length, int& seed_stride) const;
+		
+		//
+		inline int createSearchSeeds(const std::string& w, const BWT* pBWT, 
+                                     const BWT* pRevBWT, int seed_length, int seed_stride, 
+									 SearchSeedVector* pOutVector) const;
 
 		//
 		inline void extendSeedsExactRight(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
@@ -97,6 +105,8 @@ class OverlapAlgorithm
 		const BWT* m_pRevBWT;
 		size_t m_minOverlap;
 		double m_errorRate;
+		int m_seedLength;
+		int m_seedStride;
 		bool m_bIrreducible;
 		
 
