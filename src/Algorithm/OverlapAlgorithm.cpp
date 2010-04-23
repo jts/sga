@@ -290,6 +290,7 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 		++num_steps;
 	}
 
+	WARN_ONCE("TODO: Collect all blocks in the same list then split AFTER removing submaximal");
 	// parse the full working list, which has containment overlaps
 	removeSubMaximalBlocks(&fullWorkingList);
 	pOBFinal->splice(pOBFinal->end(), fullWorkingList);
@@ -519,11 +520,11 @@ void OverlapAlgorithm::_processIrreducibleBlocks(const BWT* pBWT, const BWT* pRe
 	}
 	
 	// Three cases:
-	// 1) The top level block has ended, it contains the extension $. Output TLB and end.
+	// 1) The top level block has ended as it contains the extension $. Output TLB and end.
 	// 2) There is a singular unique extension base for all the blocks. Update all blocks and recurse.
 	// 3) There are multiple extension bases, branch and recurse.
 	// If some block other than the TLB ended, it must be contained within the TLB and it is not output
-	// or considered further. Containments are handled elsewhere.
+	// or considered further. 
 	// Likewise if multiple distinct strings in the TLB ended, we only output the top one. The rest
 	// must have the same sequence as the top one and are hence considered to be contained with the top element.
 	if(ext_count.get('$') > 0)

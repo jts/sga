@@ -186,6 +186,7 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
+	size_t trans_count = 0;
 	static const size_t FUZZ = 10; // see myers...
 
 	for(size_t idx = 0; idx < ED_COUNT; idx++)
@@ -224,7 +225,6 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 						{
 							// X is the endpoint of an edge of V, therefore it is transitive
 							pWXEdge->getEnd()->setColor(GC_BLACK);
-							++marked_verts;
 							//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << "\n";
 						}
 					}
@@ -256,7 +256,6 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					{
 						// X is the endpoint of an edge of V, therefore it is transitive
 						pWXEdge->getEnd()->setColor(GC_BLACK);
-						++marked_verts;
 						//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << " in stage 2\n";
 					}
 				}
@@ -264,35 +263,26 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					break;
 			}
 		}
-		
 
-		bool trans_found = false;
-		size_t trans_count = 0;
 		for(size_t i = 0; i < edges.size(); ++i)
 		{
 			if(edges[i]->getEnd()->getColor() == GC_BLACK)
 			{
 				// Mark the edge and its twin for removal
-				edges[i]->setColor(GC_BLACK);
-				edges[i]->getTwin()->setColor(GC_BLACK);
-				marked_edges += 2;
-				trans_found = true;
-				trans_count++;
+				if(edges[i]->getColor() != GC_BLACK || edges[i]->getTwin()->getColor() != GC_BLACK)
+				{
+					edges[i]->setColor(GC_BLACK);
+					edges[i]->getTwin()->setColor(GC_BLACK);
+					marked_edges += 2;
+					trans_count++;
+				}
 			}
 			edges[i]->getEnd()->setColor(GC_WHITE);
 		}
-		/*
-		if(trans_count + 1 != edges.size())
-		{
-			printf("Vertex %s could not be completely reduced (%d, %d)\n", pVertex->getID().c_str(), (int)trans_count, (int)edges.size());
-			for(size_t i = 0; i < edges.size(); ++i)
-			{
-				if(edges[i]->getColor() != GC_BLACK)
-					std::cout << "Remaining edge: " << *edges[i] << "\n";
-			}
-		}
-		*/
 	}
+
+	if(trans_count > 0)
+		++marked_verts;
 
 	return false;
 }

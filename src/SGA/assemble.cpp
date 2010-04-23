@@ -130,10 +130,6 @@ void assemble()
 		//return;
 	}
 
-	// Pre-assembly graph stats
-	std::cout << "Initial graph stats\n";
-	pGraph->visit(statsVisit);
-
 	if(opt::bEdgeStats)
 	{
 		std::cout << "Computing edge stats\n";
@@ -143,6 +139,10 @@ void assemble()
 	// Remove containments from the graph
 	std::cout << "Removing contained vertices\n";
 	pGraph->visit(containVisit);
+
+	// Pre-assembly graph stats
+	std::cout << "Initial graph stats\n";
+	pGraph->visit(statsVisit);	
 
 	// Remove transitive edges from the graph
 	std::cout << "Removing transitive edges\n";
