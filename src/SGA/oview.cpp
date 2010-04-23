@@ -124,8 +124,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 		std::string otherSeq = pRT->getRead(curr.id[1]).seq.toString();
 		multi_overlap.add(otherSeq, curr);
 	}
-	multi_overlap.print();
-	//multi_overlap.printPileup();
+	multi_overlap.print(20, opt::max_overhang);
 }
 
 void parseASQG(std::string filename, ReadTable* pRT, OverlapMap* pOM)

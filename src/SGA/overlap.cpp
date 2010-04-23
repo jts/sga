@@ -461,7 +461,6 @@ OverlapVector hitStringToOverlaps(const std::string& hitString,
 				// To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
 				// the second or the match is a containment and the query is reversed (containments can be 
 				// output up to 4 times total).
-				// If we are running in irreducible mode this is not necessary
 				if(o.id[0] < o.id[1] || (o.match.isContainment() && record.flags.isQueryRev()))
 					continue;
 

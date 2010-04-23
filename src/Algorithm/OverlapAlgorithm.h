@@ -41,7 +41,7 @@ class OverlapAlgorithm
 		OverlapResult overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const;
 	
 		// Perform an irreducible overlap
-		OverlapResult overlapReadIrreducible(const SeqRecord& read, OverlapBlockList* pOBOut) const;
+		OverlapResult overlapReadExact(const SeqRecord& read, OverlapBlockList* pOBOut) const;
 
 		// Perform an inexact overlap
 		OverlapResult overlapReadInexact(const SeqRecord& read, OverlapBlockList* pOBOut) const;

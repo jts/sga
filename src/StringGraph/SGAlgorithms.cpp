@@ -351,7 +351,6 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			MultiOverlap mo = pVertex->getMultiOverlap();
 			std::cout << "Primary MO: \n";
 			mo.print();
-
 			std::cout << "\nPrimary masked\n";
 			mo.printMasked();
 			

@@ -18,15 +18,8 @@ static const AlignFlags preSufAF(true, true, false);
 OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const
 {
 	OverlapResult r;
-	if(!m_bIrreducible)
-	{
-		//overlapReadExhaustive(read, pOutList);
-		r = overlapReadInexact(read, pOutList);
-	}
-	else
-	{
-		r = overlapReadIrreducible(read, pOutList);
-	}
+	r = overlapReadInexact(read, pOutList);
+	//r = overlapReadExact(read, pOutList);
 	
 	// If the read is a substring of some other read, clear its overlap block list
 	if(r.isSubstring)
@@ -38,49 +31,87 @@ OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, OverlapBlockL
 OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, OverlapBlockList* pOBOut) const
 {
 	OverlapResult result;
-
+	OverlapBlockList obWorkingList;
 	std::string seq = read.seq.toString();
 
 	// Match the suffix of seq to prefixes
-	findOverlapBlocksInexact(seq, m_pBWT, m_pRevBWT, sufPreAF, pOBOut, pOBOut, result);
-	findOverlapBlocksInexact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, pOBOut, pOBOut, result);
+	findOverlapBlocksInexact(seq, m_pBWT, m_pRevBWT, sufPreAF, &obWorkingList, pOBOut, result);
+	findOverlapBlocksInexact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, &obWorkingList, pOBOut, result);
+
+	if(m_bIrreducible)
+	{
+		computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
+		obWorkingList.clear();
+	}
+	else
+	{
+		pOBOut->splice(pOBOut->end(), obWorkingList);
+		assert(obWorkingList.empty());
+	}
 
 	// Match the prefix of seq to suffixes
-	findOverlapBlocksInexact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, pOBOut, pOBOut, result);
-	findOverlapBlocksInexact(reverse(seq), m_pRevBWT, m_pBWT, preSufAF, pOBOut, pOBOut, result);
+	findOverlapBlocksInexact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, &obWorkingList, pOBOut, result);
+	findOverlapBlocksInexact(reverse(seq), m_pRevBWT, m_pBWT, preSufAF, &obWorkingList, pOBOut, result);
+
+	if(m_bIrreducible)
+	{
+		computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
+		obWorkingList.clear();
+	}
+	else
+	{
+		pOBOut->splice(pOBOut->end(), obWorkingList);
+		assert(obWorkingList.empty());
+	}
 
 	return result;
 }
 
 // Construct the set of blocks describing irreducible overlaps with READ
 // and write the blocks to pOBOut
-OverlapResult OverlapAlgorithm::overlapReadIrreducible(const SeqRecord& read, OverlapBlockList* pOBOut) const
+OverlapResult OverlapAlgorithm::overlapReadExact(const SeqRecord& read, OverlapBlockList* pOBOut) const
 {
 	OverlapResult result;
 
-	// The complete set of overlap blocks are collected in obTemp
+	// The complete set of overlap blocks are collected in obWorkingList
 	// The filtered set (containing only irreducible overlaps) are placed into pOBOut
 	// by calculateIrreducibleHits
-	OverlapBlockList obTemp;
+	OverlapBlockList obWorkingList;
 	std::string seq = read.seq.toString();
 
 	// Irreducible overlaps only
 	WARN_ONCE("Irreducible-only assumptions: All reads are the same length")
 
 	// Match the suffix of seq to prefixes
-	findOverlapBlocksExact(seq, m_pBWT, m_pRevBWT, sufPreAF, &obTemp, pOBOut, result);
-	findOverlapBlocksExact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, &obTemp, pOBOut, result);
+	findOverlapBlocksExact(seq, m_pBWT, m_pRevBWT, sufPreAF, &obWorkingList, pOBOut, result);
+	findOverlapBlocksExact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, &obWorkingList, pOBOut, result);
 
-	// Process the first set of blocks and output the irreducible hits to pHits
-	computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obTemp, pOBOut);
-	obTemp.clear();
-
+	//	
+	if(m_bIrreducible)
+	{
+		computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
+		obWorkingList.clear();
+	}
+	else
+	{
+		pOBOut->splice(pOBOut->end(), obWorkingList);
+		assert(obWorkingList.empty());
+	}
 	// Match the prefix of seq to suffixes
-	findOverlapBlocksExact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, &obTemp, pOBOut, result);
-	findOverlapBlocksExact(reverse(seq), m_pRevBWT, m_pBWT, preSufAF, &obTemp, pOBOut, result);
+	findOverlapBlocksExact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, &obWorkingList, pOBOut, result);
+	findOverlapBlocksExact(reverse(seq), m_pRevBWT, m_pBWT, preSufAF, &obWorkingList, pOBOut, result);
 
-	// Process the first set of blocks and output the irreducible hits to pHits
-	computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obTemp, pOBOut);
+	//
+	if(m_bIrreducible)
+	{
+		computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
+		obWorkingList.clear();
+	}
+	else
+	{
+		pOBOut->splice(pOBOut->end(), obWorkingList);
+		assert(obWorkingList.empty());
+	}
 
 	return result;
 }
@@ -494,8 +525,10 @@ void OverlapAlgorithm::computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRev
 												OverlapBlockList* pOBFinal) const
 {
 	// processIrreducibleBlocks requires the pOBList to be sorted in descending order
+	printf("Starting OBI\n");
 	pOBList->sort(OverlapBlock::sortSizeDescending);
 	_processIrreducibleBlocks(pBWT, pRevBWT, *pOBList, pOBFinal);
+	printf("Done OBI\n");
 }
 
 // iterate through obList and determine the overlaps that are irreducible. This function is recursive.
@@ -536,6 +569,7 @@ void OverlapAlgorithm::_processIrreducibleBlocks(const BWT* pBWT, const BWT* pRe
 		OBLIter tlbIter = obList.begin();
 		while(tlbIter != obList.end() && tlbIter->overlapLen == topLen)
 		{
+			printf("Found terminal\n");
 			// Ensure the tlb is actually terminal and not a substring block
 			AlphaCount test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
 			assert(test_count.get('$') > 0);
@@ -555,9 +589,11 @@ void OverlapAlgorithm::_processIrreducibleBlocks(const BWT* pBWT, const BWT* pRe
 
 		if(ext_count.hasUniqueDNAChar())
 		{
+
 			// Update all the blocks using the unique extension character
 			// This character is in the canonical representation wrt to the query
 			char b = ext_count.getUniqueDNAChar();
+			printf("Found unique: %c\n", b);
 			updateOverlapBlockRangesRight(pBWT, pRevBWT, obList, b);
 			return _processIrreducibleBlocks(pBWT, pRevBWT, obList, pOBFinal);
 		}
@@ -568,6 +604,7 @@ void OverlapAlgorithm::_processIrreducibleBlocks(const BWT* pBWT, const BWT* pRe
 				char b = ALPHABET[idx];
 				if(ext_count.get(b) > 0)
 				{
+					printf("Found branch: %c\n", b);
 					OverlapBlockList branched = obList;
 					updateOverlapBlockRangesRight(pBWT, pRevBWT, branched, b);
 					_processIrreducibleBlocks(pBWT, pRevBWT, branched, pOBFinal);
