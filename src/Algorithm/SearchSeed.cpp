@@ -7,6 +7,7 @@
 // SearchSeed.h - Data structure holding a partial 
 // alignment to a FM-index. 
 //
+#include <stdio.h>
 #include "SearchSeed.h"
 
 //
