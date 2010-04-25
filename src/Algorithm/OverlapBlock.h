@@ -12,6 +12,7 @@
 #define OVERLAPBLOCK_H
 
 #include "BWTInterval.h"
+#include "SearchHistory.h"
 #include "BitChar.h"
 #include "BWT.h"
 
@@ -116,6 +117,7 @@ struct OverlapBlock
 		return in;
 	}
 
+	SearchHistory history;
 	BWTIntervalPair ranges;
 	int overlapLen;
 	int numDiff;
