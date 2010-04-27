@@ -13,6 +13,7 @@
 #include <queue>
 #include <list>
 #include "BWTInterval.h"
+#include "SearchHistory.h"
 
 // types
 enum ExtendDirection
@@ -60,7 +61,8 @@ struct SearchSeed
 	//
 
 	// BWT interval coordinates, the first element of the pair is the left range
-	BWTIntervalPair ranges; 
+	BWTIntervalPair ranges;
+	SearchHistory history;
 
 	// Index range is inclusive on both ends
 	int left_index;

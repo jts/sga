@@ -34,6 +34,8 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, Overla
 	OverlapBlockList obWorkingList;
 	std::string seq = read.seq.toString();
 
+	//std::cout << "Overlapping read " << read.id << " suffix\n";
+
 	// Match the suffix of seq to prefixes
 	findOverlapBlocksInexact(seq, m_pBWT, m_pRevBWT, sufPreAF, &obWorkingList, pOBOut, result);
 	findOverlapBlocksInexact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, &obWorkingList, pOBOut, result);
@@ -48,6 +50,8 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, Overla
 		pOBOut->splice(pOBOut->end(), obWorkingList);
 		assert(obWorkingList.empty());
 	}
+
+	//std::cout << "Overlapping read " << read.id << " prefix\n";
 
 	// Match the prefix of seq to suffixes
 	findOverlapBlocksInexact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, &obWorkingList, pOBOut, result);
@@ -277,7 +281,7 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 					if(probe.interval[1].isValid())
 					{
 						assert(probe.interval[1].lower > 0);
-						OverlapBlock nBlock(OverlapBlock(probe, overlapLen, align.z, af));
+						OverlapBlock nBlock(OverlapBlock(probe, overlapLen, align.z, af, align.history));
 						if(overlapLen == len)
 							fullWorkingList.push_back(nBlock);
 						else
@@ -476,7 +480,10 @@ void OverlapAlgorithm::extendSeedInexactRight(SearchSeed& seed, const std::strin
 			if(branched.isIntervalValid(RIGHT_INT_IDX))
 			{
 				if(b != w[seed.right_index])
+				{
 					++branched.z;
+					branched.history.add(seed.right_index, b);
+				}
 				pOutVector->push_back(branched);
 			}
 		}
@@ -510,7 +517,10 @@ void OverlapAlgorithm::extendSeedInexactLeft(SearchSeed& seed, const std::string
 				if(branched.isIntervalValid(LEFT_INT_IDX))
 				{
 					if(b != w[seed.left_index])
+					{
 						++branched.z;
+						branched.history.add(seed.left_index, b);
+					}
 					pOutVector->push_back(branched);
 				}
 			}
@@ -525,19 +535,17 @@ void OverlapAlgorithm::computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRev
 												OverlapBlockList* pOBFinal) const
 {
 	// processIrreducibleBlocks requires the pOBList to be sorted in descending order
-	printf("Starting OBI\n");
 	pOBList->sort(OverlapBlock::sortSizeDescending);
-	_processIrreducibleBlocks(pBWT, pRevBWT, *pOBList, pOBFinal);
-	printf("Done OBI\n");
+	_processIrreducibleBlocksInexact(pBWT, pRevBWT, *pOBList, pOBFinal);
 }
 
 // iterate through obList and determine the overlaps that are irreducible. This function is recursive.
 // The final overlap blocks corresponding to irreducible overlaps are written to pOBFinal.
 // Invariant: the blocks are ordered in descending order of the overlap size so that the longest overlap is first.
 // Invariant: each block corresponds to the same extension of the root sequence w.
-void OverlapAlgorithm::_processIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, 
-                                                OverlapBlockList& obList, 
-												OverlapBlockList* pOBFinal) const
+void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT* pRevBWT, 
+                                                      OverlapBlockList& obList, 
+													  OverlapBlockList* pOBFinal) const
 {
 	if(obList.empty())
 		return;
@@ -569,7 +577,6 @@ void OverlapAlgorithm::_processIrreducibleBlocks(const BWT* pBWT, const BWT* pRe
 		OBLIter tlbIter = obList.begin();
 		while(tlbIter != obList.end() && tlbIter->overlapLen == topLen)
 		{
-			printf("Found terminal\n");
 			// Ensure the tlb is actually terminal and not a substring block
 			AlphaCount test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
 			assert(test_count.get('$') > 0);
@@ -593,9 +600,8 @@ void OverlapAlgorithm::_processIrreducibleBlocks(const BWT* pBWT, const BWT* pRe
 			// Update all the blocks using the unique extension character
 			// This character is in the canonical representation wrt to the query
 			char b = ext_count.getUniqueDNAChar();
-			printf("Found unique: %c\n", b);
 			updateOverlapBlockRangesRight(pBWT, pRevBWT, obList, b);
-			return _processIrreducibleBlocks(pBWT, pRevBWT, obList, pOBFinal);
+			return _processIrreducibleBlocksExact(pBWT, pRevBWT, obList, pOBFinal);
 		}
 		else
 		{
@@ -604,15 +610,136 @@ void OverlapAlgorithm::_processIrreducibleBlocks(const BWT* pBWT, const BWT* pRe
 				char b = ALPHABET[idx];
 				if(ext_count.get(b) > 0)
 				{
-					printf("Found branch: %c\n", b);
 					OverlapBlockList branched = obList;
 					updateOverlapBlockRangesRight(pBWT, pRevBWT, branched, b);
-					_processIrreducibleBlocks(pBWT, pRevBWT, branched, pOBFinal);
+					_processIrreducibleBlocksExact(pBWT, pRevBWT, branched, pOBFinal);
 				}
 			}
 		}
 	}
 }
+
+// iterate through obList and determine the overlaps that are irreducible. This function is recursive.
+// The final overlap blocks corresponding to irreducible overlaps are written to pOBFinal.
+// Invariant: the blocks are ordered in descending order of the overlap size so that the longest overlap is first.
+// Invariant: each block corresponds to the same extension of the root sequence w.
+void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const BWT* pRevBWT, 
+                                                      OverlapBlockList& obList, 
+													  OverlapBlockList* pOBFinal) const
+{
+	OverlapBlockList* pOBNext = new OverlapBlockList;
+
+	if(obList.empty())
+		return;
+
+	// Count the extensions in the top level (longest) blocks first
+	int extension_length = 0;
+	bool done = false;
+
+	while(!done)
+	{
+		int topLen = obList.front().overlapLen;
+		AlphaCount ext_count;
+		OBLIter iter = obList.begin();
+		while(iter != obList.end() && iter->overlapLen == topLen)
+		{
+			ext_count += iter->getCanonicalExtCount(pBWT, pRevBWT);
+			++iter;
+		}
+		
+		if(ext_count.get('$') > 0)
+		{
+			// The end of the top level block(s) have been found
+			OBLIter tlbIter = obList.begin();
+			while(tlbIter != obList.end() && tlbIter->overlapLen == topLen)
+			{
+				AlphaCount test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
+				assert(test_count.get('$') > 0);
+				
+				// If this block has been marked eliminated, it is transitive wrt this read
+				// and we do not output the block
+				if(!tlbIter->isEliminated)
+				{
+					pOBFinal->push_back(*tlbIter);
+					tlbIter->isEliminated = true;
+				}
+				
+				// Mark any blocks that are shorter than the TLB as transitive
+				// if the inferred error rate is less than the threshold
+				OBLIter transIter = tlbIter;
+				++transIter;
+				for(; transIter != obList.end(); ++transIter)
+				{
+					if(transIter->overlapLen == topLen)
+					{
+						WARN_ONCE("Skipping identical-length block");
+						continue;
+					}
+					else if(!transIter->isEliminated)
+					{
+						// Compute error rate between the transIter block and tlbIter block,
+						// mark all the blocks that have error rate wrt the tlb lower than 
+						// m_errorRate as eliminated as they must be transitive edges
+						int backwards_diff = SearchHistory::countDifferences(tlbIter->backHistory, transIter->backHistory);
+						int forward_diff = SearchHistory::countDifferences(tlbIter->forwardHistory, transIter->forwardHistory);
+						int trans_overlap_length = transIter->overlapLen + extension_length;
+						double er = static_cast<double>(backwards_diff + forward_diff) / trans_overlap_length;
+					
+						// 
+						if(er <= m_errorRate)
+						{
+							transIter->isEliminated = true;
+						}
+					}
+
+					// Shift the block to the next list
+					pOBNext->push_back(*transIter);
+				}
+
+				++tlbIter;
+			} 
+	
+			// Check if all the blocks have been eliminated
+			bool all_eliminated = true;
+			for(OBLIter nextIter = pOBNext->begin(); nextIter != pOBNext->end(); ++nextIter)
+			{
+				if(!nextIter->isEliminated)
+				{
+					all_eliminated = false;
+					break;
+				}
+			}
+			done = all_eliminated;
+		}
+		else
+		{
+			// Extend all the blocks one base
+			++extension_length;
+			for(OBLIter iter = obList.begin(); iter != obList.end(); ++iter)
+			{
+				for(size_t idx = 0; idx < DNA_ALPHABET_SIZE; ++idx)
+				{
+					OverlapBlock branched = *iter;
+					char b = ALPHABET[idx];
+					char cb = iter->flags.isQueryComp() ? complement(b) : b;
+					BWTAlgorithms::updateBothR(branched.ranges, cb, branched.getExtensionBWT(pBWT, pRevBWT));
+					branched.forwardHistory.add(extension_length, b);
+					if(branched.ranges.isValid())
+					{
+						pOBNext->push_back(branched);
+					}
+				}
+			}
+		}
+
+		// All the remaining overlap blocks have been moved to the pOBNext list
+		// Clear the current list and swap 
+		obList.clear();
+		obList.swap(*pOBNext);
+	}
+	delete pOBNext;
+}
+
 
 // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
 void OverlapAlgorithm::updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, 

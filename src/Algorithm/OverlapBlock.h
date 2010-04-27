@@ -15,6 +15,7 @@
 #include "SearchHistory.h"
 #include "BitChar.h"
 #include "BWT.h"
+#include "SearchHistory.h"
 
 // Flags indicating how a given read was aligned to the FM-index
 // Used for internal bookkeeping
@@ -73,11 +74,16 @@ struct AlignFlags
 struct OverlapBlock
 {
 	OverlapBlock() {}
-	OverlapBlock(BWTIntervalPair r, int ol, int nd, const AlignFlags& af)  : ranges(r), 
-	                                                                             overlapLen(ol), 
-																				 numDiff(nd),
-																			     flags(af) {}
+	
+	OverlapBlock(BWTIntervalPair r, int ol, 
+	             int nd, const AlignFlags& af)  : ranges(r), 
+         	                                      overlapLen(ol), 
+		        								  numDiff(nd),
+				        						  flags(af), isEliminated(false) {}
 
+	OverlapBlock(BWTIntervalPair r, int ol, 
+                 int nd, const AlignFlags& af, 
+				 const SearchHistory& backHist);
 
 	// Return a pointer to the BWT that should be used to extend the block
 	// this is the opposite BWT that was used in the backwards search
@@ -117,11 +123,15 @@ struct OverlapBlock
 		return in;
 	}
 
-	SearchHistory history;
 	BWTIntervalPair ranges;
 	int overlapLen;
 	int numDiff;
 	AlignFlags flags;
+	bool isEliminated;
+
+	// The sequence of divergent bases during the backward and forward search steps
+	SearchHistory backHistory;
+	SearchHistory forwardHistory;
 };
 
 // Collections

@@ -70,9 +70,13 @@ class OverlapAlgorithm
 		void computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, 
 		                              OverlapBlockList* pOBList, OverlapBlockList* pOBFinal) const;
 		
-		// this recursive function does the actual work of computing the irreducible blocks
-		void _processIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, 
-		                               OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
+		// these recursive functions do the actual work of computing the irreducible blocks
+		void _processIrreducibleBlocksExact(const BWT* pBWT, const BWT* pRevBWT, 
+		                                    OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
+
+		//
+		void _processIrreducibleBlocksInexact(const BWT* pBWT, const BWT* pRevBWT, 
+		                                      OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
 
 		// Update the overlap block list with a righthand extension to b, removing ranges that become invalid
 		void updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, 

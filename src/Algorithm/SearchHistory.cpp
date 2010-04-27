@@ -9,19 +9,83 @@
 // for a string in the FM-index
 //
 #include "SearchHistory.h"
+#include "Util.h"
 #include <iterator>
-
+#include <algorithm>
+//
 SearchHistory::SearchHistory()
 {
 
 }
 
+// Normalize the search history so that the positions are in ascending (left to right)
+// order and the bases are wrt. the original strand of the forward sequence
+// This is required to compare two SearchHistories that represent alignments to different 
+// strands
+void SearchHistory::normalize(bool doComplement)
+{
+	std::sort(m_history.begin(), m_history.end(), HistoryItem::sortPos);
+
+	if(doComplement)
+	{
+		for(size_t i = 0; i < m_history.size(); ++i)
+		{
+			m_history[i].base = complement(m_history[i].base);	
+		}
+	}
+}
+
+//
 void SearchHistory::add(int pos, char base)
 {
 	HistoryItem item = {pos, base};
 	m_history.push_back(item);
 }
 
+//
+int SearchHistory::countDifferences(const SearchHistory& a, const SearchHistory& b)
+{
+	size_t na = a.m_history.size();
+	size_t nb = b.m_history.size();
+
+	size_t i = 0;
+	size_t j = 0;
+	int count = 0;
+
+	while(i < na && j < nb)
+	{
+		const HistoryItem& itemA = a.m_history[i];
+		const HistoryItem& itemB = b.m_history[j];
+		
+		if(itemA.pos == itemB.pos)
+		{
+			if(itemA.base != itemB.base)
+				++count;
+			++i;
+			++j;
+		}
+		else if(itemA.pos < itemB.pos)
+		{
+			++count;
+			++i;
+		}
+		else if(itemB.pos < itemA.pos)
+		{
+			++count;
+			++j;
+		}
+		else
+		{
+			assert(false);
+		}
+	}
+
+	count += (na - i);
+	count += (nb - j);
+	return count;
+}
+
+//
 std::ostream& operator<<(std::ostream& out, const SearchHistory& hist)
 {
 	std::copy(hist.m_history.begin(), hist.m_history.end(), 

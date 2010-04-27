@@ -20,6 +20,11 @@ class SearchHistory
 		int pos;
 		char base;
 
+		static bool sortPos(const HistoryItem& a, const HistoryItem& b)
+		{
+			return a.pos < b.pos;
+		}
+
 		friend std::ostream& operator<<(std::ostream& out, const HistoryItem& hi)
 		{
 			out << hi.pos << "," << hi.base;
@@ -36,6 +41,10 @@ class SearchHistory
 
 		//
 		void add(int pos, char base);
+		void normalize(bool doComplement);
+
+		//
+		static int countDifferences(const SearchHistory& a, const SearchHistory& b);
 
 		//
 		friend std::ostream& operator<<(std::ostream& out, const SearchHistory& hist);

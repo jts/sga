@@ -11,6 +11,19 @@
 #include "OverlapBlock.h"
 #include "BWTAlgorithms.h"
 
+// 
+OverlapBlock::OverlapBlock(BWTIntervalPair r, int ol, 
+                           int nd, const AlignFlags& af, 
+						   const SearchHistory& backHist) : ranges(r), 
+                                                            overlapLen(ol), 
+														    numDiff(nd),
+														    flags(af),
+															isEliminated(false),
+														    backHistory(backHist)
+{
+	backHistory.normalize(af.isQueryComp());
+}
+
 // Return a pointer to the BWT that should be used to extend the block
 // this is the opposite BWT that was used in the backwards search
 const BWT* OverlapBlock::getExtensionBWT(const BWT* pBWT, const BWT* pRevBWT) const
