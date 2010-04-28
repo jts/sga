@@ -13,6 +13,7 @@ static const AlignFlags prePreAF(false, true, true);
 static const AlignFlags sufSufAF(true, false, true);
 static const AlignFlags preSufAF(true, true, false);
 
+//#define TEMPDEBUG 1
 
 // Perform the overlap
 OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const
@@ -34,7 +35,9 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, Overla
 	OverlapBlockList obWorkingList;
 	std::string seq = read.seq.toString();
 
-	//std::cout << "Overlapping read " << read.id << " suffix\n";
+#ifdef TEMPDEBUG
+	std::cout << "Overlapping read " << read.id << " suffix\n";
+#endif
 
 	// Match the suffix of seq to prefixes
 	findOverlapBlocksInexact(seq, m_pBWT, m_pRevBWT, sufPreAF, &obWorkingList, pOBOut, result);
@@ -51,7 +54,9 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, Overla
 		assert(obWorkingList.empty());
 	}
 
-	//std::cout << "Overlapping read " << read.id << " prefix\n";
+#ifdef TEMPDEBUG
+	std::cout << "Overlapping read " << read.id << " prefix\n";
+#endif
 
 	// Match the prefix of seq to suffixes
 	findOverlapBlocksInexact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, &obWorkingList, pOBOut, result);
@@ -667,7 +672,9 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 				// and we do not output the block
 				if(!tlbIter->isEliminated)
 				{
-					//std::cout << "Pushing block of length " << tlbIter->overlapLen << "\n";
+#ifdef TEMPDEBUG
+					std::cout << "Pushing block of length " << tlbIter->overlapLen << "\n";
+#endif
 					pOBFinal->push_back(*tlbIter);
 					tlbIter->isEliminated = true;
 				}
@@ -693,7 +700,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 						int trans_overlap_length = transIter->overlapLen + extension_length;
 						double er = static_cast<double>(backwards_diff + forward_diff) / trans_overlap_length;
 						
-						/*
+#ifdef TEMPDEBUG
 						std::cout << "OL: " << transIter->overlapLen << "\n";
 						std::cout << "TLB BH: " << tlbIter->backHistory << "\n";
 						std::cout << "TB  BH: " << transIter->backHistory << "\n";
@@ -701,11 +708,13 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 						std::cout << "TB  FH: " << transIter->forwardHistory << "\n";
 						std::cout << "IOL: " << trans_overlap_length << " TD: " << (backwards_diff + forward_diff) << "\n";
 						std::cout << "Block of length " << transIter->overlapLen << " has ier: " << er << "\n";
-						*/
+#endif
 						// 
 						if(er <= m_errorRate)
 						{
-							//std::cout << "Marking block of length " << transIter->overlapLen << " as eliminated\n";
+#ifdef TEMPDEBUG							
+							std::cout << "Marking block of length " << transIter->overlapLen << " as eliminated\n";
+#endif
 							transIter->isEliminated = true;
 						}
 					}
