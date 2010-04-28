@@ -41,21 +41,20 @@ static const char *OVIEW_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -i, --id=ID                      only show overlaps for read with ID\n"
 "      -m, --max-overhang=D             only show D overhanging bases of the alignments (default=6)\n"
-"      -d, --detect-misalign            detect misaligned reads\n"
+"      -d, --default-padding=D          pad the overlap lines with D characters (default=20)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
 {
 	static unsigned int verbose;
-	static int max_overhang;
+	static int max_overhang = 6;
+	static int padding = 20;
 	static std::string prefix;
 	static std::string asqgFile;
 	static std::string readFilter;
-	static bool bErrorCorrect;
-	static bool bDetectMisalign;
 }
 
-static const char* shortopts = "p:m:i:cvd";
+static const char* shortopts = "p:m:i:d:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -64,8 +63,7 @@ static const struct option longopts[] = {
 	{ "id",              required_argument, NULL, 'i' },
 	{ "prefix",          required_argument, NULL, 'p' },
 	{ "max-overhang",    required_argument, NULL, 'm' },
-	{ "correct-errors",  no_argument,       NULL, 'c' },
-	{ "detect-misalign", no_argument,       NULL, 'd' },
+	{ "default-padding", required_argument, NULL, 'd' },
 	{ "help",            no_argument,       NULL, OPT_HELP },
 	{ "version",         no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -124,7 +122,7 @@ void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* p
 		std::string otherSeq = pRT->getRead(curr.id[1]).seq.toString();
 		multi_overlap.add(otherSeq, curr);
 	}
-	multi_overlap.print(20, opt::max_overhang);
+	multi_overlap.print(opt::padding, opt::max_overhang);
 }
 
 void parseASQG(std::string filename, ReadTable* pRT, OverlapMap* pOM)
@@ -213,8 +211,7 @@ void parseOviewOptions(int argc, char** argv)
 			case 'v': opt::verbose++; break;
 			case 'i': arg >> opt::readFilter; break;
 			case 'm': arg >> opt::max_overhang; break;
-			case 'd': opt::bDetectMisalign = true; break;
-			case 'c': opt::bErrorCorrect = true; break;
+			case 'd': arg >> opt::padding; break;
 			case OPT_HELP:
 				std::cout << OVIEW_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);

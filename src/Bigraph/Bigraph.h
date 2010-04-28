@@ -152,9 +152,9 @@ class Bigraph
 		void setErrorRate(double er);
 		double getErrorRate() const;
 
-
-		// Write the graph to a dot file
-		void writeDot(std::string filename, int dotFlags = 0) const;
+		// Write the graph to a file
+		void writeDot(const std::string& filename, int dotFlags = 0) const;
+		void writeASQG(const std::string& filename) const;
 
 	private:
 		

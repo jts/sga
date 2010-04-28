@@ -44,7 +44,7 @@ class SearchHistory
 		void normalize(bool doComplement);
 
 		//
-		static int countDifferences(const SearchHistory& a, const SearchHistory& b);
+		static int countDifferences(const SearchHistory& a, const SearchHistory& b, int maxPos);
 
 		//
 		friend std::ostream& operator<<(std::ostream& out, const SearchHistory& hist);

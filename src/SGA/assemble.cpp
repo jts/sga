@@ -148,6 +148,8 @@ void assemble()
 	std::cout << "Removing transitive edges\n";
 	pGraph->visit(trVisit);
 
+	pGraph->writeASQG("afterTR.asqg.gz");
+
 	std::cout << "Pre-remodelling graph stats\n";
 	pGraph->visit(statsVisit);
 

@@ -482,7 +482,10 @@ void OverlapAlgorithm::extendSeedInexactRight(SearchSeed& seed, const std::strin
 				if(b != w[seed.right_index])
 				{
 					++branched.z;
-					branched.history.add(seed.right_index, b);
+					// The history coordinates are wrt the right end of the read
+					// so that each position corresponds to the length of the overlap
+					// including that position
+					branched.history.add(w.length() - seed.right_index, b);
 				}
 				pOutVector->push_back(branched);
 			}
@@ -519,7 +522,10 @@ void OverlapAlgorithm::extendSeedInexactLeft(SearchSeed& seed, const std::string
 					if(b != w[seed.left_index])
 					{
 						++branched.z;
-						branched.history.add(seed.left_index, b);
+						// The history coordinates are wrt the right end of the read
+						// so that each position corresponds to the length of the overlap
+						// including that position						
+						branched.history.add(w.length() - seed.left_index, b);
 					}
 					pOutVector->push_back(branched);
 				}
@@ -649,6 +655,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 		
 		if(ext_count.get('$') > 0)
 		{
+			//std::cout << "TLB of length " << topLen << " has ended\n";
 			// The end of the top level block(s) have been found
 			OBLIter tlbIter = obList.begin();
 			while(tlbIter != obList.end() && tlbIter->overlapLen == topLen)
@@ -660,6 +667,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 				// and we do not output the block
 				if(!tlbIter->isEliminated)
 				{
+					//std::cout << "Pushing block of length " << tlbIter->overlapLen << "\n";
 					pOBFinal->push_back(*tlbIter);
 					tlbIter->isEliminated = true;
 				}
@@ -680,14 +688,24 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 						// Compute error rate between the transIter block and tlbIter block,
 						// mark all the blocks that have error rate wrt the tlb lower than 
 						// m_errorRate as eliminated as they must be transitive edges
-						int backwards_diff = SearchHistory::countDifferences(tlbIter->backHistory, transIter->backHistory);
-						int forward_diff = SearchHistory::countDifferences(tlbIter->forwardHistory, transIter->forwardHistory);
+						int backwards_diff = SearchHistory::countDifferences(tlbIter->backHistory, transIter->backHistory, transIter->overlapLen);
+						int forward_diff = SearchHistory::countDifferences(tlbIter->forwardHistory, transIter->forwardHistory, extension_length);
 						int trans_overlap_length = transIter->overlapLen + extension_length;
 						double er = static_cast<double>(backwards_diff + forward_diff) / trans_overlap_length;
-					
+						
+						/*
+						std::cout << "OL: " << transIter->overlapLen << "\n";
+						std::cout << "TLB BH: " << tlbIter->backHistory << "\n";
+						std::cout << "TB  BH: " << transIter->backHistory << "\n";
+						std::cout << "TLB FH: " << tlbIter->forwardHistory << "\n";
+						std::cout << "TB  FH: " << transIter->forwardHistory << "\n";
+						std::cout << "IOL: " << trans_overlap_length << " TD: " << (backwards_diff + forward_diff) << "\n";
+						std::cout << "Block of length " << transIter->overlapLen << " has ier: " << er << "\n";
+						*/
 						// 
 						if(er <= m_errorRate)
 						{
+							//std::cout << "Marking block of length " << transIter->overlapLen << " as eliminated\n";
 							transIter->isEliminated = true;
 						}
 					}

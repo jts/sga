@@ -12,6 +12,7 @@
 #include <iostream>
 #include "Bigraph.h"
 #include "Timer.h"
+#include "ASQG.h"
 #include <malloc.h>
 
 //
@@ -555,9 +556,9 @@ void Bigraph::printMemSize() const
 }
 
 //
-// Dump the graph to a dot file
+// Write the graph to a dot file
 //
-void Bigraph::writeDot(std::string filename, int dotFlags) const
+void Bigraph::writeDot(const std::string& filename, int dotFlags) const
 {
 	std::ofstream out(filename.c_str());
 	
@@ -575,4 +576,47 @@ void Bigraph::writeDot(std::string filename, int dotFlags) const
 	out << "}\n";
 	out.close();
 }
+
+//
+// Write the graph to an ASQG file
+//
+void Bigraph::writeASQG(const std::string& filename) const
+{
+	std::ostream* pWriter = createWriter(filename);
+	
+	// Header
+	ASQG::HeaderRecord headerRecord;
+	headerRecord.setOverlapTag(m_minOverlap);
+	headerRecord.setErrorRateTag(m_errorRate);
+	headerRecord.write(*pWriter);
+
+
+	VertexPtrMapConstIter iter; 
+
+	// Vertices
+	for(iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
+	{
+		ASQG::VertexRecord vertexRecord(iter->second->getID(), iter->second->getSeq());
+		vertexRecord.write(*pWriter);
+	}
+
+	// Edges
+	for(iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
+	{
+		EdgePtrVec edges = iter->second->getEdges();
+		for(EdgePtrVecIter edgeIter = edges.begin(); edgeIter != edges.end(); ++edgeIter)
+		{
+			// We write one record for every bidirectional edge so only write edges
+			// that are in canonical form (where id1 < id2)
+			Overlap ovr = (*edgeIter)->getOverlap();
+			if(ovr.id[0] <= ovr.id[1])
+			{
+				ASQG::EdgeRecord edgeRecord(ovr);
+				edgeRecord.write(*pWriter);
+			}
+		}
+	}
+	delete pWriter;
+}
+
 

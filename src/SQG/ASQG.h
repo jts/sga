@@ -29,7 +29,6 @@ namespace ASQG
 			HeaderRecord();
 			HeaderRecord(const std::string& recordLine);
 			
-			void setVersionTag(int version);
 			void setOverlapTag(int overlapLen);
 			void setInputFileTag(const std::string& name);
 			void setErrorRateTag(float errorRate);
@@ -43,6 +42,8 @@ namespace ASQG
 			void parse(const std::string& record);
 
 		private:
+
+			void setVersionTag(int version);
 			
 			SQG::IntTag m_versionTag;
 			SQG::FloatTag m_errorRateTag;

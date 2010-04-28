@@ -43,7 +43,7 @@ void SearchHistory::add(int pos, char base)
 }
 
 //
-int SearchHistory::countDifferences(const SearchHistory& a, const SearchHistory& b)
+int SearchHistory::countDifferences(const SearchHistory& a, const SearchHistory& b, int maxPos)
 {
 	size_t na = a.m_history.size();
 	size_t nb = b.m_history.size();
@@ -57,6 +57,9 @@ int SearchHistory::countDifferences(const SearchHistory& a, const SearchHistory&
 		const HistoryItem& itemA = a.m_history[i];
 		const HistoryItem& itemB = b.m_history[j];
 		
+		if(itemA.pos > maxPos || itemB.pos > maxPos)
+			break;
+
 		if(itemA.pos == itemB.pos)
 		{
 			if(itemA.base != itemB.base)
@@ -79,9 +82,21 @@ int SearchHistory::countDifferences(const SearchHistory& a, const SearchHistory&
 			assert(false);
 		}
 	}
+	
+	// Count the remaining elements in A and B that are less than maxpos
+	while(i < na && a.m_history[i].pos < maxPos)
+	{
+		++count;
+		++i;
+	}
 
-	count += (na - i);
-	count += (nb - j);
+	// Count the remaining elements in A and B that are less than maxpos
+	while(j < nb && b.m_history[i].pos < maxPos)
+	{
+		++count;
+		++j;
+	}
+
 	return count;
 }
 
