@@ -91,7 +91,7 @@ int SearchHistory::countDifferences(const SearchHistory& a, const SearchHistory&
 	}
 
 	// Count the remaining elements in A and B that are less than maxpos
-	while(j < nb && b.m_history[i].pos <= maxPos)
+	while(j < nb && b.m_history[j].pos <= maxPos)
 	{
 		++count;
 		++j;

@@ -17,25 +17,29 @@ namespace SGAlgorithms
 	//
 	// Overlap discovery algorithms
 	//
-	struct VertexOverlapPair
+	struct VertexPtrCompare
 	{
-		Vertex* pVertex;
-		Overlap ovr;
-
-		friend bool operator<(const VertexOverlapPair& a, const VertexOverlapPair& b)
+		bool operator()(const Vertex* a, const Vertex* b) const
 		{
-			return a.pVertex->getID() < b.pVertex->getID();
+			return a->getID() < b->getID();
 		}
 	};
 
-	typedef std::set<VertexOverlapPair> VertexOverlapSet;
+	typedef std::map<Vertex*, Overlap, VertexPtrCompare> VertexOverlapMap;
 
 	// Discover the complete set of overlaps for pVertex
-	void findOverlapSet(const Vertex* pVertex, VertexOverlapSet& VOSet);
+	void findOverlapMap(const Vertex* pVertex, VertexOverlapMap& outMap);
 
 	// recursive function to discover overlaps of pX from pY
 	void _discoverOverlaps(const Vertex* pX, const Vertex* pY, EdgeDir dir, const Overlap& ovrXY, 
-	                      VertexOverlapSet& outSet);
+	                      VertexOverlapMap& outMap);
+
+	// Prepare the vertex pVertex for removal by adding edges to the graph
+	// to bypss pVertex and retain the struture of the graph
+	void patchRemove(StringGraph* pGraph, Vertex* pVertex);
+
+	// Calculate the error rate between the two vertices
+	double calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY);
 
 	//
 	// Overlap inference algorithms

@@ -13,7 +13,7 @@ static const AlignFlags prePreAF(false, true, true);
 static const AlignFlags sufSufAF(true, false, true);
 static const AlignFlags preSufAF(true, true, false);
 
-#define TEMPDEBUG 1
+//#define TEMPDEBUG 1
 
 // Perform the overlap
 OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const
@@ -672,7 +672,9 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 				// and we do not output the block
 				if(!tlbIter->isEliminated)
 				{
-					//std::cout << "Pushing block of length " << tlbIter->overlapLen << "\n";
+#ifdef TEMPDEBUG
+					std::cout << "Pushing block of length " << tlbIter->overlapLen << "\n";
+#endif
 					pOBFinal->push_back(*tlbIter);
 					tlbIter->isEliminated = true;
 				}

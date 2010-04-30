@@ -970,10 +970,11 @@ void MultiOverlap::print(int default_padding, int max_overhang)
 	{
 		const MOData& curr = m_overlaps[i];
 		int overlap_len = curr.ovr.match.getMaxOverlapLength();
-
+		int nd = curr.ovr.match.countDifferences(m_rootSeq, curr.seq);
+		double score = static_cast<double>(nd) / overlap_len;
 		printRow(default_padding, max_overhang, root_len, 
-		         curr.offset, overlap_len, curr.partitionID, 
-				 curr.score, curr.seq, curr.ovr.id[1].c_str());
+		         curr.offset, overlap_len, nd, 
+				 score, curr.seq, curr.ovr.id[1].c_str());
 	}	
 }
 

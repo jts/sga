@@ -84,7 +84,7 @@ class Bigraph
 		void mergeVertices(VertexID id1, VertexID id2);
 
 		// Merge vertices that are joined by the specified edge
-		void merge(Vertex* pV1, Edge* pEdge);		
+		void merge(Vertex* pV1, Edge* pEdge);
 
 		// Simplify the graph by removing transitive edges
 		void simplify();

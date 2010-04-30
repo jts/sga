@@ -530,6 +530,17 @@ bool Vertex::hasEdge(const EdgeDesc& ed) const
 	return findEdge(ed) != m_edges.end();
 }
 
+//
+bool Vertex::hasEdgeTo(const Vertex* pY) const
+{
+	assert(pY != NULL);
+	EdgePtrVecConstIter iter = m_edges.begin();
+	for(; iter != m_edges.end(); ++iter)
+		if((*iter)->getEnd() == pY)
+			return true;
+	return false;
+}
+
 // Return the edge matching the descriptions
 Edge* Vertex::getEdge(const EdgeDesc& ed)
 {
