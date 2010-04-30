@@ -667,7 +667,9 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 			{
 				AlphaCount test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
 				assert(test_count.get('$') > 0);
-				
+#ifdef TEMPDEBUG
+					std::cout << "***TLB of length " << tlbIter->overlapLen << " has ended\n";
+#endif				
 				// If this block has been marked eliminated, it is transitive wrt this read
 				// and we do not output the block
 				if(!tlbIter->isEliminated)
@@ -718,23 +720,19 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 							transIter->isEliminated = true;
 						}
 					}
-
-					// Shift the block to the next list
-					pOBNext->push_back(*transIter);
 				}
 
 				++tlbIter;
 			} 
-	
-			// Check if all the blocks have been eliminated
-			bool all_eliminated = true;
-			for(OBLIter nextIter = pOBNext->begin(); nextIter != pOBNext->end(); ++nextIter)
+			
+			// Move all the non-TLB blocks to the next list
+			// set the stop condition if all the blocks have been marked eliminated
+			done = true;
+			for(OBLIter nextIter = tlbIter; nextIter != obList.end(); ++nextIter)
 			{
+				pOBNext->push_back(*nextIter);
 				if(!nextIter->isEliminated)
-				{
-					all_eliminated = false;
-					break;
-				}
+					done = false;
 			}
 			done = all_eliminated;
 		}

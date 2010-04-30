@@ -35,18 +35,19 @@ void SGAlgorithms::patchRemove(StringGraph* pGraph, Vertex* pVertex)
 
 				double error_rate = calcErrorRate(pY, pZ, ovrYZ);
 				int overlap_len = ovrYZ.match.getMinOverlapLength();
-				std::cout << "Inferring patch: " << ovrYZ << "\n";
-				std::cout << "ER: " << error_rate << "\n";
-				std::cout << "OL: " << overlap_len << "\n";
+	//			std::cout << "Inferring patch: " << ovrYZ << "\n";
+	//			std::cout << "ER: " << error_rate << "\n";
+	//			std::cout << "OL: " << overlap_len << "\n";
 				if(overlap_len >= pGraph->getMinOverlap() && 
 					error_rate <= pGraph->getErrorRate())
 				{
-					std::cout << "Edge passed!\n";
+	//				std::cout << "Edge passed!\n";
+					std::cout << "Adding edge with overlap " << ovrYZ << "\n";
 					SGUtil::createEdges(pGraph, ovrYZ, false);
 				}
 				else
 				{
-					std::cout << "Edge failed!\n";
+	//				std::cout << "Edge failed!\n";
 				}
 			}
 		}
@@ -405,18 +406,16 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			int uniqueX = overlapMapX.size() - intersection;
 			int uniqueY = overlapMapY.size() - intersection;
 			
-			printf("XID: %s YID: %s\n", pVertex->getID().c_str(), pVertexY->getID().c_str());
+			//printf("XID: %s YID: %s\n", pVertex->getID().c_str(), pVertexY->getID().c_str());
 			
-			printf("SX: %zu SY: %zu UX: %d UY: %d INT: %d\n", overlapMapX.size(), overlapMapY.size(), uniqueX, uniqueY, intersection);
+			//printf("SX: %zu SY: %zu UX: %d UY: %d INT: %d\n", overlapMapX.size(), overlapMapY.size(), uniqueX, uniqueY, intersection);
 			Vertex* pToRemove = NULL;
 			if(uniqueX > uniqueY)
 			{
-				pVertexY->setColor(GC_BLACK);
 				pToRemove = pVertexY;
 			}
 			else if(uniqueY > uniqueX)
 			{
-				pVertex->setColor(GC_BLACK);
 				pToRemove = pVertex;
 			}
 			else
@@ -449,19 +448,17 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				// If containedIdx is 0, then this vertex is the one to remove
 				if(ovr.getContainedIdx() == 0)
 				{
-					pVertex->setColor(GC_BLACK);
 					pToRemove = pVertex;
 					break;
 				}
 				else
 				{
-					pVertexY->setColor(GC_BLACK);
 					pToRemove = pVertexY;
 				}
 			}
 
 			assert(pToRemove != NULL);
-
+			pToRemove->setColor(GC_BLACK);
 			// patch the graph by adding necessary edges
 			SGAlgorithms::patchRemove(pGraph, pToRemove);
 		}
