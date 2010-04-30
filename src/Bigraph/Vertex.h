@@ -105,6 +105,7 @@ class Vertex
 		void sweepEdges(GraphColor c);
 		bool hasEdge(Edge* pEdge) const;
 		bool hasEdge(const EdgeDesc& ed) const;
+		bool hasEdgeTo(const Vertex* pY) const;
 
 		Edge* getEdge(const EdgeDesc& ed);
 		EdgePtrVec findEdgesTo(VertexID id);
