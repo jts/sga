@@ -431,7 +431,16 @@ void Vertex::addEdge(Edge* ep)
 	m_edges.push_back(ep);
 }
 
-// Remove an edge
+// Remove an edge from the edge list of the vertex
+// and free the storage. This does not remove the twin
+void Vertex::deleteEdge(Edge* pEdge)
+{
+	removeEdge(pEdge);
+	delete pEdge;
+	pEdge = NULL;
+}
+
+// Remove an edge but do not destroy it
 void Vertex::removeEdge(Edge* pEdge)
 {
 	EdgePtrVecIter iter = m_edges.begin();
@@ -445,8 +454,7 @@ void Vertex::removeEdge(Edge* pEdge)
 	m_edges.erase(iter);	
 }
 
-// Remove edge
-// Note - this does not delete the edge through the pointer
+//
 void Vertex::removeEdge(const EdgeDesc& ed)
 {
 	EdgePtrVecIter iter = findEdge(ed);

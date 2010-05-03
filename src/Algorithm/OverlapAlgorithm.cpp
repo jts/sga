@@ -734,7 +734,6 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 				if(!nextIter->isEliminated)
 					done = false;
 			}
-			done = all_eliminated;
 		}
 		else
 		{

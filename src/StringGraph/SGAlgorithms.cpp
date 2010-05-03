@@ -10,6 +10,115 @@
 #include "SGUtil.h"
 #include "ErrorCorrect.h"
 
+// Remodel the edges of pVertex by finding any new irreducible edges
+// that may need to be added if the vertex at the end of pEdge is removed
+// from the graph
+void SGAlgorithms::remodelVertexAfterRemoval(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
+{
+	assert(pVertex == pDeleteEdge->getStart());
+
+	EdgePtrVec edges = pVertex->getEdges();
+
+	Vertex* pDeleteVertex = pDeleteEdge->getEnd();
+
+	// this is the initial overlap between pVertex and pDeletionVertex
+	Overlap ovrXY = pDeleteEdge->getOverlap();
+
+	// Construct the set of vertices that are reachable by valid edges
+	VertexOverlapMap reachableSet;
+	reachableSet.insert(std::pair<Vertex*, Overlap>(pDeleteVertex, ovrXY));
+
+	// Add the primary overlaps to the map, and all the nodes reachable from the primaries
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Edge* pEdge = edges[i];
+		
+		// Skip adding vertices for the deletion edge
+		if(pEdge != pDeleteEdge)
+		{
+			Vertex* pEnd = pEdge->getEnd();
+			Overlap ovr = pEdge->getOverlap();
+			reachableSet.insert(std::pair<Vertex*, Overlap>(pEnd, ovr));
+
+			// Recursively add edges to the reachable set
+			EdgeDir transDir = pEdge->getTransitiveDir();
+			SGAlgorithms::_discoverOverlaps(pVertex, pEnd, transDir, ovr, reachableSet);
+		}
+	}
+	
+	// Explore the edges from the deletion vertex
+	// If the endpoint of a neighbor edge is present
+	// in the reachable set, it is considered no further
+	// If the endpoint is not present and the overlap is valid,
+	// an edge representing the overlap is added to the graph
+	// If the endpoint is not present and the overlap is invalid,
+	// the exploration continues to the neighbors of the edge
+	
+	// Add the initial set of overlaps from pDeletionVertex to the explore queue
+	ExploreQueue exploreQueue;
+	enqueueEdges(pVertex, pDeleteVertex, ovrXY, exploreQueue);
+
+	//
+	while(!exploreQueue.empty())
+	{
+		ExploreElement currElem = exploreQueue.front();
+		exploreQueue.pop();
+
+		// Case 1, endpoint is reachable from some other edge of pVertex
+		// and is therefore transitive
+		if(reachableSet.count(currElem.pVertex) > 0)
+		{
+			std::cout << "Edge exists: " << currElem.ovr << "\n";
+			continue;
+		}
+
+		// Case 2, this overlap is irreducible
+		double error_rate = calcErrorRate(pVertex, currElem.pVertex, currElem.ovr);
+		int overlap_len = currElem.ovr.match.getMinOverlapLength();
+		if(overlap_len >= pGraph->getMinOverlap())
+		{
+			WARN_ONCE("CHECK ERROR RATE WITHIN EPSILON")
+			if(error_rate - 0.0001 <= pGraph->getErrorRate())
+			{
+				std::cout << "Adding edge with overlap " << currElem.ovr << "\n";
+				SGUtil::createEdges(pGraph, currElem.ovr, false);
+			}
+			else
+			{
+				std::cout << "Failed overlap er: " << error_rate << " " << currElem.ovr << "\n";
+				enqueueEdges(pVertex, currElem.pVertex, currElem.ovr, exploreQueue);
+			}
+		}
+		reachableSet.insert(std::pair<Vertex*, Overlap>(currElem.pVertex, currElem.ovr));
+	}
+}
+
+// Add the edges of pY to the explore queue if they overlap pX
+void SGAlgorithms::enqueueEdges(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY, ExploreQueue& queue)
+{
+	EdgePtrVec neighborEdges = pY->getEdges();
+	for(size_t i = 0; i < neighborEdges.size(); ++i)
+	{
+		Edge* pEdgeYZ = neighborEdges[i];
+		Vertex* pZ = pEdgeYZ->getEnd();
+		if(pZ != pX)
+		{
+			Overlap ovrYZ = pEdgeYZ->getOverlap();
+			
+			// Check that this vertex actually overlaps pX
+			if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+			{
+				Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+				std::cout << "Inferred overlap: " << ovrXZ << "\n";
+				ExploreElement elem;
+				elem.ovr = ovrXZ;
+				elem.pVertex = pZ;
+				queue.push(elem);
+			}
+		}
+	}
+}
+
 // Prepare the vertex pVertex for removal by adding edges to the graph
 // to bypss pVertex and retain the struture of the graph
 void SGAlgorithms::patchRemove(StringGraph* pGraph, Vertex* pVertex)
@@ -47,6 +156,7 @@ void SGAlgorithms::patchRemove(StringGraph* pGraph, Vertex* pVertex)
 				}
 				else
 				{
+					std::cout << "Edge add failed with overlap: " << ovrYZ << " er: " << error_rate << "\n";
 	//				std::cout << "Edge failed!\n";
 				}
 			}
@@ -58,7 +168,7 @@ void SGAlgorithms::patchRemove(StringGraph* pGraph, Vertex* pVertex)
 double SGAlgorithms::calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY)
 {
 	int num_diffs = ovrXY.match.countDifferences(pX->getSeq(), pY->getSeq());
-	return static_cast<double>(num_diffs) / ovrXY.match.getMinOverlapLength();
+	return static_cast<double>(num_diffs) / static_cast<double>(ovrXY.match.getMinOverlapLength());
 }
 
 // Infer an overlap from two edges
@@ -147,6 +257,7 @@ void SGAlgorithms::findOverlapMap(const Vertex* pVertex, VertexOverlapMap& outMa
 		Overlap ovr = pEdge->getOverlap();
 		//VertexOverlapPair pair = {pEnd, ovr};
 		outMap.insert(std::pair<Vertex*, Overlap>(pEnd, ovr));
+		std::cout << "Vertex " << pEnd->getID() << " is reachable from " << pVertex->getID() << "\n";
 
 		// Recursively add nodes attached to pEnd
 		SGAlgorithms::_discoverOverlaps(pVertex, pEnd, transDir, ovr, outMap);
@@ -178,6 +289,7 @@ void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const Vertex* pY, EdgeDir
 			std::pair<VertexOverlapMap::iterator, bool> ret = outMap.insert(std::pair<Vertex*, Overlap>(pZ, ovrXZ));
 			if(ret.second)
 			{
+				std::cout << "Vertex " << pZ->getID() << " is reachable from " << pY->getID() << "\n";
 				// The pair was inserted, recursively add neighbors
 				_discoverOverlaps(pX, pZ, dirZ, ovrXZ, outMap);
 			}
@@ -237,7 +349,7 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
 	(void)pGraph;
 	size_t trans_count = 0;
-	static const size_t FUZZ = 10; // see myers...
+	static const size_t FUZZ = 200; // see myers...
 
 	for(size_t idx = 0; idx < ED_COUNT; idx++)
 	{
@@ -373,94 +485,42 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			if(pVertexY->getColor() == GC_BLACK)
 				continue;
 
-			// Determine which vertex to remove based on the edge set
-			SGAlgorithms::VertexOverlapMap overlapMapX;
-			SGAlgorithms::findOverlapMap(pVertex, overlapMapX);
-
-			SGAlgorithms::VertexOverlapMap overlapMapY;
-			SGAlgorithms::findOverlapMap(pVertexY, overlapMapY);
-
-			// Compute the intersection in the sets
-			SGAlgorithms::VertexOverlapMap* pCountingMap;
-			SGAlgorithms::VertexOverlapMap* pComparingMap;
-
-			if(overlapMapX.size() < overlapMapY.size())
-			{
-				pCountingMap = &overlapMapX;
-				pComparingMap = &overlapMapY;
-			}
-			else
-			{
-				pCountingMap = &overlapMapY;
-				pComparingMap = &overlapMapX;
-			}
-
-			int intersection = 0;
-			for(SGAlgorithms::VertexOverlapMap::iterator iter = pCountingMap->begin();
-			    iter != pCountingMap->end(); ++iter)
-			{
-				if(pComparingMap->count(iter->first) > 0)
-					++intersection;
-			}
-
-			int uniqueX = overlapMapX.size() - intersection;
-			int uniqueY = overlapMapY.size() - intersection;
-			
-			//printf("XID: %s YID: %s\n", pVertex->getID().c_str(), pVertexY->getID().c_str());
-			
-			//printf("SX: %zu SY: %zu UX: %d UY: %d INT: %d\n", overlapMapX.size(), overlapMapY.size(), uniqueX, uniqueY, intersection);
 			Vertex* pToRemove = NULL;
-			if(uniqueX > uniqueY)
-			{
-				pToRemove = pVertexY;
-			}
-			else if(uniqueY > uniqueX)
+			
+			// If containedIdx is 0, then this vertex is the one to remove
+			if(ovr.getContainedIdx() == 0)
 			{
 				pToRemove = pVertex;
 			}
 			else
 			{
-				if(uniqueX >= 2)
-				{
-					for(SGAlgorithms::VertexOverlapMap::iterator iter = overlapMapX.begin();
-						iter != overlapMapX.end(); ++iter)
-					{
-						if(overlapMapY.count(iter->first) <= 0)
-							std::cout << "X UNI: " << iter->first->getID().c_str() << " ovr: " << iter->second << "\n";
-					}
-
-					for(SGAlgorithms::VertexOverlapMap::iterator iter = overlapMapY.begin();
-						iter != overlapMapY.end(); ++iter)
-					{
-						if(overlapMapX.count(iter->first) <= 0)
-							std::cout << "Y UNI: " << iter->first->getID().c_str() << " ovr: " << iter->second << "\n";
-					}
-					
-					printf("Equal non-zero unique, MOX:\n");
-					MultiOverlap moX = SGAlgorithms::makeExtendedMultiOverlap(pVertex);
-					moX.print();
-
-					printf("MOY:\n");
-					MultiOverlap moY = SGAlgorithms::makeExtendedMultiOverlap(pVertexY);
-					moY.print();
-				}
-				// intersection is equal
-				// If containedIdx is 0, then this vertex is the one to remove
-				if(ovr.getContainedIdx() == 0)
-				{
-					pToRemove = pVertex;
-					break;
-				}
-				else
-				{
-					pToRemove = pVertexY;
-				}
+				pToRemove = pVertexY;
 			}
 
 			assert(pToRemove != NULL);
 			pToRemove->setColor(GC_BLACK);
-			// patch the graph by adding necessary edges
-			SGAlgorithms::patchRemove(pGraph, pToRemove);
+			std::cout << "REMOVING " << pToRemove->getID() << "\n";
+			// Add any new irreducible edges that exist when pToRemove is deleted
+			// from the graph
+			EdgePtrVec neighborEdges = pToRemove->getEdges();
+			for(size_t j = 0; j < neighborEdges.size(); ++j)
+			{
+				Vertex* pRemodelVert = neighborEdges[j]->getEnd();
+				Edge* pRemodelEdge = neighborEdges[j]->getTwin();
+				std::cout << "Patching " << pRemodelVert->getID() << "\n";
+				SGAlgorithms::remodelVertexAfterRemoval(pGraph, 
+				                                        pRemodelVert, 
+														pRemodelEdge);
+			}
+			
+			// Delete the edges from the graph
+			for(size_t j = 0; j < neighborEdges.size(); ++j)
+			{
+				Vertex* pRemodelVert = neighborEdges[j]->getEnd();
+				Edge* pRemodelEdge = neighborEdges[j]->getTwin();
+				pRemodelVert->deleteEdge(pRemodelEdge);
+				pToRemove->deleteEdge(neighborEdges[j]);
+			}
 		}
 	}
 	return false;
@@ -924,7 +984,10 @@ bool SGGraphStatsVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 	if(s_count == 0 && as_count == 0)
 		++num_island;
 	else if(s_count == 0 || as_count == 0)
+	{
+		std::cout << "TERMINAL: " << pVertex->getID() << "\n";
 		++num_terminal;
+	}
 
 	if(s_count > 1 && as_count > 1)
 		++num_dibranch;

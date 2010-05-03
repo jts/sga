@@ -10,7 +10,8 @@
 #define SGALGORITHMS_H
 
 #include "Bigraph.h"
-#include "SGUtil.h" 
+#include "SGUtil.h"
+#include <queue>
 
 namespace SGAlgorithms
 {
@@ -25,7 +26,30 @@ namespace SGAlgorithms
 		}
 	};
 
+
+	// Structure used for iterative exploration of the graph
+	// The exploration starts at some vertex X, each element
+	// holds a possible overlap between X and some other vertex Y
+	// The dir member is the direction coming out of vertex Y
+	// X ----> Y ---dir--->
+	struct ExploreElement
+	{
+		Overlap ovr;
+		Vertex* pVertex;
+	};
+
+	typedef std::queue<ExploreElement> ExploreQueue;
+
+	//
 	typedef std::map<Vertex*, Overlap, VertexPtrCompare> VertexOverlapMap;
+
+	// Remodel the edges of pVertex by finding any new irreducible edges
+	// that may need to be added if the vertex at the end of pEdge is removed
+	// from the graph
+	void remodelVertexAfterRemoval(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
+
+	// Add the edges of pY to the explore queue if they overlap pX
+	void enqueueEdges(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY, ExploreQueue& queue);
 
 	// Discover the complete set of overlaps for pVertex
 	void findOverlapMap(const Vertex* pVertex, VertexOverlapMap& outMap);
@@ -45,8 +69,8 @@ namespace SGAlgorithms
 	// Overlap inference algorithms
 	//
 	// Infer an overlap from two edges
-	// The input edges are between X->Y Y->Z
-	// and the returned overlap is of the form X->Z
+	// The input overlaps are between X->Y Y->Z
+	// and the returned overlap is X->Z
 	Overlap inferTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);
 
 	// Returns true if XZ has a non-zero length overlap
