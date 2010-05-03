@@ -10,6 +10,89 @@
 #include "SGUtil.h"
 #include "ErrorCorrect.h"
 
+// Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
+// The algorithm is as follows. All the vertices that can be reached by vertices other
+// than the deletion vertex are marked as reachable and not considered. The vertices
+// uniquely reachable through the deletion vertex are considered in order of putative
+// overlap with pVertex. If a new edge is created, all vertices reachable from that
+// edge are subsequently marked as reachable so that no transitive edges are created.
+void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
+{
+	assert(pVertex == pDeleteEdge->getStart());
+	Vertex* pDeleteVertex = pDeleteEdge->getEnd();
+	EdgePtrVec edges = pVertex->getEdges();
+
+	// this is the initial overlap between pVertex and pDeletionVertex
+	Overlap ovrXY = pDeleteEdge->getOverlap();
+
+	// Construct the set of vertices that are reachable by valid edges
+	VertexOverlapMap exclusionSet;
+	exclusionSet.insert(std::pair<Vertex*, Overlap>(pDeleteVertex, ovrXY));
+
+	// Recursively add the vertices connected to pX to the exclusionSet
+	// except for the neighbors that are exclusively reachable from pDeleteVertex
+	for(size_t i = 0; i < edges.size(); ++i)
+	{
+		Edge* pEdge = edges[i];
+		
+		// Skip adding vertices for the deletion edge
+		if(pEdge != pDeleteEdge)
+		{
+			Vertex* pEnd = pEdge->getEnd();
+			Overlap ovr = pEdge->getOverlap();
+			EdgeDir transDir = pEdge->getTransitiveDir();
+			exclusionSet.insert(std::pair<Vertex*, Overlap>(pEnd, ovr));
+
+			// Recursively add the neighbors of pEnd to the set
+			addOverlapsToSet(pVertex, pEnd, transDir, ovr, exclusionSet);
+		}
+	}
+	
+	// Build the initial set of potential new overlaps from the 
+	// neighbors of pDeleteVertex.
+	VertexSet seenVertices;
+	ExplorePriorityQueue exploreQueue;
+	enqueueEdges(pVertex, pDeleteVertex, ovrXY, exploreQueue, seenVertices, &exclusionSet);
+
+	// Iterate through the queue in order of overlap length
+	while(!exploreQueue.empty())
+	{
+		ExploreElement currElem = exploreQueue.top();
+		exploreQueue.pop();
+		std::cout << "Current element: " << currElem.ovr << " length: " << currElem.ovr.match.coord[0].length() << "\n";
+		// Case 1, endpoint is reachable from some other edge of pVertex
+		// and is therefore transitive
+		if(exclusionSet.count(currElem.pVertex) > 0)
+		{
+			std::cout << "	Elem is in reachable, skipping\n";
+			continue;
+		}
+
+		// Case 2, this may form a valid edge
+		double error_rate = calcErrorRate(pVertex, currElem.pVertex, currElem.ovr);
+		int overlap_len = currElem.ovr.match.getMinOverlapLength();
+		if(overlap_len >= pGraph->getMinOverlap())
+		{
+			WARN_ONCE("CHECK ERROR RATE WITHIN EPSILON")
+			if(error_rate - 0.0001 <= pGraph->getErrorRate())
+			{
+				std::cout << "Adding edge with overlap " << currElem.ovr << "\n";
+				Edge* pCreatedEdge = SGUtil::createEdges(pGraph, currElem.ovr, false);
+				assert(pCreatedEdge != NULL);
+				
+				EdgeDir transDir = pCreatedEdge->getTransitiveDir();
+
+				// This vertex is now connected to pVertex, add its neighbors to the exclusion set
+				addOverlapsToSet(pVertex, currElem.pVertex, transDir, currElem.ovr, exclusionSet);
+			}
+			else
+			{
+				std::cout << "	Error rate too high: " << error_rate << "\n";
+			}
+		}
+	}
+}
+
 // Remodel the edges of pVertex by finding any new irreducible edges
 // that may need to be added if the vertex at the end of pEdge is removed
 // from the graph
@@ -114,6 +197,64 @@ void SGAlgorithms::enqueueEdges(const Vertex* pX, const Vertex* pY, const Overla
 				elem.ovr = ovrXZ;
 				elem.pVertex = pZ;
 				queue.push(elem);
+			}
+		}
+	}
+}
+
+// Add the neighbors of pY to the explore queue if they overlap pX. If pExclusionSet
+// is not NULL, do not add neighbors of pY to the queue
+void SGAlgorithms::enqueueEdges(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY, 
+                                ExplorePriorityQueue& outQueue, VertexSet& seenVertices, 
+								VertexOverlapMap* pExclusionSet)
+{
+	EdgePtrVec neighborEdges = pY->getEdges();
+	for(size_t i = 0; i < neighborEdges.size(); ++i)
+	{
+		Edge* pEdgeYZ = neighborEdges[i];
+		Vertex* pZ = pEdgeYZ->getEnd();
+		if(pZ != pX && (pExclusionSet == NULL || pExclusionSet->count(pZ) == 0) 
+          && seenVertices.count(pZ) == 0)
+		{
+			Overlap ovrYZ = pEdgeYZ->getOverlap();
+			
+			// Check that this vertex actually overlaps pX
+			if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+			{
+				Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+				std::cout << "Inferred overlap: " << ovrXZ << "\n";
+				ExploreElement elem;
+				elem.ovr = ovrXZ;
+				elem.pVertex = pZ;
+				outQueue.push(elem);
+				seenVertices.insert(pZ);
+				enqueueEdges(pX, pZ, ovrXZ, outQueue, seenVertices, pExclusionSet);
+			}
+		}
+	}
+}
+
+// Recursively add overlaps to pX inferred from the edges of pY to outMap
+void SGAlgorithms::addOverlapsToSet(const Vertex* pX, const Vertex* pY, EdgeDir dir, const Overlap& ovrXY, VertexOverlapMap& outMap)
+{
+	WARN_ONCE("HANDLE CONTAINMENT EDGES?");
+	EdgePtrVec neighborEdges = pY->getEdges(dir);
+	for(size_t i = 0; i < neighborEdges.size(); ++i)
+	{
+		Edge* pEdgeYZ = neighborEdges[i];
+		Vertex* pZ = pEdgeYZ->getEnd();
+		if(pZ != pX && outMap.count(pZ) == 0)
+		{
+			Overlap ovrYZ = pEdgeYZ->getOverlap();
+			EdgeDir dirZ = pEdgeYZ->getTransitiveDir();
+
+			// Check that this vertex actually overlaps pX
+			if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+			{
+				Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+				outMap.insert(std::pair<Vertex*, Overlap>(pZ, ovrXZ));
+				std::cout << "Vertex " << pZ->getID() << " is reachable from " << pY->getID() << "\n";
+				addOverlapsToSet(pX, pZ, dirZ, ovrXZ, outMap);
 			}
 		}
 	}
@@ -508,9 +649,9 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				Vertex* pRemodelVert = neighborEdges[j]->getEnd();
 				Edge* pRemodelEdge = neighborEdges[j]->getTwin();
 				std::cout << "Patching " << pRemodelVert->getID() << "\n";
-				SGAlgorithms::remodelVertexAfterRemoval(pGraph, 
-				                                        pRemodelVert, 
-														pRemodelEdge);
+				SGAlgorithms::remodelVertexForExcision(pGraph, 
+				                                       pRemodelVert, 
+													   pRemodelEdge);
 			}
 			
 			// Delete the edges from the graph

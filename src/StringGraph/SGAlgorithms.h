@@ -30,26 +30,47 @@ namespace SGAlgorithms
 	// Structure used for iterative exploration of the graph
 	// The exploration starts at some vertex X, each element
 	// holds a possible overlap between X and some other vertex Y
-	// The dir member is the direction coming out of vertex Y
-	// X ----> Y ---dir--->
 	struct ExploreElement
 	{
 		Overlap ovr;
 		Vertex* pVertex;
 	};
 
+	// Comparison operator used to compare ExploreElements
+	// by the length of the overlap on vertex X
+	struct CompareExploreElemOverlapLength
+	{
+		bool operator()(const ExploreElement& elemXY, const ExploreElement& elemXZ)
+		{
+			return elemXY.ovr.match.coord[0].length() < elemXZ.ovr.match.coord[0].length();
+		}
+	};
+
 	typedef std::queue<ExploreElement> ExploreQueue;
+	typedef std::priority_queue<ExploreElement, 
+	                            std::vector<ExploreElement>, 
+								CompareExploreElemOverlapLength> ExplorePriorityQueue;
 
 	//
 	typedef std::map<Vertex*, Overlap, VertexPtrCompare> VertexOverlapMap;
+	typedef std::set<Vertex*, VertexPtrCompare> VertexSet;
 
 	// Remodel the edges of pVertex by finding any new irreducible edges
 	// that may need to be added if the vertex at the end of pEdge is removed
 	// from the graph
 	void remodelVertexAfterRemoval(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
 
+	// Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
+	void remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
+
 	// Add the edges of pY to the explore queue if they overlap pX
 	void enqueueEdges(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY, ExploreQueue& queue);
+	void enqueueEdges(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY, 
+                      ExplorePriorityQueue& outQueue, VertexSet& seenVertices, 
+					  VertexOverlapMap* pExclusionSet);
+
+	// Add overlaps to pX inferred from the edges of pY to outMap
+	void addOverlapsToSet(const Vertex* pX, const Vertex* pY, EdgeDir dir, const Overlap& ovrXY, VertexOverlapMap& outMap);
 
 	// Discover the complete set of overlaps for pVertex
 	void findOverlapMap(const Vertex* pVertex, VertexOverlapMap& outMap);
