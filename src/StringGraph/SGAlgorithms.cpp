@@ -124,9 +124,11 @@ void SGAlgorithms::enqueueEdges(const Vertex* pX, const Vertex* pY, const Overla
 		}
 		else
 		{
+			/*
 			Overlap ovrYZ = pEdgeYZ->getOverlap();
 			Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
 			std::cout << "Rejected enqueue: " << ovrXZ << "\n";
+			*/
 		}
 	}
 }

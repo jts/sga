@@ -11,10 +11,12 @@
 
 #include "GraphCommon.h"
 
+class Vertex;
+
 struct EdgeDesc
 {
-	EdgeDesc(VertexID i, EdgeDir d, EdgeComp c) : id(i), dir(d), comp(c) {}
-	VertexID id;
+	EdgeDesc(Vertex* pV, EdgeDir d, EdgeComp c) : pVertex(pV), dir(d), comp(c) {}
+	Vertex* pVertex;
 	EdgeDir dir;
 	EdgeComp comp;
 

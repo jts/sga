@@ -7,13 +7,14 @@
 // EdgeDesc - A unique description of an edge 
 //
 #include "EdgeDesc.h"
+#include "Vertex.h"
 
 // Operators
 bool EdgeDesc::operator<(const EdgeDesc& obj) const
 {
-	if(id < obj.id)
+	if(pVertex->getID() < obj.pVertex->getID())
 		return true;
-	else if(id > obj.id)
+	else if(pVertex->getID() > obj.pVertex->getID())
 		return false;
 	else if(dir < obj.dir)
 		return true;
@@ -28,12 +29,12 @@ bool EdgeDesc::operator<(const EdgeDesc& obj) const
 
 bool EdgeDesc::operator==(const EdgeDesc& obj) const
 {
-	return id == obj.id && dir == obj.dir && comp == obj.comp;
+	return pVertex->getID() == obj.pVertex->getID() && dir == obj.dir && comp == obj.comp;
 }
 
 std::ostream& operator<<(std::ostream& out, const EdgeDesc& ed)
 {
-	out << ed.id << "," << ed.dir << "," << ed.comp;
+	out << ed.pVertex->getID() << "," << ed.dir << "," << ed.comp;
 	return out;
 }
 

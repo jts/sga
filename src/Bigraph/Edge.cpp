@@ -12,7 +12,7 @@
 // 
 EdgeDesc Edge::getTwinDesc() const
 {
-	return EdgeDesc(getStartID(), getTwinDir(), getComp());
+	return EdgeDesc(getStart(), getTwinDir(), getComp());
 }
 
 // Get the edge's label

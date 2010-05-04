@@ -105,8 +105,7 @@ void Bigraph::addEdge(Vertex* pVertex, Edge* pEdge)
 //
 void Bigraph::removeEdge(const EdgeDesc& ed)
 {
-	Vertex* pVert = getVertex(ed.id);
-	pVert->removeEdge(ed);
+	ed.pVertex->removeEdge(ed);
 }
 
 //

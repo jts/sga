@@ -128,7 +128,7 @@ class Edge
 
 		// Make the direction of the edge that its twin should point along 
 		inline EdgeDir getTwinDir() const { return (getComp() == EC_SAME) ? !getDir() : getDir(); }
-		inline EdgeDesc getDesc() const { return EdgeDesc(getEndID(), getDir(), getComp()); }
+		inline EdgeDesc getDesc() const { return EdgeDesc(getEnd(), getDir(), getComp()); }
 		
 		// Flip the edge
 		inline void flipComp() { m_edgeData.flipComp(); }
