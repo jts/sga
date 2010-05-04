@@ -58,14 +58,10 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 	{
 		ExploreElement currElem = exploreQueue.top();
 		exploreQueue.pop();
-		std::cout << "Current element: " << currElem.ovr << " length: " << currElem.ovr.match.coord[0].length() << "\n";
 		// Case 1, endpoint is reachable from some other edge of pVertex
 		// and is therefore transitive
 		if(exclusionSet.count(currElem.ed) > 0)
-		{
-			std::cout << "	Elem is in reachable, skipping\n";
 			continue;
-		}
 
 		// Case 2, this may form a valid edge
 		double error_rate = calcErrorRate(pVertex, currElem.ed.pVertex, currElem.ovr);
@@ -75,18 +71,13 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 			WARN_ONCE("CHECK ERROR RATE WITHIN EPSILON")
 			if(error_rate - 0.0001 <= pGraph->getErrorRate())
 			{
-				std::cout << "Adding edge with overlap " << currElem.ovr << "\n";
+				//std::cout << "Adding edge with overlap " << currElem.ovr << "\n";
 				Edge* pCreatedEdge = SGUtil::createEdges(pGraph, currElem.ovr, false);
-				std::cout << "CreatedED: " << pCreatedEdge->getDesc() << " expect: " << currElem.ed << "\n";
 				assert(pCreatedEdge != NULL);
 				assert(pCreatedEdge->getDesc() == currElem.ed);
 				
 				// This vertex is now connected to pVertex, add its neighbors to the exclusion set
 				addOverlapsToSet(pVertex, currElem.ed, currElem.ovr, exclusionSet);
-			}
-			else
-			{
-				std::cout << "	Error rate too high: " << error_rate << "\n";
 			}
 		}
 	}
@@ -118,20 +109,12 @@ void SGAlgorithms::enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Ov
 				if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
 				{
 					Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
-					std::cout << "Inferred overlap: " << ovrXZ << " ed: " << edXZ << " from: " << pY->getID() << "\n";
+					//std::cout << "Inferred overlap: " << ovrXZ << " ed: " << edXZ << " from: " << pY->getID() << "\n";
 					ExploreElement elem(edXZ, ovrXZ);
 					outQueue.push(elem);
 					seenEdges.insert(edXZ);
 					enqueueEdges(pX, edXZ, ovrXZ, outQueue, seenEdges, pExclusionSet);
 				}
-			}
-			else
-			{
-				/*
-				Overlap ovrYZ = pEdgeYZ->getOverlap();
-				Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
-				std::cout << "Rejected enqueue: " << ovrXZ << "\n";
-				*/
 			}
 		}
 	}
@@ -166,8 +149,6 @@ void SGAlgorithms::addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, cons
 				EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
 
 				outMap.insert(std::make_pair(edXZ, ovrXZ));
-				std::cout << "Vertex " << pZ->getID() << " is reachable from " << pY->getID() << " " << ovrXZ << "\n";
-				std::cout << "EdgeDesc XY: " << edXY << " edYZ: " << edYZ << " edXZ: " << edXZ << "\n";
 				addOverlapsToSet(pX, edXZ, ovrXZ, outMap);
 			}
 		}
@@ -370,11 +351,10 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 	marked_edges = 0;
 }
 
-bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+bool SGTransRedVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	(void)pGraph;
 	size_t trans_count = 0;
-	static const size_t FUZZ = 200; // see myers...
+	static const size_t FUZZ = 10; // see myers...
 
 	for(size_t idx = 0; idx < ED_COUNT; idx++)
 	{
@@ -443,11 +423,14 @@ bool SGTransRedVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 					{
 						// X is the endpoint of an edge of V, therefore it is transitive
 						pWXEdge->getEnd()->setColor(GC_BLACK);
-						//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << " in stage 2\n";
+						//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << " in stage 2";
+						//std::cout << " via " << pWVert->getID() << "\n";
 					}
 				}
 				else
+				{
 					break;
+				}
 			}
 		}
 
@@ -524,8 +507,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
 			assert(pToRemove != NULL);
 			pToRemove->setColor(GC_BLACK);
-
-			std::cout << "REMOVING " << pToRemove->getID() << "\n";
+			
 			// Add any new irreducible edges that exist when pToRemove is deleted
 			// from the graph
 			EdgePtrVec neighborEdges = pToRemove->getEdges();
@@ -533,7 +515,6 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			{
 				Vertex* pRemodelVert = neighborEdges[j]->getEnd();
 				Edge* pRemodelEdge = neighborEdges[j]->getTwin();
-				std::cout << "Patching " << pRemodelVert->getID() << "\n";
 				SGAlgorithms::remodelVertexForExcision(pGraph, 
 				                                       pRemodelVert, 
 													   pRemodelEdge);
@@ -547,8 +528,6 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				pRemodelVert->deleteEdge(pRemodelEdge);
 				pToRemove->deleteEdge(neighborEdges[j]);
 			}
-			
-			(void)pGraph;
 		}
 	}
 	return false;
@@ -1010,10 +989,11 @@ bool SGGraphStatsVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 	int s_count = pVertex->countEdges(ED_SENSE);
 	int as_count = pVertex->countEdges(ED_ANTISENSE);
 	if(s_count == 0 && as_count == 0)
+	{
 		++num_island;
+	}
 	else if(s_count == 0 || as_count == 0)
 	{
-		std::cout << "TERMINAL: " << pVertex->getID() << "\n";
 		++num_terminal;
 	}
 
