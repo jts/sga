@@ -14,6 +14,7 @@
 #include "Match.h"
 #include "Util.h"
 #include "GraphCommon.h"
+#include "EdgeDesc.h"
 #include "Vertex.h"
 #include "BitChar.h"
 #include "SimpleAllocator.h"

@@ -1,3 +1,12 @@
+//-----------------------------------------------
+// Copyright 2009 Wellcome Trust Sanger Institute
+// Written by Jared Simpson (js18@sanger.ac.uk)
+// Released under the GPL
+//-----------------------------------------------
+//
+// GraphCommon - Definitions and functions common
+// to the grpah implementation
+//
 #ifndef GRAPHCOMMON_H
 #define GRAPHCOMMON_H
 
@@ -44,46 +53,6 @@ const GraphColor GC_RED = 4;
 // Typedefs
 typedef std::string VertexID;
 typedef std::vector<VertexID> VertexIDVec;
-
-
-// An edge description is the triplet of values
-// that is needed to uniquely identify an edge
-struct EdgeDesc
-{
-	EdgeDesc(VertexID i, EdgeDir d, EdgeComp c) : id(i), dir(d), comp(c) {}
-	VertexID id;
-	EdgeDir dir;
-	EdgeComp comp;
-
-	// Operators
-	bool operator<(const EdgeDesc& obj) const
-	{
-		if(id < obj.id)
-			return true;
-		else if(id > obj.id)
-			return false;
-		else if(dir < obj.dir)
-			return true;
-		else if(dir > obj.dir)
-			return false;
-		else if(comp < obj.comp)
-			return true;
-		else if(comp > obj.comp)
-			return false;
-		return false;
-	}
-
-	bool operator==(const EdgeDesc& obj) const
-	{
-		return id == obj.id && dir == obj.dir && comp == obj.comp;
-	}
-
-	friend std::ostream& operator<<(std::ostream& out, const EdgeDesc& ed)
-	{
-		out << ed.id << "," << ed.dir << "," << ed.comp;
-		return out;
-	}
-};
 
 //
 // Edge Operations
