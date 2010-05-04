@@ -12,6 +12,7 @@
 // Operators
 bool EdgeDesc::operator<(const EdgeDesc& obj) const
 {
+	assert(pVertex != NULL && obj.pVertex != NULL);
 	if(pVertex->getID() < obj.pVertex->getID())
 		return true;
 	else if(pVertex->getID() > obj.pVertex->getID())
@@ -29,11 +30,13 @@ bool EdgeDesc::operator<(const EdgeDesc& obj) const
 
 bool EdgeDesc::operator==(const EdgeDesc& obj) const
 {
+	assert(pVertex != NULL && obj.pVertex != NULL);
 	return pVertex->getID() == obj.pVertex->getID() && dir == obj.dir && comp == obj.comp;
 }
 
 std::ostream& operator<<(std::ostream& out, const EdgeDesc& ed)
 {
+	assert(ed.pVertex != NULL);
 	out << ed.pVertex->getID() << "," << ed.dir << "," << ed.comp;
 	return out;
 }

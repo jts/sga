@@ -18,22 +18,15 @@ namespace SGAlgorithms
 	//
 	// Overlap discovery algorithms
 	//
-	struct VertexPtrCompare
-	{
-		bool operator()(const Vertex* a, const Vertex* b) const
-		{
-			return a->getID() < b->getID();
-		}
-	};
-
 
 	// Structure used for iterative exploration of the graph
 	// The exploration starts at some vertex X, each element
 	// holds a possible overlap between X and some other vertex Y
 	struct ExploreElement
 	{
+		ExploreElement(const EdgeDesc& e, const Overlap& o) : ed(e), ovr(o) {}
+		EdgeDesc ed;
 		Overlap ovr;
-		Vertex* pVertex;
 	};
 
 	// Comparison operator used to compare ExploreElements
@@ -52,8 +45,8 @@ namespace SGAlgorithms
 								CompareExploreElemOverlapLength> ExplorePriorityQueue;
 
 	//
-	typedef std::map<Vertex*, Overlap, VertexPtrCompare> VertexOverlapMap;
-	typedef std::set<Vertex*, VertexPtrCompare> VertexSet;
+	typedef std::map<EdgeDesc, Overlap> EdgeDescOverlapMap;
+	typedef std::set<EdgeDesc> EdgeDescSet;
 
 	// Remodel the edges of pVertex by finding any new irreducible edges
 	// that may need to be added if the vertex at the end of pEdge is removed
@@ -63,25 +56,20 @@ namespace SGAlgorithms
 	// Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
 	void remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
 
-	// Add the edges of pY to the explore queue if they overlap pX
-	void enqueueEdges(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY, ExploreQueue& queue);
-	void enqueueEdges(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY, 
-                      ExplorePriorityQueue& outQueue, VertexSet& seenVertices, 
-					  VertexOverlapMap* pExclusionSet);
+	// Add the neighbors of the endpoint of edXY to the explore queue if they overlap pX
+	void enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
+                      ExplorePriorityQueue& outQueue, EdgeDescSet& seenEdges, 
+					  EdgeDescOverlapMap* pExclusionSet);
 
 	// Add overlaps to pX inferred from the edges of pY to outMap
-	void addOverlapsToSet(const Vertex* pX, const Vertex* pY, EdgeDir dir, const Overlap& ovrXY, VertexOverlapMap& outMap);
+	void addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, EdgeDescOverlapMap& outMap);
 
 	// Discover the complete set of overlaps for pVertex
-	void findOverlapMap(const Vertex* pVertex, VertexOverlapMap& outMap);
+	void findOverlapMap(const Vertex* pVertex, EdgeDescOverlapMap& outMap);
 
 	// recursive function to discover overlaps of pX from pY
-	void _discoverOverlaps(const Vertex* pX, const Vertex* pY, EdgeDir dir, const Overlap& ovrXY, 
-	                      VertexOverlapMap& outMap);
-
-	// Prepare the vertex pVertex for removal by adding edges to the graph
-	// to bypss pVertex and retain the struture of the graph
-	void patchRemove(StringGraph* pGraph, Vertex* pVertex);
+	void _discoverOverlaps(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
+	                       EdgeDescOverlapMap& outMap);
 
 	// Calculate the error rate between the two vertices
 	double calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY);
@@ -93,6 +81,7 @@ namespace SGAlgorithms
 	// The input overlaps are between X->Y Y->Z
 	// and the returned overlap is X->Z
 	Overlap inferTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);
+	EdgeDesc inferTransitiveEdgeDesc(const EdgeDesc& edXY, const EdgeDesc& edYZ);
 
 	// Returns true if XZ has a non-zero length overlap
 	bool hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);

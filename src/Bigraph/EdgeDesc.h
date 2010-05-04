@@ -15,6 +15,7 @@ class Vertex;
 
 struct EdgeDesc
 {
+	EdgeDesc() : pVertex(NULL) {}
 	EdgeDesc(Vertex* pV, EdgeDir d, EdgeComp c) : pVertex(pV), dir(d), comp(c) {}
 	Vertex* pVertex;
 	EdgeDir dir;
