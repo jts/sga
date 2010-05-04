@@ -57,9 +57,10 @@ namespace SGAlgorithms
 	void remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
 
 	// Add the neighbors of the endpoint of edXY to the explore queue if they overlap pX
+	// and are not present in pSeenEdges. Edges are added to pSeenEdges as they are found
+	// so the contents of pSeenEdges will be modified by this function.
 	void enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
-                      ExplorePriorityQueue& outQueue, EdgeDescSet& seenEdges, 
-					  EdgeDescOverlapMap* pExclusionSet);
+                      ExplorePriorityQueue& outQueue, EdgeDescSet* pSeenEdges);
 
 	// Add overlaps to pX inferred from the edges of pY to outMap
 	void addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, EdgeDescOverlapMap& outMap);

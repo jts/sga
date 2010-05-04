@@ -48,10 +48,20 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 	}
 	
 	// Build the initial set of potential new overlaps from the 
-	// neighbors of pDeleteVertex.
+	// neighbors of pDeleteVertex. Filter out any edges that are 
+	// already present in the exclusion set. We don't want the exclusion
+	// set to be modified
+
 	EdgeDescSet seenEdges;
+	// Populate the seen edges with the contents of the exclusion set
+	for(EdgeDescOverlapMap::iterator iter = exclusionSet.begin(); 
+	                                 iter != exclusionSet.end(); ++iter)
+	{
+		seenEdges.insert(iter->first);
+	}
+
 	ExplorePriorityQueue exploreQueue;
-	enqueueEdges(pVertex, edXY, ovrXY, exploreQueue, seenEdges, &exclusionSet);
+	enqueueEdges(pVertex, edXY, ovrXY, exploreQueue, &seenEdges);
 
 	// Iterate through the queue in order of overlap length
 	while(!exploreQueue.empty())
@@ -83,11 +93,10 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 	}
 }
 
-// Add the neighbors of pY to the explore queue if they overlap pX. If pExclusionSet
-// is not NULL, do not add neighbors of pY to the queue
+// Add the neighbors of pY to the explore queue if they overlap pX. If pSeenSet
+// is not NULL and the edge is present in the set do not add neighbors of pY to the queue
 void SGAlgorithms::enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
-                                ExplorePriorityQueue& outQueue, EdgeDescSet& seenEdges, 
-								EdgeDescOverlapMap* pExclusionSet)
+                                ExplorePriorityQueue& outQueue, EdgeDescSet* pSeenSet)
 {
 	Vertex* pY = edXY.pVertex;
 	EdgeDir dirY = correctDir(edXY.dir, edXY.comp);
@@ -100,8 +109,8 @@ void SGAlgorithms::enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Ov
 		{
 			EdgeDesc edYZ = pEdgeYZ->getDesc();
 			EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
-			bool isExcluded = pExclusionSet != NULL && pExclusionSet->count(edXZ) > 0;
-			if(!isExcluded && seenEdges.count(edXZ) == 0)
+			bool isExcluded = pSeenSet != NULL && pSeenSet->count(edXZ) > 0;
+			if(!isExcluded)
 			{
 				Overlap ovrYZ = pEdgeYZ->getOverlap();
 				
@@ -112,8 +121,8 @@ void SGAlgorithms::enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Ov
 					//std::cout << "Inferred overlap: " << ovrXZ << " ed: " << edXZ << " from: " << pY->getID() << "\n";
 					ExploreElement elem(edXZ, ovrXZ);
 					outQueue.push(elem);
-					seenEdges.insert(edXZ);
-					enqueueEdges(pX, edXZ, ovrXZ, outQueue, seenEdges, pExclusionSet);
+					pSeenSet->insert(edXZ);
+					enqueueEdges(pX, edXZ, ovrXZ, outQueue, pSeenSet);
 				}
 			}
 		}
