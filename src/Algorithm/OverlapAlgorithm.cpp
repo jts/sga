@@ -276,7 +276,7 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 				double align_error = align.calcErrorRate();
 
 				// Check for overlaps
-				if(align.left_index <= overlap_region_left && align_error <= m_errorRate)
+				if(align.left_index <= overlap_region_left && isErrorRateAcceptable(align_error, m_errorRate))
 				{
 					int overlapLen = len - align.left_index;
 					BWTIntervalPair probe = align.ranges;
@@ -712,7 +712,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 						std::cout << "Block of length " << transIter->overlapLen << " has ier: " << er << "\n";
 #endif
 						// 
-						if(er <= m_errorRate)
+						if(isErrorRateAcceptable(er, m_errorRate))
 						{
 #ifdef TEMPDEBUG							
 							std::cout << "Marking block of length " << transIter->overlapLen << " as eliminated\n";

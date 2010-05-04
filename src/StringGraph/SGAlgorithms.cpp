@@ -78,8 +78,7 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 		int overlap_len = currElem.ovr.match.getMinOverlapLength();
 		if(overlap_len >= pGraph->getMinOverlap())
 		{
-			WARN_ONCE("CHECK ERROR RATE WITHIN EPSILON")
-			if(error_rate - 0.0001 <= pGraph->getErrorRate())
+			if(isErrorRateAcceptable(error_rate, pGraph->getErrorRate()))
 			{
 				//std::cout << "Adding edge with overlap " << currElem.ovr << "\n";
 				Edge* pCreatedEdge = SGUtil::createEdges(pGraph, currElem.ovr, false);

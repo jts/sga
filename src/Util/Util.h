@@ -183,4 +183,17 @@ inline char complement(char base)
 	}
 }
 
+// Wrapper function to determine whether a calculated error rate is within tolerance of a
+// threshold. A fixed tolerance is used as this does not need to be super precise, it only
+// needs to account for small differences in fp calculations
+inline bool isErrorRateAcceptable(double er, double threshold)
+{
+	static double tolerance = 0.000001f;
+	if(er - tolerance <= threshold)
+		return true;
+	else
+		return false;
+}
+
+
 #endif
