@@ -452,6 +452,7 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
 				{
 					edges[i]->setColor(GC_BLACK);
 					edges[i]->getTwin()->setColor(GC_BLACK);
+					std::cout << "Marked edge as transitive: " << *edges[i] << " in vertex " << pVertex->getID() << "\n";
 					marked_edges += 2;
 					trans_count++;
 				}
@@ -516,10 +517,15 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
 			assert(pToRemove != NULL);
 			pToRemove->setColor(GC_BLACK);
-			
 			// Add any new irreducible edges that exist when pToRemove is deleted
 			// from the graph
 			EdgePtrVec neighborEdges = pToRemove->getEdges();
+
+			// This must be done in order of edge length or some transitive edges
+			// may be created
+			EdgeLenComp comp;
+			std::sort(neighborEdges.begin(), neighborEdges.end(), comp);
+
 			for(size_t j = 0; j < neighborEdges.size(); ++j)
 			{
 				Vertex* pRemodelVert = neighborEdges[j]->getEnd();
