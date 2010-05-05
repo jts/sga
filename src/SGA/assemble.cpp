@@ -99,7 +99,7 @@ void assemble()
 	pGraph->printMemSize();
 
 	// Visitor functors
-	SGTransRedVisitor trVisit;
+	SGTransitiveReductionVisitor trVisit;
 	SGGraphStatsVisitor statsVisit;
 	SGRemodelVisitor remodelVisit;
 	SGEdgeStatsVisitor edgeStatsVisit;

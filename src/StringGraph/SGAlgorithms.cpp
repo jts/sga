@@ -267,7 +267,6 @@ void SGAlgorithms::findOverlapMap(const Vertex* pVertex, EdgeDescOverlapMap& out
 		EdgeDesc ed = pEdge->getDesc();
 		Overlap ovr = pEdge->getOverlap();
 		outMap.insert(std::make_pair(ed, ovr));
-		std::cout << "Vertex " << ed.pVertex->getID() << " is reachable from " << pVertex->getID() << "\n";
 
 		// Recursively add nodes attached to pEnd
 		SGAlgorithms::_discoverOverlaps(pVertex, ed, ovr, outMap);
@@ -303,7 +302,6 @@ void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const EdgeDesc& edXY,
 			std::pair<EdgeDescOverlapMap::iterator, bool> ret = outMap.insert(std::make_pair(edXZ, ovrXZ));
 			if(ret.second)
 			{
-				std::cout << "Vertex " << edXZ.pVertex->getID() << " is reachable from " << pY->getID() << "\n";
 				// The pair was inserted, recursively add neighbors
 				_discoverOverlaps(pX, edXZ, ovrXZ, outMap);
 			}
@@ -346,7 +344,7 @@ bool SGOverlapWriterVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 // SGTransRedVisitor - Perform a transitive reduction about this vertex
 // This uses Myers' algorithm (2005, The fragment assembly string graph)
 // Precondition: the edge list is sorted by length (ascending)
-void SGTransRedVisitor::previsit(StringGraph* pGraph)
+void SGTransitiveReductionVisitor::previsit(StringGraph* pGraph)
 {
 	// The graph must not have containments
 	assert(!pGraph->hasContainment());
@@ -359,7 +357,7 @@ void SGTransRedVisitor::previsit(StringGraph* pGraph)
 	marked_edges = 0;
 }
 
-bool SGTransRedVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
 	size_t trans_count = 0;
 	static const size_t FUZZ = 10; // see myers...
@@ -466,7 +464,7 @@ bool SGTransRedVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 }
 
 // Remove all the marked edges
-void SGTransRedVisitor::postvisit(StringGraph* pGraph)
+void SGTransitiveReductionVisitor::postvisit(StringGraph* pGraph)
 {
 	printf("TR marked %d verts and %d edges\n", marked_verts, marked_edges);
 	pGraph->sweepEdges(GC_BLACK);

@@ -130,9 +130,9 @@ struct SGOverlapWriterVisitor
 };
 
 // Run the Myers transitive reduction algorithm on each node
-struct SGTransRedVisitor
+struct SGTransitiveReductionVisitor
 {
-	SGTransRedVisitor() {}
+	SGTransitiveReductionVisitor() {}
 	void previsit(StringGraph* pGraph);
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph*);
