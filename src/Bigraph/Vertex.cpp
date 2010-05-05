@@ -593,9 +593,7 @@ EdgePtrVec Vertex::getEdges(EdgeDir dir) const
 	EdgePtrVec outEdges;
 	for(; iter != m_edges.end(); ++iter)
 	{
-		// The direction of contained edges is arbitrary so we do not allow them when
-		// obtaining edges in a particular direction
-		if((*iter)->getDir() == dir && (*iter)->getMatchLength() < m_seq.length())
+		if((*iter)->getDir() == dir)
 			outEdges.push_back(*iter);
 	}
 	return outEdges;

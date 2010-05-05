@@ -312,6 +312,13 @@ void Overlap::swap()
 	match.swap();
 }
 
+// 
+int Overlap::getOverlapLength(size_t idx) const
+{
+	assert(idx <= 1);
+	return match.coord[idx].length();
+}
+
 // Output
 std::ostream& operator<<(std::ostream& out, const Overlap& o)
 {

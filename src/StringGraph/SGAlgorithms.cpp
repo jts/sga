@@ -9,6 +9,7 @@
 #include "SGAlgorithms.h"
 #include "SGUtil.h"
 #include "ErrorCorrect.h"
+#include <iterator>
 
 // Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
 // The algorithm is as follows. All the vertices that can be reached by vertices other
@@ -80,7 +81,7 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 		{
 			if(isErrorRateAcceptable(error_rate, pGraph->getErrorRate()))
 			{
-				//std::cout << "Adding edge with overlap " << currElem.ovr << "\n";
+				//std::cout << "Adding edge " << currElem.ovr << "\n";
 				Edge* pCreatedEdge = SGUtil::createEdges(pGraph, currElem.ovr, false);
 				assert(pCreatedEdge != NULL);
 				assert(pCreatedEdge->getDesc() == currElem.ed);
@@ -131,8 +132,6 @@ void SGAlgorithms::enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Ov
 // Recursively add overlaps to pX inferred from the edges of pY to outMap
 void SGAlgorithms::addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, EdgeDescOverlapMap& outMap)
 {
-	WARN_ONCE("HANDLE CONTAINMENT EDGES?");
-
 	Vertex* pY = edXY.pVertex;
 
 	// Calculate the direction of the edge coming out of Y
@@ -155,7 +154,6 @@ void SGAlgorithms::addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, cons
 			{
 				Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
 				EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
-
 				outMap.insert(std::make_pair(edXZ, ovrXZ));
 				addOverlapsToSet(pX, edXZ, ovrXZ, outMap);
 			}
@@ -215,7 +213,7 @@ bool SGAlgorithms::hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovr
 MultiOverlap SGAlgorithms::makeExtendedMultiOverlap(const Vertex* pVertex)
 {
 	EdgeDescOverlapMap overlapMap;
-	findOverlapMap(pVertex, overlapMap);
+	findOverlapMap(pVertex, 1.0f, 0, overlapMap);
 
 	MultiOverlap mo(pVertex->getID(), pVertex->getSeq());
 	for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
@@ -231,7 +229,7 @@ void SGAlgorithms::makeExtendedSeqTries(const Vertex* pVertex, double p_error, S
 {
 	double lp = log(p_error);
 	EdgeDescOverlapMap overlapMap;
-	findOverlapMap(pVertex, overlapMap);
+	findOverlapMap(pVertex, 1.0f, 0, overlapMap);
 
 	for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
 	    iter != overlapMap.end(); ++iter)
@@ -256,7 +254,7 @@ void SGAlgorithms::makeExtendedSeqTries(const Vertex* pVertex, double p_error, S
 
 
 // Get the complete set of overlaps for the given vertex
-void SGAlgorithms::findOverlapMap(const Vertex* pVertex, EdgeDescOverlapMap& outMap)
+void SGAlgorithms::findOverlapMap(const Vertex* pVertex, double maxER, int minLength, EdgeDescOverlapMap& outMap)
 {
 	EdgePtrVec edges = pVertex->getEdges();
 
@@ -269,13 +267,13 @@ void SGAlgorithms::findOverlapMap(const Vertex* pVertex, EdgeDescOverlapMap& out
 		outMap.insert(std::make_pair(ed, ovr));
 
 		// Recursively add nodes attached to pEnd
-		SGAlgorithms::_discoverOverlaps(pVertex, ed, ovr, outMap);
+		SGAlgorithms::_discoverOverlaps(pVertex, ed, ovr, maxER, minLength, outMap);
 	}
 }
 
 // Find overlaps to vertex X via the edges of vertex Y
 void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const EdgeDesc& edXY, 
-                                    const Overlap& ovrXY, EdgeDescOverlapMap& outMap)
+                                    const Overlap& ovrXY, double maxER, int minLength, EdgeDescOverlapMap& outMap)
 {
 	Vertex* pY = edXY.pVertex;
 	EdgeDir dirY = correctDir(edXY.dir, edXY.comp);
@@ -298,12 +296,17 @@ void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const EdgeDesc& edXY,
 		{
 			Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
 			EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
-
-			std::pair<EdgeDescOverlapMap::iterator, bool> ret = outMap.insert(std::make_pair(edXZ, ovrXZ));
-			if(ret.second)
+			
+			// Compute the error rate between the sequences
+			double error_rate = SGAlgorithms::calcErrorRate(pX, pZ, ovrXZ);
+			if(isErrorRateAcceptable(error_rate, maxER) && ovrXZ.getOverlapLength(0) >= minLength)
 			{
-				// The pair was inserted, recursively add neighbors
-				_discoverOverlaps(pX, edXZ, ovrXZ, outMap);
+				std::pair<EdgeDescOverlapMap::iterator, bool> ret = outMap.insert(std::make_pair(edXZ, ovrXZ));
+				if(ret.second)
+				{
+					// The pair was inserted, recursively add neighbors
+					_discoverOverlaps(pX, edXZ, ovrXZ, maxER, minLength, outMap);
+				}
 			}
 		}
 	}
@@ -523,7 +526,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				Edge* pRemodelEdge = neighborEdges[j]->getTwin();
 				SGAlgorithms::remodelVertexForExcision(pGraph, 
 				                                       pRemodelVert, 
-													   pRemodelEdge);
+				        							   pRemodelEdge);
 			}
 			
 			// Delete the edges from the graph
@@ -543,6 +546,149 @@ void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
 {
 	pGraph->sweepVertices(GC_BLACK);
 	pGraph->setContainmentFlag(false);
+}
+
+//
+// Validate the structure of the graph by detecting missing
+// or erroneous edges
+//
+typedef std::pair<EdgeDesc, Overlap> EdgeDescOverlapPair;
+
+// Comparator
+struct EDOPairCompare
+{
+	bool operator()(const EdgeDescOverlapPair& edpXY, const EdgeDescOverlapPair& edpXZ)
+	{
+		return edpXY.second.match.coord[0].length() < edpXZ.second.match.coord[0].length();
+	}
+};
+
+//
+typedef std::priority_queue<EdgeDescOverlapPair, 
+                            std::vector<EdgeDescOverlapPair>,
+							EDOPairCompare> EDOPairQueue;
+
+// Simple getters for std::transform
+EdgeDesc getEdgeDescFromEdge(Edge* pEdge)
+{
+	return pEdge->getDesc();
+}
+
+EdgeDesc getEdgeDescFromPair(const EdgeDescOverlapPair& pair)
+{
+	return pair.first;
+}
+
+// Print the elements of A that are not in B
+void printSetDifference(const EdgeDescSet& a, const EdgeDescSet& b, const std::string& text)
+{
+	EdgeDescSet diff_set;
+	std::insert_iterator<EdgeDescSet> diff_insert(diff_set, diff_set.begin());
+	std::set_difference(a.begin(), a.end(), b.begin(), b.end(), diff_insert);
+
+	if(!diff_set.empty())
+	{
+		std::cout << text << "\n";
+		for(EdgeDescSet::iterator iter = diff_set.begin(); iter != diff_set.end(); ++iter)
+		{
+			std::cout << "\t" << *iter << "\n";
+		}
+
+		std::cout << " A set: " << "\n";
+		for(EdgeDescSet::iterator iter = a.begin(); iter != a.end(); ++iter)
+		{
+			std::cout << "\t" << *iter << "\n";
+		}
+
+	}
+}
+
+//
+bool SGValidateStructureVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+	// Construct the complete set of potential overlaps for this vertex
+	SGAlgorithms::EdgeDescOverlapMap overlapMap;
+	SGAlgorithms::findOverlapMap(pVertex, pGraph->getErrorRate(), pGraph->getMinOverlap(), overlapMap);
+
+	//std::cout << "Processing: " << pVertex->getID() << "\n";
+	// Remove transitive overlaps from the overlap map
+	EDOPairQueue overlapQueue;
+	for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = overlapMap.begin();
+	    iter != overlapMap.end(); ++iter)
+	{
+		overlapQueue.push(std::make_pair(iter->first, iter->second));
+	}
+
+	// Traverse the list of overlaps in order of length and remove elements from
+	// the overlapMap if they are transitive
+	while(!overlapQueue.empty())
+	{
+		EdgeDescOverlapPair edoPair = overlapQueue.top();
+		overlapQueue.pop();
+
+		EdgeDesc& edXY = edoPair.first;
+		Overlap& ovrXY = edoPair.second;
+
+		//std::cout << "CurrIR: " << ovrXY << " len: " << ovrXY.getOverlapLength(0) << "\n";
+		
+		SGAlgorithms::EdgeDescOverlapMap::iterator iter = overlapMap.begin();
+		while(iter != overlapMap.end())
+		{
+			bool erase = false;
+			const EdgeDesc& edXZ = iter->first;
+			const Overlap& ovrXZ = iter->second;
+
+			// Skip the self-match and any edges in the wrong direction
+			if(!(edXZ == edXY) && edXY.dir == edXZ.dir && ovrXY.getOverlapLength(0) > ovrXZ.getOverlapLength(0))
+			{
+				// Infer the YZ overlap
+				Overlap ovrYX = ovrXY;
+				ovrYX.swap();
+				Overlap ovrYZ = SGAlgorithms::inferTransitiveOverlap(ovrYX, ovrXZ);
+
+				// Compute the error rate between the sequences
+				double error_rate = SGAlgorithms::calcErrorRate(edXY.pVertex, edXZ.pVertex, ovrYZ);
+				
+				//std::cout << "\tOVRXY: " << ovrXY << "\n";
+				//std::cout << "\tOVRXZ: " << ovrXZ << "\n";
+				//std::cout << "\tOVRYZ: " << ovrYZ << " er: " << error_rate << "\n";
+				
+				if(isErrorRateAcceptable(error_rate, pGraph->getErrorRate()) && 
+				   ovrYZ.getOverlapLength(0) >= pGraph->getMinOverlap())
+				{
+					erase = true;
+				}
+			}
+			
+			if(erase)
+				overlapMap.erase(iter++);
+			else
+				++iter;
+		}
+	}
+
+	// The edges remaining in the overlapMap are irreducible wrt pVertex
+	// Compare the set of actual edges to the validation set
+	EdgePtrVec edges = pVertex->getEdges();
+
+	EdgeDescSet actual_set;
+	std::insert_iterator<EdgeDescSet> actual_insert(actual_set, actual_set.begin());
+	std::transform(edges.begin(), edges.end(), actual_insert, getEdgeDescFromEdge);
+
+	EdgeDescSet validation_set;
+	std::insert_iterator<EdgeDescSet> validation_insert(validation_set, validation_set.begin());
+	std::transform(overlapMap.begin(), overlapMap.end(), validation_insert, getEdgeDescFromPair);
+
+	std::stringstream ss_missing;
+	ss_missing << pVertex->getID() << " has missing edges:";
+
+	std::stringstream ss_extra;
+	ss_extra << pVertex->getID() << " has extra edges:";
+
+	printSetDifference(validation_set, actual_set, ss_missing.str());
+	printSetDifference(actual_set, validation_set, ss_extra.str()); 
+
+	return false;
 }
 
 //

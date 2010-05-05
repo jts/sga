@@ -57,11 +57,12 @@ namespace opt
 	static bool bRemodelGraph;
 	static bool bTrim;
 	static bool bBubble;
+	static bool bValidate;
 }
 
 static const char* shortopts = "p:o:m:d:vbtc";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
 static const struct option longopts[] = {
 	{ "verbose",        no_argument,       NULL, 'v' },
@@ -76,6 +77,7 @@ static const struct option longopts[] = {
 	{ "edge-stats",     no_argument,       NULL, 'x' },
 	{ "help",           no_argument,       NULL, OPT_HELP },
 	{ "version",        no_argument,       NULL, OPT_VERSION },
+	{ "validate",       no_argument,       NULL, OPT_VALIDATE},
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -107,6 +109,7 @@ void assemble()
 	SGBubbleVisitor bubbleVisit;
 	SGContainRemoveVisitor containVisit;
 	SGErrorCorrectVisitor errorCorrectVisit;
+	SGValidateStructureVisitor validationVisit;
 
 	if(!opt::debugFile.empty())
 	{
@@ -143,6 +146,7 @@ void assemble()
 	// Remove containments from the graph
 	std::cout << "Removing contained vertices\n";
 	pGraph->visit(containVisit);
+	pGraph->visit(containVisit);
 
 	// Pre-assembly graph stats
 	std::cout << "Post-contain graph stats\n";
@@ -151,6 +155,12 @@ void assemble()
 	// Remove transitive edges from the graph
 	std::cout << "Removing transitive edges\n";
 	pGraph->visit(trVisit);
+
+	if(opt::bValidate)
+	{
+		std::cout << "Validating graph structure\n";
+		pGraph->visit(validationVisit);
+	}
 
 	pGraph->writeASQG("afterTR.asqg.gz");
 
@@ -237,12 +247,14 @@ void parseAssembleOptions(int argc, char** argv)
 			case 'c': opt::bCorrectReads = true; break;
 			case 'r': opt::bRemodelGraph = true; break;
 			case 'x': opt::bEdgeStats = true; break;
+			case OPT_VALIDATE: opt::bValidate = true; break;
 			case OPT_HELP:
 				std::cout << ASSEMBLE_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
 			case OPT_VERSION:
 				std::cout << ASSEMBLE_VERSION_MESSAGE;
 				exit(EXIT_SUCCESS);
+				
 		}
 	}
 

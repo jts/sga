@@ -66,11 +66,11 @@ namespace SGAlgorithms
 	void addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, EdgeDescOverlapMap& outMap);
 
 	// Discover the complete set of overlaps for pVertex
-	void findOverlapMap(const Vertex* pVertex, EdgeDescOverlapMap& outMap);
+	void findOverlapMap(const Vertex* pVertex, double maxER, int minLength, EdgeDescOverlapMap& outMap);
 
 	// recursive function to discover overlaps of pX from pY
 	void _discoverOverlaps(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
-	                       EdgeDescOverlapMap& outMap);
+	                       double maxER, int minLength, EdgeDescOverlapMap& outMap);
 
 	// Calculate the error rate between the two vertices
 	double calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY);
@@ -148,6 +148,16 @@ struct SGContainRemoveVisitor
 	void previsit(StringGraph* pGraph);
 	bool visit(StringGraph* pGraph, Vertex* pVertex);
 	void postvisit(StringGraph* pGraph);
+};
+
+// Validate that the graph does not contain
+// any extra edges or missing irreducible edges
+struct SGValidateStructureVisitor
+{
+	SGValidateStructureVisitor() {}
+	void previsit(StringGraph*) {}
+	bool visit(StringGraph* pGraph, Vertex* pVertex);
+	void postvisit(StringGraph*) {}
 };
 
 // Remodel the graph to infer missing edges or remove erroneous edges

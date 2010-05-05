@@ -124,6 +124,9 @@ Edge* SGUtil::createEdges(StringGraph* pGraph, const Overlap& o, bool allowConta
 	Vertex* pVerts[2];
 	EdgeComp comp = (o.match.isRC()) ? EC_REVERSE : EC_SAME;
 
+	bool isContainment = o.match.isContainment();
+	assert(allowContained || !isContainment);
+
 	for(size_t idx = 0; idx < 2; ++idx)
 	{
 		pVerts[idx] = pGraph->getVertex(o.id[idx]);
@@ -133,28 +136,53 @@ Edge* SGUtil::createEdges(StringGraph* pGraph, const Overlap& o, bool allowConta
 		// never be added to the graph
 		if(pVerts[idx] == NULL)
 			return NULL;
-		if(!allowContained)
-			assert(!o.match.coord[idx].isContained() && o.match.coord[idx].isExtreme());
+		assert(o.match.coord[idx].isExtreme());
 	}
-
-	// Allocate the edges
-	Edge* pEdges[2];
-	for(size_t idx = 0; idx < 2; ++idx)
+	if(!isContainment)
 	{
-		EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
-		const SeqCoord& coord = o.match.coord[idx];
-		pEdges[idx] = new Edge(pVerts[1 - idx], dir, comp, coord);
+		Edge* pEdges[2];
+		for(size_t idx = 0; idx < 2; ++idx)
+		{
+			EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
+			const SeqCoord& coord = o.match.coord[idx];
+			pEdges[idx] = new Edge(pVerts[1 - idx], dir, comp, coord);
+		}
+
+		pEdges[0]->setTwin(pEdges[1]);
+		pEdges[1]->setTwin(pEdges[0]);
+		
+		pGraph->addEdge(pVerts[0], pEdges[0]);
+		pGraph->addEdge(pVerts[1], pEdges[1]);
+		return pEdges[0];
 	}
+	else
+	{
+		// Contained edges don't have a direction, they can be travelled from
+		// one vertex to the other in either direction. Hence, we 
+		// add two edges per vertex. Later during the contain removal
+		// algorithm this is important to determine transitivity
+		Edge* pEdges[4];
+		for(size_t idx = 0; idx < 2; ++idx)
+		{
+			const SeqCoord& coord = o.match.coord[idx];
+			pEdges[idx] = new Edge(pVerts[1 - idx], ED_SENSE, comp, coord);
+			pEdges[idx + 2] = new Edge(pVerts[1 - idx], ED_ANTISENSE, comp, coord);
+		}
+		
+		// Twin the edges and add them to the graph
+		pEdges[0]->setTwin(pEdges[1]);
+		pEdges[1]->setTwin(pEdges[0]);
 
-	pEdges[0]->setTwin(pEdges[1]);
-	pEdges[1]->setTwin(pEdges[0]);
+		pEdges[2]->setTwin(pEdges[3]);
+		pEdges[3]->setTwin(pEdges[2]);
 	
-	bool isContainment = o.match.isContainment();
-	pGraph->addEdge(pVerts[0], pEdges[0]);
-	pGraph->addEdge(pVerts[1], pEdges[1]);
+		pGraph->addEdge(pVerts[0], pEdges[0]);
+		pGraph->addEdge(pVerts[0], pEdges[2]);
 
-	if(isContainment)
+		pGraph->addEdge(pVerts[1], pEdges[1]);
+		pGraph->addEdge(pVerts[1], pEdges[3]);
+
 		pGraph->setContainmentFlag(true);
-
-	return pEdges[0];
+		return pEdges[0];
+	}
 }
