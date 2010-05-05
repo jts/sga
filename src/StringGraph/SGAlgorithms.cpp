@@ -452,7 +452,6 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
 				{
 					edges[i]->setColor(GC_BLACK);
 					edges[i]->getTwin()->setColor(GC_BLACK);
-					std::cout << "Marked edge as transitive: " << *edges[i] << " in vertex " << pVertex->getID() << "\n";
 					marked_edges += 2;
 					trans_count++;
 				}
