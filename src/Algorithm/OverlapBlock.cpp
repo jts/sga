@@ -14,12 +14,12 @@
 // 
 OverlapBlock::OverlapBlock(BWTIntervalPair r, int ol, 
                            int nd, const AlignFlags& af, 
-						   const SearchHistory& backHist) : ranges(r), 
-                                                            overlapLen(ol), 
-														    numDiff(nd),
-														    flags(af),
-															isEliminated(false),
-														    backHistory(backHist)
+						   const SearchHistoryVector& backHist) : ranges(r), 
+                                                                  overlapLen(ol), 
+														          numDiff(nd),
+														          flags(af),
+															      isEliminated(false),
+														          backHistory(backHist)
 {
 	backHistory.normalize(af.isQueryComp());
 }

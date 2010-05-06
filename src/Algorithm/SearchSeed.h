@@ -68,7 +68,7 @@ struct SearchSeed
 
 	// BWT interval coordinates, the first element of the pair is the left range
 	BWTIntervalPair ranges;
-	SearchHistory history;
+	SearchHistoryVector history;
 
 	// Index range is inclusive on both ends
 	int left_index;

@@ -83,7 +83,7 @@ struct OverlapBlock
 
 	OverlapBlock(BWTIntervalPair r, int ol, 
                  int nd, const AlignFlags& af, 
-				 const SearchHistory& backHist);
+				 const SearchHistoryVector& backHist);
 
 	// Return a pointer to the BWT that should be used to extend the block
 	// this is the opposite BWT that was used in the backwards search
@@ -130,8 +130,8 @@ struct OverlapBlock
 	bool isEliminated;
 
 	// The sequence of divergent bases during the backward and forward search steps
-	SearchHistory backHistory;
-	SearchHistory forwardHistory;
+	SearchHistoryVector backHistory;
+	SearchHistoryVector forwardHistory;
 };
 
 // Collections

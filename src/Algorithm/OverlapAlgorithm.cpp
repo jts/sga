@@ -936,8 +936,8 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 						// Compute error rate between the transIter block and tlbIter block,
 						// mark all the blocks that have error rate wrt the tlb lower than 
 						// m_errorRate as eliminated as they must be transitive edges
-						int backwards_diff = SearchHistory::countDifferences(tlbIter->backHistory, transIter->backHistory, transIter->overlapLen);
-						int forward_diff = SearchHistory::countDifferences(tlbIter->forwardHistory, transIter->forwardHistory, extension_length);
+						int backwards_diff = SearchHistoryVector::countDifferences(tlbIter->backHistory, transIter->backHistory, transIter->overlapLen);
+						int forward_diff = SearchHistoryVector::countDifferences(tlbIter->forwardHistory, transIter->forwardHistory, extension_length);
 						int trans_overlap_length = transIter->overlapLen + extension_length;
 						double er = static_cast<double>(backwards_diff + forward_diff) / trans_overlap_length;
 						
