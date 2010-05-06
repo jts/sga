@@ -43,6 +43,8 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "                                       this is most useful when used in conjunction with --quality-trim\n"
 "      -h, --hard-clip=INT              clip all reads to be length INT. In most cases it is better to use\n"
 "                                       the soft clip (quality-trim) option.\n"
+"      --permuteN                       If a basecall is N, randomly change it to one of ACGT instead of discarding the read.\n"
+"                                       The quality value (if present) is not changed.\n"
 "      -s, --sample=FLOAT               Randomly sample reads or pairs with acceptance probability FLOAT.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -61,7 +63,7 @@ namespace opt
 
 static const char* shortopts = "o:q:m:h:p:s:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE };
 
 static const struct option longopts[] = {
 	{ "verbose",      no_argument,       NULL, 'v' },
@@ -73,6 +75,7 @@ static const struct option longopts[] = {
 	{ "sample",       required_argument, NULL, 's' },
 	{ "help",         no_argument,       NULL, OPT_HELP },
 	{ "version",      no_argument,       NULL, OPT_VERSION },
+	{ "permuteN",     no_argument,       NULL, OPT_PERMUTE },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -98,6 +101,9 @@ int preprocessMain(int argc, char** argv)
 	std::cerr << "Outfile: " << (opt::outFile.empty() ? "stdout" : opt::outFile) << "\n";
 	if(opt::bDiscardUncalled)
 		std::cerr << "Discarding sequences with uncalled bases\n";
+	
+	// Seed the RNG
+	srand(time(NULL));
 
 	std::ostream* pWriter;
 	if(opt::outFile.empty())
@@ -203,28 +209,39 @@ bool processRead(SeqRecord& record)
 	++s_numReadsRead;
 	s_numBasesRead += seqStr.size();
 
-	size_t nPos = seqStr.find_last_of('N');
-	size_t dotPos = seqStr.find_last_of('.');
+	// Check for uncalled bases
+	for(size_t i = 0; i < seqStr.size(); ++i)
+	{
+		if(seqStr[i] == 'N' || seqStr[i] == '.')
+		{
+			if(!opt::bDiscardUncalled)
+				seqStr[i] = randomBase();
+		}
+		
+		// Ensure base is upper case
+		seqStr[i] = toupper(seqStr[i]);
+	}
 
-	bool bHasUncalled = nPos != std::string::npos || dotPos != std::string::npos;
-	if(opt::bDiscardUncalled && bHasUncalled)
-		return false; //skip read
+	// Ensure sequence is entirely ACGT
+	size_t pos = seqStr.find_first_not_of("ACGT");
+	if(pos != std::string::npos)
+		return false;
 	
 	// Hard clip
 	if(opt::hardClip > 0)
 	{
-		record.seq = seqStr.substr(0, opt::hardClip);
+		seqStr = seqStr.substr(0, opt::hardClip);
 		if(!qualStr.empty())
-			record.qual = qualStr.substr(0, opt::hardClip);
+			qualStr = qualStr.substr(0, opt::hardClip);
 	}
 
 	// Quality trim
 	if(opt::qualityTrim > 0 && !qualStr.empty())
-	{
 		softClip(opt::qualityTrim, seqStr, qualStr);
-		record.seq = seqStr;
-		record.qual = qualStr;
-	}
+
+	record.seq = seqStr;
+	record.qual = qualStr;
+
 
 	if(record.seq.length() == 0 || record.seq.length() < opt::minLength)
 		return false;
@@ -275,6 +292,26 @@ void softClip(int qualTrim, std::string& seq, std::string& qual)
 }
 
 // 
+char randomBase()
+{
+	int i = rand() % 4;
+	switch(i)
+	{
+		case 0:
+			return 'A';
+		case 1:
+			return 'C';
+		case 2:
+			return 'G';
+		case 3:
+			return 'T';
+		default:
+			assert(false);
+	}
+	return 'A';		
+}
+
+// 
 // Handle command line arguments
 //
 void parsePreprocessOptions(int argc, char** argv)
@@ -294,6 +331,7 @@ void parsePreprocessOptions(int argc, char** argv)
 			case 's': arg >> opt::sampleFreq; break;
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
+			case OPT_PERMUTE: opt::bDiscardUncalled = false; break;
 			case OPT_HELP:
 				std::cout << PREPROCESS_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
