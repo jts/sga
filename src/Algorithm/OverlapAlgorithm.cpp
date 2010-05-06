@@ -348,7 +348,7 @@ struct HashIP
 {                                                                                           
 	size_t operator()( const SearchSeed& x ) const
 	{
-		return std::tr1::hash< int64_t >()( x.ranges.interval[0].lower );                                                                                   
+		return std::tr1::hash< int64_t >()( x.ranges.interval[0].lower ^ x.ranges.interval[0].upper );                                                                                   
     }                                                                                        
 };                                                                                          
 
@@ -386,7 +386,7 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 	}
 	createSearchSeeds(w, pBWT, pRevBWT, actual_seed_length, actual_seed_stride, pInitialVector);
 	extendSeedsExactRight(w, pBWT, pRevBWT, ED_RIGHT, pInitialVector, pQueue);
-
+	
 	// Perform the inexact extensions
 	while(!pQueue->empty())
 	{
@@ -400,16 +400,6 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 			{
 				if(pSeenHash->count(align) > 0)
 				{
-					/*
-					std::cout << "Skipping seen element\n";
-					IntervalHash::iterator iter = pSeenHash->find(align);
-
-					std::cout << "CURR: ";
-					align.print();
-					std::cout << "\nSEEN: ";
-					iter->print();
-					std::cout << "\n";
-					*/
 					valid = false;
 					break;
 				}
@@ -738,16 +728,18 @@ void OverlapAlgorithm::branchSeedRight(const SearchSeed& seed, const std::string
 		char b = ALPHABET[i];
 		if(b != c)
 		{
-			SearchSeed branched = seed;
-			branched.right_index = index;
-			BWTAlgorithms::updateBothR(branched.ranges, b, pRevBWT);
-			if(branched.isIntervalValid(RIGHT_INT_IDX))
+			BWTIntervalPair probe = seed.ranges;
+			BWTAlgorithms::updateBothR(probe, b, pRevBWT);
+			if(probe.interval[RIGHT_INT_IDX].isValid())
 			{
+				SearchSeed branched = seed;
+				branched.right_index = index;
+				branched.ranges = probe;
 				++branched.z;
 				// The history coordinates are wrt the right end of the read
 				// so that each position corresponds to the length of the overlap
 				// including that position
-				//branched.history.add(w.length() - index, b);
+				branched.history.add(w.length() - index, b);
 				pQueue->push(branched);
 			}
 		}
@@ -769,16 +761,18 @@ void OverlapAlgorithm::branchSeedLeft(const SearchSeed& seed, const std::string&
 		char b = ALPHABET[i];
 		if(b != c)
 		{
-			SearchSeed branched = seed;
-			branched.left_index = index;
-			BWTAlgorithms::updateBothL(branched.ranges, b, pBWT);
-			if(branched.isIntervalValid(LEFT_INT_IDX))
+			BWTIntervalPair probe = seed.ranges;
+			BWTAlgorithms::updateBothL(probe, b, pBWT);
+			if(probe.interval[LEFT_INT_IDX].isValid())
 			{
+				SearchSeed branched = seed;
+				branched.ranges = probe;
+				branched.left_index = index;
 				++branched.z;
 				// The history coordinates are wrt the right end of the read
 				// so that each position corresponds to the length of the overlap
 				// including that position						
-				//branched.history.add(w.length() - index, b);
+				branched.history.add(w.length() - index, b);
 				pQueue->push(branched);
 			}
 		}
