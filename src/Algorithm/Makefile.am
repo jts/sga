@@ -13,4 +13,5 @@ libalgorithm_a_SOURCES = \
         ErrorCorrect.h ErrorCorrect.cpp \
 		SearchSeed.h SearchSeed.cpp \
 		OverlapBlock.h OverlapBlock.cpp \
+		SearchTree.h SearchTree.cpp \
 		SearchHistory.h SearchHistory.cpp

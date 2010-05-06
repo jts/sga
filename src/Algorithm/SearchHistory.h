@@ -11,29 +11,11 @@
 #ifndef SEARCHHISTORY_H
 #define SEARCHHISTORY_H
 
+#include "SearchTree.h"
 #include "Util.h"
 
 class SearchHistory
 {
-	struct HistoryItem
-	{
-		int pos;
-		char base;
-
-		static bool sortPos(const HistoryItem& a, const HistoryItem& b)
-		{
-			return a.pos < b.pos;
-		}
-
-		friend std::ostream& operator<<(std::ostream& out, const HistoryItem& hi)
-		{
-			out << hi.pos << "," << hi.base;
-			return out;
-		}
-	};
-	typedef std::vector<HistoryItem> HistoryVector;
-
-
 	public:
 		
 		//

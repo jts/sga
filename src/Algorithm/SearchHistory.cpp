@@ -24,7 +24,7 @@ SearchHistory::SearchHistory()
 // strands
 void SearchHistory::normalize(bool doComplement)
 {
-	std::sort(m_history.begin(), m_history.end(), HistoryItem::sortPos);
+	std::sort(m_history.begin(), m_history.end(), SearchHistoryItem::sortPos);
 
 	if(doComplement)
 	{
@@ -38,7 +38,7 @@ void SearchHistory::normalize(bool doComplement)
 //
 void SearchHistory::add(int pos, char base)
 {
-	HistoryItem item = {pos, base};
+	SearchHistoryItem item(pos, base);
 	m_history.push_back(item);
 }
 
@@ -54,8 +54,8 @@ int SearchHistory::countDifferences(const SearchHistory& a, const SearchHistory&
 
 	while(i < na && j < nb)
 	{
-		const HistoryItem& itemA = a.m_history[i];
-		const HistoryItem& itemB = b.m_history[j];
+		const SearchHistoryItem& itemA = a.m_history[i];
+		const SearchHistoryItem& itemB = b.m_history[j];
 		
 		if(itemA.pos > maxPos || itemB.pos > maxPos)
 			break;
@@ -104,7 +104,7 @@ int SearchHistory::countDifferences(const SearchHistory& a, const SearchHistory&
 std::ostream& operator<<(std::ostream& out, const SearchHistory& hist)
 {
 	std::copy(hist.m_history.begin(), hist.m_history.end(), 
-	          std::ostream_iterator<SearchHistory::HistoryItem>(out, "\t"));
+	          std::ostream_iterator<SearchHistoryItem>(out, "\t"));
 	return out;
 }
 
