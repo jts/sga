@@ -52,6 +52,12 @@ struct SearchSeed
 		return BWTInterval::equal(a.ranges.interval[0], b.ranges.interval[0]);
 	}
 	
+	friend bool operator==(const SearchSeed& a, const SearchSeed& b)
+	{
+		return a.ranges == b.ranges && a.left_index == b.left_index &&
+		       a.right_index == b.right_index && a.z == b.z && a.dir == b.dir; 
+	}
+
 	//
 	void print() const;
 	void print(const std::string& w) const;
@@ -82,5 +88,6 @@ struct SearchSeed
 
 // Collections
 typedef std::vector<SearchSeed> SearchSeedVector;
+typedef std::queue<SearchSeed> SearchSeedQueue;
 
 #endif

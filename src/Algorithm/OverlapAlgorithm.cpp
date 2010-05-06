@@ -5,6 +5,7 @@
 //-----------------------------------------------
 #include "OverlapAlgorithm.h"
 #include "ASQG.h"
+#include <tr1/unordered_set>
 #include <math.h>
 
 // Collect the complete set of overlaps in pOBOut
@@ -222,7 +223,7 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
 	pOBList->splice(pOBList->end(), workingList);
 	return;
 }
-
+#if 0
 // Seeded blockwise BWT alignment of prefix-suffix for reads
 // Each alignment is given a seed region and a block region
 // The seed region is the terminal portion of w where maxDiff + 1 seeds are created
@@ -342,6 +343,150 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 	delete pCurrVector;
 	delete pNextVector;
 }
+#endif
+struct HashIP  
+{                                                                                           
+	size_t operator()( const SearchSeed& x ) const
+	{
+		return std::tr1::hash< int64_t >()( x.ranges.interval[0].lower );                                                                                   
+    }                                                                                        
+};                                                                                          
+
+typedef std::tr1::unordered_set<SearchSeed, HashIP> IntervalHash;
+
+// Seeded blockwise BWT alignment of prefix-suffix for reads
+// Each alignment is given a seed region and a block region
+// The seed region is the terminal portion of w where maxDiff + 1 seeds are created
+// at least 1 of these seeds must align exactly for there to be an alignment with 
+// at most maxDiff differences between the prefix/suffix. Only alignments within the
+// range [block_start, block_end] are output. The block_end coordinate is inclusive
+void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT* pBWT, 
+                                                const BWT* pRevBWT, const AlignFlags& af, 
+												OverlapBlockList* pOBList, OverlapBlockList* pOBFinal, 
+												OverlapResult& result) const
+{
+	int len = w.length();
+	int overlap_region_left = len - m_minOverlap;
+	SearchSeedVector* pInitialVector = new SearchSeedVector;
+	SearchSeedQueue* pQueue = new SearchSeedQueue;
+	IntervalHash* pSeenHash = new IntervalHash;
+
+	OverlapBlockList partialWorkingList;
+	OverlapBlockList fullWorkingList;
+	SearchSeedVector::iterator iter;
+
+	// Create and extend the initial seeds
+	int actual_seed_length = m_seedLength;
+	int actual_seed_stride = m_seedStride;
+	if(actual_seed_length == 0)
+	{
+		// Calculate a seed length and stride that will guarantee all overlaps
+		// with error rate m_errorRate will be found
+		calculateSeedParameters(w, actual_seed_length, actual_seed_stride);
+	}
+	createSearchSeeds(w, pBWT, pRevBWT, actual_seed_length, actual_seed_stride, pInitialVector);
+	extendSeedsExactRight(w, pBWT, pRevBWT, ED_RIGHT, pInitialVector, pQueue);
+
+	// Perform the inexact extensions
+	while(!pQueue->empty())
+	{
+		SearchSeed& align = pQueue->front();
+		bool valid = true;
+		while(valid)
+		{
+			// Check if the left interval has been seen before
+			// If it has the seed is redundant and can be discared
+			if(align.length() % actual_seed_stride == 0)
+			{
+				if(pSeenHash->count(align) > 0)
+				{
+					/*
+					std::cout << "Skipping seen element\n";
+					IntervalHash::iterator iter = pSeenHash->find(align);
+
+					std::cout << "CURR: ";
+					align.print();
+					std::cout << "\nSEEN: ";
+					iter->print();
+					std::cout << "\n";
+					*/
+					valid = false;
+					break;
+				}
+				else
+				{
+					pSeenHash->insert(align);
+				}
+			}
+
+			// If the current aligned region is right-terminal
+			// and the overlap is greater than minOverlap, try to find overlaps
+			// or containments
+			if(align.right_index == len - 1)
+			{
+				double align_error = align.calcErrorRate();
+
+				// Check for overlaps
+				if(align.left_index <= overlap_region_left && isErrorRateAcceptable(align_error, m_errorRate))
+				{
+					int overlapLen = len - align.left_index;
+					BWTIntervalPair probe = align.ranges;
+					BWTAlgorithms::updateBothL(probe, '$', pBWT);
+					
+					// The probe interval contains the range of proper prefixes
+					if(probe.interval[1].isValid())
+					{
+						assert(probe.interval[1].lower > 0);
+						OverlapBlock nBlock(OverlapBlock(probe, overlapLen, align.z, af, align.history));
+						if(overlapLen == len)
+							fullWorkingList.push_back(nBlock);
+						else
+							partialWorkingList.push_back(nBlock);
+					}
+				}
+
+				// Check for containments
+				// If the seed is left-terminal and there are [ACGT] left/right extensions of the sequence
+				// this read must be a substring of another read
+				if(align.left_index == 0)
+				{
+					AlphaCount left_ext = BWTAlgorithms::getExtCount(align.ranges.interval[0], pBWT);
+					AlphaCount right_ext = BWTAlgorithms::getExtCount(align.ranges.interval[1], pRevBWT);
+					if(left_ext.hasDNAChar() || right_ext.hasDNAChar())
+						result.isSubstring = true;
+				}
+			}
+
+			// Extend the seed to the right/left
+			if(align.dir == ED_RIGHT)
+			{
+				if(align.allowMismatches())
+					branchSeedRight(align, w, pBWT, pRevBWT, pQueue);				
+				valid = extendSeedExactRight(align, w, pBWT, pRevBWT);
+			}
+			else
+			{
+				if(align.allowMismatches())
+					branchSeedLeft(align, w, pBWT, pRevBWT, pQueue);				
+				valid = extendSeedExactLeft(align, w, pBWT, pRevBWT);
+			}
+		}
+		pQueue->pop();
+	}
+
+	WARN_ONCE("TODO: Collect all blocks in the same list then split AFTER removing submaximal");
+	// parse the full working list, which has containment overlaps
+	removeSubMaximalBlocks(&fullWorkingList);
+	pOBFinal->splice(pOBFinal->end(), fullWorkingList);
+
+	// parse the partial block working list, which has the proper overlaps
+	removeSubMaximalBlocks(&partialWorkingList);
+	pOBList->splice(pOBList->end(), partialWorkingList);
+
+	delete pInitialVector;
+	delete pQueue;
+	delete pSeenHash;
+}
 
 // Calculate the seed length and stride to ensure that we will find all 
 // all overlaps with error rate at most m_errorRate.
@@ -430,7 +575,7 @@ int OverlapAlgorithm::createSearchSeeds(const std::string& w, const BWT* pBWT,
 // Extend all the seeds in pInVector to the right over the entire seed range
 void OverlapAlgorithm::extendSeedsExactRight(const std::string& w, const BWT* /*pBWT*/, const BWT* pRevBWT,
                                              ExtendDirection /*dir*/, const SearchSeedVector* pInVector, 
-											 SearchSeedVector* pOutVector) const
+											 SearchSeedQueue* pOutQueue) const
 {
 	for(SearchSeedVector::const_iterator iter = pInVector->begin(); iter != pInVector->end(); ++iter)
 	{
@@ -449,7 +594,7 @@ void OverlapAlgorithm::extendSeedsExactRight(const std::string& w, const BWT* /*
 		}
 		
 		if(valid)
-			pOutVector->push_back(align);
+			pOutQueue->push(align);
 	}
 }
 
@@ -539,6 +684,106 @@ void OverlapAlgorithm::extendSeedInexactLeft(SearchSeed& seed, const std::string
 	}
 }
 
+// Extend the seed to the right, return true if the seed is still a valid range
+bool OverlapAlgorithm::extendSeedExactRight(SearchSeed& seed, const std::string& w, const BWT* /*pBWT*/, const BWT* pRevBWT) const
+{
+	// If this alignment has run all the way to the end of the sequence
+	// switch it to be a left extension sequence
+	if(seed.right_index == int(w.length() - 1))
+	{
+		seed.dir = ED_LEFT;
+		return true;
+	}
+
+	++seed.right_index;
+	char b = w[seed.right_index];
+	BWTAlgorithms::updateBothR(seed.ranges, b, pRevBWT);
+	if(seed.isIntervalValid(RIGHT_INT_IDX))
+		return true;
+	else
+		return false;
+}
+
+//
+bool OverlapAlgorithm::extendSeedExactLeft(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* /*pRevBWT*/) const
+{
+	--seed.left_index;
+	if(seed.left_index >= 0)
+	{
+		char b = w[seed.left_index];
+		BWTAlgorithms::updateBothL(seed.ranges, b, pBWT);
+		if(seed.isIntervalValid(LEFT_INT_IDX))
+			return true;
+		else
+			return false;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+//
+void OverlapAlgorithm::branchSeedRight(const SearchSeed& seed, const std::string& w, const BWT* /*pBWT*/, const BWT* pRevBWT, SearchSeedQueue* pQueue) const
+{
+	int index = seed.right_index + 1;
+	
+	// Do not branch if the seed is terminal
+	if(index == static_cast<int>(w.length()))
+		return;
+
+	char c = w[index];
+	for(int i = 0; i < 4; ++i)
+	{
+		char b = ALPHABET[i];
+		if(b != c)
+		{
+			SearchSeed branched = seed;
+			branched.right_index = index;
+			BWTAlgorithms::updateBothR(branched.ranges, b, pRevBWT);
+			if(branched.isIntervalValid(RIGHT_INT_IDX))
+			{
+				++branched.z;
+				// The history coordinates are wrt the right end of the read
+				// so that each position corresponds to the length of the overlap
+				// including that position
+				//branched.history.add(w.length() - index, b);
+				pQueue->push(branched);
+			}
+		}
+	}
+}
+
+//
+void OverlapAlgorithm::branchSeedLeft(const SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* /*pRevBWT*/, SearchSeedQueue* pQueue) const
+{
+	int index = seed.left_index - 1;
+
+	// Do not branch if the seed is terminal
+	if(index < 0)
+		return;
+
+	char c = w[index];
+	for(int i = 0; i < 4; ++i)
+	{
+		char b = ALPHABET[i];
+		if(b != c)
+		{
+			SearchSeed branched = seed;
+			branched.left_index = index;
+			BWTAlgorithms::updateBothL(branched.ranges, b, pBWT);
+			if(branched.isIntervalValid(LEFT_INT_IDX))
+			{
+				++branched.z;
+				// The history coordinates are wrt the right end of the read
+				// so that each position corresponds to the length of the overlap
+				// including that position						
+				//branched.history.add(w.length() - index, b);
+				pQueue->push(branched);
+			}
+		}
+	}
+}
 
 // Calculate the irreducible blocks from the vector of OverlapBlocks
 void OverlapAlgorithm::computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, 

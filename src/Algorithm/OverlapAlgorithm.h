@@ -93,7 +93,14 @@ class OverlapAlgorithm
 		//
 		inline void extendSeedsExactRight(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                                  ExtendDirection dir, const SearchSeedVector* pInVector, 
-												 SearchSeedVector* pOutVector) const;
+												 SearchSeedQueue* pOutQueue) const;
+
+		//
+		inline bool extendSeedExactRight(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT) const;
+		inline bool extendSeedExactLeft(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT) const;
+
+		inline void branchSeedRight(const SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, SearchSeedQueue* pQueue) const;
+		inline void branchSeedLeft(const SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, SearchSeedQueue* pQueue) const;
 
 		//
 		inline void extendSeedInexactRight(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
@@ -112,8 +119,6 @@ class OverlapAlgorithm
 		int m_seedLength;
 		int m_seedStride;
 		bool m_bIrreducible;
-		
-
 };
 
 #endif
