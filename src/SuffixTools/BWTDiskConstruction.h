@@ -18,6 +18,6 @@
 #include "SuffixArray.h"
 #include "BWT.h"
 
-BWT* buildBWTDisk(const std::string& filename);
+BWT* buildBWTDisk(const std::string& filename, const std::string& bwt_extension);
 
 #endif

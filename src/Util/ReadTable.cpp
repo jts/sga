@@ -104,7 +104,7 @@ size_t ReadTable::getCount() const
 }
 
 // 
-size_t ReadTable::getSumLengths() const
+size_t ReadTable::countSumLengths() const
 {
 	size_t sum = 0;
 	for(size_t i = 0; i < m_table.size(); ++i)

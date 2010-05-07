@@ -34,7 +34,7 @@ SuffixArray::SuffixArray(const ReadTable* pRT)
 // Initialize a suffix array for the strings in RT
 void SuffixArray::initialize(const ReadTable& rt)
 {
-	size_t n = rt.getSumLengths() + rt.getCount(); 
+	size_t n = rt.countSumLengths() + rt.getCount(); 
 	initialize(n, rt.getCount());
 
 	// Fill the data table with the linear ordering of the suffixes
