@@ -70,12 +70,14 @@ namespace opt
 	static double sampleFreq = 1.0f;
 	static bool bDiscardUncalled = true;
 	static QualityScaling qualityScale = QS_SANGER;
+	static double minGC = 0.0f;
+	static double maxGC = 1.0;
 	static bool bIlluminaScaling = false;
 }
 
 static const char* shortopts = "o:q:m:h:p:s:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC };
 
 static const struct option longopts[] = {
 	{ "verbose",       no_argument,       NULL, 'v' },
@@ -86,6 +88,8 @@ static const struct option longopts[] = {
 	{ "min-length",    required_argument, NULL, 'm' },
 	{ "sample",        required_argument, NULL, 's' },
 	{ "quality-scale", required_argument, NULL, OPT_QSCALE},
+	{ "min-gc",        required_argument, NULL, OPT_MINGC},
+	{ "max-gc",        required_argument, NULL, OPT_MAXGC},
 	{ "help",          no_argument,       NULL, OPT_HELP },
 	{ "version",       no_argument,       NULL, OPT_VERSION },
 	{ "permuteN",      no_argument,       NULL, OPT_PERMUTE },
@@ -112,6 +116,8 @@ int preprocessMain(int argc, char** argv)
 	std::cerr << "Sample freq: " << opt::sampleFreq << "\n";
 	std::cerr << "PE Mode: " << opt::peMode << "\n";
 	std::cerr << "Quality scaling:" << opt::qualityScale << "\n";
+	std::cerr << "MinGC: " << opt::minGC << "\n";
+	std::cerr << "MaxGC: " << opt::maxGC << "\n";
 	std::cerr << "Outfile: " << (opt::outFile.empty() ? "stdout" : opt::outFile) << "\n";
 	if(opt::bDiscardUncalled)
 		std::cerr << "Discarding sequences with uncalled bases\n";
@@ -253,6 +259,14 @@ bool processRead(SeqRecord& record)
 	if(opt::qualityTrim > 0 && !qualStr.empty())
 		softClip(opt::qualityTrim, seqStr, qualStr);
 
+	// Filter by GC content
+	if(opt::minGC > 0.0f || opt::maxGC <= 1.0f)
+	{
+		double gc = calcGC(seqStr);
+		if(gc < opt::minGC || gc > opt::maxGC)
+			return false;
+	}
+
 	record.seq = seqStr;
 	record.qual = qualStr;
 
@@ -305,6 +319,19 @@ void softClip(int qualTrim, std::string& seq, std::string& qual)
 	qual = qual.substr(0, endpoint);
 }
 
+double calcGC(const std::string& seq)
+{
+	double num_gc = 0.0f;
+	double num_total = 0.0f;
+	for(size_t i = 0; i < seq.size(); ++i)
+	{
+		if(seq[i] == 'C' || seq[i] == 'G')
+			++num_gc;
+		++num_total;
+	}
+	return num_gc / num_total;
+}
+
 // 
 char randomBase()
 {
@@ -346,6 +373,8 @@ void parsePreprocessOptions(int argc, char** argv)
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_PERMUTE: opt::bDiscardUncalled = false; break;
+			case OPT_MINGC: arg >> opt::minGC; break;
+			case OPT_MAXGC: arg >> opt::maxGC; break;
 			case OPT_QSCALE:
 				if(arg.str() == "none")
 				{

@@ -100,28 +100,6 @@ static const struct option longopts[] = {
 //
 int overlapMain(int argc, char** argv)
 {
-	/*
-	{
-		SearchHistoryLink root = SearchHistoryNode::createRoot();
-		SearchHistoryLink l1 = root->createChild(10, 'A');
-		std::cout << "h1\n";
-		SearchHistoryLink l2 = root->createChild(20, 'C');
-		SearchHistoryLink l3 = l2->createChild(30, 'G');
-		SearchHistoryLink l4 = l3->createChild(40, 'G');
-		SearchHistoryLink l5 = l1->createChild(50, 'G');
-		SearchHistoryLink l7 = l5->createChild(70, 'G');
-		SearchHistoryLink l8 = l7->createChild(80, 'G');
-		
-		{
-			SearchHistoryLink l6 = l5->createChild(60, 'C');
-			l6 = l6;
-		}
-		SearchHistoryVector sh = l8->getHistoryVector();
-		std::cout << "History: " << sh << "\n";
-	}
-
-	exit(EXIT_SUCCESS);
-	*/
 	Timer* pTimer = new Timer(PROGRAM_IDENT);
 	parseOverlapOptions(argc, argv);
 
@@ -310,9 +288,8 @@ size_t computeHitsParallel(SeqReader& reader, std::ostream* pASQGWriter,
 				}
 
 				if(numWrote % 10000)
-				{
 					std::cout << "Aligned " << numWrote << " reads\n";
-				}
+
 				// This should never loop more than twice
 				assert(numLoops < 2);
 				++numLoops;

@@ -19,5 +19,6 @@ bool processRead(SeqRecord& record);
 bool samplePass();
 char randomBase();
 void softClip(int qualTrim, std::string& seq, std::string& qual);
+double calcGC(const std::string& seq);
 
 #endif
