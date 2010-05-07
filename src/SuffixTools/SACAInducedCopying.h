@@ -4,15 +4,14 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// saca - suffix array construction algorithms
-//
-#ifndef SACA_H
+// SACAInducedCopying - Implementation of the 
+// induced copying algorithm as described 
+// by Nong, Zhang, Chan (2008)
+// Modified by JTS to handle multiple strings
+#ifndef SACA_INDUCED_COPYING_H
 #include "SuffixArray.h"
 #include "ReadTable.h"
 
-// Implementation of the induced copying algorithm 
-// as described by Nong, Zhang, Chan (2008)
-// Modified by JTS to handle multiple strings
 void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT);
 
 void induceSAl(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int64_t* counts, int64_t* buckets, size_t n, int K, bool end);

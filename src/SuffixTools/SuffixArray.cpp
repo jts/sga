@@ -12,7 +12,7 @@
 #include "bucketSort.h"
 #include "SuffixCompare.h"
 #include "mkqs.h"
-#include "saca.h"
+#include "SACAInducedCopying.h"
 #include "Timer.h"
 
 // Read a suffix array from a file
@@ -28,18 +28,7 @@ SuffixArray::SuffixArray(const std::string& filename)
 SuffixArray::SuffixArray(const ReadTable* pRT)
 {
 	Timer timer("SuffixArray Construction");
-#if 1
 	saca_induced_copying(this, pRT);
-#else
-	initialize(pRT);
-	SuffixCompareRadix radix_compare(pRT);
-	SuffixCompareID id_compare(pRT);	
-	//std::sort(m_data.begin(), m_data.end(), compare);
-	//bucketSort(m_data.begin(), m_data.end(), compare);
-	//histogramSort(&m_data[0], m_data.size(), 0, radix_compare, id_compare);
-	mkqs2(&m_data[0], m_data.size(), 0, radix_compare, id_compare);
-	//assert(false);
-#endif
 }
 
 // Initialize a suffix array for the strings in RT

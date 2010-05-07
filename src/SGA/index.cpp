@@ -13,7 +13,8 @@
 #include "index.h"
 #include "SuffixArray.h"
 #include "SeqReader.h"
-#include "saca.h"
+#include "SACAInducedCopying.h"
+#include "BWTDiskConstruction.h"
 #include "BWT.h"
 
 //
@@ -33,6 +34,7 @@ static const char *INDEX_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
+"  -d, --disk                           Use disk-based BWT construction algorithm\n"
 "  -c, --check                          validate that the suffix array/bwt is correct\n"
 "  -p, --prefix=PREFIX                  write index to file using PREFIX instead of prefix of READSFILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -42,10 +44,11 @@ namespace opt
 	static unsigned int verbose;
 	static std::string readsFile;
 	static std::string prefix;
+	static bool bDiskAlgo = false;
 	static bool validate;
 }
 
-static const char* shortopts = "p:m:cv";
+static const char* shortopts = "p:m:dcv";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -53,6 +56,7 @@ static const struct option longopts[] = {
 	{ "verbose",     no_argument,       NULL, 'v' },
 	{ "check",       no_argument,       NULL, 'c' },
 	{ "prefix",      required_argument, NULL, 'p' },
+	{ "disk",        no_argument,       NULL, 'd' },
 	{ "help",        no_argument,       NULL, OPT_HELP },
 	{ "version",     no_argument,       NULL, OPT_VERSION },
 	{ NULL, 0, NULL, 0 }
@@ -61,25 +65,42 @@ static const struct option longopts[] = {
 int indexMain(int argc, char** argv)
 {
 	parseIndexOptions(argc, argv);
-	std::cout << "Building index for " << opt::readsFile << "\n";
+	if(!opt::bDiskAlgo)
+		indexInMemory();
+	else
+		indexOnDisk();
+	return 0;
+}
+
+//
+void indexInMemory()
+{
+	std::cout << "Building index for " << opt::readsFile << " in memory\n";
 
 	// Parse the initial read table
 	ReadTable* pRT = new ReadTable(opt::readsFile);
 	
 	// Create and write the suffix array for the forward reads
-	buildIndex(opt::prefix, pRT, false);
+	buildIndexForTable(opt::prefix, pRT, false);
 	
 	// Reverse all the reads
 	pRT->reverseAll();
 
 	// Build the reverse suffix array
-	buildIndex(opt::prefix, pRT, true);
+	buildIndexForTable(opt::prefix, pRT, true);
 	
 	delete pRT;
-	return 0;
 }
 
-void buildIndex(std::string prefix, const ReadTable* pRT, bool isReverse)
+//
+void indexOnDisk()
+{
+	std::cout << "Building index for " << opt::readsFile << " on disk\n";
+	buildBWTDisk(opt::readsFile);
+}
+
+//
+void buildIndexForTable(std::string prefix, const ReadTable* pRT, bool isReverse)
 {
 	// Create suffix array from read table
 	SuffixArray* pSA = new SuffixArray(pRT);
@@ -128,6 +149,7 @@ void parseIndexOptions(int argc, char** argv)
 			case 'p': arg >> opt::prefix; break;
 			case '?': die = true; break;
 			case 'c': opt::validate = true; break;
+			case 'd': opt::bDiskAlgo = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_HELP:
 				std::cout << INDEX_USAGE_MESSAGE;

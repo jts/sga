@@ -13,8 +13,9 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
                            SuffixCompare.cpp SuffixCompare.h \
                            InverseSuffixArray.cpp InverseSuffixArray.h \
                            LCPArray.cpp LCPArray.h \
-                           saca.h saca.cpp \
+                           SACAInducedCopying.h SACAInducedCopying.cpp \
                            BWTAlgorithms.h BWTAlgorithms.cpp \
+						   BWTDiskConstruction.h BWTDiskConstruction.cpp \
                            OverlapQuality.h OverlapQuality.cpp \
                            AssembleExact.h AssembleExact.cpp \
                            SuffixTree.h SuffixTree.cpp \

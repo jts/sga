@@ -4,9 +4,9 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// saca - suffix array construction algorithms
+// SACAInducedCopying algorithm
 //
-#include "saca.h"
+#include "SACAInducedCopying.h"
 #include "SuffixCompare.h"
 #include "mkqs.h"
 #include "bucketSort.h"
