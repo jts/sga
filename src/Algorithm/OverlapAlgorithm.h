@@ -61,10 +61,17 @@ class OverlapAlgorithm
      							           OverlapBlockList* pOBFinal, OverlapResult& result) const;
 
 		// Same as above while allowing mismatches
+		void findOverlapBlocksInexactQueue(const std::string& w, const BWT* pBWT, 
+				                      const BWT* pRevBWT, const AlignFlags& af, 
+									  OverlapBlockList* pOBList, OverlapBlockList* pOBFinal, 
+									  OverlapResult& result) const;
+
+		// Same as above while allowing mismatches
 		void findOverlapBlocksInexact(const std::string& w, const BWT* pBWT, 
 				                      const BWT* pRevBWT, const AlignFlags& af, 
 									  OverlapBlockList* pOBList, OverlapBlockList* pOBFinal, 
 									  OverlapResult& result) const;
+							  
 
 		// Reduce the block list pOBList by removing blocks that correspond to transitive edges
 		void computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, 
@@ -91,9 +98,15 @@ class OverlapAlgorithm
 									 SearchSeedVector* pOutVector) const;
 
 		//
-		inline void extendSeedsExactRight(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+		inline void extendSeedsExactRightQueue(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                                  ExtendDirection dir, const SearchSeedVector* pInVector, 
 												 SearchSeedQueue* pOutQueue) const;
+
+		//
+		inline void extendSeedsExactRight(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                                                 ExtendDirection dir, const SearchSeedVector* pInVector, 
+												 SearchSeedVector* pOutVector) const;
+	
 
 		//
 		inline bool extendSeedExactRight(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT) const;

@@ -24,13 +24,15 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2009 Wellcome Trust Sanger Institute\n";
 
 static const char *PREPROCESS_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] READS1 READS2 ...\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] --quality-scale=STR READS1 READS2 ...\n"
 "Prepare READS1, READS2, ... data files for assembly\n"
-"Quality scores are assumed to be Sanger/Phred scaled - they must be converted if they are not.\n"
 "If pe-mode is turned on (pe-mode=1) then if a read is discarded its pair will be discarded as well.\n"
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+//"      --quality-scale=STR              Specify the quality scaling to use. This parameter is mandatory and acceptable\n"
+//"                                       strings are none, sanger, illumina1.3, illumina1.5. It is extremely important\n"
+//"                                       to set this correctly.\n"
 "      -o, --out=FILE                   write the reads to FILE (default: basename(READS1).pp.fa)\n"
 "      -p, --pe-mode=INT                0 - do not treat reads as paired\n"
 "                                       1 - reads are paired with the first read in READS1 and the second\n"
@@ -48,6 +50,15 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "      -s, --sample=FLOAT               Randomly sample reads or pairs with acceptance probability FLOAT.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
+enum QualityScaling
+{
+	QS_UNDEFINED,
+	QS_NONE,
+	QS_SANGER,
+	QS_ILLUMINA_1_3,
+	QS_ILLUMINA_1_5
+};
+
 namespace opt
 {
 	static unsigned int verbose;
@@ -58,24 +69,26 @@ namespace opt
 	static unsigned int peMode = 0;
 	static double sampleFreq = 1.0f;
 	static bool bDiscardUncalled = true;
+	static QualityScaling qualityScale = QS_SANGER;
 	static bool bIlluminaScaling = false;
 }
 
 static const char* shortopts = "o:q:m:h:p:s:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE };
 
 static const struct option longopts[] = {
-	{ "verbose",      no_argument,       NULL, 'v' },
-	{ "out",          required_argument, NULL, 'o' },
-	{ "quality-trim", required_argument, NULL, 'q' },
-	{ "pe-mode",      required_argument, NULL, 'p' },
-	{ "hard-clip",    required_argument, NULL, 'h' },
-	{ "min-length",   required_argument, NULL, 'm' },
-	{ "sample",       required_argument, NULL, 's' },
-	{ "help",         no_argument,       NULL, OPT_HELP },
-	{ "version",      no_argument,       NULL, OPT_VERSION },
-	{ "permuteN",     no_argument,       NULL, OPT_PERMUTE },
+	{ "verbose",       no_argument,       NULL, 'v' },
+	{ "out",           required_argument, NULL, 'o' },
+	{ "quality-trim",  required_argument, NULL, 'q' },
+	{ "pe-mode",       required_argument, NULL, 'p' },
+	{ "hard-clip",     required_argument, NULL, 'h' },
+	{ "min-length",    required_argument, NULL, 'm' },
+	{ "sample",        required_argument, NULL, 's' },
+	{ "quality-scale", required_argument, NULL, OPT_QSCALE},
+	{ "help",          no_argument,       NULL, OPT_HELP },
+	{ "version",       no_argument,       NULL, OPT_VERSION },
+	{ "permuteN",      no_argument,       NULL, OPT_PERMUTE },
 	{ NULL, 0, NULL, 0 }
 };
 
@@ -98,6 +111,7 @@ int preprocessMain(int argc, char** argv)
 	std::cerr << "Min length: " << opt::minLength << "\n";
 	std::cerr << "Sample freq: " << opt::sampleFreq << "\n";
 	std::cerr << "PE Mode: " << opt::peMode << "\n";
+	std::cerr << "Quality scaling:" << opt::qualityScale << "\n";
 	std::cerr << "Outfile: " << (opt::outFile.empty() ? "stdout" : opt::outFile) << "\n";
 	if(opt::bDiscardUncalled)
 		std::cerr << "Discarding sequences with uncalled bases\n";
@@ -332,6 +346,30 @@ void parsePreprocessOptions(int argc, char** argv)
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_PERMUTE: opt::bDiscardUncalled = false; break;
+			case OPT_QSCALE:
+				if(arg.str() == "none")
+				{
+					opt::qualityScale = QS_NONE;
+				}
+				else if(arg.str() == "sanger")
+				{
+					opt::qualityScale = QS_SANGER;
+				}
+				else if(arg.str() == "illumina1.3")
+				{
+					opt::qualityScale = QS_ILLUMINA_1_3;
+					assert(false && "not implemented");
+				}
+				else if(arg.str() == "illumina1.5")
+				{
+					opt::qualityScale = QS_ILLUMINA_1_5;
+					assert(false && "not implemented");
+				}
+				else
+					std::cout << "Unknown quality string value: " << arg.str() << "\n";
+					std::cout << "Expected one of: none, sanger, illumina1.3, illumina1.5\n";
+					exit(EXIT_FAILURE);
+				break;
 			case OPT_HELP:
 				std::cout << PREPROCESS_USAGE_MESSAGE;
 				exit(EXIT_SUCCESS);
@@ -356,6 +394,18 @@ void parsePreprocessOptions(int argc, char** argv)
 	if(opt::peMode > 1)
 	{
 		std::cerr << SUBPROGRAM ": error pe-mode must be 0 or 1 (found: " << opt::peMode << ")\n";
+		exit(EXIT_FAILURE);
+	}
+
+	if(opt::qualityScale == QS_UNDEFINED)
+	{
+		std::cerr << SUBPROGRAM ": required parameter --quality-scale not found, please specify this parameter\n";
+		exit(EXIT_FAILURE);
+	}
+
+	if(opt::qualityScale == QS_NONE && opt::qualityTrim > 0)
+	{
+		std::cerr << SUBPROGRAM ": If --quality-trim is specified, --quality-scale cannot be none\n";
 		exit(EXIT_FAILURE);
 	}
 }

@@ -58,7 +58,6 @@ class SearchHistoryVector
 
 
 class SearchHistoryNode;
-typedef std::vector<SearchHistoryNode*> NodeVector;
 
 // A SearchHistoryLink is a reference-counted wrapper of a 
 // search node. This is the external interface to the SearchHistoryNodes
@@ -67,14 +66,17 @@ typedef std::vector<SearchHistoryNode*> NodeVector;
 class SearchHistoryLink
 {
 	public:
+		
+		//
 		SearchHistoryLink();
 		SearchHistoryLink(SearchHistoryNode* ptr);
 
 		// We need to handle the copy constructor and the assignment operator
 		// for the reference counting to be correct
-		SearchHistoryLink(const SearchHistoryLink& link);
+		SearchHistoryLink(const SearchHistoryLink& link);		
 		SearchHistoryLink& operator=(SearchHistoryLink const& link);
 		~SearchHistoryLink();
+
 
 		SearchHistoryNode* operator->() const { assert(pNode != NULL); return pNode; }
 		SearchHistoryNode& operator*() const { assert(pNode != NULL); return *pNode; }
@@ -89,6 +91,7 @@ class SearchHistoryLink
 class SearchHistoryNode
 {
 	public:
+
 		SearchHistoryLink createChild(int var_pos, char var_base);
 		static SearchHistoryLink createRoot(); // Create the root node of the history tree
 		SearchHistoryVector getHistoryVector();
@@ -99,12 +102,16 @@ class SearchHistoryNode
 		friend class SearchTree;
 
 		// The nodes should only be constructed/destructed through the links
-		SearchHistoryNode(SearchHistoryNode* pParent, int var_pos, char var_base);
-		~SearchHistoryNode();
+		SearchHistoryNode(SearchHistoryNode* pParent, 
+				          int var_pos, char var_base) : m_parentLink(pParent), 
+		                                                m_variant(var_pos, var_base),
+														m_refCount(0) {}
+		
+		~SearchHistoryNode() { assert(m_refCount == 0); }
 
-		void increment();
-		void decrement();
-		int getCount() const;
+		inline void increment() { ++m_refCount; }
+		inline void decrement() { --m_refCount; }
+		inline int getCount() const { return m_refCount; }
 
 		SearchHistoryLink m_parentLink;
 		SearchHistoryItem m_variant;

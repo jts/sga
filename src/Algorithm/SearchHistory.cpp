@@ -14,8 +14,6 @@
 //
 // Link
 //
-
-//
 SearchHistoryLink::SearchHistoryLink() : pNode(NULL)
 {
 
@@ -25,28 +23,18 @@ SearchHistoryLink::SearchHistoryLink() : pNode(NULL)
 SearchHistoryLink::SearchHistoryLink(SearchHistoryNode* ptr) : pNode(ptr)
 {
 	if(pNode != NULL)
-	{
 		pNode->increment();
-	}
 }
 
-//
-SearchHistoryLink::~SearchHistoryLink()
-{
-	if(pNode != NULL)
-	{
-		pNode->decrement();
-		if(pNode->getCount() == 0)
-			delete pNode;
-	}
-}
-
+// We need to handle the copy constructor and the assignment operator
+// for the reference counting to be correct
 SearchHistoryLink::SearchHistoryLink(const SearchHistoryLink& link) : pNode(link.pNode)
 {
 	if(pNode != NULL)
 		pNode->increment();
 }
 
+//
 SearchHistoryLink& SearchHistoryLink::operator=(SearchHistoryLink const& link)
 {
 	SearchHistoryNode* pOld = pNode;
@@ -64,23 +52,21 @@ SearchHistoryLink& SearchHistoryLink::operator=(SearchHistoryLink const& link)
 }
 
 //
+SearchHistoryLink::~SearchHistoryLink()
+{
+	if(pNode != NULL)
+	{
+		pNode->decrement();
+		if(pNode->getCount() == 0)
+			delete pNode;
+	}
+}
+
+
+//
 // Node
 //
-SearchHistoryNode::SearchHistoryNode(SearchHistoryNode* pParent, 
-                                     int var_pos, char var_base) : m_parentLink(pParent), 
-									                               m_variant(var_pos, var_base),
-																   m_refCount(0)
-{
-	//std::cout << "CREATE, node now: " << m_variant << " : " << m_refCount << "\n";
-}
 
-
-// 
-SearchHistoryNode::~SearchHistoryNode()
-{
-	assert(m_refCount == 0);
-	//std::cout << "DELETE, node now: " << m_variant << " : " << m_refCount << "\n";
-}
 
 // adding a child of the node automatically increments the refCount of this node
 // through the child's Link to this node. Once all the children of this node
@@ -116,27 +102,6 @@ SearchHistoryVector SearchHistoryNode::getHistoryVector()
 		}
 	}
 	return out;
-}
-
-//
-void SearchHistoryNode::increment()
-{
-	++m_refCount;
-	//std::cout << "INC, node now: " << m_variant << " : " << m_refCount << "\n";
-}
-
-//
-void SearchHistoryNode::decrement()
-{
-	assert(m_refCount != 0);
-	--m_refCount;
-	//std::cout << "DEC, node now: " << m_variant << " : " << m_refCount << "\n";
-}
-
-// 
-int SearchHistoryNode::getCount() const
-{
-	return m_refCount;
 }
 
 //

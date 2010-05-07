@@ -309,6 +309,10 @@ size_t computeHitsParallel(SeqReader& reader, std::ostream* pASQGWriter,
 					workVec[i]->clear();
 				}
 
+				if(numWrote % 10000)
+				{
+					std::cout << "Aligned " << numWrote << " reads\n";
+				}
 				// This should never loop more than twice
 				assert(numLoops < 2);
 				++numLoops;
