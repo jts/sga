@@ -11,7 +11,17 @@
 #include <algorithm>
 #include <iterator>
 
+//
 // Link
+//
+
+//
+SearchHistoryLink::SearchHistoryLink() : pNode(NULL)
+{
+
+}
+
+//
 SearchHistoryLink::SearchHistoryLink(SearchHistoryNode* ptr) : pNode(ptr)
 {
 	if(pNode != NULL)
@@ -33,14 +43,12 @@ SearchHistoryLink::~SearchHistoryLink()
 
 SearchHistoryLink::SearchHistoryLink(const SearchHistoryLink& link) : pNode(link.pNode)
 {
-	std::cout << "Copy CTOR\n";
 	if(pNode != NULL)
 		pNode->increment();
 }
 
-SearchHistoryLink& SearchHistoryLink::operator=(SearchHistoryLink& link)
+SearchHistoryLink& SearchHistoryLink::operator=(SearchHistoryLink const& link)
 {
-	std::cout << "Assign op\n";
 	SearchHistoryNode* pOld = pNode;
 	pNode = link.pNode;
 	if(pNode != NULL)
@@ -63,7 +71,7 @@ SearchHistoryNode::SearchHistoryNode(SearchHistoryNode* pParent,
 									                               m_variant(var_pos, var_base),
 																   m_refCount(0)
 {
-	
+	//std::cout << "CREATE, node now: " << m_variant << " : " << m_refCount << "\n";
 }
 
 
@@ -71,7 +79,7 @@ SearchHistoryNode::SearchHistoryNode(SearchHistoryNode* pParent,
 SearchHistoryNode::~SearchHistoryNode()
 {
 	assert(m_refCount == 0);
-	std::cout << "DELETE, node now: " << m_variant << " : " << m_refCount << "\n";
+	//std::cout << "DELETE, node now: " << m_variant << " : " << m_refCount << "\n";
 }
 
 // adding a child of the node automatically increments the refCount of this node
@@ -82,15 +90,21 @@ SearchHistoryLink SearchHistoryNode::createChild(int var_pos, char var_base)
 	return SearchHistoryLink(new SearchHistoryNode(this, var_pos, var_base));
 }
 
+// The root has NULL as a parent 
+SearchHistoryLink SearchHistoryNode::createRoot()
+{
+	return SearchHistoryLink(new SearchHistoryNode(NULL, -1, ROOT_CHAR));
+}
+
 // Return the search history up to the root node
-SearchHistoryVector SearchHistoryNode::getHistory()
+SearchHistoryVector SearchHistoryNode::getHistoryVector()
 {
 	SearchHistoryVector out;
 	SearchHistoryLink pCurr(this);
 	bool done = false;
 	while(!done)
 	{
-		if(pCurr->m_variant.base == '\0')
+		if(pCurr->m_variant.base == ROOT_CHAR)
 		{
 			// root found, terminate the search
 			done = true;
@@ -108,8 +122,7 @@ SearchHistoryVector SearchHistoryNode::getHistory()
 void SearchHistoryNode::increment()
 {
 	++m_refCount;
-	std::cout << "INC, node now: " << m_variant << " : " << m_refCount << "\n";
-
+	//std::cout << "INC, node now: " << m_variant << " : " << m_refCount << "\n";
 }
 
 //
@@ -117,35 +130,13 @@ void SearchHistoryNode::decrement()
 {
 	assert(m_refCount != 0);
 	--m_refCount;
-	std::cout << "DEC, node now: " << m_variant << " : " << m_refCount << "\n";
+	//std::cout << "DEC, node now: " << m_variant << " : " << m_refCount << "\n";
 }
 
 // 
 int SearchHistoryNode::getCount() const
 {
 	return m_refCount;
-}
-
-// SearchTree
-SearchTree::SearchTree()
-{
-	m_pRoot = new SearchHistoryNode(NULL, -1, '\0');
-	// The root should never be auto-destroyed so we set its count to one
-	m_pRoot->increment();
-}
-
-//
-SearchTree::~SearchTree()
-{
-	assert(m_pRoot->getCount() == 1);
-	m_pRoot->decrement();
-	delete m_pRoot;
-}
-
-//
-SearchHistoryLink SearchTree::getRootLink()
-{
-	return SearchHistoryLink(m_pRoot);
 }
 
 //

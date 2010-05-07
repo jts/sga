@@ -102,8 +102,7 @@ int overlapMain(int argc, char** argv)
 {
 	/*
 	{
-		SearchTree st;
-		SearchHistoryLink root = st.getRootLink();
+		SearchHistoryLink root = SearchHistoryNode::createRoot();
 		SearchHistoryLink l1 = root->createChild(10, 'A');
 		std::cout << "h1\n";
 		SearchHistoryLink l2 = root->createChild(20, 'C');
@@ -117,7 +116,7 @@ int overlapMain(int argc, char** argv)
 			SearchHistoryLink l6 = l5->createChild(60, 'C');
 			l6 = l6;
 		}
-		SearchHistoryVector sh = l8->getHistory();
+		SearchHistoryVector sh = l8->getHistoryVector();
 		std::cout << "History: " << sh << "\n";
 	}
 

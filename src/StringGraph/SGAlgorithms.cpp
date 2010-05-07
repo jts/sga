@@ -523,7 +523,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			EdgePtrVec neighborEdges = pToRemove->getEdges();
 			(void)pGraph;
 			WARN_ONCE("DISABLED CONTAIN REMODEL");
-			/*
+			
 			// This must be done in order of edge length or some transitive edges
 			// may be created
 			EdgeLenComp comp;
@@ -537,7 +537,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 				                                       pRemodelVert, 
 				        							   pRemodelEdge);
 			}
-			*/
+			
 			// Delete the edges from the graph
 			for(size_t j = 0; j < neighborEdges.size(); ++j)
 			{

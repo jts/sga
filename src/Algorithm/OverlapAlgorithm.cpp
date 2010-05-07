@@ -427,7 +427,7 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 					if(probe.interval[1].isValid())
 					{
 						assert(probe.interval[1].lower > 0);
-						OverlapBlock nBlock(OverlapBlock(probe, overlapLen, align.z, af, align.history));
+						OverlapBlock nBlock(OverlapBlock(probe, overlapLen, align.z, af, align.historyLink->getHistoryVector()));
 						if(overlapLen == len)
 							fullWorkingList.push_back(nBlock);
 						else
@@ -524,10 +524,12 @@ int OverlapAlgorithm::createSearchSeeds(const std::string& w, const BWT* pBWT,
                                         const BWT* pRevBWT, int seed_length, int seed_stride,
 										SearchSeedVector* pOutVector) const
 {
+	// Start a new chain of history links
+	SearchHistoryLink rootLink = SearchHistoryNode::createRoot();
+
 	// The maximum possible number of differences occurs for a fully-aligned read
 	int read_len = w.length();
 	int max_diff_high = static_cast<int>(m_errorRate * read_len);
-
 	static int once = 1;
 	if(once)
 	{
@@ -547,6 +549,7 @@ int OverlapAlgorithm::createSearchSeeds(const std::string& w, const BWT* pBWT,
 		seed.seed_len = seed_length;
 		seed.z = 0;
 		seed.maxDiff = max_diff_high;
+		seed.historyLink = rootLink;
 
 		// Initialize the left and right suffix array intervals
 		char b = w[seed.left_index];
@@ -625,7 +628,8 @@ void OverlapAlgorithm::extendSeedInexactRight(SearchSeed& seed, const std::strin
 					// The history coordinates are wrt the right end of the read
 					// so that each position corresponds to the length of the overlap
 					// including that position
-					branched.history.add(w.length() - seed.right_index, b);
+					branched.historyLink = seed.historyLink->createChild(w.length() - seed.right_index, b);
+					//branched.history.add(w.length() - seed.right_index, b);
 				}
 				pOutVector->push_back(branched);
 			}
@@ -664,8 +668,9 @@ void OverlapAlgorithm::extendSeedInexactLeft(SearchSeed& seed, const std::string
 						++branched.z;
 						// The history coordinates are wrt the right end of the read
 						// so that each position corresponds to the length of the overlap
-						// including that position						
-						branched.history.add(w.length() - seed.left_index, b);
+						// including that position		
+						branched.historyLink = seed.historyLink->createChild(w.length() - seed.left_index, b);				
+						//branched.history.add(w.length() - seed.left_index, b);
 					}
 					pOutVector->push_back(branched);
 				}
@@ -739,7 +744,8 @@ void OverlapAlgorithm::branchSeedRight(const SearchSeed& seed, const std::string
 				// The history coordinates are wrt the right end of the read
 				// so that each position corresponds to the length of the overlap
 				// including that position
-				branched.history.add(w.length() - index, b);
+				branched.historyLink = seed.historyLink->createChild(w.length() - index, b);
+				//branched.history.add(w.length() - index, b);
 				pQueue->push(branched);
 			}
 		}
@@ -771,8 +777,9 @@ void OverlapAlgorithm::branchSeedLeft(const SearchSeed& seed, const std::string&
 				++branched.z;
 				// The history coordinates are wrt the right end of the read
 				// so that each position corresponds to the length of the overlap
-				// including that position						
-				branched.history.add(w.length() - index, b);
+				// including that position
+				branched.historyLink = seed.historyLink->createChild(w.length() - index, b);						
+				//branched.history.add(w.length() - index, b);
 				pQueue->push(branched);
 			}
 		}
