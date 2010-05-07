@@ -521,8 +521,6 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 			// Add any new irreducible edges that exist when pToRemove is deleted
 			// from the graph
 			EdgePtrVec neighborEdges = pToRemove->getEdges();
-			(void)pGraph;
-			WARN_ONCE("DISABLED CONTAIN REMODEL");
 			
 			// This must be done in order of edge length or some transitive edges
 			// may be created

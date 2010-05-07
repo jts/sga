@@ -68,8 +68,11 @@ namespace opt
 	static unsigned int minLength = 0;
 	static unsigned int peMode = 0;
 	static double sampleFreq = 1.0f;
+
 	static bool bDiscardUncalled = true;
 	static QualityScaling qualityScale = QS_SANGER;
+
+	static bool bFilterGC = false;
 	static double minGC = 0.0f;
 	static double maxGC = 1.0;
 	static bool bIlluminaScaling = false;
@@ -260,7 +263,7 @@ bool processRead(SeqRecord& record)
 		softClip(opt::qualityTrim, seqStr, qualStr);
 
 	// Filter by GC content
-	if(opt::minGC > 0.0f || opt::maxGC <= 1.0f)
+	if(opt::bFilterGC)
 	{
 		double gc = calcGC(seqStr);
 		if(gc < opt::minGC || gc > opt::maxGC)
@@ -373,8 +376,8 @@ void parsePreprocessOptions(int argc, char** argv)
 			case '?': die = true; break;
 			case 'v': opt::verbose++; break;
 			case OPT_PERMUTE: opt::bDiscardUncalled = false; break;
-			case OPT_MINGC: arg >> opt::minGC; break;
-			case OPT_MAXGC: arg >> opt::maxGC; break;
+			case OPT_MINGC: arg >> opt::minGC; opt::bFilterGC = true; break;
+			case OPT_MAXGC: arg >> opt::maxGC; opt::bFilterGC = true; break;
 			case OPT_QSCALE:
 				if(arg.str() == "none")
 				{
