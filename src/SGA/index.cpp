@@ -34,7 +34,7 @@ static const char *INDEX_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"  -d, --disk                           Use disk-based BWT construction algorithm\n"
+"  -d, --disk                           use disk-based BWT construction algorithm\n"
 "  -c, --check                          validate that the suffix array/bwt is correct\n"
 "  -p, --prefix=PREFIX                  write index to file using PREFIX instead of prefix of READSFILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
