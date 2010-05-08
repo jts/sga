@@ -24,18 +24,21 @@ BWTWriter::~BWTWriter()
 
 void BWTWriter::write(const BWT* pBWT)
 {
-	writeHeader(pBWT->m_numStrings, pBWT->m_bwStr.size());
+	writeHeader(pBWT->m_numStrings, pBWT->m_bwStr.size(), BWF_HASFMI);
 	writeBWStr(pBWT->m_bwStr);
 	writePred(pBWT->m_predCount);
 	writeOccurrence(pBWT->m_occurrence);
 }
 
 //
-void BWTWriter::writeHeader(const size_t& num_strings, const size_t& num_symbols)
+void BWTWriter::writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag)
 {
 	assert(m_stage == IOS_HEADER);
+	*m_pWriter << BWT_FILE_MAGIC << "\n";
 	*m_pWriter << num_strings << "\n";
 	*m_pWriter << num_symbols << "\n";
+	int temp = flag;
+	*m_pWriter << temp << "\n";
 	m_stage = IOS_BWSTR;	
 }
 

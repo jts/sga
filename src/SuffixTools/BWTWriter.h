@@ -24,8 +24,8 @@ class BWTWriter
 
 		//
 		void write(const BWT* pBWT);
-		void writeHeader(const size_t& num_strings, const size_t& num_symbols);
-		void writeBWStr(const std::string& str);
+		void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);
+		void writeBWStr(const std::string& str); 
 		void writeBWChar(char b);
 		void writePred(const AlphaCount& pc);
 		void writeOccurrence(const Occurrence& icc);

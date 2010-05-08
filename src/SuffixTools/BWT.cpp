@@ -45,6 +45,12 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 		m_bwStr[i] = (l_pos == si.seq.length()) ? '$' : si.seq.get(l_pos);
 	}
 
+	initializeFMIndex();
+}
+
+// Fill in the FM-index data structures
+void BWT::initializeFMIndex()
+{
 	// initialize the occurance table
 	m_occurrence.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
 

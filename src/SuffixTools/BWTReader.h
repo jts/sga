@@ -13,6 +13,8 @@
 #include "STCommon.h"
 #include "Occurrence.h"
 
+const uint16_t BWT_FILE_MAGIC = 0xEFEF;
+
 enum BWIOStage
 {
 	IOS_NONE,
@@ -21,6 +23,12 @@ enum BWIOStage
 	IOS_PC,
 	IOS_OCC,
 	IOS_DONE
+};
+
+enum BWFlag
+{
+	BWF_NOFMI = 0,
+	BWF_HASFMI
 };
 
 class BWT;
@@ -33,7 +41,7 @@ class BWTReader
 
 		//
 		void read(BWT* pBWT);
-		void readHeader(size_t& num_strings, size_t& num_symbols);
+		void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
 		void readBWStr(std::string& out_str);
 		char readBWChar();
 		void readPred(AlphaCount& out_pc);

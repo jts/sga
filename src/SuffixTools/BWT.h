@@ -26,7 +26,10 @@ class BWT
 		// Constructors
 		BWT(const std::string& filename);
 		BWT(const SuffixArray* pSA, const ReadTable* pRT);
-			
+		
+		//	
+		void initializeFMIndex();
+
 		// Exact match
 		void backwardSearch(std::string w) const;
 
@@ -58,14 +61,13 @@ class BWT
 			return RANK_ALPHABET[ci - 1];
 		}
 
-
 		// 
 		inline const BWStr* getBWStr() const
 		{
 			return &m_bwStr;
 		}
 
-		// Print info about the BWT, including size
+		// Print the size of the BWT
 		void printInfo() const;
 		void print(const ReadTable* pRT, const SuffixArray* pSA) const;
 		void validate() const;

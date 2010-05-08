@@ -102,10 +102,10 @@ class Occurrence
 			//return get(bwStr, idx).get(a);
 		}
 
-		
 		void set(char a, size_t i, BaseCount s);
 		void print() const;
 		size_t getByteSize() const;
+		size_t size() const { return m_values.size(); }
 		void validate(const BWStr& bwStr) const;
 
 		friend std::ostream& operator<<(std::ostream& out, const Occurrence& o);

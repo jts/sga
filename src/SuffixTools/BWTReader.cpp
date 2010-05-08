@@ -25,23 +25,49 @@ BWTReader::~BWTReader()
 void BWTReader::read(BWT* pBWT)
 {
 	size_t n;
-	readHeader(pBWT->m_numStrings, n);
+	BWFlag flag;
+	readHeader(pBWT->m_numStrings, n, flag);
 
 	pBWT->m_bwStr.resize(n);
 	readBWStr(pBWT->m_bwStr);
-
-	readPred(pBWT->m_predCount);
-	readOccurrence(pBWT->m_occurrence);
+	
+	// If the flag indicates the FM-index is stored in the file
+	// read it, otherwise construct it from BWStr
+	if(flag == BWF_HASFMI)
+	{
+		readPred(pBWT->m_predCount);
+		readOccurrence(pBWT->m_occurrence);
+	}
+	else
+	{
+		pBWT->initializeFMIndex();
+	}
 }
 
 //
-void BWTReader::readHeader(size_t& num_strings, size_t& num_symbols)
+void BWTReader::readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag)
 {
 	assert(m_stage == IOS_HEADER);
+	uint16_t magic_number;
+
+	// Ensure the file format is sane
+	*m_pReader >> magic_number;
+	if(magic_number != BWT_FILE_MAGIC)
+	{
+		std::cerr << "BWT file is not properly formatted, aborting\n";
+		exit(EXIT_FAILURE);
+	}
 	*m_pReader >> num_strings;
-	m_pReader->get(); // discard newline
 	*m_pReader >> num_symbols;
-	m_pReader->get(); // discard newline
+	int temp;
+	*m_pReader >> temp;
+	flag = static_cast<BWFlag>(temp);
+	// We must explicitly set the stream
+	// to the start of the BWStr portion of
+	// the file. The above extraction
+	// does not discard the trailing newline 
+	// so we do it here
+	m_pReader->get();
 
 	m_stage = IOS_BWSTR;	
 }
