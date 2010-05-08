@@ -8,20 +8,11 @@
 //
 #include "BWT.h"
 #include "Timer.h"
+#include "BWTReader.h"
+#include "BWTWriter.h"
 #include <istream>
 #include <queue>
 #include <inttypes.h>
-
-struct PartialAlign
-{
-	PartialAlign(int i, int n, int64_t s, int64_t e) : idx(i), z(n), i_start(s), i_end(e) {}
-	int idx; // the index of the current base being processed
-	int z; // the number of mismatches that have occured so far
-	int64_t i_start; // the start of the interval in the SA
-	int64_t i_end; // the end of the interval in the SA
-};
-
-typedef std::queue<PartialAlign> PAQueue;
 
 // macros
 #define OCC(c,i) m_occurrence.get(m_bwStr, (c), (i))
@@ -30,9 +21,8 @@ typedef std::queue<PartialAlign> PAQueue;
 // Parse a BWT from a file
 BWT::BWT(const std::string& filename)
 {
-	std::istream* pReader = createReader(filename);
-	*pReader >> *this;
-	delete pReader;
+	BWTReader reader(filename);
+	reader.read(this);
 }
 
 // Construct the BWT from a suffix array
@@ -106,97 +96,18 @@ void BWT::backwardSearch(std::string w) const
 	std::cout << "Interval found: " << r_lower << "," << r_upper << "\n";
 }
 
-void BWT::calculateD(std::string w, int minOverlap, const BWT* pRevBWT, bool contains_w, int* pD) const
-{
-	//std::cout << "D: " << w << " contains " << contains_w << "\n";
-	int min_span = (contains_w) ? 1 : 0;
-	size_t len = w.length();
-
-	int64_t r_lower = 0; 
-	int64_t r_upper = 0;
-	int z = 0;
-
-	//std::cout << "w: " << w << "\n   ";
-	for(size_t i = 0; i < len; ++i)
-		pD[i] = 0;
-
-	for(size_t i = len - minOverlap; i < len; ++i)
-	{
-		char b = w[i];
-		
-		if(i == len - minOverlap)
-		{
-			r_lower = PRED(b);
-			r_upper = r_lower + pRevBWT->getOcc(b, m_bwStr.size() - 1) - 1;
-		}
-		else
-		{
-			r_lower = PRED(b) + pRevBWT->getOcc(b, r_lower - 1);
-			r_upper = PRED(b) + pRevBWT->getOcc(b, r_upper) - 1;
-		}
-
-		//printf("j: %zu Curr: %c, Interval now: %zu,%zu\n", j, b, r_lower, r_upper);
-		int span = r_upper - r_lower + 1;
-
-		if(span <= min_span)
-		{
-			r_lower = 1;
-			r_upper = m_bwStr.size() - 1;
-			z += 1;
-		}
-		pD[i] = z;
-		//pD[i] = 0;
-	}
-	
-	/*
-	for(size_t i = 0; i < len; ++i)
-	{
-		std::cout << pD[i];
-	}
-	std::cout << "\n";
-	*/
-}
-
-
-
+//
 void BWT::validate() const
 {
 	std::cerr << "Warning BWT validation is turned on\n";
 	m_occurrence.validate(m_bwStr);
 }
 
-// Output operator
-std::ostream& operator<<(std::ostream& out, const BWT& bwt)
-{
-
-	out << bwt.m_numStrings << "\n";
-	out << bwt.m_bwStr.size() << "\n";
-	out << bwt.m_bwStr << "\n";
-	out << bwt.m_predCount << "\n";
-	out << bwt.m_occurrence;
-	return out;
-}
-
-
-// Input operator
-std::istream& operator>>(std::istream& in, BWT& bwt)
-{
-	in >> bwt.m_numStrings;
-	size_t n;
-	in >> n;
-	bwt.m_bwStr.resize(n);
-	in >> bwt.m_bwStr;
-	in >> bwt.m_predCount;
-	in >> bwt.m_occurrence;
-	return in;
-}
-
 // write the BWT to a file
 void BWT::write(std::string& filename)
 {
-	std::ostream* pWriter = createWriter(filename);
-	*pWriter << *this;
-	delete pWriter;
+	BWTWriter writer(filename);
+	writer.write(this);
 }
 
 // Print the BWT

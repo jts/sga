@@ -1,7 +1,7 @@
 //-----------------------------------------------
 // Copyright 2009 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
-// Released under the GPL license
+// Released under the GPL 
 //-----------------------------------------------
 //
 // BWT.h - Burrows Wheeler transform of a generalized suffix array
@@ -14,6 +14,7 @@
 #include "SuffixArray.h"
 #include "ReadTable.h"
 #include "HitData.h"
+#include "BWTReader.h"
 
 //
 // BWT
@@ -34,8 +35,14 @@ class BWT
 
 		inline char getChar(size_t idx) const { return m_bwStr[idx]; }
 		inline BaseCount getPC(char b) const { return m_predCount.get(b); }
+
+		// Return the number of times char b appears in bwt[0, idx]
 		inline BaseCount getOcc(char b, size_t idx) const { return m_occurrence.get(m_bwStr, b, idx); }
+
+		// Return the number of times each symbol in the alphabet appears in bwt[0, idx]
 		inline AlphaCount getFullOcc(size_t idx) const { return m_occurrence.get(m_bwStr, idx); }
+
+		// Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
 		inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
 		inline size_t getBWLen() const { return m_bwStr.length(); }
 
@@ -62,6 +69,9 @@ class BWT
 		void validate() const;
 
 		// IO
+		friend class BWTReader;
+		friend class BWTWriter;
+
 		friend std::ostream& operator<<(std::ostream& out, const BWT& bwt);
 		friend std::istream& operator>>(std::istream& in, BWT& bwt);
 		void write(std::string& filename);
@@ -76,6 +86,7 @@ class BWT
 		void calculateD(std::string w, int minOverlap, const BWT* pRevBWT, bool contains_w, int* pD) const;
 
 		static const int DEFAULT_SAMPLE_RATE = 64;
+
 		// Default constructor is not allowed
 		BWT() {}
 
