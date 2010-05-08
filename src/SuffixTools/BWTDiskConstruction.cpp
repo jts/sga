@@ -54,7 +54,7 @@ inline void incrementGapArray(int64_t rank, std::vector<GAP_TYPE>& gap_array);
 // to create the final BWT
 void buildBWTDisk(const std::string& filename, const std::string& bwt_extension)
 {
-	size_t MAX_READS_PER_GROUP = 10000;
+	size_t MAX_READS_PER_GROUP = 2000000;
 
 	SeqReader* pReader = new SeqReader(filename);
 	SeqRecord record;
