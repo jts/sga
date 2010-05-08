@@ -11,6 +11,8 @@
 //
 #include "BWTDiskConstruction.h"
 #include "Util.h"
+#include "BWTWriter.h"
+#include "BWTReader.h"
 
 #define WORKING_FILENAME "partialbwt."
 
@@ -31,9 +33,19 @@ struct MergeItem
 };
 typedef std::vector<MergeItem> MergeVector;
 
-// Functions
-MergeItem mergeBWTDisk(SeqReader* pReader, const MergeItem& item1, const MergeItem& item2);
-void updateGapArray(const DNAString& w, const BWT* pBWTInternal, std::vector<GAP_TYPE>& gap_array);
+// Function declaration
+MergeItem mergeBWTDisk(SeqReader* pReader, const MergeItem& item1, 
+                       const MergeItem& item2, const std::string& outfile);
+
+//
+void writeMergedBWT(const std::string& outfile, const std::string& external_file, 
+                    BWT* pBWTInternal, std::vector<GAP_TYPE>& gap_array);
+
+//
+void updateGapArray(const DNAString& w, const BWT* pBWTInternal, 
+                    std::vector<GAP_TYPE>& gap_array);
+
+//
 inline void incrementGapArray(int64_t rank, std::vector<GAP_TYPE>& gap_array);
 
 // The algorithm is as follows. We create M BWTs for subsets of 
@@ -110,7 +122,10 @@ void buildBWTDisk(const std::string& filename, const std::string& bwt_extension)
 	{
 		if(i + 1 != mergeVector.size())
 		{
-			MergeItem merged = mergeBWTDisk(pReader, mergeVector[i], mergeVector[i+1]);
+			std::stringstream ss;
+			ss << WORKING_FILENAME << groupID++ << bwt_extension;
+			std::string temp_filename = ss.str();
+			MergeItem merged = mergeBWTDisk(pReader, mergeVector[i], mergeVector[i+1], temp_filename);
 		}
 		else
 		{
@@ -121,9 +136,10 @@ void buildBWTDisk(const std::string& filename, const std::string& bwt_extension)
 }
 
 // Merge a pair of BWTs using disk storage
-// Precondition: pReader is position at the start
+// Precondition: pReader is positioned at the start
 // of the read block for item1
-MergeItem mergeBWTDisk(SeqReader* pReader, const MergeItem& item1, const MergeItem& item2)
+MergeItem mergeBWTDisk(SeqReader* pReader, const MergeItem& item1, 
+                       const MergeItem& item2, const std::string& outfile)
 {
 	std::cout << "Merge1: " << item1 << "\n";
 	std::cout << "Merge2: " << item2 << "\n";
@@ -152,6 +168,7 @@ MergeItem mergeBWTDisk(SeqReader* pReader, const MergeItem& item1, const MergeIt
 	}
 
 	// Write the merged BWT to disk
+	writeMergedBWT(outfile, item1.filename, pBWTInternal, gap_array);
 	delete pBWTInternal;
 
 	// Move the file pointer to the end of item2's reads.
@@ -171,9 +188,59 @@ MergeItem mergeBWTDisk(SeqReader* pReader, const MergeItem& item1, const MergeIt
 	MergeItem merged;
 	merged.start_index = item1.start_index;
 	merged.end_index = item2.end_index;
-	merged.filename = "no-merged-yet";
+	merged.filename = outfile;
 	return merged;
 }
+
+// Write the header and BWStr of the merged product
+void writeMergedBWT(const std::string& outfile, const std::string& external_file, 
+                    BWT* pBWTInternal, std::vector<GAP_TYPE>& gap_array)
+{
+	BWTWriter* pWriter = new BWTWriter(outfile);
+	BWTReader* pBWTDisk = new BWTReader(external_file);
+
+	// Calculate and write header values
+	size_t disk_strings;
+	size_t disk_symbols;
+	pBWTDisk->readHeader(disk_strings, disk_symbols);
+
+	size_t total_strings = disk_strings + pBWTInternal->getNumStrings();
+	size_t total_symbols = disk_symbols + pBWTInternal->getBWLen();
+	pWriter->writeHeader(total_strings, total_symbols);
+	
+	// Calculate and write the actual string
+	// The semantics of the gap array are that we need to write gap_array[i]
+	// symbols to the stream before writing bwtInternal[i]
+	size_t num_wrote = 0;
+	for(size_t i = 0; i < pBWTInternal->getBWLen(); ++i)
+	{
+		size_t v = gap_array[i];
+		std::cout << "Gap val: " << v << "\n";
+		for(size_t j = 0; j < v; ++j)
+		{
+			char b = pBWTDisk->readBWChar();
+			std::cout << "Read from disk: " << b << "\n";
+			assert(b != '\n');
+			pWriter->writeBWChar(b);
+			++num_wrote;
+		}
+
+		pWriter->writeBWChar(pBWTInternal->getChar(i));
+		++num_wrote;
+	}
+	
+	assert(num_wrote == total_symbols);
+
+	// Ensure we read the entire bw string from disk
+	char last = pBWTDisk->readBWChar();
+	assert(last == '\n');
+	// Write a newline to finish the bwstr section
+	pWriter->writeBWChar('\n');
+
+	delete pWriter;
+	delete pBWTDisk;
+}
+
 
 // Increment the gap array for each suffix of seq
 void updateGapArray(const DNAString& w, const BWT* pBWTInternal, std::vector<GAP_TYPE>& gap_array)
@@ -184,14 +251,21 @@ void updateGapArray(const DNAString& w, const BWT* pBWTInternal, std::vector<GAP
 	// Compute the rank of the last character of seq. We consider $ to be implicitly
 	// terminated by a $ character. The first rank calculated is for this and it is given
 	// by the C(a) array in BWTInternal
-	int64_t rank = pBWTInternal->getPC('$');
+	int64_t rank = pBWTInternal->getPC('$'); // always zero
 	incrementGapArray(rank, gap_array);
-	WARN_ONCE("Must decide precise rank of terminator characters");
+
+	// Compute the starting rank for the last symbol of w
+	char c = w.get(i);
+	rank = pBWTInternal->getPC(c);
+	incrementGapArray(rank, gap_array);
 	printf("rank %c %d\n", '$', (int)rank);
+	--i;
+
+	// Iteratively compute the rest
 	while(i >= 0)
 	{
 		char c = w.get(i);
-		rank = pBWTInternal->getPC(c) + pBWTInternal->getOcc(c, rank);
+		rank = pBWTInternal->getPC(c) + pBWTInternal->getOcc(c, rank - 1);
 		incrementGapArray(rank, gap_array);
 		printf("rank %c %d\n", c, (int)rank);
 		--i;

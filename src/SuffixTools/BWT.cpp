@@ -64,7 +64,7 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 	m_predCount.set('T', m_predCount.get('G') + tmp.get('G'));
 }
 
-// Compute the last to first mapping for this BWT
+// Compute the last to first mapping
 size_t BWT::LF(size_t idx) const
 {
 	return m_bwStr[idx] != '$' ? PRED(m_bwStr[idx]) + OCC(m_bwStr[idx], idx) : 0;

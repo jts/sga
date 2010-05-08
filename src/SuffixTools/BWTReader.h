@@ -35,6 +35,7 @@ class BWTReader
 		void read(BWT* pBWT);
 		void readHeader(size_t& num_strings, size_t& num_symbols);
 		void readBWStr(std::string& out_str);
+		char readBWChar();
 		void readPred(AlphaCount& out_pc);
 		void readOccurrence(Occurrence& out_icc);
 

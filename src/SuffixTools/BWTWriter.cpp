@@ -47,6 +47,15 @@ void BWTWriter::writeBWStr(const std::string& str)
 	m_stage = IOS_PC;
 }
 
+// Write a single character of the BWStr
+// If the char is '\n' we are finished
+void BWTWriter::writeBWChar(char b)
+{
+	m_pWriter->put(b);
+	if(b == '\n')
+		m_stage = IOS_PC;
+}
+
 //
 void BWTWriter::writePred(const AlphaCount& pc)
 {

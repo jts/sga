@@ -39,7 +39,10 @@ void BWTReader::readHeader(size_t& num_strings, size_t& num_symbols)
 {
 	assert(m_stage == IOS_HEADER);
 	*m_pReader >> num_strings;
+	m_pReader->get(); // discard newline
 	*m_pReader >> num_symbols;
+	m_pReader->get(); // discard newline
+
 	m_stage = IOS_BWSTR;	
 }
 
@@ -49,6 +52,17 @@ void BWTReader::readBWStr(std::string& out_str)
 	assert(m_stage == IOS_BWSTR);
 	*m_pReader >> out_str;
 	m_stage = IOS_PC;
+}
+
+// Read a single base from the BWStr
+char BWTReader::readBWChar()
+{
+	assert(m_stage == IOS_BWSTR);
+	char b;
+	m_pReader->get(b);
+	if(b == '\n')
+		m_stage = IOS_PC;
+	return b;
 }
 
 //
