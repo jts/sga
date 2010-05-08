@@ -71,12 +71,7 @@ class BWT
 		// IO
 		friend class BWTReader;
 		friend class BWTWriter;
-
-		friend std::ostream& operator<<(std::ostream& out, const BWT& bwt);
-		friend std::istream& operator>>(std::istream& in, BWT& bwt);
 		void write(std::string& filename);
-
-		size_t getNumLoops() const { return m_totalLoops; }
 
 	private:
 
@@ -101,8 +96,5 @@ class BWT
 
 		// The number of strings in the collection
 		size_t m_numStrings;
-
-		// profiling
-		mutable size_t m_totalLoops; 
 };
 #endif
