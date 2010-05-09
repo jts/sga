@@ -13,6 +13,8 @@
 #include "Util.h"
 #include "BWTWriter.h"
 #include "BWTReader.h"
+#include "SAWriter.h"
+#include "SAReader.h"
 
 // Definitions and structures
 typedef uint32_t GAP_TYPE;
@@ -138,7 +140,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 			}
 			else
 			{
-				// Single, pass through to the next round
+				// Singleton, pass through to the next round
 				nextMergeRound.push_back(mergeVector[i]);
 			}
 		}
@@ -147,14 +149,18 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 		mergeVector.swap(nextMergeRound);
 		++round;
 	}
-
-	// The BWT is constructed, rename the temp file
 	assert(mergeVector.size() == 1);
-	
+
+	// Done, rename the files to their final name
 	std::stringstream bwt_ss;
 	bwt_ss << out_prefix << bwt_extension << (USE_GZ ? ".gz" : "");
 	std::string bwt_final_filename = bwt_ss.str();
 	rename(mergeVector.front().bwt_filename.c_str(), bwt_final_filename.c_str());
+
+	std::stringstream sai_ss;
+	sai_ss << out_prefix << sai_extension << (USE_GZ ? ".gz" : "");
+	std::string sai_final_filename = sai_ss.str();
+	rename(mergeVector.front().sai_filename.c_str(), sai_final_filename.c_str());
 }
 
 // Merge a pair of BWTs using disk storage
@@ -197,10 +203,10 @@ MergeItem merge(SeqReader* pReader,
 	delete pBWTInternal;
 
 	// Delete the temporary files
-	//unlink(item1.bwt_filename.c_str());
-	//unlink(item2.bwt_filename.c_str());
-	//unlink(item1.sai_filename.c_str());
-	//unlink(item2.sai_filename.c_str());
+	unlink(item1.bwt_filename.c_str());
+	unlink(item2.bwt_filename.c_str());
+	unlink(item1.sai_filename.c_str());
+	unlink(item2.sai_filename.c_str());
 
 	// Move the file pointer to the end of item2's reads.
 	// This would be best done with a seek() but gzstream 
@@ -223,33 +229,30 @@ MergeItem writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalIte
                       const MergeItem& internalItem, const std::string& bwt_outname,
 					  const std::string& sai_outname, const std::vector<GAP_TYPE>& gap_array)
 {
-	BWTWriter* pWriter = new BWTWriter(bwt_outname);
-	BWTReader* pBWTDisk = new BWTReader(externalItem.bwt_filename);
+	BWTWriter bwtWriter(bwt_outname);
+	BWTReader bwtExtReader(externalItem.bwt_filename);
 	
-	std::ostream* pSAIWriter = createWriter(sai_outname);
-	std::istream* pExtSAIReader = createReader(externalItem.sai_filename);
-	std::istream* pIntSAIReader = createReader(internalItem.sai_filename);
+	SAWriter saiWriter(sai_outname);
+	SAReader saiExtReader(externalItem.sai_filename);
+	SAReader saiIntReader(internalItem.sai_filename);
 
 	// Calculate and write header values
 	size_t disk_strings;
 	size_t disk_symbols;
 	BWFlag flag;
-	pBWTDisk->readHeader(disk_strings, disk_symbols, flag);
+	bwtExtReader.readHeader(disk_strings, disk_symbols, flag);
 
 	size_t total_strings = disk_strings + pBWTInternal->getNumStrings();
 	size_t total_symbols = disk_symbols + pBWTInternal->getBWLen();
-	pWriter->writeHeader(total_strings, total_symbols, BWF_NOFMI);
+	bwtWriter.writeHeader(total_strings, total_symbols, BWF_NOFMI);
 	
 	// Discard the first two elements of each sai
-	size_t discard;
-	*pExtSAIReader >> discard;
-	*pExtSAIReader >> discard;
-	*pIntSAIReader >> discard;
-	*pIntSAIReader >> discard;
+	size_t discard1, discard2;
+	saiExtReader.readHeader(discard1, discard2);
+	saiIntReader.readHeader(discard1, discard2);
 
 	// Write the header of the SAI which is just the number of strings and elements in the SAI
-	*pSAIWriter << total_strings << "\n";
-	*pSAIWriter << total_strings << "\n";
+	saiWriter.writeHeader(total_strings, total_strings);
 
 	// Calculate and write the actual string
 	// The semantics of the gap array are that we need to write gap_array[i]
@@ -264,17 +267,16 @@ MergeItem writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalIte
 		size_t v = gap_array[i];
 		for(size_t j = 0; j < v; ++j)
 		{
-			char b = pBWTDisk->readBWChar();
+			char b = bwtExtReader.readBWChar();
 			assert(b != '\n');
-			pWriter->writeBWChar(b);
+			bwtWriter.writeBWChar(b);
 			++num_bwt_wrote;
 			
 			if(b == '$')
 			{
 				// The external indices are correct and only need to be copied
-				SAElem e; 
-				*pExtSAIReader >> e;
-				*pSAIWriter << e << "\n"; 
+				SAElem e = saiExtReader.readElem(); 
+				saiWriter.writeElem(e);
 				++num_sai_wrote;
 			}
 		}
@@ -284,21 +286,20 @@ MergeItem writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalIte
 		if(i != pBWTInternal->getBWLen())
 		{
 			char b = pBWTInternal->getChar(i);
-			pWriter->writeBWChar(b);
+			bwtWriter.writeBWChar(b);
 			++num_bwt_wrote;
 
 			if(b == '$')
 			{
-				// The external indices need to be offset
+				// The internal indices need to be offset
 				// by the number of strings in the external collection
-				SAElem e; 
-				*pIntSAIReader >> e;
+				SAElem e = saiIntReader.readElem(); 
 
 				uint64_t id = e.getID();
 				id += disk_strings;
 				e.setID(id);
 				
-				*pSAIWriter << e << "\n"; 
+				saiWriter.writeElem(e);
 				++num_sai_wrote;
 			}
 		}
@@ -307,16 +308,10 @@ MergeItem writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalIte
 	assert(num_sai_wrote == total_strings);
 
 	// Ensure we read the entire bw string from disk
-	char last = pBWTDisk->readBWChar();
+	char last = bwtExtReader.readBWChar();
 	assert(last == '\n');
 	// Write a newline to finish the bwstr section
-	pWriter->writeBWChar('\n');
-
-	delete pWriter;
-	delete pBWTDisk;
-	delete pSAIWriter;
-	delete pExtSAIReader;
-	delete pIntSAIReader;
+	bwtWriter.writeBWChar('\n');
 
 	MergeItem merged;
 	merged.start_index = externalItem.start_index;

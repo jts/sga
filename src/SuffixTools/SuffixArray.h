@@ -29,12 +29,6 @@ class SuffixArray
 		void validate(const ReadTable* pRT) const;
 		void sort(const ReadTable* pRT);
 
-		// Detect prefix/suffix overlaps in the suffix array of a minimum length
-		OverlapVector extractPrefixSuffixOverlaps(int minOverlap, const ReadTable* pRT) const;
-
-		// Detect all the redundant strings in the data set
-		SAElemPairVec detectRedundantStrings(const ReadTable* pRT) const;
-
 		// Remove all the suffixes from the SA that have an id in idSet
 		void removeReads(const NumericIDSet& idSet);
 
@@ -68,7 +62,8 @@ class SuffixArray
 
 		// friends
 		friend void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT);
-
+		friend class SAReader;
+		friend class SAWriter;
 
 	private:
 		

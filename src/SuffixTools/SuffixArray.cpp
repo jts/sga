@@ -8,20 +8,19 @@
 //
 #include "SuffixArray.h"
 #include "InverseSuffixArray.h"
-#include "LCPArray.h"
 #include "bucketSort.h"
 #include "SuffixCompare.h"
 #include "mkqs.h"
 #include "SACAInducedCopying.h"
 #include "Timer.h"
+#include "SAReader.h"
+#include "SAWriter.h"
 
 // Read a suffix array from a file
 SuffixArray::SuffixArray(const std::string& filename)
 {
-	std::ifstream in(filename.c_str());
-	assertFileOpen(in, filename);
-	in >> *this;
-	in.close();
+	SAReader reader(filename);
+	reader.read(this);
 }
 
 // Construct the suffix array for a table of reads
@@ -53,99 +52,6 @@ void SuffixArray::initialize(size_t num_suffixes, size_t num_strings)
 {
 	m_data.resize(num_suffixes);
 	m_numStrings = num_strings;
-}
-
-// Detect identical reads that can be removed from the collection
-SAElemPairVec SuffixArray::detectRedundantStrings(const ReadTable* pRT) const
-{
-	// Build the LCP array
-	LCPArray* pLCP = new LCPArray(this, pRT);
-	
-	SAElemPairVec spv;
-	size_t block_root_idx = 0; // tracks the last full-length suffix seen
-	size_t idx = 1;
-
-	while(idx < m_data.size())
-	{
-		// Check if the current entry is identical to the previous entry 
-		// (which is identical to the entry at block_root_idx)
-		const SAElem& currSAElem = get(idx);
-		if(currSAElem.isFull())
-		{
-			if(pLCP->get(idx - 1) == pRT->getReadLength(currSAElem.getID()))
-			{
-				// This read is identical to the block root
-				spv.push_back(std::make_pair(currSAElem, get(block_root_idx)));
-			}
-			else
-			{
-				// Not identical to previous block
-				block_root_idx = idx;
-			}
-		}
-		else
-		{
-			block_root_idx = idx;
-		}
-		++idx;
-	}
-
-	delete pLCP;
-	return spv;
-}
-
-// Extract all the exact prefix/suffix matches from the suffix array.
-// The algorithm iterates through the SA until it finds a full-length suffix (which is also a prefix of the string/read). 
-// It then iterates backwards from that position collecting all the proper suffixes that match some portion of the prefix
-OverlapVector SuffixArray::extractPrefixSuffixOverlaps(int minOverlap, const ReadTable* pRT) const
-{
-	// Build the LCP array
-	LCPArray* pLCP = new LCPArray(this, pRT);
-	
-	OverlapVector ov;
-	size_t i = 0;
-	while(i < m_data.size())
-	{
-		const SAElem& iElem = get(i);
-		if(iElem.isFull())
-		{
-			assert(i > 0);
-			int j = i - 1;
-			// track the minimum LCP seen in the block so far
-			// this is the amount the suffix at j matches the prefix at i
-			size_t min_lcp = pLCP->get(j);
-			std::set<uint64_t> idSet;
-			while(j >= 0 && static_cast<int>(min_lcp) >= minOverlap)
-			{
-				// Check if the length of the longest common prefix is equal to the length of the suffix
-				// (this implies that there is a perfect match between the suffix at j and the prefix at j+1)
-				// Also, check that the reads are distinct
-				SAElem jElem = get(j);
-				if(min_lcp == getSuffixLength(pRT, jElem) && iElem.getID() != jElem.getID())
-				{
-					// This is a proper prefix/suffix match
-					const SeqItem& iRead = pRT->getRead(iElem.getID());
-					const SeqItem& jRead = pRT->getRead(jElem.getID());
-					
-					// Check if we have seen a match to this id yet
-					// The first hit to a read will always be the longest
-					if(idSet.find(jElem.getID()) == idSet.end())
-					{
-						ov.push_back(Overlap(jRead.id, jElem.getPos(), jRead.seq.length() - 1, jRead.seq.length(), 
-											 iRead.id, 0, min_lcp - 1, iRead.seq.length(), false, 0));
-						idSet.insert(jElem.getID());
-					}
-				}
-				--j;
-				if(pLCP->get(j) < min_lcp)
-					min_lcp = pLCP->get(j);
-			}
-		}
-		++i;
-	}
-
-	delete pLCP;
-	return ov;
 }
 
 // Validate the suffix array using the read table
@@ -264,25 +170,20 @@ void SuffixArray::print() const
 // write the suffix array to a file
 void SuffixArray::write(std::string& filename)
 {
-	std::ofstream out(filename.c_str());
-	assertFileOpen(out, filename);
-	out << *this;
-	out.close();
+	SAWriter writer(filename);
+	writer.write(this);
 }
 
 // write the index of the suffix array to a file
 void SuffixArray::writeIndex(std::string& filename)
 {
-	std::ofstream out(filename.c_str());
-	assertFileOpen(out, filename);
-	out << m_numStrings << "\n";
-	out << m_numStrings << "\n";
+	SAWriter writer(filename);
+	writer.writeHeader(m_numStrings, m_numStrings);
 	for(size_t i = 0; i < m_data.size(); ++i)
 	{
 		if(m_data[i].isFull())
-			out << m_data[i] << "\n";
+			writer.writeElem(m_data[i]);
 	}
-	out.close();
 }
 
 // Output operator

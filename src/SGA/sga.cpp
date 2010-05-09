@@ -45,8 +45,6 @@ int main(int argc, char** argv)
 			assembleMain(argc - 1, argv + 1);
 		else if(command == "oview")
 			oviewMain(argc - 1, argv + 1);
-		else if(command == "extract")
-			extractMain(argc - 1, argv + 1);
 		else if(command == "preprocess")
 			preprocessMain(argc - 1, argv + 1);
 		else
