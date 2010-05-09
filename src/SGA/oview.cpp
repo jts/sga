@@ -46,12 +46,12 @@ static const char *OVIEW_USAGE_MESSAGE =
 
 namespace opt
 {
-	static unsigned int verbose;
-	static int max_overhang = 6;
-	static int padding = 20;
-	static std::string prefix;
-	static std::string asqgFile;
-	static std::string readFilter;
+    static unsigned int verbose;
+    static int max_overhang = 6;
+    static int padding = 20;
+    static std::string prefix;
+    static std::string asqgFile;
+    static std::string readFilter;
 }
 
 static const char* shortopts = "p:m:i:d:v";
@@ -59,14 +59,14 @@ static const char* shortopts = "p:m:i:d:v";
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-	{ "verbose",         no_argument,       NULL, 'v' },
-	{ "id",              required_argument, NULL, 'i' },
-	{ "prefix",          required_argument, NULL, 'p' },
-	{ "max-overhang",    required_argument, NULL, 'm' },
-	{ "default-padding", required_argument, NULL, 'd' },
-	{ "help",            no_argument,       NULL, OPT_HELP },
-	{ "version",         no_argument,       NULL, OPT_VERSION },
-	{ NULL, 0, NULL, 0 }
+    { "verbose",         no_argument,       NULL, 'v' },
+    { "id",              required_argument, NULL, 'i' },
+    { "prefix",          required_argument, NULL, 'p' },
+    { "max-overhang",    required_argument, NULL, 'm' },
+    { "default-padding", required_argument, NULL, 'd' },
+    { "help",            no_argument,       NULL, OPT_HELP },
+    { "version",         no_argument,       NULL, OPT_VERSION },
+    { NULL, 0, NULL, 0 }
 };
 
 //
@@ -74,120 +74,120 @@ static const struct option longopts[] = {
 //
 int oviewMain(int argc, char** argv)
 {
-	parseOviewOptions(argc, argv);
+    parseOviewOptions(argc, argv);
 
-	// parse reads and index them
-	ReadTable* pRT = new ReadTable();
-	OverlapMap* pOM = new OverlapMap;
+    // parse reads and index them
+    ReadTable* pRT = new ReadTable();
+    OverlapMap* pOM = new OverlapMap;
 
-	parseASQG(opt::asqgFile, pRT, pOM);
-	pRT->indexReadsByID();
+    parseASQG(opt::asqgFile, pRT, pOM);
+    pRT->indexReadsByID();
 
-	// draw mode
-	if(!opt::readFilter.empty())
-	{
-		drawAlignment(opt::readFilter, pRT, pOM);
-	}
-	else
-	{
-		// Output each overlap
-		for(size_t i = 0; i < pRT->getCount(); ++i)
-			drawAlignment(pRT->getRead(i).id, pRT, pOM);
-	}
+    // draw mode
+    if(!opt::readFilter.empty())
+    {
+        drawAlignment(opt::readFilter, pRT, pOM);
+    }
+    else
+    {
+        // Output each overlap
+        for(size_t i = 0; i < pRT->getCount(); ++i)
+            drawAlignment(pRT->getRead(i).id, pRT, pOM);
+    }
 
-	delete pRT;
-	delete pOM;
-	return 0;
+    delete pRT;
+    delete pOM;
+    return 0;
 }
 
 //
 void drawAlignment(std::string rootID, const ReadTable* pRT, const OverlapMap* pOM)
 {
-	std::string rootSeq = pRT->getRead(rootID).seq.toString();
-	MultiOverlap multi_overlap(rootID, rootSeq);
+    std::string rootSeq = pRT->getRead(rootID).seq.toString();
+    MultiOverlap multi_overlap(rootID, rootSeq);
 
-	// Get all the overlaps for this read
-	OverlapMap::const_iterator finder = pOM->find(rootID);
-	if(finder == pOM->end())
-		return;
+    // Get all the overlaps for this read
+    OverlapMap::const_iterator finder = pOM->find(rootID);
+    if(finder == pOM->end())
+        return;
 
-	const OverlapVector& overlaps = finder->second;
-	for(size_t j = 0; j < overlaps.size(); ++j)
-	{
-		Overlap curr = overlaps[j];
-		// Swap root read into first position if necessary
-		if(curr.id[0] != rootID)
-			curr.swap();
-		assert(curr.id[0] == rootID);
-		std::string otherSeq = pRT->getRead(curr.id[1]).seq.toString();
-		multi_overlap.add(otherSeq, curr);
-	}
-	multi_overlap.print(opt::padding, opt::max_overhang);
+    const OverlapVector& overlaps = finder->second;
+    for(size_t j = 0; j < overlaps.size(); ++j)
+    {
+        Overlap curr = overlaps[j];
+        // Swap root read into first position if necessary
+        if(curr.id[0] != rootID)
+            curr.swap();
+        assert(curr.id[0] == rootID);
+        std::string otherSeq = pRT->getRead(curr.id[1]).seq.toString();
+        multi_overlap.add(otherSeq, curr);
+    }
+    multi_overlap.print(opt::padding, opt::max_overhang);
 }
 
 void parseASQG(std::string filename, ReadTable* pRT, OverlapMap* pOM)
 {
-	std::istream* pReader = createReader(filename);
-	int stage = 0;
-	int line = 0;
-	std::string recordLine;
-	while(getline(*pReader, recordLine))
-	{
-		ASQG::RecordType rt = ASQG::getRecordType(recordLine);
-		switch(rt)
-		{
-			case ASQG::RT_HEADER:
-			{
-				if(stage != 0)
-				{
-					std::cerr << "Error: Unexpected header record found at line " << line << "\n";
-					exit(EXIT_FAILURE);
-				}
+    std::istream* pReader = createReader(filename);
+    int stage = 0;
+    int line = 0;
+    std::string recordLine;
+    while(getline(*pReader, recordLine))
+    {
+        ASQG::RecordType rt = ASQG::getRecordType(recordLine);
+        switch(rt)
+        {
+            case ASQG::RT_HEADER:
+            {
+                if(stage != 0)
+                {
+                    std::cerr << "Error: Unexpected header record found at line " << line << "\n";
+                    exit(EXIT_FAILURE);
+                }
 
-				ASQG::HeaderRecord headerRecord(recordLine);
-				(void)headerRecord; // do nothing with the header at this point
-				break;
-			}
-			case ASQG::RT_VERTEX:
-			{
-				// progress the stage if we are done the header
-				if(stage == 0)
-					stage = 1;
+                ASQG::HeaderRecord headerRecord(recordLine);
+                (void)headerRecord; // do nothing with the header at this point
+                break;
+            }
+            case ASQG::RT_VERTEX:
+            {
+                // progress the stage if we are done the header
+                if(stage == 0)
+                    stage = 1;
 
-				if(stage != 1)
-				{
-					std::cerr << "Error: Unexpected vertex record found at line " << line << "\n";
-					exit(EXIT_FAILURE);
-				}
+                if(stage != 1)
+                {
+                    std::cerr << "Error: Unexpected vertex record found at line " << line << "\n";
+                    exit(EXIT_FAILURE);
+                }
 
-				ASQG::VertexRecord vertexRecord(recordLine);
-				SeqItem si = { vertexRecord.getID(), vertexRecord.getSeq() };
-				pRT->addRead(si);
-				break;
-			}
-			case ASQG::RT_EDGE:
-			{
-				if(stage == 1)
-					stage = 2;
-				
-				if(stage != 2)
-				{
-					std::cerr << "Error: Unexpected edge record found at line " << line << "\n";
-					exit(EXIT_FAILURE);
-				}
+                ASQG::VertexRecord vertexRecord(recordLine);
+                SeqItem si = { vertexRecord.getID(), vertexRecord.getSeq() };
+                pRT->addRead(si);
+                break;
+            }
+            case ASQG::RT_EDGE:
+            {
+                if(stage == 1)
+                    stage = 2;
+                
+                if(stage != 2)
+                {
+                    std::cerr << "Error: Unexpected edge record found at line " << line << "\n";
+                    exit(EXIT_FAILURE);
+                }
 
-				ASQG::EdgeRecord edgeRecord(recordLine);
-				const Overlap& ovr = edgeRecord.getOverlap();
-				if(opt::readFilter.empty() || ovr.id[0] == opt::readFilter || ovr.id[1] == opt::readFilter)
-				{
-					(*pOM)[ovr.id[0]].push_back(ovr);
-					(*pOM)[ovr.id[1]].push_back(ovr);
-				}
-			}
-		}
-		++line;
-	}
-	delete pReader;
+                ASQG::EdgeRecord edgeRecord(recordLine);
+                const Overlap& ovr = edgeRecord.getOverlap();
+                if(opt::readFilter.empty() || ovr.id[0] == opt::readFilter || ovr.id[1] == opt::readFilter)
+                {
+                    (*pOM)[ovr.id[0]].push_back(ovr);
+                    (*pOM)[ovr.id[1]].push_back(ovr);
+                }
+            }
+        }
+        ++line;
+    }
+    delete pReader;
 }
 
 
@@ -196,51 +196,51 @@ void parseASQG(std::string filename, ReadTable* pRT, OverlapMap* pOM)
 //
 void parseOviewOptions(int argc, char** argv)
 {
-	bool die = false;
+    bool die = false;
 
-	// Defaults
-	opt::max_overhang = 6;
+    // Defaults
+    opt::max_overhang = 6;
 
-	for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
-	{
-		std::istringstream arg(optarg != NULL ? optarg : "");
-		switch (c) 
-		{
-			case 'p': arg >> opt::prefix; break;
-			case '?': die = true; break;
-			case 'v': opt::verbose++; break;
-			case 'i': arg >> opt::readFilter; break;
-			case 'm': arg >> opt::max_overhang; break;
-			case 'd': arg >> opt::padding; break;
-			case OPT_HELP:
-				std::cout << OVIEW_USAGE_MESSAGE;
-				exit(EXIT_SUCCESS);
-			case OPT_VERSION:
-				std::cout << OVIEW_VERSION_MESSAGE;
-				exit(EXIT_SUCCESS);
-		}
-	}
+    for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
+    {
+        std::istringstream arg(optarg != NULL ? optarg : "");
+        switch (c) 
+        {
+            case 'p': arg >> opt::prefix; break;
+            case '?': die = true; break;
+            case 'v': opt::verbose++; break;
+            case 'i': arg >> opt::readFilter; break;
+            case 'm': arg >> opt::max_overhang; break;
+            case 'd': arg >> opt::padding; break;
+            case OPT_HELP:
+                std::cout << OVIEW_USAGE_MESSAGE;
+                exit(EXIT_SUCCESS);
+            case OPT_VERSION:
+                std::cout << OVIEW_VERSION_MESSAGE;
+                exit(EXIT_SUCCESS);
+        }
+    }
 
-	if (argc - optind < 1) 
-	{
-		std::cerr << SUBPROGRAM ": missing arguments\n";
-		die = true;
-	} 
-	else if (argc - optind > 1) 
-	{
-		std::cerr << SUBPROGRAM ": too many arguments\n";
-		die = true;
-	}
+    if (argc - optind < 1) 
+    {
+        std::cerr << SUBPROGRAM ": missing arguments\n";
+        die = true;
+    } 
+    else if (argc - optind > 1) 
+    {
+        std::cerr << SUBPROGRAM ": too many arguments\n";
+        die = true;
+    }
 
-	if (die) 
-	{
-		std::cout << "\n" << OVIEW_USAGE_MESSAGE;
-		exit(EXIT_FAILURE);
-	}
+    if (die) 
+    {
+        std::cout << "\n" << OVIEW_USAGE_MESSAGE;
+        exit(EXIT_FAILURE);
+    }
 
-	// Parse the input filenames
-	opt::asqgFile = argv[optind++];
+    // Parse the input filenames
+    opt::asqgFile = argv[optind++];
 
-	if(opt::prefix.empty())
-		opt::prefix = stripFilename(opt::asqgFile);
+    if(opt::prefix.empty())
+        opt::prefix = stripFilename(opt::asqgFile);
 }

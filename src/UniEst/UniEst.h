@@ -69,18 +69,18 @@ static const char *USAGE_MESSAGE =
 
 namespace opt
 {
-	static unsigned int k;
-	static unsigned int verbose;
-	static double threshold;
-	static unsigned int length_cutoff;
-	static bool bUseDepth;
-	static bool bUsePairs;
-	static bool bUseGraph;
-	static std::string outfile;
-	static std::string alignFile;
-	static std::string pairedFile;
-	static std::string histFile;
-	static std::string graphFile;
+    static unsigned int k;
+    static unsigned int verbose;
+    static double threshold;
+    static unsigned int length_cutoff;
+    static bool bUseDepth;
+    static bool bUsePairs;
+    static bool bUseGraph;
+    static std::string outfile;
+    static std::string alignFile;
+    static std::string pairedFile;
+    static std::string histFile;
+    static std::string graphFile;
 }
 
 static const char* shortopts = "k:o:t:a:p:h:l:g:v";
@@ -88,19 +88,19 @@ static const char* shortopts = "k:o:t:a:p:h:l:g:v";
 enum { OPT_HELP = 1, OPT_VERSION, OPT_NODEPTH };
 
 static const struct option longopts[] = {
-	{ "kmer",        required_argument, NULL, 'k' },
-	{ "align",       required_argument, NULL, 'a' },
-	{ "paired",      required_argument, NULL, 'p' },	
-	{ "histogram",   required_argument, NULL, 'h' },	
-	{ "threshold",   required_argument, NULL, 't' },
-	{ "outfile",     required_argument, NULL, 'o' },
-	{ "len_cutoff",  required_argument, NULL, 'l' },
-	{ "graph",       required_argument, NULL, 'g' },
-	{ "no_depth",    no_argument,       NULL, OPT_NODEPTH },
-	{ "verbose",     no_argument,       NULL, 'v' },
-	{ "help",        no_argument,       NULL, OPT_HELP },
-	{ "version",     no_argument,       NULL, OPT_VERSION },
-	{ NULL, 0, NULL, 0 }
+    { "kmer",        required_argument, NULL, 'k' },
+    { "align",       required_argument, NULL, 'a' },
+    { "paired",      required_argument, NULL, 'p' },    
+    { "histogram",   required_argument, NULL, 'h' },    
+    { "threshold",   required_argument, NULL, 't' },
+    { "outfile",     required_argument, NULL, 'o' },
+    { "len_cutoff",  required_argument, NULL, 'l' },
+    { "graph",       required_argument, NULL, 'g' },
+    { "no_depth",    no_argument,       NULL, OPT_NODEPTH },
+    { "verbose",     no_argument,       NULL, 'v' },
+    { "help",        no_argument,       NULL, OPT_HELP },
+    { "version",     no_argument,       NULL, OPT_VERSION },
+    { NULL, 0, NULL, 0 }
 };
 
 

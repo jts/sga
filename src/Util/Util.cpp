@@ -17,237 +17,237 @@
 // Reverse complement a sequence
 std::string reverseComplement(const std::string& seq)
 {
-	std::string out(seq.length(), 'A');
-	size_t last_pos = seq.length() - 1;
-	for(int i = last_pos; i >= 0; --i)
-	{
-		out[last_pos - i] = complement(seq[i]);
-	}
-	return out;
+    std::string out(seq.length(), 'A');
+    size_t last_pos = seq.length() - 1;
+    for(int i = last_pos; i >= 0; --i)
+    {
+        out[last_pos - i] = complement(seq[i]);
+    }
+    return out;
 }
 
 // Reverse a sequence
 std::string reverse(const std::string& seq)
 {
-	return std::string(seq.rbegin(), seq.rend());
+    return std::string(seq.rbegin(), seq.rend());
 }
 
 // Complement a sequence
 std::string complement(const std::string& seq)
 {
-	std::string out(seq.length(), 'A');
-	size_t l = seq.length();
-	for(size_t i = 0; i < l; ++i)
-	{
-		out[i] = complement(seq[i]);
-	}
-	return out;
+    std::string out(seq.length(), 'A');
+    size_t l = seq.length();
+    for(size_t i = 0; i < l; ++i)
+    {
+        out[i] = complement(seq[i]);
+    }
+    return out;
 }
 
 // 
 std::string prefix(const std::string& seq, const unsigned int len)
 {
-	assert(seq.length() >= len);
-	return seq.substr(0, len);
+    assert(seq.length() >= len);
+    return seq.substr(0, len);
 }
 
 // 
 std::string suffix(const std::string& seq, const unsigned int len)
 {
-	assert(seq.length() >= len);
-	return seq.substr(seq.length() - len);
+    assert(seq.length() >= len);
+    return seq.substr(seq.length() - len);
 }
 
 // count the differences between s1 and s2 over the first n bases
 int countDifferences(const std::string& s1, const std::string& s2, size_t n)
 {
-	int numDiff = 0;
-	for(size_t i = 0; i < n; ++i)
-	{
-		if(s1[i] != s2[i])
-			numDiff++;
-	}
-	return numDiff;
+    int numDiff = 0;
+    for(size_t i = 0; i < n; ++i)
+    {
+        if(s1[i] != s2[i])
+            numDiff++;
+    }
+    return numDiff;
 }
 
 // count the differences between s1 and s2 over the first n bases
 std::string getDiffString(const std::string& s1, const std::string& s2)
 {
-	std::string out;
-	size_t stop = std::min(s1.size(), s2.size());
-	for(size_t i = 0; i < stop; ++i)
-		out.push_back(s1[i] == s2[i] ? '.' : s1[i]);
-	return out;
+    std::string out;
+    size_t stop = std::min(s1.size(), s2.size());
+    for(size_t i = 0; i < stop; ++i)
+        out.push_back(s1[i] == s2[i] ? '.' : s1[i]);
+    return out;
 }
 
 // Strip the leading directories and
 // the last trailling suffix from a filename
 std::string stripFilename(const std::string& filename)
 {
-	std::string out = stripDirectories(filename);
-	// Remove the gzip extension if necessary
-	if(isGzip(out))
-		out = stripExtension(out);
-	return stripExtension(out);
+    std::string out = stripDirectories(filename);
+    // Remove the gzip extension if necessary
+    if(isGzip(out))
+        out = stripExtension(out);
+    return stripExtension(out);
 }
 
 // Remove a single file extension from the filename
 std::string stripExtension(const std::string& filename)
 {
-	size_t suffixPos = filename.find_last_of('.');
-	if(suffixPos == std::string::npos)
-		return filename; // no suffix
-	else
-		return filename.substr(0, suffixPos);
+    size_t suffixPos = filename.find_last_of('.');
+    if(suffixPos == std::string::npos)
+        return filename; // no suffix
+    else
+        return filename.substr(0, suffixPos);
 }
 
 // Strip the leadering directories from a filename
 std::string stripDirectories(const std::string& filename)
 {
-	size_t lastDirPos = filename.find_last_of('/');
-	
-	if(lastDirPos == std::string::npos)
-		return filename; // no directories
-	else
-		return filename.substr(lastDirPos + 1);
+    size_t lastDirPos = filename.find_last_of('/');
+    
+    if(lastDirPos == std::string::npos)
+        return filename; // no directories
+    else
+        return filename.substr(lastDirPos + 1);
 }
 
 // Return the file extension
 std::string getFileExtension(const std::string& filename)
 {
-	size_t suffixPos = filename.find_last_of('.');
-	
-	if(suffixPos == std::string::npos)
-		return "";
-	else
-		return filename.substr(suffixPos + 1);
+    size_t suffixPos = filename.find_last_of('.');
+    
+    if(suffixPos == std::string::npos)
+        return "";
+    else
+        return filename.substr(suffixPos + 1);
 }
 
 // Returns true if the filename has an extension indicating it is compressed
 bool isGzip(const std::string& filename)
 {
-	std::string extension = suffix(filename, sizeof(GZIP_EXT) - 1);
-	return extension == GZIP_EXT;
+    std::string extension = suffix(filename, sizeof(GZIP_EXT) - 1);
+    return extension == GZIP_EXT;
 }
 
 // Open a file that may or may not be gzipped for reading
 // The caller is responsible for freeing the handle
 std::istream* createReader(const std::string& filename)
 {
-	if(isGzip(filename))
-	{
-		igzstream* pGZ = new igzstream(filename.c_str());
-		assertGZOpen(*pGZ, filename);
-		return pGZ;
-	}
-	else
-	{
-		std::ifstream* pReader = new std::ifstream(filename.c_str());
-		assertFileOpen(*pReader, filename);
-		return pReader;
-	}
+    if(isGzip(filename))
+    {
+        igzstream* pGZ = new igzstream(filename.c_str());
+        assertGZOpen(*pGZ, filename);
+        return pGZ;
+    }
+    else
+    {
+        std::ifstream* pReader = new std::ifstream(filename.c_str());
+        assertFileOpen(*pReader, filename);
+        return pReader;
+    }
 }
 
 // Open a file that may or may not be gzipped for writing
 // The caller is responsible for freeing the handle
 std::ostream* createWriter(const std::string& filename)
 {
-	if(isGzip(filename))
-	{
-		ogzstream* pGZ = new ogzstream(filename.c_str());
-		assertGZOpen(*pGZ, filename);
-		return pGZ;
-	}
-	else
-	{
-		std::ofstream* pReader = new std::ofstream(filename.c_str());
-		assertFileOpen(*pReader, filename);
-		return pReader;
-	}
+    if(isGzip(filename))
+    {
+        ogzstream* pGZ = new ogzstream(filename.c_str());
+        assertGZOpen(*pGZ, filename);
+        return pGZ;
+    }
+    else
+    {
+        std::ofstream* pReader = new std::ofstream(filename.c_str());
+        assertFileOpen(*pReader, filename);
+        return pReader;
+    }
 }
 
 // Ensure a filehandle is open
 void assertFileOpen(std::ifstream& fh, const std::string& fn)
 {
-	if(!fh.is_open())
-	{
-		std::cerr << "Error: could not open " << fn << " for read\n";
-		exit(EXIT_FAILURE);
-	}	
+    if(!fh.is_open())
+    {
+        std::cerr << "Error: could not open " << fn << " for read\n";
+        exit(EXIT_FAILURE);
+    }    
 }
 
 // Ensure a filehandle is open
 void assertFileOpen(std::ofstream& fh, const std::string& fn)
 {
-	if(!fh.is_open())
-	{
-		std::cerr << "Error: could not open " << fn << " for write\n";
-		exit(EXIT_FAILURE);
-	}	
+    if(!fh.is_open())
+    {
+        std::cerr << "Error: could not open " << fn << " for write\n";
+        exit(EXIT_FAILURE);
+    }    
 }
 
 void assertGZOpen(gzstreambase& gh, const std::string& fn)
 {
-	if(!gh.good())
-	{
-		std::cerr << "Error: could not open " << fn << std::endl;
-		exit(EXIT_FAILURE);
-	}
+    if(!gh.good())
+    {
+        std::cerr << "Error: could not open " << fn << std::endl;
+        exit(EXIT_FAILURE);
+    }
 }
 
 // Split a string into parts based on the delimiter
 StringVector split(std::string in, char delimiter)
 {
-	StringVector out;
-	size_t lastPos = 0;
-	size_t pos = in.find_first_of(delimiter);
+    StringVector out;
+    size_t lastPos = 0;
+    size_t pos = in.find_first_of(delimiter);
 
-	while(pos != std::string::npos)
-	{
-		out.push_back(in.substr(lastPos, pos - lastPos));
-		lastPos = pos + 1;
-		pos = in.find_first_of(delimiter, lastPos);
-	}
-	out.push_back(in.substr(lastPos));
-	return out;
+    while(pos != std::string::npos)
+    {
+        out.push_back(in.substr(lastPos, pos - lastPos));
+        lastPos = pos + 1;
+        pos = in.find_first_of(delimiter, lastPos);
+    }
+    out.push_back(in.substr(lastPos));
+    return out;
 }
 
 // Split a key-value pair
 void splitKeyValue(std::string in, std::string& key, std::string& value)
 {
-	StringVector parts = split(in, CAF_SEP);
-	if(parts.size() != 2)
-	{
-		std::cerr << "Invalid key-value pair " << in << std::endl;
-		assert(false);
-	}
+    StringVector parts = split(in, CAF_SEP);
+    if(parts.size() != 2)
+    {
+        std::cerr << "Invalid key-value pair " << in << std::endl;
+        assert(false);
+    }
 
-	key = parts[0];
-	value = parts[1];
+    key = parts[0];
+    value = parts[1];
 
-	assert(key.size() > 0 && value.size() > 0 && "Invalid key-value pair");
+    assert(key.size() > 0 && value.size() > 0 && "Invalid key-value pair");
 }
 
 // Get the ID of the pair of a given read
 std::string getPairID(const std::string& id)
 {
-	assert(!id.empty());
-	std::string pid(id);
+    assert(!id.empty());
+    std::string pid(id);
 
-	size_t li = id.length() - 1;
-	char last = id[li];
+    size_t li = id.length() - 1;
+    char last = id[li];
 
-	if(last == 'A')
-		pid[li] = 'B';
-	else if(last == 'B')
-		pid[li] = 'A';
-	else if(last == '1')
-		pid[li] = '2';
-	else if(last == '2')
-		pid[li] = '1';
-	else
-		pid = "";
-	return pid;
+    if(last == 'A')
+        pid[li] = 'B';
+    else if(last == 'B')
+        pid[li] = 'A';
+    else if(last == '1')
+        pid[li] = '2';
+    else if(last == '2')
+        pid[li] = '1';
+    else
+        pid = "";
+    return pid;
 }
 
 // Debug function to parse the distance between two reads
@@ -256,20 +256,20 @@ std::string getPairID(const std::string& id)
 // were sampled from
 size_t debug_getReadDistFromNames(const std::string& name1, const std::string& name2)
 {
-	std::string id;
-	std::string pos;
-	StringVector parts = split(name1, ':');
-	if(parts.size() != 2)
-		return 0;
+    std::string id;
+    std::string pos;
+    StringVector parts = split(name1, ':');
+    if(parts.size() != 2)
+        return 0;
 
-	int p1 = atoi(parts[1].c_str());
-	
-	parts = split(name2, ':');
-	if(parts.size() != 2)
-		return 0;
+    int p1 = atoi(parts[1].c_str());
+    
+    parts = split(name2, ':');
+    if(parts.size() != 2)
+        return 0;
 
-	int p2 = atoi(parts[1].c_str());
-	int dist = int(abs(p1 - p2));
-	return dist;
+    int p2 = atoi(parts[1].c_str());
+    int dist = int(abs(p1 - p2));
+    return dist;
 }
 

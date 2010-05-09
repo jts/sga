@@ -10,28 +10,28 @@
 #if 0
 Interval Interval::intersect(const Interval& r1, const Interval& r2)
 {
-	Interval result;
-	result.start = std::max(r1.start, r2.start);
-	result.end = std::min(r1.end, r2.end);
+    Interval result;
+    result.start = std::max(r1.start, r2.start);
+    result.end = std::min(r1.end, r2.end);
 
-	// Check for non-overlap
-	if(result.end <= result.start)
-	{
-		result.start = 0;
-		result.end = 0;
-	}
-	return result;
+    // Check for non-overlap
+    if(result.end <= result.start)
+    {
+        result.start = 0;
+        result.end = 0;
+    }
+    return result;
 }
 #endif
 
 std::ostream& operator<<(std::ostream& out, const Interval& r)
 {
-	out << r.start << " " << r.end;
-	return out;
+    out << r.start << " " << r.end;
+    return out;
 }
 
 std::istream& operator>>(std::istream& in, Interval& r)
 {
-	in >> r.start >> r.end;
-	return in;
+    in >> r.start >> r.end;
+    return in;
 }

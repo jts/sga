@@ -19,78 +19,78 @@
 // edge are subsequently marked as reachable so that no transitive edges are created.
 void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
 {
-	assert(pVertex == pDeleteEdge->getStart());
-	EdgePtrVec edges = pVertex->getEdges();
+    assert(pVertex == pDeleteEdge->getStart());
+    EdgePtrVec edges = pVertex->getEdges();
 
-	// this is the initial overlap between pVertex and pDeletionVertex
-	Overlap ovrXY = pDeleteEdge->getOverlap();
-	EdgeDesc edXY = pDeleteEdge->getDesc();
+    // this is the initial overlap between pVertex and pDeletionVertex
+    Overlap ovrXY = pDeleteEdge->getOverlap();
+    EdgeDesc edXY = pDeleteEdge->getDesc();
 
-	// Construct the set of vertices that are reachable by valid edges
-	EdgeDescOverlapMap exclusionSet;
-	exclusionSet.insert(std::make_pair(edXY, ovrXY));
+    // Construct the set of vertices that are reachable by valid edges
+    EdgeDescOverlapMap exclusionSet;
+    exclusionSet.insert(std::make_pair(edXY, ovrXY));
 
-	// Recursively add the vertices connected to pX to the exclusionSet
-	// except for the neighbors that are exclusively reachable from pDeleteVertex
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		Edge* pEdge = edges[i];
-		
-		// Skip adding vertices for the deletion edge
-		if(pEdge != pDeleteEdge)
-		{
-			Overlap ovr = pEdge->getOverlap();
-			EdgeDesc ed = pEdge->getDesc();
-			exclusionSet.insert(std::make_pair(ed, ovr));
+    // Recursively add the vertices connected to pX to the exclusionSet
+    // except for the neighbors that are exclusively reachable from pDeleteVertex
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Edge* pEdge = edges[i];
+        
+        // Skip adding vertices for the deletion edge
+        if(pEdge != pDeleteEdge)
+        {
+            Overlap ovr = pEdge->getOverlap();
+            EdgeDesc ed = pEdge->getDesc();
+            exclusionSet.insert(std::make_pair(ed, ovr));
 
-			// Recursively add the neighbors of pEnd to the set
-			addOverlapsToSet(pVertex, ed, ovr, exclusionSet);
-		}
-	}
-	
-	// Build the initial set of potential new overlaps from the 
-	// neighbors of pDeleteVertex. Filter out any edges that are 
-	// already present in the exclusion set. We don't want the exclusion
-	// set to be modified
+            // Recursively add the neighbors of pEnd to the set
+            addOverlapsToSet(pVertex, ed, ovr, exclusionSet);
+        }
+    }
+    
+    // Build the initial set of potential new overlaps from the 
+    // neighbors of pDeleteVertex. Filter out any edges that are 
+    // already present in the exclusion set. We don't want the exclusion
+    // set to be modified
 
-	EdgeDescSet seenEdges;
-	// Populate the seen edges with the contents of the exclusion set
-	for(EdgeDescOverlapMap::iterator iter = exclusionSet.begin(); 
-	                                 iter != exclusionSet.end(); ++iter)
-	{
-		seenEdges.insert(iter->first);
-	}
+    EdgeDescSet seenEdges;
+    // Populate the seen edges with the contents of the exclusion set
+    for(EdgeDescOverlapMap::iterator iter = exclusionSet.begin(); 
+                                     iter != exclusionSet.end(); ++iter)
+    {
+        seenEdges.insert(iter->first);
+    }
 
-	ExplorePriorityQueue exploreQueue;
-	enqueueEdges(pVertex, edXY, ovrXY, exploreQueue, &seenEdges);
+    ExplorePriorityQueue exploreQueue;
+    enqueueEdges(pVertex, edXY, ovrXY, exploreQueue, &seenEdges);
 
-	// Iterate through the queue in order of overlap length
-	while(!exploreQueue.empty())
-	{
-		ExploreElement currElem = exploreQueue.top();
-		exploreQueue.pop();
-		// Case 1, endpoint is reachable from some other edge of pVertex
-		// and is therefore transitive
-		if(exclusionSet.count(currElem.ed) > 0)
-			continue;
+    // Iterate through the queue in order of overlap length
+    while(!exploreQueue.empty())
+    {
+        ExploreElement currElem = exploreQueue.top();
+        exploreQueue.pop();
+        // Case 1, endpoint is reachable from some other edge of pVertex
+        // and is therefore transitive
+        if(exclusionSet.count(currElem.ed) > 0)
+            continue;
 
-		// Case 2, this may form a valid edge
-		double error_rate = calcErrorRate(pVertex, currElem.ed.pVertex, currElem.ovr);
-		int overlap_len = currElem.ovr.match.getMinOverlapLength();
-		if(overlap_len >= pGraph->getMinOverlap())
-		{
-			if(isErrorRateAcceptable(error_rate, pGraph->getErrorRate()))
-			{
-				//std::cout << "Adding edge " << currElem.ovr << "\n";
-				Edge* pCreatedEdge = SGUtil::createEdges(pGraph, currElem.ovr, false);
-				assert(pCreatedEdge != NULL);
-				assert(pCreatedEdge->getDesc() == currElem.ed);
-				
-				// This vertex is now connected to pVertex, add its neighbors to the exclusion set
-				addOverlapsToSet(pVertex, currElem.ed, currElem.ovr, exclusionSet);
-			}
-		}
-	}
+        // Case 2, this may form a valid edge
+        double error_rate = calcErrorRate(pVertex, currElem.ed.pVertex, currElem.ovr);
+        int overlap_len = currElem.ovr.match.getMinOverlapLength();
+        if(overlap_len >= pGraph->getMinOverlap())
+        {
+            if(isErrorRateAcceptable(error_rate, pGraph->getErrorRate()))
+            {
+                //std::cout << "Adding edge " << currElem.ovr << "\n";
+                Edge* pCreatedEdge = SGUtil::createEdges(pGraph, currElem.ovr, false);
+                assert(pCreatedEdge != NULL);
+                assert(pCreatedEdge->getDesc() == currElem.ed);
+                
+                // This vertex is now connected to pVertex, add its neighbors to the exclusion set
+                addOverlapsToSet(pVertex, currElem.ed, currElem.ovr, exclusionSet);
+            }
+        }
+    }
 }
 
 // Add the neighbors of pY to the explore queue if they overlap pX. If pSeenSet
@@ -98,74 +98,74 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 void SGAlgorithms::enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
                                 ExplorePriorityQueue& outQueue, EdgeDescSet* pSeenSet)
 {
-	Vertex* pY = edXY.pVertex;
-	EdgeDir dirY = correctDir(edXY.dir, edXY.comp);
-	EdgePtrVec neighborEdges = pY->getEdges(dirY);
+    Vertex* pY = edXY.pVertex;
+    EdgeDir dirY = correctDir(edXY.dir, edXY.comp);
+    EdgePtrVec neighborEdges = pY->getEdges(dirY);
 
-	for(size_t i = 0; i < neighborEdges.size(); ++i)
-	{
-		Edge* pEdgeYZ = neighborEdges[i];
-		if(pEdgeYZ->getEnd() != pX)
-		{
-			EdgeDesc edYZ = pEdgeYZ->getDesc();
-			EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
-			bool isExcluded = pSeenSet != NULL && pSeenSet->count(edXZ) > 0;
-			if(!isExcluded)
-			{
-				Overlap ovrYZ = pEdgeYZ->getOverlap();
-				
-				// Check that this vertex actually overlaps pX
-				if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
-				{
-					Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
-					//std::cout << "Inferred overlap: " << ovrXZ << " ed: " << edXZ << " from: " << pY->getID() << "\n";
-					ExploreElement elem(edXZ, ovrXZ);
-					outQueue.push(elem);
-					pSeenSet->insert(edXZ);
-					enqueueEdges(pX, edXZ, ovrXZ, outQueue, pSeenSet);
-				}
-			}
-		}
-	}
+    for(size_t i = 0; i < neighborEdges.size(); ++i)
+    {
+        Edge* pEdgeYZ = neighborEdges[i];
+        if(pEdgeYZ->getEnd() != pX)
+        {
+            EdgeDesc edYZ = pEdgeYZ->getDesc();
+            EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
+            bool isExcluded = pSeenSet != NULL && pSeenSet->count(edXZ) > 0;
+            if(!isExcluded)
+            {
+                Overlap ovrYZ = pEdgeYZ->getOverlap();
+                
+                // Check that this vertex actually overlaps pX
+                if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+                {
+                    Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+                    //std::cout << "Inferred overlap: " << ovrXZ << " ed: " << edXZ << " from: " << pY->getID() << "\n";
+                    ExploreElement elem(edXZ, ovrXZ);
+                    outQueue.push(elem);
+                    pSeenSet->insert(edXZ);
+                    enqueueEdges(pX, edXZ, ovrXZ, outQueue, pSeenSet);
+                }
+            }
+        }
+    }
 }
 
 // Recursively add overlaps to pX inferred from the edges of pY to outMap
 void SGAlgorithms::addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, EdgeDescOverlapMap& outMap)
 {
-	Vertex* pY = edXY.pVertex;
+    Vertex* pY = edXY.pVertex;
 
-	// Calculate the direction of the edge coming out of Y
-	EdgeDir dirY = correctDir(edXY.dir, edXY.comp);
-	EdgePtrVec neighborEdges = pY->getEdges(dirY);
-	for(size_t i = 0; i < neighborEdges.size(); ++i)
-	{
-		Edge* pEdgeYZ = neighborEdges[i];
-		EdgeDesc edYZ = pEdgeYZ->getDesc();
-		EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
-		Vertex* pZ = pEdgeYZ->getEnd();
+    // Calculate the direction of the edge coming out of Y
+    EdgeDir dirY = correctDir(edXY.dir, edXY.comp);
+    EdgePtrVec neighborEdges = pY->getEdges(dirY);
+    for(size_t i = 0; i < neighborEdges.size(); ++i)
+    {
+        Edge* pEdgeYZ = neighborEdges[i];
+        EdgeDesc edYZ = pEdgeYZ->getDesc();
+        EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
+        Vertex* pZ = pEdgeYZ->getEnd();
 
-		if(pZ != pX && outMap.count(edXZ) == 0)
-		{
-			Overlap ovrYZ = pEdgeYZ->getOverlap();
-			EdgeDesc edYZ = pEdgeYZ->getDesc();
+        if(pZ != pX && outMap.count(edXZ) == 0)
+        {
+            Overlap ovrYZ = pEdgeYZ->getOverlap();
+            EdgeDesc edYZ = pEdgeYZ->getDesc();
 
-			// Check that this vertex actually overlaps pX
-			if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
-			{
-				Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
-				EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
-				outMap.insert(std::make_pair(edXZ, ovrXZ));
-				addOverlapsToSet(pX, edXZ, ovrXZ, outMap);
-			}
-		}
-	}
+            // Check that this vertex actually overlaps pX
+            if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+            {
+                Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+                EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
+                outMap.insert(std::make_pair(edXZ, ovrXZ));
+                addOverlapsToSet(pX, edXZ, ovrXZ, outMap);
+            }
+        }
+    }
 }
 
 // Calculate the error rate between the two vertices
 double SGAlgorithms::calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY)
 {
-	int num_diffs = ovrXY.match.countDifferences(pX->getSeq(), pY->getSeq());
-	return static_cast<double>(num_diffs) / static_cast<double>(ovrXY.match.getMinOverlapLength());
+    int num_diffs = ovrXY.match.countDifferences(pX->getSeq(), pY->getSeq());
+    return static_cast<double>(num_diffs) / static_cast<double>(ovrXY.match.getMinOverlapLength());
 }
 
 // Infer an overlap from two edges
@@ -173,18 +173,18 @@ double SGAlgorithms::calcErrorRate(const Vertex* pX, const Vertex* pY, const Ove
 // and the returned overlap is X->Z
 Overlap SGAlgorithms::inferTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ)
 {
-	// Construct the match
-	Match match_yx = ovrXY.match;
-	match_yx.swap(); 
-	Match match_yz = ovrYZ.match;
+    // Construct the match
+    Match match_yx = ovrXY.match;
+    match_yx.swap(); 
+    Match match_yz = ovrYZ.match;
 
-	// Infer the match_ij based match_i and match_j
-	Match match_xz = Match::infer(match_yx, match_yz);
-	match_xz.expand();
+    // Infer the match_ij based match_i and match_j
+    Match match_xz = Match::infer(match_yx, match_yz);
+    match_xz.expand();
 
-	// Convert the match to an overlap
-	Overlap ovr(ovrXY.id[0], ovrYZ.id[1], match_xz);
-	return ovr;
+    // Convert the match to an overlap
+    Overlap ovr(ovrXY.id[0], ovrYZ.id[1], match_xz);
+    return ovr;
 }
 
 // Infer an EdgeDesc between X -> Z
@@ -193,123 +193,123 @@ Overlap SGAlgorithms::inferTransitiveOverlap(const Overlap& ovrXY, const Overlap
 // and the returned overlap is X->Z
 EdgeDesc SGAlgorithms::inferTransitiveEdgeDesc(const EdgeDesc& edXY, const EdgeDesc& edYZ)
 {
-	EdgeDesc out;
-	out.pVertex = edYZ.pVertex; // the endpoint is Z
-	out.dir = edXY.dir; // it must be in the same direction as X->Y
-	out.comp = (edYZ.comp == EC_REVERSE) ? !edXY.comp : edXY.comp;
-	return out;
+    EdgeDesc out;
+    out.pVertex = edYZ.pVertex; // the endpoint is Z
+    out.dir = edXY.dir; // it must be in the same direction as X->Y
+    out.comp = (edYZ.comp == EC_REVERSE) ? !edXY.comp : edXY.comp;
+    return out;
 }
 
 // Return true if XZ has an overlap
 bool SGAlgorithms::hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ)
 {
-	Match match_yx = ovrXY.match;
-	match_yx.swap(); 
-	Match match_yz = ovrYZ.match;
-	return Match::doMatchesIntersect(match_yx, match_yz);
+    Match match_yx = ovrXY.match;
+    match_yx.swap(); 
+    Match match_yz = ovrYZ.match;
+    return Match::doMatchesIntersect(match_yx, match_yz);
 }
 
 // Construct an extended multioverlap for a vertex
 MultiOverlap SGAlgorithms::makeExtendedMultiOverlap(const Vertex* pVertex)
 {
-	EdgeDescOverlapMap overlapMap;
-	findOverlapMap(pVertex, 1.0f, 0, overlapMap);
+    EdgeDescOverlapMap overlapMap;
+    findOverlapMap(pVertex, 1.0f, 0, overlapMap);
 
-	MultiOverlap mo(pVertex->getID(), pVertex->getSeq());
-	for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
-	    iter != overlapMap.end(); ++iter)
-	{
-		mo.add(iter->first.pVertex->getSeq(), iter->second);
-	}
-	return mo;
+    MultiOverlap mo(pVertex->getID(), pVertex->getSeq());
+    for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
+        iter != overlapMap.end(); ++iter)
+    {
+        mo.add(iter->first.pVertex->getSeq(), iter->second);
+    }
+    return mo;
 }
 
 //
 void SGAlgorithms::makeExtendedSeqTries(const Vertex* pVertex, double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie)
 {
-	double lp = log(p_error);
-	EdgeDescOverlapMap overlapMap;
-	findOverlapMap(pVertex, 1.0f, 0, overlapMap);
+    double lp = log(p_error);
+    EdgeDescOverlapMap overlapMap;
+    findOverlapMap(pVertex, 1.0f, 0, overlapMap);
 
-	for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
-	    iter != overlapMap.end(); ++iter)
-	{
-		// Coord[0] of the match is wrt pVertex, coord[1] is the other read
-		std::string overlapped = iter->second.match.coord[1].getSubstring(iter->first.pVertex->getSeq());
-		if(iter->second.match.isRC())
-			overlapped = reverseComplement(overlapped);
+    for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
+        iter != overlapMap.end(); ++iter)
+    {
+        // Coord[0] of the match is wrt pVertex, coord[1] is the other read
+        std::string overlapped = iter->second.match.coord[1].getSubstring(iter->first.pVertex->getSeq());
+        if(iter->second.match.isRC())
+            overlapped = reverseComplement(overlapped);
 
-		if(iter->second.match.coord[0].isRightExtreme())
-		{
-			overlapped = reverse(overlapped);
-			pRightTrie->insert(overlapped, lp);
-		}
-		else
-		{
-			assert(iter->second.match.coord[0].isLeftExtreme());
-			pLeftTrie->insert(overlapped, lp);
-		}
-	}		
+        if(iter->second.match.coord[0].isRightExtreme())
+        {
+            overlapped = reverse(overlapped);
+            pRightTrie->insert(overlapped, lp);
+        }
+        else
+        {
+            assert(iter->second.match.coord[0].isLeftExtreme());
+            pLeftTrie->insert(overlapped, lp);
+        }
+    }        
 }
 
 
 // Get the complete set of overlaps for the given vertex
 void SGAlgorithms::findOverlapMap(const Vertex* pVertex, double maxER, int minLength, EdgeDescOverlapMap& outMap)
 {
-	EdgePtrVec edges = pVertex->getEdges();
+    EdgePtrVec edges = pVertex->getEdges();
 
-	// Add the primary overlaps to the map, and all the nodes reachable from the primaries
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		Edge* pEdge = edges[i];
-		EdgeDesc ed = pEdge->getDesc();
-		Overlap ovr = pEdge->getOverlap();
-		outMap.insert(std::make_pair(ed, ovr));
+    // Add the primary overlaps to the map, and all the nodes reachable from the primaries
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Edge* pEdge = edges[i];
+        EdgeDesc ed = pEdge->getDesc();
+        Overlap ovr = pEdge->getOverlap();
+        outMap.insert(std::make_pair(ed, ovr));
 
-		// Recursively add nodes attached to pEnd
-		SGAlgorithms::_discoverOverlaps(pVertex, ed, ovr, maxER, minLength, outMap);
-	}
+        // Recursively add nodes attached to pEnd
+        SGAlgorithms::_discoverOverlaps(pVertex, ed, ovr, maxER, minLength, outMap);
+    }
 }
 
 // Find overlaps to vertex X via the edges of vertex Y
 void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const EdgeDesc& edXY, 
                                     const Overlap& ovrXY, double maxER, int minLength, EdgeDescOverlapMap& outMap)
 {
-	Vertex* pY = edXY.pVertex;
-	EdgeDir dirY = correctDir(edXY.dir, edXY.comp);
-	EdgePtrVec edges = pY->getEdges(dirY);
+    Vertex* pY = edXY.pVertex;
+    EdgeDir dirY = correctDir(edXY.dir, edXY.comp);
+    EdgePtrVec edges = pY->getEdges(dirY);
 
-	// 
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		Edge* pYZ = edges[i];
-		Overlap ovrYZ = pYZ->getOverlap();
-		EdgeDesc edYZ = pYZ->getDesc();
-		Vertex* pZ = pYZ->getEnd();
+    // 
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Edge* pYZ = edges[i];
+        Overlap ovrYZ = pYZ->getOverlap();
+        EdgeDesc edYZ = pYZ->getDesc();
+        Vertex* pZ = pYZ->getEnd();
 
-		// Ignore self overlaps
-		if(pZ == pX)
-			continue;
+        // Ignore self overlaps
+        if(pZ == pX)
+            continue;
 
-		// Check that this vertex actually overlaps pX
-		if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
-		{
-			Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
-			EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
-			
-			// Compute the error rate between the sequences
-			double error_rate = SGAlgorithms::calcErrorRate(pX, pZ, ovrXZ);
-			if(isErrorRateAcceptable(error_rate, maxER) && ovrXZ.getOverlapLength(0) >= minLength)
-			{
-				std::pair<EdgeDescOverlapMap::iterator, bool> ret = outMap.insert(std::make_pair(edXZ, ovrXZ));
-				if(ret.second)
-				{
-					// The pair was inserted, recursively add neighbors
-					_discoverOverlaps(pX, edXZ, ovrXZ, maxER, minLength, outMap);
-				}
-			}
-		}
-	}
+        // Check that this vertex actually overlaps pX
+        if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+        {
+            Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+            EdgeDesc edXZ = SGAlgorithms::inferTransitiveEdgeDesc(edXY, edYZ);
+            
+            // Compute the error rate between the sequences
+            double error_rate = SGAlgorithms::calcErrorRate(pX, pZ, ovrXZ);
+            if(isErrorRateAcceptable(error_rate, maxER) && ovrXZ.getOverlapLength(0) >= minLength)
+            {
+                std::pair<EdgeDescOverlapMap::iterator, bool> ret = outMap.insert(std::make_pair(edXZ, ovrXZ));
+                if(ret.second)
+                {
+                    // The pair was inserted, recursively add neighbors
+                    _discoverOverlaps(pX, edXZ, ovrXZ, maxER, minLength, outMap);
+                }
+            }
+        }
+    }
 }
 
 //
@@ -318,10 +318,10 @@ void SGAlgorithms::_discoverOverlaps(const Vertex* pX, const EdgeDesc& edXY,
 //
 bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	m_fileHandle << ">" << pVertex->getID() << " " <<  pVertex->getSeq().length() 
-				 << " " << pVertex->getReadCount() << "\n";
-	m_fileHandle << pVertex->getSeq() << "\n";
-	return false;
+    m_fileHandle << ">" << pVertex->getID() << " " <<  pVertex->getSeq().length() 
+                 << " " << pVertex->getReadCount() << "\n";
+    m_fileHandle << pVertex->getSeq() << "\n";
+    return false;
 }
 
 
@@ -330,14 +330,14 @@ bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 //
 bool SGOverlapWriterVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	EdgePtrVec edges = pVertex->getEdges();
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		Overlap ovr = edges[i]->getOverlap();
-		if(ovr.id[0] < ovr.id[1])
-			m_fileHandle << ovr << "\n";
-	}
-	return false;
+    EdgePtrVec edges = pVertex->getEdges();
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Overlap ovr = edges[i]->getOverlap();
+        if(ovr.id[0] < ovr.id[1])
+            m_fileHandle << ovr << "\n";
+    }
+    return false;
 }
 
 
@@ -349,129 +349,129 @@ bool SGOverlapWriterVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 // Precondition: the edge list is sorted by length (ascending)
 void SGTransitiveReductionVisitor::previsit(StringGraph* pGraph)
 {
-	// The graph must not have containments
-	assert(!pGraph->hasContainment());
+    // The graph must not have containments
+    assert(!pGraph->hasContainment());
 
-	// Set all the vertices in the graph to "vacant"
-	pGraph->setColors(GC_WHITE);
-	pGraph->sortVertexAdjListsByLen();
+    // Set all the vertices in the graph to "vacant"
+    pGraph->setColors(GC_WHITE);
+    pGraph->sortVertexAdjListsByLen();
 
-	marked_verts = 0;
-	marked_edges = 0;
+    marked_verts = 0;
+    marked_edges = 0;
 }
 
 bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	size_t trans_count = 0;
-	static const size_t FUZZ = 10; // see myers...
+    size_t trans_count = 0;
+    static const size_t FUZZ = 10; // see myers...
 
-	for(size_t idx = 0; idx < ED_COUNT; idx++)
-	{
-		EdgeDir dir = EDGE_DIRECTIONS[idx];
-		EdgePtrVec edges = pVertex->getEdges(dir); // These edges are already sorted
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        EdgePtrVec edges = pVertex->getEdges(dir); // These edges are already sorted
 
-		if(edges.size() == 0)
-			continue;
+        if(edges.size() == 0)
+            continue;
 
-		for(size_t i = 0; i < edges.size(); ++i)
-			(edges[i])->getEnd()->setColor(GC_GRAY);
+        for(size_t i = 0; i < edges.size(); ++i)
+            (edges[i])->getEnd()->setColor(GC_GRAY);
 
-		Edge* pLongestEdge = edges.back();
-		size_t longestLen = pLongestEdge->getSeqLen() + FUZZ;
-		
-		// Stage 1
-		for(size_t i = 0; i < edges.size(); ++i)
-		{
-			Edge* pVWEdge = edges[i];
-			Vertex* pWVert = pVWEdge->getEnd();
+        Edge* pLongestEdge = edges.back();
+        size_t longestLen = pLongestEdge->getSeqLen() + FUZZ;
+        
+        // Stage 1
+        for(size_t i = 0; i < edges.size(); ++i)
+        {
+            Edge* pVWEdge = edges[i];
+            Vertex* pWVert = pVWEdge->getEnd();
 
-			//std::cout << "Examining edges from " << pWVert->getID() << " longest: " << longestLen << "\n";
-			//std::cout << pWVert->getID() << " w_edges: \n";
-			EdgeDir transDir = !pVWEdge->getTwinDir();
-			if(pWVert->getColor() == GC_GRAY)
-			{
-				EdgePtrVec w_edges = pWVert->getEdges(transDir);
-				for(size_t j = 0; j < w_edges.size(); ++j)
-				{
-					Edge* pWXEdge = w_edges[j];
-					size_t trans_len = pVWEdge->getSeqLen() + pWXEdge->getSeqLen();
-					if(trans_len <= longestLen)
-					{
-						if(pWXEdge->getEnd()->getColor() == GC_GRAY)
-						{
-							// X is the endpoint of an edge of V, therefore it is transitive
-							pWXEdge->getEnd()->setColor(GC_BLACK);
-							//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << "\n";
-						}
-					}
-					else
-						break;
-				}
-			}
-		}
-		
-		// Stage 2
-		for(size_t i = 0; i < edges.size(); ++i)
-		{
-			Edge* pVWEdge = edges[i];
-			Vertex* pWVert = pVWEdge->getEnd();
+            //std::cout << "Examining edges from " << pWVert->getID() << " longest: " << longestLen << "\n";
+            //std::cout << pWVert->getID() << " w_edges: \n";
+            EdgeDir transDir = !pVWEdge->getTwinDir();
+            if(pWVert->getColor() == GC_GRAY)
+            {
+                EdgePtrVec w_edges = pWVert->getEdges(transDir);
+                for(size_t j = 0; j < w_edges.size(); ++j)
+                {
+                    Edge* pWXEdge = w_edges[j];
+                    size_t trans_len = pVWEdge->getSeqLen() + pWXEdge->getSeqLen();
+                    if(trans_len <= longestLen)
+                    {
+                        if(pWXEdge->getEnd()->getColor() == GC_GRAY)
+                        {
+                            // X is the endpoint of an edge of V, therefore it is transitive
+                            pWXEdge->getEnd()->setColor(GC_BLACK);
+                            //std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << "\n";
+                        }
+                    }
+                    else
+                        break;
+                }
+            }
+        }
+        
+        // Stage 2
+        for(size_t i = 0; i < edges.size(); ++i)
+        {
+            Edge* pVWEdge = edges[i];
+            Vertex* pWVert = pVWEdge->getEnd();
 
-			//std::cout << "Examining edges from " << pWVert->getID() << " longest: " << longestLen << "\n";
-			//std::cout << pWVert->getID() << " w_edges: \n";
-			EdgeDir transDir = !pVWEdge->getTwinDir();
-			EdgePtrVec w_edges = pWVert->getEdges(transDir);
-			for(size_t j = 0; j < w_edges.size(); ++j)
-			{
-				//std::cout << "	edge: " << *w_edges[j] << "\n";
-				Edge* pWXEdge = w_edges[j];
-				size_t len = pWXEdge->getSeqLen();
+            //std::cout << "Examining edges from " << pWVert->getID() << " longest: " << longestLen << "\n";
+            //std::cout << pWVert->getID() << " w_edges: \n";
+            EdgeDir transDir = !pVWEdge->getTwinDir();
+            EdgePtrVec w_edges = pWVert->getEdges(transDir);
+            for(size_t j = 0; j < w_edges.size(); ++j)
+            {
+                //std::cout << "    edge: " << *w_edges[j] << "\n";
+                Edge* pWXEdge = w_edges[j];
+                size_t len = pWXEdge->getSeqLen();
 
-				if(len < FUZZ || j == 0)
-				{
-					if(pWXEdge->getEnd()->getColor() == GC_GRAY)
-					{
-						// X is the endpoint of an edge of V, therefore it is transitive
-						pWXEdge->getEnd()->setColor(GC_BLACK);
-						//std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << " in stage 2";
-						//std::cout << " via " << pWVert->getID() << "\n";
-					}
-				}
-				else
-				{
-					break;
-				}
-			}
-		}
+                if(len < FUZZ || j == 0)
+                {
+                    if(pWXEdge->getEnd()->getColor() == GC_GRAY)
+                    {
+                        // X is the endpoint of an edge of V, therefore it is transitive
+                        pWXEdge->getEnd()->setColor(GC_BLACK);
+                        //std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << " in stage 2";
+                        //std::cout << " via " << pWVert->getID() << "\n";
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
 
-		for(size_t i = 0; i < edges.size(); ++i)
-		{
-			if(edges[i]->getEnd()->getColor() == GC_BLACK)
-			{
-				// Mark the edge and its twin for removal
-				if(edges[i]->getColor() != GC_BLACK || edges[i]->getTwin()->getColor() != GC_BLACK)
-				{
-					edges[i]->setColor(GC_BLACK);
-					edges[i]->getTwin()->setColor(GC_BLACK);
-					marked_edges += 2;
-					trans_count++;
-				}
-			}
-			edges[i]->getEnd()->setColor(GC_WHITE);
-		}
-	}
+        for(size_t i = 0; i < edges.size(); ++i)
+        {
+            if(edges[i]->getEnd()->getColor() == GC_BLACK)
+            {
+                // Mark the edge and its twin for removal
+                if(edges[i]->getColor() != GC_BLACK || edges[i]->getTwin()->getColor() != GC_BLACK)
+                {
+                    edges[i]->setColor(GC_BLACK);
+                    edges[i]->getTwin()->setColor(GC_BLACK);
+                    marked_edges += 2;
+                    trans_count++;
+                }
+            }
+            edges[i]->getEnd()->setColor(GC_WHITE);
+        }
+    }
 
-	if(trans_count > 0)
-		++marked_verts;
+    if(trans_count > 0)
+        ++marked_verts;
 
-	return false;
+    return false;
 }
 
 // Remove all the marked edges
 void SGTransitiveReductionVisitor::postvisit(StringGraph* pGraph)
 {
-	printf("TR marked %d verts and %d edges\n", marked_verts, marked_edges);
-	pGraph->sweepEdges(GC_BLACK);
-	assert(pGraph->checkColors(GC_WHITE));
+    printf("TR marked %d verts and %d edges\n", marked_verts, marked_edges);
+    pGraph->sweepEdges(GC_BLACK);
+    assert(pGraph->checkColors(GC_WHITE));
 }
 
 //
@@ -480,79 +480,79 @@ void SGTransitiveReductionVisitor::postvisit(StringGraph* pGraph)
 //
 void SGContainRemoveVisitor::previsit(StringGraph* pGraph)
 {
-	pGraph->setColors(GC_WHITE);
+    pGraph->setColors(GC_WHITE);
 }
 
 //
 bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
-	// Skip the computation if this vertex has already been marked
-	if(pVertex->getColor() == GC_BLACK)
-		return false;
+    // Skip the computation if this vertex has already been marked
+    if(pVertex->getColor() == GC_BLACK)
+        return false;
 
-	EdgePtrVec edges = pVertex->getEdges();
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		Overlap ovr = edges[i]->getOverlap();
-		Match m = edges[i]->getMatch();
-		if(ovr.match.isContainment())
-		{
-			Vertex* pVertexY = edges[i]->getEnd();
-			// Skip the resolution step if the vertex has already been marked
-			if(pVertexY->getColor() == GC_BLACK)
-				continue;
+    EdgePtrVec edges = pVertex->getEdges();
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Overlap ovr = edges[i]->getOverlap();
+        Match m = edges[i]->getMatch();
+        if(ovr.match.isContainment())
+        {
+            Vertex* pVertexY = edges[i]->getEnd();
+            // Skip the resolution step if the vertex has already been marked
+            if(pVertexY->getColor() == GC_BLACK)
+                continue;
 
-			Vertex* pToRemove = NULL;
-			
-			// If containedIdx is 0, then this vertex is the one to remove
-			if(ovr.getContainedIdx() == 0)
-			{
-				pToRemove = pVertex;
-			}
-			else
-			{
-				pToRemove = pVertexY;
-			}
+            Vertex* pToRemove = NULL;
+            
+            // If containedIdx is 0, then this vertex is the one to remove
+            if(ovr.getContainedIdx() == 0)
+            {
+                pToRemove = pVertex;
+            }
+            else
+            {
+                pToRemove = pVertexY;
+            }
 
-			assert(pToRemove != NULL);
-			pToRemove->setColor(GC_BLACK);
+            assert(pToRemove != NULL);
+            pToRemove->setColor(GC_BLACK);
 
 
-			// Add any new irreducible edges that exist when pToRemove is deleted
-			// from the graph
-			EdgePtrVec neighborEdges = pToRemove->getEdges();
-			
-			// This must be done in order of edge length or some transitive edges
-			// may be created
-			EdgeLenComp comp;
-			std::sort(neighborEdges.begin(), neighborEdges.end(), comp);
+            // Add any new irreducible edges that exist when pToRemove is deleted
+            // from the graph
+            EdgePtrVec neighborEdges = pToRemove->getEdges();
+            
+            // This must be done in order of edge length or some transitive edges
+            // may be created
+            EdgeLenComp comp;
+            std::sort(neighborEdges.begin(), neighborEdges.end(), comp);
 
-			for(size_t j = 0; j < neighborEdges.size(); ++j)
-			{
-				Vertex* pRemodelVert = neighborEdges[j]->getEnd();
-				Edge* pRemodelEdge = neighborEdges[j]->getTwin();
-				SGAlgorithms::remodelVertexForExcision(pGraph, 
-				                                       pRemodelVert, 
-				        							   pRemodelEdge);
-			}
-			
-			// Delete the edges from the graph
-			for(size_t j = 0; j < neighborEdges.size(); ++j)
-			{
-				Vertex* pRemodelVert = neighborEdges[j]->getEnd();
-				Edge* pRemodelEdge = neighborEdges[j]->getTwin();
-				pRemodelVert->deleteEdge(pRemodelEdge);
-				pToRemove->deleteEdge(neighborEdges[j]);
-			}
-		}
-	}
-	return false;
+            for(size_t j = 0; j < neighborEdges.size(); ++j)
+            {
+                Vertex* pRemodelVert = neighborEdges[j]->getEnd();
+                Edge* pRemodelEdge = neighborEdges[j]->getTwin();
+                SGAlgorithms::remodelVertexForExcision(pGraph, 
+                                                       pRemodelVert, 
+                                                       pRemodelEdge);
+            }
+            
+            // Delete the edges from the graph
+            for(size_t j = 0; j < neighborEdges.size(); ++j)
+            {
+                Vertex* pRemodelVert = neighborEdges[j]->getEnd();
+                Edge* pRemodelEdge = neighborEdges[j]->getTwin();
+                pRemodelVert->deleteEdge(pRemodelEdge);
+                pToRemove->deleteEdge(neighborEdges[j]);
+            }
+        }
+    }
+    return false;
 }
 
 void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
 {
-	pGraph->sweepVertices(GC_BLACK);
-	pGraph->setContainmentFlag(false);
+    pGraph->sweepVertices(GC_BLACK);
+    pGraph->setContainmentFlag(false);
 }
 
 //
@@ -564,138 +564,138 @@ typedef std::pair<EdgeDesc, Overlap> EdgeDescOverlapPair;
 // Comparator
 struct EDOPairCompare
 {
-	bool operator()(const EdgeDescOverlapPair& edpXY, const EdgeDescOverlapPair& edpXZ)
-	{
-		return edpXY.second.match.coord[0].length() < edpXZ.second.match.coord[0].length();
-	}
+    bool operator()(const EdgeDescOverlapPair& edpXY, const EdgeDescOverlapPair& edpXZ)
+    {
+        return edpXY.second.match.coord[0].length() < edpXZ.second.match.coord[0].length();
+    }
 };
 
 //
 typedef std::priority_queue<EdgeDescOverlapPair, 
                             std::vector<EdgeDescOverlapPair>,
-							EDOPairCompare> EDOPairQueue;
+                            EDOPairCompare> EDOPairQueue;
 
 // Simple getters for std::transform
 EdgeDesc getEdgeDescFromEdge(Edge* pEdge)
 {
-	return pEdge->getDesc();
+    return pEdge->getDesc();
 }
 
 EdgeDesc getEdgeDescFromPair(const EdgeDescOverlapPair& pair)
 {
-	return pair.first;
+    return pair.first;
 }
 
 // Print the elements of A that are not in B
 void printSetDifference(const EdgeDescSet& a, const EdgeDescSet& b, const std::string& text)
 {
-	EdgeDescSet diff_set;
-	std::insert_iterator<EdgeDescSet> diff_insert(diff_set, diff_set.begin());
-	std::set_difference(a.begin(), a.end(), b.begin(), b.end(), diff_insert);
+    EdgeDescSet diff_set;
+    std::insert_iterator<EdgeDescSet> diff_insert(diff_set, diff_set.begin());
+    std::set_difference(a.begin(), a.end(), b.begin(), b.end(), diff_insert);
 
-	if(!diff_set.empty())
-	{
-		std::cout << text << "\n";
-		for(EdgeDescSet::iterator iter = diff_set.begin(); iter != diff_set.end(); ++iter)
-		{
-			std::cout << "\t" << *iter << "\n";
-		}
+    if(!diff_set.empty())
+    {
+        std::cout << text << "\n";
+        for(EdgeDescSet::iterator iter = diff_set.begin(); iter != diff_set.end(); ++iter)
+        {
+            std::cout << "\t" << *iter << "\n";
+        }
 
-		std::cout << " A set: " << "\n";
-		for(EdgeDescSet::iterator iter = a.begin(); iter != a.end(); ++iter)
-		{
-			std::cout << "\t" << *iter << "\n";
-		}
+        std::cout << " A set: " << "\n";
+        for(EdgeDescSet::iterator iter = a.begin(); iter != a.end(); ++iter)
+        {
+            std::cout << "\t" << *iter << "\n";
+        }
 
-	}
+    }
 }
 
 //
 bool SGValidateStructureVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
-	// Construct the complete set of potential overlaps for this vertex
-	SGAlgorithms::EdgeDescOverlapMap overlapMap;
-	SGAlgorithms::findOverlapMap(pVertex, pGraph->getErrorRate(), pGraph->getMinOverlap(), overlapMap);
+    // Construct the complete set of potential overlaps for this vertex
+    SGAlgorithms::EdgeDescOverlapMap overlapMap;
+    SGAlgorithms::findOverlapMap(pVertex, pGraph->getErrorRate(), pGraph->getMinOverlap(), overlapMap);
 
-	//std::cout << "Processing: " << pVertex->getID() << "\n";
-	// Remove transitive overlaps from the overlap map
-	EDOPairQueue overlapQueue;
-	for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = overlapMap.begin();
-	    iter != overlapMap.end(); ++iter)
-	{
-		overlapQueue.push(std::make_pair(iter->first, iter->second));
-	}
+    //std::cout << "Processing: " << pVertex->getID() << "\n";
+    // Remove transitive overlaps from the overlap map
+    EDOPairQueue overlapQueue;
+    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = overlapMap.begin();
+        iter != overlapMap.end(); ++iter)
+    {
+        overlapQueue.push(std::make_pair(iter->first, iter->second));
+    }
 
-	// Traverse the list of overlaps in order of length and remove elements from
-	// the overlapMap if they are transitive
-	while(!overlapQueue.empty())
-	{
-		EdgeDescOverlapPair edoPair = overlapQueue.top();
-		overlapQueue.pop();
+    // Traverse the list of overlaps in order of length and remove elements from
+    // the overlapMap if they are transitive
+    while(!overlapQueue.empty())
+    {
+        EdgeDescOverlapPair edoPair = overlapQueue.top();
+        overlapQueue.pop();
 
-		EdgeDesc& edXY = edoPair.first;
-		Overlap& ovrXY = edoPair.second;
+        EdgeDesc& edXY = edoPair.first;
+        Overlap& ovrXY = edoPair.second;
 
-		//std::cout << "CurrIR: " << ovrXY << " len: " << ovrXY.getOverlapLength(0) << "\n";
-		
-		SGAlgorithms::EdgeDescOverlapMap::iterator iter = overlapMap.begin();
-		while(iter != overlapMap.end())
-		{
-			bool erase = false;
-			const EdgeDesc& edXZ = iter->first;
-			const Overlap& ovrXZ = iter->second;
+        //std::cout << "CurrIR: " << ovrXY << " len: " << ovrXY.getOverlapLength(0) << "\n";
+        
+        SGAlgorithms::EdgeDescOverlapMap::iterator iter = overlapMap.begin();
+        while(iter != overlapMap.end())
+        {
+            bool erase = false;
+            const EdgeDesc& edXZ = iter->first;
+            const Overlap& ovrXZ = iter->second;
 
-			// Skip the self-match and any edges in the wrong direction
-			if(!(edXZ == edXY) && edXY.dir == edXZ.dir && ovrXY.getOverlapLength(0) > ovrXZ.getOverlapLength(0))
-			{
-				// Infer the YZ overlap
-				Overlap ovrYX = ovrXY;
-				ovrYX.swap();
-				Overlap ovrYZ = SGAlgorithms::inferTransitiveOverlap(ovrYX, ovrXZ);
+            // Skip the self-match and any edges in the wrong direction
+            if(!(edXZ == edXY) && edXY.dir == edXZ.dir && ovrXY.getOverlapLength(0) > ovrXZ.getOverlapLength(0))
+            {
+                // Infer the YZ overlap
+                Overlap ovrYX = ovrXY;
+                ovrYX.swap();
+                Overlap ovrYZ = SGAlgorithms::inferTransitiveOverlap(ovrYX, ovrXZ);
 
-				// Compute the error rate between the sequences
-				double error_rate = SGAlgorithms::calcErrorRate(edXY.pVertex, edXZ.pVertex, ovrYZ);
-				
-				//std::cout << "\tOVRXY: " << ovrXY << "\n";
-				//std::cout << "\tOVRXZ: " << ovrXZ << "\n";
-				//std::cout << "\tOVRYZ: " << ovrYZ << " er: " << error_rate << "\n";
-				
-				if(isErrorRateAcceptable(error_rate, pGraph->getErrorRate()) && 
-				   ovrYZ.getOverlapLength(0) >= pGraph->getMinOverlap())
-				{
-					erase = true;
-				}
-			}
-			
-			if(erase)
-				overlapMap.erase(iter++);
-			else
-				++iter;
-		}
-	}
+                // Compute the error rate between the sequences
+                double error_rate = SGAlgorithms::calcErrorRate(edXY.pVertex, edXZ.pVertex, ovrYZ);
+                
+                //std::cout << "\tOVRXY: " << ovrXY << "\n";
+                //std::cout << "\tOVRXZ: " << ovrXZ << "\n";
+                //std::cout << "\tOVRYZ: " << ovrYZ << " er: " << error_rate << "\n";
+                
+                if(isErrorRateAcceptable(error_rate, pGraph->getErrorRate()) && 
+                   ovrYZ.getOverlapLength(0) >= pGraph->getMinOverlap())
+                {
+                    erase = true;
+                }
+            }
+            
+            if(erase)
+                overlapMap.erase(iter++);
+            else
+                ++iter;
+        }
+    }
 
-	// The edges remaining in the overlapMap are irreducible wrt pVertex
-	// Compare the set of actual edges to the validation set
-	EdgePtrVec edges = pVertex->getEdges();
+    // The edges remaining in the overlapMap are irreducible wrt pVertex
+    // Compare the set of actual edges to the validation set
+    EdgePtrVec edges = pVertex->getEdges();
 
-	EdgeDescSet actual_set;
-	std::insert_iterator<EdgeDescSet> actual_insert(actual_set, actual_set.begin());
-	std::transform(edges.begin(), edges.end(), actual_insert, getEdgeDescFromEdge);
+    EdgeDescSet actual_set;
+    std::insert_iterator<EdgeDescSet> actual_insert(actual_set, actual_set.begin());
+    std::transform(edges.begin(), edges.end(), actual_insert, getEdgeDescFromEdge);
 
-	EdgeDescSet validation_set;
-	std::insert_iterator<EdgeDescSet> validation_insert(validation_set, validation_set.begin());
-	std::transform(overlapMap.begin(), overlapMap.end(), validation_insert, getEdgeDescFromPair);
+    EdgeDescSet validation_set;
+    std::insert_iterator<EdgeDescSet> validation_insert(validation_set, validation_set.begin());
+    std::transform(overlapMap.begin(), overlapMap.end(), validation_insert, getEdgeDescFromPair);
 
-	std::stringstream ss_missing;
-	ss_missing << pVertex->getID() << " has missing edges:";
+    std::stringstream ss_missing;
+    ss_missing << pVertex->getID() << " has missing edges:";
 
-	std::stringstream ss_extra;
-	ss_extra << pVertex->getID() << " has extra edges:";
+    std::stringstream ss_extra;
+    ss_extra << pVertex->getID() << " has extra edges:";
 
-	printSetDifference(validation_set, actual_set, ss_missing.str());
-	printSetDifference(actual_set, validation_set, ss_extra.str()); 
+    printSetDifference(validation_set, actual_set, ss_missing.str());
+    printSetDifference(actual_set, validation_set, ss_extra.str()); 
 
-	return false;
+    return false;
 }
 
 //
@@ -703,54 +703,54 @@ bool SGValidateStructureVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 //
 void SGRemodelVisitor::previsit(StringGraph* pGraph)
 {
-	pGraph->setColors(GC_WHITE);
+    pGraph->setColors(GC_WHITE);
 }
 
 bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
-	bool graph_changed = false;
-	(void)pGraph;
-	for(size_t idx = 0; idx < ED_COUNT; idx++)
-	{
-		EdgeDir dir = EDGE_DIRECTIONS[idx];
-		if(pVertex->countEdges(dir) > 1)
-		{
-			MultiOverlap mo = pVertex->getMultiOverlap();
-			std::cout << "Primary MO: \n";
-			mo.print();
-			std::cout << "\nPrimary masked\n";
-			mo.printMasked();
-			
-			EdgePtrVec edges = pVertex->getEdges(dir);
-			for(size_t i = 0; i < edges.size(); ++i)
-			{
-				Edge* pXY = edges[i];
-				Vertex* pY = pXY->getEnd();
-				EdgeDir forwardDir = pXY->getTransitiveDir();
-				EdgeDir backDir = !forwardDir;
+    bool graph_changed = false;
+    (void)pGraph;
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        if(pVertex->countEdges(dir) > 1)
+        {
+            MultiOverlap mo = pVertex->getMultiOverlap();
+            std::cout << "Primary MO: \n";
+            mo.print();
+            std::cout << "\nPrimary masked\n";
+            mo.printMasked();
+            
+            EdgePtrVec edges = pVertex->getEdges(dir);
+            for(size_t i = 0; i < edges.size(); ++i)
+            {
+                Edge* pXY = edges[i];
+                Vertex* pY = pXY->getEnd();
+                EdgeDir forwardDir = pXY->getTransitiveDir();
+                EdgeDir backDir = !forwardDir;
 
-				EdgePtrVec y_fwd_edges = pY->getEdges(forwardDir);
-				EdgePtrVec y_back_edges = pY->getEdges(backDir);
-				std::cout << pY->getID() << " forward edges: ";
-				for(size_t j = 0; j < y_fwd_edges.size(); ++j)
-					std::cout << y_fwd_edges[j]->getEndID() << ",";
-				std::cout << "\n";
-				
-				std::cout << pY->getID() << " back edges: ";
-				for(size_t j = 0; j < y_back_edges.size(); ++j)
-					std::cout << y_back_edges[j]->getEndID() << ",";
-				std::cout << "\n";
-				std::cout << pY->getID() << " label " << pXY->getLabel() << "\n";
-			}
+                EdgePtrVec y_fwd_edges = pY->getEdges(forwardDir);
+                EdgePtrVec y_back_edges = pY->getEdges(backDir);
+                std::cout << pY->getID() << " forward edges: ";
+                for(size_t j = 0; j < y_fwd_edges.size(); ++j)
+                    std::cout << y_fwd_edges[j]->getEndID() << ",";
+                std::cout << "\n";
+                
+                std::cout << pY->getID() << " back edges: ";
+                for(size_t j = 0; j < y_back_edges.size(); ++j)
+                    std::cout << y_back_edges[j]->getEndID() << ",";
+                std::cout << "\n";
+                std::cout << pY->getID() << " label " << pXY->getLabel() << "\n";
+            }
 
-			MultiOverlap extendedMO = SGAlgorithms::makeExtendedMultiOverlap(pVertex);
-			std::cout << "\nExtended MO: \n";
-			extendedMO.printMasked();
+            MultiOverlap extendedMO = SGAlgorithms::makeExtendedMultiOverlap(pVertex);
+            std::cout << "\nExtended MO: \n";
+            extendedMO.printMasked();
 
-			ErrorCorrect::correctVertex(pVertex, 3, 0.01);
-		}
-	}
-	return graph_changed;
+            ErrorCorrect::correctVertex(pVertex, 3, 0.01);
+        }
+    }
+    return graph_changed;
 }
 
 //
@@ -763,15 +763,15 @@ void SGRemodelVisitor::postvisit(StringGraph*)
 //
 bool SGErrorCorrectVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	static size_t numCorrected = 0;
+    static size_t numCorrected = 0;
 
-	if(numCorrected > 0 && numCorrected % 50000 == 0)
-		std::cerr << "Corrected " << numCorrected << " reads\n";
+    if(numCorrected > 0 && numCorrected % 50000 == 0)
+        std::cerr << "Corrected " << numCorrected << " reads\n";
 
-	std::string corrected = ErrorCorrect::correctVertex(pVertex, 5, 0.01);
-	pVertex->setSeq(corrected);
-	++numCorrected;
-	return false;
+    std::string corrected = ErrorCorrect::correctVertex(pVertex, 5, 0.01);
+    pVertex->setSeq(corrected);
+    ++numCorrected;
+    return false;
 }
 
 //
@@ -780,160 +780,160 @@ bool SGErrorCorrectVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 //
 void SGEdgeStatsVisitor::previsit(StringGraph* pGraph)
 {
-	pGraph->setColors(GC_WHITE);
-	maxDiff = 0;
-	minOverlap = pGraph->getMinOverlap();
-	maxOverlap = 0;
+    pGraph->setColors(GC_WHITE);
+    maxDiff = 0;
+    minOverlap = pGraph->getMinOverlap();
+    maxOverlap = 0;
 
 }
 
 bool SGEdgeStatsVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
-	const int MIN_OVERLAP = pGraph->getMinOverlap();
-	const double MAX_ERROR = pGraph->getErrorRate();
+    const int MIN_OVERLAP = pGraph->getMinOverlap();
+    const double MAX_ERROR = pGraph->getErrorRate();
 
-	static int visited = 0;
-	++visited;
-	if(visited % 50000 == 0)
-		std::cout << "visited: " << visited << "\n";
+    static int visited = 0;
+    ++visited;
+    if(visited % 50000 == 0)
+        std::cout << "visited: " << visited << "\n";
 
-	// Add stats for the found overlaps
-	EdgePtrVec edges = pVertex->getEdges();
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		Overlap ovr = edges[i]->getOverlap();
-		int numDiff = ovr.match.countDifferences(pVertex->getSeq(), edges[i]->getEnd()->getSeq());
-		int overlapLen = ovr.match.getMinOverlapLength();
-		addOverlapToCount(overlapLen, numDiff, foundCounts);
-	}
-		
-	// Explore the neighborhood around this graph for potentially missing overlaps
-	CandidateVector candidates = getMissingCandidates(pGraph, pVertex, MIN_OVERLAP);
-	MultiOverlap addedMO(pVertex->getID(), pVertex->getSeq());
-	for(size_t i = 0; i < candidates.size(); ++i)
-	{
-		Candidate& c = candidates[i];
-		int numDiff = c.ovr.match.countDifferences(pVertex->getSeq(), c.pEndpoint->getSeq());
-		double error_rate = double(numDiff) / double(c.ovr.match.getMinOverlapLength());
+    // Add stats for the found overlaps
+    EdgePtrVec edges = pVertex->getEdges();
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Overlap ovr = edges[i]->getOverlap();
+        int numDiff = ovr.match.countDifferences(pVertex->getSeq(), edges[i]->getEnd()->getSeq());
+        int overlapLen = ovr.match.getMinOverlapLength();
+        addOverlapToCount(overlapLen, numDiff, foundCounts);
+    }
+        
+    // Explore the neighborhood around this graph for potentially missing overlaps
+    CandidateVector candidates = getMissingCandidates(pGraph, pVertex, MIN_OVERLAP);
+    MultiOverlap addedMO(pVertex->getID(), pVertex->getSeq());
+    for(size_t i = 0; i < candidates.size(); ++i)
+    {
+        Candidate& c = candidates[i];
+        int numDiff = c.ovr.match.countDifferences(pVertex->getSeq(), c.pEndpoint->getSeq());
+        double error_rate = double(numDiff) / double(c.ovr.match.getMinOverlapLength());
 
-		if(error_rate < MAX_ERROR)
-		{
-			int overlapLen = c.ovr.match.getMinOverlapLength();
-			addOverlapToCount(overlapLen, numDiff, missingCounts);
-		}
-	}
-	
-	return false;
+        if(error_rate < MAX_ERROR)
+        {
+            int overlapLen = c.ovr.match.getMinOverlapLength();
+            addOverlapToCount(overlapLen, numDiff, missingCounts);
+        }
+    }
+    
+    return false;
 }
 
 //
 void SGEdgeStatsVisitor::postvisit(StringGraph* /*pGraph*/)
-{	
-	printf("FoundOverlaps\n");
-	printCounts(foundCounts);
+{    
+    printf("FoundOverlaps\n");
+    printCounts(foundCounts);
 
-	printf("\nPotentially Missing Overlaps\n\n");
-	printCounts(missingCounts);
+    printf("\nPotentially Missing Overlaps\n\n");
+    printCounts(missingCounts);
 }
 
 //
 void SGEdgeStatsVisitor::printCounts(CountMatrix& matrix)
 {
-	// Header row
-	printf("OL\t");
-	for(int j = 0; j <= maxDiff; ++j)
-	{
-		printf("%d\t", j);
-	}
+    // Header row
+    printf("OL\t");
+    for(int j = 0; j <= maxDiff; ++j)
+    {
+        printf("%d\t", j);
+    }
 
-	printf("sum\n");
-	IntIntMap columnTotal;
-	for(int i = minOverlap; i <= maxOverlap; ++i)
-	{
-		printf("%d\t", i);
-		int sum = 0;
-		for(int j = 0; j <= maxDiff; ++j)
-		{
-			int v = matrix[i][j];
-			printf("%d\t", v);
-			sum += v;
-			columnTotal[j] += v;
-		}
-		printf("%d\n", sum);
-	}
+    printf("sum\n");
+    IntIntMap columnTotal;
+    for(int i = minOverlap; i <= maxOverlap; ++i)
+    {
+        printf("%d\t", i);
+        int sum = 0;
+        for(int j = 0; j <= maxDiff; ++j)
+        {
+            int v = matrix[i][j];
+            printf("%d\t", v);
+            sum += v;
+            columnTotal[j] += v;
+        }
+        printf("%d\n", sum);
+    }
 
-	printf("total\t");
-	int total = 0;
-	for(int j = 0; j <= maxDiff; ++j)
-	{
-		int v = columnTotal[j];
-		printf("%d\t", v);
-		total += v;
-	}
-	printf("%d\n", total);
+    printf("total\t");
+    int total = 0;
+    for(int j = 0; j <= maxDiff; ++j)
+    {
+        int v = columnTotal[j];
+        printf("%d\t", v);
+        total += v;
+    }
+    printf("%d\n", total);
 }
 
 //
 void SGEdgeStatsVisitor::addOverlapToCount(int ol, int nd, CountMatrix& matrix)
 {
-	matrix[ol][nd]++;
+    matrix[ol][nd]++;
 
-	if(nd > maxDiff)
-		maxDiff = nd;
+    if(nd > maxDiff)
+        maxDiff = nd;
 
-	if(ol > maxOverlap)
-		maxOverlap = ol;
+    if(ol > maxOverlap)
+        maxOverlap = ol;
 }
 
 // Explore the neighborhood around a vertex looking for missing overlaps
 SGEdgeStatsVisitor::CandidateVector SGEdgeStatsVisitor::getMissingCandidates(StringGraph* /*pGraph*/, 
                                                                              Vertex* pVertex, 
-																			 int minOverlap) const
+                                                                             int minOverlap) const
 {
-	CandidateVector out;
+    CandidateVector out;
 
-	// Mark the vertices that are reached from this vertex as black to indicate
-	// they already are overlapping
-	EdgePtrVec edges = pVertex->getEdges();
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		edges[i]->getEnd()->setColor(GC_BLACK);
-	}
-	pVertex->setColor(GC_BLACK);
+    // Mark the vertices that are reached from this vertex as black to indicate
+    // they already are overlapping
+    EdgePtrVec edges = pVertex->getEdges();
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        edges[i]->getEnd()->setColor(GC_BLACK);
+    }
+    pVertex->setColor(GC_BLACK);
 
-	for(size_t i = 0; i < edges.size(); ++i)
-	{
-		Edge* pXY = edges[i];
-		EdgePtrVec neighborEdges = pXY->getEnd()->getEdges();
-		for(size_t j = 0; j < neighborEdges.size(); ++j)
-		{
-			Edge* pYZ = neighborEdges[j];
-			if(pYZ->getEnd()->getColor() != GC_BLACK)
-			{
-				// Infer the overlap object from the edges
-				Overlap ovrXY = pXY->getOverlap();
-				Overlap ovrYZ = pYZ->getOverlap();
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Edge* pXY = edges[i];
+        EdgePtrVec neighborEdges = pXY->getEnd()->getEdges();
+        for(size_t j = 0; j < neighborEdges.size(); ++j)
+        {
+            Edge* pYZ = neighborEdges[j];
+            if(pYZ->getEnd()->getColor() != GC_BLACK)
+            {
+                // Infer the overlap object from the edges
+                Overlap ovrXY = pXY->getOverlap();
+                Overlap ovrYZ = pYZ->getOverlap();
 
-				if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
-				{
-					Overlap ovr_xz = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
-					if(ovr_xz.match.getMinOverlapLength() >= minOverlap)
-					{
-						out.push_back(Candidate(pYZ->getEnd(), ovr_xz));
-						pYZ->getEnd()->setColor(GC_BLACK);
-					}
-				}
-			}
-		}
-	}
+                if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+                {
+                    Overlap ovr_xz = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+                    if(ovr_xz.match.getMinOverlapLength() >= minOverlap)
+                    {
+                        out.push_back(Candidate(pYZ->getEnd(), ovr_xz));
+                        pYZ->getEnd()->setColor(GC_BLACK);
+                    }
+                }
+            }
+        }
+    }
 
-	// Reset colors
-	for(size_t i = 0; i < edges.size(); ++i)
-		edges[i]->getEnd()->setColor(GC_WHITE);
-	pVertex->setColor(GC_WHITE);
-	for(size_t i = 0; i < out.size(); ++i)
-		out[i].pEndpoint->setColor(GC_WHITE);
-	return out;
+    // Reset colors
+    for(size_t i = 0; i < edges.size(); ++i)
+        edges[i]->getEnd()->setColor(GC_WHITE);
+    pVertex->setColor(GC_WHITE);
+    for(size_t i = 0; i < out.size(); ++i)
+        out[i].pEndpoint->setColor(GC_WHITE);
+    return out;
 }
 
 //
@@ -941,42 +941,42 @@ SGEdgeStatsVisitor::CandidateVector SGEdgeStatsVisitor::getMissingCandidates(Str
 //
 void SGTrimVisitor::previsit(StringGraph* pGraph)
 {
-	num_island = 0;
-	num_terminal = 0;
-	num_contig = 0;
-	pGraph->setColors(GC_WHITE);
+    num_island = 0;
+    num_terminal = 0;
+    num_contig = 0;
+    pGraph->setColors(GC_WHITE);
 }
 
 // Mark any nodes that either dont have edges or edges in only one direction for removal
 bool SGTrimVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	bool noext[2] = {0,0};
+    bool noext[2] = {0,0};
 
-	for(size_t idx = 0; idx < ED_COUNT; idx++)
-	{
-		EdgeDir dir = EDGE_DIRECTIONS[idx];
-		if(pVertex->countEdges(dir) == 0)
-		{
-			//std::cout << "Found terminal: " << pVertex->getID() << "\n";
-			pVertex->setColor(GC_BLACK);
-			noext[idx] = 1;
-		}
-	}
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        if(pVertex->countEdges(dir) == 0)
+        {
+            //std::cout << "Found terminal: " << pVertex->getID() << "\n";
+            pVertex->setColor(GC_BLACK);
+            noext[idx] = 1;
+        }
+    }
 
-	if(noext[0] && noext[1])
-		num_island++;
-	else if(noext[0] || noext[1])
-		num_terminal++;
-	else
-		num_contig++;
-	return noext[0] || noext[1];
+    if(noext[0] && noext[1])
+        num_island++;
+    else if(noext[0] || noext[1])
+        num_terminal++;
+    else
+        num_contig++;
+    return noext[0] || noext[1];
 }
 
 // Remove all the marked edges
 void SGTrimVisitor::postvisit(StringGraph* pGraph)
 {
-	pGraph->sweepVertices(GC_BLACK);
-	printf("island: %d terminal: %d contig: %d\n", num_island, num_terminal, num_contig);
+    pGraph->sweepVertices(GC_BLACK);
+    printf("island: %d terminal: %d contig: %d\n", num_island, num_terminal, num_contig);
 }
 
 //
@@ -984,13 +984,13 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 //
 void SGDuplicateVisitor::previsit(StringGraph* pGraph)
 {
-	pGraph->setColors(GC_WHITE);
+    pGraph->setColors(GC_WHITE);
 }
 
 bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	pVertex->makeUnique();
-	return false;
+    pVertex->makeUnique();
+    return false;
 }
 
 //
@@ -998,24 +998,24 @@ bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 //
 void SGIslandVisitor::previsit(StringGraph* pGraph)
 {
-	pGraph->setColors(GC_WHITE);
+    pGraph->setColors(GC_WHITE);
 }
 
 // Mark any nodes that dont have edges
 bool SGIslandVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	if(pVertex->countEdges() == 0)
-	{
-		pVertex->setColor(GC_BLACK);
-		return true;
-	}
-	return false;
+    if(pVertex->countEdges() == 0)
+    {
+        pVertex->setColor(GC_BLACK);
+        return true;
+    }
+    return false;
 }
 
 // Remove all the marked vertices
 void SGIslandVisitor::postvisit(StringGraph* pGraph)
 {
-	pGraph->sweepVertices(GC_BLACK);
+    pGraph->sweepVertices(GC_BLACK);
 }
 
 
@@ -1025,105 +1025,105 @@ void SGIslandVisitor::postvisit(StringGraph* pGraph)
 //
 void SGBubbleVisitor::previsit(StringGraph* pGraph)
 {
-	pGraph->setColors(GC_WHITE);
-	num_bubbles = 0;
+    pGraph->setColors(GC_WHITE);
+    num_bubbles = 0;
 }
 
 // Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
 bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	bool bubble_found = false;
-	for(size_t idx = 0; idx < ED_COUNT; idx++)
-	{
-		EdgeDir dir = EDGE_DIRECTIONS[idx];
-		EdgePtrVec edges = pVertex->getEdges(dir);
-		if(edges.size() > 1)
-		{
-			// Check the vertices
-			for(size_t i = 0; i < edges.size(); ++i)
-			{
-				Edge* pVWEdge = edges[i];
-				Vertex* pWVert = pVWEdge->getEnd();
+    bool bubble_found = false;
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        EdgePtrVec edges = pVertex->getEdges(dir);
+        if(edges.size() > 1)
+        {
+            // Check the vertices
+            for(size_t i = 0; i < edges.size(); ++i)
+            {
+                Edge* pVWEdge = edges[i];
+                Vertex* pWVert = pVWEdge->getEnd();
 
-				// Get the edges from w in the same direction
-				EdgeDir transDir = !pVWEdge->getTwinDir();
-				EdgePtrVec wEdges = pWVert->getEdges(transDir);
+                // Get the edges from w in the same direction
+                EdgeDir transDir = !pVWEdge->getTwinDir();
+                EdgePtrVec wEdges = pWVert->getEdges(transDir);
 
-				if(pWVert->getColor() == GC_RED)
-					return false;
+                if(pWVert->getColor() == GC_RED)
+                    return false;
 
-				// If the bubble has collapsed, there should only be one edge
-				if(wEdges.size() == 1)
-				{
-					Vertex* pBubbleEnd = wEdges.front()->getEnd();
-					if(pBubbleEnd->getColor() == GC_RED)
-						return false;
-				}
-			}
+                // If the bubble has collapsed, there should only be one edge
+                if(wEdges.size() == 1)
+                {
+                    Vertex* pBubbleEnd = wEdges.front()->getEnd();
+                    if(pBubbleEnd->getColor() == GC_RED)
+                        return false;
+                }
+            }
 
-			// Mark the vertices
-			for(size_t i = 0; i < edges.size(); ++i)
-			{
-				Edge* pVWEdge = edges[i];
-				Vertex* pWVert = pVWEdge->getEnd();
+            // Mark the vertices
+            for(size_t i = 0; i < edges.size(); ++i)
+            {
+                Edge* pVWEdge = edges[i];
+                Vertex* pWVert = pVWEdge->getEnd();
 
-				// Get the edges from w in the same direction
-				EdgeDir transDir = !pVWEdge->getTwinDir();
-				EdgePtrVec wEdges = pWVert->getEdges(transDir);
+                // Get the edges from w in the same direction
+                EdgeDir transDir = !pVWEdge->getTwinDir();
+                EdgePtrVec wEdges = pWVert->getEdges(transDir);
 
-				// If the bubble has collapsed, there should only be one edge
-				if(wEdges.size() == 1)
-				{
-					Vertex* pBubbleEnd = wEdges.front()->getEnd();
-					if(pBubbleEnd->getColor() == GC_BLACK)
-					{
-						// The endpoint has been visited, set this vertex as needing removal
-						// and set the endpoint as unvisited
-						pWVert->setColor(GC_RED);
-						bubble_found = true;
-					}
-					else
-					{
-						pBubbleEnd->setColor(GC_BLACK);
-						pWVert->setColor(GC_BLUE);
-					}
-				}
-			}
-			
-			// Unmark vertices
-			for(size_t i = 0; i < edges.size(); ++i)
-			{
-				Edge* pVWEdge = edges[i];
-				Vertex* pWVert = pVWEdge->getEnd();
+                // If the bubble has collapsed, there should only be one edge
+                if(wEdges.size() == 1)
+                {
+                    Vertex* pBubbleEnd = wEdges.front()->getEnd();
+                    if(pBubbleEnd->getColor() == GC_BLACK)
+                    {
+                        // The endpoint has been visited, set this vertex as needing removal
+                        // and set the endpoint as unvisited
+                        pWVert->setColor(GC_RED);
+                        bubble_found = true;
+                    }
+                    else
+                    {
+                        pBubbleEnd->setColor(GC_BLACK);
+                        pWVert->setColor(GC_BLUE);
+                    }
+                }
+            }
+            
+            // Unmark vertices
+            for(size_t i = 0; i < edges.size(); ++i)
+            {
+                Edge* pVWEdge = edges[i];
+                Vertex* pWVert = pVWEdge->getEnd();
 
-				// Get the edges from w in the same direction
-				EdgeDir transDir = !pVWEdge->getTwinDir();
-				EdgePtrVec wEdges = pWVert->getEdges(transDir);
+                // Get the edges from w in the same direction
+                EdgeDir transDir = !pVWEdge->getTwinDir();
+                EdgePtrVec wEdges = pWVert->getEdges(transDir);
 
-				// If the bubble has collapsed, there should only be one edge
-				if(wEdges.size() == 1)
-				{
-					Vertex* pBubbleEnd = wEdges.front()->getEnd();
-					pBubbleEnd->setColor(GC_WHITE);
-				}
-				if(pWVert->getColor() == GC_BLUE)
-					pWVert->setColor(GC_WHITE);
-			}
+                // If the bubble has collapsed, there should only be one edge
+                if(wEdges.size() == 1)
+                {
+                    Vertex* pBubbleEnd = wEdges.front()->getEnd();
+                    pBubbleEnd->setColor(GC_WHITE);
+                }
+                if(pWVert->getColor() == GC_BLUE)
+                    pWVert->setColor(GC_WHITE);
+            }
 
-			if(bubble_found)
-				++num_bubbles;
+            if(bubble_found)
+                ++num_bubbles;
 
-		}
-	}
-	return bubble_found;
+        }
+    }
+    return bubble_found;
 }
 
 // Remove all the marked edges
 void SGBubbleVisitor::postvisit(StringGraph* pGraph)
 {
-	pGraph->sweepVertices(GC_RED);
-	printf("bubbles: %d\n", num_bubbles);
-	assert(pGraph->checkColors(GC_WHITE));
+    pGraph->sweepVertices(GC_RED);
+    printf("bubbles: %d\n", num_bubbles);
+    assert(pGraph->checkColors(GC_WHITE));
 }
 
 //
@@ -1132,53 +1132,53 @@ void SGBubbleVisitor::postvisit(StringGraph* pGraph)
 //
 void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
 {
-	num_terminal = 0;
-	num_island = 0;
-	num_monobranch = 0;
-	num_dibranch = 0;
-	num_transitive = 0;
-	num_edges = 0;
-	num_vertex = 0;
-	sum_edgeLen = 0;
+    num_terminal = 0;
+    num_island = 0;
+    num_monobranch = 0;
+    num_dibranch = 0;
+    num_transitive = 0;
+    num_edges = 0;
+    num_vertex = 0;
+    sum_edgeLen = 0;
 }
 
 // Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
 bool SGGraphStatsVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-	int s_count = pVertex->countEdges(ED_SENSE);
-	int as_count = pVertex->countEdges(ED_ANTISENSE);
-	if(s_count == 0 && as_count == 0)
-	{
-		++num_island;
-	}
-	else if(s_count == 0 || as_count == 0)
-	{
-		++num_terminal;
-	}
+    int s_count = pVertex->countEdges(ED_SENSE);
+    int as_count = pVertex->countEdges(ED_ANTISENSE);
+    if(s_count == 0 && as_count == 0)
+    {
+        ++num_island;
+    }
+    else if(s_count == 0 || as_count == 0)
+    {
+        ++num_terminal;
+    }
 
-	if(s_count > 1 && as_count > 1)
-		++num_dibranch;
-	else if(s_count > 1 || as_count > 1)
-		++num_monobranch;
+    if(s_count > 1 && as_count > 1)
+        ++num_dibranch;
+    else if(s_count > 1 || as_count > 1)
+        ++num_monobranch;
 
-	if(s_count == 1 || as_count == 1)
-		++num_transitive;
+    if(s_count == 1 || as_count == 1)
+        ++num_transitive;
 
-	num_edges += (s_count + as_count);
-	++num_vertex;
+    num_edges += (s_count + as_count);
+    ++num_vertex;
 
-	EdgePtrVec edges = pVertex->getEdges();
-	for(size_t i = 0; i < edges.size(); ++i)
-		sum_edgeLen += edges[i]->getSeqLen();
+    EdgePtrVec edges = pVertex->getEdges();
+    for(size_t i = 0; i < edges.size(); ++i)
+        sum_edgeLen += edges[i]->getSeqLen();
 
-	return false;
+    return false;
 }
 
 // Remove all the marked edges
 void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
 {
-	printf("island: %d terminal: %d monobranch: %d dibranch: %d transitive: %d\n", num_island, num_terminal,
-	                                                                               num_monobranch, num_dibranch, num_transitive);
-	printf("Total Vertices: %d Total Edges: %d Sum edge length: %zu\n", num_vertex, num_edges, sum_edgeLen);
+    printf("island: %d terminal: %d monobranch: %d dibranch: %d transitive: %d\n", num_island, num_terminal,
+                                                                                   num_monobranch, num_dibranch, num_transitive);
+    printf("Total Vertices: %d Total Edges: %d Sum edge length: %zu\n", num_vertex, num_edges, sum_edgeLen);
 }
 

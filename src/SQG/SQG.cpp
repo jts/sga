@@ -15,13 +15,13 @@ namespace SQG
 //
 StringVector tokenizeRecord(const std::string& record)
 {
-	return split(record, FIELD_SEP);
+    return split(record, FIELD_SEP);
 }
 
 //
 StringVector tokenizeTagValue(const std::string& tagValue)
 {
-	return split(tagValue, TAG_SEP);
+    return split(tagValue, TAG_SEP);
 }
 
 }

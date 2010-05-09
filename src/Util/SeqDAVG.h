@@ -16,63 +16,63 @@
 
 class SeqDAVG
 {
-	public:
-		// Internal datastructures
-		struct Node;
-		struct Link
-		{
-			// functions
-			Link();
-			Link(Node* p, char l);
-			void increment();
-			void decrement();
-			void addWeight(double w);
+    public:
+        // Internal datastructures
+        struct Node;
+        struct Link
+        {
+            // functions
+            Link();
+            Link(Node* p, char l);
+            void increment();
+            void decrement();
+            void addWeight(double w);
 
-			// data
-			Node* pNode;
-			char label;
-			int count;
-			double weight;
-		};
+            // data
+            Node* pNode;
+            char label;
+            int count;
+            double weight;
+        };
 
-		typedef std::list<Link> LinkList;
+        typedef std::list<Link> LinkList;
 
-		class Node
-		{
-			public:
-				// functions
-				Node();
-				~Node();
+        class Node
+        {
+            public:
+                // functions
+                Node();
+                ~Node();
 
-				Link* getLink(char label);
-				Link* addLink(Node* pNode, double weight, char label);
-				void writeDot(std::ostream& out) const;
+                Link* getLink(char label);
+                Link* addLink(Node* pNode, double weight, char label);
+                void writeDot(std::ostream& out) const;
 
-			private:
-					
-				//data
-				LinkList pChildLinks;
-		};
-	
-		typedef std::list<Node*> NodePList;
+            private:
+                    
+                //data
+                LinkList pChildLinks;
+        };
+    
+        typedef std::list<Node*> NodePList;
 
-		//
-		SeqDAVG();
-		~SeqDAVG();
+        //
+        SeqDAVG();
+        ~SeqDAVG();
 
-		//
-		void insert(const std::string& s, double weight, size_t depth = 0);
-		
-		// I/O
-		void writeDot(std::string filename);
+        //
+        void insert(const std::string& s, double weight, size_t depth = 0);
+        
+        // I/O
+        void writeDot(std::string filename);
 
 
-	private:
-		static Link* find(LinkList& list, char label);
-		static LinkList findList(LinkList& list, char label);
+    private:
+        static Link* find(LinkList& list, char label);
+        static LinkList findList(LinkList& list, char label);
 
-		std::vector<LinkList> m_data;
-		Node* m_pRoot;
+        std::vector<LinkList> m_data;
+        Node* m_pRoot;
 };
 
 #endif

@@ -8,8 +8,8 @@ double IntDist::ERROR_LIMIT = 1e-16;
 //
 IntDist::IntDist(int min, int max) : m_start(min), m_normalized(true)
 {
-	assert(max >= min);
-	m_values.resize(max - min + 1, 0.0f);
+    assert(max >= min);
+    m_values.resize(max - min + 1, 0.0f);
 }
 
 //
@@ -17,10 +17,10 @@ IntDist::IntDist(int min, int max) : m_start(min), m_normalized(true)
 //
 void IntDist::addWeight(int pos, double w)
 {
-	size_t idx = pos2Idx(pos);
-	assert(idx < m_values.size());
-	m_values[idx] += w;
-	m_normalized = false;
+    size_t idx = pos2Idx(pos);
+    assert(idx < m_values.size());
+    m_values[idx] += w;
+    m_normalized = false;
 }
 
 //
@@ -28,33 +28,33 @@ void IntDist::addWeight(int pos, double w)
 // 
 double IntDist::expectedValue() const
 {
-	double sum = 0.0f;
-	for(int i = getStart(); i <= getEnd(); ++i)
-		sum += (double)(i) * getP(i);
-	return sum;
+    double sum = 0.0f;
+    for(int i = getStart(); i <= getEnd(); ++i)
+        sum += (double)(i) * getP(i);
+    return sum;
 }
 //
 // Normalize the pdf by converting weights to probabilities
 //
 void IntDist::normalize()
 {
-	double sum = 0.0f;
-	for(size_t idx = 0; idx < m_values.size(); ++idx)
-		sum += m_values[idx];
-	
-	if(sum > ERROR_LIMIT)
-	{
-		for(size_t idx = 0; idx < m_values.size(); ++idx)
-			m_values[idx] /= sum;
-	}
-	else
-	{
-		// The distribution is degenerate, set all values to zero
-		for(size_t idx = 0; idx < m_values.size(); ++idx)
-			m_values[idx] = 0;
-	}	
+    double sum = 0.0f;
+    for(size_t idx = 0; idx < m_values.size(); ++idx)
+        sum += m_values[idx];
+    
+    if(sum > ERROR_LIMIT)
+    {
+        for(size_t idx = 0; idx < m_values.size(); ++idx)
+            m_values[idx] /= sum;
+    }
+    else
+    {
+        // The distribution is degenerate, set all values to zero
+        for(size_t idx = 0; idx < m_values.size(); ++idx)
+            m_values[idx] = 0;
+    }    
 
-	m_normalized = true;
+    m_normalized = true;
 }
 
 //
@@ -62,9 +62,9 @@ void IntDist::normalize()
 //
 void IntDist::setP(int pos, double p)
 {
-	size_t idx = pos2Idx(pos);
-	assert(idx < m_values.size());
-	m_values[idx] = p;
+    size_t idx = pos2Idx(pos);
+    assert(idx < m_values.size());
+    m_values[idx] = p;
 }
 
 //
@@ -73,8 +73,8 @@ void IntDist::setP(int pos, double p)
 //
 double IntDist::getP(int pos) const
 {
-	assert(m_normalized);
-	return getWeight(pos);
+    assert(m_normalized);
+    return getWeight(pos);
 }
 
 //
@@ -83,10 +83,10 @@ double IntDist::getP(int pos) const
 //
 double IntDist::getWeight(int pos) const
 {
-	size_t idx = pos2Idx(pos);
-	if(idx == m_values.size()) // out-of-range position
-		return 0.0f;
-	return m_values[idx];
+    size_t idx = pos2Idx(pos);
+    if(idx == m_values.size()) // out-of-range position
+        return 0.0f;
+    return m_values[idx];
 }
 
 
@@ -95,12 +95,12 @@ double IntDist::getWeight(int pos) const
 //
 size_t IntDist::pos2Idx(int pos) const
 {
-	size_t idx = pos - m_start;
-	if(pos < m_start || idx >= m_values.size())
-	{
-		return m_values.size();
-	}
-	return idx;
+    size_t idx = pos - m_start;
+    if(pos < m_start || idx >= m_values.size())
+    {
+        return m_values.size();
+    }
+    return idx;
 }
 
 //
@@ -108,10 +108,10 @@ size_t IntDist::pos2Idx(int pos) const
 //
 std::ostream& operator<<(std::ostream& out, const IntDist& pdf)
 {
-	for(size_t idx = 0; idx < pdf.m_values.size(); ++idx)
-	{
-		out << (int)idx + pdf.m_start << "\t" << pdf.m_values[idx] << "\n";
-	}
-	return out;
+    for(size_t idx = 0; idx < pdf.m_values.size(); ++idx)
+    {
+        out << (int)idx + pdf.m_start << "\t" << pdf.m_values[idx] << "\n";
+    }
+    return out;
 }
 

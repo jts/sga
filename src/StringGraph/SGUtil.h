@@ -20,17 +20,17 @@ typedef Bigraph StringGraph;
 // data
 struct ContainMap
 {
-	public:
-		// Constructors
-		ContainMap(std::string file);
+    public:
+        // Constructors
+        ContainMap(std::string file);
 
-		// functions
-		void add(std::string s1, std::string s2);
-		bool isContained(std::string s) const;
-		std::string getContainer(std::string s) const;
+        // functions
+        void add(std::string s1, std::string s2);
+        bool isContained(std::string s) const;
+        std::string getContainer(std::string s) const;
 
-	private:
-		StrStrMap m_data;
+    private:
+        StrStrMap m_data;
 };
 
 namespace SGUtil

@@ -16,22 +16,22 @@ typedef std::vector<unsigned int> UIntVector;
 
 class LCPArray
 {
-	public:
-		
-		// constructors
-		LCPArray(const SuffixArray* pSA, const ReadTable* pRT);
+    public:
+        
+        // constructors
+        LCPArray(const SuffixArray* pSA, const ReadTable* pRT);
 
-		// getters
-		unsigned int get(size_t idx) const;
+        // getters
+        unsigned int get(size_t idx) const;
 
-		//
-		size_t countPrefixLength(std::string s1, std::string s2) const;
+        //
+        size_t countPrefixLength(std::string s1, std::string s2) const;
 
-		// io
-		void print(SuffixArray* pSA, ReadTable* pRT) const;
+        // io
+        void print(SuffixArray* pSA, ReadTable* pRT) const;
 
-	private:
-		UIntVector m_data;
+    private:
+        UIntVector m_data;
 };
 
 #endif

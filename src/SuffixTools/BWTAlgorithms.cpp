@@ -13,21 +13,21 @@
 // coordinates [l, u] will be such that l > u
 BWTInterval BWTAlgorithms::findInterval(const BWT* pBWT, const std::string& w)
 {
-	int len = w.size();
-	int j = len - 1;
-	char curr = w[j];
-	BWTInterval interval;
-	initInterval(interval, curr, pBWT);
-	--j;
+    int len = w.size();
+    int j = len - 1;
+    char curr = w[j];
+    BWTInterval interval;
+    initInterval(interval, curr, pBWT);
+    --j;
 
-	for(;j >= 0; --j)
-	{
-		curr = w[j];
-		updateInterval(interval, curr, pBWT);
-		if(!interval.isValid())
-			return interval;
-	}
-	return interval;
+    for(;j >= 0; --j)
+    {
+        curr = w[j];
+        updateInterval(interval, curr, pBWT);
+        if(!interval.isValid())
+            return interval;
+    }
+    return interval;
 }
 
 // Find the intervals in pBWT/pRevBWT corresponding to w
@@ -35,21 +35,21 @@ BWTInterval BWTAlgorithms::findInterval(const BWT* pBWT, const std::string& w)
 // coordinates [l, u] will be such that l > u
 BWTIntervalPair BWTAlgorithms::findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std::string& w)
 {
-	BWTIntervalPair intervals;	
-	int len = w.size();
-	int j = len - 1;
-	char curr = w[j];
-	initIntervalPair(intervals, curr, pBWT, pRevBWT);
-	--j;
+    BWTIntervalPair intervals;    
+    int len = w.size();
+    int j = len - 1;
+    char curr = w[j];
+    initIntervalPair(intervals, curr, pBWT, pRevBWT);
+    --j;
 
-	for(;j >= 0; --j)
-	{
-		curr = w[j];
-		updateBothL(intervals, curr, pBWT);
-		if(!intervals.isValid())
-			return intervals;
-	}
-	return intervals;
+    for(;j >= 0; --j)
+    {
+        curr = w[j];
+        updateBothL(intervals, curr, pBWT);
+        if(!intervals.isValid())
+            return intervals;
+    }
+    return intervals;
 }
 
 // Return the count of all the possible one base extensions of the string w.
@@ -57,38 +57,38 @@ BWTIntervalPair BWTAlgorithms::findIntervalPair(const BWT* pBWT, const BWT* pRev
 // appears in the FM-index for all i s.t. length(w[i, l]) == overlapLen.
 AlphaCount BWTAlgorithms::calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT)
 {
-	// The algorithm is as follows:
-	// We perform a backward search on the FM-index of w.
-	// For each signficant suffix (length w[i,l] >= minOverlap)
-	// we determine the proper prefixes that match w[i,l]. For each proper prefix matching, 
-	// we compute the number of extensions of A,C,G,T for those prefix.
-	AlphaCount ext_counts;
-	BWTIntervalPair ranges;
-	size_t l = w.length();
-	int start = l - 1;
-	BWTAlgorithms::initIntervalPair(ranges, w[start], pBWT, pRevBWT);
+    // The algorithm is as follows:
+    // We perform a backward search on the FM-index of w.
+    // For each signficant suffix (length w[i,l] >= minOverlap)
+    // we determine the proper prefixes that match w[i,l]. For each proper prefix matching, 
+    // we compute the number of extensions of A,C,G,T for those prefix.
+    AlphaCount ext_counts;
+    BWTIntervalPair ranges;
+    size_t l = w.length();
+    int start = l - 1;
+    BWTAlgorithms::initIntervalPair(ranges, w[start], pBWT, pRevBWT);
 
-	for(int i = start - 1; i >= 0; --i)
-	{
-		// Compute the range of the suffix w[i, l]
-		BWTAlgorithms::updateBothL(ranges, w[i], pBWT);
+    for(int i = start - 1; i >= 0; --i)
+    {
+        // Compute the range of the suffix w[i, l]
+        BWTAlgorithms::updateBothL(ranges, w[i], pBWT);
 
-		// Break if the suffix is no longer found
-		if(!(ranges.interval[0].isValid() && ranges.interval[1].isValid())) 
-			break;
+        // Break if the suffix is no longer found
+        if(!(ranges.interval[0].isValid() && ranges.interval[1].isValid())) 
+            break;
 
-		if((l - i) == overlapLen)
-		{
-			if(ranges.interval[1].isValid())
-			{
-				assert(ranges.interval[1].lower > 0);
-				// The count for each extension is the difference between rank(B, upper) and rank(B, lower - 1)
-				AlphaCount ac = pRevBWT->getOccDiff(ranges.interval[1].lower - 1, ranges.interval[1].upper);
-				ext_counts += ac;
-			}
-		}
-	}
-	return ext_counts;
+        if((l - i) == overlapLen)
+        {
+            if(ranges.interval[1].isValid())
+            {
+                assert(ranges.interval[1].lower > 0);
+                // The count for each extension is the difference between rank(B, upper) and rank(B, lower - 1)
+                AlphaCount ac = pRevBWT->getOccDiff(ranges.interval[1].lower - 1, ranges.interval[1].upper);
+                ext_counts += ac;
+            }
+        }
+    }
+    return ext_counts;
 }
 
 

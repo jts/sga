@@ -16,45 +16,45 @@
 // Connect the paired reads in the string graph
 struct SGVertexPairingVisitor
 {
-	SGVertexPairingVisitor() {}
-	void previsit(StringGraph*);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
+    SGVertexPairingVisitor() {}
+    void previsit(StringGraph*);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*);
 
-	int num_paired;
-	int num_unpaired;
+    int num_paired;
+    int num_unpaired;
 };
 
 // Build the paired end trust network
 struct SGPETrustVisitor
 {
-	SGPETrustVisitor() {}
-	void previsit(StringGraph*) {}
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*) {}
+    SGPETrustVisitor() {}
+    void previsit(StringGraph*) {}
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*) {}
 };
 
 // Remove untrusted, conflicted edges from the graph
 // Experimental.
 struct SGPEConflictRemover
 {
-	SGPEConflictRemover() {}
-	void previsit(StringGraph*);
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*);
+    SGPEConflictRemover() {}
+    void previsit(StringGraph*);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*);
 
-	int num_same;
-	int num_diff;
+    int num_same;
+    int num_diff;
 
 };
 
 // Visit each node and output the overlap between each linked edge and their pairs
 struct SGPairedOverlapVisitor
 {
-	SGPairedOverlapVisitor() {}
-	void previsit(StringGraph*) {} 
-	bool visit(StringGraph* pGraph, Vertex* pVertex);
-	void postvisit(StringGraph*) {}
+    SGPairedOverlapVisitor() {}
+    void previsit(StringGraph*) {} 
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*) {}
 };
 
 #endif

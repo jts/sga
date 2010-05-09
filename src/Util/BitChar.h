@@ -12,27 +12,27 @@
 
 struct BitChar
 {
-	public:
-		BitChar() : d(0) {}
-		
-		// set the bit at idx to the value u
-		void set(unsigned char idx, bool v);
+    public:
+        BitChar() : d(0) {}
+        
+        // set the bit at idx to the value u
+        void set(unsigned char idx, bool v);
 
-		// returns true if bit at idx is set
-		bool test(unsigned char idx) const;
+        // returns true if bit at idx is set
+        bool test(unsigned char idx) const;
 
-		// flips the bit at idx
-		void flip(unsigned idx);
+        // flips the bit at idx
+        void flip(unsigned idx);
 
-		// I/O
-		friend std::ostream& operator<<(std::ostream& out, const BitChar& bc);
-		friend std::istream& operator>>(std::istream& in, BitChar& bc);
+        // I/O
+        friend std::ostream& operator<<(std::ostream& out, const BitChar& bc);
+        friend std::istream& operator>>(std::istream& in, BitChar& bc);
 
-		void write(std::ostream& out);
-		void read(std::istream& in);
+        void write(std::ostream& out);
+        void read(std::istream& in);
 
-	private:
-		unsigned char d;
+    private:
+        unsigned char d;
 };
 
 #endif

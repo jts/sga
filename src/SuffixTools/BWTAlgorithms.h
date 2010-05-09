@@ -32,9 +32,9 @@ BWTIntervalPair findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std:
 // for string bS
 inline void updateInterval(BWTInterval& interval, char b, const BWT* pBWT)
 {
-	size_t pb = pBWT->getPC(b);
-	interval.lower = pb + pBWT->getOcc(b, interval.lower - 1);
-	interval.upper = pb + pBWT->getOcc(b, interval.upper) - 1;
+    size_t pb = pBWT->getPC(b);
+    interval.lower = pb + pBWT->getOcc(b, interval.lower - 1);
+    interval.upper = pb + pBWT->getOcc(b, interval.upper) - 1;
 }
 
 //
@@ -44,18 +44,18 @@ inline void updateInterval(BWTInterval& interval, char b, const BWT* pBWT)
 // using the pRevBWT to update both
 inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 {
-	// Update the left index using the difference between the AlphaCounts in the reverse table
-	AlphaCount l = pRevBWT->getFullOcc(pair.interval[1].lower - 1);
-	AlphaCount u = pRevBWT->getFullOcc(pair.interval[1].upper);
-	AlphaCount diff = u - l;
+    // Update the left index using the difference between the AlphaCounts in the reverse table
+    AlphaCount l = pRevBWT->getFullOcc(pair.interval[1].lower - 1);
+    AlphaCount u = pRevBWT->getFullOcc(pair.interval[1].upper);
+    AlphaCount diff = u - l;
 
-	pair.interval[0].lower = pair.interval[0].lower + diff.getLessThan(b);
-	pair.interval[0].upper = pair.interval[0].lower + diff.get(b) - 1;
+    pair.interval[0].lower = pair.interval[0].lower + diff.getLessThan(b);
+    pair.interval[0].upper = pair.interval[0].lower + diff.get(b) - 1;
 
-	// Update the right index directly
-	size_t pb = pRevBWT->getPC(b);
-	pair.interval[1].lower = pb + l.get(b);
-	pair.interval[1].upper = pb + u.get(b) - 1;
+    // Update the right index directly
+    size_t pb = pRevBWT->getPC(b);
+    pair.interval[1].lower = pb + l.get(b);
+    pair.interval[1].upper = pb + u.get(b) - 1;
 }
 
 //
@@ -64,38 +64,38 @@ inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 // It returns the updated left/right ranges for string bS (prepending b)
 inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT)
 {
-	// Update the left index using the difference between the AlphaCounts in the reverse table
-	AlphaCount l = pBWT->getFullOcc(pair.interval[0].lower - 1);
-	AlphaCount u = pBWT->getFullOcc(pair.interval[0].upper);
-	AlphaCount diff = u - l;
+    // Update the left index using the difference between the AlphaCounts in the reverse table
+    AlphaCount l = pBWT->getFullOcc(pair.interval[0].lower - 1);
+    AlphaCount u = pBWT->getFullOcc(pair.interval[0].upper);
+    AlphaCount diff = u - l;
 
-	pair.interval[1].lower = pair.interval[1].lower + diff.getLessThan(b);
-	pair.interval[1].upper = pair.interval[1].lower + diff.get(b) - 1;
+    pair.interval[1].lower = pair.interval[1].lower + diff.getLessThan(b);
+    pair.interval[1].upper = pair.interval[1].lower + diff.get(b) - 1;
 
-	// Update the left index directly
-	size_t pb = pBWT->getPC(b);
-	pair.interval[0].lower = pb + l.get(b);
-	pair.interval[0].upper = pb + u.get(b) - 1;
+    // Update the left index directly
+    size_t pb = pBWT->getPC(b);
+    pair.interval[0].lower = pb + l.get(b);
+    pair.interval[0].upper = pb + u.get(b) - 1;
 }
 
 // Initialize the interval of index idx to be the range containining all the b suffixes
 inline void initInterval(BWTInterval& interval, char b, const BWT* pB)
 {
-	interval.lower = pB->getPC(b);
-	interval.upper = interval.lower + pB->getOcc(b, pB->getBWLen() - 1) - 1;
+    interval.lower = pB->getPC(b);
+    interval.upper = interval.lower + pB->getOcc(b, pB->getBWLen() - 1) - 1;
 }
 
 // Initialize the interval of index idx to be the range containining all the b suffixes
 inline void initIntervalPair(BWTIntervalPair& pair, char b, const BWT* pBWT, const BWT* pRevBWT)
 {
-	initInterval(pair.interval[LEFT_INT_IDX], b, pBWT);
-	initInterval(pair.interval[RIGHT_INT_IDX], b, pRevBWT);
+    initInterval(pair.interval[LEFT_INT_IDX], b, pBWT);
+    initInterval(pair.interval[RIGHT_INT_IDX], b, pRevBWT);
 }
 
 // Return the counts of the bases between the lower and upper interval in pBWT
 inline AlphaCount getExtCount(const BWTInterval& interval, const BWT* pBWT)
 {
-	return pBWT->getOccDiff(interval.lower - 1, interval.upper);
+    return pBWT->getOccDiff(interval.lower - 1, interval.upper);
 }
 
 // Return the count of all the possible one base extensions of the string w.

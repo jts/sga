@@ -15,14 +15,14 @@ typedef std::vector<AlignPair> AlignPairVec;
 //
 class PairStreamer
 {
-	public:
-		PairStreamer(std::string filename);
-		~PairStreamer();
-		AlignPairVec getBlock();
+    public:
+        PairStreamer(std::string filename);
+        ~PairStreamer();
+        AlignPairVec getBlock();
 
-	private:
-		AlignPair m_nextRecord;
-		std::ifstream fileReader;
+    private:
+        AlignPair m_nextRecord;
+        std::ifstream fileReader;
 };
 
 #endif

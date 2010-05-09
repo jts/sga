@@ -15,16 +15,16 @@ class Vertex;
 
 struct EdgeDesc
 {
-	EdgeDesc() : pVertex(NULL) {}
-	EdgeDesc(Vertex* pV, EdgeDir d, EdgeComp c) : pVertex(pV), dir(d), comp(c) {}
-	Vertex* pVertex;
-	EdgeDir dir;
-	EdgeComp comp;
+    EdgeDesc() : pVertex(NULL) {}
+    EdgeDesc(Vertex* pV, EdgeDir d, EdgeComp c) : pVertex(pV), dir(d), comp(c) {}
+    Vertex* pVertex;
+    EdgeDir dir;
+    EdgeComp comp;
 
-	// Operators
-	bool operator<(const EdgeDesc& obj) const;
-	bool operator==(const EdgeDesc& obj) const;
-	friend std::ostream& operator<<(std::ostream& out, const EdgeDesc& ed);
+    // Operators
+    bool operator<(const EdgeDesc& obj) const;
+    bool operator==(const EdgeDesc& obj) const;
+    friend std::ostream& operator<<(std::ostream& out, const EdgeDesc& ed);
 };
 
 #endif

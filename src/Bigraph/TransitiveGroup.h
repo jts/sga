@@ -22,27 +22,27 @@ typedef std::vector<Edge*> EdgePtrVec;
 
 class TransitiveGroup
 {
-	public:
-		TransitiveGroup(Vertex* pVertex, Edge* pIrreducible);
-		
-		void add(Edge* pEdge);
-		
-		Edge* getIrreducible() const;
-		Edge* getEdge(size_t idx) const;
-		Edge* getEdge(EdgeDesc ed) const;
-		MultiOverlap getMultiOverlap() const;
-		bool hasEdge(EdgeDesc ed) const;
-		size_t numElements() const;
+    public:
+        TransitiveGroup(Vertex* pVertex, Edge* pIrreducible);
+        
+        void add(Edge* pEdge);
+        
+        Edge* getIrreducible() const;
+        Edge* getEdge(size_t idx) const;
+        Edge* getEdge(EdgeDesc ed) const;
+        MultiOverlap getMultiOverlap() const;
+        bool hasEdge(EdgeDesc ed) const;
+        size_t numElements() const;
 
-		// IO
-		void print() const;
-		void printMultiOverlap() const;
+        // IO
+        void print() const;
+        void printMultiOverlap() const;
 
-	private:
+    private:
 
-		// data
-		Vertex* m_pVertex;
-		EdgePtrVec m_edges;
+        // data
+        Vertex* m_pVertex;
+        EdgePtrVec m_edges;
 };
 
 #endif

@@ -21,21 +21,21 @@ typedef std::vector<TransitiveGroup> TransitiveGroupVector;
 
 class TransitiveGroupCollection
 {
-	public:
-		TransitiveGroupCollection(Vertex* pVertex, EdgeDir dir);
+    public:
+        TransitiveGroupCollection(Vertex* pVertex, EdgeDir dir);
 
-		TransitiveGroup& createGroup(Edge* pIrreducible);
-		TransitiveGroup& getGroup(size_t idx);
-		size_t findGroup(EdgeDesc ed) const;
-		size_t numGroups() const;
+        TransitiveGroup& createGroup(Edge* pIrreducible);
+        TransitiveGroup& getGroup(size_t idx);
+        size_t findGroup(EdgeDesc ed) const;
+        size_t numGroups() const;
 
-		void print() const;
+        void print() const;
 
-	private:
+    private:
 
-		Vertex* m_pVertex;
-		EdgeDir m_dir;
-		TransitiveGroupVector m_groups;
+        Vertex* m_pVertex;
+        EdgeDir m_dir;
+        TransitiveGroupVector m_groups;
 };
 
 #endif

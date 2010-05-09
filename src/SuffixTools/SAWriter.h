@@ -18,19 +18,19 @@ class SuffixArray;
 
 class SAWriter
 {
-	public:
-		SAWriter(const std::string& filename);
-		~SAWriter();
+    public:
+        SAWriter(const std::string& filename);
+        ~SAWriter();
 
-		//
-		void write(const SuffixArray* pSA);
-		void writeHeader(const size_t& num_strings, const size_t& num_elems);
-		void writeElems(const SAElemVector& elemVector);
-		void writeElem(const SAElem& elem);
+        //
+        void write(const SuffixArray* pSA);
+        void writeHeader(const size_t& num_strings, const size_t& num_elems);
+        void writeElems(const SAElemVector& elemVector);
+        void writeElem(const SAElem& elem);
 
-	private:
-		std::ostream* m_pWriter;
-		SAIOStage m_stage;
+    private:
+        std::ostream* m_pWriter;
+        SAIOStage m_stage;
 };
 
 #endif

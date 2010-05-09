@@ -15,45 +15,45 @@
 
 struct TraverseElem
 {
-	// The current index is set to 0 and we iterate forward until we find the first valid (non-zero) entry
-	// This skips elem 0 which is the $ 
-	TraverseElem(const BWTInterval& i, AlphaCount ac) : base_range(i), desc(ac), currIdx(0) { }
+    // The current index is set to 0 and we iterate forward until we find the first valid (non-zero) entry
+    // This skips elem 0 which is the $ 
+    TraverseElem(const BWTInterval& i, AlphaCount ac) : base_range(i), desc(ac), currIdx(0) { }
 
-	// Return true if the current position is valid
-	bool isValid() const
-	{
-		return currIdx < ALPHABET_SIZE;
-	}
+    // Return true if the current position is valid
+    bool isValid() const
+    {
+        return currIdx < ALPHABET_SIZE;
+    }
 
-	// Return the current char
-	char getCurrChar() const
-	{
-		assert(isValid());
-		return desc.getBase(currIdx);
-	}
+    // Return the current char
+    char getCurrChar() const
+    {
+        assert(isValid());
+        return desc.getBase(currIdx);
+    }
 
-	// Return the range
-	const BWTInterval& getRange() const { return base_range; }
+    // Return the range
+    const BWTInterval& getRange() const { return base_range; }
 
-	// go to the next character with a non-zero count
-	// this automatically skips index 0, which we want since its the '$' character
-	void goNext()
-	{
-		do
-		{
-			++currIdx;
-		}
-		while(currIdx < ALPHABET_SIZE && desc.getByIdx(currIdx) == 0);
-	}
+    // go to the next character with a non-zero count
+    // this automatically skips index 0, which we want since its the '$' character
+    void goNext()
+    {
+        do
+        {
+            ++currIdx;
+        }
+        while(currIdx < ALPHABET_SIZE && desc.getByIdx(currIdx) == 0);
+    }
 
-	// The ranges in the BWT that correspond to the string leading up to this element
-	BWTInterval base_range;
+    // The ranges in the BWT that correspond to the string leading up to this element
+    BWTInterval base_range;
 
-	// The counts of each base {A,C,G,T} that are left-extensions of this range
-	AlphaCount desc;
+    // The counts of each base {A,C,G,T} that are left-extensions of this range
+    AlphaCount desc;
 
-	// The index of the current base being processed
-	int currIdx;
+    // The index of the current base being processed
+    int currIdx;
 };
 
 typedef std::stack<TraverseElem> TraverseStack;

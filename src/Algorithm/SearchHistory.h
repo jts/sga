@@ -14,46 +14,46 @@
 // Base, Position pair indicating a divergence during the search
 struct SearchHistoryItem
 {
-	SearchHistoryItem(int p, char b) : pos(p), base(b) {}
-	int pos;
-	char base;
+    SearchHistoryItem(int p, char b) : pos(p), base(b) {}
+    int pos;
+    char base;
 
-	static bool sortPos(const SearchHistoryItem& a, const SearchHistoryItem& b)
-	{
-		return a.pos < b.pos;
-	}
+    static bool sortPos(const SearchHistoryItem& a, const SearchHistoryItem& b)
+    {
+        return a.pos < b.pos;
+    }
 
-	friend std::ostream& operator<<(std::ostream& out, const SearchHistoryItem& hi)
-	{
-		out << hi.pos << "," << hi.base;
-		return out;
-	}
+    friend std::ostream& operator<<(std::ostream& out, const SearchHistoryItem& hi)
+    {
+        out << hi.pos << "," << hi.base;
+        return out;
+    }
 };
 typedef std::vector<SearchHistoryItem> HistoryItemVector;
 
 // A vector of history items that can be compared with other histories
 class SearchHistoryVector
 {
-	public:
-		
-		//
-		SearchHistoryVector() {}
+    public:
+        
+        //
+        SearchHistoryVector() {}
 
-		//
-		void add(int pos, char base);
-		void add(SearchHistoryItem& item);
-		void normalize(bool doComplement);
-		size_t size() const { return m_history.size(); }
+        //
+        void add(int pos, char base);
+        void add(SearchHistoryItem& item);
+        void normalize(bool doComplement);
+        size_t size() const { return m_history.size(); }
 
-		//
-		static int countDifferences(const SearchHistoryVector& a, const SearchHistoryVector& b, int maxPos);
+        //
+        static int countDifferences(const SearchHistoryVector& a, const SearchHistoryVector& b, int maxPos);
 
-		//
-		friend std::ostream& operator<<(std::ostream& out, const SearchHistoryVector& hist);
+        //
+        friend std::ostream& operator<<(std::ostream& out, const SearchHistoryVector& hist);
 
-	private:
+    private:
 
-		HistoryItemVector m_history;
+        HistoryItemVector m_history;
 };
 
 
@@ -65,24 +65,24 @@ class SearchHistoryNode;
 // they are no longer referred to
 class SearchHistoryLink
 {
-	public:
-		
-		//
-		SearchHistoryLink();
-		SearchHistoryLink(SearchHistoryNode* ptr);
+    public:
+        
+        //
+        SearchHistoryLink();
+        SearchHistoryLink(SearchHistoryNode* ptr);
 
-		// We need to handle the copy constructor and the assignment operator
-		// for the reference counting to be correct
-		SearchHistoryLink(const SearchHistoryLink& link);		
-		SearchHistoryLink& operator=(SearchHistoryLink const& link);
-		~SearchHistoryLink();
+        // We need to handle the copy constructor and the assignment operator
+        // for the reference counting to be correct
+        SearchHistoryLink(const SearchHistoryLink& link);        
+        SearchHistoryLink& operator=(SearchHistoryLink const& link);
+        ~SearchHistoryLink();
 
 
-		SearchHistoryNode* operator->() const { assert(pNode != NULL); return pNode; }
-		SearchHistoryNode& operator*() const { assert(pNode != NULL); return *pNode; }
+        SearchHistoryNode* operator->() const { assert(pNode != NULL); return pNode; }
+        SearchHistoryNode& operator*() const { assert(pNode != NULL); return *pNode; }
 
-	private:
-		SearchHistoryNode* pNode;
+    private:
+        SearchHistoryNode* pNode;
 };
 
 // A search history node is one link in a chain of history items. It is
@@ -90,34 +90,34 @@ class SearchHistoryLink
 // new element in the chain, indicating a divergence from the parent history
 class SearchHistoryNode
 {
-	public:
+    public:
 
-		SearchHistoryLink createChild(int var_pos, char var_base);
-		static SearchHistoryLink createRoot(); // Create the root node of the history tree
-		SearchHistoryVector getHistoryVector();
+        SearchHistoryLink createChild(int var_pos, char var_base);
+        static SearchHistoryLink createRoot(); // Create the root node of the history tree
+        SearchHistoryVector getHistoryVector();
 
-	private:
+    private:
 
-		friend class SearchHistoryLink;
-		friend class SearchTree;
+        friend class SearchHistoryLink;
+        friend class SearchTree;
 
-		// The nodes should only be constructed/destructed through the links
-		SearchHistoryNode(SearchHistoryNode* pParent, 
-				          int var_pos, char var_base) : m_parentLink(pParent), 
-		                                                m_variant(var_pos, var_base),
-														m_refCount(0) {}
-		
-		~SearchHistoryNode() { assert(m_refCount == 0); }
+        // The nodes should only be constructed/destructed through the links
+        SearchHistoryNode(SearchHistoryNode* pParent, 
+                          int var_pos, char var_base) : m_parentLink(pParent), 
+                                                        m_variant(var_pos, var_base),
+                                                        m_refCount(0) {}
+        
+        ~SearchHistoryNode() { assert(m_refCount == 0); }
 
-		inline void increment() { ++m_refCount; }
-		inline void decrement() { --m_refCount; }
-		inline int getCount() const { return m_refCount; }
+        inline void increment() { ++m_refCount; }
+        inline void decrement() { --m_refCount; }
+        inline int getCount() const { return m_refCount; }
 
-		SearchHistoryLink m_parentLink;
-		SearchHistoryItem m_variant;
-		int m_refCount;
+        SearchHistoryLink m_parentLink;
+        SearchHistoryItem m_variant;
+        int m_refCount;
 
-		static const char ROOT_CHAR = '0';
+        static const char ROOT_CHAR = '0';
 };
 
 #endif

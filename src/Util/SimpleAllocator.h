@@ -17,46 +17,46 @@
 template<class T>
 class SimpleAllocator
 {
-	typedef SimplePool<T> StorageType;
-	typedef std::list<StorageType* > StorageList;
+    typedef SimplePool<T> StorageType;
+    typedef std::list<StorageType* > StorageList;
 
-	public:
-		static SimpleAllocator* Instance()
-		{
-			static SimpleAllocator<T> instance;
-			return &instance;
-		}
+    public:
+        static SimpleAllocator* Instance()
+        {
+            static SimpleAllocator<T> instance;
+            return &instance;
+        }
 
-		void* alloc()
-		{
-			if(m_pPoolList.empty() || m_pPoolList.back()->isFull())
-			{
-				// new storage must be allocated
-				m_pPoolList.push_back(new StorageType);
-			}
+        void* alloc()
+        {
+            if(m_pPoolList.empty() || m_pPoolList.back()->isFull())
+            {
+                // new storage must be allocated
+                m_pPoolList.push_back(new StorageType);
+            }
 
-			// allocate from the last pool
-			return m_pPoolList.back()->alloc();
-		}
+            // allocate from the last pool
+            return m_pPoolList.back()->alloc();
+        }
 
-		void dealloc(void* /*ptr*/)
-		{
-			// deallocation not tracked in this strategy
-		}
+        void dealloc(void* /*ptr*/)
+        {
+            // deallocation not tracked in this strategy
+        }
 
-	private:
+    private:
 
-		SimpleAllocator() {}
-		~SimpleAllocator()
-		{
-			for(typename StorageList::iterator iter = m_pPoolList.begin(); iter != m_pPoolList.end(); ++iter)
-			{
-				delete *iter;
-			}
-			m_pPoolList.clear();
-		}
+        SimpleAllocator() {}
+        ~SimpleAllocator()
+        {
+            for(typename StorageList::iterator iter = m_pPoolList.begin(); iter != m_pPoolList.end(); ++iter)
+            {
+                delete *iter;
+            }
+            m_pPoolList.clear();
+        }
 
-		StorageList m_pPoolList;
+        StorageList m_pPoolList;
 };
 
 #endif

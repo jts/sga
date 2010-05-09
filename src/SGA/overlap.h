@@ -38,7 +38,7 @@ void writeOverlap(Overlap& overlap, std::ofstream& containHandle, std::ofstream&
 // Convert a line from a hits file into a vector of overlaps
 OverlapVector hitStringToOverlaps(const std::string& hitString, 
                                   const ReadTable* pFwdRT, const ReadTable* pRevRT, 
-								  const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI);
+                                  const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI);
 
 // options
 void parseOverlapOptions(int argc, char** argv);

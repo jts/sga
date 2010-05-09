@@ -16,60 +16,60 @@ class LCPArray;
 
 class SuffixArray
 {
-	public:
-		
-		//
-		SuffixArray() {}
-		SuffixArray(const std::string& filename);
-		SuffixArray(const ReadTable* pRT);
+    public:
+        
+        //
+        SuffixArray() {}
+        SuffixArray(const std::string& filename);
+        SuffixArray(const ReadTable* pRT);
 
-		// Construction/Validation functions
-		void initialize(const ReadTable& rt);
-		void initialize(size_t num_suffixes, size_t num_strings);
-		void validate(const ReadTable* pRT) const;
-		void sort(const ReadTable* pRT);
+        // Construction/Validation functions
+        void initialize(const ReadTable& rt);
+        void initialize(size_t num_suffixes, size_t num_strings);
+        void validate(const ReadTable* pRT) const;
+        void sort(const ReadTable* pRT);
 
-		// Remove all the suffixes from the SA that have an id in idSet
-		void removeReads(const NumericIDSet& idSet);
+        // Remove all the suffixes from the SA that have an id in idSet
+        void removeReads(const NumericIDSet& idSet);
 
-		// Simple accessors
-		inline const SAElem& get(size_t idx) const { assert(idx < m_data.size()); return m_data[idx]; }
-		inline void set(size_t idx, SAElem e) { m_data[idx] = e; }
-		size_t getSize() const { return m_data.size(); }
-		size_t getNumStrings() const { return m_numStrings; } 
-		std::string getSuffix(size_t idx, const ReadTable* pRT) const;
-		size_t getSuffixLength(const ReadTable* pRT, const SAElem elem) const;
-		
+        // Simple accessors
+        inline const SAElem& get(size_t idx) const { assert(idx < m_data.size()); return m_data[idx]; }
+        inline void set(size_t idx, SAElem e) { m_data[idx] = e; }
+        size_t getSize() const { return m_data.size(); }
+        size_t getNumStrings() const { return m_numStrings; } 
+        std::string getSuffix(size_t idx, const ReadTable* pRT) const;
+        size_t getSuffixLength(const ReadTable* pRT, const SAElem elem) const;
+        
 
-		// Operators
-		friend std::ostream& operator<<(std::ostream& out, const SuffixArray& sa);
-		friend std::istream& operator>>(std::istream& in, SuffixArray& sa);
+        // Operators
+        friend std::ostream& operator<<(std::ostream& out, const SuffixArray& sa);
+        friend std::istream& operator>>(std::istream& in, SuffixArray& sa);
 
-		// Output the entire suffix array
-		void write(std::string& filename);
+        // Output the entire suffix array
+        void write(std::string& filename);
 
-		// Output the suffix array index
-		// The suffix array index are the full-length suffixes (the entire string)
-		// of the suffix array, sorted into lexographical order
-		// The file format is the same as the suffix array
-		// This is used during the BWT indexing and is the only part of the
-		// suffix array that we need
-		void writeIndex(std::string& filename);
+        // Output the suffix array index
+        // The suffix array index are the full-length suffixes (the entire string)
+        // of the suffix array, sorted into lexographical order
+        // The file format is the same as the suffix array
+        // This is used during the BWT indexing and is the only part of the
+        // suffix array that we need
+        void writeIndex(std::string& filename);
 
-		// Print funcs
-		void print() const;
-		void print(const ReadTable* pRT) const;
+        // Print funcs
+        void print() const;
+        void print(const ReadTable* pRT) const;
 
-		// friends
-		friend void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT);
-		friend class SAReader;
-		friend class SAWriter;
+        // friends
+        friend void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT);
+        friend class SAReader;
+        friend class SAWriter;
 
-	private:
-		
-		// Data members
-		SAElemVector m_data;
-		size_t m_numStrings;
+    private:
+        
+        // Data members
+        SAElemVector m_data;
+        size_t m_numStrings;
 };
 
 #endif 

@@ -18,21 +18,21 @@ class BWT;
 
 class BWTWriter
 {
-	public:
-		BWTWriter(const std::string& filename);
-		~BWTWriter();
+    public:
+        BWTWriter(const std::string& filename);
+        ~BWTWriter();
 
-		//
-		void write(const BWT* pBWT);
-		void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);
-		void writeBWStr(const std::string& str); 
-		void writeBWChar(char b);
-		void writePred(const AlphaCount& pc);
-		void writeOccurrence(const Occurrence& icc);
+        //
+        void write(const BWT* pBWT);
+        void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);
+        void writeBWStr(const std::string& str); 
+        void writeBWChar(char b);
+        void writePred(const AlphaCount& pc);
+        void writeOccurrence(const Occurrence& icc);
 
-	private:
-		std::ostream* m_pWriter;
-		BWIOStage m_stage;
+    private:
+        std::ostream* m_pWriter;
+        BWIOStage m_stage;
 };
 
 #endif

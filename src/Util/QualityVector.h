@@ -18,24 +18,24 @@ typedef std::vector<DNADouble> APVec;
 
 class QualityVector
 {
-	public:
-		
-		// Constructors
-		QualityVector();
-		QualityVector(const QualityVector& vec, int start, int size);
+    public:
+        
+        // Constructors
+        QualityVector();
+        QualityVector(const QualityVector& vec, int start, int size);
 
-		//
-		void add(DNADouble v);
-		void set(size_t idx, DNADouble v);
-		DNADouble get(size_t idx) const;
-		size_t size() const;
-		bool empty() const;
+        //
+        void add(DNADouble v);
+        void set(size_t idx, DNADouble v);
+        DNADouble get(size_t idx) const;
+        size_t size() const;
+        bool empty() const;
 
-		//
-		void reverseComplement();
+        //
+        void reverseComplement();
 
-	private:
-		APVec m_data;
+    private:
+        APVec m_data;
 
 };
 

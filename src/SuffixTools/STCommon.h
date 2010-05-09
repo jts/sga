@@ -35,69 +35,69 @@ void printVector(const std::vector<T>& v);
 //
 struct SAElem
 {
-	public:
-		SAElem() : m_val(std::numeric_limits<uint64_t>::max()) { }
-		SAElem(uint64_t i);
-		SAElem(uint64_t i, uint64_t p);
+    public:
+        SAElem() : m_val(std::numeric_limits<uint64_t>::max()) { }
+        SAElem(uint64_t i);
+        SAElem(uint64_t i, uint64_t p);
 
-		//
-		inline bool isEmpty() const
-		{
-			return m_val == std::numeric_limits<uint64_t>::max();
-		}
+        //
+        inline bool isEmpty() const
+        {
+            return m_val == std::numeric_limits<uint64_t>::max();
+        }
 
-		// set the id
-		inline void setID(uint64_t i)
-		{
-			// Clear the HIGH bits by ANDing with the low mask
-			m_val &= LOW_MASK;
-			
-			// Shift the new position into place and set the new value
-			i <<= POS_BITS;
-			m_val |= i;
-		}
+        // set the id
+        inline void setID(uint64_t i)
+        {
+            // Clear the HIGH bits by ANDing with the low mask
+            m_val &= LOW_MASK;
+            
+            // Shift the new position into place and set the new value
+            i <<= POS_BITS;
+            m_val |= i;
+        }
 
-		// set the position
-		void setPos(uint64_t i)
-		{
-			// Clear the LOW bits by anding with the high mask
-			m_val &= HIGH_MASK;
+        // set the position
+        void setPos(uint64_t i)
+        {
+            // Clear the LOW bits by anding with the high mask
+            m_val &= HIGH_MASK;
 
-			// Set the new value
-			m_val |= i;
-		}
+            // Set the new value
+            m_val |= i;
+        }
 
-		inline uint64_t getID() const
-		{
-			return (m_val & HIGH_MASK) >> POS_BITS;
-		}
+        inline uint64_t getID() const
+        {
+            return (m_val & HIGH_MASK) >> POS_BITS;
+        }
 
-		inline uint64_t getPos() const
-		{
-			return (m_val & LOW_MASK);
-		}
+        inline uint64_t getPos() const
+        {
+            return (m_val & LOW_MASK);
+        }
 
-		// Returns true if the suffix is the full length of the string
-		inline bool isFull() const
-		{
-			return getPos() == 0;
-		}
+        // Returns true if the suffix is the full length of the string
+        inline bool isFull() const
+        {
+            return getPos() == 0;
+        }
 
-		// Input/Output
-		friend std::istream& operator>>(std::istream& in, SAElem& s);
-		friend std::ostream& operator<<(std::ostream& out, const SAElem& s);
+        // Input/Output
+        friend std::istream& operator>>(std::istream& in, SAElem& s);
+        friend std::ostream& operator<<(std::ostream& out, const SAElem& s);
 
 
-	private:
-		
-		//
-		uint64_t m_val;
+    private:
+        
+        //
+        uint64_t m_val;
 
-		// Masks
-		static const uint8_t ID_BITS = 36; // Allows up to 68 billion IDs
-		static const uint8_t POS_BITS = 64 - ID_BITS;
-		static const uint64_t HIGH_MASK = ~0 << POS_BITS;
-		static const uint64_t LOW_MASK = ~HIGH_MASK;
+        // Masks
+        static const uint8_t ID_BITS = 36; // Allows up to 68 billion IDs
+        static const uint8_t POS_BITS = 64 - ID_BITS;
+        static const uint64_t HIGH_MASK = ~0 << POS_BITS;
+        static const uint64_t LOW_MASK = ~HIGH_MASK;
 };
 
 // Typedefs of STL collections of the above classes

@@ -17,46 +17,46 @@ typedef std::map<std::string, SeqItem*> ReadIndex;
 
 class ReadTable
 {
-	public:
-		//
-		ReadTable() : m_pIndex(NULL) {}
-		ReadTable(std::string filename);
-		~ReadTable();
+    public:
+        //
+        ReadTable() : m_pIndex(NULL) {}
+        ReadTable(std::string filename);
+        ~ReadTable();
 
-		// Initialize this read table as the reverse of the passed in read table
-		void initializeReverse(const ReadTable* pRT);
+        // Initialize this read table as the reverse of the passed in read table
+        void initializeReverse(const ReadTable* pRT);
 
-		// Reverse all the reads in this table
-		void reverseAll();
+        // Reverse all the reads in this table
+        void reverseAll();
 
-		// Build a readid -> read index
-		void indexReadsByID();
+        // Build a readid -> read index
+        void indexReadsByID();
 
-		//
-		void addRead(const SeqItem& r);
-		const SeqItem& getRead(size_t idx) const;
-		const SeqItem& getRead(const std::string& id) const;
-		size_t getReadLength(size_t idx) const;
-		size_t getCount() const;
-		size_t countSumLengths() const;
-		void clear();
+        //
+        void addRead(const SeqItem& r);
+        const SeqItem& getRead(size_t idx) const;
+        const SeqItem& getRead(const std::string& id) const;
+        size_t getReadLength(size_t idx) const;
+        size_t getCount() const;
+        size_t countSumLengths() const;
+        void clear();
 
-		// Get a particular character for a particular read
-		inline char getChar(size_t str_idx, size_t char_idx) const
-		{
-			assert(str_idx < m_table.size());
-			return m_table[str_idx].seq.get(char_idx);
-		}
+        // Get a particular character for a particular read
+        inline char getChar(size_t str_idx, size_t char_idx) const
+        {
+            assert(str_idx < m_table.size());
+            return m_table[str_idx].seq.get(char_idx);
+        }
 
-		// I/O
-		friend std::ostream& operator<<(std::ostream& out, const ReadTable& rt);
+        // I/O
+        friend std::ostream& operator<<(std::ostream& out, const ReadTable& rt);
 
 
-	private:
-		ReadVector m_table;
-		// Index of readid -> SeqItem
-		// It is not build be default to save memory
-		ReadIndex* m_pIndex; 
+    private:
+        ReadVector m_table;
+        // Index of readid -> SeqItem
+        // It is not build be default to save memory
+        ReadIndex* m_pIndex; 
 };
 
 #endif

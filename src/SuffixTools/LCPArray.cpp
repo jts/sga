@@ -13,39 +13,39 @@
 // Naive construction algorithm
 LCPArray::LCPArray(const SuffixArray* pSA, const ReadTable* pRT)
 {
-	size_t saSize = pSA->getSize();
-	m_data.resize(saSize - 1);
+    size_t saSize = pSA->getSize();
+    m_data.resize(saSize - 1);
 
-	for(size_t i = 0; i < saSize - 1; ++i)
-	{
-		std::string s1 = pSA->getSuffix(i, pRT);
-		std::string s2 = pSA->getSuffix(i+1, pRT);
-		m_data[i] = countPrefixLength(s1, s2);
-	}
+    for(size_t i = 0; i < saSize - 1; ++i)
+    {
+        std::string s1 = pSA->getSuffix(i, pRT);
+        std::string s2 = pSA->getSuffix(i+1, pRT);
+        m_data[i] = countPrefixLength(s1, s2);
+    }
 }
 
 unsigned int LCPArray::get(size_t idx) const
 {
-	assert(idx < m_data.size());
-	return m_data[idx];
+    assert(idx < m_data.size());
+    return m_data[idx];
 }
 
 void LCPArray::print(SuffixArray* pSA, ReadTable* pRT) const
 {
-	for(size_t i = 0; i < m_data.size(); ++i)
-	{
-		std::cout << i << "\t" << pSA->getSuffix(i, pRT) + "$\t"  
+    for(size_t i = 0; i < m_data.size(); ++i)
+    {
+        std::cout << i << "\t" << pSA->getSuffix(i, pRT) + "$\t"  
                        << m_data[i] << "\n";
-	}
-	// Print the last suffix
-	std::cout << m_data.size() << "\t" << pSA->getSuffix(m_data.size(), pRT) + "$\t-\n";
+    }
+    // Print the last suffix
+    std::cout << m_data.size() << "\t" << pSA->getSuffix(m_data.size(), pRT) + "$\t-\n";
 }
 
 size_t LCPArray::countPrefixLength(std::string s1, std::string s2) const
 {
-	size_t stop = s1.size() < s2.size() ? s1.size() : s2.size();
-	size_t m = 0;
-	while(s1[m] == s2[m] && m < stop)
-		++m;
-	return m;
+    size_t stop = s1.size() < s2.size() ? s1.size() : s2.size();
+    size_t m = 0;
+    while(s1[m] == s2[m] && m < stop)
+        ++m;
+    return m;
 }

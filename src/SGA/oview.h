@@ -17,17 +17,17 @@ typedef std::map<std::string, OverlapVector> OverlapMap;
 
 struct DrawData
 {
-	DrawData(int o, std::string n, std::string s, int nd, int ol) : offset(o), name(n), seq(s), numDiff(nd), overlapLen(ol) {}
-	int offset;
-	std::string name;
-	std::string seq;
-	int numDiff;
-	int overlapLen;
+    DrawData(int o, std::string n, std::string s, int nd, int ol) : offset(o), name(n), seq(s), numDiff(nd), overlapLen(ol) {}
+    int offset;
+    std::string name;
+    std::string seq;
+    int numDiff;
+    int overlapLen;
 
-	bool operator<(const DrawData& other) const
-	{
-		return offset < other.offset;
-	}
+    bool operator<(const DrawData& other) const
+    {
+        return offset < other.offset;
+    }
 };
 
 typedef std::vector<DrawData> DrawVector;

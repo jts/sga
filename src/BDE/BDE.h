@@ -32,9 +32,9 @@ typedef std::vector<int> IntVec;
 //
 struct Profile
 {
-	Profile(ContigID i, int low, int high) : id(i), profile(low, high) {}
-	ContigID id;
-	IntDist profile;
+    Profile(ContigID i, int low, int high) : id(i), profile(low, high) {}
+    ContigID id;
+    IntDist profile;
 };
 
 typedef std::vector<Profile> ProfileVector;
@@ -77,9 +77,9 @@ static const char *USAGE_MESSAGE =
 
 namespace opt
 {
-	unsigned int k;
-	static std::string histFile;
-	static unsigned int verbose;
+    unsigned int k;
+    static std::string histFile;
+    static unsigned int verbose;
 }
 
 static const char* shortopts = "o:h:k:v";
@@ -87,12 +87,12 @@ static const char* shortopts = "o:h:k:v";
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-	{ "kmer",        required_argument, NULL, 'k' },
-	{ "histogram",   required_argument, NULL, 'h' },	
-	{ "verbose",     no_argument,       NULL, 'v' },
-	{ "help",        no_argument,       NULL, OPT_HELP },
-	{ "version",     no_argument,       NULL, OPT_VERSION },
-	{ NULL, 0, NULL, 0 }
+    { "kmer",        required_argument, NULL, 'k' },
+    { "histogram",   required_argument, NULL, 'h' },    
+    { "verbose",     no_argument,       NULL, 'v' },
+    { "help",        no_argument,       NULL, OPT_HELP },
+    { "version",     no_argument,       NULL, OPT_VERSION },
+    { NULL, 0, NULL, 0 }
 };
 
 

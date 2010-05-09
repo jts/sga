@@ -25,10 +25,10 @@
 #define CAF_SEP ':'
 #define FUNCTION_TIMER Timer functionTimer(__PRETTY_FUNCTION__);
 #define VALIDATION_WARNING(x) static bool validation_warn = true; if(validation_warn) \
-							   printf("[%s] Warning validation is on\n", (x)); validation_warn = false;
+                               printf("[%s] Warning validation is on\n", (x)); validation_warn = false;
 
 #define WARN_ONCE(x) static bool _warn_once = true; if(_warn_once) \
-					 printf("WARNING: [%s]\n", (x)); _warn_once = false;
+                     printf("WARNING: [%s]\n", (x)); _warn_once = false;
 
 #define GZIP_EXT ".gz"
 
@@ -45,44 +45,44 @@ typedef std::vector<Sequence> SequenceVector;
 // SeqItem is just an id, sequence pair
 struct SeqItem
 {
-	// data
-	std::string id;
-	DNAString seq;
+    // data
+    std::string id;
+    DNAString seq;
 };
 
 
 // SeqRecord is a id,sequence pair with an associated quality value
 struct SeqRecord
 {
-	SeqItem toSeqItem()
-	{
-		SeqItem r;
-		r.id = id;
-		r.seq = seq;
-		return r;
-	}
+    SeqItem toSeqItem()
+    {
+        SeqItem r;
+        r.id = id;
+        r.seq = seq;
+        return r;
+    }
 
-	void write(std::ostream& out)
-	{
-		// If there is a quality string write the record as fastq, otherwise fasta
-		if(!qual.empty())
-		{
-			out << "@" << id << "\n";
-			out << seq.toString() << "\n";
-			out << "+" << "\n"; // this field is optional
-			out << qual << "\n";
-		}
-		else
-		{
-			out << ">" << id << "\n";
-			out << seq.toString() << "\n";
-		}
-	}
+    void write(std::ostream& out)
+    {
+        // If there is a quality string write the record as fastq, otherwise fasta
+        if(!qual.empty())
+        {
+            out << "@" << id << "\n";
+            out << seq.toString() << "\n";
+            out << "+" << "\n"; // this field is optional
+            out << qual << "\n";
+        }
+        else
+        {
+            out << ">" << id << "\n";
+            out << seq.toString() << "\n";
+        }
+    }
 
-	// data
-	std::string id;
-	DNAString seq;
-	std::string qual;
+    // data
+    std::string id;
+    DNAString seq;
+    std::string qual;
 };
 
 //
@@ -106,9 +106,9 @@ void assertGZOpen(gzstreambase& gh, const std::string& fn);
 template <class C>
 std::string makeKeyValue(std::string key, C value)
 {
-	std::stringstream ss;
-	ss << key << CAF_SEP << value;
-	return ss.str();
+    std::stringstream ss;
+    ss << key << CAF_SEP << value;
+    return ss.str();
 }
 
 StringVector split(std::string in, char delimiter);
@@ -123,27 +123,27 @@ size_t debug_getReadDistFromNames(const std::string& name1, const std::string& n
 // Return the lexographic value for the given base
 //
 static const uint8_t s_lexoRankLUT[256] = {
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,1,0,2,0,0,0,3,0,0,0,0,0,0,0,0,
-	0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,1,0,2,0,0,0,3,0,0,0,0,0,0,0,0,
+    0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
 inline static uint8_t getBaseRank(char b)
 {
-	return s_lexoRankLUT[static_cast<uint8_t>(b)];
+    return s_lexoRankLUT[static_cast<uint8_t>(b)];
 }
 
 //
@@ -167,20 +167,20 @@ std::string getDiffString(const std::string& s1, const std::string& s2);
 // Complement a base
 inline char complement(char base)
 {
-	switch(base)
-	{
-		case 'A':
-			return 'T';
-		case 'C':
-			return 'G';
-		case 'G':
-			return 'C';
-		case 'T':
-			return 'A';
-		default:
-			assert(false && "Unknown base!");
-			return 'N';
-	}
+    switch(base)
+    {
+        case 'A':
+            return 'T';
+        case 'C':
+            return 'G';
+        case 'G':
+            return 'C';
+        case 'T':
+            return 'A';
+        default:
+            assert(false && "Unknown base!");
+            return 'N';
+    }
 }
 
 // Wrapper function to determine whether a calculated error rate is within tolerance of a
@@ -188,11 +188,11 @@ inline char complement(char base)
 // needs to account for small differences in fp calculations
 inline bool isErrorRateAcceptable(double er, double threshold)
 {
-	static double tolerance = 0.000001f;
-	if(er - tolerance <= threshold)
-		return true;
-	else
-		return false;
+    static double tolerance = 0.000001f;
+    if(er - tolerance <= threshold)
+        return true;
+    else
+        return false;
 }
 
 

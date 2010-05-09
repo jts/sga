@@ -21,84 +21,84 @@
 //
 class BWT
 {
-	public:
-	
-		// Constructors
-		BWT(const std::string& filename);
-		BWT(const SuffixArray* pSA, const ReadTable* pRT);
-		
-		//	
-		void initializeFMIndex();
+    public:
+    
+        // Constructors
+        BWT(const std::string& filename);
+        BWT(const SuffixArray* pSA, const ReadTable* pRT);
+        
+        //    
+        void initializeFMIndex();
 
-		// Exact match
-		void backwardSearch(std::string w) const;
+        // Exact match
+        void backwardSearch(std::string w) const;
 
-		// L[i] -> F mapping 
-		size_t LF(size_t idx) const;
+        // L[i] -> F mapping 
+        size_t LF(size_t idx) const;
 
-		inline char getChar(size_t idx) const { return m_bwStr[idx]; }
-		inline BaseCount getPC(char b) const { return m_predCount.get(b); }
+        inline char getChar(size_t idx) const { return m_bwStr[idx]; }
+        inline BaseCount getPC(char b) const { return m_predCount.get(b); }
 
-		// Return the number of times char b appears in bwt[0, idx]
-		inline BaseCount getOcc(char b, size_t idx) const { return m_occurrence.get(m_bwStr, b, idx); }
+        // Return the number of times char b appears in bwt[0, idx]
+        inline BaseCount getOcc(char b, size_t idx) const { return m_occurrence.get(m_bwStr, b, idx); }
 
-		// Return the number of times each symbol in the alphabet appears in bwt[0, idx]
-		inline AlphaCount getFullOcc(size_t idx) const { return m_occurrence.get(m_bwStr, idx); }
+        // Return the number of times each symbol in the alphabet appears in bwt[0, idx]
+        inline AlphaCount getFullOcc(size_t idx) const { return m_occurrence.get(m_bwStr, idx); }
 
-		// Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
-		inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
+        // Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
+        inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
 
-		inline size_t getNumStrings() const { return m_numStrings; } 
-		inline size_t getBWLen() const { return m_bwStr.length(); }
+        inline size_t getNumStrings() const { return m_numStrings; } 
+        inline size_t getBWLen() const { return m_bwStr.length(); }
 
-		// Return the first letter of the suffix starting at idx
-		inline char getF(size_t idx) const
-		{
-			size_t ci = 0;
-			while(ci < ALPHABET_SIZE && m_predCount.getByIdx(ci) <= idx)
-				ci++;
-			assert(ci != 0);
-			return RANK_ALPHABET[ci - 1];
-		}
+        // Return the first letter of the suffix starting at idx
+        inline char getF(size_t idx) const
+        {
+            size_t ci = 0;
+            while(ci < ALPHABET_SIZE && m_predCount.getByIdx(ci) <= idx)
+                ci++;
+            assert(ci != 0);
+            return RANK_ALPHABET[ci - 1];
+        }
 
-		// 
-		inline const BWStr* getBWStr() const
-		{
-			return &m_bwStr;
-		}
+        // 
+        inline const BWStr* getBWStr() const
+        {
+            return &m_bwStr;
+        }
 
-		// Print the size of the BWT
-		void printInfo() const;
-		void print(const ReadTable* pRT, const SuffixArray* pSA) const;
-		void validate() const;
+        // Print the size of the BWT
+        void printInfo() const;
+        void print(const ReadTable* pRT, const SuffixArray* pSA) const;
+        void validate() const;
 
-		// IO
-		friend class BWTReader;
-		friend class BWTWriter;
-		void write(std::string& filename);
+        // IO
+        friend class BWTReader;
+        friend class BWTWriter;
+        void write(std::string& filename);
 
-	private:
+    private:
 
-		// calculate the lower bound of number of differences in w[0,i]
-		// if contains_w is true, the string (or read) w is contained in the bwt
-		// and should not be counted
-		void calculateD(std::string w, int minOverlap, const BWT* pRevBWT, bool contains_w, int* pD) const;
+        // calculate the lower bound of number of differences in w[0,i]
+        // if contains_w is true, the string (or read) w is contained in the bwt
+        // and should not be counted
+        void calculateD(std::string w, int minOverlap, const BWT* pRevBWT, bool contains_w, int* pD) const;
 
-		static const int DEFAULT_SAMPLE_RATE = 64;
+        static const int DEFAULT_SAMPLE_RATE = 64;
 
-		// Default constructor is not allowed
-		BWT() {}
+        // Default constructor is not allowed
+        BWT() {}
 
-		// The O(a,i) array
-		Occurrence m_occurrence;
+        // The O(a,i) array
+        Occurrence m_occurrence;
 
-		// The C(a) array
-		AlphaCount m_predCount;
-		
-		// The bw string
-		BWStr m_bwStr;
+        // The C(a) array
+        AlphaCount m_predCount;
+        
+        // The bw string
+        BWStr m_bwStr;
 
-		// The number of strings in the collection
-		size_t m_numStrings;
+        // The number of strings in the collection
+        size_t m_numStrings;
 };
 #endif

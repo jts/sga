@@ -14,21 +14,21 @@
 
 enum RecordType
 {
-	RT_FASTA,
-	RT_FASTQ,
-	RT_UNKNOWN
+    RT_FASTA,
+    RT_FASTQ,
+    RT_UNKNOWN
 };
 
 //
 class SeqReader
 {
-	public:
-		SeqReader(std::string filename);
-		~SeqReader();
-		bool get(SeqRecord& sr);
+    public:
+        SeqReader(std::string filename);
+        ~SeqReader();
+        bool get(SeqRecord& sr);
 
-	private:
-		std::ifstream m_fileHandle;
+    private:
+        std::ifstream m_fileHandle;
 };
 
 #endif

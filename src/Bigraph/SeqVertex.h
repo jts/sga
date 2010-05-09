@@ -23,16 +23,16 @@ typedef EdgeVec::iterator EdgeVecIter;
 
 class SeqVertex : public Vertex
 {
-	public:
-		SeqVertex(VertexID id, string seq) : Vertex(id), m_sequence(seq) {}
-		virtual ~SeqVertex() {}; 
+    public:
+        SeqVertex(VertexID id, string seq) : Vertex(id), m_sequence(seq) {}
+        virtual ~SeqVertex() {}; 
 
-		// Get sequence
-		Sequence getSeq() const { return m_sequence; }
-		virtual void merge(const Vertex* pV2, const Edge& e);
-	
-	private:
-		Sequence m_sequence;
+        // Get sequence
+        Sequence getSeq() const { return m_sequence; }
+        virtual void merge(const Vertex* pV2, const Edge& e);
+    
+    private:
+        Sequence m_sequence;
 };
 
 #endif

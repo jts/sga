@@ -17,39 +17,39 @@
 
 struct PUElem
 {
-	PUElem() : base('A'), lp(0) {}
-	PUElem(char b, double l) : base(b), lp(l) {}
+    PUElem() : base('A'), lp(0) {}
+    PUElem(char b, double l) : base(b), lp(l) {}
 
-	char base;
+    char base;
 
-	// log probability this base is correct
-	double lp; 
+    // log probability this base is correct
+    double lp; 
 };
 
 typedef std::vector<PUElem> PUElemVector;
 
 class Pileup
 {
-	public:
-		Pileup() {}
-		Pileup(size_t n) { m_data.reserve(n); }
+    public:
+        Pileup() {}
+        Pileup(size_t n) { m_data.reserve(n); }
 
-		char calculateSimpleConsensus() const;
-		AlphaCount getAlphaCount() const;
-		DNADouble calculateSimpleAlphaProb() const;
-		DNADouble calculateLikelihoodNoQuality(double p_error) const;
+        char calculateSimpleConsensus() const;
+        AlphaCount getAlphaCount() const;
+        DNADouble calculateSimpleAlphaProb() const;
+        DNADouble calculateLikelihoodNoQuality(double p_error) const;
 
-		void add(char b);
-		void add(char b, double lp);
+        void add(char b);
+        void add(char b, double lp);
 
-		char getBase(size_t idx) const;
-		char getCount(char base) const;
-		size_t getDepth() const;
+        char getBase(size_t idx) const;
+        char getCount(char base) const;
+        size_t getDepth() const;
 
-		std::string toStr() const;
+        std::string toStr() const;
 
-	private:
-		PUElemVector m_data;
+    private:
+        PUElemVector m_data;
 };
 
 typedef std::vector<Pileup> PileupVector;

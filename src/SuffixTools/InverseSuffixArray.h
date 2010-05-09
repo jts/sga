@@ -18,17 +18,17 @@ typedef std::map<uint64_t, RankVector> RankVectorMap;
 
 class InverseSuffixArray
 {
-	public:
-		
-		InverseSuffixArray(const SuffixArray& sa);
-		
-		//
-		uint64_t getRank(size_t id, size_t pos) const;
-		void validate() const;
-		void print() const;
+    public:
+        
+        InverseSuffixArray(const SuffixArray& sa);
+        
+        //
+        uint64_t getRank(size_t id, size_t pos) const;
+        void validate() const;
+        void print() const;
 
-	private:
-		RankVectorMap m_data;
+    private:
+        RankVectorMap m_data;
 };
 
 #endif

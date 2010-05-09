@@ -18,54 +18,54 @@
 template<class T>
 class SimplePool
 {
-	public:
+    public:
 
-		SimplePool()
-		{
-			size_t bytes_per_object = sizeof(T);
-			size_t total_bytes = NUM_OBJECTS * bytes_per_object;
-			m_pPool = malloc(total_bytes);
-			if(m_pPool == NULL)
-			{
-				std::cerr << "SimpleStorage failed to allocate " << total_bytes << 
-				" bytes for memory pool, exiting\n";
-				abort();
-			}
-			m_capacity = total_bytes;
-			m_used = 0;
-		}
+        SimplePool()
+        {
+            size_t bytes_per_object = sizeof(T);
+            size_t total_bytes = NUM_OBJECTS * bytes_per_object;
+            m_pPool = malloc(total_bytes);
+            if(m_pPool == NULL)
+            {
+                std::cerr << "SimpleStorage failed to allocate " << total_bytes << 
+                " bytes for memory pool, exiting\n";
+                abort();
+            }
+            m_capacity = total_bytes;
+            m_used = 0;
+        }
 
-		~SimplePool()
-		{
-			free(m_pPool);
-		}
-	
-		// Return a pointer to the next unused block of memory
-		void* alloc()
-		{
-			assert(m_used < m_capacity);
-			void* pNext = (char*)m_pPool + m_used;
-			m_used += sizeof(T);
-			return pNext;
-		}
+        ~SimplePool()
+        {
+            free(m_pPool);
+        }
+    
+        // Return a pointer to the next unused block of memory
+        void* alloc()
+        {
+            assert(m_used < m_capacity);
+            void* pNext = (char*)m_pPool + m_used;
+            m_used += sizeof(T);
+            return pNext;
+        }
 
-		// Do not track deallocations
-		void dealloc(void* /*ptr*/)
-		{
-			// does nothing
-		}
+        // Do not track deallocations
+        void dealloc(void* /*ptr*/)
+        {
+            // does nothing
+        }
 
-		bool isFull()
-		{
-			return m_used >= m_capacity;
-		}
+        bool isFull()
+        {
+            return m_used >= m_capacity;
+        }
 
-	private:
+    private:
 
-		void* m_pPool;
-		size_t m_capacity;
-		size_t m_used;
-		static const size_t NUM_OBJECTS = 50*1024;
+        void* m_pPool;
+        size_t m_capacity;
+        size_t m_used;
+        static const size_t NUM_OBJECTS = 50*1024;
 };
 
 #endif

@@ -37,8 +37,8 @@ const EdgeDir EDGE_DIRECTIONS[ED_COUNT] = { ED_SENSE, ED_ANTISENSE };
 // Flags specifying how the dot file should be drawn
 enum DotFlags
 {
-	DF_UNDIRECTED = 0x01,
-	DF_ANNOTATIONS = 0x02
+    DF_UNDIRECTED = 0x01,
+    DF_ANNOTATIONS = 0x02
 };
 
 // GraphColors are generic flags that can be used to indicate state
@@ -70,7 +70,7 @@ inline EdgeComp operator!(const EdgeComp& comp)
 // Correct an edges direction, given the relationship between the nodes
 inline EdgeDir correctDir(EdgeDir dir, EdgeComp comp)
 {
-	return (comp == EC_SAME) ? dir : !dir;
+    return (comp == EC_SAME) ? dir : !dir;
 }
 
 

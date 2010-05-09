@@ -19,49 +19,49 @@
 
 struct ScaffoldData
 {
-	ScaffoldData(int d, double sd, int np) : estDist(d), stdDev(sd), numPairs(np) {}
-	int estDist;
-	double stdDev;
-	unsigned int numPairs;
+    ScaffoldData(int d, double sd, int np) : estDist(d), stdDev(sd), numPairs(np) {}
+    int estDist;
+    double stdDev;
+    unsigned int numPairs;
 
-	friend std::ostream& operator<<(std::ostream& out, const ScaffoldData& sd)
-	{
-		out << sd.estDist;
-		return out;
-	}
+    friend std::ostream& operator<<(std::ostream& out, const ScaffoldData& sd)
+    {
+        out << sd.estDist;
+        return out;
+    }
 };
 
 struct SLink
 {
-	ContigID linkedID;
-	int dist;
-	unsigned int numPairs;
-	double stdDev;
-	bool isRC;
-	
-	friend std::istream& operator>>(std::istream& in, SLink& sl)
-	{
-		std::string line;
-		in >> line;
-		if(line.size () != 0)
-		{
-			StringVec fields = split(line, ',');
-			assert(fields.size() == 5);
-			sl.linkedID = fields[0];
-			sl.dist = atoi(fields[1].c_str());
-			sl.numPairs = atoi(fields[2].c_str());
-			std::stringstream fparser(fields[3]);
-			fparser >> sl.stdDev;
-			sl.isRC = atoi(fields[4].c_str());
-		}
-		return in;
-	}
+    ContigID linkedID;
+    int dist;
+    unsigned int numPairs;
+    double stdDev;
+    bool isRC;
+    
+    friend std::istream& operator>>(std::istream& in, SLink& sl)
+    {
+        std::string line;
+        in >> line;
+        if(line.size () != 0)
+        {
+            StringVec fields = split(line, ',');
+            assert(fields.size() == 5);
+            sl.linkedID = fields[0];
+            sl.dist = atoi(fields[1].c_str());
+            sl.numPairs = atoi(fields[2].c_str());
+            std::stringstream fparser(fields[3]);
+            fparser >> sl.stdDev;
+            sl.isRC = atoi(fields[4].c_str());
+        }
+        return in;
+    }
 
-	friend std::ostream& operator<<(std::ostream& out, const SLink& sl)
-	{
-		out << sl.linkedID << " " << sl.dist << " " << sl.numPairs << " " << sl.stdDev << " " << sl.isRC;
-		return out;
-	}		
+    friend std::ostream& operator<<(std::ostream& out, const SLink& sl)
+    {
+        out << sl.linkedID << " " << sl.dist << " " << sl.numPairs << " " << sl.stdDev << " " << sl.isRC;
+        return out;
+    }        
 };
 
 
@@ -78,20 +78,20 @@ typedef Bigraph<ScaffoldVertex> ScaffoldGraph;
 //
 struct LinearScaffoldLink
 {
-	LinearScaffoldLink(ScaffoldEdge e, Range r) : edge(e), range(r) {}
-	ScaffoldEdge edge;
-	Range range;
+    LinearScaffoldLink(ScaffoldEdge e, Range r) : edge(e), range(r) {}
+    ScaffoldEdge edge;
+    Range range;
 
-	friend std::ostream& operator<<(std::ostream& out, const LinearScaffoldLink& lsl)
-	{
-		out << lsl.edge.getEnd() << " " << lsl.range;
-		return out;
-	}
+    friend std::ostream& operator<<(std::ostream& out, const LinearScaffoldLink& lsl)
+    {
+        out << lsl.edge.getEnd() << " " << lsl.range;
+        return out;
+    }
 
-	static bool sortStarts(const LinearScaffoldLink& lsl1, const LinearScaffoldLink& lsl2)
-	{
-		return lsl1.range.start < lsl2.range.start;
-	}
+    static bool sortStarts(const LinearScaffoldLink& lsl1, const LinearScaffoldLink& lsl2)
+    {
+        return lsl1.range.start < lsl2.range.start;
+    }
 };
 
 //
@@ -147,7 +147,7 @@ static const char *USAGE_MESSAGE =
 
 namespace opt
 {
-	static unsigned int verbose;
+    static unsigned int verbose;
 }
 
 static const char* shortopts = "o:v";
@@ -155,10 +155,10 @@ static const char* shortopts = "o:v";
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-	{ "verbose",     no_argument,       NULL, 'v' },
-	{ "help",        no_argument,       NULL, OPT_HELP },
-	{ "version",     no_argument,       NULL, OPT_VERSION },
-	{ NULL, 0, NULL, 0 }
+    { "verbose",     no_argument,       NULL, 'v' },
+    { "help",        no_argument,       NULL, OPT_HELP },
+    { "version",     no_argument,       NULL, OPT_VERSION },
+    { NULL, 0, NULL, 0 }
 };
 
 

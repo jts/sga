@@ -15,93 +15,93 @@
 
 namespace ASQG
 {
-	enum RecordType
-	{
-		RT_HEADER = 0,
-		RT_VERTEX,
-		RT_EDGE
-	};
+    enum RecordType
+    {
+        RT_HEADER = 0,
+        RT_VERTEX,
+        RT_EDGE
+    };
 
-	// A header record is just a tag:value pairs
-	struct HeaderRecord
-	{
-		public:
-			HeaderRecord();
-			HeaderRecord(const std::string& recordLine);
-			
-			void setOverlapTag(int overlapLen);
-			void setInputFileTag(const std::string& name);
-			void setErrorRateTag(float errorRate);
+    // A header record is just a tag:value pairs
+    struct HeaderRecord
+    {
+        public:
+            HeaderRecord();
+            HeaderRecord(const std::string& recordLine);
+            
+            void setOverlapTag(int overlapLen);
+            void setInputFileTag(const std::string& name);
+            void setErrorRateTag(float errorRate);
 
-			const SQG::IntTag& getVersionTag() const { return m_versionTag; }
-			const SQG::FloatTag& getErrorRateTag() const { return m_errorRateTag; }
-			const SQG::StringTag& getInfileTag() const { return m_infileTag; }
-			const SQG::IntTag& getOverlapTag() const { return m_overlapTag; }
+            const SQG::IntTag& getVersionTag() const { return m_versionTag; }
+            const SQG::FloatTag& getErrorRateTag() const { return m_errorRateTag; }
+            const SQG::StringTag& getInfileTag() const { return m_infileTag; }
+            const SQG::IntTag& getOverlapTag() const { return m_overlapTag; }
 
-			void write(std::ostream& out);
-			void parse(const std::string& record);
+            void write(std::ostream& out);
+            void parse(const std::string& record);
 
-		private:
+        private:
 
-			void setVersionTag(int version);
-			
-			SQG::IntTag m_versionTag;
-			SQG::FloatTag m_errorRateTag;
-			SQG::StringTag m_infileTag;
-			SQG::IntTag m_overlapTag;
-	};
+            void setVersionTag(int version);
+            
+            SQG::IntTag m_versionTag;
+            SQG::FloatTag m_errorRateTag;
+            SQG::StringTag m_infileTag;
+            SQG::IntTag m_overlapTag;
+    };
 
-	// A vertex record is an id, sequence and an array of
-	// tag:value 
-	struct VertexRecord
-	{
-		public:
-			VertexRecord() {}
-			VertexRecord(const std::string& recordLine);
-			VertexRecord(const std::string& i, const std::string& s) : m_id(i), m_seq(s) {}
+    // A vertex record is an id, sequence and an array of
+    // tag:value 
+    struct VertexRecord
+    {
+        public:
+            VertexRecord() {}
+            VertexRecord(const std::string& recordLine);
+            VertexRecord(const std::string& i, const std::string& s) : m_id(i), m_seq(s) {}
 
-			void setSubstringTag(bool b);
-			
-			const std::string& getID() const { return m_id; }
-			const std::string& getSeq() const { return m_seq; }
-			const SQG::IntTag& getSubstringTag() const { return m_substringTag; }
+            void setSubstringTag(bool b);
+            
+            const std::string& getID() const { return m_id; }
+            const std::string& getSeq() const { return m_seq; }
+            const SQG::IntTag& getSubstringTag() const { return m_substringTag; }
 
-			void write(std::ostream& out);
-			void parse(const std::string& record);
+            void write(std::ostream& out);
+            void parse(const std::string& record);
 
-		private:
+        private:
 
-			std::string m_id;
-			std::string m_seq;
-			SQG::IntTag m_substringTag;
-	};
+            std::string m_id;
+            std::string m_seq;
+            SQG::IntTag m_substringTag;
+    };
 
-	// An edge record is just an overlap object and tag:values
-	struct EdgeRecord
-	{
-		public:
-			EdgeRecord() {}
-			EdgeRecord(const std::string& recordLine);
-			EdgeRecord(const Overlap& o) : m_overlap(o) {}
+    // An edge record is just an overlap object and tag:values
+    struct EdgeRecord
+    {
+        public:
+            EdgeRecord() {}
+            EdgeRecord(const std::string& recordLine);
+            EdgeRecord(const Overlap& o) : m_overlap(o) {}
 
-			const Overlap& getOverlap() const { return m_overlap; }
+            const Overlap& getOverlap() const { return m_overlap; }
 
-			void write(std::ostream& out);
-			void parse(const std::string& record);
+            void write(std::ostream& out);
+            void parse(const std::string& record);
 
-		private:
-		
-			Overlap m_overlap;
-	};
+        private:
+        
+            Overlap m_overlap;
+    };
 
-	// Parsing functions
-	RecordType getRecordType(const std::string& record);
-	HeaderRecord parseHeaderRecord(const std::string& record);
-	VertexRecord parseVertexRecord(const std::string& record);
-	EdgeRecord parseEdgeRecord(const std::string& record);
+    // Parsing functions
+    RecordType getRecordType(const std::string& record);
+    HeaderRecord parseHeaderRecord(const std::string& record);
+    VertexRecord parseVertexRecord(const std::string& record);
+    EdgeRecord parseEdgeRecord(const std::string& record);
 
-	// Writing functions
-	void writeFields(std::ostream& out, const StringVector& fields);
+    // Writing functions
+    void writeFields(std::ostream& out, const StringVector& fields);
 };
 
 #endif

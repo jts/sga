@@ -16,35 +16,35 @@
 // Constructors
 SAElem::SAElem(uint64_t i)
 {
-	setID(i);
+    setID(i);
 }
 
 //
 SAElem::SAElem(uint64_t i, uint64_t p)
 {
-	setID(i);
-	setPos(p);
+    setID(i);
+    setPos(p);
 }
 
 // Input
 std::istream& operator>>(std::istream& in, SAElem& s)
 {
-	uint64_t i;
-	uint64_t p;
-	in >> i >> p;
-	s.setID(i);
-	s.setPos(p);
-	return in;
+    uint64_t i;
+    uint64_t p;
+    in >> i >> p;
+    s.setID(i);
+    s.setPos(p);
+    return in;
 }
 
 // Output
 std::ostream& operator<<(std::ostream& out, const SAElem& s)
 {
-	if(!s.isEmpty())
-		out << s.getID() << " " << s.getPos();
-	else
-		out << -1;
-	return out;
+    if(!s.isEmpty())
+        out << s.getID() << " " << s.getPos();
+    else
+        out << -1;
+    return out;
 }
 
 //
@@ -55,16 +55,16 @@ std::ostream& operator<<(std::ostream& out, const SAElem& s)
 template<class K, class V>
 void printMap(const std::map<K,V>& m)
 {
-	for(typename std::map<K,V>::const_iterator iter = m.begin(); iter != m.end(); ++iter)
-	{
-		std::cout << iter->first << "\t" << iter->second << "\n";
-	}
+    for(typename std::map<K,V>::const_iterator iter = m.begin(); iter != m.end(); ++iter)
+    {
+        std::cout << iter->first << "\t" << iter->second << "\n";
+    }
 }
 
 // Print a vector
 template<class T>
 void printVector(const std::vector<T>& v)
 {
-	std::copy(v.begin(), v.end(), std::ostream_iterator<T>(std::cout, "\n"));
+    std::copy(v.begin(), v.end(), std::ostream_iterator<T>(std::cout, "\n"));
 }
 

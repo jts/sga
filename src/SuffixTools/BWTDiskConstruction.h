@@ -22,6 +22,6 @@
 // using the disk storage algorithm
 void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
                   const std::string& bwt_extension, const std::string& sai_extension,
-				  bool doReverse);
+                  bool doReverse);
 
 #endif
