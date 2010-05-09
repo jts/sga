@@ -58,7 +58,6 @@ class SuffixCompareRadix
 			int block_size = getNumSuffixes(maxLen - 1);
 			return block_size * (rb - 1) + 1;
 		}
-		
 
 		// Return the number of buckets needed for bucket sort
 		int getNumBuckets() const;
@@ -108,5 +107,23 @@ class SuffixCompareID
 
 		const ReadTable* m_pRT;
 };
+
+// Compare two suffixes by their index in the read table
+// This is used for the final pass, after suffixes has been compared by sequence
+class SuffixCompareIndex
+{
+	public:
+		SuffixCompareIndex() {}
+
+		// Comparator function
+		inline bool operator()(SAElem x, SAElem y) const
+		{
+			return x.getID() < y.getID();
+		}
+
+	private:
+		
+};
+
 
 #endif

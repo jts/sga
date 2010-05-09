@@ -102,11 +102,12 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
 	double ratio = (double)n1 / (double)num_suffixes;
 	std::cout << "[saca] calling mkqs on " << n1 << " suffixes " << ratio << "\n";
 
-	// Call MKQS, first on the sequence and then on the ID
+	// Call MKQS, first on the sequence and then on the index in the read table
 	SuffixCompareRadix radix_compare(pRT, 6);
-	SuffixCompareID id_compare(pRT);
+	SuffixCompareIndex index_compare;
+	//SuffixCompareID id_compare(pRT);
 	
-	mkqs2(&pSA->m_data[0], n1, 0, radix_compare, id_compare);
+	mkqs2(&pSA->m_data[0], n1, 0, radix_compare, index_compare);
 
 	// Induction sort the remaining suffixes
 	for(size_t i = n1; i < num_suffixes; ++i)
