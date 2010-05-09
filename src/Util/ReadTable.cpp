@@ -115,6 +115,18 @@ size_t ReadTable::countSumLengths() const
 }
 
 //
+void ReadTable::clear()
+{
+	m_table.clear();
+
+	if(m_pIndex != NULL)
+	{
+		delete m_pIndex;
+		m_pIndex = NULL;
+	}
+}
+
+//
 std::ostream& operator<<(std::ostream& out, const ReadTable& rt)
 {
 	size_t numReads = rt.getCount();

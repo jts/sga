@@ -39,7 +39,8 @@ class ReadTable
 		size_t getReadLength(size_t idx) const;
 		size_t getCount() const;
 		size_t countSumLengths() const;
-	
+		void clear();
+
 		// Get a particular character for a particular read
 		inline char getChar(size_t str_idx, size_t char_idx) const
 		{
