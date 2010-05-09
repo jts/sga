@@ -38,7 +38,8 @@ typedef std::vector<MergeItem> MergeVector;
 // Function declarations
 MergeItem merge(SeqReader* pReader, 
                 const MergeItem& item1, const MergeItem& item2, 
-				const std::string& bwt_outname, const std::string& sai_outname);
+				const std::string& bwt_outname, const std::string& sai_outname,
+				bool doReverse);
 
 //
 MergeItem writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
@@ -58,9 +59,10 @@ std::string makeTempName(const std::string& prefix, int id, const std::string& e
 // to disk. They are then merged either sequentially or pairwise
 // to create the final BWT
 void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
-                  const std::string& bwt_extension, const std::string& sai_extension)
+                  const std::string& bwt_extension, const std::string& sai_extension,
+				  bool doReverse)
 {
-	size_t MAX_READS_PER_GROUP = 4000000;
+	size_t MAX_READS_PER_GROUP = 2000000;
 
 	SeqReader* pReader = new SeqReader(in_filename);
 	SeqRecord record;
@@ -82,7 +84,10 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 		if(!done)
 		{
 			// the read is valid
-			pCurrRT->addRead(record.toSeqItem());
+			SeqItem item = record.toSeqItem();
+			if(doReverse)
+				item.seq.reverse();
+			pCurrRT->addRead(item);
 			++numReadTotal;
 		}
 
@@ -133,7 +138,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 				std::string sai_temp_name = makeTempName(out_prefix, groupID, sai_extension);
 
 				MergeItem merged = merge(pReader, mergeVector[i], mergeVector[i+1], 
-				                        bwt_temp_name, sai_temp_name);
+				                        bwt_temp_name, sai_temp_name, doReverse);
 
 				nextMergeRound.push_back(merged);
 				++groupID;
@@ -168,7 +173,8 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 // of the read block for item1
 MergeItem merge(SeqReader* pReader, 
                 const MergeItem& item1, const MergeItem& item2, 
-				const std::string& bwt_outname, const std::string& sai_outname)
+				const std::string& bwt_outname, const std::string& sai_outname,
+				bool doReverse)
 {
 	std::cout << "Merge1: " << item1 << "\n";
 	std::cout << "Merge2: " << item2 << "\n";
@@ -190,6 +196,8 @@ MergeItem merge(SeqReader* pReader,
 		bool eof = !pReader->get(record);
 		assert(!eof);
 		DNAString& seq = record.seq;
+		if(doReverse)
+			seq.reverse();
 
 		// Compute the ranks of all suffixes of seq
 		updateGapArray(seq, pBWTInternal, gap_array);

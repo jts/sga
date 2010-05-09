@@ -96,7 +96,9 @@ void indexInMemory()
 void indexOnDisk()
 {
 	std::cout << "Building index for " << opt::readsFile << " on disk\n";
-	buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT);
+	buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false);
+	buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true);
+
 }
 
 //
