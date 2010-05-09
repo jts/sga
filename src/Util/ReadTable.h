@@ -47,7 +47,6 @@ class ReadTable
 			return m_table[str_idx].seq.get(char_idx);
 		}
 
-
 		// I/O
 		friend std::ostream& operator<<(std::ostream& out, const ReadTable& rt);
 

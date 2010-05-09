@@ -18,6 +18,9 @@
 #include "SuffixArray.h"
 #include "BWT.h"
 
-void buildBWTDisk(const std::string& filename, const std::string& bwt_extension);
+// Construct the burrows-wheeler transform of reads in in_filename
+// using the disk storage algorithm
+void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
+                  const std::string& bwt_extension, const std::string& sai_extension);
 
 #endif

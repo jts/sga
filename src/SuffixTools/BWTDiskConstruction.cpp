@@ -14,8 +14,6 @@
 #include "BWTWriter.h"
 #include "BWTReader.h"
 
-#define WORKING_FILENAME "partialbwt."
-
 // Definitions and structures
 typedef uint32_t GAP_TYPE;
 
@@ -33,7 +31,7 @@ struct MergeItem
 };
 typedef std::vector<MergeItem> MergeVector;
 
-// Function declaration
+// Function declarations
 MergeItem mergeBWTDisk(SeqReader* pReader, const MergeItem& item1, 
                        const MergeItem& item2, const std::string& outfile);
 
@@ -47,19 +45,19 @@ void updateGapArray(const DNAString& w, const BWT* pBWTInternal,
 
 //
 inline void incrementGapArray(int64_t rank, std::vector<GAP_TYPE>& gap_array);
+std::string makeTempName(const std::string& prefix, int id, const std::string& extension);
 
 // The algorithm is as follows. We create M BWTs for subsets of 
 // the input reads. These are created independently and written
 // to disk. They are then merged either sequentially or pairwise
 // to create the final BWT
-void buildBWTDisk(const std::string& filename, const std::string& bwt_extension)
+void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
+                  const std::string& bwt_extension, const std::string& /*sai_extension*/)
 {
 	size_t MAX_READS_PER_GROUP = 20000;
 
-	SeqReader* pReader = new SeqReader(filename);
+	SeqReader* pReader = new SeqReader(in_filename);
 	SeqRecord record;
-
-	ReadTable* pCurrRT = new ReadTable;
 
 	int groupID = 0;
 	size_t numReadTotal = 0;
@@ -69,6 +67,7 @@ void buildBWTDisk(const std::string& filename, const std::string& bwt_extension)
 	mergeItem.start_index = 0;
 
 	// Phase 1: Compute the initial BWTs
+	ReadTable* pCurrRT = new ReadTable;
 	bool done = false;
 	while(!done)
 	{
@@ -90,21 +89,22 @@ void buildBWTDisk(const std::string& filename, const std::string& bwt_extension)
 				BWT* pBWT = new BWT(pSA, pCurrRT);
 
 				// Write the BWT to disk				
-				std::stringstream ss;
-				ss << WORKING_FILENAME << groupID++ << bwt_extension;
-				std::string temp_filename = ss.str();
-				pBWT->write(temp_filename);
+				std::string bwt_temp_filename = makeTempName(out_prefix, groupID, bwt_extension);
+				pBWT->write(bwt_temp_filename);
+
+				// Push the merge info
+				mergeItem.end_index = numReadTotal - 1;
+				mergeItem.filename = bwt_temp_filename;
+				mergeVector.push_back(mergeItem);
+
+				// Cleanup
 				delete pBWT;
 				delete pSA;
 				delete pCurrRT;
 
-				// Push the merge info
-				mergeItem.end_index = numReadTotal - 1;
-				mergeItem.filename = temp_filename;
-				mergeVector.push_back(mergeItem);
-
-				// Reset the data
+				// Start the new group
 				mergeItem.start_index = numReadTotal;
+				++groupID;
 				if(!done)
 					pCurrRT = new ReadTable;
 			}
@@ -122,16 +122,15 @@ void buildBWTDisk(const std::string& filename, const std::string& bwt_extension)
 	while(mergeVector.size() > 1)
 	{
 		std::cout << "Starting round " << round << "\n";
-		pReader = new SeqReader(filename);
+		pReader = new SeqReader(in_filename);
 		for(size_t i = 0; i < mergeVector.size(); i+=2)
 		{
 			if(i + 1 != mergeVector.size())
 			{
-				std::stringstream ss;
-				ss << WORKING_FILENAME << groupID++ << bwt_extension;
-				std::string temp_filename = ss.str();
-				MergeItem merged = mergeBWTDisk(pReader, mergeVector[i], mergeVector[i+1], temp_filename);
+				std::string bwt_temp_name = makeTempName(out_prefix, groupID, bwt_extension);
+				MergeItem merged = mergeBWTDisk(pReader, mergeVector[i], mergeVector[i+1], bwt_temp_name);
 				nextMergeRound.push_back(merged);
+				++groupID;
 			}
 			else
 			{
@@ -144,6 +143,14 @@ void buildBWTDisk(const std::string& filename, const std::string& bwt_extension)
 		mergeVector.swap(nextMergeRound);
 		++round;
 	}
+
+	// The BWT is constructed, rename the temp file
+	assert(mergeVector.size() == 1);
+	
+	std::stringstream bwt_ss;
+	bwt_ss << out_prefix << bwt_extension << ".gz";
+	std::string bwt_final_filename = bwt_ss.str();
+	rename(mergeVector.front().filename.c_str(), bwt_final_filename.c_str());
 }
 
 // Merge a pair of BWTs using disk storage
@@ -304,3 +311,10 @@ void incrementGapArray(int64_t rank, std::vector<GAP_TYPE>& gap_array)
 	++gap_array[rank];
 }
 
+//
+std::string makeTempName(const std::string& prefix, int id, const std::string& extension)
+{
+	std::stringstream bwt_ss;
+	bwt_ss << prefix << ".temp-" << id << extension;
+	return bwt_ss.str();
+}
