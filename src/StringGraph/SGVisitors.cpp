@@ -409,46 +409,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     bool graph_changed = false;
     (void)pGraph;
-    for(size_t idx = 0; idx < ED_COUNT; idx++)
-    {
-        EdgeDir dir = EDGE_DIRECTIONS[idx];
-        if(pVertex->countEdges(dir) > 1)
-        {
-            MultiOverlap mo = pVertex->getMultiOverlap();
-            std::cout << "Primary MO: \n";
-            mo.print();
-            std::cout << "\nPrimary masked\n";
-            mo.printMasked();
-            
-            EdgePtrVec edges = pVertex->getEdges(dir);
-            for(size_t i = 0; i < edges.size(); ++i)
-            {
-                Edge* pXY = edges[i];
-                Vertex* pY = pXY->getEnd();
-                EdgeDir forwardDir = pXY->getTransitiveDir();
-                EdgeDir backDir = !forwardDir;
-
-                EdgePtrVec y_fwd_edges = pY->getEdges(forwardDir);
-                EdgePtrVec y_back_edges = pY->getEdges(backDir);
-                std::cout << pY->getID() << " forward edges: ";
-                for(size_t j = 0; j < y_fwd_edges.size(); ++j)
-                    std::cout << y_fwd_edges[j]->getEndID() << ",";
-                std::cout << "\n";
-                
-                std::cout << pY->getID() << " back edges: ";
-                for(size_t j = 0; j < y_back_edges.size(); ++j)
-                    std::cout << y_back_edges[j]->getEndID() << ",";
-                std::cout << "\n";
-                std::cout << pY->getID() << " label " << pXY->getLabel() << "\n";
-            }
-
-            MultiOverlap extendedMO = SGAlgorithms::makeExtendedMultiOverlap(pVertex);
-            std::cout << "\nExtended MO: \n";
-            extendedMO.printMasked();
-
-            ErrorCorrect::correctVertex(pVertex, 3, 0.01);
-        }
-    }
+    (void)pVertex;
     return graph_changed;
 }
 

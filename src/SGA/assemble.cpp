@@ -176,6 +176,8 @@ void assemble()
         std::cout << "Writing corrected reads\n";
         SGFastaVisitor correctedVisitor("correctedReads.fa");
         pGraph->visit(correctedVisitor);
+
+        pGraph->writeASQG("afterEC.asqg.gz");
     }
 
     if(opt::bRemodelGraph)

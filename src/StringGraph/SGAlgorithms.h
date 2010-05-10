@@ -65,14 +65,11 @@ void enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY,
                   ExplorePriorityQueue& outQueue, EdgeDescSet* pSeenEdges);
 
 // Add overlaps to pX inferred from the edges of pY to outMap
-void addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, EdgeDescOverlapMap& outMap);
+void addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
+                      double maxER, int minLength, EdgeDescOverlapMap& outMap);
 
 // Discover the complete set of overlaps for pVertex
 void findOverlapMap(const Vertex* pVertex, double maxER, int minLength, EdgeDescOverlapMap& outMap);
-
-// recursive function to discover overlaps of pX from pY
-void _discoverOverlaps(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
-                       double maxER, int minLength, EdgeDescOverlapMap& outMap);
 
 // Calculate the error rate between the two vertices
 double calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY);
