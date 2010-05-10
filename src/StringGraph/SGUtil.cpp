@@ -10,6 +10,7 @@
 #include "SGUtil.h"
 #include "SeqReader.h"
 #include "SGAlgorithms.h"
+#include "SGVisitors.h"
 
 StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int minOverlap, 
                               bool allowContainments)
