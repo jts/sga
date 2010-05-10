@@ -21,6 +21,10 @@ namespace SGAlgorithms
 // Overlap discovery algorithms
 //
 
+//
+// Helper data structures
+//
+
 // Structure used for iterative exploration of the graph
 // The exploration starts at some vertex X, each element
 // holds a possible overlap between X and some other vertex Y
@@ -41,10 +45,27 @@ struct CompareExploreElemOverlapLength
     }
 };
 
+typedef std::pair<EdgeDesc, Overlap> EdgeDescOverlapPair;
+
+// Comparator
+struct EDOPairCompare
+{
+    bool operator()(const EdgeDescOverlapPair& edpXY, const EdgeDescOverlapPair& edpXZ)
+    {
+        return edpXY.second.match.coord[0].length() < edpXZ.second.match.coord[0].length();
+    }
+};
+
+// typedefs
 typedef std::queue<ExploreElement> ExploreQueue;
+
 typedef std::priority_queue<ExploreElement, 
                             std::vector<ExploreElement>, 
                             CompareExploreElemOverlapLength> ExplorePriorityQueue;
+//
+typedef std::priority_queue<EdgeDescOverlapPair, 
+                            std::vector<EdgeDescOverlapPair>,
+                            EDOPairCompare> EDOPairQueue;
 
 //
 typedef std::map<EdgeDesc, Overlap> EdgeDescOverlapMap;
@@ -68,8 +89,13 @@ void enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY,
 void addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
                       double maxER, int minLength, EdgeDescOverlapMap& outMap);
 
-// Discover the complete set of overlaps for pVertex
-void findOverlapMap(const Vertex* pVertex, double maxER, int minLength, EdgeDescOverlapMap& outMap);
+// Walk the graph to collect the entire set of overlaps for pVertex via its neighbors
+void constructCompleteOverlapMap(const Vertex* pVertex, double maxER, int minLength, EdgeDescOverlapMap& outMap);
+
+// Partition the complete overlap set of pVertex into irreducible and transitive edge sets
+void constructPartitionedOverlapMap(const Vertex* pVertex, double maxER, int minLength, 
+                                    EdgeDescOverlapMap& irreducibleMap, 
+                                    EdgeDescOverlapMap& transitiveMap);
 
 // Calculate the error rate between the two vertices
 double calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY);
@@ -95,6 +121,10 @@ MultiOverlap makeExtendedMultiOverlap(const Vertex* pVertex);
 // Construct SeqTries from the extended overlap set
 //
 void makeExtendedSeqTries(const Vertex* pVertex, double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie);
+
+// Simple getters for std::transform
+EdgeDesc getEdgeDescFromEdge(Edge* pEdge);
+EdgeDesc getEdgeDescFromPair(const EdgeDescOverlapPair& pair);
 
 };
 

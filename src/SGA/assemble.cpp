@@ -163,6 +163,7 @@ void assemble()
         pGraph->visit(validationVisit);
     }
 
+    std::cout << "Writing graph file\n";
     pGraph->writeASQG("afterTR.asqg.gz");
 
     std::cout << "Pre-remodelling graph stats\n";

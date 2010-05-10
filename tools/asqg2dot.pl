@@ -2,25 +2,31 @@
 
 use strict;
 
-print "digraph G {";
+print "digraph G {\n";
 
 while(<>)
 {
 	if(/VT/)
 	{
 		my @record = split;
-		print $record[1] . " " . makeLabel($record[1]) . "\n;" 	
+		print quoteStr($record[1]) . " " . makeLabel($record[1]) . ";\n" 	
 	}
 
 	if(/ED/)
 	{
 		my @record = split;
 		my $ol = $record[4] - $record[3] + 1;
-		print qq(") . $record[1] . qq(") . " -> " . qq(") . $record[2] . qq(") . " " . makeLabel($ol) . "\n";
+		print quoteStr($record[1]) . " -> " . quoteStr($record[2]) . " " . makeLabel($ol) . ";\n";
 	}
 }
 
 print "}\n";
+
+sub quoteStr
+{
+	my ($s) = @_;
+	return qq(") . $s . qq(");
+}
 
 sub makeLabel
 {
