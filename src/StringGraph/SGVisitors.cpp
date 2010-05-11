@@ -274,24 +274,29 @@ void printSetDifference(const EdgeDescSet& a, const EdgeDescSet& b, const std::s
             std::cout << "\t" << *iter << "\n";
         }
 
-        std::cout << " A set: " << "\n";
+        std::cout << " A set: \n";
         for(EdgeDescSet::iterator iter = a.begin(); iter != a.end(); ++iter)
         {
             std::cout << "\t" << *iter << "\n";
         }
 
+        std::cout << " B set: \n";
+        for(EdgeDescSet::iterator iter = b.begin(); iter != b.end(); ++iter)
+        {
+            std::cout << "\t" << *iter << "\n";
+        }
     }
 }
 
 //
 bool SGValidateStructureVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
-    // Construct the complete set of potential overlaps for this vertex
     SGAlgorithms::EdgeDescOverlapMap irreducibleMap;
     SGAlgorithms::EdgeDescOverlapMap transitiveMap;
-    SGAlgorithms::constructPartitionedOverlapMap(pVertex, pGraph->getErrorRate(), 
-                                                 pGraph->getMinOverlap(), irreducibleMap,
-                                                 transitiveMap);
+    SGAlgorithms::constructPartitionedOverlapMap(pVertex, 
+                                                 pGraph->getErrorRate(), pGraph->getMinOverlap(), 
+                                                 pGraph->getErrorRate(), pGraph->getMinOverlap(), 
+                                                 irreducibleMap, transitiveMap);
 
     // Compare the set of actual edges to the expected irreducible set
     EdgePtrVec edges = pVertex->getEdges();
@@ -305,10 +310,10 @@ bool SGValidateStructureVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     std::transform(irreducibleMap.begin(), irreducibleMap.end(), validation_insert, SGAlgorithms::getEdgeDescFromPair);
 
     std::stringstream ss_missing;
-    ss_missing << pVertex->getID() << " has missing edges:";
+    ss_missing << pVertex->getID() << " has missing irreducible edges:";
 
     std::stringstream ss_extra;
-    ss_extra << pVertex->getID() << " has extra edges:";
+    ss_extra << pVertex->getID() << " has erroneous irreducible edges:";
 
     printSetDifference(validation_set, actual_set, ss_missing.str());
     printSetDifference(actual_set, validation_set, ss_extra.str()); 
@@ -327,14 +332,64 @@ void SGRemodelVisitor::previsit(StringGraph* pGraph)
 bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     bool graph_changed = false;
-    (void)pGraph;
-    (void)pVertex;
+    SGAlgorithms::EdgeDescOverlapMap irreducibleMap;
+    SGAlgorithms::EdgeDescOverlapMap transitiveMap;
+    SGAlgorithms::constructPartitionedOverlapMap(pVertex, 
+                                                 pGraph->getErrorRate(), pGraph->getMinOverlap(), 
+                                                 0.02, pGraph->getMinOverlap(), 
+                                                 irreducibleMap, transitiveMap);
+
+    /*
+    std::cout << "Remodelling: " << pVertex->getID() << "\n";
+    std::cout << "Irreducible map: " << "\n";
+    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = irreducibleMap.begin(); iter != irreducibleMap.end(); ++iter)
+    {
+        std::cout << "  ed: " << iter->first << "\n";
+        std::cout << "  ovr: " << iter->second << "\n";
+    }
+
+    std::cout << "Transitive map: " << "\n";
+    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = transitiveMap.begin(); iter != transitiveMap.end(); ++iter)
+    {
+        std::cout << "  ed: " << iter->first << "\n";
+        std::cout << "  ovr: " << iter->second << "\n";
+    }
+    */
+
+    // Construct the set of edges that should be added
+    EdgePtrVec edges = pVertex->getEdges();
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        SGAlgorithms::EdgeDescOverlapMap::iterator iter = irreducibleMap.find(edges[i]->getDesc());
+        if(iter != irreducibleMap.end())
+        {
+            // Edge exists already
+            irreducibleMap.erase(iter);
+        }
+        else
+        {
+            edges[i]->setColor(GC_BLACK);
+            edges[i]->getTwin()->setColor(GC_BLACK);
+            //std::cout << "Marking edge for deletion: " << edges[i]->getOverlap() << "\n";
+        }
+    }
+
+    // Add remaining edges in the irreducible map
+    SGAlgorithms::EdgeDescOverlapMap::iterator iter;
+    for(iter = irreducibleMap.begin(); iter != irreducibleMap.end(); ++iter)
+    {
+        Overlap& ovr = iter->second;
+       // std::cout << "Adding overlap: " << ovr << "\n";
+        SGUtil::createEdges(pGraph, ovr, true);
+        graph_changed = true;
+    }
     return graph_changed;
 }
 
 //
-void SGRemodelVisitor::postvisit(StringGraph*)
+void SGRemodelVisitor::postvisit(StringGraph* pGraph)
 {
+    pGraph->sweepEdges(GC_BLACK);
 }
 
 //

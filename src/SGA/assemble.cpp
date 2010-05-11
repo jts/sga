@@ -186,6 +186,9 @@ void assemble()
         // Remodel graph
         std::cout << "Remodelling graph\n";
         pGraph->visit(remodelVisit);
+        pGraph->visit(containVisit);
+        pGraph->visit(trVisit);
+        pGraph->writeASQG("afterRM.asqg.gz");
     }
 
     if(opt::bTrim)
