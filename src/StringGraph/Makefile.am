@@ -12,5 +12,6 @@ libstringgraph_a_SOURCES = \
         SGAlgorithms.cpp SGAlgorithms.h \
 		SGPairedAlgorithms.cpp SGPairedAlgorithms.h \
 		SGDebugAlgorithms.cpp SGDebugAlgorithms.h \
-        SGVisitors.h SGVisitors.cpp
+        SGVisitors.h SGVisitors.cpp \
+        CompleteOverlapSet.h CompleteOverlapSet.cpp
 

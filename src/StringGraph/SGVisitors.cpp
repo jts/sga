@@ -335,7 +335,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     SGAlgorithms::EdgeDescOverlapMap irreducibleMap;
     SGAlgorithms::EdgeDescOverlapMap transitiveMap;
     SGAlgorithms::constructPartitionedOverlapMap(pVertex, 
-                                                 1.0, pGraph->getMinOverlap(), 
+                                                 1.0, 0,//pGraph->getMinOverlap(), 
                                                  0.02, pGraph->getMinOverlap(), 
                                                  irreducibleMap, transitiveMap);
 
@@ -370,7 +370,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         {
             edges[i]->setColor(GC_BLACK);
             edges[i]->getTwin()->setColor(GC_BLACK);
-            //std::cout << "Marking edge for deletion: " << edges[i]->getOverlap() << "\n";
+            std::cout << "Marking edge for deletion: " << edges[i]->getOverlap() << "\n";
         }
     }
 
