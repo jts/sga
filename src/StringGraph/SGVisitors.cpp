@@ -335,7 +335,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     SGAlgorithms::EdgeDescOverlapMap irreducibleMap;
     SGAlgorithms::EdgeDescOverlapMap transitiveMap;
     SGAlgorithms::constructPartitionedOverlapMap(pVertex, 
-                                                 pGraph->getErrorRate(), pGraph->getMinOverlap(), 
+                                                 1.0, pGraph->getMinOverlap(), 
                                                  0.02, pGraph->getMinOverlap(), 
                                                  irreducibleMap, transitiveMap);
 

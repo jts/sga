@@ -501,19 +501,14 @@ void OverlapAlgorithm::calculateSeedParameters(const std::string& w, int& seed_l
         // by minOverlap
         int max_diff_low = static_cast<int>(m_errorRate * m_minOverlap);
 
-        // Calculate the length of the region such that max_diff_low / region <= error_rate
-        // If max_diff_low is zero, force the seed length to be minOverlap
-        if(max_diff_low == 0)
-        {
+         if(max_diff_low == 0)
+            max_diff_low = 1;
+         
+         int seed_region_length = static_cast<int>(ceil(max_diff_low / m_errorRate));
+         int num_seeds_low = max_diff_low + 1;
+         seed_length = static_cast<int>(seed_region_length / num_seeds_low);
+         if(seed_length > static_cast<int>(m_minOverlap))
             seed_length = m_minOverlap;
-        }
-        else
-        {
-            int seed_region_length = static_cast<int>(ceil(max_diff_low / m_errorRate));
-            int num_seeds_low = max_diff_low + 1;
-            seed_length = static_cast<int>(seed_region_length / num_seeds_low);
-            assert(seed_length <= static_cast<int>(m_minOverlap));
-        }
     }
     else
     {
