@@ -51,9 +51,9 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
     diffVertexOverlapMap(pVertex, completeMap, addMap, removeMap);
     */
 
-    CompleteOverlapSet vertexOverlapSet(pVertex, 1.0, 0);
+    CompleteOverlapSet vertexOverlapSet(pVertex, maxER, minLength);
     vertexOverlapSet.removeOverlapsTo(pDeleteEdge->getEnd());
-    vertexOverlapSet.resetParameters(maxER, minLength);
+    //vertexOverlapSet.resetParameters(maxER, minLength);
     vertexOverlapSet.removeTransitiveOverlaps();
     EdgeDescOverlapMap addMap;
     EdgeDescOverlapMap removeMap;
@@ -261,7 +261,6 @@ void SGAlgorithms::constructPartitionedOverlapMap(const Vertex* pVertex, double 
                                                   EdgeDescOverlapMap& irreducibleMap, 
                                                   EdgeDescOverlapMap& transitiveMap)
 {
-    std::cout << "Remodel vert: " << pVertex->getID() << "\n";
     // Construct the complete set of potential overlaps for this vertex
     SGAlgorithms::constructCompleteOverlapMap(pVertex, discoverER, discoverLength, true, irreducibleMap);
     

@@ -10,6 +10,7 @@
 //
 #include "SGVisitors.h"
 #include "ErrorCorrect.h"
+#include "CompleteOverlapSet.h"
 
 //
 // SGFastaVisitor - output the vertices in the graph in 
@@ -332,29 +333,14 @@ void SGRemodelVisitor::previsit(StringGraph* pGraph)
 bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     bool graph_changed = false;
-    SGAlgorithms::EdgeDescOverlapMap irreducibleMap;
-    SGAlgorithms::EdgeDescOverlapMap transitiveMap;
-    SGAlgorithms::constructPartitionedOverlapMap(pVertex, 
-                                                 1.0, 0,//pGraph->getMinOverlap(), 
-                                                 0.02, pGraph->getMinOverlap(), 
-                                                 irreducibleMap, transitiveMap);
 
-    /*
-    std::cout << "Remodelling: " << pVertex->getID() << "\n";
-    std::cout << "Irreducible map: " << "\n";
-    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = irreducibleMap.begin(); iter != irreducibleMap.end(); ++iter)
-    {
-        std::cout << "  ed: " << iter->first << "\n";
-        std::cout << "  ovr: " << iter->second << "\n";
-    }
-
-    std::cout << "Transitive map: " << "\n";
-    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = transitiveMap.begin(); iter != transitiveMap.end(); ++iter)
-    {
-        std::cout << "  ed: " << iter->first << "\n";
-        std::cout << "  ovr: " << iter->second << "\n";
-    }
-    */
+    // Construct the set of overlaps reachable within the current parameters
+    CompleteOverlapSet vertexOverlapSet(pVertex, 0.02, pGraph->getMinOverlap());
+    
+    // Filter by the new parameters
+    //vertexOverlapSet.resetParameters(0.02, pGraph->getMinOverlap());
+    vertexOverlapSet.removeTransitiveOverlaps();
+    SGAlgorithms::EdgeDescOverlapMap irreducibleMap = vertexOverlapSet.getOverlapMap();
 
     // Construct the set of edges that should be added
     EdgePtrVec edges = pVertex->getEdges();
@@ -370,7 +356,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         {
             edges[i]->setColor(GC_BLACK);
             edges[i]->getTwin()->setColor(GC_BLACK);
-            std::cout << "Marking edge for deletion: " << edges[i]->getOverlap() << "\n";
+            //std::cout << "Marking edge for deletion: " << edges[i]->getOverlap() << "\n";
         }
     }
 
@@ -379,7 +365,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     for(iter = irreducibleMap.begin(); iter != irreducibleMap.end(); ++iter)
     {
         Overlap& ovr = iter->second;
-       // std::cout << "Adding overlap: " << ovr << "\n";
+        //std::cout << "Adding overlap: " << ovr << "\n";
         SGUtil::createEdges(pGraph, ovr, true);
         graph_changed = true;
     }

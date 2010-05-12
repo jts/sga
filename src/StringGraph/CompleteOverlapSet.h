@@ -15,6 +15,32 @@
 #include "Bigraph.h"
 #include "SGAlgorithms.h"
 
+// Structure used for iterative exploration of the graph
+// The exploration starts at some vertex X, each element
+// holds a possible overlap between X and another vertex Y
+struct ExploreElement
+{
+    ExploreElement(const EdgeDesc& e, const Overlap& o) : ed(e), ovr(o) {}
+    EdgeDesc ed;
+    Overlap ovr;
+};
+
+// Comparison operator used to compare ExploreElements
+// by the length of the overlap on vertex X
+struct CompareExploreElemOverlapLength
+{
+    bool operator()(const ExploreElement& elemXY, const ExploreElement& elemXZ)
+    {
+        return elemXY.ovr.match.coord[0].length() < elemXZ.ovr.match.coord[0].length();
+    }
+};
+
+//
+typedef std::priority_queue<ExploreElement, 
+                            std::vector<ExploreElement>, 
+                            CompareExploreElemOverlapLength> ExplorePriorityQueue;
+
+
 class CompleteOverlapSet
 {
     public:
@@ -25,11 +51,13 @@ class CompleteOverlapSet
         void removeOverlapsTo(Vertex* pRemove);
         void removeTransitiveOverlaps();
         void resetParameters(double maxER, int minLength);
+        SGAlgorithms::EdgeDescOverlapMap getOverlapMap() const { return m_overlapMap; }
 
     private:
 
         // functions
         void constructMap();
+        void iterativeConstruct();
         void recursiveConstruct(const EdgeDesc& edXY, const Overlap& ovrXY);
 
         // data

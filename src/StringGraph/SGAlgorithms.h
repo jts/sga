@@ -25,26 +25,6 @@ namespace SGAlgorithms
 // Helper data structures
 //
 
-// Structure used for iterative exploration of the graph
-// The exploration starts at some vertex X, each element
-// holds a possible overlap between X and some other vertex Y
-struct ExploreElement
-{
-    ExploreElement(const EdgeDesc& e, const Overlap& o) : ed(e), ovr(o) {}
-    EdgeDesc ed;
-    Overlap ovr;
-};
-
-// Comparison operator used to compare ExploreElements
-// by the length of the overlap on vertex X
-struct CompareExploreElemOverlapLength
-{
-    bool operator()(const ExploreElement& elemXY, const ExploreElement& elemXZ)
-    {
-        return elemXY.ovr.match.coord[0].length() < elemXZ.ovr.match.coord[0].length();
-    }
-};
-
 typedef std::pair<EdgeDesc, Overlap> EdgeDescOverlapPair;
 
 // Comparator
@@ -57,33 +37,15 @@ struct EDOPairCompare
 };
 
 // typedefs
-typedef std::queue<ExploreElement> ExploreQueue;
-
-typedef std::priority_queue<ExploreElement, 
-                            std::vector<ExploreElement>, 
-                            CompareExploreElemOverlapLength> ExplorePriorityQueue;
-//
 typedef std::priority_queue<EdgeDescOverlapPair, 
                             std::vector<EdgeDescOverlapPair>,
                             EDOPairCompare> EDOPairQueue;
 
-//
 typedef std::map<EdgeDesc, Overlap> EdgeDescOverlapMap;
 typedef std::set<EdgeDesc> EdgeDescSet;
 
-// Remodel the edges of pVertex by finding any new irreducible edges
-// that may need to be added if the vertex at the end of pEdge is removed
-// from the graph
-void remodelVertexAfterRemoval(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
-
 // Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
 void remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
-
-// Add the neighbors of the endpoint of edXY to the explore queue if they overlap pX
-// and are not present in pSeenEdges. Edges are added to pSeenEdges as they are found
-// so the contents of pSeenEdges will be modified by this function.
-void enqueueEdges(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
-                  ExplorePriorityQueue& outQueue, EdgeDescSet* pSeenEdges);
 
 // Add overlaps to pX inferred from the edges of pY to outMap
 void addOverlapsToSet(const Vertex* pX, const EdgeDesc& edXY, const Overlap& ovrXY, 
