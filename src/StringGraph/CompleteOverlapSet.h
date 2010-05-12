@@ -45,7 +45,7 @@ class CompleteOverlapSet
 {
     public:
 
-        CompleteOverlapSet(Vertex* pVertex, double maxER, int minLength);
+        CompleteOverlapSet(const Vertex* pVertex, double maxER, int minLength);
 
         void getDiffMap(SGAlgorithms::EdgeDescOverlapMap& missingMap, SGAlgorithms::EdgeDescOverlapMap& extraMap);
         void removeOverlapsTo(Vertex* pRemove);
@@ -64,7 +64,7 @@ class CompleteOverlapSet
         SGAlgorithms::EdgeDescOverlapMap m_overlapMap;
 
         // the vertex this set is centered on
-        Vertex* m_pX;
+        const Vertex* m_pX;
 
         double m_maxER;
         int m_minLength;

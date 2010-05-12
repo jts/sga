@@ -12,7 +12,7 @@
 #include "CompleteOverlapSet.h"
 
 // 
-CompleteOverlapSet::CompleteOverlapSet(Vertex* pVertex, double maxER, int minLength) : m_pX(pVertex), m_maxER(maxER), m_minLength(minLength)
+CompleteOverlapSet::CompleteOverlapSet(const Vertex* pVertex, double maxER, int minLength) : m_pX(pVertex), m_maxER(maxER), m_minLength(minLength)
 {
     //constructMap();
     iterativeConstruct();

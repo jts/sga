@@ -221,7 +221,7 @@ void SGDebugGraphCompareVisitor::summarize(StringGraph* pGraph, Vertex* pVertex)
 }
 
 //
-void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Vertex* pVertex)
+void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* pGraph, Vertex* pVertex)
 {
     // Retreive the vertex in the comparison graph
     Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
@@ -254,7 +254,7 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* /*pGraph*/, Ver
     std::cout << "CHT: " << base << "\n";
     std::cout << "DST: " << d_str << "\n";
 
-    std::string consensus = ErrorCorrect::correctVertex(pVertex, 3, 0.01);
+    std::string consensus = ErrorCorrect::correctVertex(pGraph, pVertex, 3, 0.01);
     std::string c_diff_str = getDiffString(base, consensus);
 
     std::cout << "CNS: " << consensus << "\n";

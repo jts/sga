@@ -260,65 +260,32 @@ void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
 // or erroneous edges
 //
 
-// Print the elements of A that are not in B
-void printSetDifference(const EdgeDescSet& a, const EdgeDescSet& b, const std::string& text)
-{
-    EdgeDescSet diff_set;
-    std::insert_iterator<EdgeDescSet> diff_insert(diff_set, diff_set.begin());
-    std::set_difference(a.begin(), a.end(), b.begin(), b.end(), diff_insert);
-
-    if(!diff_set.empty())
-    {
-        std::cout << text << "\n";
-        for(EdgeDescSet::iterator iter = diff_set.begin(); iter != diff_set.end(); ++iter)
-        {
-            std::cout << "\t" << *iter << "\n";
-        }
-
-        std::cout << " A set: \n";
-        for(EdgeDescSet::iterator iter = a.begin(); iter != a.end(); ++iter)
-        {
-            std::cout << "\t" << *iter << "\n";
-        }
-
-        std::cout << " B set: \n";
-        for(EdgeDescSet::iterator iter = b.begin(); iter != b.end(); ++iter)
-        {
-            std::cout << "\t" << *iter << "\n";
-        }
-    }
-}
-
 //
 bool SGValidateStructureVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     SGAlgorithms::EdgeDescOverlapMap irreducibleMap;
     SGAlgorithms::EdgeDescOverlapMap transitiveMap;
-    SGAlgorithms::constructPartitionedOverlapMap(pVertex, 
-                                                 pGraph->getErrorRate(), pGraph->getMinOverlap(), 
-                                                 pGraph->getErrorRate(), pGraph->getMinOverlap(), 
-                                                 irreducibleMap, transitiveMap);
+    
+    // Construct the set of overlaps reachable within the current parameters
+    CompleteOverlapSet vertexOverlapSet(pVertex, pGraph->getErrorRate(), pGraph->getMinOverlap());
+    vertexOverlapSet.removeTransitiveOverlaps();
 
-    // Compare the set of actual edges to the expected irreducible set
-    EdgePtrVec edges = pVertex->getEdges();
+    SGAlgorithms::EdgeDescOverlapMap missingMap;
+    SGAlgorithms::EdgeDescOverlapMap extraMap;
+    
+    vertexOverlapSet.getDiffMap(missingMap, extraMap);  
+    
+    if(!missingMap.empty())
+    {
+        std::cout << "Missing irreducible for " << pVertex->getID() << ":\n";
+        SGAlgorithms::printOverlapMap(missingMap);
+    }
 
-    EdgeDescSet actual_set;
-    std::insert_iterator<EdgeDescSet> actual_insert(actual_set, actual_set.begin());
-    std::transform(edges.begin(), edges.end(), actual_insert, SGAlgorithms::getEdgeDescFromEdge);
-
-    EdgeDescSet validation_set;
-    std::insert_iterator<EdgeDescSet> validation_insert(validation_set, validation_set.begin());
-    std::transform(irreducibleMap.begin(), irreducibleMap.end(), validation_insert, SGAlgorithms::getEdgeDescFromPair);
-
-    std::stringstream ss_missing;
-    ss_missing << pVertex->getID() << " has missing irreducible edges:";
-
-    std::stringstream ss_extra;
-    ss_extra << pVertex->getID() << " has erroneous irreducible edges:";
-
-    printSetDifference(validation_set, actual_set, ss_missing.str());
-    printSetDifference(actual_set, validation_set, ss_extra.str()); 
-
+    if(!extraMap.empty())
+    {
+        std::cout << "Extra irreducible for " << pVertex->getID() << ":\n";
+        SGAlgorithms::printOverlapMap(extraMap);
+    }
     return false;
 }
 
@@ -336,9 +303,6 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
     // Construct the set of overlaps reachable within the current parameters
     CompleteOverlapSet vertexOverlapSet(pVertex, 0.02, pGraph->getMinOverlap());
-    
-    // Filter by the new parameters
-    //vertexOverlapSet.resetParameters(0.02, pGraph->getMinOverlap());
     vertexOverlapSet.removeTransitiveOverlaps();
     SGAlgorithms::EdgeDescOverlapMap irreducibleMap = vertexOverlapSet.getOverlapMap();
 
@@ -381,14 +345,14 @@ void SGRemodelVisitor::postvisit(StringGraph* pGraph)
 //
 // SGErrorCorrectVisitor - Run error correction on the reads
 //
-bool SGErrorCorrectVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+bool SGErrorCorrectVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     static size_t numCorrected = 0;
 
     if(numCorrected > 0 && numCorrected % 50000 == 0)
         std::cerr << "Corrected " << numCorrected << " reads\n";
 
-    std::string corrected = ErrorCorrect::correctVertex(pVertex, 5, 0.01);
+    std::string corrected = ErrorCorrect::correctVertex(pGraph, pVertex, 5, 0.01);
     pVertex->setSeq(corrected);
     ++numCorrected;
     return false;

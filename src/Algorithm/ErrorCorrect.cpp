@@ -12,16 +12,16 @@
 #define VERBOSE_CORRECT 0
 
 // Correct the sequence of a vertex in a transitively reduced string graph
-std::string ErrorCorrect::correctVertex(Vertex* pVertex, size_t simpleCutoff, double p_error)
+std::string ErrorCorrect::correctVertex(const StringGraph* pGraph, Vertex* pVertex, size_t simpleCutoff, double p_error)
 {
     // Construct a multioverlap containing all the reads that have an overlap to
     // this vertex
-    MultiOverlap mo = SGAlgorithms::makeExtendedMultiOverlap(pVertex);
+    MultiOverlap mo = SGAlgorithms::makeExtendedMultiOverlap(pGraph, pVertex);
     if(mo.isConflicted(simpleCutoff))
     {
         SeqTrie leftTrie;
         SeqTrie rightTrie;
-        SGAlgorithms::makeExtendedSeqTries(pVertex, p_error, &leftTrie, &rightTrie);
+        SGAlgorithms::makeExtendedSeqTries(pGraph, pVertex, p_error, &leftTrie, &rightTrie);
         return trieCorrect(pVertex, p_error, leftTrie, rightTrie);
     }
     else
