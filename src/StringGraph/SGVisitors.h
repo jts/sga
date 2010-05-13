@@ -83,6 +83,8 @@ struct SGRemodelVisitor
     void previsit(StringGraph* pGraph);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*);
+
+    double m_remodelER;
 };
 
 // 

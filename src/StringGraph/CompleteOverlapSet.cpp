@@ -14,10 +14,11 @@
 // 
 CompleteOverlapSet::CompleteOverlapSet(const Vertex* pVertex, double maxER, int minLength) : m_pX(pVertex), m_maxER(maxER), m_minLength(minLength)
 {
-    //constructMap();
     iterativeConstruct();
 }
 
+// Perform a breadth-first search of the graph, accumulating all the valid
+// overlaps of reads to m_pX
 void CompleteOverlapSet::iterativeConstruct()
 {
     ExplorePriorityQueue queue;

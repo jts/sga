@@ -56,9 +56,7 @@ class CompleteOverlapSet
     private:
 
         // functions
-        void constructMap();
         void iterativeConstruct();
-        void recursiveConstruct(const EdgeDesc& edXY, const Overlap& ovrXY);
 
         // data
         SGAlgorithms::EdgeDescOverlapMap m_overlapMap;

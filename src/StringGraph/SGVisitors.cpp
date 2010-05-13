@@ -298,6 +298,7 @@ bool SGValidateStructureVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 //
 void SGRemodelVisitor::previsit(StringGraph* pGraph)
 {
+    m_remodelER = 0.02;
     pGraph->setColors(GC_WHITE);
 }
 
@@ -306,7 +307,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     bool graph_changed = false;
 
     // Construct the set of overlaps reachable within the current parameters
-    CompleteOverlapSet vertexOverlapSet(pVertex, 0.02, pGraph->getMinOverlap());
+    CompleteOverlapSet vertexOverlapSet(pVertex, m_remodelER, pGraph->getMinOverlap());
     vertexOverlapSet.removeTransitiveOverlaps();
     SGAlgorithms::EdgeDescOverlapMap irreducibleMap = vertexOverlapSet.getOverlapMap();
 
@@ -344,7 +345,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 void SGRemodelVisitor::postvisit(StringGraph* pGraph)
 {
     pGraph->sweepEdges(GC_BLACK);
-    pGraph->setErrorRate(0.02);
+    pGraph->setErrorRate(m_remodelER);
 }
 
 //

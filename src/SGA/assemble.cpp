@@ -177,7 +177,7 @@ void assemble()
         SGFastaVisitor correctedVisitor("correctedReads.fa");
         pGraph->visit(correctedVisitor);
 
-        pGraph->writeASQG("afterEC.asqg.gz");
+        //pGraph->writeASQG("afterEC.asqg.gz");
     }
 
     if(opt::bRemodelGraph)
@@ -192,7 +192,7 @@ void assemble()
             pGraph->visit(containVisit);
         }
         pGraph->visit(trVisit);
-        pGraph->writeASQG("afterRM.asqg.gz");
+        //pGraph->writeASQG("afterRM.asqg.gz");
     }
 
     if(opt::bTrim)

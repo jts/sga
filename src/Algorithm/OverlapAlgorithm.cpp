@@ -911,10 +911,10 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
                                                       OverlapBlockList& obList, 
                                                       OverlapBlockList* pOBFinal) const
 {
-    OverlapBlockList* pOBNext = new OverlapBlockList;
-
     if(obList.empty())
         return;
+    
+    OverlapBlockList* pOBNext = new OverlapBlockList;
 
     // Count the extensions in the top level (longest) blocks first
     int extension_length = 0;
@@ -931,6 +931,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
             ++iter;
         }
         
+        // At least one of the top level blocks has terminated
         if(ext_count.get('$') > 0)
         {
             //std::cout << "TLB of length " << topLen << " has ended\n";
@@ -941,7 +942,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
                 AlphaCount test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
                 assert(test_count.get('$') > 0);
 #ifdef TEMPDEBUG
-                    std::cout << "***TLB of length " << tlbIter->overlapLen << " has ended\n";
+                std::cout << "***TLB of length " << tlbIter->overlapLen << " has ended\n";
 #endif                
                 // If this block has been marked eliminated, it is transitive wrt this read
                 // and we do not output the block
@@ -954,7 +955,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
                     tlbIter->isEliminated = true;
                 }
                 
-                // Mark any blocks that are shorter than the TLB as transitive
+                // Mark any blocks that are shorter than the terminated block as transitive
                 // if the inferred error rate is less than the threshold
                 OBLIter transIter = tlbIter;
                 ++transIter;
@@ -1036,7 +1037,6 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
     }
     delete pOBNext;
 }
-
 
 // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
 void OverlapAlgorithm::updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, 
