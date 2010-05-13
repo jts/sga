@@ -185,7 +185,12 @@ void assemble()
         // Remodel graph
         std::cout << "Remodelling graph\n";
         pGraph->visit(remodelVisit);
-        pGraph->visit(containVisit);
+
+        while(pGraph->hasContainment())
+        {
+            std::cout << "Removing contained reads\n";
+            pGraph->visit(containVisit);
+        }
         pGraph->visit(trVisit);
         pGraph->writeASQG("afterRM.asqg.gz");
     }

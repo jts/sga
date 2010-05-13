@@ -114,67 +114,6 @@ void CompleteOverlapSet::iterativeConstruct()
     }
 }
 
-// Explore around this vertex finding overlaps
-void CompleteOverlapSet::constructMap()
-{
-    EdgePtrVec edges = m_pX->getEdges();
-
-    // Add the primary overlaps to the map, and all the nodes reachable from the primaries
-    for(size_t i = 0; i < edges.size(); ++i)
-    {
-        Edge* pEdge = edges[i];
-        EdgeDesc ed = pEdge->getDesc();
-        Overlap ovr = pEdge->getOverlap();
-        m_overlapMap.insert(std::make_pair(ed, ovr));
-
-        // Recursively add neighbors
-        recursiveConstruct(ed, ovr);
-    }
-}
-
-// Recursively add overlaps to pX inferred from the edges of pY to outMap
-void CompleteOverlapSet::recursiveConstruct(const EdgeDesc& edXY, const Overlap& ovrXY)
-{
-    Vertex* pY = edXY.pVertex;
-
-    EdgePtrVec neighborEdges = pY->getEdges();
-
-    for(size_t i = 0; i < neighborEdges.size(); ++i)
-    {
-        Edge* pEdgeYZ = neighborEdges[i];
-        Vertex* pZ = pEdgeYZ->getEnd();
-        if(pZ != m_pX)
-        {
-            Overlap ovrYZ = pEdgeYZ->getOverlap();
-
-            // Check that this vertex actually overlaps pX
-            if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
-            {
-                Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
-                EdgeDesc edXZ = SGAlgorithms::overlapToEdgeDesc(pZ, ovrXZ);
-
-                double error_rate = SGAlgorithms::calcErrorRate(m_pX, pZ, ovrXZ);
-                int overlapLen = ovrXZ.getOverlapLength(0);
-                if(isErrorRateAcceptable(error_rate, m_maxER) && overlapLen >= m_minLength)
-                {
-                    SGAlgorithms::EdgeDescOverlapMap::iterator findIter = m_overlapMap.find(edXZ);
-                    
-                    if(findIter == m_overlapMap.end())
-                    {
-                        m_overlapMap.insert(std::make_pair(edXZ, ovrXZ));
-                        recursiveConstruct(edXZ, ovrXZ);
-                    }
-                    else if(ovrXZ.getOverlapLength(0) > findIter->second.getOverlapLength(0))
-                    {
-                        findIter->second = ovrXZ;
-                        recursiveConstruct(edXZ, ovrXZ);
-                    }   
-                }
-            }
-        }
-    }
-}
-
 // Compare the actual edges of m_pX with the edges in the overlap map
 void CompleteOverlapSet::getDiffMap(SGAlgorithms::EdgeDescOverlapMap& missingMap, SGAlgorithms::EdgeDescOverlapMap& extraMap)
 {

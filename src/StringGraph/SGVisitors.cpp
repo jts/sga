@@ -181,6 +181,11 @@ void SGTransitiveReductionVisitor::postvisit(StringGraph* pGraph)
 void SGContainRemoveVisitor::previsit(StringGraph* pGraph)
 {
     pGraph->setColors(GC_WHITE);
+
+    // Clear the containment flag, if any containments are added
+    // during this algorithm the flag will be reset and another
+    // round must be re-run
+    pGraph->setContainmentFlag(false);    
 }
 
 //
@@ -252,7 +257,6 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
 {
     pGraph->sweepVertices(GC_BLACK);
-    pGraph->setContainmentFlag(false);
 }
 
 //
@@ -340,6 +344,7 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 void SGRemodelVisitor::postvisit(StringGraph* pGraph)
 {
     pGraph->sweepEdges(GC_BLACK);
+    pGraph->setErrorRate(0.02);
 }
 
 //

@@ -31,7 +31,7 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
         iter != addMap.end(); ++iter)
     {
         //std::cout << "Adding edge " << iter->second << "\n";
-        SGUtil::createEdges(pGraph, iter->second, false);
+        SGUtil::createEdges(pGraph, iter->second, true);
     }
 }
 

@@ -139,6 +139,7 @@ Edge* SGUtil::createEdges(StringGraph* pGraph, const Overlap& o, bool allowConta
             return NULL;
         assert(o.match.coord[idx].isExtreme());
     }
+
     if(!isContainment)
     {
         Edge* pEdges[2];
