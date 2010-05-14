@@ -85,9 +85,21 @@ class OverlapAlgorithm
         void _processIrreducibleBlocksInexact(const BWT* pBWT, const BWT* pRevBWT, 
                                               OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
 
+        // 
+        void _processIrreducibleBlocksInexactNew(const BWT* pBWT, const BWT* pRevBWT, 
+                                                 OverlapBlockList& activeList, 
+                                                 OverlapBlockList* pOBFinal) const;                                           
+
         // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
         void updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, 
                                            OverlapBlockList& obList, char b) const;
+
+         
+        //                                  
+        void extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevBWT, 
+                                     OverlapBlockList& activeList, OverlapBlockList& terminalList) const;
+
+        double calculateBlockErrorRate(OverlapBlock& terminalBlock, OverlapBlock& otherBlock) const;
 
         //
         inline void calculateSeedParameters(const std::string& w, int& seed_length, int& seed_stride) const;
