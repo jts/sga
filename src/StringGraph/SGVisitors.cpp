@@ -222,6 +222,16 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
             assert(pToRemove != NULL);
             pToRemove->setColor(GC_BLACK);
 
+            if(ovr.match.coord[0].isContained() && !ovr.match.coord[1].isContained())
+            {
+                std::cout << "SUBSTRING CONTAIN 0!\n";
+            }
+
+            if(ovr.match.coord[1].isContained() && !ovr.match.coord[0].isContained())
+            {
+                std::cout << "SUBSTRING CONTAIN 1!\n";
+            }
+
 
             // Add any new irreducible edges that exist when pToRemove is deleted
             // from the graph
@@ -240,7 +250,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                                                        pRemodelVert, 
                                                        pRemodelEdge);
             }
-            
+
             // Delete the edges from the graph
             for(size_t j = 0; j < neighborEdges.size(); ++j)
             {

@@ -113,8 +113,15 @@ sub outputPEReads
 		my $frag_size = int($fragment_dist->rand());
 		my $start_2 = $frag_size + $start_1 - $rl;
 
-		my $end_1 = $start_1 + $rl - 1;
-		my $end_2 = $start_2 + $rl - 1;
+
+        my $temp_rl = $rl;
+        if(rand() < 0.5)
+        {
+            $temp_rl -= 20;
+        }
+    
+		my $end_1 = $start_1 + $temp_rl - 1;
+		my $end_2 = $start_2 + $temp_rl - 1;
 		next if $end_2 >= $gl;
 
 		my $seq_1 = getRead($buffer, $start_1, $end_1); 

@@ -115,10 +115,14 @@ void SGAlgorithms::makeExtendedSeqTries(const StringGraph* pGraph, const Vertex*
             overlapped = reverse(overlapped);
             pRightTrie->insert(overlapped, lp);
         }
+        else if(iter->second.match.coord[0].isLeftExtreme())
+        {
+            pLeftTrie->insert(overlapped, lp);
+        }
         else
         {
+            std::cout << "FOUND CONTAINMENT: " << iter->second << "\n";
             assert(iter->second.match.coord[0].isLeftExtreme());
-            pLeftTrie->insert(overlapped, lp);
         }
     }        
 }

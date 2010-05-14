@@ -71,35 +71,22 @@ class OverlapAlgorithm
                                       const BWT* pRevBWT, const AlignFlags& af, 
                                       OverlapBlockList* pOBList, OverlapBlockList* pOBFinal, 
                                       OverlapResult& result) const;
-                              
-
-        // Reduce the block list pOBList by removing blocks that correspond to transitive edges
-        void computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, 
-                                      OverlapBlockList* pOBList, OverlapBlockList* pOBFinal) const;
-        
-        // these recursive functions do the actual work of computing the irreducible blocks
-        void _processIrreducibleBlocksExact(const BWT* pBWT, const BWT* pRevBWT, 
-                                            OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
 
         //
-        void _processIrreducibleBlocksInexact(const BWT* pBWT, const BWT* pRevBWT, 
-                                              OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
+        inline bool extendSeedExactRight(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT) const;
+        inline bool extendSeedExactLeft(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT) const;
 
-        // 
-        void _processIrreducibleBlocksInexactNew(const BWT* pBWT, const BWT* pRevBWT, 
-                                                 OverlapBlockList& activeList, 
-                                                 OverlapBlockList* pOBFinal) const;                                           
+        inline void branchSeedRight(const SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, SearchSeedQueue* pQueue) const;
+        inline void branchSeedLeft(const SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, SearchSeedQueue* pQueue) const;
 
-        // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
-        void updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, 
-                                           OverlapBlockList& obList, char b) const;
+        //
+        inline void extendSeedInexactRight(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                                           SearchSeedVector* pOutVector) const;
 
-         
-        //                                  
-        void extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevBWT, 
-                                     OverlapBlockList& activeList, OverlapBlockList& terminalList) const;
+        //
+        inline void extendSeedInexactLeft(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT,
+                                          SearchSeedVector* pOutVector) const;
 
-        double calculateBlockErrorRate(OverlapBlock& terminalBlock, OverlapBlock& otherBlock) const;
 
         //
         inline void calculateSeedParameters(const std::string& w, int& seed_length, int& seed_stride) const;
@@ -118,23 +105,34 @@ class OverlapAlgorithm
         inline void extendSeedsExactRight(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                                  ExtendDirection dir, const SearchSeedVector* pInVector, 
                                                  SearchSeedVector* pOutVector) const;
-    
+          
+        //                    
+        // Irreducible-only processing algorithms
+        //
+        // Reduce the block list pOBList by removing blocks that correspond to transitive edges
+        void computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRevBWT, 
+                                      OverlapBlockList* pOBList, OverlapBlockList* pOBFinal) const;
+        
+        // these recursive functions do the actual work of computing the irreducible blocks
+        void _processIrreducibleBlocksExact(const BWT* pBWT, const BWT* pRevBWT, 
+                                            OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
 
         //
-        inline bool extendSeedExactRight(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT) const;
-        inline bool extendSeedExactLeft(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT) const;
+        void _processIrreducibleBlocksInexact(const BWT* pBWT, const BWT* pRevBWT, 
+                                              OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
 
-        inline void branchSeedRight(const SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, SearchSeedQueue* pQueue) const;
-        inline void branchSeedLeft(const SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, SearchSeedQueue* pQueue) const;
+        // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
+        void updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, 
+                                           OverlapBlockList& obList, char b) const;
+         
+        //                                  
+        void extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevBWT, 
+                                     OverlapBlockList& activeList, 
+                                     OverlapBlockList& terminalList,
+                                     OverlapBlockList& containedList) const;
 
-        //
-        inline void extendSeedInexactRight(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                                           SearchSeedVector* pOutVector) const;
-
-        //
-        inline void extendSeedInexactLeft(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT,
-                                          SearchSeedVector* pOutVector) const;
-
+        double calculateBlockErrorRate(const OverlapBlock& terminalBlock, const OverlapBlock& otherBlock) const;
+        bool isBlockSubstring(OverlapBlock& terminalBlock, const OverlapBlockList& blockList, double maxER) const;
 
         // Data
         const BWT* m_pBWT;

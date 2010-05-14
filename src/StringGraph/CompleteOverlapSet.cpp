@@ -217,16 +217,18 @@ void CompleteOverlapSet::removeTransitiveOverlaps()
                 Overlap ovrYX = ovrXY;
                 ovrYX.swap();
                 Overlap ovrYZ = SGAlgorithms::inferTransitiveOverlap(ovrYX, ovrXZ);
-                assert(!ovrYZ.match.isContainment());
-                // Compute the error rate between the sequences
-                double error_rate = SGAlgorithms::calcErrorRate(edXY.pVertex, edXZ.pVertex, ovrYZ);
-                
-                //std::cout << "\tOVRXY: " << ovrXY << "\n";
-                //std::cout << "\tOVRXZ: " << ovrXZ << "\n";
-                //std::cout << "\tOVRYZ: " << ovrYZ << " er: " << error_rate << "\n";
-                
-                if(isErrorRateAcceptable(error_rate, m_maxER) && ovrYZ.getOverlapLength(0) >= m_minLength)
-                    move = true;
+                if(!ovrYZ.match.isContainment())
+                {  
+                    // Compute the error rate between the sequences
+                    double error_rate = SGAlgorithms::calcErrorRate(edXY.pVertex, edXZ.pVertex, ovrYZ);
+                    
+                    //std::cout << "\tOVRXY: " << ovrXY << "\n";
+                    //std::cout << "\tOVRXZ: " << ovrXZ << "\n";
+                    //std::cout << "\tOVRYZ: " << ovrYZ << " er: " << error_rate << "\n";
+                    
+                    if(isErrorRateAcceptable(error_rate, m_maxER) && ovrYZ.getOverlapLength(0) >= m_minLength)
+                        move = true;
+                }
             }
             
             if(move)
