@@ -13,6 +13,9 @@
 #include "Timer.h"
 #include "SeqReader.h"
 
+
+static unsigned int DEFAULT_MIN_LENGTH = 40;
+
 //
 // Getopt
 //
@@ -65,7 +68,7 @@ namespace opt
     static std::string outFile;
     static unsigned int qualityTrim = 0;
     static unsigned int hardClip = 0;
-    static unsigned int minLength = 0;
+    static unsigned int minLength = DEFAULT_MIN_LENGTH;
     static unsigned int peMode = 0;
     static double sampleFreq = 1.0f;
 
@@ -433,6 +436,12 @@ void parsePreprocessOptions(int argc, char** argv)
     {
         std::cerr << SUBPROGRAM ": required parameter --quality-scale not found, please specify this parameter\n";
         exit(EXIT_FAILURE);
+    }
+
+    if(opt::minLength < DEFAULT_MIN_LENGTH)
+    {
+        std::cerr << SUBPROGRAM ": WARNING - it is suggested that the min read length is " << DEFAULT_MIN_LENGTH << "\n";
+        std::cerr << SUBPROGRAM ": Using very short reads may considerably impact the performance\n";
     }
 
     if(opt::qualityScale == QS_NONE && opt::qualityTrim > 0)
