@@ -111,6 +111,7 @@ void assemble()
     SGContainRemoveVisitor containVisit;
     SGErrorCorrectVisitor errorCorrectVisit;
     SGValidateStructureVisitor validationVisit;
+    SGPairedPathResolveVisitor peResolveVisit;
 
     if(!opt::debugFile.empty())
     {
@@ -155,6 +156,9 @@ void assemble()
     // Remove transitive edges from the graph
     std::cout << "Removing transitive edges\n";
     pGraph->visit(trVisit);
+
+    // Resolve PE paths
+    pGraph->visit(peResolveVisit);
 
     if(opt::bValidate)
     {

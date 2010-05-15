@@ -94,9 +94,13 @@ struct Overlap
     // Swap the order of the elements
     void swap();
 
+    //
+    bool isContainment() const { return match.isContainment(); }
+
     // Return the index (0 or 1) of the CONTAINED vertex (the discarded vertex of a containment)
     size_t getContainedIdx() const;
     std::string getContainedID() const;
+
 
     int getOverlapLength(size_t idx) const;
 

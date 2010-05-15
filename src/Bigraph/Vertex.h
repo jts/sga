@@ -134,6 +134,7 @@ class Vertex
         Vertex* getPairVertex() const { return m_pPairVertex; }
         size_t getReadCount() const { return m_readCount; }
         const std::string& getSeq() const { return m_seq; }
+        size_t getSeqLen() const { return m_seq.size(); }
         size_t getMemSize() const;
 
         // Output edges in graphviz format

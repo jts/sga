@@ -8,7 +8,176 @@
 // using paired end data in string graphs
 //
 #include "SGPairedAlgorithms.h"
+#include <queue>
 
+//
+// Generic paired end algorithms
+//
+
+// Perform a depth-first search for paths between pX and pY
+// Terminate the search when the total path length (the length of the
+// string implied by the path) is greater than maxDistance
+struct SearchNode
+{
+    Path path;
+    int distance;
+};
+
+typedef std::queue<SearchNode> SearchQueue;
+void SGPairedAlgorithms::searchPaths(const Vertex* pX, const Vertex* pY, 
+                                     int maxDistance, PathVector& outPaths)
+{
+    //std::cout << "Resolving path from " << pX->getID() << " to " << pY->getID() << "\n";
+    // Get the initial search direction
+    EdgeDir dir = getDirectionToPair(pX->getID());
+
+    // Create the initial path nodes
+    SearchQueue queue;
+    EdgePtrVec edges = pX->getEdges(dir);
+
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Edge* pEdge = edges[i];
+        assert(!pEdge->getOverlap().isContainment());
+
+        SearchNode node;
+        node.path.push_back(pEdge);
+        node.distance = pX->getSeqLen() + pEdge->getSeqLen();
+        queue.push(node);
+    }
+
+    while(!queue.empty())
+    {
+        SearchNode& currNode = queue.front();
+        
+        // Check if we have found pY or exceeded the distance
+        Edge* pWZ = currNode.path.back(); 
+        Vertex* pZ = pWZ->getEnd();
+        if(pZ == pY)
+        {
+            outPaths.push_back(currNode.path);
+            queue.pop();
+        }
+        else if(currNode.distance > maxDistance)
+        {
+            queue.pop();
+        }
+        else
+        {
+            // Path is still valid, continue
+            EdgeDir continueDir = pWZ->getTransitiveDir();
+            EdgePtrVec zEdges = pZ->getEdges(continueDir);
+
+            if(!zEdges.empty())
+            {
+                // Update curr node with the first edge
+                Edge* pNextEdge = zEdges[0];
+                currNode.distance += pNextEdge->getSeqLen();
+                currNode.path.push_back(pNextEdge);
+
+                // 
+                for(size_t i = 1; i < zEdges.size(); ++i)
+                {
+                    SearchNode branch = currNode;
+                    Edge* pBranchEdge = zEdges[i];
+                    branch.distance += pBranchEdge->getSeqLen();
+                    branch.path.push_back(pBranchEdge);
+                    queue.push(branch);
+                }
+            }
+            else
+            {
+                queue.pop();
+            }
+        }
+    }
+
+    std::cout << "Found " << outPaths.size() << " paths from " << pX->getID() << " to " << pY->getID() << "\n";
+   /* for(size_t i = 0; i < outPaths.size(); ++i)
+    {
+        Path& path = outPaths[i];
+        for(size_t j = 0; j < path.size(); ++j)
+        {
+            std::cout << *path[j] << ",";
+        }
+        std::cout << "\n";
+        std::cout << "Path seq: " << pathToString(pX, path) << "\n";
+        std::cout << "pX: " << pX->getSeq() << "\n";
+        std::cout << "pY: " << pY->getSeq() << "\n";
+    }
+   */
+}
+
+// Return the direction to the pair of this sequence based on the ID
+EdgeDir SGPairedAlgorithms::getDirectionToPair(const std::string& /*id*/)
+{
+    // Assumes illumina PE format for now, both reads
+    // point in the sense direction towards search other
+    return ED_SENSE;
+}
+
+std::string SGPairedAlgorithms::pathToString(const Vertex* pX, const Path& path)
+{
+    std::string out = pX->getSeq();
+    EdgeComp currComp = EC_SAME;
+
+    for(size_t i = 0; i < path.size(); ++i)
+    {
+        Edge* pYZ = path[i];
+        EdgeComp ecYZ = pYZ->getComp();
+
+        // Calculate the next comp, between X and Z
+        EdgeComp ecXZ;
+        if(ecYZ == EC_SAME)
+            ecXZ = currComp;
+        else
+            ecXZ = !currComp;
+        
+        // The string return is in Y's frame
+        // If the lastComp (which is
+        std::string edge_str = pYZ->getLabel();
+        assert(edge_str.size() != 0);
+        if(currComp == EC_REVERSE)
+            edge_str = reverseComplement(edge_str);
+
+        out.append(edge_str);
+        currComp = ecXZ;
+    }
+    return out;
+}
+
+//
+// SGPairedPathResolveVisitor
+//
+void SGPairedPathResolveVisitor::previsit(StringGraph* pGraph)
+{
+    pGraph->setColors(GC_WHITE);
+}
+
+
+bool SGPairedPathResolveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+    if(pVertex->getColor() == GC_BLACK)
+        return false; // has been resolved already
+
+    // Get the vertex of the pair
+    std::string pairID = getPairID(pVertex->getID());
+    Vertex* pPair = pGraph->getVertex(pairID);
+    if(pPair != NULL)
+    {
+        PathVector paths;
+        SGPairedAlgorithms::searchPaths(pVertex, pPair, 300, paths);   
+        pVertex->setColor(GC_BLACK);
+        pPair->setColor(GC_BLACK);
+    }
+
+    return false;
+}
+
+void SGPairedPathResolveVisitor::postvisit(StringGraph*)
+{
+    exit(EXIT_FAILURE);
+}
 
 //
 // SGVertexPairingVisitor - links paired vertices in the SG

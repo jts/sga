@@ -13,6 +13,17 @@
 #include "Bigraph.h"
 #include "SGUtil.h" 
 
+namespace SGPairedAlgorithms
+{
+    // Find paths between the two vertices that are no longer than maxDistance
+    void searchPaths(const Vertex* pX, const Vertex* pY, int maxDistance, PathVector& outPaths);
+    std::string pathToString(const Vertex* pX, const Path& path);
+
+    //
+    EdgeDir getDirectionToPair(const std::string& id);
+
+};
+
 // Connect the paired reads in the string graph
 struct SGVertexPairingVisitor
 {
@@ -46,6 +57,15 @@ struct SGPEConflictRemover
     int num_same;
     int num_diff;
 
+};
+
+// Complete the sequence between a vertex and its pair
+struct SGPairedPathResolveVisitor
+{
+    SGPairedPathResolveVisitor() {}
+    void previsit(StringGraph*);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*);
 };
 
 // Visit each node and output the overlap between each linked edge and their pairs

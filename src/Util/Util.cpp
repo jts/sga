@@ -186,6 +186,7 @@ void assertFileOpen(std::ofstream& fh, const std::string& fn)
     }    
 }
 
+//
 void assertGZOpen(gzstreambase& gh, const std::string& fn)
 {
     if(!gh.good())
@@ -248,6 +249,22 @@ std::string getPairID(const std::string& id)
     else
         pid = "";
     return pid;
+}
+
+// Return 0 if the id indicates the first read of a pair, 1 otherwise
+int getPairIndex(const std::string& id)
+{
+    size_t li = id.length() - 1;
+    char last = id[li];
+    if(last == 'A' || last == '1')
+        return 0;
+    else if(last == 'B' || last == '2')
+        return 1;
+    else
+    {
+        std::cerr << "Unrecognized pair format: " << id << "\n";
+        exit(EXIT_FAILURE);
+    }
 }
 
 // Debug function to parse the distance between two reads

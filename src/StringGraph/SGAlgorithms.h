@@ -18,10 +18,6 @@ namespace SGAlgorithms
 {
 
 //
-// Overlap discovery algorithms
-//
-
-//
 // Helper data structures
 //
 
@@ -62,15 +58,12 @@ EdgeDesc overlapToEdgeDesc(Vertex* pY, const Overlap& ovrXY);
 // Returns true if XZ has a non-zero length overlap
 bool hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);
 
-//
 // Construct an extended multioverlap for a vertex
-//
 MultiOverlap makeExtendedMultiOverlap(const StringGraph* pGraph, const Vertex* pVertex);
 
-//
 // Construct SeqTries from the extended overlap set
-//
-void makeExtendedSeqTries(const StringGraph* pGraph, const Vertex* pVertex, double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie);
+void makeExtendedSeqTries(const StringGraph* pGraph, const Vertex* pVertex, 
+                          double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie);
 
 // Simple getters for std::transform
 EdgeDesc getEdgeDescFromEdge(Edge* pEdge);

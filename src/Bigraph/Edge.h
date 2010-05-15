@@ -114,7 +114,7 @@ class Edge
         inline Vertex* getStart() const { assert(m_pTwin != NULL); return m_pTwin->getEnd(); }
         inline Vertex* getEnd() const { return m_pEnd; }
         inline EdgeDir getDir() const { return m_edgeData.getDir(); }
-         inline EdgeComp getComp() const { return m_edgeData.getComp(); }        
+        inline EdgeComp getComp() const { return m_edgeData.getComp(); }        
         inline Edge* getTwin() const { assert(m_pTwin != NULL); return m_pTwin; }
         EdgeDesc getTwinDesc() const;
         std::string getLabel() const;

@@ -115,6 +115,9 @@ StringVector split(std::string in, char delimiter);
 void splitKeyValue(std::string in, std::string& key, std::string& value);
 std::string getPairID(const std::string& id);
 
+// Returns 0 if the id indicates the first read in a pair, 1 otherwise
+int getPairIndex(const std::string& id);
+
 // Debug function to get the distance between two reads based on their names, which 
 // encodes the positions
 size_t debug_getReadDistFromNames(const std::string& name1, const std::string& name2);
