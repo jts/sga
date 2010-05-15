@@ -158,7 +158,7 @@ void assemble()
     pGraph->visit(trVisit);
 
     // Resolve PE paths
-    pGraph->visit(peResolveVisit);
+    //pGraph->visit(peResolveVisit);
 
     if(opt::bValidate)
     {

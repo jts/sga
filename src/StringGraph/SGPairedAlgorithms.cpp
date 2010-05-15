@@ -91,21 +91,6 @@ void SGPairedAlgorithms::searchPaths(const Vertex* pX, const Vertex* pY,
             }
         }
     }
-
-    std::cout << "Found " << outPaths.size() << " paths from " << pX->getID() << " to " << pY->getID() << "\n";
-   /* for(size_t i = 0; i < outPaths.size(); ++i)
-    {
-        Path& path = outPaths[i];
-        for(size_t j = 0; j < path.size(); ++j)
-        {
-            std::cout << *path[j] << ",";
-        }
-        std::cout << "\n";
-        std::cout << "Path seq: " << pathToString(pX, path) << "\n";
-        std::cout << "pX: " << pX->getSeq() << "\n";
-        std::cout << "pY: " << pY->getSeq() << "\n";
-    }
-   */
 }
 
 // Return the direction to the pair of this sequence based on the ID
@@ -149,6 +134,19 @@ std::string SGPairedAlgorithms::pathToString(const Vertex* pX, const Path& path)
 //
 // SGPairedPathResolveVisitor
 //
+SGPairedPathResolveVisitor::SGPairedPathResolveVisitor()
+{
+    m_pWriter = createWriter("fragments.fa");
+}
+
+//
+SGPairedPathResolveVisitor::~SGPairedPathResolveVisitor()
+{
+    delete m_pWriter;
+    m_pWriter = NULL;
+}
+
+//
 void SGPairedPathResolveVisitor::previsit(StringGraph* pGraph)
 {
     pGraph->setColors(GC_WHITE);
@@ -169,6 +167,31 @@ bool SGPairedPathResolveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         SGPairedAlgorithms::searchPaths(pVertex, pPair, 300, paths);   
         pVertex->setColor(GC_BLACK);
         pPair->setColor(GC_BLACK);
+
+        std::cout << "Found " << paths.size() << " paths from " << pVertex->getID()
+                  << " to " << pPair->getID() << "\n";
+
+        
+        if(paths.size() == 1)
+        {
+            std::string fragment = SGPairedAlgorithms::pathToString(pVertex, paths[0]);
+            SeqRecord record;
+            record.id = pVertex->getID();
+            record.seq = fragment;
+            record.write(*m_pWriter);
+        }
+        else
+        {
+            SeqRecord recordX;
+            recordX.id = pVertex->getID();
+            recordX.seq = pVertex->getSeq();
+            recordX.write(*m_pWriter);
+
+            SeqRecord recordY;
+            recordY.id = pVertex->getID();
+            recordY.seq = pVertex->getSeq();
+            recordY.write(*m_pWriter);
+        }
     }
 
     return false;
@@ -176,7 +199,6 @@ bool SGPairedPathResolveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
 void SGPairedPathResolveVisitor::postvisit(StringGraph*)
 {
-    exit(EXIT_FAILURE);
 }
 
 //

@@ -62,10 +62,16 @@ struct SGPEConflictRemover
 // Complete the sequence between a vertex and its pair
 struct SGPairedPathResolveVisitor
 {
-    SGPairedPathResolveVisitor() {}
-    void previsit(StringGraph*);
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*);
+    public:
+        SGPairedPathResolveVisitor();
+        ~SGPairedPathResolveVisitor();
+
+        void previsit(StringGraph*);
+        bool visit(StringGraph* pGraph, Vertex* pVertex);
+        void postvisit(StringGraph*);
+
+    private:
+        std::ostream* m_pWriter;
 };
 
 // Visit each node and output the overlap between each linked edge and their pairs
