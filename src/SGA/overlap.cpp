@@ -115,6 +115,8 @@ int overlapMain(int argc, char** argv)
     headerRecord.setOverlapTag(opt::minOverlap);
     headerRecord.setErrorRateTag(opt::errorRate);
     headerRecord.setInputFileTag(opt::readsFile);
+    headerRecord.setContainmentTag(true); // containments are always present
+    headerRecord.setTransitiveTag(!opt::bIrreducibleOnly);
     headerRecord.write(*pASQGWriter);
 
     // Compute the overlap hits

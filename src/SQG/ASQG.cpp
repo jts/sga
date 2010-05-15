@@ -27,6 +27,8 @@ static char VERSION_TAG[] = "VN";
 static char OVERLAP_TAG[] = "OL";
 static char INPUT_FILE_TAG[] = "IN";
 static char ERROR_RATE_TAG[] = "ER";
+static char CONTAINMENT_TAG[] = "CN"; // 1 if the graph has containment edges/vertices
+static char TRANSITIVE_TAG[] = "TE"; // 1 if the graph has transitive edges
 
 // Vertex tags
 static char SUBSTRING_TAG[] = "SS";
@@ -70,6 +72,18 @@ void HeaderRecord::setErrorRateTag(float errorRate)
 }
 
 //
+void HeaderRecord::setContainmentTag(int v)
+{
+    m_containmentTag.set(v);
+}
+
+//
+void HeaderRecord::setTransitiveTag(int v)
+{
+    m_transitiveTag.set(v);
+}
+
+//
 void HeaderRecord::write(std::ostream& out)
 {
     StringVector fields;
@@ -94,6 +108,12 @@ void HeaderRecord::write(std::ostream& out)
     
     if(m_infileTag.isInitialized())
         fields.push_back(m_infileTag.toTagString(INPUT_FILE_TAG));
+    
+    if(m_containmentTag.isInitialized())
+        fields.push_back(m_containmentTag.toTagString(CONTAINMENT_TAG));
+    
+    if(m_transitiveTag.isInitialized())
+        fields.push_back(m_transitiveTag.toTagString(TRANSITIVE_TAG));
 
     writeFields(out, fields);
 }
@@ -136,6 +156,13 @@ void HeaderRecord::parse(const std::string& record)
 
         if(tokens[i].compare(0, FIELD_TAG_SIZE, ERROR_RATE_TAG) == 0)
             m_errorRateTag.fromString(tokens[i]);
+
+        if(tokens[i].compare(0, FIELD_TAG_SIZE, CONTAINMENT_TAG) == 0)
+            m_containmentTag.fromString(tokens[i]);
+        
+        if(tokens[i].compare(0, FIELD_TAG_SIZE, TRANSITIVE_TAG) == 0)
+            m_transitiveTag.fromString(tokens[i]);
+
     }
 }
 

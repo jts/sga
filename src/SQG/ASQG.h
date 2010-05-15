@@ -32,11 +32,15 @@ namespace ASQG
             void setOverlapTag(int overlapLen);
             void setInputFileTag(const std::string& name);
             void setErrorRateTag(float errorRate);
+            void setContainmentTag(int v);
+            void setTransitiveTag(int v);
 
             const SQG::IntTag& getVersionTag() const { return m_versionTag; }
             const SQG::FloatTag& getErrorRateTag() const { return m_errorRateTag; }
             const SQG::StringTag& getInfileTag() const { return m_infileTag; }
             const SQG::IntTag& getOverlapTag() const { return m_overlapTag; }
+            const SQG::IntTag& getContainmentTag() const { return m_containmentTag; };
+            const SQG::IntTag& getTransitiveTag() const { return m_transitiveTag; };
 
             void write(std::ostream& out);
             void parse(const std::string& record);
@@ -49,6 +53,8 @@ namespace ASQG
             SQG::FloatTag m_errorRateTag;
             SQG::StringTag m_infileTag;
             SQG::IntTag m_overlapTag;
+            SQG::IntTag m_containmentTag;
+            SQG::IntTag m_transitiveTag;
     };
 
     // A vertex record is an id, sequence and an array of

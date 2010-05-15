@@ -45,6 +45,23 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
                 const SQG::FloatTag& errorRateTag = headerRecord.getErrorRateTag();
                 if(errorRateTag.isInitialized())
                     pGraph->setErrorRate(errorRateTag.get());
+                
+                const SQG::IntTag& containmentTag = headerRecord.getContainmentTag();
+                if(containmentTag.isInitialized())
+                    pGraph->setContainmentFlag(containmentTag.get());
+                else
+                    pGraph->setContainmentFlag(true); // conservatively assume containments are present
+
+                const SQG::IntTag& transitiveTag = headerRecord.getTransitiveTag();
+                if(!transitiveTag.isInitialized())
+                {
+                    std::cerr << "Error: ASQG does not have transitive tag, failure\n";
+                    exit(EXIT_FAILURE);
+                }
+                else
+                {
+                    pGraph->setTransitiveFlag(transitiveTag.get());
+                }
 
                 break;
             }
@@ -106,9 +123,6 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
         }
         ++line;
     }
-
-    // Done loading the ASQG file, remove containment vertices if necessary and validate the graph
-    pGraph->sweepVertices(GC_BLACK);
 
     // Remove any duplicate edges
     SGDuplicateVisitor dupVisit;

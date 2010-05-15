@@ -237,20 +237,27 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
             // from the graph
             EdgePtrVec neighborEdges = pToRemove->getEdges();
             
-            // This must be done in order of edge length or some transitive edges
-            // may be created
-            EdgeLenComp comp;
-            std::sort(neighborEdges.begin(), neighborEdges.end(), comp);
+            // If the graph has been transitively reduced, we have to check all
+            // the neighbors to see if any new edges need to be added. If the graph is a
+            // complete overlap graph we can just remove the edges to the deletion vertex
 
-            for(size_t j = 0; j < neighborEdges.size(); ++j)
+            if(!pGraph->hasTransitive())
             {
-                Vertex* pRemodelVert = neighborEdges[j]->getEnd();
-                Edge* pRemodelEdge = neighborEdges[j]->getTwin();
-                SGAlgorithms::remodelVertexForExcision(pGraph, 
-                                                       pRemodelVert, 
-                                                       pRemodelEdge);
-            }
+                // This must be done in order of edge length or some transitive edges
+                // may be created
+                EdgeLenComp comp;
+                std::sort(neighborEdges.begin(), neighborEdges.end(), comp);
 
+                for(size_t j = 0; j < neighborEdges.size(); ++j)
+                {
+                    Vertex* pRemodelVert = neighborEdges[j]->getEnd();
+                    Edge* pRemodelEdge = neighborEdges[j]->getTwin();
+                    SGAlgorithms::remodelVertexForExcision(pGraph, 
+                                                           pRemodelVert, 
+                                                           pRemodelEdge);
+                }
+            }
+            
             // Delete the edges from the graph
             for(size_t j = 0; j < neighborEdges.size(); ++j)
             {

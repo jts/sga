@@ -18,7 +18,7 @@
 //
 //
 //
-Bigraph::Bigraph() : m_hasContainment(false), m_minOverlap(0), m_errorRate(0.0f)
+Bigraph::Bigraph() : m_hasContainment(false), m_hasTransitive(false), m_minOverlap(0), m_errorRate(0.0f)
 {
 }
 
@@ -460,6 +460,20 @@ void Bigraph::setContainmentFlag(bool b)
 bool Bigraph::hasContainment() const
 {
     return m_hasContainment;
+}
+
+//
+// Get/Set the transitive flag
+//
+void Bigraph::setTransitiveFlag(bool b)
+{
+    m_hasTransitive = b;
+}
+
+//
+bool Bigraph::hasTransitive() const
+{
+    return m_hasTransitive;
 }
 
 //

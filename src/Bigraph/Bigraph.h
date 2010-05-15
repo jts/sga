@@ -145,6 +145,10 @@ class Bigraph
         bool hasContainment() const;
 
         //
+        void setTransitiveFlag(bool b);
+        bool hasTransitive() const;
+
+        //
         void setMinOverlap(int mo);
         int getMinOverlap() const;
 
@@ -170,6 +174,8 @@ class Bigraph
 
         // Graph parameters
         bool m_hasContainment;
+        bool m_hasTransitive;
+
         int m_minOverlap;
         double m_errorRate;
 };
