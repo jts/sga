@@ -601,6 +601,8 @@ void Bigraph::writeASQG(const std::string& filename) const
     ASQG::HeaderRecord headerRecord;
     headerRecord.setOverlapTag(m_minOverlap);
     headerRecord.setErrorRateTag(m_errorRate);
+    headerRecord.setTransitiveTag(m_hasTransitive);
+    headerRecord.setContainmentTag(m_hasContainment);
     headerRecord.write(*pWriter);
 
 
