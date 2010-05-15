@@ -80,12 +80,13 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
                 ASQG::VertexRecord vertexRecord(recordLine);
                 const SQG::IntTag& ssTag = vertexRecord.getSubstringTag();
 
-                // If the substring tag is set and equals zero, the vertex is a substring
-                // of some other vertex and should be skipped
-                if(!ssTag.isInitialized() || ssTag.get() == 0)
+                Vertex* pVertex = new Vertex(vertexRecord.getID(), vertexRecord.getSeq());
+                if(ssTag.isInitialized() && ssTag.get() == 1)
                 {
-                    pGraph->addVertex(new Vertex(vertexRecord.getID(), vertexRecord.getSeq()));
+                    // Vertex is a substring of some other vertex, mark it for removal
+                    pVertex->setColor(GC_RED); 
                 }
+                pGraph->addVertex(pVertex);
                 break;
             }
             case ASQG::RT_EDGE:
@@ -127,6 +128,10 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
     // Remove any duplicate edges
     SGDuplicateVisitor dupVisit;
     pGraph->visit(dupVisit);
+
+    // Remove substring vertices
+    SGSubstringRemoveVisitor ssr;
+    pGraph->visit(ssr);
 
     delete pReader;
     return pGraph;

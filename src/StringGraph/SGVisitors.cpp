@@ -278,6 +278,68 @@ void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
 }
 
 //
+// SGSubstringRemoveVisitor - Removes substring
+// vertices from the graph. 
+//
+// Precondition: substring verts are marked GC_RED
+//
+void SGSubstringRemoveVisitor::previsit(StringGraph* /*pGraph*/)
+{
+}
+
+//
+bool SGSubstringRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+    // Skip the computation if this vertex has already been marked
+    if(pVertex->getColor() != GC_RED)
+        return false;
+
+    // Add any new irreducible edges that exist when pToRemove is deleted
+    // from the graph
+    EdgePtrVec neighborEdges = pVertex->getEdges();
+    
+    // If the graph has been transitively reduced, we have to check all
+    // the neighbors to see if any new edges need to be added. If the graph is a
+    // complete overlap graph we can just remove the edges to the deletion vertex
+
+    if(!pGraph->hasTransitive())
+    {
+        // This must be done in order of edge length or some transitive edges
+        // may be created
+        EdgeLenComp comp;
+        std::sort(neighborEdges.begin(), neighborEdges.end(), comp);
+
+        for(size_t j = 0; j < neighborEdges.size(); ++j)
+        {
+            Vertex* pRemodelVert = neighborEdges[j]->getEnd();
+            Edge* pRemodelEdge = neighborEdges[j]->getTwin();
+            SGAlgorithms::remodelVertexForExcision(pGraph, 
+                                                   pRemodelVert, 
+                                                   pRemodelEdge);
+        }
+    }
+            
+    // Delete the edges from the graph
+    for(size_t j = 0; j < neighborEdges.size(); ++j)
+    {
+        Vertex* pRemodelVert = neighborEdges[j]->getEnd();
+        Edge* pRemodelEdge = neighborEdges[j]->getTwin();
+        pRemodelVert->deleteEdge(pRemodelEdge);
+        pVertex->deleteEdge(neighborEdges[j]);
+    }
+    
+    std::cout << "SSR\n";
+    pVertex->setColor(GC_BLACK);
+    return false;
+}
+
+void SGSubstringRemoveVisitor::postvisit(StringGraph* pGraph)
+{
+    pGraph->sweepVertices(GC_BLACK);
+}
+
+
+//
 // Validate the structure of the graph by detecting missing
 // or erroneous edges
 //
@@ -590,9 +652,9 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 //
 // SGDuplicateVisitor - Detect and remove duplicate edges
 //
-void SGDuplicateVisitor::previsit(StringGraph* pGraph)
+void SGDuplicateVisitor::previsit(StringGraph* /*pGraph*/)
 {
-    pGraph->setColors(GC_WHITE);
+
 }
 
 bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)

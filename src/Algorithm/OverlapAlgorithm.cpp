@@ -22,10 +22,6 @@ OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, OverlapBlockL
     OverlapResult r;
     r = overlapReadInexact(read, pOutList);
     //r = overlapReadExact(read, pOutList);
-    
-    // If the read is a substring of some other read, clear its overlap block list
-    //if(r.isSubstring)
-      //  pOutList->clear();
     return r;
 }
 
