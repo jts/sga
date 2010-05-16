@@ -149,7 +149,7 @@ sub outputSEReads
 	my $num_reads = $gl * $coverage /  $rl;
 	while($total < $num_reads)
 	{
-        my $read_length = randUniformLength(0.8*$rl,$rl);
+        my $read_length = randUniformLength(0.5*$rl,$rl);
 
 		my $start = int(rand($gl));
 		my $end = $start + $read_length - 1;
