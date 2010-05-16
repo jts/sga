@@ -1,0 +1,59 @@
+=====================
+Design Notes
+=====================
+
+Update May 16,2010:
+
+The handling of idential and substring reads is complex. The following text describes how they are handled. 
+This is subject to change.
+
+Effect on the graph:
+
+All reads are added to the graph initially, regardless of whether they are substrings or identical to other reads. 
+Substring reads are detected during the overlap computation step and flagged in the ASQG file. They are processed normally
+during the overlap computation and can form irreducible edges. However, when building the graph they do not have an edge 
+to reads that are a superstring of the read. The reason for this is that it would be expensive to detect the superstring read 
+for very short substrings.  Identical reads are handled similarly, except they have an edge to the read that they are identical to.
+
+Effect on transitivity:
+
+If we do not eliminate transitive edges during the overlap stage it is straightforward to eliminate substring/identical reads.
+They can simply be filtered out after loading the graph (or before) and they graph stays the same. To maintain transitivity,
+we must take care. The following rules are applied:
+
+1) If two reads are identical (say X and Y) the edges reachable from Y are NOT marked as transitive from the point of view of X.
+See this example:
+
+X   -------------------
+Y   -------------------
+Z       -------------------
+
+X has an edge to Y (as it is identical) but this edge is not used to mark the edge to Z as transitive. This is respected
+in both the OverlapAlgorithm::_processIrreducibleBlocksInexact and CompleteOverlapSet::removeTransitiveEdges. The transitive
+reduction algorithm of Myers (SGVisitors::SGTransitiveReductionVisitor) does not respect this relationship. It should
+only be used on graphs that do not have containments (this precondition is checked with an assertion).
+
+Similarly, if Y is a substring of X it does not mark Z as transitive:
+
+X   -------------------
+Y      ----------------
+Z       -------------------
+
+Also, if Y is a substring of Z it does not mark Z as transitive:
+
+X   ------------------
+Y        ----------------
+Z        -------------------
+
+Note that in this case there is an asymmetry: X will have edges X->Y, X->Z but Z will only have edge Z->X. This asymmetry is
+immediately resolved upon loading the graph.
+
+Finally, a substring edge can mark edges that are not superstrings of it as transitive:
+
+X   ------------------
+Y      ------------------
+W     *------------------
+Z         -----------------
+
+In this case from the pov of X, Z is transitive through Y or W. If for some reason the edge X->W isn't present (perhaps due to 
+sequencing errors) the edge X->Z is still considered transitive.  

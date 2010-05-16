@@ -64,6 +64,9 @@ struct Match
     // bringing the matching strings into the same coordinate system
     void canonize();
     void decanonize();
+
+    // Returns true if one overlap is contained within the other, ie they are not equal
+    bool isSubstringContainment() const; 
     bool isContainment() const { return coord[0].isContained() || coord[1].isContained(); }
 
     // IO
@@ -96,7 +99,7 @@ struct Overlap
 
     //
     bool isContainment() const { return match.isContainment(); }
-
+    bool isSubstringContainment() const { return match.isSubstringContainment(); }
     // Return the index (0 or 1) of the CONTAINED vertex (the discarded vertex of a containment)
     size_t getContainedIdx() const;
     std::string getContainedID() const;

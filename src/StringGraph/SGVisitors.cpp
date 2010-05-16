@@ -283,8 +283,9 @@ void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
 //
 // Precondition: substring verts are marked GC_RED
 //
-void SGSubstringRemoveVisitor::previsit(StringGraph* /*pGraph*/)
+void SGSubstringRemoveVisitor::previsit(StringGraph* pGraph)
 {
+    pGraph->setContainmentFlag(false);
 }
 
 //
@@ -328,7 +329,6 @@ bool SGSubstringRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         pVertex->deleteEdge(neighborEdges[j]);
     }
     
-    std::cout << "SSR\n";
     pVertex->setColor(GC_BLACK);
     return false;
 }

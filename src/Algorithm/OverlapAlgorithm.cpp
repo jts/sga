@@ -33,7 +33,7 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, Overla
     std::string seq = read.seq.toString();
 
 #ifdef TEMPDEBUG
-    std::cout << "Overlapping read " << read.id << " suffix\n";
+    std::cout << "\n\n***Overlapping read " << read.id << " suffix\n";
 #endif
 
     // Match the suffix of seq to prefixes
@@ -52,7 +52,7 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, Overla
     }
 
 #ifdef TEMPDEBUG
-    std::cout << "Overlapping read " << read.id << " prefix\n";
+    std::cout << "\n\n***Overlapping read " << read.id << " prefix\n";
 #endif
 
     // Match the prefix of seq to suffixes
@@ -958,9 +958,13 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
             {
                 if(activeIter->isEliminated)
                     continue; // skip previously marked blocks
-
+                
+                // Two conditions must be met for a block to be transitive wrt terminal:
+                // 1) It must have a strictly shorter overlap than the terminal block
+                // 2) The error rate between the block and terminal must be less than the threshold 
                 double inferredErrorRate = calculateBlockErrorRate(*terminalIter, *activeIter);
-                if(isErrorRateAcceptable(inferredErrorRate, m_errorRate))
+                if(activeIter->overlapLen < terminalIter->overlapLen && 
+                   isErrorRateAcceptable(inferredErrorRate, m_errorRate))
                 {
 #ifdef TEMPDEBUG                            
                     std::cout << "Marking block of length " << activeIter->overlapLen << " as eliminated\n";
@@ -978,6 +982,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
             {
 #ifdef TEMPDEBUG
                 std::cout << "Adding block of length " << terminalIter->overlapLen << " to final\n";
+                std::cout << "  extension: " << terminalIter->forwardHistory << "\n";
 #endif                
                 pOBFinal->push_back(*terminalIter);
             }
@@ -994,9 +999,8 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
 void OverlapAlgorithm::extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevBWT, 
                                                OverlapBlockList& activeList, 
                                                OverlapBlockList& terminalList,
-                                               OverlapBlockList& containedList) const
+                                               OverlapBlockList& /*containedList*/) const
 {
-    int longestOverlap = activeList.front().overlapLen;
     OverlapBlockList::iterator iter = activeList.begin();
     OverlapBlockList::iterator next;
     while(iter != activeList.end())
@@ -1008,20 +1012,16 @@ void OverlapAlgorithm::extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevB
         AlphaCount ext_count = iter->getCanonicalExtCount(pBWT, pRevBWT);
         if(ext_count.get('$') > 0)
         {
-            if(iter->overlapLen == longestOverlap || true)
+            // Only consider this block to be terminal irreducible if it has at least one extension
+            // or else it is a substring block
+            if(iter->forwardHistory.size() > 0)
             {
-                terminalList.push_back(*iter);
+                OverlapBlock branched = *iter;
+                BWTAlgorithms::updateBothR(branched.ranges, '$', branched.getExtensionBWT(pBWT, pRevBWT));
+                terminalList.push_back(branched);
 #ifdef TEMPDEBUG            
-            std::cout << "Block of length " << iter->overlapLen << " moved to terminal\n";
+                std::cout << "Block of length " << iter->overlapLen << " moved to terminal\n";
 #endif
-            }
-            else
-            {
-#ifdef TEMPDEBUG            
-            std::cout << "Block of length " << iter->overlapLen << " moved to contained\n";
-#endif
-               
-                containedList.push_back(*iter);
             }
         }
 

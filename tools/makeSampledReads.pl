@@ -3,7 +3,7 @@
 
 use strict;
 use Getopt::Long;
-use lib "/nfs/team71/phd/js18/software/perl/modules";
+use lib "/home/jsimpson/software/perl/modules";
 use Normal;
 
 my $file = "";
@@ -149,14 +149,16 @@ sub outputSEReads
 	my $num_reads = $gl * $coverage /  $rl;
 	while($total < $num_reads)
 	{
+        my $read_length = randUniformLength(0.8*$rl,$rl);
+
 		my $start = int(rand($gl));
-		my $end = $start + $rl - 1;
+		my $end = $start + $read_length - 1;
 		next if $end >= $gl;
 
 		my $seq = getRead($buffer, $start, $end); 
 		my $name = $bTrackPos ? "$total:$start" : $total;
 		$seq = rc($seq) unless ($bSameStrand || rand() < 0.5);
-		next if($seq =~ /N/ || length($seq) < $rl);
+		next if($seq =~ /N/);
 		print join("\n", (">$name", $seq)) . "\n";
 		++$total;
 	}
@@ -168,6 +170,13 @@ sub getRead
 	my($buffer, $start, $end) = @_;
 	#return uc(join("",@$buffer[$start..$end]));
 	return substr($$buffer, $start, $end - $start + 1);
+}
+
+sub randUniformLength
+{
+    my($min, $max) = @_;
+    my $len = int(rand($max - $min));
+    return $min + $len;
 }
 
 sub rc

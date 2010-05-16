@@ -223,6 +223,12 @@ int Match::countDifferences(const std::string& s1, const std::string& s2) const
     return ::countDifferences(matched1, matched2, matched1.length());
 }
 
+bool Match::isSubstringContainment() const
+{ 
+    return isContainment() && (!coord[0].isContained() || !coord[1].isContained()); 
+}
+
+
 // Print the matched strings
 void Match::printMatch(const std::string& s1, const std::string& s2) const
 {

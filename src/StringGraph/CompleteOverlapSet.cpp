@@ -74,6 +74,10 @@ void CompleteOverlapSet::iterativeConstruct()
             if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
             {
                 Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+                
+                if(ovrXZ.isSubstringContainment())
+                    continue;
+
                 EdgeDesc edXZ = SGAlgorithms::overlapToEdgeDesc(pZ, ovrXZ);
 
                 double error_rate = SGAlgorithms::calcErrorRate(m_pX, pZ, ovrXZ);
@@ -216,6 +220,7 @@ void CompleteOverlapSet::removeTransitiveOverlaps()
                 // Infer the YZ overlap
                 Overlap ovrYX = ovrXY;
                 ovrYX.swap();
+
                 Overlap ovrYZ = SGAlgorithms::inferTransitiveOverlap(ovrYX, ovrXZ);
                 if(!ovrYZ.match.isContainment())
                 {  

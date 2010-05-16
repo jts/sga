@@ -126,12 +126,15 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
     }
 
     // Remove any duplicate edges
-    SGDuplicateVisitor dupVisit;
-    pGraph->visit(dupVisit);
+    //SGDuplicateVisitor dupVisit;
+    //pGraph->visit(dupVisit);
 
     // Remove substring vertices
-    SGSubstringRemoveVisitor ssr;
-    pGraph->visit(ssr);
+    while(pGraph->hasContainment())
+    {
+        SGSubstringRemoveVisitor ssr;
+        pGraph->visit(ssr);
+    }
 
     delete pReader;
     return pGraph;
@@ -156,7 +159,20 @@ Edge* SGUtil::createEdges(StringGraph* pGraph, const Overlap& o, bool allowConta
         // never be added to the graph
         if(pVerts[idx] == NULL)
             return NULL;
-        assert(o.match.coord[idx].isExtreme());
+    }
+
+    // Check if this is a substring containment, if so mark the contained read
+    // but do not create edges
+    for(size_t idx = 0; idx < 2; ++idx)
+    {
+        if(!o.match.coord[idx].isExtreme())
+        {
+            size_t containedIdx = 1 - idx;
+            assert(o.match.coord[containedIdx].isExtreme());
+            pVerts[containedIdx]->setColor(GC_RED);
+            pGraph->setContainmentFlag(true);
+            return NULL;
+        }
     }
 
     if(!isContainment)
