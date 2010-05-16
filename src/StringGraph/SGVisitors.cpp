@@ -291,8 +291,7 @@ void SGSubstringRemoveVisitor::previsit(StringGraph* pGraph)
 //
 bool SGSubstringRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
-    // Skip the computation if this vertex has already been marked
-    if(pVertex->getColor() != GC_RED)
+    if(!pVertex->isContained())
         return false;
 
     // Add any new irreducible edges that exist when pToRemove is deleted

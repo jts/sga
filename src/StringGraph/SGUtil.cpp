@@ -83,8 +83,8 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
                 Vertex* pVertex = new Vertex(vertexRecord.getID(), vertexRecord.getSeq());
                 if(ssTag.isInitialized() && ssTag.get() == 1)
                 {
-                    // Vertex is a substring of some other vertex, mark it for removal
-                    pVertex->setColor(GC_RED); 
+                    // Vertex is a substring of some other vertex, mark it as contained
+                    pVertex->setContained(true);
                 }
                 pGraph->addVertex(pVertex);
                 break;
@@ -126,8 +126,8 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
     }
 
     // Remove any duplicate edges
-    //SGDuplicateVisitor dupVisit;
-    //pGraph->visit(dupVisit);
+    SGDuplicateVisitor dupVisit;
+    pGraph->visit(dupVisit);
 
     // Remove substring vertices
     while(pGraph->hasContainment())

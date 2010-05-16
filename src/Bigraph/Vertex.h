@@ -127,6 +127,7 @@ class Vertex
         void setEdgeColors(GraphColor c);
         void setSeq(const std::string& s) { m_seq = s; }
         void setColor(GraphColor c) { m_color = c; }
+        void setContained(bool c) { m_isContained = c; }
 
         // getters
         VertexID getID() const { return m_id; }
@@ -136,6 +137,7 @@ class Vertex
         const std::string& getSeq() const { return m_seq; }
         size_t getSeqLen() const { return m_seq.size(); }
         size_t getMemSize() const;
+        bool isContained() const { return m_isContained; }
 
         // Output edges in graphviz format
         void writeEdges(std::ostream& out, int dotFlags) const;
@@ -151,6 +153,7 @@ class Vertex
         int m_readCount;
         Vertex* m_pPairVertex;
         GraphColor m_color;
+        bool m_isContained;
 };
 
 #endif
