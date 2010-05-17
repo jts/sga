@@ -57,6 +57,16 @@ struct SGTransitiveReductionVisitor
     int marked_edges;
 };
 
+// Remove identical vertices from the graph
+struct SGIdenticalRemoveVisitor
+{
+    SGIdenticalRemoveVisitor() {}
+    void previsit(StringGraph* pGraph);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph* pGraph);
+    int count;
+};
+
 // Remove contained vertices from the graph
 struct SGContainRemoveVisitor
 {
@@ -146,7 +156,7 @@ struct SGDuplicateVisitor
     SGDuplicateVisitor() {}
     void previsit(StringGraph*);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*) {}
+    void postvisit(StringGraph*);
 };
 
 // Detect small island vertices and removal them

@@ -176,6 +176,55 @@ void SGTransitiveReductionVisitor::postvisit(StringGraph* pGraph)
 }
 
 //
+// SGIdenticalRemoveVisitor - Removes identical vertices
+// from the graph. This algorithm is less complex 
+// than SGContainRemoveVisitor because we do not have to
+// remodel the graph in this case because no irreducible
+// edges need to be moved.
+//
+void SGIdenticalRemoveVisitor::previsit(StringGraph* pGraph)
+{
+    pGraph->setColors(GC_WHITE);
+    count = 0;
+}
+
+// For all 
+bool SGIdenticalRemoveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+    if(!pVertex->isContained())
+        return false;
+
+    // Check if this vertex is identical to any other vertex
+    EdgePtrVec neighborEdges = pVertex->getEdges();
+    for(size_t i = 0; i < neighborEdges.size(); ++i)
+    {
+        Edge* pEdge = neighborEdges[i];
+        Vertex* pOther = pEdge->getEnd();
+        if(pVertex->getSeqLen() != pOther->getSeqLen())
+            continue;
+        
+        Overlap ovr = pEdge->getOverlap();
+        if(!ovr.isContainment() || ovr.getContainedIdx() != 0)
+            continue;
+
+        if(pVertex->getSeq() == pOther->getSeq())
+        {
+            pVertex->setColor(GC_BLACK);
+            ++count;
+            break;
+        }
+    }
+            
+    return false;
+}
+
+void SGIdenticalRemoveVisitor::postvisit(StringGraph* pGraph)
+{
+    std::cout << "Removed " << count << " identical verts\n";
+    pGraph->sweepVertices(GC_BLACK);
+}
+
+//
 // SGContainRemoveVisitor - Removes contained
 // vertices from the graph
 //
@@ -195,8 +244,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     if(!pVertex->isContained())
         return false;
     static int visit_count = 0;
-    if(visit_count++ % 10000 == 0)
-        std::cout << "Visited " << visit_count << " in contain remove\n";
+    std::cout << "Visited " << visit_count++ << " in contain remove\n";
 
     // Add any new irreducible edges that exist when pToRemove is deleted
     // from the graph
@@ -558,15 +606,22 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 //
 // SGDuplicateVisitor - Detect and remove duplicate edges
 //
-void SGDuplicateVisitor::previsit(StringGraph* /*pGraph*/)
+void SGDuplicateVisitor::previsit(StringGraph* pGraph)
 {
-
+    assert(pGraph->checkColors(GC_WHITE));
 }
 
 bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
     pVertex->makeUnique();
     return false;
+}
+
+
+void SGDuplicateVisitor::postvisit(StringGraph* pGraph)
+{
+    assert(pGraph->checkColors(GC_WHITE));
+    std::cout << "done dup\n";
 }
 
 //

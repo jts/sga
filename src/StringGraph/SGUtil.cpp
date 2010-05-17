@@ -85,6 +85,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
                 {
                     // Vertex is a substring of some other vertex, mark it as contained
                     pVertex->setContained(true);
+                    pGraph->setContainmentFlag(true);
                 }
                 pGraph->addVertex(pVertex);
                 break;
@@ -102,23 +103,9 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 
                 ASQG::EdgeRecord edgeRecord(recordLine);
                 const Overlap& ovr = edgeRecord.getOverlap();
-                if(!allowContainments && ovr.match.isContainment())
-                {
-                    // Mark the contained read for subsequent removal
-                    const std::string& containedID = ovr.getContainedID();
-
-                    Vertex* pVertex = pGraph->getVertex(containedID);
-                    if(pVertex != NULL)
-                    {
-                        pVertex->setColor(GC_BLACK);
-                    }
-                }
-                else
-                {
-                    // Add the edge to the graph
-                    if(ovr.match.getMinOverlapLength() >= (int)minOverlap)
-                        SGAlgorithms::createEdgesFromOverlap(pGraph, ovr, allowContainments);
-                }
+                // Add the edge to the graph
+                if(ovr.match.getMinOverlapLength() >= (int)minOverlap)
+                    SGAlgorithms::createEdgesFromOverlap(pGraph, ovr, allowContainments);
                 break;
             }
         }
@@ -129,6 +116,11 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
     SGDuplicateVisitor dupVisit;
     pGraph->visit(dupVisit);
 
+    // Remove identical vertices
+    // This is much cheaper to do than remove via
+    // SGContainRemove as no remodelling needs to occur
+    SGIdenticalRemoveVisitor irv;
+    pGraph->visit(irv);
     // Remove substring vertices
     while(pGraph->hasContainment())
     {

@@ -626,8 +626,13 @@ void Bigraph::writeASQG(const std::string& filename) const
             Overlap ovr = (*edgeIter)->getOverlap();
             if(ovr.id[0] <= ovr.id[1])
             {
-                ASQG::EdgeRecord edgeRecord(ovr);
-                edgeRecord.write(*pWriter);
+                // Containment edges are in both directions so only output one
+                // record if it is a containment
+                if(!ovr.isContainment() || ((*edgeIter)->getDir() == ED_SENSE))
+                {
+                    ASQG::EdgeRecord edgeRecord(ovr);
+                    edgeRecord.write(*pWriter);
+                }
             }
         }
     }
