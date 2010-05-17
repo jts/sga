@@ -56,6 +56,9 @@ class CompleteOverlapSet
         void computeIrreducible(SGAlgorithms::EdgeDescOverlapMap* pTransitive, 
                                 SGAlgorithms::EdgeDescOverlapMap* pContainments);
         
+        void constructMap();
+        void recursiveConstruct(const EdgeDesc& edXY, const Overlap& ovrXY, int depth, int distance);
+
         // Partition the OverlapMap into edges that are containments, irreducible and transitive
         // If the pointer for an output map is NULL, simply discard the edges
         void partitionOverlaps(SGAlgorithms::EdgeDescOverlapMap* pIrreducible, 

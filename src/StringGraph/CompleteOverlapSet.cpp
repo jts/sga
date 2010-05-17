@@ -15,6 +15,7 @@
 CompleteOverlapSet::CompleteOverlapSet(const Vertex* pVertex, double maxER, int minLength) : m_pX(pVertex), m_maxER(maxER), m_minLength(minLength)
 {
     iterativeConstruct();
+    //constructMap();
 }
 
 // Perform a breadth-first search of the graph, accumulating all the valid
@@ -110,6 +111,85 @@ void CompleteOverlapSet::iterativeConstruct()
                         findIter->second = ovrXZ;
                         queue.push(ExploreElement(edXZ, ovrXZ));
                     }
+                }
+            }
+        }
+    }
+}
+
+//
+void CompleteOverlapSet::constructMap()
+{
+    EdgePtrVec edges = m_pX->getEdges();
+
+    // Add the primary overlaps to the map, and all the nodes reachable from the primaries
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Edge* pEdge = edges[i];
+        EdgeDesc ed = pEdge->getDesc();
+        Overlap ovr = pEdge->getOverlap();
+
+        if(ovr.isContainment())
+            continue;
+        m_overlapMap.insert(std::make_pair(ed, ovr));
+
+        // Recursively add neighbors
+        recursiveConstruct(ed, ovr, 1, ovr.getOverlapLength(0));
+    }
+}
+
+// Recursively add overlaps to pX inferred from the edges of pY to outMap
+void CompleteOverlapSet::recursiveConstruct(const EdgeDesc& edXY, const Overlap& ovrXY, int depth, int distance)
+{
+    //std::cout << "depth: " << depth << " " << distance << "\n";
+    Vertex* pY = edXY.pVertex;
+
+    EdgePtrVec neighborEdges = pY->getEdges();
+
+    for(size_t i = 0; i < neighborEdges.size(); ++i)
+    {
+        Edge* pEdgeYZ = neighborEdges[i];
+        Vertex* pZ = pEdgeYZ->getEnd();
+        if(pZ != m_pX)
+        {
+            Overlap ovrYZ = pEdgeYZ->getOverlap();
+            if(ovrYZ.isContainment())
+                continue;
+            // Check that this vertex actually overlaps pX
+            if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+            {
+                Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+                EdgeDesc edXZ = SGAlgorithms::overlapToEdgeDesc(pZ, ovrXZ);
+                if(edXZ.dir != edXY.dir || ovrXZ.isContainment())
+                    continue;
+
+                double error_rate = SGAlgorithms::calcErrorRate(m_pX, pZ, ovrXZ);
+                int overlapLen = ovrXZ.getOverlapLength(0);
+
+                if(overlapLen > distance)
+                {
+                    /*
+                    std::cout << "BACK OVERLAP! d: " << distance << " ol: " << overlapLen << "\n";
+                    std::cout << "ovrXY " << ovrXY << "\n";
+                    std::cout << "ovrYZ " << ovrYZ << "\n";
+                    std::cout << "ovrXZ " << ovrXZ << "\n";
+                    */
+                    continue;
+                }
+                if(isErrorRateAcceptable(error_rate, m_maxER) && overlapLen >= m_minLength)
+                {
+                    SGAlgorithms::EdgeDescOverlapMap::iterator findIter = m_overlapMap.find(edXZ);
+                    
+                    if(findIter == m_overlapMap.end())
+                    {
+                        m_overlapMap.insert(std::make_pair(edXZ, ovrXZ));
+                        recursiveConstruct(edXZ, ovrXZ, depth + 1, ovrXZ.getOverlapLength(0));
+                    }
+                    else if(ovrXZ.getOverlapLength(0) > findIter->second.getOverlapLength(0))
+                    {
+                        findIter->second = ovrXZ;
+                        recursiveConstruct(edXZ, ovrXZ, depth + 1, ovrXZ.getOverlapLength(0));
+                    }   
                 }
             }
         }
