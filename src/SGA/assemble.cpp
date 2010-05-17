@@ -196,6 +196,8 @@ void assemble()
             pGraph->visit(containVisit);
         }
         pGraph->visit(trVisit);
+        std::cout << "After remodel graph stats: \n";
+        pGraph->visit(statsVisit);
         //pGraph->writeASQG("afterRM.asqg.gz");
     }
 

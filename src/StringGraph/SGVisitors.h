@@ -66,15 +66,6 @@ struct SGContainRemoveVisitor
     void postvisit(StringGraph* pGraph);
 };
 
-// Remove substring contained vertices from the graph
-struct SGSubstringRemoveVisitor
-{
-    SGSubstringRemoveVisitor() {}
-    void previsit(StringGraph* pGraph);
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph* pGraph);
-};
-
 // Validate that the graph does not contain
 // any extra edges or missing irreducible edges
 struct SGValidateStructureVisitor

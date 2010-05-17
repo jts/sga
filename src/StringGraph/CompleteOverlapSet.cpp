@@ -75,9 +75,6 @@ void CompleteOverlapSet::iterativeConstruct()
             {
                 Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
                 
-                if(ovrXZ.isSubstringContainment())
-                    continue;
-
                 EdgeDesc edXZ = SGAlgorithms::overlapToEdgeDesc(pZ, ovrXZ);
 
                 double error_rate = SGAlgorithms::calcErrorRate(m_pX, pZ, ovrXZ);
@@ -182,15 +179,46 @@ void CompleteOverlapSet::removeOverlapsTo(Vertex* pRemove)
     }
 }
 
-// Remove all the transitive overlaps in the set
-void CompleteOverlapSet::removeTransitiveOverlaps()
+// Remove all the transitive and containment relationships, leaving only the irreducible
+void CompleteOverlapSet::computeIrreducible(SGAlgorithms::EdgeDescOverlapMap* pTransitive, SGAlgorithms::EdgeDescOverlapMap* pContainments)
 {
-    //std::cout << "Processing: " << pVertex->getID() << "\n";
-    SGAlgorithms::EDOPairQueue overlapQueue;
-    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = m_overlapMap.begin();
-        iter != m_overlapMap.end(); ++iter)
+    SGAlgorithms::EdgeDescOverlapMap temp;
+    partitionOverlaps(&temp, pTransitive, pContainments);
+    m_overlapMap = temp;
+}
+
+// Partition the OverlapMap into edges that are containments, irreducible and transitive
+// If the pointer for an output map is NULL, simply discard the edges
+void CompleteOverlapSet::partitionOverlaps(SGAlgorithms::EdgeDescOverlapMap* pIrreducible, 
+                                           SGAlgorithms::EdgeDescOverlapMap* pTransitive, 
+                                           SGAlgorithms::EdgeDescOverlapMap* pContainment) const
+{
+    if(pIrreducible == NULL && pTransitive == NULL && pContainment == NULL)
+        return; // Nothing to do
+
+    SGAlgorithms::EdgeDescOverlapMap workingMap;
+
+    // Stage 1, remove containments
+    for(SGAlgorithms::EdgeDescOverlapMap::const_iterator iter = m_overlapMap.begin();
+                                                   iter != m_overlapMap.end(); ++iter)
     {
-        overlapQueue.push(std::make_pair(iter->first, iter->second));
+        if(iter->second.isContainment())
+        {
+            if(pContainment != NULL)
+                pContainment->insert(*iter);
+        }
+        else
+        {
+            workingMap.insert(*iter);
+        }
+    }
+
+    // Stage 2, remove transitive edges
+    SGAlgorithms::EDOPairQueue overlapQueue;
+    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = workingMap.begin();
+        iter != workingMap.end(); ++iter)
+    {
+        overlapQueue.push(*iter);
     }
 
     // Traverse the list of overlaps in order of length and move elements from
@@ -203,18 +231,20 @@ void CompleteOverlapSet::removeTransitiveOverlaps()
         EdgeDesc& edXY = edoPair.first;
         Overlap& ovrXY = edoPair.second;
 
-        // Do not mark overlaps as transitive if they are through containment edges
-        if(ovrXY.match.isContainment())
-            continue;
+        assert(!ovrXY.match.isContainment());
 
-        SGAlgorithms::EdgeDescOverlapMap::iterator iter = m_overlapMap.begin();
-        while(iter != m_overlapMap.end())
+        SGAlgorithms::EdgeDescOverlapMap::iterator iter = workingMap.begin();
+        while(iter != workingMap.end())
         {
             bool move = false;
             const EdgeDesc& edXZ = iter->first;
             const Overlap& ovrXZ = iter->second;
 
-            // Skip the self-match and any edges in the wrong direction
+            // Four conditions must be met to mark an edge X->Z transitive through X->Y
+            // 1) The overlaps must be in the same direction
+            // 2) The overlap X->Y must be strictly longer than X->Z
+            // 3) The overlap between Y->Z must not be a containment
+            // 4) The overlap between Y->Z must be within the error and length thresholds
             if(!(edXZ == edXY) && edXY.dir == edXZ.dir && ovrXY.getOverlapLength(0) > ovrXZ.getOverlapLength(0))
             {
                 // Infer the YZ overlap
@@ -239,7 +269,9 @@ void CompleteOverlapSet::removeTransitiveOverlaps()
             if(move)
             {
                 //std::cout << "Marking overlap: " << iter->second << " as trans via " << ovrXY << "\n";
-                m_overlapMap.erase(iter++);
+                if(pTransitive != NULL)
+                    pTransitive->insert(*iter);
+                workingMap.erase(iter++);
             }
             else
             {
@@ -247,4 +279,6 @@ void CompleteOverlapSet::removeTransitiveOverlaps()
             }
         }
     }
+
+    *pIrreducible = workingMap;
 }

@@ -189,110 +189,14 @@ void SGContainRemoveVisitor::previsit(StringGraph* pGraph)
     pGraph->setContainmentFlag(false);    
 }
 
-//
+// For all 
 bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
-{
-    // Skip the computation if this vertex has already been marked
-    if(pVertex->getColor() == GC_BLACK)
-        return false;
-
-    EdgePtrVec edges = pVertex->getEdges();
-    for(size_t i = 0; i < edges.size(); ++i)
-    {
-        Overlap ovr = edges[i]->getOverlap();
-        Match m = edges[i]->getMatch();
-        if(ovr.match.isContainment())
-        {
-            Vertex* pVertexY = edges[i]->getEnd();
-            // Skip the resolution step if the vertex has already been marked
-            if(pVertexY->getColor() == GC_BLACK)
-                continue;
-
-            Vertex* pToRemove = NULL;
-            
-            // If containedIdx is 0, then this vertex is the one to remove
-            if(ovr.getContainedIdx() == 0)
-            {
-                pToRemove = pVertex;
-            }
-            else
-            {
-                pToRemove = pVertexY;
-            }
-
-            assert(pToRemove != NULL);
-            pToRemove->setColor(GC_BLACK);
-
-            if(ovr.match.coord[0].isContained() && !ovr.match.coord[1].isContained())
-            {
-                std::cout << "SUBSTRING CONTAIN 0!\n";
-            }
-
-            if(ovr.match.coord[1].isContained() && !ovr.match.coord[0].isContained())
-            {
-                std::cout << "SUBSTRING CONTAIN 1!\n";
-            }
-
-
-            // Add any new irreducible edges that exist when pToRemove is deleted
-            // from the graph
-            EdgePtrVec neighborEdges = pToRemove->getEdges();
-            
-            // If the graph has been transitively reduced, we have to check all
-            // the neighbors to see if any new edges need to be added. If the graph is a
-            // complete overlap graph we can just remove the edges to the deletion vertex
-
-            if(!pGraph->hasTransitive())
-            {
-                // This must be done in order of edge length or some transitive edges
-                // may be created
-                EdgeLenComp comp;
-                std::sort(neighborEdges.begin(), neighborEdges.end(), comp);
-
-                for(size_t j = 0; j < neighborEdges.size(); ++j)
-                {
-                    Vertex* pRemodelVert = neighborEdges[j]->getEnd();
-                    Edge* pRemodelEdge = neighborEdges[j]->getTwin();
-                    SGAlgorithms::remodelVertexForExcision(pGraph, 
-                                                           pRemodelVert, 
-                                                           pRemodelEdge);
-                }
-            }
-            
-            // Delete the edges from the graph
-            for(size_t j = 0; j < neighborEdges.size(); ++j)
-            {
-                Vertex* pRemodelVert = neighborEdges[j]->getEnd();
-                Edge* pRemodelEdge = neighborEdges[j]->getTwin();
-                pRemodelVert->deleteEdge(pRemodelEdge);
-                pToRemove->deleteEdge(neighborEdges[j]);
-            }
-        }
-    }
-    return false;
-}
-
-void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
-{
-    pGraph->sweepVertices(GC_BLACK);
-}
-
-//
-// SGSubstringRemoveVisitor - Removes substring
-// vertices from the graph. 
-//
-// Precondition: substring verts are marked GC_RED
-//
-void SGSubstringRemoveVisitor::previsit(StringGraph* pGraph)
-{
-    pGraph->setContainmentFlag(false);
-}
-
-//
-bool SGSubstringRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     if(!pVertex->isContained())
         return false;
+    static int visit_count = 0;
+    if(visit_count++ % 10000 == 0)
+        std::cout << "Visited " << visit_count << " in contain remove\n";
 
     // Add any new irreducible edges that exist when pToRemove is deleted
     // from the graph
@@ -327,16 +231,14 @@ bool SGSubstringRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         pRemodelVert->deleteEdge(pRemodelEdge);
         pVertex->deleteEdge(neighborEdges[j]);
     }
-    
     pVertex->setColor(GC_BLACK);
     return false;
 }
 
-void SGSubstringRemoveVisitor::postvisit(StringGraph* pGraph)
+void SGContainRemoveVisitor::postvisit(StringGraph* pGraph)
 {
     pGraph->sweepVertices(GC_BLACK);
 }
-
 
 //
 // Validate the structure of the graph by detecting missing
@@ -351,7 +253,7 @@ bool SGValidateStructureVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     
     // Construct the set of overlaps reachable within the current parameters
     CompleteOverlapSet vertexOverlapSet(pVertex, pGraph->getErrorRate(), pGraph->getMinOverlap());
-    vertexOverlapSet.removeTransitiveOverlaps();
+    vertexOverlapSet.computeIrreducible(NULL, NULL);
 
     SGAlgorithms::EdgeDescOverlapMap missingMap;
     SGAlgorithms::EdgeDescOverlapMap extraMap;
@@ -387,7 +289,8 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
     // Construct the set of overlaps reachable within the current parameters
     CompleteOverlapSet vertexOverlapSet(pVertex, m_remodelER, pGraph->getMinOverlap());
-    vertexOverlapSet.removeTransitiveOverlaps();
+    SGAlgorithms::EdgeDescOverlapMap containMap;
+    vertexOverlapSet.computeIrreducible(NULL, &containMap);
     SGAlgorithms::EdgeDescOverlapMap irreducibleMap = vertexOverlapSet.getOverlapMap();
 
     // Construct the set of edges that should be added
@@ -414,9 +317,13 @@ bool SGRemodelVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     {
         Overlap& ovr = iter->second;
         //std::cout << "Adding overlap: " << ovr << "\n";
-        SGUtil::createEdges(pGraph, ovr, true);
+        SGAlgorithms::createEdgesFromOverlap(pGraph, ovr, false);
         graph_changed = true;
     }
+
+    // Update the containment flags in the graph to ensure that we can subsequently remove containment verts
+    SGAlgorithms::updateContainFlags(pGraph, pVertex, containMap);
+
     return graph_changed;
 }
 

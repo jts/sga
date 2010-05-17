@@ -49,7 +49,19 @@ class CompleteOverlapSet
 
         void getDiffMap(SGAlgorithms::EdgeDescOverlapMap& missingMap, SGAlgorithms::EdgeDescOverlapMap& extraMap);
         void removeOverlapsTo(Vertex* pRemove);
-        void removeTransitiveOverlaps();
+
+        // Remove all the transitive and containment relationships, leaving only the irreducible
+        // If the input pointers are not NULL, the transitive and containment overlaps will be placed
+        // in the appropriate map
+        void computeIrreducible(SGAlgorithms::EdgeDescOverlapMap* pTransitive, 
+                                SGAlgorithms::EdgeDescOverlapMap* pContainments);
+        
+        // Partition the OverlapMap into edges that are containments, irreducible and transitive
+        // If the pointer for an output map is NULL, simply discard the edges
+        void partitionOverlaps(SGAlgorithms::EdgeDescOverlapMap* pIrreducible, 
+                               SGAlgorithms::EdgeDescOverlapMap* pTransitive, 
+                               SGAlgorithms::EdgeDescOverlapMap* pContainment) const;
+
         void resetParameters(double maxER, int minLength);
         SGAlgorithms::EdgeDescOverlapMap getOverlapMap() const { return m_overlapMap; }
 

@@ -43,8 +43,15 @@ typedef std::set<EdgeDesc> EdgeDescSet;
 // Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
 void remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
 
+// Create the edges described by the overlap.
+Edge* createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o, bool allowContained);
+
 // Calculate the error rate between the two vertices
 double calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY);
+
+void updateContainFlags(StringGraph* pGraph, Vertex* pVertex, EdgeDescOverlapMap& containMap);
+void updateContainFlags(StringGraph* pGraph, Vertex* pVertex, const EdgeDesc& ed, const Overlap& ovr);
+
 
 //
 // Overlap inference algorithms
