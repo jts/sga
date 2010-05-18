@@ -220,7 +220,6 @@ bool SGIdenticalRemoveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 
 void SGIdenticalRemoveVisitor::postvisit(StringGraph* pGraph)
 {
-    std::cout << "Removed " << count << " identical verts\n";
     pGraph->sweepVertices(GC_BLACK);
 }
 
@@ -243,7 +242,6 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     if(!pVertex->isContained())
         return false;
-
     // Add any new irreducible edges that exist when pToRemove is deleted
     // from the graph
     EdgePtrVec neighborEdges = pVertex->getEdges();
@@ -619,7 +617,6 @@ bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 void SGDuplicateVisitor::postvisit(StringGraph* pGraph)
 {
     assert(pGraph->checkColors(GC_WHITE));
-    std::cout << "done dup\n";
 }
 
 //

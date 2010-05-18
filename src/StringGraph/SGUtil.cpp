@@ -126,13 +126,6 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
     while(pGraph->hasContainment())
     {
         SGContainRemoveVisitor crv;
-     
-        Vertex* pVertex = pGraph->getVertex("IL29_4505:8:1:11750:16201#1/2");
-        if(pVertex != NULL)
-        {
-            std::cout << "FOUND VERTEX: " << pVertex->getID() << "\n"; 
-            crv.visit(pGraph, pVertex);
-        }
         pGraph->visit(crv);
     }
 

@@ -55,10 +55,11 @@ class Vertex
     public:
     
         Vertex(VertexID id, const std::string& s) : m_id(id), 
-                                                       m_seq(s), 
+                                                    m_seq(s), 
                                                     m_readCount(1), 
                                                     m_pPairVertex(NULL),
-                                                    m_color(GC_WHITE) {}
+                                                    m_color(GC_WHITE),
+                                                    m_isContained(false) {}
         ~Vertex();
 
         // High-level modification functions
