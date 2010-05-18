@@ -3,7 +3,7 @@
 
 use strict;
 use Getopt::Long;
-use lib "/home/jsimpson/software/perl/modules";
+use lib "/nfs/team71/phd/js18/software/perl/modules";
 use Normal;
 
 my $file = "";
@@ -113,15 +113,8 @@ sub outputPEReads
 		my $frag_size = int($fragment_dist->rand());
 		my $start_2 = $frag_size + $start_1 - $rl;
 
-
-        my $temp_rl = $rl;
-        if(rand() < 0.5)
-        {
-            $temp_rl -= 20;
-        }
-    
-		my $end_1 = $start_1 + $temp_rl - 1;
-		my $end_2 = $start_2 + $temp_rl - 1;
+		my $end_1 = $start_1 + $rl - 1;
+		my $end_2 = $start_2 + $rl - 1;
 		next if $end_2 >= $gl;
 
 		my $seq_1 = getRead($buffer, $start_1, $end_1); 
@@ -149,7 +142,7 @@ sub outputSEReads
 	my $num_reads = $gl * $coverage /  $rl;
 	while($total < $num_reads)
 	{
-        my $read_length = randUniformLength(0.5*$rl,$rl);
+	        my $read_length = $rl;#randUniformLength(0.5*$rl,$rl);
 
 		my $start = int(rand($gl));
 		my $end = $start + $read_length - 1;
