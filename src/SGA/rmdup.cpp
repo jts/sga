@@ -13,6 +13,7 @@
 #include "overlap.h"
 #include "Timer.h"
 #include "SGACommon.h"
+#include "OverlapCommon.h"
 
 //
 // Getopt
@@ -33,6 +34,7 @@ static const char *RMDUP_USAGE_MESSAGE =
 "      -o, --out=FILE                   write the output to FILE (default: READFILE.rmdup.fa)\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences identical\n"
+"      -t, --threads=NUM                use NUM computation threads (default: 1)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -44,10 +46,11 @@ namespace opt
     static std::string prefix;
     static std::string outFile;
     static std::string readsFile;
+    static unsigned int numThreads;
     static double errorRate;
 }
 
-static const char* shortopts = "p:o:e:v";
+static const char* shortopts = "p:o:e:t:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
@@ -56,6 +59,7 @@ static const struct option longopts[] = {
     { "prefix",         required_argument, NULL, 'p' },
     { "out",            required_argument, NULL, 'o' },
     { "error-rate",     required_argument, NULL, 'e' },
+    { "threads",        required_argument, NULL, 't' },
     { "help",           no_argument,       NULL, OPT_HELP },
     { "version",        no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -76,11 +80,30 @@ int rmdupMain(int argc, char** argv)
 
 void rmdup()
 {
-#if 0
     StringVector hitsFilenames;
-    computeHitsBWT(OM_FULLREAD, NULL, hitsFilenames);
+    BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
+    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
+    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
+                                                         opt::errorRate, 0, 
+                                                         0, false);
+    Timer* pTimer = new Timer(PROGRAM_IDENT);
+    size_t count;
+    if(opt::numThreads <= 1)
+    {
+        printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
+        count = OverlapCommon::computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, OM_FULLREAD, 0, hitsFilenames, NULL);
+    }
+    else
+    {
+        printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+        count = OverlapCommon::computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, OM_FULLREAD, 0, hitsFilenames, NULL);
+    }
+    double align_time_secs = pTimer->getElapsedWallTime();
+    printf("[%s] aligned %zu sequences in %lfs (%lf sequences/s)\n", 
+            PROGRAM_IDENT, count, align_time_secs, (double)count / align_time_secs);
+
+
     parseDupHits(hitsFilenames);
-#endif
 }
 
 void parseDupHits(const StringVector& hitsFilenames)
@@ -95,6 +118,13 @@ void parseDupHits(const StringVector& hitsFilenames)
     ReadTable* pRevRT = new ReadTable();
     pRevRT->initializeReverse(pFwdRT);
 
+    std::string outFile = opt::prefix + ".rmdup.fa";
+    std::ostream* pWriter = createWriter(outFile);
+
+    size_t substringRemoved = 0;
+    size_t identicalRemoved = 0;
+    size_t kept = 0;
+
     // Convert the hits to overlaps and write them to the asqg file as initial edges
     for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
     {
@@ -105,17 +135,54 @@ void parseDupHits(const StringVector& hitsFilenames)
         std::string line;
         while(getline(*pReader, line))
         {
-            OverlapVector ov = hitStringToOverlaps(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI);
-            (void)ov;
+            size_t readIdx;
+            bool isSubstring;
+            OverlapVector ov;
+            OverlapCommon::parseHitsString(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
+            
+            if(isSubstring)
+            {
+                ++substringRemoved;
+            }
+            else
+            {
+                bool isContained = false;
+                for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
+                {
+                    if(iter->isContainment() && iter->getContainedIdx() == 0)
+                    {
+                        // This read is contained by some other read
+                        isContained = true;
+                        break;
+                    }
+                }
+
+                if(isContained)
+                {
+                    ++identicalRemoved;
+                }
+                else
+                {
+                    ++kept;
+                    // Write the read
+                    const SeqItem& item = pFwdRT->getRead(readIdx);
+                    item.write(*pWriter);
+                }
+            }
         }
         delete pReader;
     }
+    
+    printf("[%s] Removed %zu substring reads\n", PROGRAM_IDENT, substringRemoved);
+    printf("[%s] Removed %zu identical reads\n", PROGRAM_IDENT, identicalRemoved);
+    printf("[%s] Kept %zu reads\n", PROGRAM_IDENT, kept);
 
     // Delete allocated data
     delete pFwdSAI;
     delete pRevSAI;
     delete pFwdRT;
     delete pRevRT;
+    delete pWriter;
 }
 
 // 
@@ -133,6 +200,7 @@ void parseRmdupOptions(int argc, char** argv)
             case 'p': arg >> opt::prefix; break;
             case 'o': arg >> opt::outFile; break;
             case 'e': arg >> opt::errorRate; break;
+            case 't': arg >> opt::numThreads; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
                 std::cout << RMDUP_USAGE_MESSAGE;

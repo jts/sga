@@ -145,12 +145,12 @@ void OverlapThread::processRead(OverlapWorkItem& item)
     if(m_mode == OM_OVERLAP)
     {
         item.result = m_pOverlapper->overlapRead(item.read, m_minOverlap, m_pOBList);
-        m_pOverlapper->writeOverlapBlocks(*m_pOutfile, item.idx, m_pOBList);
+        m_pOverlapper->writeOverlapBlocks(*m_pOutfile, item.idx, item.result.isSubstring, m_pOBList);
     }
     else
     {
         item.result = m_pOverlapper->alignReadDuplicate(item.read, m_pOBList);
-        m_pOverlapper->writeOverlapBlocks(*m_pOutfile, item.idx, m_pOBList);
+        m_pOverlapper->writeOverlapBlocks(*m_pOutfile, item.idx, item.result.isSubstring, m_pOBList);
     }
     m_pOBList->clear();
 }

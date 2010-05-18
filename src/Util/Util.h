@@ -48,6 +48,12 @@ struct SeqItem
     // data
     std::string id;
     DNAString seq;
+
+    void write(std::ostream& out) const
+    {
+        out << ">" << id << "\n";
+        out << seq.toString() << "\n";
+    }    
 };
 
 
@@ -74,8 +80,7 @@ struct SeqRecord
         }
         else
         {
-            out << ">" << id << "\n";
-            out << seq.toString() << "\n";
+            toSeqItem().write(out);
         }
     }
 

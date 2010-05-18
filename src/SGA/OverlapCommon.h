@@ -4,7 +4,7 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// OverlapCommon - Common wrapper used for finding overlaps
+// OverlapCommon - Common wrapper used for computing overlaps
 // for a set of reads
 //
 #ifndef OVERLAPCOMMON_H
@@ -34,6 +34,10 @@ size_t computeHitsParallel(int numThreads, const std::string& prefix, const std:
                            const OverlapAlgorithm* pOverlapper, OverlapMode mode,
                            int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
 
+void parseHitsString(const std::string& hitString, 
+                     const ReadTable* pFwdRT, const ReadTable* pRevRT, 
+                     const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI, 
+                     size_t& readIdx, OverlapVector& outVector, bool& isSubstring);
 };
 
 #endif

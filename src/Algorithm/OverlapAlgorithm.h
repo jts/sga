@@ -57,7 +57,7 @@ class OverlapAlgorithm
         void writeResultASQG(std::ostream& writer, const SeqRecord& read, const OverlapResult& result) const;
 
         // Write all the overlap blocks pList to the filehandle
-        void writeOverlapBlocks(std::ostream& writer, size_t readIdx, const OverlapBlockList* pList) const;
+        void writeOverlapBlocks(std::ostream& writer, size_t readIdx, bool isSubstring, const OverlapBlockList* pList) const;
 
     private:
 
