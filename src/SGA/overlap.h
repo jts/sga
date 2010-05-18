@@ -21,17 +21,17 @@
 int overlapMain(int argc, char** argv);
 
 // overlap computation
-void computeHitsBWT(OverlapMode mode, std::ostream* pASQGWriter, StringVector& filenameVec);
+void computeHitsBWT(const std::string& prefix, const std::string& readsFile, int numThreads,
+                    OverlapAlgorithm* pOverlapper, OverlapMode mode, int minOverlap, 
+                    StringVector& filenameVec, std::ostream* pASQGWriter);
 
-size_t computeHitsSerial(SeqReader& reader, OverlapMode mode, 
-                         const OverlapAlgorithm* pOverlapper, 
-                         StringVector& filenameVec,
-                         std::ostream* pASQGWriter);
+size_t computeHitsSerial(const std::string& prefix, SeqReader& reader, 
+                         const OverlapAlgorithm* pOverlapper, OverlapMode mode,
+                         int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
 
-size_t computeHitsParallel(SeqReader& reader, OverlapMode mode, 
-                           const OverlapAlgorithm* pOverlapper, 
-                           StringVector& filenameVec,
-                           std::ostream* pASQGWriter);
+size_t computeHitsParallel(int numThreads, const std::string& prefix, SeqReader& reader, 
+                           const OverlapAlgorithm* pOverlapper, OverlapMode mode,
+                           int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
 
 // Output processing
 void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWriter);

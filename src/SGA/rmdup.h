@@ -15,5 +15,6 @@
 int rmdupMain(int argc, char** argv);
 void parseRmdupOptions(int argc, char** argv);
 void rmdup();
+void parseDupHits(const StringVector& hitsFilenames);
 
 #endif

@@ -10,14 +10,9 @@
 #include <fstream>
 #include "Util.h"
 #include "rmdup.h"
-#include "SGUtil.h"
-#include "SGAlgorithms.h"
-#include "SGPairedAlgorithms.h"
-#include "SGDebugAlgorithms.h"
-#include "SGVisitors.h"
+#include "overlap.h"
 #include "Timer.h"
-#include "SeqDAVG.h"
-#include "SuffixTree.h"
+#include "SGACommon.h"
 
 //
 // Getopt
@@ -39,6 +34,9 @@ static const char *RMDUP_USAGE_MESSAGE =
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences identical\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
+
+static const char* PROGRAM_IDENT =
+PACKAGE_NAME "::" SUBPROGRAM;
 
 namespace opt
 {
@@ -78,6 +76,46 @@ int rmdupMain(int argc, char** argv)
 
 void rmdup()
 {
+#if 0
+    StringVector hitsFilenames;
+    computeHitsBWT(OM_FULLREAD, NULL, hitsFilenames);
+    parseDupHits(hitsFilenames);
+#endif
+}
+
+void parseDupHits(const StringVector& hitsFilenames)
+{
+    // Load the suffix array index and the reverse suffix array index
+    // Note these are not the full suffix arrays
+    SuffixArray* pFwdSAI = new SuffixArray(opt::prefix + SAI_EXT);
+    SuffixArray* pRevSAI = new SuffixArray(opt::prefix + RSAI_EXT);
+
+    // Load the read table and output the initial vertex set, consisting of all the reads
+    ReadTable* pFwdRT = new ReadTable(opt::readsFile);
+    ReadTable* pRevRT = new ReadTable();
+    pRevRT->initializeReverse(pFwdRT);
+
+    // Convert the hits to overlaps and write them to the asqg file as initial edges
+    for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
+    {
+        printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
+        std::istream* pReader = createReader(*iter);
+    
+        // Read each hit sequentially, converting it to an overlap
+        std::string line;
+        while(getline(*pReader, line))
+        {
+            OverlapVector ov = hitStringToOverlaps(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI);
+            (void)ov;
+        }
+        delete pReader;
+    }
+
+    // Delete allocated data
+    delete pFwdSAI;
+    delete pRevSAI;
+    delete pFwdRT;
+    delete pRevRT;
 }
 
 // 
