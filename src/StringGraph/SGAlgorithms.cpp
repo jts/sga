@@ -103,13 +103,15 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
     assert(pVertex == pDeleteEdge->getStart());
     double maxER = pGraph->getErrorRate();
     int minLength = pGraph->getMinOverlap();
-
+    
     CompleteOverlapSet vertexOverlapSet(pVertex, maxER, minLength);
+
     vertexOverlapSet.removeOverlapsTo(pDeleteEdge->getEnd());
     EdgeDescOverlapMap addMap;
     EdgeDescOverlapMap removeMap;
     EdgeDescOverlapMap containMap;
     vertexOverlapSet.computeIrreducible(NULL, &containMap);
+    
     vertexOverlapSet.getDiffMap(addMap, removeMap);
        
     //assert(removeMap.size() == 0);

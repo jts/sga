@@ -14,6 +14,7 @@
 // 
 CompleteOverlapSet::CompleteOverlapSet(const Vertex* pVertex, double maxER, int minLength) : m_pX(pVertex), m_maxER(maxER), m_minLength(minLength)
 {
+    m_cost = 0;
     iterativeConstruct();
     //constructMap();
 }
@@ -22,6 +23,7 @@ CompleteOverlapSet::CompleteOverlapSet(const Vertex* pVertex, double maxER, int 
 // overlaps of reads to m_pX
 void CompleteOverlapSet::iterativeConstruct()
 {
+    m_cost = 0;
     ExplorePriorityQueue queue;
 
     // We store the overlaps that do not meet the overlap parameters
@@ -74,6 +76,7 @@ void CompleteOverlapSet::iterativeConstruct()
             // Check that this vertex actually overlaps pX
             if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
             {
+                ++m_cost;
                 Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
                 
                 EdgeDesc edXZ = SGAlgorithms::overlapToEdgeDesc(pZ, ovrXZ);
@@ -141,7 +144,7 @@ void CompleteOverlapSet::constructMap()
 // Recursively add overlaps to pX inferred from the edges of pY to outMap
 void CompleteOverlapSet::recursiveConstruct(const EdgeDesc& edXY, const Overlap& ovrXY, int depth, int distance)
 {
-    //std::cout << "depth: " << depth << " " << distance << "\n";
+    std::cout << "depth: " << depth << " " << distance << " " << ovrXY << "\n";
     Vertex* pY = edXY.pVertex;
 
     EdgePtrVec neighborEdges = pY->getEdges();
@@ -176,6 +179,10 @@ void CompleteOverlapSet::recursiveConstruct(const EdgeDesc& edXY, const Overlap&
                     */
                     continue;
                 }
+                
+                std::cout << "ovrXY " << ovrXY << "\n";
+                std::cout << "ovrYZ " << ovrYZ << "\n";
+                std::cout << "ovrXZ " << ovrXZ << "\n";
                 if(isErrorRateAcceptable(error_rate, m_maxER) && overlapLen >= m_minLength)
                 {
                     SGAlgorithms::EdgeDescOverlapMap::iterator findIter = m_overlapMap.find(edXZ);
@@ -275,7 +282,7 @@ void CompleteOverlapSet::partitionOverlaps(SGAlgorithms::EdgeDescOverlapMap* pIr
 {
     if(pIrreducible == NULL && pTransitive == NULL && pContainment == NULL)
         return; // Nothing to do
-
+    m_cost = 0;
     SGAlgorithms::EdgeDescOverlapMap workingMap;
 
     // Stage 1, remove containments
@@ -319,7 +326,7 @@ void CompleteOverlapSet::partitionOverlaps(SGAlgorithms::EdgeDescOverlapMap* pIr
             bool move = false;
             const EdgeDesc& edXZ = iter->first;
             const Overlap& ovrXZ = iter->second;
-
+            m_cost++;
             // Four conditions must be met to mark an edge X->Z transitive through X->Y
             // 1) The overlaps must be in the same direction
             // 2) The overlap X->Y must be strictly longer than X->Z

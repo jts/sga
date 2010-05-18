@@ -16,6 +16,12 @@
 #include "BWTAlgorithms.h"
 #include "Util.h"
 
+enum OverlapMode
+{
+    OM_OVERLAP,
+    OM_FULLREAD
+};
+
 struct OverlapResult
 {
     OverlapResult() : isSubstring(false) {}
@@ -26,25 +32,26 @@ class OverlapAlgorithm
 {
     public:
         OverlapAlgorithm(const BWT* pBWT, const BWT* pRevBWT, 
-                         size_t minO, double er,
-                         int seedLen, int seedStride,
-                          bool irrOnly) : m_pBWT(pBWT), 
-                                          m_pRevBWT(pRevBWT),
-                                          m_minOverlap(minO),
-                                          m_errorRate(er),
-                                          m_seedLength(seedLen),
-                                          m_seedStride(seedStride),
-                                          m_bIrreducible(irrOnly) {}
+                         double er, int seedLen, int seedStride,
+                         bool irrOnly) : m_pBWT(pBWT), 
+                                         m_pRevBWT(pRevBWT),
+                                         m_errorRate(er),
+                                         m_seedLength(seedLen),
+                                         m_seedStride(seedStride),
+                                         m_bIrreducible(irrOnly) {}
 
         // Perform the overlap
         // This function is threaded so everything must be const
-        OverlapResult overlapRead(const SeqRecord& read, OverlapBlockList* pOutList) const;
+        OverlapResult overlapRead(const SeqRecord& read, int m_minOverlap, OverlapBlockList* pOutList) const;
     
         // Perform an irreducible overlap
-        OverlapResult overlapReadExact(const SeqRecord& read, OverlapBlockList* pOBOut) const;
+        OverlapResult overlapReadExact(const SeqRecord& read, int m_minOverlap, OverlapBlockList* pOBOut) const;
+
+        // Find duplicate blocks for this read
+        OverlapResult alignReadDuplicate(const SeqRecord& read, OverlapBlockList* pOBOut) const;
 
         // Perform an inexact overlap
-        OverlapResult overlapReadInexact(const SeqRecord& read, OverlapBlockList* pOBOut) const;
+        OverlapResult overlapReadInexact(const SeqRecord& read, int m_minOverlap, OverlapBlockList* pOBOut) const;
 
         // Write the result of an overlap to an ASQG file
         void writeResultASQG(std::ostream& writer, const SeqRecord& read, const OverlapResult& result) const;
@@ -57,20 +64,13 @@ class OverlapAlgorithm
         // Calculate the ranges in pBWT that contain a prefix of at least minOverlap basepairs that
         // overlaps with a suffix of w.
         void findOverlapBlocksExact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
-                                            const AlignFlags& af, OverlapBlockList* pOBTemp, 
-                                            OverlapBlockList* pOBFinal, OverlapResult& result) const;
+                                    const AlignFlags& af, const int minOverlap, OverlapBlockList* pOBTemp, 
+                                    OverlapBlockList* pOBFinal, OverlapResult& result) const;
 
         // Same as above while allowing mismatches
-        void findOverlapBlocksInexactQueue(const std::string& w, const BWT* pBWT, 
-                                      const BWT* pRevBWT, const AlignFlags& af, 
-                                      OverlapBlockList* pOBList, OverlapBlockList* pOBFinal, 
-                                      OverlapResult& result) const;
-
-        // Same as above while allowing mismatches
-        void findOverlapBlocksInexact(const std::string& w, const BWT* pBWT, 
-                                      const BWT* pRevBWT, const AlignFlags& af, 
-                                      OverlapBlockList* pOBList, OverlapBlockList* pOBFinal, 
-                                      OverlapResult& result) const;
+        void findOverlapBlocksInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+                                      const AlignFlags& af, const int minOverlap, OverlapBlockList* pOBList, 
+                                      OverlapBlockList* pOBFinal, OverlapResult& result) const;
 
         //
         inline bool extendSeedExactRight(SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* pRevBWT) const;
@@ -89,7 +89,7 @@ class OverlapAlgorithm
 
 
         //
-        inline void calculateSeedParameters(const std::string& w, int& seed_length, int& seed_stride) const;
+        inline void calculateSeedParameters(const std::string& w, const int minOverlap, int& seed_length, int& seed_stride) const;
         
         //
         inline int createSearchSeeds(const std::string& w, const BWT* pBWT, 
@@ -137,7 +137,6 @@ class OverlapAlgorithm
         // Data
         const BWT* m_pBWT;
         const BWT* m_pRevBWT;
-        size_t m_minOverlap;
         double m_errorRate;
         int m_seedLength;
         int m_seedStride;

@@ -121,7 +121,7 @@ int overlapMain(int argc, char** argv)
 
     // Compute the overlap hits
     StringVector hitsFilenames;
-    computeHitsBWT(pASQGWriter, hitsFilenames);
+    computeHitsBWT(OM_OVERLAP, pASQGWriter, hitsFilenames);
 
     // Parse the hits files and write the overlaps to the ASQG file
     convertHitsToASQG(hitsFilenames, pASQGWriter);
@@ -135,14 +135,13 @@ int overlapMain(int argc, char** argv)
     return 0;
 }
 
-void computeHitsBWT(std::ostream* pASQGWriter, StringVector& filenameVec)
+void computeHitsBWT(OverlapMode mode, std::ostream* pASQGWriter, StringVector& filenameVec)
 {
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
-                                                         opt::minOverlap, opt::errorRate,
-                                                         opt::seedLength, opt::seedStride,
-                                                         opt::bIrreducibleOnly);
+                                                         opt::errorRate, opt::seedLength, 
+                                                         opt::seedStride, opt::bIrreducibleOnly);
 
     SeqReader reader(opt::readsFile);
 
@@ -151,9 +150,9 @@ void computeHitsBWT(std::ostream* pASQGWriter, StringVector& filenameVec)
 
     size_t count = 0;
     if(opt::numThreads <= 1)
-        count = computeHitsSerial(reader, pASQGWriter, pOverlapper, filenameVec);
+        count = computeHitsSerial(reader, mode, pOverlapper, filenameVec, pASQGWriter);
     else
-        count = computeHitsParallel(reader, pASQGWriter, pOverlapper, filenameVec);
+        count = computeHitsParallel(reader, mode, pOverlapper, filenameVec, pASQGWriter);
 
     double align_time_secs = timer.getElapsedWallTime();
     printf("[%s] aligned %zu sequences in %lfs (%lf sequences/s)\n", 
@@ -167,10 +166,16 @@ void computeHitsBWT(std::ostream* pASQGWriter, StringVector& filenameVec)
 
 // Compute the hits for each read in the SeqReader file without threading
 // Return the number of reads processed
-size_t computeHitsSerial(SeqReader& reader, std::ostream* pASQGWriter, 
-                         const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
+size_t computeHitsSerial(SeqReader& reader, OverlapMode mode, 
+                           const OverlapAlgorithm* pOverlapper, 
+                           StringVector& filenameVec,
+                           std::ostream* pASQGWriter)
 {
     printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
+    if(mode == OM_OVERLAP)
+    {
+        assert(pASQGWriter != NULL);
+    }
 
     // Prepare output
     OverlapBlockList* pOutBlocks = new OverlapBlockList;
@@ -187,9 +192,18 @@ size_t computeHitsSerial(SeqReader& reader, std::ostream* pASQGWriter,
         if(opt::verbose > 0 && currIdx % 50000 == 0)
             printf("[%s] Aligned %zu sequences\n", PROGRAM_IDENT, currIdx);
 
-        OverlapResult result = pOverlapper->overlapRead(read, pOutBlocks);
-        pOverlapper->writeResultASQG(*pASQGWriter, read, result);
-        pOverlapper->writeOverlapBlocks(*pHitsWriter, currIdx++, pOutBlocks);
+        if(mode == OM_OVERLAP)
+        {
+            OverlapResult result = pOverlapper->overlapRead(read, opt::minOverlap, pOutBlocks);
+            pOverlapper->writeResultASQG(*pASQGWriter, read, result);
+            pOverlapper->writeOverlapBlocks(*pHitsWriter, currIdx++, pOutBlocks);
+        }
+        else
+        {
+            assert(mode == OM_FULLREAD);
+            OverlapResult result = pOverlapper->alignReadDuplicate(read, pOutBlocks);
+            pOverlapper->writeOverlapBlocks(*pHitsWriter, currIdx++, pOutBlocks);
+        }
         pOutBlocks->clear();
     }
 
@@ -200,9 +214,16 @@ size_t computeHitsSerial(SeqReader& reader, std::ostream* pASQGWriter,
 }
 
 // Compute the hits for each read in the SeqReader file with threading
-size_t computeHitsParallel(SeqReader& reader, std::ostream* pASQGWriter, 
-                           const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
+size_t computeHitsParallel(SeqReader& reader, OverlapMode mode, 
+                           const OverlapAlgorithm* pOverlapper, 
+                           StringVector& filenameVec,
+                           std::ostream* pASQGWriter)
 {
+    if(mode == OM_OVERLAP)
+    {
+        assert(pASQGWriter != NULL);
+    }
+        
     printf("[%s] starting parallel-mode overlap computation with %d threads\n", 
             PROGRAM_IDENT, opt::numThreads);
     size_t MAX_ITEMS = 1000;
@@ -230,7 +251,7 @@ size_t computeHitsParallel(SeqReader& reader, std::ostream* pASQGWriter,
         sem_init( semVec[i], PTHREAD_PROCESS_PRIVATE, 0 );
 
         // Create and start the thread
-        threadVec[i] = new OverlapThread(pOverlapper, outfile, semVec[i], MAX_ITEMS);
+        threadVec[i] = new OverlapThread(pOverlapper, mode, opt::minOverlap, outfile, semVec[i], MAX_ITEMS);
         threadVec[i]->start();
 
         workVec[i] = new OverlapWorkVector;

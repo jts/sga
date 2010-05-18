@@ -13,6 +13,7 @@
 #include "assemble.h"
 #include "oview.h"
 #include "extract.h"
+#include "rmdup.h"
 #include "preprocess.h"
 
 #define VERSION "0.1"
@@ -23,9 +24,6 @@ void printUsage();
 
 int main(int argc, char** argv)
 {
-    (void)argc;
-    (void)argv;
-
     if(argc <= 1)
         printUsage();
     else
@@ -39,6 +37,8 @@ int main(int argc, char** argv)
 
         if(command == "index")
             indexMain(argc - 1, argv + 1);
+        else if(command == "rmdup")
+            rmdupMain(argc - 1, argv + 1);
         else if(command == "overlap")
             overlapMain(argc - 1, argv + 1);
         else if(command == "assemble")
@@ -67,9 +67,9 @@ void printUsage()
     std::cout << "Commands:\n";
     std::cout << "           preprocess   filter and quality-trim reads\n";
     std::cout << "           index        build the BWT and FM-index for a set of reads\n";
+    std::cout << "           rmdup        remove duplicated or identical reads from the data set\n";
     std::cout << "           overlap      compute overlaps between reads\n";
     std::cout << "           assemble     generate contigs\n";
     std::cout << "           oview        view overlap alignments\n";
-    //std::cout << "           extract      extract all sequences of a given length\n";
-        std::cout << "\n\n";
+    std::cout << "\n\n";
 }

@@ -10,10 +10,15 @@
 #include "OverlapThread.h"
 
 //
-OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper, 
+OverlapThread::OverlapThread(const OverlapAlgorithm* pOverlapper,
+                             OverlapMode mode,
+                             int minOverlap,
                              const std::string& filename, 
                              sem_t* pReadySem, 
-                             const size_t max_items) : m_pOverlapper(pOverlapper),
+                             const size_t max_items) : 
+                             m_mode(mode),
+                             m_minOverlap(minOverlap),
+                             m_pOverlapper(pOverlapper),
                              m_pReadySem(pReadySem), 
                              m_stopRequested(false), 
                              m_isReady(false)
@@ -137,8 +142,16 @@ void OverlapThread::run()
 // Overlap a read
 void OverlapThread::processRead(OverlapWorkItem& item)
 {
-    item.result = m_pOverlapper->overlapRead(item.read, m_pOBList);
-    m_pOverlapper->writeOverlapBlocks(*m_pOutfile, item.idx, m_pOBList);
+    if(m_mode == OM_OVERLAP)
+    {
+        item.result = m_pOverlapper->overlapRead(item.read, m_minOverlap, m_pOBList);
+        m_pOverlapper->writeOverlapBlocks(*m_pOutfile, item.idx, m_pOBList);
+    }
+    else
+    {
+        item.result = m_pOverlapper->alignReadDuplicate(item.read, m_pOBList);
+        m_pOverlapper->writeOverlapBlocks(*m_pOutfile, item.idx, m_pOBList);
+    }
     m_pOBList->clear();
 }
 

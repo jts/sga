@@ -30,7 +30,7 @@ class OverlapThread
 {
     public:
 
-        OverlapThread(const OverlapAlgorithm* pOverlapper, 
+        OverlapThread(const OverlapAlgorithm* pOverlapper, OverlapMode mode, int minOverlap,
                       const std::string& filename, sem_t* pReadySem, const size_t max_items);
 
         ~OverlapThread();
@@ -59,6 +59,8 @@ class OverlapThread
         // which are only acccessed by the thread
         std::ostream* m_pOutfile;
         OverlapBlockList* m_pOBList;
+        OverlapMode m_mode;
+        int m_minOverlap;
 
         // Handles
         const OverlapAlgorithm* m_pOverlapper;

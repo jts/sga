@@ -238,13 +238,11 @@ void SGContainRemoveVisitor::previsit(StringGraph* pGraph)
     pGraph->setContainmentFlag(false);    
 }
 
-// For all 
+//
 bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     if(!pVertex->isContained())
         return false;
-    static int visit_count = 0;
-    std::cout << "Visited " << visit_count++ << " in contain remove\n";
 
     // Add any new irreducible edges that exist when pToRemove is deleted
     // from the graph

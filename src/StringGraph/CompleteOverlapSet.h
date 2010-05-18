@@ -67,7 +67,8 @@ class CompleteOverlapSet
 
         void resetParameters(double maxER, int minLength);
         SGAlgorithms::EdgeDescOverlapMap getOverlapMap() const { return m_overlapMap; }
-
+        size_t size() const { return m_overlapMap.size(); }
+        size_t getCost() const { return m_cost; }
     private:
 
         // functions
@@ -81,7 +82,7 @@ class CompleteOverlapSet
 
         double m_maxER;
         int m_minLength;
-
+        mutable size_t m_cost;
 };
 
 #endif
