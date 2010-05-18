@@ -4,7 +4,7 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// index - index reads using a suffix tree
+// index - Build a BWT/FM-index for a set of reads
 //
 #include <iostream>
 #include <fstream>

@@ -4,7 +4,7 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// index - Read in sequences and index them in a suffix array
+// index - Build a BWT/FM-index for a set of reads
 //
 #ifndef INDEX_H
 #define INDEX_H

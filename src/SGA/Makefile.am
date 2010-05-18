@@ -29,4 +29,5 @@ sga_SOURCES = sga.cpp \
               oview.cpp oview.h \
 			  preprocess.cpp preprocess.h \
               rmdup.cpp rmdup.h \
+              merge.cpp merge.h \
               OverlapCommon.h OverlapCommon.cpp
