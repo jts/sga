@@ -21,15 +21,16 @@ typedef uint32_t GAP_TYPE;
 static const bool USE_GZ = false;
 struct MergeItem
 {
-    size_t start_index;
-    size_t end_index;
+    int64_t start_index;
+    int64_t end_index;
+    std::string reads_filename;
     std::string bwt_filename;
     std::string sai_filename;
 
     friend std::ostream& operator<<(std::ostream& out, const MergeItem& item)
     {
         out << "[" << item.start_index << "," << item.end_index << "] " << item.bwt_filename;
-        out << " " << item.sai_filename;
+        out << " " << item.sai_filename << " " << item.reads_filename;
         return out;
     }
 };
@@ -41,10 +42,16 @@ MergeItem merge(SeqReader* pReader,
                 const std::string& bwt_outname, const std::string& sai_outname,
                 bool doReverse);
 
+int64_t merge2(SeqReader* pReader, 
+               const MergeItem& item1, const MergeItem& item2, 
+               const std::string& bwt_outname, const std::string& sai_outname,
+               bool doReverse);
+
+
 //
-MergeItem writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
-                           const MergeItem& internalItem, const std::string& bwt_outname,
-                           const std::string& sai_outname, const std::vector<GAP_TYPE>& gap_array);
+void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
+                      const MergeItem& internalItem, const std::string& bwt_outname,
+                      const std::string& sai_outname, const std::vector<GAP_TYPE>& gap_array);
 
 //
 void updateGapArray(const DNAString& w, const BWT* pBWTInternal, 
@@ -53,6 +60,8 @@ void updateGapArray(const DNAString& w, const BWT* pBWTInternal,
 //
 inline void incrementGapArray(int64_t rank, std::vector<GAP_TYPE>& gap_array);
 std::string makeTempName(const std::string& prefix, int id, const std::string& extension);
+std::string makeFilename(const std::string& prefix, const std::string& extension);
+
 
 // The algorithm is as follows. We create M BWTs for subsets of 
 // the input reads. These are created independently and written
@@ -62,7 +71,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
                   const std::string& bwt_extension, const std::string& sai_extension,
                   bool doReverse)
 {
-    size_t MAX_READS_PER_GROUP = 2000000;
+    size_t MAX_READS_PER_GROUP = 200000;
 
     SeqReader* pReader = new SeqReader(in_filename);
     SeqRecord record;
@@ -106,6 +115,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 
             // Push the merge info
             mergeItem.end_index = numReadTotal - 1;
+            mergeItem.reads_filename = in_filename;
             mergeItem.bwt_filename = bwt_temp_filename;
             mergeItem.sai_filename = sai_temp_filename;
             mergeVector.push_back(mergeItem);
@@ -134,13 +144,41 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
         {
             if(i + 1 != mergeVector.size())
             {
-                std::string bwt_temp_name = makeTempName(out_prefix, groupID, bwt_extension);
-                std::string sai_temp_name = makeTempName(out_prefix, groupID, sai_extension);
+                std::string bwt_merged_name = makeTempName(out_prefix, groupID, bwt_extension);
+                std::string sai_merged_name = makeTempName(out_prefix, groupID, sai_extension);
 
-                MergeItem merged = merge(pReader, mergeVector[i], mergeVector[i+1], 
-                                        bwt_temp_name, sai_temp_name, doReverse);
+                MergeItem item1 = mergeVector[i];
+                MergeItem item2 = mergeVector[i+1];
 
+                // Perform the actual merge
+                int64_t curr_idx = merge2(pReader, item1, item2, 
+                                          bwt_merged_name, sai_merged_name, 
+                                          doReverse);
+
+                // pReader now points to the end of item1's block of 
+                // reads. Skip item2's reads
+                assert(curr_idx == item2.start_index);
+                while(curr_idx <= item2.end_index)
+                {
+                    bool eof = !pReader->get(record);
+                    assert(!eof);
+                    ++curr_idx;
+                }
+
+                // Create the merged mergeItem to use in the next round
+                MergeItem merged;
+                merged.start_index = item1.start_index;
+                merged.end_index = item2.end_index;
+                merged.bwt_filename = bwt_merged_name;
+                merged.sai_filename = sai_merged_name;
                 nextMergeRound.push_back(merged);
+
+                // Done with the temp files, remove them
+                unlink(item1.bwt_filename.c_str());
+                unlink(item2.bwt_filename.c_str());
+                unlink(item1.sai_filename.c_str());
+                unlink(item2.sai_filename.c_str());
+
                 ++groupID;
             }
             else
@@ -168,17 +206,48 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
     rename(mergeVector.front().sai_filename.c_str(), sai_final_filename.c_str());
 }
 
+// Merge the indices for two independent sets of reads, readsFile1 and readsFile2
+void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
+                             const std::string& bwt_extension, const std::string& sai_extension)
+{
+    MergeItem item1;
+    std::string prefix1 = stripFilename(readsFile1);
+    item1.reads_filename = readsFile1;
+    item1.bwt_filename = makeFilename(prefix1, bwt_extension);
+    item1.sai_filename = makeFilename(prefix1, sai_extension);
+    item1.start_index = 0;
+    item1.end_index = -1; // this tells merge to read the entire file
+
+    MergeItem item2;
+    std::string prefix2 = stripFilename(readsFile2);
+    item2.reads_filename = readsFile2;
+    item2.bwt_filename = makeFilename(prefix2, bwt_extension);
+    item2.sai_filename = makeFilename(prefix2, sai_extension);
+    item2.start_index = 0;
+    item2.end_index = -1;
+
+    // Prepare the input filehandle
+    SeqReader* pReader = new SeqReader(item1.reads_filename);
+    
+    // Build the outnames
+    std::string merged_prefix = prefix1 + "." + prefix2;
+    std::string bwt_merged_name = makeFilename(merged_prefix, bwt_extension);
+    std::string sai_merged_name = makeFilename(merged_prefix, sai_extension);
+
+    // Perform the actual merge
+    merge2(pReader, item1, item2, bwt_merged_name, sai_merged_name, false);
+    delete pReader;
+}
+
 // Merge a pair of BWTs using disk storage
-// Precondition: pReader is positioned at the start
-// of the read block for item1
-MergeItem merge(SeqReader* pReader, 
-                const MergeItem& item1, const MergeItem& item2, 
-                const std::string& bwt_outname, const std::string& sai_outname,
-                bool doReverse)
+// Precondition: pReader is positioned at the start of the read block for item1
+int64_t merge2(SeqReader* pReader,
+               const MergeItem& item1, const MergeItem& item2,
+               const std::string& bwt_outname, const std::string& sai_outname,
+               bool doReverse)
 {
     std::cout << "Merge1: " << item1 << "\n";
     std::cout << "Merge2: " << item2 << "\n";
-    assert(item2.start_index == item1.end_index + 1);
 
     // Load the bwt of item2 into memory as the internal bwt
     BWT* pBWTInternal = new BWT(item2.bwt_filename);
@@ -189,12 +258,10 @@ MergeItem merge(SeqReader* pReader,
 
     // Calculate the rank of every read from item1.start_index to item1.end_index
     // and increment the gap counts
-    size_t curr_idx = item1.start_index;
+    int64_t curr_idx = item1.start_index;
     SeqRecord record;
-    while(curr_idx <= item1.end_index)
+    while(pReader->get(record))
     {
-        bool eof = !pReader->get(record);
-        assert(!eof);
         DNAString& seq = record.seq;
         if(doReverse)
             seq.reverse();
@@ -202,38 +269,22 @@ MergeItem merge(SeqReader* pReader,
         // Compute the ranks of all suffixes of seq
         updateGapArray(seq, pBWTInternal, gap_array);
         ++curr_idx;
+
+        // If the end index is -1 we want to process every read,
+        // otherwise stop once we are outside this block's range
+        if(item1.end_index != -1 && curr_idx > item1.end_index)
+            break;
     }
+    assert(item1.end_index == -1 || (curr_idx == item1.end_index + 1 && curr_idx == item2.start_index));
 
     // Write the merged BWT/SAI to disk
-    MergeItem merged = writeMergedIndex(pBWTInternal, item1, item2, 
-                                        bwt_outname, sai_outname, gap_array);
-
+    writeMergedIndex(pBWTInternal, item1, item2, bwt_outname, sai_outname, gap_array);
     delete pBWTInternal;
-
-    // Delete the temporary files
-    unlink(item1.bwt_filename.c_str());
-    unlink(item2.bwt_filename.c_str());
-    unlink(item1.sai_filename.c_str());
-    unlink(item2.sai_filename.c_str());
-
-    // Move the file pointer to the end of item2's reads.
-    // This would be best done with a seek() but gzstream 
-    // does not support this so we inefficiently just read through
-    // the file. This should be changed if possible.
-    WARN_ONCE("Replace read through with seek()");
-    while(curr_idx <= item2.end_index)
-    {
-        bool eof = !pReader->get(record);
-        assert(!eof);
-        ++curr_idx;
-    }
-    assert(curr_idx = item2.end_index + 1);
-
-    return merged;
+    return curr_idx;
 }
 
 // Merge the internal and external BWTs and the SAIs
-MergeItem writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
+void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
                       const MergeItem& internalItem, const std::string& bwt_outname,
                       const std::string& sai_outname, const std::vector<GAP_TYPE>& gap_array)
 {
@@ -320,13 +371,6 @@ MergeItem writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalIte
     assert(last == '\n');
     // Write a newline to finish the bwstr section
     bwtWriter.writeBWChar('\n');
-
-    MergeItem merged;
-    merged.start_index = externalItem.start_index;
-    merged.end_index = internalItem.end_index;
-    merged.bwt_filename = bwt_outname;
-    merged.sai_filename = sai_outname;
-    return merged;
 }
 
 
@@ -371,7 +415,15 @@ void incrementGapArray(int64_t rank, std::vector<GAP_TYPE>& gap_array)
 //
 std::string makeTempName(const std::string& prefix, int id, const std::string& extension)
 {
-    std::stringstream bwt_ss;
-    bwt_ss << prefix << ".temp-" << id << extension << (USE_GZ ? ".gz" : "");
-    return bwt_ss.str();
+    std::stringstream ss;
+    ss << prefix << ".temp-" << id << extension << (USE_GZ ? ".gz" : "");
+    return ss.str();
+}
+
+//
+std::string makeFilename(const std::string& prefix, const std::string& extension)
+{
+    std::stringstream ss;
+    ss << prefix << extension << (USE_GZ ? ".gz" : "");
+    return ss.str();
 }

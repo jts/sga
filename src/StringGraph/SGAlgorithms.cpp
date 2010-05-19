@@ -101,6 +101,7 @@ Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o
 void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
 {
     assert(pVertex == pDeleteEdge->getStart());
+    assert(false);
     double maxER = pGraph->getErrorRate();
     int minLength = pGraph->getMinOverlap();
     

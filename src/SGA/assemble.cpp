@@ -148,7 +148,7 @@ void assemble()
     // Remove containments from the graph
     std::cout << "Removing contained vertices\n";
     pGraph->visit(containVisit);
-    pGraph->writeASQG("afterCR.asqg.gz");
+
     // Pre-assembly graph stats
     std::cout << "Post-contain graph stats\n";
     pGraph->visit(statsVisit);    
@@ -166,8 +166,8 @@ void assemble()
         pGraph->visit(validationVisit);
     }
 
-    std::cout << "Writing graph file\n";
-    pGraph->writeASQG("afterTR.asqg.gz");
+    //std::cout << "Writing graph file\n";
+    //pGraph->writeASQG("afterTR.asqg.gz");
 
     std::cout << "Pre-remodelling graph stats\n";
     pGraph->visit(statsVisit);

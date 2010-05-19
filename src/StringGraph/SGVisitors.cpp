@@ -147,6 +147,7 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
         {
             if(edges[i]->getEnd()->getColor() == GC_BLACK)
             {
+                std::cout << pVertex->getID() << " has a transitive edge!\n";
                 // Mark the edge and its twin for removal
                 if(edges[i]->getColor() != GC_BLACK || edges[i]->getTwin()->getColor() != GC_BLACK)
                 {
@@ -250,7 +251,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     // the neighbors to see if any new edges need to be added. If the graph is a
     // complete overlap graph we can just remove the edges to the deletion vertex
 
-    if(!pGraph->hasTransitive())
+    if(!pGraph->hasTransitive() && false)
     {
         // This must be done in order of edge length or some transitive edges
         // may be created
