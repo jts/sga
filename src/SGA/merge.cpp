@@ -62,7 +62,9 @@ int mergeMain(int argc, char** argv)
         inFiles.push_back(argv[optind++]);
     }
     assert(inFiles.size() == 2);
-    mergeIndependentIndices(inFiles[0], inFiles[1], BWT_EXT, SAI_EXT);
+    mergeIndependentIndices(inFiles[0], inFiles[1], BWT_EXT, SAI_EXT, false);
+    mergeIndependentIndices(inFiles[0], inFiles[1], RBWT_EXT, RSAI_EXT, true);
+
     return 0;
 }
 

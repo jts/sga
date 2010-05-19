@@ -208,7 +208,8 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 
 // Merge the indices for two independent sets of reads, readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
-                             const std::string& bwt_extension, const std::string& sai_extension)
+                             const std::string& bwt_extension, const std::string& sai_extension, 
+                             bool doReverse)
 {
     MergeItem item1;
     std::string prefix1 = stripFilename(readsFile1);
@@ -235,7 +236,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     std::string sai_merged_name = makeFilename(merged_prefix, sai_extension);
 
     // Perform the actual merge
-    merge2(pReader, item1, item2, bwt_merged_name, sai_merged_name, false);
+    merge2(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse);
     delete pReader;
 }
 
