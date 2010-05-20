@@ -147,7 +147,6 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
         {
             if(edges[i]->getEnd()->getColor() == GC_BLACK)
             {
-                std::cout << pVertex->getID() << " has a transitive edge!\n";
                 // Mark the edge and its twin for removal
                 if(edges[i]->getColor() != GC_BLACK || edges[i]->getTwin()->getColor() != GC_BLACK)
                 {

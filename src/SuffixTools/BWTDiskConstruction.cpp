@@ -203,8 +203,8 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 
 // Merge the indices for the two independent sets of reads in readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
-                             const std::string& bwt_extension, const std::string& sai_extension, 
-                             bool doReverse)
+                             const std::string& outPrefix, const std::string& bwt_extension, 
+                             const std::string& sai_extension, bool doReverse)
 {
     MergeItem item1;
     std::string prefix1 = stripFilename(readsFile1);
@@ -226,9 +226,8 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     SeqReader* pReader = new SeqReader(item1.reads_filename);
     
     // Build the outnames
-    std::string merged_prefix = prefix1 + "." + prefix2;
-    std::string bwt_merged_name = makeFilename(merged_prefix, bwt_extension);
-    std::string sai_merged_name = makeFilename(merged_prefix, sai_extension);
+    std::string bwt_merged_name = makeFilename(outPrefix, bwt_extension);
+    std::string sai_merged_name = makeFilename(outPrefix, sai_extension);
 
     // Perform the actual merge
     merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse);
@@ -236,18 +235,18 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
 }
 
 // Merge two readsFiles together
-void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2, const std::string& outFile)
+void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2, const std::string& outPrefix)
 {
     // If the outfile is the empty string, append the reads in readsFile2 into readsFile1
     // otherwise cat the files together
     std::ostream* pWriter;
-    if(outFile.empty())
+    if(outPrefix.empty())
     {
         pWriter = createWriter(readsFile1, std::ios_base::out | std::ios_base::app);
     }
     else
     {
-        pWriter = createWriter(outFile);
+        pWriter = createWriter(makeFilename(outPrefix, ".fa"));
 
         // Copy reads1 to the outfile
         SeqReader reader(readsFile1);

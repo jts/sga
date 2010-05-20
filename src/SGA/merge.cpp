@@ -63,12 +63,19 @@ int mergeMain(int argc, char** argv)
     }
     assert(inFiles.size() == 2);
 
+    if(opt::prefix.empty())
+    {
+        std::string prefix1 = stripFilename(inFiles[0]);
+        std::string prefix2 = stripFilename(inFiles[1]);
+        opt::prefix = prefix1 + "." + prefix2;
+    }
+
     // Merge the forward and reverse indices
-    mergeIndependentIndices(inFiles[0], inFiles[1], BWT_EXT, SAI_EXT, false);
-    mergeIndependentIndices(inFiles[0], inFiles[1], RBWT_EXT, RSAI_EXT, true);
+    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false);
+    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true);
 
     // Merge the read files
-    mergeReadFiles(inFiles[0], inFiles[1], "mergedReads.fa");
+    mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
     return 0;
 }
 
