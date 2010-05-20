@@ -16,11 +16,12 @@ my $bVerbose = 0;
 my $bSameStrand = 0;
 my $bTrackPos = 0;
 my $bSingleEnd = 0;
-
+my $prefix = "default";
 GetOptions("length=i" => \$rl,
 			"pe_mean=i" => \$pe_mean,
 			"pe_sd=f" => \$pe_sd,
 			"coverage=i" => \$coverage,
+            "prefix=s" => \$prefix,
 			"same-strand" => \$bSameStrand,
 			"single-end" => \$bSingleEnd,
 			"track" => \$bTrackPos,
@@ -39,6 +40,7 @@ if($bHelp)
 	print STDERR "--same_strand       Force both reads to be from the same strand\n";
 	print STDERR "--single-end        Do not make paired reads\n";
 	print STDERR "--track             Use the position the read was sampled from as the ID\n";
+	print STDERR "--prefix=s          Prefix the names of the reads with this string\n";
 	print STDERR "--pe_mean=i         The mean fragment size for paired-reads\n";
 	print STDERR "--pe_sd=f           The standard deviation of the fragment distribution\n";
 	print STDERR "                       if this is <= 1.0 it is interpreted to be a fraction\n";
@@ -119,8 +121,8 @@ sub outputPEReads
 
 		my $seq_1 = getRead($buffer, $start_1, $end_1); 
 		my $seq_2 = getRead($buffer, $start_2, $end_2);
-		my $name_1 = "$total/A";
-		my $name_2 = "$total/B";
+		my $name_1 = "$prefix:$total/A";
+		my $name_2 = "$prefix:$total/B";
 		
 		print POS "$name_1\t$start_1\t$frag_size\n";
 		print POS "$name_2\t$start_2\t$frag_size\n";
@@ -150,6 +152,7 @@ sub outputSEReads
 
 		my $seq = getRead($buffer, $start, $end); 
 		my $name = $bTrackPos ? "$total:$start" : $total;
+        $name = $prefix . ":" . $name; 
 		$seq = rc($seq) unless ($bSameStrand || rand() < 0.5);
 		next if($seq =~ /N/);
 		print join("\n", (">$name", $seq)) . "\n";

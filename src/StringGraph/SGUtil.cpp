@@ -116,6 +116,8 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
     SGDuplicateVisitor dupVisit;
     pGraph->visit(dupVisit);
 
+    SGGraphStatsVisitor statsVisit;
+    pGraph->visit(statsVisit);
     // Remove identical vertices
     // This is much cheaper to do than remove via
     // SGContainRemove as no remodelling needs to occur
