@@ -150,19 +150,20 @@ std::istream* createReader(const std::string& filename)
 
 // Open a file that may or may not be gzipped for writing
 // The caller is responsible for freeing the handle
-std::ostream* createWriter(const std::string& filename)
+std::ostream* createWriter(const std::string& filename,
+                           std::ios_base::openmode mode)
 {
     if(isGzip(filename))
     {
-        ogzstream* pGZ = new ogzstream(filename.c_str());
+        ogzstream* pGZ = new ogzstream(filename.c_str(), mode);
         assertGZOpen(*pGZ, filename);
         return pGZ;
     }
     else
     {
-        std::ofstream* pReader = new std::ofstream(filename.c_str());
-        assertFileOpen(*pReader, filename);
-        return pReader;
+        std::ofstream* pWriter = new std::ofstream(filename.c_str(), mode);
+        assertFileOpen(*pWriter, filename);
+        return pWriter;
     }
 }
 

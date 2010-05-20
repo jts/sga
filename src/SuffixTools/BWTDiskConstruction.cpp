@@ -37,15 +37,10 @@ struct MergeItem
 typedef std::vector<MergeItem> MergeVector;
 
 // Function declarations
-MergeItem merge(SeqReader* pReader, 
-                const MergeItem& item1, const MergeItem& item2, 
-                const std::string& bwt_outname, const std::string& sai_outname,
-                bool doReverse);
-
-int64_t merge2(SeqReader* pReader, 
-               const MergeItem& item1, const MergeItem& item2, 
-               const std::string& bwt_outname, const std::string& sai_outname,
-               bool doReverse);
+int64_t merge(SeqReader* pReader, 
+              const MergeItem& item1, const MergeItem& item2, 
+              const std::string& bwt_outname, const std::string& sai_outname,
+              bool doReverse);
 
 
 //
@@ -151,9 +146,9 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
                 MergeItem item2 = mergeVector[i+1];
 
                 // Perform the actual merge
-                int64_t curr_idx = merge2(pReader, item1, item2, 
-                                          bwt_merged_name, sai_merged_name, 
-                                          doReverse);
+                int64_t curr_idx = merge(pReader, item1, item2, 
+                                         bwt_merged_name, sai_merged_name, 
+                                         doReverse);
 
                 // pReader now points to the end of item1's block of 
                 // reads. Skip item2's reads
@@ -206,7 +201,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
     rename(mergeVector.front().sai_filename.c_str(), sai_final_filename.c_str());
 }
 
-// Merge the indices for two independent sets of reads, readsFile1 and readsFile2
+// Merge the indices for the two independent sets of reads in readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
                              const std::string& bwt_extension, const std::string& sai_extension, 
                              bool doReverse)
@@ -236,16 +231,45 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     std::string sai_merged_name = makeFilename(merged_prefix, sai_extension);
 
     // Perform the actual merge
-    merge2(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse);
+    merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse);
     delete pReader;
+}
+
+// Merge two readsFiles together
+void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2, const std::string& outFile)
+{
+    // If the outfile is the empty string, append the reads in readsFile2 into readsFile1
+    // otherwise cat the files together
+    std::ostream* pWriter;
+    if(outFile.empty())
+    {
+        pWriter = createWriter(readsFile1, std::ios_base::out | std::ios_base::app);
+    }
+    else
+    {
+        pWriter = createWriter(outFile);
+
+        // Copy reads1 to the outfile
+        SeqReader reader(readsFile1);
+        SeqRecord record;
+        while(reader.get(record))
+            record.write(*pWriter);
+    }
+
+    // Copy reads2 to writer
+    SeqReader reader(readsFile2);
+    SeqRecord record;
+    while(reader.get(record))
+        record.write(*pWriter);
+    delete pWriter;
 }
 
 // Merge a pair of BWTs using disk storage
 // Precondition: pReader is positioned at the start of the read block for item1
-int64_t merge2(SeqReader* pReader,
-               const MergeItem& item1, const MergeItem& item2,
-               const std::string& bwt_outname, const std::string& sai_outname,
-               bool doReverse)
+int64_t merge(SeqReader* pReader,
+              const MergeItem& item1, const MergeItem& item2,
+              const std::string& bwt_outname, const std::string& sai_outname,
+              bool doReverse)
 {
     std::cout << "Merge1: " << item1 << "\n";
     std::cout << "Merge2: " << item2 << "\n";

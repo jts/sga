@@ -29,4 +29,6 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
                              const std::string& bwt_extension, const std::string& sai_extension,
                              bool doReverse);
 
+//
+void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2, const std::string& outFile);
 #endif
