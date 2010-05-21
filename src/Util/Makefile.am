@@ -21,4 +21,6 @@ libutil_a_SOURCES = \
 		Stats.h Stats.cpp \
 		SeqTrie.h SeqTrie.cpp \
 		SeqDAVG.h SeqDAVG.cpp \
-		Quality.h Quality.cpp
+		Quality.h Quality.cpp \
+        EncodedString.h \
+        DNACodec.h

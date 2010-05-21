@@ -18,6 +18,8 @@
 #include "Timer.h"
 #include "SeqDAVG.h"
 #include "SuffixTree.h"
+#include "EncodedString.h"
+#include "DNACodec.h"
 
 //
 // Getopt

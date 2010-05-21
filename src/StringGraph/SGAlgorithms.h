@@ -52,7 +52,6 @@ double calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY);
 void updateContainFlags(StringGraph* pGraph, Vertex* pVertex, EdgeDescOverlapMap& containMap);
 void updateContainFlags(StringGraph* pGraph, Vertex* pVertex, const EdgeDesc& ed, const Overlap& ovr);
 
-
 //
 // Overlap inference algorithms
 //

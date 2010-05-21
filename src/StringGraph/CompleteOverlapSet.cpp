@@ -221,9 +221,9 @@ void CompleteOverlapSet::constructMap()
 }
 
 // Recursively add overlaps to pX inferred from the edges of pY to outMap
-void CompleteOverlapSet::recursiveConstruct(const EdgeDesc& edXY, const Overlap& ovrXY, int depth, int distance)
+void CompleteOverlapSet::recursiveConstruct(const EdgeDesc& edXY, const Overlap& ovrXY, int depth, int)
 {
-    std::cout << "depth: " << depth << " " << distance << " " << ovrXY << "\n";
+    //std::cout << "depth: " << depth << " " << distance << " " << ovrXY << "\n";
     Vertex* pY = edXY.pVertex;
 
     EdgePtrVec neighborEdges = pY->getEdges();
@@ -248,20 +248,9 @@ void CompleteOverlapSet::recursiveConstruct(const EdgeDesc& edXY, const Overlap&
                 double error_rate = SGAlgorithms::calcErrorRate(m_pX, pZ, ovrXZ);
                 int overlapLen = ovrXZ.getOverlapLength(0);
 
-                if(overlapLen > distance)
-                {
-                    /*
-                    std::cout << "BACK OVERLAP! d: " << distance << " ol: " << overlapLen << "\n";
-                    std::cout << "ovrXY " << ovrXY << "\n";
-                    std::cout << "ovrYZ " << ovrYZ << "\n";
-                    std::cout << "ovrXZ " << ovrXZ << "\n";
-                    */
-                    continue;
-                }
-                
-                std::cout << "ovrXY " << ovrXY << "\n";
-                std::cout << "ovrYZ " << ovrYZ << "\n";
-                std::cout << "ovrXZ " << ovrXZ << "\n";
+                //std::cout << "ovrXY " << ovrXY << "\n";
+                //std::cout << "ovrYZ " << ovrYZ << "\n";
+                //std::cout << "ovrXZ " << ovrXZ << "\n";
                 if(isErrorRateAcceptable(error_rate, m_maxER) && overlapLen >= m_minLength)
                 {
                     SGAlgorithms::EdgeDescOverlapMap::iterator findIter = m_overlapMap.find(edXZ);
