@@ -121,6 +121,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
     // Remove identical vertices
     // This is much cheaper to do than remove via
     // SGContainRemove as no remodelling needs to occur
+   /*
     SGIdenticalRemoveVisitor irv;
     pGraph->visit(irv);
 
@@ -130,7 +131,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
         SGContainRemoveVisitor crv;
         pGraph->visit(crv);
     }
-
+*/
     delete pReader;
     return pGraph;
 }

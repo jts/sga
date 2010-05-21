@@ -250,7 +250,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     // the neighbors to see if any new edges need to be added. If the graph is a
     // complete overlap graph we can just remove the edges to the deletion vertex
 
-    if(!pGraph->hasTransitive() && false)
+    if(!pGraph->hasTransitive())
     {
         // This must be done in order of edge length or some transitive edges
         // may be created

@@ -15,8 +15,87 @@
 CompleteOverlapSet::CompleteOverlapSet(const Vertex* pVertex, double maxER, int minLength) : m_pX(pVertex), m_maxER(maxER), m_minLength(minLength)
 {
     m_cost = 0;
-    iterativeConstruct();
+    //iterativeConstruct();
+    constructBFS();
     //constructMap();
+}
+
+// Perform a breadth-first search of the graph, accumulating all the valid
+// overlaps of reads to m_pX. 
+// Precondition: All vertices in the graph are colored GC_WHTE
+void CompleteOverlapSet::constructBFS()
+{
+    EdgeDescList markedList;
+    ExploreQueue queue;
+    EdgePtrVec edges = m_pX->getEdges();
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Edge* pEdge = edges[i];
+        EdgeDesc ed = pEdge->getDesc();
+        Overlap ovr = pEdge->getOverlap();
+        ed.pVertex->setColor(GC_GRAY);
+        queue.push(ExploreElement(ed, ovr));
+    }
+
+    while(!queue.empty())
+    {
+        ExploreElement ee = queue.front();
+        queue.pop();
+        //
+        EdgeDesc& edXY = ee.ed;
+        Vertex* pY = edXY.pVertex;
+        Overlap& ovrXY = ee.ovr;
+        int overlapLen = ovrXY.getOverlapLength(0);
+        markedList.push_back(edXY);
+        
+        // Check if the overlap between this node and m_pX is valid
+        if(overlapLen >= m_minLength)
+        {
+            double error_rate = SGAlgorithms::calcErrorRate(m_pX, pY, ovrXY);
+            if(isErrorRateAcceptable(error_rate, m_maxER))
+            {
+                // Mark the vertex as valid
+                pY->setColor(GC_BLACK);
+                m_overlapMap.insert(std::make_pair(edXY, ovrXY));
+            }
+            else
+            {
+                pY->setColor(GC_RED);
+            }
+        }
+        else
+        {
+            pY->setColor(GC_RED);
+        }
+
+        // Enqueue neighbors
+        EdgePtrVec neighborEdges = pY->getEdges();
+        for(size_t i = 0; i < neighborEdges.size(); ++i)
+        {
+            Edge* pEdgeYZ = neighborEdges[i];
+            Vertex* pZ = pEdgeYZ->getEnd();
+            if(pZ == m_pX || pZ->getColor() != GC_WHITE)
+                continue;
+
+            Overlap ovrYZ = pEdgeYZ->getOverlap();
+            // Check that this vertex actually overlaps pX
+            if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+            {
+                Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+                EdgeDesc edXZ = SGAlgorithms::overlapToEdgeDesc(pZ, ovrXZ);
+
+                if(ovrXZ.getOverlapLength(0) >= m_minLength)
+                {
+                    pZ->setColor(GC_GRAY);
+                    queue.push(ExploreElement(edXZ, ovrXZ));
+                }
+            }
+        }
+    }
+
+    // reset colors
+    for(EdgeDescList::iterator iter = markedList.begin(); iter != markedList.end(); ++iter)
+        iter->pVertex->setColor(GC_WHITE);
 }
 
 // Perform a breadth-first search of the graph, accumulating all the valid

@@ -147,7 +147,8 @@ void assemble()
 
     // Remove containments from the graph
     std::cout << "Removing contained vertices\n";
-    pGraph->visit(containVisit);
+    while(pGraph->hasContainment())
+        pGraph->visit(containVisit);
 
     // Pre-assembly graph stats
     std::cout << "Post-contain graph stats\n";

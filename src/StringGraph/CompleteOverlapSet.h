@@ -39,7 +39,8 @@ struct CompareExploreElemOverlapLength
 typedef std::priority_queue<ExploreElement, 
                             std::vector<ExploreElement>, 
                             CompareExploreElemOverlapLength> ExplorePriorityQueue;
-
+typedef std::list<EdgeDesc> EdgeDescList;
+typedef std::queue<ExploreElement> ExploreQueue;
 
 class CompleteOverlapSet
 {
@@ -73,6 +74,7 @@ class CompleteOverlapSet
 
         // functions
         void iterativeConstruct();
+        void constructBFS();
 
         // data
         SGAlgorithms::EdgeDescOverlapMap m_overlapMap;
