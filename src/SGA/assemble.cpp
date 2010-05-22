@@ -16,8 +16,6 @@
 #include "SGDebugAlgorithms.h"
 #include "SGVisitors.h"
 #include "Timer.h"
-#include "SeqDAVG.h"
-#include "SuffixTree.h"
 
 //
 // Getopt
@@ -94,6 +92,8 @@ int assembleMain(int argc, char** argv)
 
     return 0;
 }
+
+#include "EncodedString.h"
 
 void assemble()
 {

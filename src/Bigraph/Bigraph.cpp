@@ -611,7 +611,7 @@ void Bigraph::writeASQG(const std::string& filename) const
     // Vertices
     for(iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
     {
-        ASQG::VertexRecord vertexRecord(iter->second->getID(), iter->second->getSeq());
+        ASQG::VertexRecord vertexRecord(iter->second->getID(), iter->second->getSeq().toString());
         vertexRecord.write(*pWriter);
     }
 

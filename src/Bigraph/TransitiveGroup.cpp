@@ -57,12 +57,12 @@ Edge* TransitiveGroup::getEdge(EdgeDesc ed) const
 // Return the MultiOverlap corresponding to this transitive group
 MultiOverlap TransitiveGroup::getMultiOverlap() const
 {
-    MultiOverlap mo(m_pVertex->getID(), m_pVertex->getSeq());
+    MultiOverlap mo(m_pVertex->getID(), m_pVertex->getSeq().toString());
 
     for(size_t i = 0; i < m_edges.size(); ++i)
     {
         Edge* pEdge = m_edges[i];
-        mo.add(pEdge->getEnd()->getSeq(), pEdge->getOverlap());
+        mo.add(pEdge->getEnd()->getSeq().toString(), pEdge->getOverlap());
     }
     return mo;
 }

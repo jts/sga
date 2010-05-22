@@ -43,7 +43,7 @@ bool SGDebugEdgeClassificationVisitor::visit(StringGraph* /*pGraph*/, Vertex* pV
         int overlap_len = edges[i]->getMatchLength();
         int sum = distance + overlap_len;
         
-        if(sum == (int)pVertex->getSeq().size())
+        if(sum == (int)pVertex->getSeq().length())
             ++num_good;
         else
             ++num_bad;
@@ -246,8 +246,8 @@ void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* pGraph, Vertex*
         }
     }
 
-    std::string original = pVertex->getSeq();
-    std::string base = pCompareVertex->getSeq();
+    std::string original = pVertex->getStr();
+    std::string base = pCompareVertex->getStr();
 
     std::string d_str = getDiffString(base, original);
     std::cout << "ORG: " << original << "\n";
@@ -306,8 +306,8 @@ void SGDebugGraphCompareVisitor::compareOverlapQuality(StringGraph* pGraph, Vert
             // Get the sequences of the endpoints for the current graph
             Vertex* pVertex2 = pGraph->getVertex(pCompareEdge->getEndID());
 
-            std::string match1 = exp_match.coord[0].getSubstring(pVertex->getSeq());
-            std::string match2 = exp_match.coord[1].getSubstring(pVertex2->getSeq());
+            std::string match1 = exp_match.coord[0].getSubstring(pVertex->getStr());
+            std::string match2 = exp_match.coord[1].getSubstring(pVertex2->getStr());
             if(exp_match.isRC())
                 match2 = reverseComplement(match2);
             
@@ -367,8 +367,8 @@ void SGDebugGraphCompareVisitor::compareOverlapQuality(StringGraph* pGraph, Vert
             }
             */
             printf("OQ\t%s\t%d\t%zu\t%lf\t%lf\n", ms.c_str(), num_diffs, match1.size(), mm_rate, score);
-            //std::cout << "SEQ1: " << pVertex->getSeq() << "\n";
-            //std::cout << "SEQ2: " << pVertex2->getSeq() << "\n";
+            //std::cout << "SEQ1: " << pVertex->getStr() << "\n";
+            //std::cout << "SEQ2: " << pVertex2->getStr() << "\n";
             //std::cout << "MATCH1: " << match1 << "\n";
             //std::cout << "MATCH2: " << match2 << "\n";
         }
@@ -380,8 +380,8 @@ void SGDebugGraphCompareVisitor::compareInferredQuality(StringGraph* /*pGraph*/,
     Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
     if(pCompareVertex != NULL)
     {
-        std::string compareSeq = pCompareVertex->getSeq();
-        std::string actualSeq = pVertex->getSeq();
+        std::string compareSeq = pCompareVertex->getStr();
+        std::string actualSeq = pVertex->getStr();
         MultiOverlap mo = pVertex->getMultiOverlap();
         for(size_t i = 0; i < actualSeq.size(); ++i)
         {
@@ -458,7 +458,7 @@ void SGDebugGraphCompareVisitor::compareTransitiveGroups(StringGraph* /*pGraph*/
                     // group it should be in
                     TransitiveGroup& expectedGroup = actualTGC.getGroup(compareGroupIdx);
 
-                    MultiOverlap mo(pIrr->getEnd()->getID(), pIrr->getEnd()->getSeq());
+                    MultiOverlap mo(pIrr->getEnd()->getID(), pIrr->getEnd()->getStr());
 
                     for(size_t i = 0; i < expectedGroup.numElements(); ++i)
                     {
@@ -475,8 +475,8 @@ void SGDebugGraphCompareVisitor::compareTransitiveGroups(StringGraph* /*pGraph*/
 
                         // Convert the match to an overlap
                         Overlap ovr(pIrr->getEndID(), pEdge->getEndID(), match_ij);
-                        mo.add(pEdge->getEnd()->getSeq(), ovr);
-                        int numDiff = ovr.match.countDifferences(pIrr->getEnd()->getSeq(), pEdge->getEnd()->getSeq());
+                        mo.add(pEdge->getEnd()->getStr(), ovr);
+                        int numDiff = ovr.match.countDifferences(pIrr->getEnd()->getStr(), pEdge->getEnd()->getStr());
                         std::cout << "MSE: " << pIrr->getEndID() << "\tInferred to: " << pEdge->getEndID() << " Num diff: ";
                         std::cout << numDiff << " error rate: " << double(numDiff) / double(ovr.match.getMinOverlapLength()) << "\n";
                     }
@@ -515,8 +515,8 @@ void SGDebugGraphCompareVisitor::compareErrorRates(StringGraph* pGraph, Vertex* 
             // Get the sequences of the endpoints for the current graph
             Vertex* pVertex2 = pGraph->getVertex(pCompareEdge->getEndID());
 
-            std::string match1 = exp_match.coord[0].getSubstring(pVertex->getSeq());
-            std::string match2 = exp_match.coord[1].getSubstring(pVertex2->getSeq());
+            std::string match1 = exp_match.coord[0].getSubstring(pVertex->getStr());
+            std::string match2 = exp_match.coord[1].getSubstring(pVertex2->getStr());
             if(exp_match.isRC())
                 match2 = reverseComplement(match2);
             
@@ -525,8 +525,8 @@ void SGDebugGraphCompareVisitor::compareErrorRates(StringGraph* pGraph, Vertex* 
             double mm_rate = double(num_diffs) / double(match1.size());
             (void)mm_rate;
             printf("%s\t%d\t%zu\t%lf\n", ms.c_str(), num_diffs, match1.size(), mm_rate);
-            //std::cout << "SEQ1: " << pVertex->getSeq() << "\n";
-            //std::cout << "SEQ2: " << pVertex2->getSeq() << "\n";
+            //std::cout << "SEQ1: " << pVertex->getStr() << "\n";
+            //std::cout << "SEQ2: " << pVertex2->getStr() << "\n";
             //std::cout << "MATCH1: " << match1 << "\n";
             //std::cout << "MATCH2: " << match2 << "\n";
         }

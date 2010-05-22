@@ -7,7 +7,13 @@
 // EncodedString - Templated class to store
 // a string from a reduced alphabet. The actual
 // encoding is done outside this class by the Codec
-// template parameter
+// template parameter.
+//
+// Here the storage is in terms of "units" which is
+// defined by the codec. For a simple 2-bit encoded
+// DNA string this would be a byte but for more complicated
+// encodings like the 3-bit BWT this could be a larger
+// structure like uint16_t
 //
 #ifndef ENCODEDSTRING_H
 #define ENCODEDSTRING_H
@@ -19,12 +25,12 @@
 template<class Codec>
 class EncodedString
 {
-        typedef typename Codec::UNIT_TYPE StorageUnit;
+    typedef typename Codec::UNIT_TYPE StorageUnit;
 
     public:
         
         // Constructors/Destructors
-        EncodedString() : m_len(0), m_data(0) {}
+        EncodedString() : m_len(0), m_capacity(0), m_data(0) {}
 
         //
         EncodedString(const EncodedString& other)
@@ -48,7 +54,7 @@ class EncodedString
             _dealloc();
         }
 
-        // Operators
+        // Assignment op
         EncodedString& operator=(const EncodedString& other)
         {
             if(&other == this)
@@ -60,6 +66,7 @@ class EncodedString
             return *this;
         }
 
+        //
         EncodedString& operator=(const std::string& str)
         {
             size_t n = str.length();
@@ -67,6 +74,43 @@ class EncodedString
             _alloc(n);
             _copy(str.c_str(), n);
             return *this;
+        }
+
+        // 
+        void append(const std::string& str)
+        {
+            size_t n = str.length();
+            size_t num_total = m_len + n;
+            if(num_total > m_capacity)
+                _realloc(num_total);
+            _append(str.c_str(), n);
+        }
+
+        // 
+        void append(const EncodedString& other)
+        {
+            size_t n = other.length();
+            size_t num_total = m_len + n;
+            if(num_total > m_capacity)
+                _realloc(num_total);
+            _append(other);
+        }
+
+        // Swap the contents with other
+        void swap(EncodedString& other)
+        {
+            size_t tmp;
+            tmp = other.m_len;
+            other.m_len = m_len;
+            m_len = tmp;
+
+            tmp = other.m_capacity;
+            other.m_capacity = m_capacity;
+            m_capacity = tmp;
+
+            StorageUnit* pTmp = other.m_data;
+            other.m_data = m_data;
+            m_data = pTmp;
         }
 
         size_t length() const
@@ -99,6 +143,22 @@ class EncodedString
             return out;
         }
 
+        // 
+        friend bool operator==(const EncodedString& a, const EncodedString& b)
+        {
+            if(a.m_len != b.m_len)
+                return false;
+
+            // Would be faster to compare entire units at a time
+            size_t n = a.m_len;
+            for(size_t i = 0; i < n; ++i)
+            {
+                if(a.get(i) != b.get(i))
+                    return false;
+            }
+            return true;
+        }
+
         //
         friend std::ostream& operator<<(std::ostream& out, const EncodedString<Codec>& a)
         {
@@ -116,9 +176,9 @@ class EncodedString
             // this assumes that storage for n characters has been 
             // allocated
             assert(m_capacity >= n);
-
             for(size_t i = 0; i < n; ++i)
                 s_codec.store(m_data, i, pData[i]);
+            m_len = n;
         }
         
         //
@@ -126,19 +186,58 @@ class EncodedString
         {
             // storage should have been allocated already
             assert(m_capacity = other.m_capacity);
-            size_t n = s_codec.getRequiredUnits(other.m_capacity);
+            size_t num_units = s_codec.getRequiredUnits(other.m_capacity);
+            _copyUnitData(other.m_data, num_units);
+            m_len = other.m_len;
+        }
+
+        // Copy num_units from pData into the internal storage
+        void _copyUnitData(StorageUnit* pData, size_t num_units)
+        {
+            assert(s_codec.getRequiredUnits(m_capacity) >= num_units);
+            for(size_t i = 0; i < num_units; ++i)
+                m_data[i] = pData[i];
+        }
+
+        // append n symbols from pData into the buffer
+        void _append(const char* pData, size_t n)
+        {
+            assert(m_len + n <= m_capacity);
             for(size_t i = 0; i < n; ++i)
-                m_data[i] = other.m_data[i];
+                s_codec.store(m_data, m_len + i, pData[i]);
+            m_len += n;
+        }
+
+        // append 
+        void _append(const EncodedString& other)
+        {
+            size_t n = other.m_len;
+            assert(m_len + n <= m_capacity);
+            for(size_t i = 0; i < n; ++i)
+                s_codec.store(m_data, m_len + i, other.get(i));
+            m_len += n;
         }
 
         // allocate storage for n symbols
         void _alloc(size_t n)
         {
-            m_len = n;
             // Get the number of units that need to be allocated from the codec
             size_t n_units = s_codec.getRequiredUnits(n);
             m_data = new StorageUnit[n_units](); // This zeros the memory
             m_capacity = s_codec.getCapacity(n_units);
+        }
+
+        // reallocate the storage so that the capacity is at least n symbols
+        // m_len is not changed
+        void _realloc(size_t n)
+        {
+            StorageUnit* oldData = m_data;
+            size_t old_units = s_codec.getRequiredUnits(m_len);
+            _alloc(n);
+            assert(m_capacity >= n);
+
+            _copyUnitData(oldData, old_units);
+            delete [] oldData;
         }
 
         // deallocate storage
@@ -153,9 +252,11 @@ class EncodedString
 
         // data
         static Codec s_codec;
-        size_t m_len;
-        size_t m_capacity;
+        size_t m_len; // the length of the string
+        size_t m_capacity; // the maximum length of the string that can be stored
         StorageUnit* m_data;
 };
+
+typedef EncodedString<DNACodec> DNAEncodedString;
 
 #endif

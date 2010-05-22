@@ -422,18 +422,18 @@ bool SGEdgeStatsVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     for(size_t i = 0; i < edges.size(); ++i)
     {
         Overlap ovr = edges[i]->getOverlap();
-        int numDiff = ovr.match.countDifferences(pVertex->getSeq(), edges[i]->getEnd()->getSeq());
+        int numDiff = ovr.match.countDifferences(pVertex->getStr(), edges[i]->getEnd()->getStr());
         int overlapLen = ovr.match.getMinOverlapLength();
         addOverlapToCount(overlapLen, numDiff, foundCounts);
     }
         
     // Explore the neighborhood around this graph for potentially missing overlaps
     CandidateVector candidates = getMissingCandidates(pGraph, pVertex, MIN_OVERLAP);
-    MultiOverlap addedMO(pVertex->getID(), pVertex->getSeq());
+    MultiOverlap addedMO(pVertex->getID(), pVertex->getStr());
     for(size_t i = 0; i < candidates.size(); ++i)
     {
         Candidate& c = candidates[i];
-        int numDiff = c.ovr.match.countDifferences(pVertex->getSeq(), c.pEndpoint->getSeq());
+        int numDiff = c.ovr.match.countDifferences(pVertex->getStr(), c.pEndpoint->getStr());
         double error_rate = double(numDiff) / double(c.ovr.match.getMinOverlapLength());
 
         if(error_rate < MAX_ERROR)

@@ -21,6 +21,7 @@
 #include "GraphCommon.h"
 #include "TransitiveGroupCollection.h"
 #include "QualityVector.h"
+#include "EncodedString.h"
 
 // Forward declare
 class Edge;
@@ -135,8 +136,9 @@ class Vertex
         GraphColor getColor() const { return m_color; }
         Vertex* getPairVertex() const { return m_pPairVertex; }
         size_t getReadCount() const { return m_readCount; }
-        const std::string& getSeq() const { return m_seq; }
-        size_t getSeqLen() const { return m_seq.size(); }
+        const DNAEncodedString& getSeq() const { return m_seq; }
+        std::string getStr() const { return m_seq.toString(); }
+        size_t getSeqLen() const { return m_seq.length(); }
         size_t getMemSize() const;
         bool isContained() const { return m_isContained; }
 
@@ -150,7 +152,7 @@ class Vertex
 
         VertexID m_id;
         EdgePtrVec m_edges;
-        std::string m_seq;
+        DNAEncodedString m_seq;
         int m_readCount;
         Vertex* m_pPairVertex;
         GraphColor m_color;

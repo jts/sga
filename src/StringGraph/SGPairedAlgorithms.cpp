@@ -103,7 +103,7 @@ EdgeDir SGPairedAlgorithms::getDirectionToPair(const std::string& /*id*/)
 
 std::string SGPairedAlgorithms::pathToString(const Vertex* pX, const Path& path)
 {
-    std::string out = pX->getSeq();
+    std::string out = pX->getSeq().toString();
     EdgeComp currComp = EC_SAME;
 
     for(size_t i = 0; i < path.size(); ++i)
@@ -184,12 +184,12 @@ bool SGPairedPathResolveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         {
             SeqRecord recordX;
             recordX.id = pVertex->getID();
-            recordX.seq = pVertex->getSeq();
+            recordX.seq = pVertex->getSeq().toString();
             recordX.write(*m_pWriter);
 
             SeqRecord recordY;
             recordY.id = pVertex->getID();
-            recordY.seq = pVertex->getSeq();
+            recordY.seq = pVertex->getSeq().toString();
             recordY.write(*m_pWriter);
         }
     }

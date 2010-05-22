@@ -35,9 +35,9 @@ void Vertex::merge(Edge* pEdge)
     //std::cout << "Adding label to " << getID() << " str: " << pSE->getLabel() << "\n";
 
     // Merge the sequence
-    std::string label = pEdge->getLabel();
-    size_t label_len = label.size();
-    pEdge->updateSeqLen(m_seq.length() + label.length());
+    DNAEncodedString label = pEdge->getLabel();
+    size_t label_len = label.length();
+    pEdge->updateSeqLen(m_seq.length() + label_len);
     bool prepend = false;
 
     if(pEdge->getDir() == ED_SENSE)
@@ -46,7 +46,7 @@ void Vertex::merge(Edge* pEdge)
     }
     else
     {
-        label.insert(label.size(), m_seq);
+        label.append(m_seq);
         std::swap(m_seq, label);
         prepend = true;
     }
@@ -299,11 +299,11 @@ TransitiveGroupCollection Vertex::computeTransitiveGroups(EdgeDir dir)
 // Get a multioverlap object representing the overlaps for this vertex
 MultiOverlap Vertex::getMultiOverlap() const
 {
-    MultiOverlap mo(getID(), getSeq());
+    MultiOverlap mo(getID(), getSeq().toString());
     for(size_t i = 0; i < m_edges.size(); ++i)
     {
         Edge* pEdge = m_edges[i];
-        mo.add(pEdge->getEnd()->getSeq(), pEdge->getOverlap());
+        mo.add(pEdge->getEnd()->getSeq().toString(), pEdge->getOverlap());
     }
     return mo;
 }
@@ -342,7 +342,7 @@ QualityVector Vertex::getInferredQuality() const
 {
     MultiOverlap mo = getMultiOverlap();
     QualityVector out;
-    for(size_t i = 0; i < m_seq.size(); ++i)
+    for(size_t i = 0; i < m_seq.length(); ++i)
     {
         DNADouble ap = mo.calcAlphaProb(i);
         out.add(ap);
@@ -356,15 +356,15 @@ std::string Vertex::getInferredConsensus() const
     WARN_ONCE("Vertex consensus is heurestic"); 
     MultiOverlap mo = getMultiOverlap();
     std::string out;
-    out.reserve(m_seq.size());
-    for(size_t i = 0; i < m_seq.size(); ++i)
+    out.reserve(m_seq.length());
+    for(size_t i = 0; i < m_seq.length(); ++i)
     {
         AlphaCount ac = mo.calcAlphaCount(i);
         char b = ac.getMaxBase();
-        if(ac.get(b) > ac.get(m_seq[i]))
+        if(ac.get(b) > ac.get(m_seq.get(i)))
             out.push_back(b);
         else
-            out.push_back(m_seq[i]);
+            out.push_back(m_seq.get(i));
     }
     return out;
 
@@ -389,7 +389,7 @@ QualityVector Vertex::getPriorQuality() const
 {
     WARN_ONCE("Using flat prior of 0.99");
     QualityVector out;
-    for(size_t i = 0; i < m_seq.size(); ++i)
+    for(size_t i = 0; i < m_seq.length(); ++i)
     {
         DNADouble ap;
         double p_correct_match = 0.99;
@@ -397,7 +397,7 @@ QualityVector Vertex::getPriorQuality() const
         for(size_t j = 0; j < DNA_ALPHABET_SIZE; ++j)
         {
             char b = ALPHABET[j];
-            if(b == m_seq[i])
+            if(b == m_seq.get(i))
             {
                 ap.set(b, log(p_correct_match));
             }

@@ -151,7 +151,7 @@ void SGAlgorithms::updateContainFlags(StringGraph* pGraph, Vertex* pVertex, cons
 // Calculate the error rate between the two vertices
 double SGAlgorithms::calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY)
 {
-    int num_diffs = ovrXY.match.countDifferences(pX->getSeq(), pY->getSeq());
+    int num_diffs = ovrXY.match.countDifferences(pX->getSeq().toString(), pY->getSeq().toString());
     return static_cast<double>(num_diffs) / static_cast<double>(ovrXY.match.getMinOverlapLength());
 }
 
@@ -199,11 +199,11 @@ MultiOverlap SGAlgorithms::makeExtendedMultiOverlap(const StringGraph* pGraph, c
     CompleteOverlapSet overlapSet(pVertex, pGraph->getErrorRate(), 1);
     EdgeDescOverlapMap overlapMap = overlapSet.getOverlapMap();
 
-    MultiOverlap mo(pVertex->getID(), pVertex->getSeq());
+    MultiOverlap mo(pVertex->getID(), pVertex->getSeq().toString());
     for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
         iter != overlapMap.end(); ++iter)
     {
-        mo.add(iter->first.pVertex->getSeq(), iter->second);
+        mo.add(iter->first.pVertex->getSeq().toString(), iter->second);
     }
     return mo;
 }
@@ -219,7 +219,7 @@ void SGAlgorithms::makeExtendedSeqTries(const StringGraph* pGraph, const Vertex*
         iter != overlapMap.end(); ++iter)
     {
         // Coord[0] of the match is wrt pVertex, coord[1] is the other read
-        std::string overlapped = iter->second.match.coord[1].getSubstring(iter->first.pVertex->getSeq());
+        std::string overlapped = iter->second.match.coord[1].getSubstring(iter->first.pVertex->getSeq().toString());
         if(iter->second.match.isRC())
             overlapped = reverseComplement(overlapped);
 

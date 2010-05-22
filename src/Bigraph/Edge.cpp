@@ -23,7 +23,7 @@ std::string Edge::getLabel() const
     
     // get the unmatched coordinates in V2
     SeqCoord unmatched = pTwin->getMatchCoord().complement();
-    std::string seq = unmatched.getSubstring(pEndpoint->getSeq());
+    std::string seq = unmatched.getSubstring(pEndpoint->getStr());
 
     if(getComp() == EC_REVERSE)
         seq = reverseComplement(seq);
@@ -74,7 +74,7 @@ Overlap Edge::getOverlap() const
 // Get the matching portion of V1 described by this edge
 std::string Edge::getMatchStr() const
 {
-    return m_matchCoord.getSubstring(getStart()->getSeq());
+    return m_matchCoord.getSubstring(getStart()->getStr());
 }
 
 // Return the length of the sequence

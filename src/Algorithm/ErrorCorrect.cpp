@@ -40,7 +40,7 @@ std::string ErrorCorrect::trieCorrect(Vertex* pVertex, double p_error, SeqTrie& 
     leftTrie.remodel(2, log(p_error));
     rightTrie.remodel(2, log(p_error));
 
-    std::string original = pVertex->getSeq();
+    std::string original = pVertex->getSeq().toString();
 
     PathScoreVector left_psv;
     PathScoreVector right_psv;
