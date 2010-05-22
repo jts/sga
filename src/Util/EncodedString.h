@@ -6,8 +6,8 @@
 //
 // EncodedString - Templated class to store
 // a string from a reduced alphabet. The actual
-// coding is done outside this class by the Codec
-// passed in as the template parameter
+// encoding is done outside this class by the Codec
+// template parameter
 //
 #ifndef ENCODEDSTRING_H
 #define ENCODEDSTRING_H
@@ -29,15 +29,17 @@ class EncodedString
         //
         EncodedString(const EncodedString& other)
         {
-            assert(false);
-            // Deep copy
-            _alloc(other.m_data, other.m_len);
+            // deep copy
+            _alloc(other.m_len);
+            _copy(other);
         }
 
         //
-        EncodedString(std::string seq)
+        EncodedString(const std::string& seq)
         {
-            _alloc(seq.c_str(), seq.length());
+            size_t n = seq.length();
+            _alloc(n);
+            _copy(seq.c_str(), n);
         }
 
         //
@@ -49,25 +51,32 @@ class EncodedString
         // Operators
         EncodedString& operator=(const EncodedString& other)
         {
-            assert(false);
             if(&other == this)
                 return *this; // self-assign
 
             _dealloc();
-            _alloc(other.m_data, other.m_len);
+            _alloc(other.m_len);
+            _copy(other);
             return *this;
         }
 
         EncodedString& operator=(const std::string& str)
         {
+            size_t n = str.length();
             _dealloc();
-            _alloc(str.c_str(), str.length());
+            _alloc(n);
+            _copy(str.c_str(), n);
             return *this;
         }
 
         size_t length() const
         {
             return m_len;
+        }
+
+        size_t capacity() const
+        {
+            return m_capacity;
         }
 
         bool empty() const
@@ -102,19 +111,34 @@ class EncodedString
     private:
 
         // functions
-
-        // allocate storage and initialize the data
-        void _alloc(const char* pData, size_t l)
+        void _copy(const char* pData, size_t n)
         {
-            m_len = l;
+            // this assumes that storage for n characters has been 
+            // allocated
+            assert(m_capacity >= n);
+
+            for(size_t i = 0; i < n; ++i)
+                s_codec.store(m_data, i, pData[i]);
+        }
+        
+        //
+        void _copy(const EncodedString& other)
+        {
+            // storage should have been allocated already
+            assert(m_capacity = other.m_capacity);
+            size_t n = s_codec.getRequiredUnits(other.m_capacity);
+            for(size_t i = 0; i < n; ++i)
+                m_data[i] = other.m_data[i];
+        }
+
+        // allocate storage for n symbols
+        void _alloc(size_t n)
+        {
+            m_len = n;
             // Get the number of units that need to be allocated from the codec
-            size_t n_units = s_codec.getRequiredUnits(l);
+            size_t n_units = s_codec.getRequiredUnits(n);
             m_data = new StorageUnit[n_units](); // This zeros the memory
             m_capacity = s_codec.getCapacity(n_units);
-
-            // Encode the string
-            for(size_t i = 0; i < l; ++i)
-                s_codec.store(m_data, i, pData[i]);
         }
 
         // deallocate storage
