@@ -22,6 +22,7 @@
 #include <assert.h> 
 #include "DNACodec.h"
 #include "BWTCodec.h"
+#include "NoCodec.h"
 
 template<class Codec>
 class EncodedString
@@ -285,5 +286,7 @@ class EncodedString
 };
 
 typedef EncodedString<DNACodec> DNAEncodedString;
-typedef EncodedString<BWTCodec> BWTString;
+//typedef EncodedString<BWTCodec> BWTString;
+typedef EncodedString<NoCodec> BWTString;
+typedef EncodedString<NoCodec> NoEncodingString;
 #endif
