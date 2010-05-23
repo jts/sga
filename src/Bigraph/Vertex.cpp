@@ -630,7 +630,7 @@ size_t Vertex::countEdges(EdgeDir dir)
 // Return the amount of memory this vertex is using, in bytes
 size_t Vertex::getMemSize() const
 {
-    return sizeof(*this) + (m_edges.size() * sizeof(Edge*) + (m_seq.length() * sizeof(char)));
+    return sizeof(*this) + (m_edges.size() * sizeof(Edge*)) + m_seq.getMemSize();
 }
 
 
