@@ -70,34 +70,30 @@ class NoCodec
         {
             UNIT_TYPE& unit = pData[getUnitIndex(i)];
             unit = encode(b);
-            /*
+            
             size_t offset = getUnitOffset(i);
             uint8_t shift = getOffsetShift(offset);
             
             // Clear the currrent position
-            uint16_t mask = 0;
+            uint8_t mask = 0xFF;
             unit &= ~mask;
 
             // Set position
             UNIT_TYPE code = encode(b);
             code <<= shift;
             unit |= code; 
-            */
         }
 
         // get the character stored at position i
         inline char get(const UNIT_TYPE* pData, size_t i) const
         {
             const UNIT_TYPE& unit = pData[getUnitIndex(i)];
-            return decode(unit);
-            /*
             size_t offset = getUnitOffset(i);
-            uint16_t mask = 0;
+            uint8_t mask = 0xFF;
             UNIT_TYPE code = unit & mask;
             uint8_t shift = bwt_offset_shift[offset];
             code >>= shift;
             return decode(code);
-            */
         }
 };
 
