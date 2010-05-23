@@ -10,6 +10,7 @@
 #ifndef OCCURRENCE_H
 #define OCCURRENCE_H
 #include "STCommon.h"
+#include "EncodedString.h"
 
 // Power of 2 macros
 
@@ -28,10 +29,10 @@ class Occurrence
         Occurrence() : m_sampleRate(1) {}
 
         // Initialize the counts from the bwt string b
-        void initialize(const BWStr& bwStr, int sampleRate);
+        void initialize(const BWTString& bwStr, int sampleRate);
 
         //
-        inline const AlphaCount get(const BWStr& bwStr, size_t idx) const
+        inline const AlphaCount get(const BWTString& bwStr, size_t idx) const
         {
             // Quick path
             if((MOD_POWER_2(idx,m_sampleRate)) == 0)
@@ -49,24 +50,24 @@ class Occurrence
             if((idx - lower_start < upper_start - idx) || upper_idx == m_values.size())
             {
                 for(size_t j = lower_start + 1; j <= idx; ++j)
-                    sum.increment(bwStr[j]);
+                    sum.increment(bwStr.get(j));
                 return m_values[lower_idx] + sum;
             }
             else
             {
                 for(size_t j = idx + 1; j <= upper_start; ++j)
-                    sum.increment(bwStr[j]);
+                    sum.increment(bwStr.get(j));
                 return m_values[upper_idx] - sum;
             }
         }
 
         // Get the alphacount difference between idx1 and idx0
-        inline AlphaCount getDiff(const BWStr& bwStr, size_t idx0, size_t idx1) const
+        inline AlphaCount getDiff(const BWTString& bwStr, size_t idx0, size_t idx1) const
         {
             return get(bwStr, idx1) - get(bwStr, idx0);
         }
         
-        inline BaseCount get(const BWStr& bwStr, char a, size_t idx) const
+        inline BaseCount get(const BWTString& bwStr, char a, size_t idx) const
         {
             // Quick path
             if((MOD_POWER_2(idx,m_sampleRate)) == 0)
@@ -84,7 +85,7 @@ class Occurrence
             {
                 for(size_t j = lower_start + 1; j <= idx; ++j)
                 {
-                    if(bwStr[j] == a)
+                    if(bwStr.get(j) == a)
                         ++sum;
                 }
                 return m_values[lower_idx].get(a) + sum;
@@ -93,7 +94,7 @@ class Occurrence
             {
                 for(size_t j = idx + 1; j <= upper_start; ++j)
                 {
-                    if(bwStr[j] == a)
+                    if(bwStr.get(j) == a)
                         ++sum;
                 }
                 return m_values[upper_idx].get(a) - sum;
@@ -106,7 +107,7 @@ class Occurrence
         void print() const;
         size_t getByteSize() const;
         size_t size() const { return m_values.size(); }
-        void validate(const BWStr& bwStr) const;
+        void validate(const BWTString& bwStr) const;
 
         friend std::ostream& operator<<(std::ostream& out, const Occurrence& o);
         friend std::istream& operator>>(std::istream& in, Occurrence& o);

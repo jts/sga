@@ -12,6 +12,7 @@
 #include "Util.h"
 #include "STCommon.h"
 #include "Occurrence.h"
+#include "EncodedString.h"
 
 const uint16_t BWT_FILE_MAGIC = 0xEFEF;
 
@@ -42,7 +43,7 @@ class BWTReader
         //
         void read(BWT* pBWT);
         void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
-        void readBWStr(std::string& out_str);
+        void readBWStr(BWTString& out_str);
         char readBWChar();
         void readPred(AlphaCount& out_pc);
         void readOccurrence(Occurrence& out_icc);

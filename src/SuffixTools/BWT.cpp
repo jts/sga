@@ -42,7 +42,8 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
         // Get the position of the start of the suffix
         uint64_t f_pos = saElem.getPos();
         uint64_t l_pos = (f_pos == 0) ? si.seq.length() : f_pos - 1;
-        m_bwStr[i] = (l_pos == si.seq.length()) ? '$' : si.seq.get(l_pos);
+        char b = (l_pos == si.seq.length()) ? '$' : si.seq.get(l_pos);
+        m_bwStr.set(i, b);
     }
 
     initializeFMIndex();
@@ -58,9 +59,9 @@ void BWT::initializeFMIndex()
     
     // Calculate the total number of occurances of each character in the BW str
     AlphaCount tmp;
-    for(size_t i = 0; i < m_bwStr.size(); ++i)
+    for(size_t i = 0; i < m_bwStr.length(); ++i)
     {
-        tmp.increment(m_bwStr[i]);
+        tmp.increment(m_bwStr.get(i));
     }
 
     m_predCount.set('$', 0);
@@ -73,7 +74,7 @@ void BWT::initializeFMIndex()
 // Compute the last to first mapping
 size_t BWT::LF(size_t idx) const
 {
-    return m_bwStr[idx] != '$' ? PRED(m_bwStr[idx]) + OCC(m_bwStr[idx], idx) : 0;
+    return m_bwStr.get(idx) != '$' ? PRED(m_bwStr.get(idx)) + OCC(m_bwStr.get(idx), idx) : 0;
 }
 
 // Perform a exact search for the string w using the backwards algorithm
@@ -84,7 +85,7 @@ void BWT::backwardSearch(std::string w) const
     int j = len - 1;
     char curr = w[j];
     int r_lower = PRED(curr);
-    int r_upper = r_lower + OCC(curr, m_bwStr.size() - 1) - 1;
+    int r_upper = r_lower + OCC(curr, m_bwStr.length() - 1) - 1;
     --j;
     std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
     for(;j >= 0; --j)
@@ -120,10 +121,10 @@ void BWT::write(std::string& filename)
 void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 {
     std::cout << "i\tL(i)\tF(i)\tO(-,i)\tSUFF\n";
-    for(size_t i = 0; i < m_bwStr.size(); ++i)
+    for(size_t i = 0; i < m_bwStr.length(); ++i)
     {
         assert(getF(i) == pSA->getSuffix(i, pRT)[0]);
-        std::cout << i << "\t" << m_bwStr[i] << "\t" << getF(i) << "\t" << m_occurrence.get(m_bwStr, i) << pSA->getSuffix(i, pRT) << "\n";
+        std::cout << i << "\t" << m_bwStr.get(i) << "\t" << getF(i) << "\t" << m_occurrence.get(m_bwStr, i) << pSA->getSuffix(i, pRT) << "\n";
     }
 }
 
@@ -133,11 +134,11 @@ void BWT::printInfo() const
     size_t o_size = m_occurrence.getByteSize();
     size_t p_size = sizeof(m_predCount);
 
-    size_t bwStr_size = sizeof(m_bwStr) + m_bwStr.size();
+    size_t bwStr_size = m_bwStr.getMemSize();
     size_t offset_size = sizeof(m_numStrings);
     size_t total_size = o_size + p_size + bwStr_size + offset_size;
     double total_mb = ((double)total_size / (double)(1024 * 1024));
     printf("BWT Size -- OCC: %zu C: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
             o_size, p_size, bwStr_size, offset_size, total_size, total_mb);
-    printf("N: %zu Bytes per suffix: %lf\n", m_bwStr.size(), (double)total_size / m_bwStr.size());
+    printf("N: %zu Bytes per suffix: %lf\n", m_bwStr.length(), (double)total_size / m_bwStr.length());
 }

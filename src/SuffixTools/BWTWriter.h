@@ -13,6 +13,7 @@
 #include "STCommon.h"
 #include "Occurrence.h"
 #include "BWTReader.h"
+#include "EncodedString.h"
 
 class BWT;
 
@@ -25,7 +26,7 @@ class BWTWriter
         //
         void write(const BWT* pBWT);
         void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);
-        void writeBWStr(const std::string& str); 
+        void writeBWStr(const BWTString& str); 
         void writeBWChar(char b);
         void writePred(const AlphaCount& pc);
         void writeOccurrence(const Occurrence& icc);

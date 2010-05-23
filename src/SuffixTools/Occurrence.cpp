@@ -11,7 +11,7 @@
 #include "BWT.h"
 
 // Initialize the counts from the bwt string b
-void Occurrence::initialize(const BWStr& bwStr, int sampleRate)
+void Occurrence::initialize(const BWTString& bwStr, int sampleRate)
 {
     m_sampleRate = sampleRate;
     calculateShiftValue();
@@ -23,7 +23,7 @@ void Occurrence::initialize(const BWStr& bwStr, int sampleRate)
     AlphaCount sum;
     for(size_t i = 0; i < l; ++i)
     {
-        char currB = bwStr[i];
+        char currB = bwStr.get(i);
         sum.increment(currB);
         if(i % m_sampleRate == 0)
             m_values[i / m_sampleRate] = sum;
@@ -61,14 +61,14 @@ size_t Occurrence::getByteSize() const
     return m_values.size() * sizeof(AlphaCount);
 }
 
-// Validate that the sampled occurance array is correct
-void Occurrence::validate(const BWStr& bwStr) const
+// Validate that the sampled occurrence array is correct
+void Occurrence::validate(const BWTString& bwStr) const
 {
     size_t l = bwStr.length();
     AlphaCount sum;
     for(size_t i = 0; i < l; ++i)
     {
-        char currB = bwStr[i];
+        char currB = bwStr.get(i);
         sum.increment(currB);
         AlphaCount calculated = get(bwStr, i);
         for(int i = 0; i < ALPHABET_SIZE; ++i)

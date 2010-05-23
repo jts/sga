@@ -15,6 +15,7 @@
 #include "ReadTable.h"
 #include "HitData.h"
 #include "BWTReader.h"
+#include "EncodedString.h"
 
 //
 // BWT
@@ -36,7 +37,7 @@ class BWT
         // L[i] -> F mapping 
         size_t LF(size_t idx) const;
 
-        inline char getChar(size_t idx) const { return m_bwStr[idx]; }
+        inline char getChar(size_t idx) const { return m_bwStr.get(idx); }
         inline BaseCount getPC(char b) const { return m_predCount.get(b); }
 
         // Return the number of times char b appears in bwt[0, idx]
@@ -59,12 +60,6 @@ class BWT
                 ci++;
             assert(ci != 0);
             return RANK_ALPHABET[ci - 1];
-        }
-
-        // 
-        inline const BWStr* getBWStr() const
-        {
-            return &m_bwStr;
         }
 
         // Print the size of the BWT
@@ -96,7 +91,7 @@ class BWT
         AlphaCount m_predCount;
         
         // The bw string
-        BWStr m_bwStr;
+        BWTString m_bwStr;
 
         // The number of strings in the collection
         size_t m_numStrings;

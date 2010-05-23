@@ -77,7 +77,16 @@ class EncodedString
             return *this;
         }
 
-        // 
+        // Resize this string to n symbols, setting the 
+        // new entries to the default value
+        void resize(size_t n)
+        {
+            if(n > m_capacity)
+                _realloc(n);
+            m_len = n;
+        }
+
+        // Append a std::string
         void append(const std::string& str)
         {
             size_t n = str.length();
@@ -87,7 +96,7 @@ class EncodedString
             _append(str.c_str(), n);
         }
 
-        // 
+        // Append some other EncodedString
         void append(const EncodedString& other)
         {
             size_t n = other.length();
@@ -97,7 +106,7 @@ class EncodedString
             _append(other);
         }
 
-        // Swap the contents with other
+        // Swap the contents with another encoded string
         void swap(EncodedString& other)
         {
             size_t tmp;
@@ -114,25 +123,36 @@ class EncodedString
             m_data = pTmp;
         }
 
+        //
         size_t length() const
         {
             return m_len;
         }
 
+        //
         size_t capacity() const
         {
             return m_capacity;
         }
 
+        //
         bool empty() const
         {
             return m_len == 0;
         }
 
-        // Get the character at the given position
+        // Get the character at idx
         inline char get(size_t idx) const
         {
+            assert(idx < m_len);
             return s_codec.get(m_data, idx);
+        }
+
+        // Set the character at idx
+        inline void set(size_t idx, char b)
+        {
+            assert(idx < m_len);
+            s_codec.store(m_data, idx, b);
         }
 
         //
@@ -167,6 +187,12 @@ class EncodedString
             out << "Capacity: " << a.m_capacity << "\n";
             out << "Str: " << a.toString() << "\n";
             return out;
+        }
+
+        // Return the amount of space this string is using
+        size_t getMemSize() const
+        {
+            return sizeof(*this) + sizeof(StorageUnit) * s_codec.getRequiredUnits(m_capacity);
         }
 
     private:

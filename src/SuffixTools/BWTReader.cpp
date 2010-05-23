@@ -73,10 +73,21 @@ void BWTReader::readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& fla
 }
 
 //
-void BWTReader::readBWStr(std::string& out_str)
+void BWTReader::readBWStr(BWTString& out_str)
 {
     assert(m_stage == IOS_BWSTR);
-    *m_pReader >> out_str;
+    char b;
+    size_t idx = 0;
+    while(1)
+    {
+        m_pReader->get(b);
+        if(b != '\n')
+            out_str.set(idx++, b);
+        else
+            break;
+    }
+
+    assert(idx == out_str.length());
     m_stage = IOS_PC;
 }
 

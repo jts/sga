@@ -24,7 +24,7 @@ BWTWriter::~BWTWriter()
 
 void BWTWriter::write(const BWT* pBWT)
 {
-    writeHeader(pBWT->m_numStrings, pBWT->m_bwStr.size(), BWF_HASFMI);
+    writeHeader(pBWT->m_numStrings, pBWT->m_bwStr.length(), BWF_HASFMI);
     writeBWStr(pBWT->m_bwStr);
     writePred(pBWT->m_predCount);
     writeOccurrence(pBWT->m_occurrence);
@@ -43,10 +43,13 @@ void BWTWriter::writeHeader(const size_t& num_strings, const size_t& num_symbols
 }
 
 //
-void BWTWriter::writeBWStr(const std::string& str)
+void BWTWriter::writeBWStr(const BWTString& str)
 {
     assert(m_stage == IOS_BWSTR);
-    *m_pWriter << str << "\n";
+    size_t n = str.length();
+    for(size_t i = 0; i < n; ++i)
+        *m_pWriter << str.get(i);
+    *m_pWriter << "\n";
     m_stage = IOS_PC;
 }
 
