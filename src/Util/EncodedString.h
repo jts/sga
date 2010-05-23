@@ -1,7 +1,7 @@
 //-----------------------------------------------
 // Copyright 2010 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
-// Released under the GPL license
+// Released under the GPL
 //-----------------------------------------------
 //
 // EncodedString - Templated class to store
@@ -21,6 +21,7 @@
 #include <string>
 #include <assert.h> 
 #include "DNACodec.h"
+#include "BWTCodec.h"
 
 template<class Codec>
 class EncodedString
@@ -258,5 +259,5 @@ class EncodedString
 };
 
 typedef EncodedString<DNACodec> DNAEncodedString;
-
+typedef EncodedString<BWTCodec> BWTString;
 #endif

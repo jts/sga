@@ -4,32 +4,36 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// DNACodec - Encoder/decoder for a DNA alphabet
-// of A,C,G,T using 2 bits per symbol
+// BWTCodec - Encoder/decoder for a BWT
+// string over the alphabet $ACGT. 
 //
-#ifndef DNACODEC_H
-#define DNACODEC_H
+#ifndef BWTCODEC_H
+#define BWTCODEC_H
 
 #include "Alphabet.h"
 
-static const unsigned char dna_offset_mask[]={0xC0,0x30,0x0C,0x03};
+static const uint16_t bwt_offset_mask[]={57344,0x1C00,0x0380,0x0070,0x000E};
 
-class DNACodec
+class BWTCodec
 {
     public:
-        typedef uint8_t UNIT_TYPE;
-        static const int SYMBOLS_PER_UNIT = 4;
+        // The data is stored 5 characters per uint16_t
+        // The data pattern is:
+        // 11100000 00000000 first symbol
+        // 00011100 00000000 second symbol, etc
+        typedef uint16_t UNIT_TYPE;
+        static const int SYMBOLS_PER_UNIT = 5;
 
         // Encoded the character b into a value
         inline uint8_t encode(char b)
         {
-            return DNA_ALPHABET::getBaseRank(b);
+            return BWT_ALPHABET::getRank(b);
         }
 
         // Decode the value c into a character
         inline char decode(uint8_t c)
         {
-            return DNA_ALPHABET::getBase(c);
+            return BWT_ALPHABET::getChar(c);
         }
 
         // Returns the number of units required to encode
@@ -65,7 +69,7 @@ class DNACodec
         // store a code at a given offset
         inline uint8_t getOffsetShift(size_t offset)
         {
-            return 2*(3 - offset);
+            return 1 + 3*(4 - offset);
         }
 
         // Store the value v at the i-th encoded position in the data array
@@ -75,14 +79,13 @@ class DNACodec
             size_t offset = getUnitOffset(i);
             uint8_t shift = getOffsetShift(offset);
 
-            // Clear the 
-            unsigned char mask = dna_offset_mask[offset];
-
-            // Clear position
+            
+            // Clear the currrent position
+            uint16_t mask = bwt_offset_mask[offset];
             unit &= ~mask;
 
             // Set position
-            uint8_t code = encode(b);
+            UNIT_TYPE code = encode(b);
             code <<= shift;
             unit |= code; 
         }
@@ -92,7 +95,7 @@ class DNACodec
         {
             const UNIT_TYPE& unit = pData[getUnitIndex(i)];
             size_t offset = getUnitOffset(i);
-            unsigned char mask = dna_offset_mask[offset];
+            uint16_t mask = bwt_offset_mask[offset];
             UNIT_TYPE code = unit & mask;
             uint8_t shift = getOffsetShift(offset);
             code >>= shift;

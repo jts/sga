@@ -66,6 +66,41 @@ namespace DNA_ALPHABET
     static const uint8_t size = 4;
 };
 
+namespace BWT_ALPHABET
+{
+    static const uint8_t s_bwtLexoRankLUT[256] = {
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,1,0,2,0,0,0,3,0,0,0,0,0,0,0,0,
+        0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    };
+
+    static const uint8_t size = 5;
+
+    inline static uint8_t getRank(char b)
+    {
+        return s_bwtLexoRankLUT[static_cast<uint8_t>(b)];
+    }
+    
+    inline char getChar(size_t idx)
+    {
+        assert(idx < size);
+        return RANK_ALPHABET[idx];
+    }
+};
+
 //
 // A simple class holding the count for each base of a DNA string (plus the terminator)
 // Note that this uses RANK_ALPHABET
@@ -277,7 +312,6 @@ class AlphaCount
             c = _mm_add_epi64(a, b);
             _mm_store_si128( (__m128i *) &m_counts[2], c);
 #else
-            
             m_counts[0] += other.m_counts[0];
             m_counts[1] += other.m_counts[1];
             m_counts[2] += other.m_counts[2];
