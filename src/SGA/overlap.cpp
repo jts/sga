@@ -214,8 +214,12 @@ void convertHitsToOverlaps(const StringVector& hitsFilenames)
 
     // Load the read tables
     ReadTable* pFwdRT = new ReadTable(opt::readsFile);
-    ReadTable* pRevRT = new ReadTable();
-    pRevRT->initializeReverse(pFwdRT);
+    
+    // The actual sequence is not used in parseHits only the length and the
+    // id. These don't change for the reverse table so just use the forward table
+    ReadTable* pRevRT = pFwdRT;
+    //ReadTable* pRevRT = new ReadTable();
+    //pRevRT->initializeReverse(pFwdRT);
 
     // Open files output files
     std::string overlapFile = opt::prefix + OVR_EXT;
@@ -248,7 +252,7 @@ void convertHitsToOverlaps(const StringVector& hitsFilenames)
     delete pFwdSAI;
     delete pRevSAI;
     delete pFwdRT;
-    delete pRevRT;
+    //delete pRevRT;
 
     // Close files
     overlapHandle.close();
