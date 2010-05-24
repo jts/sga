@@ -96,7 +96,6 @@ namespace BWT_ALPHABET
     
     inline char getChar(size_t idx)
     {
-        assert(idx < size);
         return RANK_ALPHABET[idx];
     }
 };

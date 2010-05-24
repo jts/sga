@@ -89,9 +89,10 @@ class NoCodec
         {
             const UNIT_TYPE& unit = pData[getUnitIndex(i)];
             size_t offset = getUnitOffset(i);
+            (void)offset;
             uint8_t mask = 0xFF;
             UNIT_TYPE code = unit & mask;
-            uint8_t shift = bwt_offset_shift[offset];
+            uint8_t shift = 0;
             code >>= shift;
             return decode(code);
         }

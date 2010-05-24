@@ -4,27 +4,27 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// BWTCodec - Encoder/decoder for a BWT
-// string over the alphabet $ACGT using
-// 3 bits per symbol
+// BWT4Codec - Encoder/decoder for a BWT
+// string over the alphabet $ACGT using 4
+// bits per symbol
 //
-#ifndef BWTCODEC_H
-#define BWTCODEC_H
+#ifndef BWT4CODEC_H
+#define BWT4CODEC_H
 
 #include "Alphabet.h"
 
-static const uint16_t bwt_offset_mask[]={0xE000,0x1C00,0x0380,0x0070,0x000E};
-static const uint8_t  bwt_offset_shift[]={13, 10, 7, 4, 1};
+static const uint8_t bwt4_offset_mask[]={0xF0,0x0F};
+static const uint8_t  bwt4_offset_shift[]={4, 0};
 
-class BWTCodec
+class BWT4Codec
 {
     public:
-        // The data is stored 5 characters per uint16_t
+        // The data is stored 2 characters per byte
         // The data pattern is:
-        // 11100000 00000000 first symbol
-        // 00011100 00000000 second symbol, etc
-        typedef uint16_t UNIT_TYPE;
-        static const int SYMBOLS_PER_UNIT = 5;
+        // 11110000 first symbol
+        // 00001111 second symbol
+        typedef uint8_t UNIT_TYPE;
+        static const int SYMBOLS_PER_UNIT = 2;
 
         // Encoded the character b into a value
         inline uint8_t encode(char b) const
@@ -54,24 +54,24 @@ class BWTCodec
 
         // Returns the index of the unit to store the
         // i-th symbol of the string
-        inline size_t getUnitIndex(size_t i) const
+        inline size_t getUnitIndex(const size_t& i) const
         {
-            return i / SYMBOLS_PER_UNIT;
+            return i >> 1; // equivalent to i / 2
         }
 
         // Returns the position within a unit that the i-th symbol 
         // should be stored in
-        inline size_t getUnitOffset(size_t i) const
+        inline size_t getUnitOffset(const size_t& i) const
         {
             // this position is the k-th symbol of the unit
-            return i % SYMBOLS_PER_UNIT;
+            return i & 1; // equivalent to i % 2
         }
 
         // Return the amount that a value must be shifted to
         // store a code at a given offset
         inline uint8_t getOffsetShift(size_t offset) const
         {
-            return 1 + 3*(4 - offset);
+            return 4*(1 - offset);
         }
 
         // Store the value v at the i-th encoded position in the data array
@@ -79,10 +79,10 @@ class BWTCodec
         {
             UNIT_TYPE& unit = pData[getUnitIndex(i)];
             size_t offset = getUnitOffset(i);
-            uint8_t shift = getOffsetShift(offset);
+            uint8_t shift = bwt4_offset_shift[offset];
             
             // Clear the currrent position
-            uint16_t mask = bwt_offset_mask[offset];
+            uint16_t mask = bwt4_offset_mask[offset];
             unit &= ~mask;
 
             // Set position
@@ -92,13 +92,13 @@ class BWTCodec
         }
 
         // get the character stored at position i
-        inline char get(const UNIT_TYPE* pData, size_t i) const
+        inline char get(const UNIT_TYPE* pData, const size_t& i) const
         {
             const UNIT_TYPE& unit = pData[getUnitIndex(i)];
             size_t offset = getUnitOffset(i);
-            uint16_t mask = bwt_offset_mask[offset];
+            uint16_t mask = bwt4_offset_mask[offset];
             UNIT_TYPE code = unit & mask;
-            uint8_t shift = bwt_offset_shift[offset];
+            uint8_t shift = bwt4_offset_shift[offset];
             code >>= shift;
             return decode(code);
         }
