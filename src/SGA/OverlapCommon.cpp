@@ -180,6 +180,8 @@ size_t OverlapCommon::computeHitsParallel(int numThreads, const std::string& pre
 
 // Convert a line from a hits file into a vector of overlaps and sets the flag
 // indicating whether the read was found to be a substring of other reads
+// Only the forward read table is used since we only care about the IDs and length
+// of the read, not the sequence, so that we don't need an explicit reverse read table
 void OverlapCommon::parseHitsString(const std::string& hitString, 
                                     const ReadTable* pFwdRT, 
                                     const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI, 
