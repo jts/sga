@@ -68,6 +68,8 @@ int mergeMain(int argc, char** argv)
         inFiles.push_back(argv[optind++]);
     }
     assert(inFiles.size() == 2);
+    if(inFiles[0] == inFiles[1])
+        return 0; // avoid self-merge
 
     std::string prefix1 = stripFilename(inFiles[0]);
     std::string prefix2 = stripFilename(inFiles[1]);
