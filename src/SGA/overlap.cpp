@@ -168,8 +168,6 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
 
     // Load the read table and output the initial vertex set, consisting of all the reads
     ReadTable* pFwdRT = new ReadTable(opt::readsFile);
-    ReadTable* pRevRT = new ReadTable();
-    pRevRT->initializeReverse(pFwdRT);
 
     // Convert the hits to overlaps and write them to the asqg file as initial edges
     for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
@@ -184,7 +182,7 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
             size_t readIdx;
             bool isSubstring;
             OverlapVector ov;
-            OverlapCommon::parseHitsString(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(line, pFwdRT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
             for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
             {
                 ASQG::EdgeRecord edgeRecord(*iter);
@@ -199,64 +197,6 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
     delete pFwdSAI;
     delete pRevSAI;
     delete pFwdRT;
-    delete pRevRT;
-}
-
-//
-void convertHitsToOverlaps(const StringVector& hitsFilenames)
-{
-    printf("[%s] converting suffix array interval hits to overlaps\n", PROGRAM_IDENT);
-
-    // Load the suffix array index and the reverse suffix array index
-    // Note these are not the full suffix arrays
-    SuffixArray* pFwdSAI = new SuffixArray(opt::prefix + SAI_EXT);
-    SuffixArray* pRevSAI = new SuffixArray(opt::prefix + RSAI_EXT);
-
-    // Load the read tables
-    ReadTable* pFwdRT = new ReadTable(opt::readsFile);
-    
-    // The actual sequence is not used in parseHits only the length and the
-    // id. These don't change for the reverse table so just use the forward table
-    ReadTable* pRevRT = pFwdRT;
-    //ReadTable* pRevRT = new ReadTable();
-    //pRevRT->initializeReverse(pFwdRT);
-
-    // Open files output files
-    std::string overlapFile = opt::prefix + OVR_EXT;
-    std::ofstream overlapHandle(overlapFile.c_str());
-    assert(overlapHandle.is_open());
-
-    std::string containFile = opt::prefix + CTN_EXT;
-    std::ofstream containHandle(containFile.c_str());
-    assert(containHandle.is_open());
-
-    for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
-    {
-        printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
-        std::ifstream reader(iter->c_str());
-    
-        // Read each hit sequentially, converting it to an overlap
-        std::string line;
-        while(getline(reader, line))
-        {
-            size_t readIdx;
-            bool isSubstring;
-            OverlapVector ov;
-            OverlapCommon::parseHitsString(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
-            for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
-                writeOverlap(*iter, containHandle, overlapHandle);
-        }
-    }
-
-    // Delete allocated data
-    delete pFwdSAI;
-    delete pRevSAI;
-    delete pFwdRT;
-    //delete pRevRT;
-
-    // Close files
-    overlapHandle.close();
-    containHandle.close();
 }
 
 // Before sanity checks on the overlaps and write them out

@@ -115,8 +115,6 @@ void parseDupHits(const StringVector& hitsFilenames)
 
     // Load the read table and output the initial vertex set, consisting of all the reads
     ReadTable* pFwdRT = new ReadTable(opt::readsFile);
-    ReadTable* pRevRT = new ReadTable();
-    pRevRT->initializeReverse(pFwdRT);
 
     std::string outFile = opt::prefix + ".rmdup.fa";
     std::ostream* pWriter = createWriter(outFile);
@@ -138,7 +136,7 @@ void parseDupHits(const StringVector& hitsFilenames)
             size_t readIdx;
             bool isSubstring;
             OverlapVector ov;
-            OverlapCommon::parseHitsString(line, pFwdRT, pRevRT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(line, pFwdRT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
             
             if(isSubstring)
             {
@@ -181,7 +179,6 @@ void parseDupHits(const StringVector& hitsFilenames)
     delete pFwdSAI;
     delete pRevSAI;
     delete pFwdRT;
-    delete pRevRT;
     delete pWriter;
 }
 

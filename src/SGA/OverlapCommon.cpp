@@ -181,7 +181,7 @@ size_t OverlapCommon::computeHitsParallel(int numThreads, const std::string& pre
 // Convert a line from a hits file into a vector of overlaps and sets the flag
 // indicating whether the read was found to be a substring of other reads
 void OverlapCommon::parseHitsString(const std::string& hitString, 
-                                    const ReadTable* pFwdRT, const ReadTable* pRevRT, 
+                                    const ReadTable* pFwdRT, 
                                     const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI, 
                                     size_t& readIdx, OverlapVector& outVector, bool& isSubstring)
 {
@@ -203,7 +203,7 @@ void OverlapCommon::parseHitsString(const std::string& hitString,
         // Iterate through the range and write the overlaps
         for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
         {
-            const ReadTable* pCurrRT = (record.flags.isTargetRev()) ? pRevRT : pFwdRT;
+            const ReadTable* pCurrRT = pFwdRT;
             const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
             const SeqItem& query = pCurrRT->getRead(readIdx);
 

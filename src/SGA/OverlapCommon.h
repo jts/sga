@@ -35,7 +35,7 @@ size_t computeHitsParallel(int numThreads, const std::string& prefix, const std:
                            int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
 
 void parseHitsString(const std::string& hitString, 
-                     const ReadTable* pFwdRT, const ReadTable* pRevRT, 
+                     const ReadTable* pFwdRT, 
                      const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI, 
                      size_t& readIdx, OverlapVector& outVector, bool& isSubstring);
 };
