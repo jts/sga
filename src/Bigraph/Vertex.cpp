@@ -19,9 +19,6 @@ Vertex::~Vertex()
         delete *iter;
         *iter = NULL;
     }
-
-    if(m_pPairVertex != NULL)
-        m_pPairVertex->clearPairVertex();
 }
 
 // Merging two string vertices has two parts
@@ -65,9 +62,6 @@ void Vertex::merge(Edge* pEdge)
         if(prepend && pUpdateEdge->getDir() == ED_SENSE && pEdge != pUpdateEdge)
             pUpdateEdge->offsetMatch(label_len);
     }
-
-    // Update the read count
-    m_readCount += pEdge->getEnd()->getReadCount();
 
 #ifdef VALIDATE
     VALIDATION_WARNING("Vertex::merge")
@@ -569,19 +563,6 @@ EdgePtrVec Vertex::findEdgesTo(VertexID id)
     }
     return outEdges;
 }
-
-//
-void Vertex::setPairVertex(Vertex* pPair) 
-{ 
-    m_pPairVertex = pPair; 
-}
-
-//
-void Vertex::clearPairVertex() 
-{ 
-    m_pPairVertex = NULL; 
-}
-
 
 //
 // Get the edges in a particular direction

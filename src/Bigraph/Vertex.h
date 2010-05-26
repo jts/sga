@@ -22,6 +22,7 @@
 #include "TransitiveGroupCollection.h"
 #include "QualityVector.h"
 #include "EncodedString.h"
+#include "SimpleAllocator.h"
 
 // Forward declare
 class Edge;
@@ -57,8 +58,6 @@ class Vertex
     
         Vertex(VertexID id, const std::string& s) : m_id(id), 
                                                     m_seq(s), 
-                                                    m_readCount(1), 
-                                                    m_pPairVertex(NULL),
                                                     m_color(GC_WHITE),
                                                     m_isContained(false) {}
         ~Vertex();
@@ -124,8 +123,6 @@ class Vertex
         void validate() const;
         
         // setters
-        void setPairVertex(Vertex* pPair);
-        void clearPairVertex();
         void setEdgeColors(GraphColor c);
         void setSeq(const std::string& s) { m_seq = s; }
         void setColor(GraphColor c) { m_color = c; }
@@ -134,13 +131,22 @@ class Vertex
         // getters
         VertexID getID() const { return m_id; }
         GraphColor getColor() const { return m_color; }
-        Vertex* getPairVertex() const { return m_pPairVertex; }
-        size_t getReadCount() const { return m_readCount; }
         const DNAEncodedString& getSeq() const { return m_seq; }
         std::string getStr() const { return m_seq.toString(); }
         size_t getSeqLen() const { return m_seq.length(); }
         size_t getMemSize() const;
         bool isContained() const { return m_isContained; }
+
+        // Memory management
+        void* operator new(size_t /*size*/)
+        {
+            return SimpleAllocator<Vertex>::Instance()->alloc();
+        }
+
+        void operator delete(void* target, size_t /*size*/)
+        {
+            SimpleAllocator<Vertex>::Instance()->dealloc(target);
+        }
 
         // Output edges in graphviz format
         void writeEdges(std::ostream& out, int dotFlags) const;
@@ -153,8 +159,6 @@ class Vertex
         VertexID m_id;
         EdgePtrVec m_edges;
         DNAEncodedString m_seq;
-        int m_readCount;
-        Vertex* m_pPairVertex;
         GraphColor m_color;
         bool m_isContained;
 };

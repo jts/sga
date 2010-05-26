@@ -212,8 +212,9 @@ void SGVertexPairingVisitor::previsit(StringGraph* pGraph)
 }
 
 // Visit each vertex in the graph, find its pair and link them
-bool SGVertexPairingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+bool SGVertexPairingVisitor::visit(StringGraph* /*pGraph*/, Vertex* /*pVertex*/)
 {
+#if 0
     // do nothing if the pairing was already set
     if(pVertex->getPairVertex() == NULL)
     {
@@ -232,6 +233,7 @@ bool SGVertexPairingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
             num_unpaired++;
         }
     }
+#endif
     return false;
 }
 
@@ -246,8 +248,9 @@ void SGVertexPairingVisitor::postvisit(StringGraph* /*pGraph*/)
 // string graph are "trusted" - the reads overlapping
 // in the edge have pairs that also overlap
 //
-bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* /*pVertex*/)
 {
+#if 0
     Vertex* pPairVertex = pVertex->getPairVertex();
     if(pPairVertex == NULL)
         return false;
@@ -321,7 +324,7 @@ bool SGPETrustVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 
     for(size_t i = 0; i < vertEdgeVec.size(); ++i)
         vertEdgeVec[i]->getEnd()->setColor(GC_WHITE);
-    
+#endif
     return false;
 }
 
@@ -388,8 +391,9 @@ void SGPEConflictRemover::postvisit(StringGraph* pGraph)
 // detailing how much overlap there is between both end of a paired
 // read.
 //
-bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* /*pVertex*/)
 {
+#if 0
     Vertex* pPairSV = pVertex->getPairVertex();
     if(pPairSV == NULL)
         return false;
@@ -423,6 +427,7 @@ bool SGPairedOverlapVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
             }
         }
     }
+#endif
     return false;
 }
 

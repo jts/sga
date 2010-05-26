@@ -146,7 +146,7 @@ class Edge
             return SimpleAllocator<Edge>::Instance()->alloc();
         }
         
-          void operator delete(void* target, size_t /*size*/)
+        void operator delete(void* target, size_t /*size*/)
         {
             SimpleAllocator<Edge>::Instance()->dealloc(target);
         }

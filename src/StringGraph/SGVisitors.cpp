@@ -19,7 +19,7 @@
 bool SGFastaVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
     m_fileHandle << ">" << pVertex->getID() << " " <<  pVertex->getSeq().length() 
-                 << " " << pVertex->getReadCount() << "\n";
+                 << " " << 0 << "\n";
     m_fileHandle << pVertex->getSeq() << "\n";
     return false;
 }
