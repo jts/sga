@@ -33,7 +33,7 @@ class OverlapProcess
         const int m_minOverlap;
 };
 
-// Write the results from the overlap step to 
+// Write the results from the overlap step to an ASQG file
 class OverlapPostProcess
 {
     public:

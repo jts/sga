@@ -148,7 +148,7 @@ size_t processSequencesParallel(const std::string& readsFile, std::vector<Proces
                 }
 
                 if(numWrote % (MAX_ITEMS * numThreads * 4) == 0)
-                    std::cout << "Processed " << numWrote << "\n";
+                    printf("[sga] Processed %zu sequences\n", numWrote);
 
                 // This should never loop more than twice
                 assert(numLoops < 2);

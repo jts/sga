@@ -4,8 +4,7 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// OverlapCommon - Common wrapper used for computing overlaps
-// for a set of reads
+// OverlapCommon - Common functions used in overlap methods
 //
 #ifndef OVERLAPCOMMON_H
 #define OVERLAPCOMMON_H
@@ -13,30 +12,11 @@
 #include "Util.h"
 #include "overlap.h"
 #include "SuffixArray.h"
-#include "BWT.h"
-#include "LCPArray.h"
 #include "SGACommon.h"
 #include "Timer.h"
-#include "BWTAlgorithms.h"
-#include "AssembleExact.h"
-#include "OverlapThread.h"
-#include "ASQG.h"
 
 namespace OverlapCommon
 {
-
-// overlap computation
-size_t computeHitsSerial(const std::string& prefix, const std::string& readsFile, 
-                         const OverlapAlgorithm* pOverlapper, OverlapMode mode,
-                         int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
-
-size_t computeHitsSerial2(const std::string& prefix, const std::string& readsFile, 
-                          const OverlapAlgorithm* pOverlapper, OverlapMode mode,
-                          int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
-
-size_t computeHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
-                           const OverlapAlgorithm* pOverlapper, OverlapMode mode,
-                           int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
 
 void parseHitsString(const std::string& hitString, 
                      const ReadTable* pFwdRT, 

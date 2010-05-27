@@ -14,6 +14,15 @@
 #include "Timer.h"
 #include "SGACommon.h"
 #include "OverlapCommon.h"
+#include "SequenceProcessFramework.h"
+#include "RmdupProcess.h"
+
+// functions
+size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& readsFile, 
+                              const OverlapAlgorithm* pOverlapper, StringVector& filenameVec);
+ 
+size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
+                                const OverlapAlgorithm* pOverlapper, StringVector& filenameVec);
 
 //
 // Getopt
@@ -75,6 +84,8 @@ int rmdupMain(int argc, char** argv)
     rmdup();
     delete pTimer;
 
+    if(opt::numThreads > 1)
+        pthread_exit(NULL);
     return 0;
 }
 
@@ -91,19 +102,76 @@ void rmdup()
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
-        count = OverlapCommon::computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, OM_FULLREAD, 0, hitsFilenames, NULL);
+        count = computeRmdupHitsSerial(opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
     }
     else
     {
         printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        count = OverlapCommon::computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, OM_FULLREAD, 0, hitsFilenames, NULL);
+        count = computeRmdupHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
     }
     double align_time_secs = pTimer->getElapsedWallTime();
     printf("[%s] aligned %zu sequences in %lfs (%lf sequences/s)\n", 
             PROGRAM_IDENT, count, align_time_secs, (double)count / align_time_secs);
 
+    delete pOverlapper;
+    delete pBWT; 
+    delete pRBWT;
+    delete pTimer;
 
     parseDupHits(hitsFilenames);
+}
+
+// Compute the hits for each read in the input file without threading
+// Return the number of reads processed
+size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& readsFile, 
+                              const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
+{
+    std::cout << "using new template hit func\n";
+    std::string filename = prefix + HITS_EXT + GZIP_EXT;
+    filenameVec.push_back(filename);
+
+    RmdupProcess processor(filename, pOverlapper);
+    RmdupPostProcess postProcessor;
+
+    size_t numProcessed = 
+           SequenceProcessFramework::processSequencesSerial<OverlapResult, 
+                                                            RmdupProcess, 
+                                                            RmdupPostProcess>(readsFile, &processor, &postProcessor);
+    return numProcessed;
+}
+
+// Compute the hits for each read in the SeqReader file with threading
+// The way this works is we create a vector of numThreads OverlapProcess pointers and 
+// pass this to the SequenceProcessFragmework which wraps the processes
+// in threads and distributes the reads to each thread.
+// The number of reads processsed is returned
+size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
+                                const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
+{
+    std::cout << "using new template hit func parallel\n";
+    std::string filename = prefix + HITS_EXT + GZIP_EXT;
+
+    std::vector<RmdupProcess*> processorVector;
+    for(int i = 0; i < numThreads; ++i)
+    {
+        std::stringstream ss;
+        ss << prefix << "-thread" << i << HITS_EXT << GZIP_EXT;
+        std::string outfile = ss.str();
+        filenameVec.push_back(outfile);
+        RmdupProcess* pProcessor = new RmdupProcess(outfile, pOverlapper);
+        processorVector.push_back(pProcessor);
+    }
+
+    // The post processing is performed serially so only one post processor is created
+    RmdupPostProcess postProcessor;
+    
+    size_t numProcessed = 
+           SequenceProcessFramework::processSequencesParallel<OverlapResult, 
+                                                              RmdupProcess, 
+                                                              RmdupPostProcess>(readsFile, processorVector, &postProcessor);
+    for(int i = 0; i < numThreads; ++i)
+        delete processorVector[i];
+    return numProcessed;
 }
 
 void parseDupHits(const StringVector& hitsFilenames)

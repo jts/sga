@@ -16,11 +16,10 @@
 #include "BWT.h"
 #include "LCPArray.h"
 #include "SGACommon.h"
+#include "OverlapCommon.h"
 #include "Timer.h"
 #include "BWTAlgorithms.h"
 #include "AssembleExact.h"
-#include "OverlapThread.h"
-#include "OverlapCommon.h"
 #include "ASQG.h"
 #include "gzstream.h"
 #include "SequenceProcessFramework.h"
@@ -210,7 +209,6 @@ size_t computeHitsParallel(int numThreads, const std::string& prefix, const std:
         std::string outfile = ss.str();
         filenameVec.push_back(outfile);
         OverlapProcess* pProcessor = new OverlapProcess(outfile, pOverlapper, minOverlap);
-        
         processorVector.push_back(pProcessor);
     }
 
@@ -219,8 +217,8 @@ size_t computeHitsParallel(int numThreads, const std::string& prefix, const std:
     
     size_t numProcessed = 
            SequenceProcessFramework::processSequencesParallel<OverlapResult, 
-                                                            OverlapProcess, 
-                                                            OverlapPostProcess>(readsFile, processorVector, &postProcessor);
+                                                              OverlapProcess, 
+                                                              OverlapPostProcess>(readsFile, processorVector, &postProcessor);
     for(int i = 0; i < numThreads; ++i)
         delete processorVector[i];
     return numProcessed;
