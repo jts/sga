@@ -42,16 +42,16 @@ class OverlapAlgorithm
 
         // Perform the overlap
         // This function is threaded so everything must be const
-        OverlapResult overlapRead(const SeqRecord& read, int m_minOverlap, OverlapBlockList* pOutList) const;
+        OverlapResult overlapRead(const SeqRecord& read, int minOverlap, OverlapBlockList* pOutList) const;
     
         // Perform an irreducible overlap
-        OverlapResult overlapReadExact(const SeqRecord& read, int m_minOverlap, OverlapBlockList* pOBOut) const;
+        OverlapResult overlapReadExact(const SeqRecord& read, int minOverlap, OverlapBlockList* pOBOut) const;
 
         // Find duplicate blocks for this read
         OverlapResult alignReadDuplicate(const SeqRecord& read, OverlapBlockList* pOBOut) const;
 
         // Perform an inexact overlap
-        OverlapResult overlapReadInexact(const SeqRecord& read, int m_minOverlap, OverlapBlockList* pOBOut) const;
+        OverlapResult overlapReadInexact(const SeqRecord& read, int minOverlap, OverlapBlockList* pOBOut) const;
 
         // Write the result of an overlap to an ASQG file
         void writeResultASQG(std::ostream& writer, const SeqRecord& read, const OverlapResult& result) const;

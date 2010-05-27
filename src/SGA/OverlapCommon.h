@@ -30,6 +30,10 @@ size_t computeHitsSerial(const std::string& prefix, const std::string& readsFile
                          const OverlapAlgorithm* pOverlapper, OverlapMode mode,
                          int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
 
+size_t computeHitsSerial2(const std::string& prefix, const std::string& readsFile, 
+                          const OverlapAlgorithm* pOverlapper, OverlapMode mode,
+                          int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);
+
 size_t computeHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
                            const OverlapAlgorithm* pOverlapper, OverlapMode mode,
                            int minOverlap, StringVector& filenameVec, std::ostream* pASQGWriter);

@@ -8,6 +8,7 @@
 // for a set of reads
 //
 #include "OverlapCommon.h"
+#include "ThreadWorker.h"
 
 // Compute the hits for each read in the SeqReader file without threading
 // Return the number of reads processed

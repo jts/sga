@@ -7,4 +7,5 @@ libconcurrency_a_CPPFLAGS = \
 	-I$(top_srcdir)/Algorithm
 
 libconcurrency_a_SOURCES = \
-		OverlapThread.h OverlapThread.cpp
+		OverlapThread.h OverlapThread.cpp \
+        OverlapProcesss.h OverlapProcess.cpp

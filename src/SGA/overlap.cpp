@@ -23,12 +23,24 @@
 #include "OverlapCommon.h"
 #include "ASQG.h"
 #include "gzstream.h"
+#include "SequenceProcessFramework.h"
+#include "OverlapProcess.h"
 
+//
 enum OutputType
 {
     OT_ASQG,
     OT_RAW
 };
+
+// Functions
+size_t computeHitsSerial(const std::string& prefix, const std::string& readsFile, 
+                         const OverlapAlgorithm* pOverlapper, int minOverlap, 
+                         StringVector& filenameVec, std::ostream* pASQGWriter);
+
+size_t computeHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
+                           const OverlapAlgorithm* pOverlapper, int minOverlap, 
+                           StringVector& filenameVec, std::ostream* pASQGWriter);
 
 //
 // Getopt
@@ -131,12 +143,12 @@ int overlapMain(int argc, char** argv)
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
-        count = OverlapCommon::computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, OM_OVERLAP, opt::minOverlap, hitsFilenames, pASQGWriter);
+        count = computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
     else
     {
         printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        count = OverlapCommon::computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, OM_OVERLAP, opt::minOverlap, hitsFilenames, pASQGWriter);
+        count = computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
     double align_time_secs = pTimer->getElapsedWallTime();
     printf("[%s] aligned %zu sequences in %lfs (%lf sequences/s)\n", 
@@ -156,6 +168,62 @@ int overlapMain(int argc, char** argv)
         pthread_exit(NULL);
 
     return 0;
+}
+
+// Compute the hits for each read in the input file without threading
+// Return the number of reads processed
+size_t computeHitsSerial(const std::string& prefix, const std::string& readsFile, 
+                         const OverlapAlgorithm* pOverlapper, int minOverlap, 
+                         StringVector& filenameVec, std::ostream* pASQGWriter)
+{
+    std::cout << "using new template hit func\n";
+    std::string filename = prefix + HITS_EXT + GZIP_EXT;
+    filenameVec.push_back(filename);
+
+    OverlapProcess processor(filename, pOverlapper, minOverlap);
+    OverlapPostProcess postProcessor(pASQGWriter, pOverlapper);
+
+    size_t numProcessed = 
+           SequenceProcessFramework::processSequencesSerial<OverlapResult, 
+                                                            OverlapProcess, 
+                                                            OverlapPostProcess>(readsFile, &processor, &postProcessor);
+    return numProcessed;
+}
+
+// Compute the hits for each read in the SeqReader file with threading
+// The way this works is we create a vector of numThreads OverlapProcess pointers and 
+// pass this to the SequenceProcessFragmework which wraps the processes
+// in threads and distributes the reads to each thread.
+// The number of reads processsed is returned
+size_t computeHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
+                           const OverlapAlgorithm* pOverlapper, int minOverlap, 
+                           StringVector& filenameVec, std::ostream* pASQGWriter)
+{
+    std::cout << "using new template hit func parallel\n";
+    std::string filename = prefix + HITS_EXT + GZIP_EXT;
+
+    std::vector<OverlapProcess*> processorVector;
+    for(int i = 0; i < numThreads; ++i)
+    {
+        std::stringstream ss;
+        ss << prefix << "-thread" << i << HITS_EXT << GZIP_EXT;
+        std::string outfile = ss.str();
+        filenameVec.push_back(outfile);
+        OverlapProcess* pProcessor = new OverlapProcess(outfile, pOverlapper, minOverlap);
+        
+        processorVector.push_back(pProcessor);
+    }
+
+    // The post processing is performed serially so only one post processor is created
+    OverlapPostProcess postProcessor(pASQGWriter, pOverlapper);
+    
+    size_t numProcessed = 
+           SequenceProcessFramework::processSequencesParallel<OverlapResult, 
+                                                            OverlapProcess, 
+                                                            OverlapPostProcess>(readsFile, processorVector, &postProcessor);
+    for(int i = 0; i < numThreads; ++i)
+        delete processorVector[i];
+    return numProcessed;
 }
 
 //
