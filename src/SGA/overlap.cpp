@@ -172,7 +172,6 @@ size_t computeHitsSerial(const std::string& prefix, const std::string& readsFile
                          const OverlapAlgorithm* pOverlapper, int minOverlap, 
                          StringVector& filenameVec, std::ostream* pASQGWriter)
 {
-    std::cout << "using new template hit func\n";
     std::string filename = prefix + HITS_EXT + GZIP_EXT;
     filenameVec.push_back(filename);
 
@@ -195,7 +194,6 @@ size_t computeHitsParallel(int numThreads, const std::string& prefix, const std:
                            const OverlapAlgorithm* pOverlapper, int minOverlap, 
                            StringVector& filenameVec, std::ostream* pASQGWriter)
 {
-    std::cout << "using new template hit func parallel\n";
     std::string filename = prefix + HITS_EXT + GZIP_EXT;
 
     std::vector<OverlapProcess*> processorVector;
