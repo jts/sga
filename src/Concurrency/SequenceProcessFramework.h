@@ -23,15 +23,15 @@ struct SequenceWorkItem
 namespace SequenceProcessFramework
 {
 
-// Framework for performing some processing on every sequence in a file
+// Process n sequences from a file. With the default value of -1, n becomes the largest value representable for
+// a size_t and all values will be read
 template<class Output, class Processor, class PostProcessor>
-size_t processSequencesSerial(const std::string& readsFile, Processor* pProcessor, PostProcessor* pPostProcessor)
+size_t processSequencesSerial(SeqReader& reader, Processor* pProcessor, PostProcessor* pPostProcessor, size_t n = -1)
 {
     Timer timer("SequenceProcess", true);
-    SeqReader reader(readsFile);
     SeqRecord read;
     size_t currIdx = 0;
-    while(reader.get(read))
+    while(reader.get(read) && currIdx < n)
     {
         SequenceWorkItem workItem(currIdx++, read);
         Output output = pProcessor->process(workItem);
@@ -47,6 +47,14 @@ size_t processSequencesSerial(const std::string& readsFile, Processor* pProcesso
     return currIdx;
 }
 
+// Framework for performing some processing on every sequence in a file
+template<class Output, class Processor, class PostProcessor>
+size_t processSequencesSerial(const std::string& readsFile, Processor* pProcessor, PostProcessor* pPostProcessor)
+{
+    SeqReader reader(readsFile);
+    return processSequencesSerial<Output, Processor, PostProcessor>(reader, pProcessor, pPostProcessor);
+}
+
 // Design:
 // This function is a generic function to read in sequences from
 // a file and perform some work on them. The actual processing is done
@@ -57,9 +65,10 @@ size_t processSequencesSerial(const std::string& readsFile, Processor* pProcesso
 // The function reads in a batch of sequences from a file and buffers
 // them. Once the buffers are full, the reads are dispatched to the thread
 // which run the actual processing independently. An optional post processor
-// can be specified to process the results that the threads return.
+// can be specified to process the results that the threads return. If the n
+// parameter is used, at most n sequences will be read from the file
 template<class Output, class Processor, class PostProcessor>
-size_t processSequencesParallel(const std::string& readsFile, std::vector<Processor*> processPtrVector, PostProcessor* pPostProcessor)
+size_t processSequencesParallel(SeqReader& reader, std::vector<Processor*> processPtrVector, PostProcessor* pPostProcessor, size_t n = -1)
 {
     Timer timer("SequenceProcess", true);
     
@@ -108,13 +117,12 @@ size_t processSequencesParallel(const std::string& readsFile, std::vector<Proces
     int next_thread = 0;
     int num_buffers_full = 0;
 
-    SeqReader reader(readsFile);
     SeqRecord read;
     while(!done)
     {
         // Parse reads from the stream and add them into the incoming buffers
-        done = !reader.get(read);
-        if(!done)
+        bool valid = reader.get(read);
+        if(valid)
         {
             inputBuffers[next_thread]->push_back(SequenceWorkItem(numRead++, read));
             if(inputBuffers[next_thread]->size() == MAX_ITEMS)
@@ -124,6 +132,8 @@ size_t processSequencesParallel(const std::string& readsFile, std::vector<Proces
             }
         }
         
+        done = !valid || numRead == n;
+
         // Once all buffers are full or the input is finished, dispatch the reads to the threads
         // by swapping work buffers. 
         if(num_buffers_full == numThreads || done)
@@ -181,11 +191,20 @@ size_t processSequencesParallel(const std::string& readsFile, std::vector<Proces
         assert(outputBuffers[i]->empty());
         delete outputBuffers[i];
     }
-    
+    assert(numRead <= n);
+    assert(numWrote <= n);
+
     double proc_time_secs = timer.getElapsedWallTime();
     printf("[sga::process] processed %zu sequences in %lfs (%lf sequences/s)\n", 
             numWrote, proc_time_secs, (double)numWrote / proc_time_secs);
     return numWrote;
+}
+
+template<class Output, class Processor, class PostProcessor>
+size_t processSequencesParallel(const std::string& readsFile, std::vector<Processor*> processPtrVector, PostProcessor* pPostProcessor)
+{
+    SeqReader reader(readsFile);
+    return processSequencesParallel<Output, Processor, PostProcessor>(reader, processPtrVector, pPostProcessor);
 }
 
 };
