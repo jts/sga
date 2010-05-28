@@ -8,6 +8,8 @@
 // some operations on all sequneces in a file, serially or in parallel
 //
 #include "ThreadWorker.h"
+#include "Timer.h"
+
 #ifndef SEQUENCEPROCESSFRAMEWORK_H
 #define SEQUENCEPROCESSFRAMEWORK_H
 
@@ -25,6 +27,7 @@ namespace SequenceProcessFramework
 template<class Output, class Processor, class PostProcessor>
 size_t processSequencesSerial(const std::string& readsFile, Processor* pProcessor, PostProcessor* pPostProcessor)
 {
+    Timer timer("SequenceProcess", true);
     SeqReader reader(readsFile);
     SeqRecord read;
     size_t currIdx = 0;
@@ -37,6 +40,10 @@ size_t processSequencesSerial(const std::string& readsFile, Processor* pProcesso
         if(currIdx % 50000 == 0)
             printf("[sga] Processed %zu sequences\n", currIdx);            
     }
+
+    double proc_time_secs = timer.getElapsedWallTime();
+    printf("[sga::process] processed %zu sequences in %lfs (%lf sequences/s)\n", 
+            currIdx, proc_time_secs, (double)currIdx / proc_time_secs);    
     return currIdx;
 }
 
@@ -54,6 +61,8 @@ size_t processSequencesSerial(const std::string& readsFile, Processor* pProcesso
 template<class Output, class Processor, class PostProcessor>
 size_t processSequencesParallel(const std::string& readsFile, std::vector<Processor*> processPtrVector, PostProcessor* pPostProcessor)
 {
+    Timer timer("SequenceProcess", true);
+    
     // The number of items to buffer before dispatching to the threads
     size_t MAX_ITEMS = 1000;
     
@@ -172,6 +181,10 @@ size_t processSequencesParallel(const std::string& readsFile, std::vector<Proces
         assert(outputBuffers[i]->empty());
         delete outputBuffers[i];
     }
+    
+    double proc_time_secs = timer.getElapsedWallTime();
+    printf("[sga::process] processed %zu sequences in %lfs (%lf sequences/s)\n", 
+            numWrote, proc_time_secs, (double)numWrote / proc_time_secs);
     return numWrote;
 }
 

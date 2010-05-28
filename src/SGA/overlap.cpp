@@ -149,9 +149,6 @@ int overlapMain(int argc, char** argv)
         printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
         count = computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
-    double align_time_secs = pTimer->getElapsedWallTime();
-    printf("[%s] aligned %zu sequences in %lfs (%lf sequences/s)\n", 
-            PROGRAM_IDENT, count, align_time_secs, (double)count / align_time_secs);
 
     delete pOverlapper;
     delete pBWT; 
