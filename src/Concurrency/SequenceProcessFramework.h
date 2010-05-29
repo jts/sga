@@ -9,16 +9,10 @@
 //
 #include "ThreadWorker.h"
 #include "Timer.h"
+#include "SequenceWorkItem.h"
 
 #ifndef SEQUENCEPROCESSFRAMEWORK_H
 #define SEQUENCEPROCESSFRAMEWORK_H
-
-struct SequenceWorkItem
-{
-    SequenceWorkItem(size_t ri, const SeqRecord& sr) : idx(ri), read(sr) {}
-    size_t idx;
-    SeqRecord read;
-};
 
 namespace SequenceProcessFramework
 {
@@ -30,21 +24,21 @@ size_t processSequencesSerial(SeqReader& reader, Processor* pProcessor, PostProc
 {
     Timer timer("SequenceProcess", true);
     SeqRecord read;
-    size_t currIdx = 0;
-    while(reader.get(read) && currIdx < n)
+    size_t numProcessed = 0;
+    while(numProcessed < n && reader.get(read))
     {
-        SequenceWorkItem workItem(currIdx++, read);
+        SequenceWorkItem workItem(numProcessed++, read);
         Output output = pProcessor->process(workItem);
         
         pPostProcessor->process(workItem, output);
-        if(currIdx % 50000 == 0)
-            printf("[sga] Processed %zu sequences\n", currIdx);            
+        if(numProcessed % 50000 == 0)
+            printf("[sga] Processed %zu sequences\n", numProcessed);            
     }
 
     double proc_time_secs = timer.getElapsedWallTime();
     printf("[sga::process] processed %zu sequences in %lfs (%lf sequences/s)\n", 
-            currIdx, proc_time_secs, (double)currIdx / proc_time_secs);    
-    return currIdx;
+            numProcessed, proc_time_secs, (double)numProcessed / proc_time_secs);    
+    return numProcessed;
 }
 
 // Framework for performing some processing on every sequence in a file
@@ -166,7 +160,7 @@ size_t processSequencesParallel(SeqReader& reader, std::vector<Processor*> proce
                     outputBuffers[i]->clear();
                 }
 
-                if(numWrote % (MAX_ITEMS * numThreads * 4) == 0)
+                if(numWrote % (50 * MAX_ITEMS * numThreads) == 0)
                     printf("[sga] Processed %zu sequences\n", numWrote);
 
                 // This should never loop more than twice

@@ -15,9 +15,11 @@
 #include "BWTReader.h"
 #include "SAWriter.h"
 #include "SAReader.h"
+#include "GapArray.h"
+#include "RankProcess.h"
+#include "SequenceProcessFramework.h"
 
 // Definitions and structures
-typedef uint32_t GAP_TYPE;
 static const bool USE_GZ = false;
 struct MergeItem
 {
@@ -40,20 +42,15 @@ typedef std::vector<MergeItem> MergeVector;
 int64_t merge(SeqReader* pReader, 
               const MergeItem& item1, const MergeItem& item2, 
               const std::string& bwt_outname, const std::string& sai_outname,
-              bool doReverse);
+              bool doReverse, int numThreads);
 
 
 //
 void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
                       const MergeItem& internalItem, const std::string& bwt_outname,
-                      const std::string& sai_outname, const std::vector<GAP_TYPE>& gap_array);
+                      const std::string& sai_outname, const GapArray& gap_array);
 
 //
-void updateGapArray(const DNAString& w, const BWT* pBWTInternal, 
-                    std::vector<GAP_TYPE>& gap_array);
-
-//
-inline void incrementGapArray(int64_t rank, std::vector<GAP_TYPE>& gap_array);
 std::string makeTempName(const std::string& prefix, int id, const std::string& extension);
 std::string makeFilename(const std::string& prefix, const std::string& extension);
 
@@ -64,9 +61,9 @@ std::string makeFilename(const std::string& prefix, const std::string& extension
 // to create the final BWT
 void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
                   const std::string& bwt_extension, const std::string& sai_extension,
-                  bool doReverse)
+                  bool doReverse, int numThreads)
 {
-    size_t MAX_READS_PER_GROUP = 2000000;
+    size_t MAX_READS_PER_GROUP = 500000;
 
     SeqReader* pReader = new SeqReader(in_filename);
     SeqRecord record;
@@ -109,7 +106,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
             pSA->writeIndex(sai_temp_filename);
 
             // Push the merge info
-            mergeItem.end_index = numReadTotal - 1;
+            mergeItem.end_index = numReadTotal - 1; // inclusive
             mergeItem.reads_filename = in_filename;
             mergeItem.bwt_filename = bwt_temp_filename;
             mergeItem.sai_filename = sai_temp_filename;
@@ -148,7 +145,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
                 // Perform the actual merge
                 int64_t curr_idx = merge(pReader, item1, item2, 
                                          bwt_merged_name, sai_merged_name, 
-                                         doReverse);
+                                         doReverse, numThreads);
 
                 // pReader now points to the end of item1's block of 
                 // reads. Skip item2's reads
@@ -204,7 +201,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 // Merge the indices for the two independent sets of reads in readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
                              const std::string& outPrefix, const std::string& bwt_extension, 
-                             const std::string& sai_extension, bool doReverse)
+                             const std::string& sai_extension, bool doReverse, int numThreads)
 {
     MergeItem item1;
     std::string prefix1 = stripFilename(readsFile1);
@@ -230,7 +227,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     std::string sai_merged_name = makeFilename(outPrefix, sai_extension);
 
     // Perform the actual merge
-    merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse);
+    merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse, numThreads);
     delete pReader;
 }
 
@@ -268,6 +265,75 @@ void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2
 int64_t merge(SeqReader* pReader,
               const MergeItem& item1, const MergeItem& item2,
               const std::string& bwt_outname, const std::string& sai_outname,
+              bool doReverse, int numThreads)
+{
+    std::cout << "Merge1: " << item1 << "\n";
+    std::cout << "Merge2: " << item2 << "\n";
+
+    // Load the bwt of item2 into memory as the internal bwt
+    BWT* pBWTInternal = new BWT(item2.bwt_filename);
+
+    // Create the gap array
+    size_t gap_array_size = pBWTInternal->getBWLen() + 1;
+    GapArray gap_array(gap_array_size, 0);
+
+    // Calculate the rank of every read from item1.start_index to item1.end_index
+    // and increment the gap counts
+    int64_t curr_idx = item1.start_index;
+
+    // If end_index is -1, calculate the ranks for every sequence in the file
+    // otherwise only calculate the rank for the next (end_index - start_index + 1) sequences
+    size_t n = (item1.end_index == -1) ? -1 : item1.end_index - item1.start_index + 1;
+
+    // The rank processor calculates the rank of every suffix of a given sequence
+    // and returns a vector of ranks. The postprocessor takes in the vector
+    // and updates the gap array
+    RankPostProcess postProcessor(&gap_array);
+    size_t numProcessed = 0;
+    if(numThreads <= 1)
+    {
+        RankProcess processor(pBWTInternal, doReverse);
+
+        numProcessed = 
+           SequenceProcessFramework::processSequencesSerial<RankVector, 
+                                                            RankProcess, 
+                                                            RankPostProcess>(*pReader, &processor, &postProcessor, n);
+    }
+    else
+    {
+        typedef std::vector<RankProcess*> RankProcessVector;
+        RankProcessVector rankProcVec;
+        for(int i = 0; i < numThreads; ++i)
+        {
+            RankProcess* pProcess = new RankProcess(pBWTInternal, doReverse);
+            rankProcVec.push_back(pProcess);
+        }
+    
+        numProcessed = 
+           SequenceProcessFramework::processSequencesParallel<RankVector, 
+                                                              RankProcess, 
+                                                              RankPostProcess>(*pReader, rankProcVec, &postProcessor, n);
+
+        for(int i = 0; i < numThreads; ++i)
+            delete rankProcVec[i];
+    }
+
+    assert(n == (size_t)-1 || (numProcessed == n));
+    // At this point, the gap array has been calculated for all the sequences
+    curr_idx += numProcessed;
+    assert(item1.end_index == -1 || (curr_idx == item1.end_index + 1 && curr_idx == item2.start_index));
+
+    // Write the merged BWT/SAI to disk
+    writeMergedIndex(pBWTInternal, item1, item2, bwt_outname, sai_outname, gap_array);
+    delete pBWTInternal;
+    return curr_idx;
+}
+
+// Merge a pair of BWTs using disk storage
+// Precondition: pReader is positioned at the start of the read block for item1
+int64_t mergeOld(SeqReader* pReader,
+              const MergeItem& item1, const MergeItem& item2,
+              const std::string& bwt_outname, const std::string& sai_outname,
               bool doReverse)
 {
     std::cout << "Merge1: " << item1 << "\n";
@@ -278,7 +344,7 @@ int64_t merge(SeqReader* pReader,
 
     // Create the gap array
     size_t gap_array_size = pBWTInternal->getBWLen() + 1;
-    std::vector<GAP_TYPE> gap_array(gap_array_size, 0);
+    GapArray gap_array(gap_array_size, 0);
 
     // Calculate the rank of every read from item1.start_index to item1.end_index
     // and increment the gap counts
@@ -310,7 +376,7 @@ int64_t merge(SeqReader* pReader,
 // Merge the internal and external BWTs and the SAIs
 void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
                       const MergeItem& internalItem, const std::string& bwt_outname,
-                      const std::string& sai_outname, const std::vector<GAP_TYPE>& gap_array)
+                      const std::string& sai_outname, const GapArray& gap_array)
 {
     BWTWriter bwtWriter(bwt_outname);
     BWTReader bwtExtReader(externalItem.bwt_filename);
@@ -395,45 +461,6 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
     assert(last == '\n');
     // Write a newline to finish the bwstr section
     bwtWriter.writeBWChar('\n');
-}
-
-
-// Increment the gap array for each suffix of seq
-void updateGapArray(const DNAString& w, const BWT* pBWTInternal, std::vector<GAP_TYPE>& gap_array)
-{
-    size_t l = w.length();
-    int i = l - 1;
-
-    // Compute the rank of the last character of seq. We consider $ to be implicitly
-    // terminated by a $ character. The first rank calculated is for this and it is given
-    // by the C(a) array in BWTInternal
-    int64_t rank = pBWTInternal->getPC('$'); // always zero
-    incrementGapArray(rank, gap_array);
-
-    // Compute the starting rank for the last symbol of w
-    char c = w.get(i);
-    rank = pBWTInternal->getPC(c);
-    incrementGapArray(rank, gap_array);
-    --i;
-
-    // Iteratively compute the remaining ranks
-    while(i >= 0)
-    {
-        char c = w.get(i);
-        rank = pBWTInternal->getPC(c) + pBWTInternal->getOcc(c, rank - 1);
-        //std::cout << "c: " << c << " rank: " << rank << "\n";
-        incrementGapArray(rank, gap_array);
-        --i;
-    }
-}
-
-//
-void incrementGapArray(int64_t rank, std::vector<GAP_TYPE>& gap_array)
-{
-    static size_t max_gap_count = std::numeric_limits<GAP_TYPE>::max();
-    assert(gap_array[rank] < max_gap_count);
-    assert(rank < (int64_t)gap_array.size());
-    ++gap_array[rank];
 }
 
 //

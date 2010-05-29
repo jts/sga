@@ -10,8 +10,8 @@
 // and Compression in External Memory
 //
 // This implementation does not strictly follow 
-// their method but is refined to handle
-// vast numbers of short strings
+// their method but is modified to handle
+// large numbers of short strings
 #ifndef BWTDISKCONSTRUCTION_H
 #define BWTDISKCONSTRUCTION_H
 
@@ -22,12 +22,12 @@
 // using the disk storage algorithm
 void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
                   const std::string& bwt_extension, const std::string& sai_extension,
-                  bool doReverse);
+                  bool doReverse, int numThreads);
 
 // Merge the indices for the readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
                              const std::string& outPrefix, const std::string& bwt_extension, 
-                             const std::string& sai_extension, bool doReverse);
+                             const std::string& sai_extension, bool doReverse, int numThreads);
 
 //
 void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2, const std::string& outPrefix);

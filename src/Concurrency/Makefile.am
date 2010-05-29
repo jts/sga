@@ -8,4 +8,4 @@ libconcurrency_a_CPPFLAGS = \
 
 libconcurrency_a_SOURCES = \
         OverlapProcesss.h OverlapProcess.cpp \
-        RmdupProcess.h RmdupProcess.cpp
+        RmdupProcess.h RmdupProcess.cpp 

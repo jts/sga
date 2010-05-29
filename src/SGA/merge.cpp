@@ -35,6 +35,7 @@ static const char *MERGE_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
+"  -t, --threads=NUM                    use NUM threads to merge the indices (default: 1)\n"
 "  -p, --prefix=PREFIX                  write final index to file using PREFIX (the default is to concatenate the input filenames)\n"
 "  -r, --remove                         remove the original BWT, SAI and reads files after the merge\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -43,10 +44,11 @@ namespace opt
 {
     static unsigned int verbose;
     static std::string prefix;
+    static int numThreads = 1;
     static bool bRemove;
 }
 
-static const char* shortopts = "p:m:vr";
+static const char* shortopts = "p:m:t:vr";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -54,6 +56,7 @@ static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
     { "prefix",      required_argument, NULL, 'p' },
     { "remove",      no_argument,       NULL, 'r' },
+    { "threads",     required_argument, NULL, 't' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -82,8 +85,8 @@ int mergeMain(int argc, char** argv)
     }
 
     // Merge the forward and reverse indices
-    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false);
-    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true);
+    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
+    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
 
     // Merge the read files
     mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
@@ -128,6 +131,7 @@ void parseMergeOptions(int argc, char** argv)
             case 'p': arg >> opt::prefix; break;
             case 'r': opt::bRemove = true; break;
             case '?': die = true; break;
+            case 't': arg >> opt::numThreads; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
                 std::cout << MERGE_USAGE_MESSAGE;
@@ -137,6 +141,12 @@ void parseMergeOptions(int argc, char** argv)
                 exit(EXIT_SUCCESS);
         }
     }
+
+    if(opt::numThreads <= 0)
+    {
+        std::cerr << SUBPROGRAM ": invalid number of threads: " << opt::numThreads << "\n";
+        die = true;
+    }    
 
     if (argc - optind < 1) 
     {
