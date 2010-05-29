@@ -63,7 +63,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
                   const std::string& bwt_extension, const std::string& sai_extension,
                   bool doReverse, int numThreads)
 {
-    size_t MAX_READS_PER_GROUP = 500000;
+    size_t MAX_READS_PER_GROUP = 2000000;
 
     SeqReader* pReader = new SeqReader(in_filename);
     SeqRecord record;
