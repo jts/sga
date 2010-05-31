@@ -54,7 +54,7 @@ typedef std::vector<PathScore> PathScoreVector;
 class SeqTrie
 {
     // Internal datastructures
-    struct Node;
+    class Node;
     struct Link
     {
         // functions

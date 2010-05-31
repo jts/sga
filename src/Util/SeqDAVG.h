@@ -18,7 +18,7 @@ class SeqDAVG
 {
     public:
         // Internal datastructures
-        struct Node;
+        class Node;
         struct Link
         {
             // functions
