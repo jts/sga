@@ -297,7 +297,7 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
                     if(probe.interval[1].isValid())
                     {
                         assert(probe.interval[1].lower > 0);
-                        OverlapBlock nBlock(OverlapBlock(probe, overlapLen, align.z, af, align.historyLink->getHistoryVector()));
+                        OverlapBlock nBlock(probe, overlapLen, align.z, af, align.historyLink->getHistoryVector());
                         if(overlapLen == len)
                             fullWorkingList.push_back(nBlock);
                         else
