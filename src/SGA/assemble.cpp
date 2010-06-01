@@ -149,7 +149,6 @@ void assemble()
     while(pGraph->hasContainment())
     {
         pGraph->visit(containVisit);
-        pGraph->writeASQG("afterCR.asqg.gz");
     }
 
     // Pre-assembly graph stats

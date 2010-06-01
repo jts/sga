@@ -369,71 +369,7 @@ void CompleteOverlapSet::partitionOverlaps(SGAlgorithms::EdgeDescOverlapMap* pIr
     }
 
     // Stage 2, remove transitive edges
-    SGAlgorithms::EDOPairQueue overlapQueue;
-    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = workingMap.begin();
-        iter != workingMap.end(); ++iter)
-    {
-        overlapQueue.push(*iter);
-    }
-
-    // Traverse the list of overlaps in order of length and move elements from
-    // the irreducible map to the transitive map
-    while(!overlapQueue.empty())
-    {
-        SGAlgorithms::EdgeDescOverlapPair edoPair = overlapQueue.top();
-        overlapQueue.pop();
-
-        EdgeDesc& edXY = edoPair.first;
-        Overlap& ovrXY = edoPair.second;
-
-        assert(!ovrXY.match.isContainment());
-
-        SGAlgorithms::EdgeDescOverlapMap::iterator iter = workingMap.begin();
-        while(iter != workingMap.end())
-        {
-            bool move = false;
-            const EdgeDesc& edXZ = iter->first;
-            const Overlap& ovrXZ = iter->second;
-            m_cost++;
-            // Four conditions must be met to mark an edge X->Z transitive through X->Y
-            // 1) The overlaps must be in the same direction
-            // 2) The overlap X->Y must be strictly longer than X->Z
-            // 3) The overlap between Y->Z must not be a containment
-            // 4) The overlap between Y->Z must be within the error and length thresholds
-            if(!(edXZ == edXY) && edXY.dir == edXZ.dir && ovrXY.getOverlapLength(0) > ovrXZ.getOverlapLength(0))
-            {
-                // Infer the YZ overlap
-                Overlap ovrYX = ovrXY;
-                ovrYX.swap();
-
-                Overlap ovrYZ = SGAlgorithms::inferTransitiveOverlap(ovrYX, ovrXZ);
-                if(!ovrYZ.match.isContainment())
-                {  
-                    // Compute the error rate between the sequences
-                    double error_rate = SGAlgorithms::calcErrorRate(edXY.pVertex, edXZ.pVertex, ovrYZ);
-                    
-                    //std::cout << "\tOVRXY: " << ovrXY << "\n";
-                    //std::cout << "\tOVRXZ: " << ovrXZ << "\n";
-                    //std::cout << "\tOVRYZ: " << ovrYZ << " er: " << error_rate << "\n";
-                    
-                    if(isErrorRateAcceptable(error_rate, m_maxER) && ovrYZ.getOverlapLength(0) >= m_minLength)
-                        move = true;
-                }
-            }
-            
-            if(move)
-            {
-                //std::cout << "Marking overlap: " << iter->second << " as trans via " << ovrXY << "\n";
-                if(pTransitive != NULL)
-                    pTransitive->insert(*iter);
-                workingMap.erase(iter++);
-            }
-            else
-            {
-                ++iter;
-            }
-        }
-    }
+    SGAlgorithms::partitionTransitiveOverlaps(&workingMap, pTransitive, m_maxER, m_minLength);
 
     *pIrreducible = workingMap;
 }
