@@ -146,7 +146,7 @@ void SGAlgorithms::remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVerte
     for(EdgeDescOverlapMap::iterator iter = addMap.begin();
         iter != addMap.end(); ++iter)
     {
-        //std::cout << "Adding edge " << iter->second << "\n";
+        //std::cout << "Adding edge " << iter->second << " during removal of " << pDeleteEdge->getEndID() << "\n";
         createEdgesFromOverlap(pGraph, iter->second, false);
     }
 
@@ -232,6 +232,62 @@ bool SGAlgorithms::isOverlapTransitive(const Vertex* pY, const Vertex* pZ, const
         return true;
     else
         return false;
+}
+
+// Move the transitive edges from pOverlapMap to pTransitive
+void SGAlgorithms::partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap, 
+                                               EdgeDescOverlapMap* pTransitive,
+                                               double maxER, int minLength)
+{
+    SGAlgorithms::EDOPairQueue overlapQueue;
+    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = pOverlapMap->begin();
+        iter != pOverlapMap->end(); ++iter)
+    {
+        overlapQueue.push(*iter);
+    }
+
+    // Traverse the list of overlaps in order of length and move elements from
+    // the irreducible map to the transitive map
+    while(!overlapQueue.empty())
+    {
+        SGAlgorithms::EdgeDescOverlapPair edoPair = overlapQueue.top();
+        overlapQueue.pop();
+
+        EdgeDesc& edXY = edoPair.first;
+        Overlap& ovrXY = edoPair.second;
+
+        assert(!ovrXY.match.isContainment());
+
+        SGAlgorithms::EdgeDescOverlapMap::iterator iter = pOverlapMap->begin();
+        while(iter != pOverlapMap->end())
+        {
+            bool move = false;
+            const EdgeDesc& edXZ = iter->first;
+            const Overlap& ovrXZ = iter->second;
+
+            // Four conditions must be met to mark an edge X->Z transitive through X->Y
+            // 1) The overlaps must be in the same direction
+            // 2) The overlap X->Y must be strictly longer than X->Z
+            // 3) The overlap between Y->Z must not be a containment
+            // 4) The overlap between Y->Z must be within the error and length thresholds
+            if(!(edXZ == edXY) && edXY.dir == edXZ.dir && ovrXY.getOverlapLength(0) > ovrXZ.getOverlapLength(0))
+            {
+                move = SGAlgorithms::isOverlapTransitive(edXY.pVertex, edXZ.pVertex, ovrXY, ovrXZ, maxER, minLength);
+            }
+            
+            if(move)
+            {
+                //std::cout << "Marking overlap: " << iter->second << " as trans via " << ovrXY << "\n";
+                if(pTransitive != NULL)
+                    pTransitive->insert(*iter);
+                pOverlapMap->erase(iter++);
+            }
+            else
+            {
+                ++iter;
+            }
+        }
+    }
 }
 
 // Return a descriptor of the edge describing ovrXY

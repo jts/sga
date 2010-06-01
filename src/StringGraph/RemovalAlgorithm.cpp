@@ -79,7 +79,13 @@ void RemovalAlgorithm::findPotentialOverlaps(const Vertex* pX, const Edge* pRemo
 void RemovalAlgorithm::eliminateReachableEdges(const Vertex* pVertex, const Edge* pRemovalEdge,
                                                double maxER, int minLength, SGAlgorithms::EdgeDescOverlapMap& outMap)
 {
-    //std::cout << "REMOVE: " << *pRemovalEdge << "\n";
+    // During the enqueue process, edges may have been added to outMap that are transitive to another
+    // edge in outMap. We get rid of these first.
+    SGAlgorithms::partitionTransitiveOverlaps(&outMap, NULL, maxER, minLength);
+
+
+    // Now, eliminate any edges in outMap that are transitive wrt some edge reachable from pVertex
+    // We control the depth of search using the shortest overlap in outMap
     // Get the length of the shortest overlap on pX in outMap
     int shortestOverlap = -1;
     for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = outMap.begin();
@@ -108,7 +114,7 @@ void RemovalAlgorithm::eliminateReachableEdges(const Vertex* pVertex, const Edge
 
         EdgeDesc ed = pEdge->getDesc();
         Overlap ovr = pEdge->getOverlap();
-        if(ovr.getOverlapLength(0) >= shortestOverlap)
+        if(ovr.getOverlapLength(0) >= shortestOverlap && !ovr.isContainment())
             queue.push(ExploreElement(ed, ovr));
     }
 
@@ -132,11 +138,6 @@ void RemovalAlgorithm::eliminateReachableEdges(const Vertex* pVertex, const Edge
         Overlap& ovrXY = ee.ovr;
         //std::cout << "OVRXY: " << ovrXY << "\n";
         int overlapLen = ovrXY.getOverlapLength(0);
-        if(overlapLen < shortestOverlap)
-        {
-            std::cout << "OVRXY: " << ovrXY << "\n";
-            std::cout << "Shortest: " << shortestOverlap << "\n";
-        }
         assert(overlapLen >= shortestOverlap);
         
         // Check all the overlaps in the map to see if they are transitive wrt pY
@@ -152,11 +153,15 @@ void RemovalAlgorithm::eliminateReachableEdges(const Vertex* pVertex, const Edge
                 if(edXY.pVertex == edXZ.pVertex)
                     eliminate = true;
                 else
+                {
                     eliminate = SGAlgorithms::isOverlapTransitive(edXY.pVertex, edXZ.pVertex, ovrXY, ovrXZ, maxER, minLength);
+                }
             }
 
             if(eliminate)
+            {
                 outMap.erase(iter++);
+            }
             else
                 ++iter;
         }
@@ -186,7 +191,9 @@ void RemovalAlgorithm::enqueueEdges(const Vertex* pY, EdgeDir dirY, const Overla
             Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
             EdgeDesc edXZ = SGAlgorithms::overlapToEdgeDesc(pZ, ovrXZ);
             if(ovrXZ.getOverlapLength(0) >= minOverlap)
+            {
                 outQueue.push(ExploreElement(edXZ, ovrXZ));
+            }
         }
     }
 }

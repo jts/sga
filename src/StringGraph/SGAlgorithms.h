@@ -69,6 +69,10 @@ bool isOverlapTransitive(const Vertex* pY, const Vertex* pZ, const Overlap& ovrX
 // Returns true if XZ has a non-zero length overlap
 bool hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);
 
+void partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap, 
+                                 EdgeDescOverlapMap* pTransitive,
+                                 double maxER, int minLength);
+
 // Construct an extended multioverlap for a vertex
 MultiOverlap makeExtendedMultiOverlap(const StringGraph* pGraph, const Vertex* pVertex);
 

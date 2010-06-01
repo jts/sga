@@ -437,3 +437,5 @@ void CompleteOverlapSet::partitionOverlaps(SGAlgorithms::EdgeDescOverlapMap* pIr
 
     *pIrreducible = workingMap;
 }
+
+

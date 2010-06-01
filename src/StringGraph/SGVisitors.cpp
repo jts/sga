@@ -261,7 +261,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         {
             Vertex* pRemodelVert = neighborEdges[j]->getEnd();
             Edge* pRemodelEdge = neighborEdges[j]->getTwin();
-            SGAlgorithms::remodelVertexForExcision(pGraph, 
+            SGAlgorithms::remodelVertexForExcision2(pGraph, 
                                                    pRemodelVert, 
                                                    pRemodelEdge);
         }
