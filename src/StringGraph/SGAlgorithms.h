@@ -42,6 +42,7 @@ typedef std::set<EdgeDesc> EdgeDescSet;
 
 // Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
 void remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
+void remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
 
 // Create the edges described by the overlap.
 Edge* createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o, bool allowContained);
@@ -60,6 +61,10 @@ void updateContainFlags(StringGraph* pGraph, Vertex* pVertex, const EdgeDesc& ed
 // and the returned overlap is X->Z
 Overlap inferTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);
 EdgeDesc overlapToEdgeDesc(Vertex* pY, const Overlap& ovrXY);
+
+// Returns true if, given overlaps X->Y, X->Z, the overlap X->Z is transitive
+bool isOverlapTransitive(const Vertex* pY, const Vertex* pZ, const Overlap& ovrXY, 
+                         const Overlap& ovrXZ, const double maxER, const int minOverlap);
 
 // Returns true if XZ has a non-zero length overlap
 bool hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);

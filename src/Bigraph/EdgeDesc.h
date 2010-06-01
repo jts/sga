@@ -21,6 +21,10 @@ struct EdgeDesc
     EdgeDir dir;
     EdgeComp comp;
 
+    //
+    inline EdgeDir getTransitiveDir() const { return (comp == EC_SAME) ? dir : !dir; }
+    inline EdgeDir getTwinDir() const { return (comp == EC_SAME) ? !dir : dir; }
+
     // Operators
     bool operator<(const EdgeDesc& obj) const;
     bool operator==(const EdgeDesc& obj) const;

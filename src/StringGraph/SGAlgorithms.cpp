@@ -10,6 +10,7 @@
 #include "SGUtil.h"
 #include "ErrorCorrect.h"
 #include "CompleteOverlapSet.h"
+#include "RemovalAlgorithm.h"
 #include <iterator>
 
 // add edges to the graph for the given overlap
@@ -126,6 +127,35 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
     updateContainFlags(pGraph, pVertex, containMap);
 }
 
+// Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
+void SGAlgorithms::remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
+{
+    assert(pVertex == pDeleteEdge->getStart());
+
+    // If the edge is a containment edge, nothing needs to be done. No edges can be transitive
+    // through containments
+    if(pDeleteEdge->getOverlap().isContainment())
+        return;
+
+    double maxER = pGraph->getErrorRate();
+    int minLength = pGraph->getMinOverlap();
+    
+    EdgeDescOverlapMap addMap = RemovalAlgorithm::computeRequiredOverlaps(pVertex, pDeleteEdge, maxER, minLength);
+
+    //assert(removeMap.size() == 0);
+    for(EdgeDescOverlapMap::iterator iter = addMap.begin();
+        iter != addMap.end(); ++iter)
+    {
+        //std::cout << "Adding edge " << iter->second << "\n";
+        createEdgesFromOverlap(pGraph, iter->second, false);
+    }
+
+    /*
+    // Set the contain flags based on newly discovered edges
+    updateContainFlags(pGraph, pVertex, containMap);
+    */
+}
+
 // Set containment flags in the graph based on the overlap map
 void SGAlgorithms::updateContainFlags(StringGraph* pGraph, Vertex* pVertex, EdgeDescOverlapMap& containMap)
 {
@@ -172,6 +202,36 @@ Overlap SGAlgorithms::inferTransitiveOverlap(const Overlap& ovrXY, const Overlap
     // Convert the match to an overlap
     Overlap ovr(ovrXY.id[0], ovrYZ.id[1], match_xz);
     return ovr;
+}
+
+// Returns true if, given overlaps X->Y, X->Z, the overlap X->Z is transitive
+bool SGAlgorithms::isOverlapTransitive(const Vertex* pY, const Vertex* pZ, const Overlap& ovrXY, 
+                                       const Overlap& ovrXZ, const double maxER, const int minOverlap)
+{
+    // Ensure the overlaps are in the correct order, the overlap with Y should be at least
+    // as large as the overlap with Z
+    assert(ovrXY.getOverlapLength(0) >= ovrXZ.getOverlapLength(0));
+    assert(pY != pZ);
+
+    // Compute the overlap YZ
+    Overlap ovrYX = ovrXY;
+    ovrYX.swap();
+    Overlap ovrYZ = SGAlgorithms::inferTransitiveOverlap(ovrYX, ovrXZ);
+
+    // If ovrYZ is a containment, then Z is not transitive wrt Y
+    if(ovrYZ.match.isContainment())
+        return false;
+
+    // If the overlap between Y and Z is not long enough then Z is not transitive
+    if(ovrYZ.getOverlapLength(0) < minOverlap)
+        return false;
+
+    // Finally, check that the error rate is below the threshold
+    double error_rate = SGAlgorithms::calcErrorRate(pY, pZ, ovrYZ);
+    if(isErrorRateAcceptable(error_rate, maxER))
+        return true;
+    else
+        return false;
 }
 
 // Return a descriptor of the edge describing ovrXY

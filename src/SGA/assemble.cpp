@@ -147,7 +147,10 @@ void assemble()
     // Remove containments from the graph
     std::cout << "Removing contained vertices\n";
     while(pGraph->hasContainment())
+    {
         pGraph->visit(containVisit);
+        pGraph->writeASQG("afterCR.asqg.gz");
+    }
 
     // Pre-assembly graph stats
     std::cout << "Post-contain graph stats\n";
