@@ -16,6 +16,7 @@
 #include "rmdup.h"
 #include "preprocess.h"
 #include "merge.h"
+#include "correct.h"
 
 #define VERSION "0.1"
 #define PROGRAM_BIN "sga"
@@ -44,6 +45,8 @@ int main(int argc, char** argv)
             rmdupMain(argc - 1, argv + 1);
         else if(command == "overlap")
             overlapMain(argc - 1, argv + 1);
+        else if(command == "correct")
+            correctMain(argc - 1, argv + 1);
         else if(command == "assemble")
             assembleMain(argc - 1, argv + 1);
         else if(command == "oview")
@@ -71,6 +74,7 @@ void printUsage()
     std::cout << "           preprocess   filter and quality-trim reads\n";
     std::cout << "           index        build the BWT and FM-index for a set of reads\n";
     std::cout << "           merge        merge multiple BWT/FM-index files into a single index\n";
+    std::cout << "           correct      correct sequencing errors in a set of reads\n";
     std::cout << "           rmdup        remove duplicated or identical reads from the data set\n";
     std::cout << "           overlap      compute overlaps between reads\n";
     std::cout << "           assemble     generate contigs\n";
