@@ -15,7 +15,7 @@
 #include "TransitiveGroup.h"
 
 class Vertex;
-class EdgeDesc;
+struct EdgeDesc;
 
 typedef std::vector<TransitiveGroup> TransitiveGroupVector;
 
