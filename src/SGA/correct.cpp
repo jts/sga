@@ -23,7 +23,7 @@
 #include "ASQG.h"
 #include "gzstream.h"
 #include "SequenceProcessFramework.h"
-#include "OverlapProcess.h"
+#include "ErrorCorrectProcess.h"
 
 // Functions
 
@@ -97,6 +97,49 @@ int correctMain(int argc, char** argv)
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
 
+    BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
+    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
+    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
+                                                         opt::errorRate, opt::seedLength, 
+                                                         opt::seedStride, false);
+    std::string correctedReadsName = opt::prefix + ".ec.fa";
+    std::ostream* pWriter = createWriter(correctedReadsName);
+
+    ErrorCorrectPostProcess postProcessor(pWriter);
+
+    if(opt::numThreads <= 1)
+    {
+        // Serial mode
+        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap);
+        SequenceProcessFramework::processSequencesSerial<ErrorCorrectResult, 
+                                                         ErrorCorrectProcess, 
+                                                         ErrorCorrectPostProcess>(opt::readsFile, &processor, &postProcessor);
+    }
+    else
+    {
+        // Parallel mode
+        std::vector<ErrorCorrectProcess*> processorVector;
+        for(int i = 0; i < opt::numThreads; ++i)
+        {
+            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap);
+            processorVector.push_back(pProcessor);
+        }
+        
+        SequenceProcessFramework::processSequencesParallel<ErrorCorrectResult, 
+                                                         ErrorCorrectProcess, 
+                                                         ErrorCorrectPostProcess>(opt::readsFile, processorVector, &postProcessor);
+
+        for(int i = 0; i < opt::numThreads; ++i)
+        {
+            delete processorVector[i];
+        }
+    }
+
+
+    delete pBWT;
+    delete pRBWT;
+    delete pOverlapper;
+    delete pWriter;
     delete pTimer;
     if(opt::numThreads > 1)
         pthread_exit(NULL);

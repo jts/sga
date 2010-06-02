@@ -4,8 +4,7 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// OverlapProcess - Compute overlap hits for 
-// SequenceWorkItems
+// OverlapProcess - Compute overlap hits for SequenceWorkItems
 //
 #ifndef OVERLAPPROCESS_H
 #define OVERLAPPROCESS_H
