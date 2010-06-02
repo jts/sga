@@ -22,7 +22,7 @@ Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o
 
     bool isContainment = o.match.isContainment();
     assert(allowContained || !isContainment);
-
+    (void)allowContained;
     for(size_t idx = 0; idx < 2; ++idx)
     {
         pVerts[idx] = pGraph->getVertex(o.id[idx]);

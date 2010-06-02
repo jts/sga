@@ -44,5 +44,6 @@ void incrementGapArray(int64_t rank, GapArray& gap_array)
     static size_t max_gap_count = std::numeric_limits<GAP_TYPE>::max();
     assert(gap_array[rank] < max_gap_count);
     assert(rank < (int64_t)gap_array.size());
+    (void)max_gap_count;
     ++gap_array[rank];
 }

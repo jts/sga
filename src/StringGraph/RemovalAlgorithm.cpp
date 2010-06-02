@@ -139,7 +139,8 @@ void RemovalAlgorithm::eliminateReachableEdges(const Vertex* pVertex, const Edge
         //std::cout << "OVRXY: " << ovrXY << "\n";
         int overlapLen = ovrXY.getOverlapLength(0);
         assert(overlapLen >= shortestOverlap);
-        
+        (void)overlapLen;
+
         // Check all the overlaps in the map to see if they are transitive wrt pY
         SGAlgorithms::EdgeDescOverlapMap::iterator iter = outMap.begin();
         while(iter != outMap.end())

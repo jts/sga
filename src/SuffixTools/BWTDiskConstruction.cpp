@@ -154,6 +154,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
                 {
                     bool eof = !pReader->get(record);
                     assert(!eof);
+                    (void)eof;
                     ++curr_idx;
                 }
 
@@ -459,6 +460,7 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
     // Ensure we read the entire bw string from disk
     char last = bwtExtReader.readBWChar();
     assert(last == '\n');
+    (void)last;
     // Write a newline to finish the bwstr section
     bwtWriter.writeBWChar('\n');
 }

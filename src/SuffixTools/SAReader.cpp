@@ -66,6 +66,7 @@ void SAReader::readElems(SAElemVector& elemVector)
         ++num_read;
     }
     assert(cap >= num_read);
+    (void)cap;
     m_stage = SAIOS_DONE;
 }
 

@@ -242,6 +242,7 @@ class AlphaCount
         inline void getSorted(char* pOut, size_t len)
         {
             assert(len >= ALPHABET_SIZE);
+            (void)len;
             for(size_t i = 0; i < ALPHABET_SIZE; ++i)
                 pOut[i] = RANK_ALPHABET[i];
             std::sort(pOut, pOut+ALPHABET_SIZE, AlphaCountCompareDesc(this));

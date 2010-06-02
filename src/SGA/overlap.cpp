@@ -116,6 +116,7 @@ int overlapMain(int argc, char** argv)
 
     // Prepare the output ASQG file
     assert(opt::outputType == OT_ASQG);
+    (void)opt::outputType;
 
     // Open output file
     std::string asqgFilename = opt::prefix + ASQG_EXT + GZIP_EXT;

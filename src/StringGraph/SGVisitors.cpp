@@ -605,6 +605,7 @@ void SGTrimVisitor::postvisit(StringGraph* pGraph)
 void SGDuplicateVisitor::previsit(StringGraph* pGraph)
 {
     assert(pGraph->checkColors(GC_WHITE));
+    (void)pGraph;
 }
 
 bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
@@ -617,6 +618,7 @@ bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 void SGDuplicateVisitor::postvisit(StringGraph* pGraph)
 {
     assert(pGraph->checkColors(GC_WHITE));
+    (void)pGraph;
 }
 
 //
