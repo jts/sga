@@ -34,7 +34,6 @@ struct AlignFlags
         bool isTargetRev() const { return data.test(TARGETREV_BIT);    }
         bool isQueryComp() const { return data.test(QUERYCOMP_BIT); }    
 
-
         friend std::ostream& operator<<(std::ostream& out, const AlignFlags& af)
         {
             out << af.data;
@@ -77,13 +76,18 @@ struct OverlapBlock
     
     OverlapBlock(BWTIntervalPair r, int ol, 
                  int nd, const AlignFlags& af)  : ranges(r), 
-                                                   overlapLen(ol), 
+                                                  overlapLen(ol), 
                                                   numDiff(nd),
                                                   flags(af), isEliminated(false) {}
 
     OverlapBlock(BWTIntervalPair r, int ol, 
                  int nd, const AlignFlags& af, 
                  const SearchHistoryVector& backHist);
+
+    // Returns the string that corresponds to this overlap block.
+    // This is constructed by transforming the original string using the back
+    // history while correcting for the reverse-complement searches
+    std::string getOverlapString(const std::string& original);
 
     // Return a pointer to the BWT that should be used to extend the block
     // this is the opposite BWT that was used in the backwards search
@@ -123,6 +127,7 @@ struct OverlapBlock
         return in;
     }
 
+    // Data
     BWTIntervalPair ranges;
     int overlapLen;
     int numDiff;

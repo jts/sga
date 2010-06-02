@@ -14,6 +14,7 @@
 #include "OverlapAlgorithm.h"
 #include "SequenceProcessFramework.h"
 #include "SequenceWorkItem.h"
+#include "MultiOverlap.h"
 
 enum ECFlag
 {
@@ -41,6 +42,12 @@ class ErrorCorrectProcess
         ErrorCorrectResult process(const SequenceWorkItem& item);
     
     private:
+
+        MultiOverlap blockListToMultiOverlap(const SequenceWorkItem& item, 
+                                             OverlapBlockList& blockList);
+
+        std::string makeIdxString(int64_t idx);
+
         OverlapBlockList m_blockList;
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;

@@ -62,11 +62,9 @@ SearchHistoryLink::~SearchHistoryLink()
     }
 }
 
-
 //
 // Node
 //
-
 
 // adding a child of the node automatically increments the refCount of this node
 // through the child's Link to this node. Once all the children of this node
@@ -194,6 +192,24 @@ int SearchHistoryVector::countDifferences(const SearchHistoryVector& a, const Se
     }
 
     return count;
+}
+
+// Transform the original string using the history 
+std::string SearchHistoryVector::transform(const std::string& original)
+{
+    std::string transformed = original;
+    int l = transformed.size();
+    for(size_t i = 0; i < m_history.size(); ++i)
+    {
+        SearchHistoryItem& item = m_history[i];
+        assert(item.pos < l);
+        assert(transformed[item.pos] != item.base);
+
+        // pos is 1-based starting from the right side of original
+        assert(item.pos > 0);
+        transformed[l - item.pos] = item.base;
+    }
+    return transformed;
 }
 
 //

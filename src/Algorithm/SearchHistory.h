@@ -45,6 +45,10 @@ class SearchHistoryVector
         void normalize(bool doComplement);
         size_t size() const { return m_history.size(); }
 
+        // Transform the original string using the history into a string representing
+        // the sequence of bases searched to create the history
+        std::string transform(const std::string& original);
+
         //
         static int countDifferences(const SearchHistoryVector& a, const SearchHistoryVector& b, int maxPos);
 

@@ -43,6 +43,18 @@ AlphaCount OverlapBlock::getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBW
     return out;
 }
 
+// Get the string corresponding to the overlap block. This is the string found
+// during the backwards search
+std::string OverlapBlock::getOverlapString(const std::string& original)
+{
+    std::string transformed = backHistory.transform(original);
+    // If the query was reversed, we take the first overlapLen (the search
+    // was from the front of the sequence) otherwise we take the last overlapLen
+    if(flags.isQueryRev())
+        return transformed.substr(0, overlapLen);
+    else
+        return transformed.substr(transformed.length() - overlapLen);
+}
 
 //
 void printList(OverlapBlockList* pList)
