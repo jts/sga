@@ -124,6 +124,12 @@ class AlphaCount
             m_counts[getBaseRank(b)]++;
         }
 
+        //
+        inline void add(char b, BaseCount v)
+        {
+            m_counts[getBaseRank(b)] += v;
+        }
+
         // 
         inline BaseCount get(char b) const
         {
@@ -235,6 +241,17 @@ class AlphaCount
             }
             base = RANK_ALPHABET[maxIdx];
             val = max;
+        }
+
+        //
+        inline BaseCount getSum() const
+        {
+            BaseCount sum = m_counts[0];
+            sum += m_counts[1];
+            sum += m_counts[2];
+            sum += m_counts[3];
+            sum += m_counts[4];
+            return sum;
         }
 
         // Sort the DNA bases into count order and

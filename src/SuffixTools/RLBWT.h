@@ -93,21 +93,23 @@ typedef std::vector<RLUnit> RLVector;
 // 
 struct RLMarker
 {
-    RLMarker() : unitIndex(0), offset(0) {}
+    RLMarker() : unitIndex(0) {}
 
-    // The number of times each symbol has been seen 
-    // up to this marker
-    AlphaCount count; 
+    // Calculate the actual position in the uncompressed BWT of this marker
+    // This is the number of symbols preceding this marker
+    inline size_t getActualPosition() const
+    {
+        return counts.getSum();
+    }
 
-    // The index in the RLVector that contains the unit ending at this marker
+    // The number of times each symbol has been seen up to this marker
+    AlphaCount counts; 
+
+    // The index in the RLVector of the run that starts after
+    // this marker. That is, if C = getActualPosition(), then
+    // the run containing the B[C] is unitIndex. This is not necessary
+    // a valid index if there is a marker after the last symbol in the BWT
     size_t unitIndex;
-
-    // The marker index is always a multiple of D
-    // but because we use RLE on the symbols, the actual
-    // number of symbols seen before this marker not be i*D
-    // This stores the offset so we can calculate the true position
-    // This can be no larger than the longest length of a run
-    uint8_t offset;
 };
 typedef std::vector<RLMarker> MarkerVector;
 
@@ -127,7 +129,39 @@ class RLBWT
         // Append a symbol to the bw string
         void append(char b);
 
-        inline char getChar(size_t idx) const { return m_bwStr.get(idx); }
+        inline char getChar(size_t idx) const
+        {
+            // Calculate the Marker who's position is not less than idx
+            const RLMarker& nearest = getUpperMarker(idx);
+            size_t current_position = nearest.getActualPosition();
+            assert(current_position >= idx);
+
+            size_t symbol_index = nearest.unitIndex; 
+
+            // Search backwards (towards 0) until idx is found
+            while(current_position > idx)
+            {
+                assert(symbol_index != 0);
+                symbol_index -= 1;
+                current_position -= m_rlString[symbol_index].getCount();
+            }
+
+            // symbol_index is now the index of the run containing the idx symbol
+            const RLUnit& unit = m_rlString[symbol_index];
+            assert(current_position <= idx && current_position + unit.getCount() >= idx);
+            return unit.getChar();
+        }
+    
+        // Get the first marker who's actual position is at least idx
+        inline const RLMarker& getUpperMarker(size_t idx) const
+        {
+            idx >>= m_shiftValue;
+#ifdef RLBWT_VALIDATE
+            assert(idx < m_markers.size());
+#endif
+            return m_markers[idx];
+        }
+
         inline BaseCount getPC(char b) const { return m_predCount.get(b); }
 
         // Return the number of times char b appears in bwt[0, idx]
@@ -190,5 +224,11 @@ class RLBWT
 
         // The total length of the bw string
         size_t m_numSymbols;
+
+        // The sample rate used for the markers
+        size_t m_sampleRate;
+
+        // The amount to shift values by to divide by m_sampleRate
+        int m_shiftValue;
 };
 #endif

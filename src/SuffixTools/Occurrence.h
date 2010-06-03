@@ -107,13 +107,16 @@ class Occurrence
         void print() const;
         size_t getByteSize() const;
         size_t size() const { return m_values.size(); }
+
+        // Calculate the amount a value should be shifted to perform a division
+        // by divisor. The divisor must be a power of 2
+        static int calculateShiftValue(int divisor);
         void validate(const BWTString& bwStr) const;
 
         friend std::ostream& operator<<(std::ostream& out, const Occurrence& o);
         friend std::istream& operator>>(std::istream& in, Occurrence& o);
 
     private:
-        void calculateShiftValue();
 
         int m_shift;
         int m_sampleRate;

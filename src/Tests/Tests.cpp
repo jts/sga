@@ -13,7 +13,7 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 
-    std::string file = "reads.l100.c20.e0.bwt";
+    std::string file = argv[1];
     BWT* pBWT = new BWT(file);
     RLBWT* pRLBWT = new RLBWT(file);
 
@@ -22,6 +22,22 @@ int main(int argc, char** argv)
 
     std::cout << "\nRun-length BWT info: \n";
     pRLBWT->printInfo();
+
+
+    std::cout << "\nTesting random access to RLBWT\n";
+    for(size_t i = 0; i < pBWT->getBWLen(); ++i)
+    {
+        char b = pBWT->getChar(i);
+        char r = pRLBWT->getChar(i);
+
+       // printf("RLBWT[%zu] = %c, BWT[%zu] = %c\n", i, r, i, b);
+
+        if(r != b)
+        {
+            printf("Test failed: RLBWT[%zu] expected %c, got %c\n", i, b, r);
+            assert(false);
+        }
+    }
 
     pBWT->write("old.bwt");
     pRLBWT->write("new.bwt");

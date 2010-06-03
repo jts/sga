@@ -14,7 +14,7 @@
 void Occurrence::initialize(const BWTString& bwStr, int sampleRate)
 {
     m_sampleRate = sampleRate;
-    calculateShiftValue();
+    m_shift = calculateShiftValue(m_sampleRate);
 
     size_t l = bwStr.length();
     int num_samples = (l % m_sampleRate == 0) ? (l / m_sampleRate) : (l / m_sampleRate + 1);
@@ -31,13 +31,13 @@ void Occurrence::initialize(const BWTString& bwStr, int sampleRate)
 }
 
 // 
-void Occurrence::calculateShiftValue()
+int Occurrence::calculateShiftValue(int divisor)
 {
-    assert(m_sampleRate > 0);
-    assert(IS_POWER_OF_2(m_sampleRate));
+    assert(divisor > 0);
+    assert(IS_POWER_OF_2(divisor));
 
     // m_sampleRate is a power of 2, count what bit is set
-    unsigned int v = m_sampleRate;
+    unsigned int v = divisor;
     unsigned int c = 0; // c accumulates the total bits set in v
 
     while(v != 1)
@@ -45,8 +45,8 @@ void Occurrence::calculateShiftValue()
         v >>= 1;
         ++c;
     }
-    m_shift = c;
-    assert(1 << m_shift == m_sampleRate);
+    assert(1 << c == divisor);
+    return c;
 }
 
 //
@@ -93,7 +93,7 @@ std::istream& operator>>(std::istream& in, Occurrence& o)
     o.m_values.resize(n);
     for(size_t i = 0; i < n; ++i)
         in >> o.m_values[i];
-    o.calculateShiftValue();
+    o.m_shift = Occurrence::calculateShiftValue(o.m_sampleRate);
     return in;
 }
 

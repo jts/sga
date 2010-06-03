@@ -19,7 +19,7 @@
 #define PRED(c) m_predCount.get((c))
 
 // Parse a BWT from a file
-RLBWT::RLBWT(const std::string& filename) : m_numStrings(0), m_numSymbols(0)
+RLBWT::RLBWT(const std::string& filename) : m_numStrings(0), m_numSymbols(0), m_sampleRate(0)
 {
     BWTReader reader(filename);
     reader.read(this);
@@ -50,39 +50,62 @@ void RLBWT::append(char b)
 // Fill in the FM-index data structures
 void RLBWT::initializeFMIndex(int sampleRate)
 {
-    WARN_ONCE("Marker offset and position can be computed from AlphaCount?");
+    m_sampleRate = sampleRate;
+    m_shiftValue = Occurrence::calculateShiftValue(m_sampleRate);
 
     // initialize the marker vector
-    int num_samples = (m_numSymbols % sampleRate == 0) ? (m_numSymbols / sampleRate) : (m_numSymbols / sampleRate + 1);
+    size_t num_samples = (m_numSymbols % m_sampleRate == 0) ? (m_numSymbols / m_sampleRate) : (m_numSymbols / m_sampleRate + 1);
     m_markers.resize(num_samples);
 
     // Fill in the marker values
-    // We wish to place markers every sampleRate symbols
-    // however since a run may not end exactly on sampleRate boundaries,
-    // we place a marker just after the run crossing the sampleRate boundary has 
-    // ended. 
-    
-#if 0
+    // We wish to place markers every sampleRate symbols however since a run may
+    // not end exactly on sampleRate boundaries, we place the markers AFTER
+    // the run crossing the boundary ends
     size_t curr_marker_index = 0;
-    size_t next_marker = sampleRate;
+
+    size_t next_marker = m_sampleRate;
     size_t running_total = 0;
+    AlphaCount ac;
     for(size_t i = 0; i < m_rlString.size(); ++i)
     {
-        while(running_total >= next_marker)
+        // Update the count and advance the running total
+        RLUnit& unit = m_rlString[i];
+        char symbol = unit.getChar();
+        uint8_t run_len = unit.getCount();
+        ac.add(symbol, run_len);
+
+        running_total += run_len;
+
+        // If this is the last symbol, place a final marker at the end of the data
+        bool place_last_marker = (i == m_rlString.size() - 1) && curr_marker_index < num_samples;
+        while(running_total >= next_marker || place_last_marker)
         {
             // Place markers
-            size_t expected_marker_pos = (curr_marker_index + 1) * sampleRate;
-            assert(expected_marker_pos >= running_total);
-            RLMarker marker;
-            marker.unitIndex = i;
-            marker.offset
+            size_t expected_marker_pos = (curr_marker_index + 1) * m_sampleRate;
 
-            next_marker += sampleRate;
-        }
+            //int diff = running_total - expected_marker_pos;
+            //printf("Placing marker at index %zu, expected pos %zu, actual pos %zu, diff %d\n", 
+            //        curr_marker_index, expected_marker_pos, running_total, diff);
 
-        // Advance the running total
+            // Sanity checks
+            // The marker position should always be less than the running total unless 
+            // the number of symbols is smaller than the sample rate
+            assert(expected_marker_pos <= running_total || place_last_marker);
+            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_marker);
+            assert(curr_marker_index < num_samples);
+            assert(ac.getSum() == running_total);
+
+            RLMarker& marker = m_markers[curr_marker_index];
+            marker.unitIndex = i + 1;
+            marker.counts = ac;
+            next_marker += m_sampleRate;
+            ++curr_marker_index;
+            place_last_marker = false;
+        }        
     }
-#endif
+
+    assert(curr_marker_index = num_samples);
+    m_predCount = ac;
 }
 
 //
@@ -124,5 +147,5 @@ void RLBWT::printInfo() const
     printf("RLBWT Size -- Markers: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
             m_size, bwStr_size, other_size, total_size, total_mb);
     printf("N: %zu Bytes per symbol: %lf\n", m_numSymbols, (double)total_size / m_numSymbols);
-    
+    printf("Debug -- size of marker: %zu size of alphacount: %zu\n", sizeof(RLMarker), sizeof(AlphaCount));    
 }
