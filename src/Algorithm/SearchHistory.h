@@ -47,7 +47,7 @@ class SearchHistoryVector
 
         // Transform the original string using the history into a string representing
         // the sequence of bases searched to create the history
-        std::string transform(const std::string& original);
+        std::string transform(const std::string& original, bool queryReversed);
 
         //
         static int countDifferences(const SearchHistoryVector& a, const SearchHistoryVector& b, int maxPos);

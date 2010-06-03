@@ -28,21 +28,23 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 //
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
+    static const double p_error = 0.01f;
     OverlapResult overlap_result = m_pOverlapper->overlapRead(workItem.read, m_minOverlap, &m_blockList);
-
     // Convert the overlap block list into a multi-overlap 
     MultiOverlap mo = blockListToMultiOverlap(workItem, m_blockList);
-    mo.print();
-
-    m_blockList.clear();
+    
+    // Perform correction
     ErrorCorrectResult result;
+    result.correctSequence = mo.calculateConsensusFromPartition(p_error);
+    result.flag = ECF_CORRECTED;
+    m_blockList.clear();
     return result;
 }
 
 //
 MultiOverlap ErrorCorrectProcess::blockListToMultiOverlap(const SequenceWorkItem& item, OverlapBlockList& blockList)
 {
-    std::string read_idx = makeIdxString(item.idx);
+    std::string read_idx = makeIdxString(-1);
     std::string read_seq = item.read.seq.toString();
     MultiOverlap out(read_idx, read_seq);
 
@@ -67,9 +69,15 @@ MultiOverlap ErrorCorrectProcess::blockListToMultiOverlap(const SequenceWorkItem
             sc2.flip();
 
         bool isRC = false; // since we transformed the original sequence, they are never RC
-        Overlap o(read_idx, sc1, makeIdxString(-1), sc2, isRC, -1);
-        
-        out.add(overlap_string, o);
+        if(sc1.isContained())
+            continue; // skip containments
+
+        // Add an overlap for each member of the block
+        for(int64_t i = iter->ranges.interval[0].lower; i <= iter->ranges.interval[0].upper; ++i)
+        {
+            Overlap o(read_idx, sc1, makeIdxString(i), sc2, isRC, -1);
+            out.add(overlap_string, o);
+        }
     }
     return out;
 }
@@ -91,7 +99,10 @@ ErrorCorrectPostProcess::ErrorCorrectPostProcess(std::ostream* pWriter) : m_pWri
 }
 
 //
-void ErrorCorrectPostProcess::process(const SequenceWorkItem& /*item*/, const ErrorCorrectResult& /*result*/)
+void ErrorCorrectPostProcess::process(const SequenceWorkItem& item, const ErrorCorrectResult& result)
 {
+    SeqRecord correctedRecord = item.read;
+    correctedRecord.seq = result.correctSequence;
+    correctedRecord.write(*m_pWriter);
     //m_pOverlapper->writeResultASQG(*m_pASQGWriter, item.read, result);
 }

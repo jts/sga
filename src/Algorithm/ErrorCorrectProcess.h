@@ -26,8 +26,9 @@ enum ECFlag
 
 class ErrorCorrectResult
 {
-    DNAString correctSequence;
-    ECFlag flag;
+    public:
+        DNAString correctSequence;
+        ECFlag flag;
 };
 
 //

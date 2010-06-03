@@ -53,7 +53,6 @@ class MultiOverlap
         bool isConflicted(size_t cutoff) const;
         std::string simpleConsensus() const;
 
-
         // Partition the multioverlap into groups
         int getPartition(size_t idx) const;
         void setPartition(size_t idx, int p);

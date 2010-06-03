@@ -47,7 +47,7 @@ AlphaCount OverlapBlock::getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBW
 // during the backwards search
 std::string OverlapBlock::getOverlapString(const std::string& original)
 {
-    std::string transformed = backHistory.transform(original);
+    std::string transformed = backHistory.transform(original, flags.isQueryRev());
     // If the query was reversed, we take the first overlapLen (the search
     // was from the front of the sequence) otherwise we take the last overlapLen
     if(flags.isQueryRev())
