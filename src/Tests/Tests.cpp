@@ -2,15 +2,27 @@
 #include "Edge.h"
 #include "Vertex.h"
 #include "Bigraph.h"
+#include "BWT.h"
+#include "RLBWT.h"
+#include "BWTWriter.h"
 
-void graphTests();
 void dnaStringTests();
 
 int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
-    dnaStringTests();
+
+    std::string file = "reads.l100.c20.e0.bwt";
+    BWT* pBWT = new BWT(file);
+    RLBWT* pRLBWT = new RLBWT(file);
+
+    pBWT->write(std::string("old.bwt"));
+    pRLBWT->write("new.bwt");
+
+    delete pBWT;
+    delete pRLBWT;
+
     return 0;
 }
 
@@ -39,9 +51,4 @@ void dnaStringTests()
         std::cout << i << " sufstr: " << d1.getSuffixString(i) << "\n";
     }
 }
-
-void graphTests()
-{
-}
-
 

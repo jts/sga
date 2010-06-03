@@ -33,6 +33,7 @@ enum BWFlag
 };
 
 class BWT;
+class RLBWT;
 
 class BWTReader
 {
@@ -42,6 +43,7 @@ class BWTReader
 
         //
         void read(BWT* pBWT);
+        void read(RLBWT* pRLBWT);
         void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
         void readBWStr(BWTString& out_str);
         char readBWChar();

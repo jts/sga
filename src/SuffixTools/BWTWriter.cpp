@@ -8,6 +8,7 @@
 //
 #include "BWTWriter.h"
 #include "BWT.h"
+#include "RLBWT.h"
 
 //
 BWTWriter::BWTWriter(const std::string& filename) : m_stage(IOS_NONE)
@@ -28,6 +29,23 @@ void BWTWriter::write(const BWT* pBWT)
     writeBWStr(pBWT->m_bwStr);
     writePred(pBWT->m_predCount);
     writeOccurrence(pBWT->m_occurrence);
+}
+
+void BWTWriter::write(const RLBWT* pRLBWT)
+{
+    writeHeader(pRLBWT->m_numStrings, pRLBWT->m_numSymbols, BWF_NOFMI);
+    size_t numRuns = pRLBWT->getNumRuns();
+    for(size_t i = 0; i < numRuns; ++i)
+    {
+        const RLUnit& unit = pRLBWT->m_rlString[i];
+        char symbol = unit.getChar();
+        size_t length = unit.getCount();
+        for(size_t j = 0; j < length; ++j)
+            writeBWChar(symbol);
+    }
+    // Finalize the string
+    writeBWChar('\n');
+
 }
 
 //

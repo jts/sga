@@ -4,9 +4,9 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// BWT.cpp - Burrows Wheeler transform of a generalized suffix array
+// RLBWT - Run-length encoded Burrows Wheeler transform
 //
-#include "BWT.h"
+#include "RLBWT.h"
 #include "Timer.h"
 #include "BWTReader.h"
 #include "BWTWriter.h"
@@ -19,38 +19,36 @@
 #define PRED(c) m_predCount.get((c))
 
 // Parse a BWT from a file
-BWT::BWT(const std::string& filename)
+RLBWT::RLBWT(const std::string& filename) : m_numStrings(0), m_numSymbols(0)
 {
     BWTReader reader(filename);
     reader.read(this);
 }
 
-// Construct the BWT from a suffix array
-BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
+void RLBWT::append(char b)
 {
-    Timer timer("BWT Construction");
-    size_t n = pSA->getSize();
-    m_numStrings = pSA->getNumStrings();
-    m_bwStr.resize(n);
-
-    // Set up the bwt string and suffix array from the cycled strings
-    for(size_t i = 0; i < n; ++i)
+    bool increment = false;
+    if(!m_rlString.empty())
     {
-        SAElem saElem = pSA->get(i);
-        const SeqItem& si = pRT->getRead(saElem.getID());
-
-        // Get the position of the start of the suffix
-        uint64_t f_pos = saElem.getPos();
-        uint64_t l_pos = (f_pos == 0) ? si.seq.length() : f_pos - 1;
-        char b = (l_pos == si.seq.length()) ? '$' : si.seq.get(l_pos);
-        m_bwStr.set(i, b);
+        RLUnit& lastUnit = m_rlString.back();
+        if(lastUnit.getChar() == b && !lastUnit.isFull())
+        {
+            lastUnit.incrementCount();
+            increment = true;
+        }
     }
 
-    initializeFMIndex();
+    if(!increment)
+    {
+        // Must add a new unit to the string
+        RLUnit unit(b);
+        m_rlString.push_back(unit);
+    }
+    ++m_numSymbols;
 }
 
 // Fill in the FM-index data structures
-void BWT::initializeFMIndex()
+void RLBWT::initializeFMIndex()
 {
     // initialize the occurance table
     m_occurrence.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
@@ -71,54 +69,22 @@ void BWT::initializeFMIndex()
     m_predCount.set('T', m_predCount.get('G') + tmp.get('G'));
 }
 
-// Compute the last to first mapping
-size_t BWT::LF(size_t idx) const
-{
-    return m_bwStr.get(idx) != '$' ? PRED(m_bwStr.get(idx)) + OCC(m_bwStr.get(idx), idx) : 0;
-}
-
-// Perform a exact search for the string w using the backwards algorithm
-void BWT::backwardSearch(std::string w) const
-{
-    std::cout << "Searching for " << w << "\n";
-    int len = w.size();
-    int j = len - 1;
-    char curr = w[j];
-    int r_lower = PRED(curr);
-    int r_upper = r_lower + OCC(curr, m_bwStr.length() - 1) - 1;
-    --j;
-    std::cout << "Starting point: " << r_lower << "," << r_upper << "\n";
-    for(;j >= 0; --j)
-    {
-        curr = w[j];
-        printf("RL = C(%c) + O(%c,%d) + %zu\n", curr, curr, r_lower - 1, m_numStrings); 
-        printf("RU = C(%c) + O(%c,%d)\n", curr, curr, r_upper); 
-        printf("RL = %zu + %zu + %zu\n", (size_t)PRED(curr), (size_t)OCC(curr, r_lower - 1), m_numStrings); 
-        printf("RU = %zu + %zu\n", (size_t)PRED(curr), (size_t)OCC(curr, r_upper)); 
-        r_lower = PRED(curr) + OCC(curr, r_lower - 1);
-        r_upper = PRED(curr) + OCC(curr, r_upper) - 1;
-        printf("Curr: %c, Interval now: %d,%d\n", curr, r_lower, r_upper);
-    }
-
-    std::cout << "Interval found: " << r_lower << "," << r_upper << "\n";
-}
-
 //
-void BWT::validate() const
+void RLBWT::validate() const
 {
     std::cerr << "Warning BWT validation is turned on\n";
     m_occurrence.validate(m_bwStr);
 }
 
 // write the BWT to a file
-void BWT::write(const std::string& filename)
+void RLBWT::write(const std::string& filename)
 {
     BWTWriter writer(filename);
     writer.write(this);
 }
 
 // Print the BWT
-void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
+void RLBWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 {
     std::cout << "i\tL(i)\tF(i)\tO(-,i)\tSUFF\n";
     for(size_t i = 0; i < m_bwStr.length(); ++i)
@@ -129,7 +95,7 @@ void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 }
 
 // Print information about the BWT
-void BWT::printInfo() const
+void RLBWT::printInfo() const
 {
     size_t o_size = m_occurrence.getByteSize();
     size_t p_size = sizeof(m_predCount);

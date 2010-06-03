@@ -21,4 +21,5 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 						   SAReader.h SAReader.cpp \
 						   SAWriter.h SAWriter.cpp \
 						   GapArray.h GapArray.cpp \
-						   RankProcess.h RankProcess.cpp
+						   RankProcess.h RankProcess.cpp \
+                           RLBWT.h RLBWT.cpp

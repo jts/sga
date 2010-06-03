@@ -8,6 +8,7 @@
 //
 #include "BWTReader.h"
 #include "BWT.h"
+#include "RLBWT.h"
 
 //
 BWTReader::BWTReader(const std::string& filename) : m_stage(IOS_NONE)
@@ -42,6 +43,31 @@ void BWTReader::read(BWT* pBWT)
     {
         pBWT->initializeFMIndex();
     }
+}
+
+void BWTReader::read(RLBWT* pRLBWT)
+{
+    size_t n;
+    BWFlag flag;
+    readHeader(pRLBWT->m_numStrings, n, flag);
+
+    //pBWT->m_bwStr.resize(n);
+    bool done = false;
+    while(!done)
+    {
+        char b = readBWChar();
+        if(b != '\n')
+        {
+            pRLBWT->append(b);
+        }
+        else
+        {
+            done = false;
+            break;
+        }
+    }
+
+    std::cout << "Loaded RLBWT, num runs: " << pRLBWT->getNumRuns() << " num symbols: " << pRLBWT->getBWLen() << "\n";
 }
 
 //
