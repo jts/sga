@@ -66,7 +66,7 @@ void BWTReader::read(RLBWT* pRLBWT)
             break;
         }
     }
-
+    pRLBWT->initializeFMIndex();
     std::cout << "Loaded RLBWT, num runs: " << pRLBWT->getNumRuns() << " num symbols: " << pRLBWT->getBWLen() << "\n";
 }
 

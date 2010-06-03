@@ -87,6 +87,30 @@ struct RLUnit
 };
 typedef std::vector<RLUnit> RLVector;
 
+// RLMarker - To allow random access to the 
+// BWT symbols and implement the occurrence array
+// we keep a vector of markers every D symbols.
+// 
+struct RLMarker
+{
+    RLMarker() : unitIndex(0), offset(0) {}
+
+    // The number of times each symbol has been seen 
+    // up to this marker
+    AlphaCount count; 
+
+    // The index in the RLVector that contains the unit ending at this marker
+    size_t unitIndex;
+
+    // The marker index is always a multiple of D
+    // but because we use RLE on the symbols, the actual
+    // number of symbols seen before this marker not be i*D
+    // This stores the offset so we can calculate the true position
+    // This can be no larger than the longest length of a run
+    uint8_t offset;
+};
+typedef std::vector<RLMarker> MarkerVector;
+
 //
 // RLBWT
 //
@@ -98,7 +122,7 @@ class RLBWT
         RLBWT(const std::string& filename);
         
         //    
-        void initializeFMIndex();
+        void initializeFMIndex(int sample_rate = DEFAULT_SAMPLE_RATE);
 
         // Append a symbol to the bw string
         void append(char b);
@@ -157,6 +181,9 @@ class RLBWT
 
         // The run-length encoded string
         RLVector m_rlString;
+
+        // The marker vector
+        MarkerVector m_markers;
 
         // The number of strings in the collection
         size_t m_numStrings;

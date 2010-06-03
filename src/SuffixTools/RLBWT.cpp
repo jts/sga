@@ -48,25 +48,41 @@ void RLBWT::append(char b)
 }
 
 // Fill in the FM-index data structures
-void RLBWT::initializeFMIndex()
+void RLBWT::initializeFMIndex(int sampleRate)
 {
-    // initialize the occurance table
-    m_occurrence.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
+    WARN_ONCE("Marker offset and position can be computed from AlphaCount?");
 
-    // Calculate the C(a) array
+    // initialize the marker vector
+    int num_samples = (m_numSymbols % sampleRate == 0) ? (m_numSymbols / sampleRate) : (m_numSymbols / sampleRate + 1);
+    m_markers.resize(num_samples);
+
+    // Fill in the marker values
+    // We wish to place markers every sampleRate symbols
+    // however since a run may not end exactly on sampleRate boundaries,
+    // we place a marker just after the run crossing the sampleRate boundary has 
+    // ended. 
     
-    // Calculate the total number of occurances of each character in the BW str
-    AlphaCount tmp;
-    for(size_t i = 0; i < m_bwStr.length(); ++i)
+#if 0
+    size_t curr_marker_index = 0;
+    size_t next_marker = sampleRate;
+    size_t running_total = 0;
+    for(size_t i = 0; i < m_rlString.size(); ++i)
     {
-        tmp.increment(m_bwStr.get(i));
-    }
+        while(running_total >= next_marker)
+        {
+            // Place markers
+            size_t expected_marker_pos = (curr_marker_index + 1) * sampleRate;
+            assert(expected_marker_pos >= running_total);
+            RLMarker marker;
+            marker.unitIndex = i;
+            marker.offset
 
-    m_predCount.set('$', 0);
-    m_predCount.set('A', tmp.get('$')); 
-    m_predCount.set('C', m_predCount.get('A') + tmp.get('A'));
-    m_predCount.set('G', m_predCount.get('C') + tmp.get('C'));
-    m_predCount.set('T', m_predCount.get('G') + tmp.get('G'));
+            next_marker += sampleRate;
+        }
+
+        // Advance the running total
+    }
+#endif
 }
 
 //
@@ -97,16 +113,16 @@ void RLBWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 // Print information about the BWT
 void RLBWT::printInfo() const
 {
-    size_t o_size = m_occurrence.getByteSize();
+    size_t m_size = m_markers.capacity() * sizeof(RLMarker);
     size_t bwStr_size = m_rlString.capacity() * sizeof(RLUnit);
     size_t other_size = sizeof(*this);
-    size_t total_size = o_size + bwStr_size + other_size;
+    size_t total_size = m_size + bwStr_size + other_size;
 
     double total_mb = ((double)total_size / (double)(1024 * 1024));
     
     printf("RLBWT contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());
-    printf("RLBWT Size -- OCC: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
-            o_size, bwStr_size, other_size, total_size, total_mb);
-    printf("N: %zu Bytes per symbol: %lf\n", m_numSymbols, (double)total_size / m_bwStr.length());
+    printf("RLBWT Size -- Markers: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
+            m_size, bwStr_size, other_size, total_size, total_mb);
+    printf("N: %zu Bytes per symbol: %lf\n", m_numSymbols, (double)total_size / m_numSymbols);
     
 }
