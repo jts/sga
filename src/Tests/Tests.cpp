@@ -17,7 +17,13 @@ int main(int argc, char** argv)
     BWT* pBWT = new BWT(file);
     RLBWT* pRLBWT = new RLBWT(file);
 
-    pBWT->write(std::string("old.bwt"));
+    std::cout << "Standard BWT info:\n";
+    pBWT->printInfo();
+
+    std::cout << "\nRun-length BWT info: \n";
+    pRLBWT->printInfo();
+
+    pBWT->write("old.bwt");
     pRLBWT->write("new.bwt");
 
     delete pBWT;

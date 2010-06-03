@@ -98,13 +98,15 @@ void RLBWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 void RLBWT::printInfo() const
 {
     size_t o_size = m_occurrence.getByteSize();
-    size_t p_size = sizeof(m_predCount);
+    size_t bwStr_size = m_rlString.capacity() * sizeof(RLUnit);
+    size_t other_size = sizeof(*this);
+    size_t total_size = o_size + bwStr_size + other_size;
 
-    size_t bwStr_size = m_bwStr.getMemSize();
-    size_t offset_size = sizeof(m_numStrings);
-    size_t total_size = o_size + p_size + bwStr_size + offset_size;
     double total_mb = ((double)total_size / (double)(1024 * 1024));
-    printf("BWT Size -- OCC: %zu C: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
-            o_size, p_size, bwStr_size, offset_size, total_size, total_mb);
-    printf("N: %zu Bytes per suffix: %lf\n", m_bwStr.length(), (double)total_size / m_bwStr.length());
+    
+    printf("RLBWT contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());
+    printf("RLBWT Size -- OCC: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
+            o_size, bwStr_size, other_size, total_size, total_mb);
+    printf("N: %zu Bytes per symbol: %lf\n", m_numSymbols, (double)total_size / m_bwStr.length());
+    
 }
