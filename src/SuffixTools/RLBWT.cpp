@@ -105,14 +105,18 @@ void RLBWT::initializeFMIndex(int sampleRate)
     }
 
     assert(curr_marker_index = num_samples);
-    m_predCount = ac;
+
+    m_predCount.set('$', 0);
+    m_predCount.set('A', ac.get('$')); 
+    m_predCount.set('C', m_predCount.get('A') + ac.get('A'));
+    m_predCount.set('G', m_predCount.get('C') + ac.get('C'));
+    m_predCount.set('T', m_predCount.get('G') + ac.get('G'));    
 }
 
 //
 void RLBWT::validate() const
 {
-    std::cerr << "Warning BWT validation is turned on\n";
-    m_occurrence.validate(m_bwStr);
+    assert(false);
 }
 
 // write the BWT to a file
@@ -123,14 +127,8 @@ void RLBWT::write(const std::string& filename)
 }
 
 // Print the BWT
-void RLBWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
+void RLBWT::print(const ReadTable* /*pRT*/, const SuffixArray* /*pSA*/) const
 {
-    std::cout << "i\tL(i)\tF(i)\tO(-,i)\tSUFF\n";
-    for(size_t i = 0; i < m_bwStr.length(); ++i)
-    {
-        assert(getF(i) == pSA->getSuffix(i, pRT)[0]);
-        std::cout << i << "\t" << m_bwStr.get(i) << "\t" << getF(i) << "\t" << m_occurrence.get(m_bwStr, i) << pSA->getSuffix(i, pRT) << "\n";
-    }
 }
 
 // Print information about the BWT

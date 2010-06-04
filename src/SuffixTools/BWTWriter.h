@@ -15,7 +15,7 @@
 #include "BWTReader.h"
 #include "EncodedString.h"
 
-class BWT;
+class SBWT;
 class RLBWT;
 
 class BWTWriter
@@ -25,7 +25,7 @@ class BWTWriter
         ~BWTWriter();
 
         //
-        void write(const BWT* pBWT);
+        void write(const SBWT* pBWT);
         void write(const RLBWT* pRLBWT);
 
         void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);

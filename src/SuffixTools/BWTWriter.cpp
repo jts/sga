@@ -7,7 +7,7 @@
 // BWTWriter.h - Read a BWT file from disk
 //
 #include "BWTWriter.h"
-#include "BWT.h"
+#include "SBWT.h"
 #include "RLBWT.h"
 
 //
@@ -23,7 +23,7 @@ BWTWriter::~BWTWriter()
     delete m_pWriter;
 }
 
-void BWTWriter::write(const BWT* pBWT)
+void BWTWriter::write(const SBWT* pBWT)
 {
     writeHeader(pBWT->m_numStrings, pBWT->m_bwStr.length(), BWF_HASFMI);
     writeBWStr(pBWT->m_bwStr);

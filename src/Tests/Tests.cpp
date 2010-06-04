@@ -23,7 +23,7 @@ int main(int argc, char** argv)
     std::cout << "\nRun-length BWT info: \n";
     pRLBWT->printInfo();
 
-    std::cout << "\nTesting occurrence lookup for RLBWT\n";
+    std::cout << "\nTesting full-occurrence lookup for RLBWT\n";
     for(size_t i = 0; i < pBWT->getBWLen(); ++i)
     {
     
@@ -39,7 +39,48 @@ int main(int argc, char** argv)
         }
     }
 
+    std::cout << "Testing pred count\n";
+    if(pBWT->getPC('A') != pRLBWT->getPC('A') ||
+       pBWT->getPC('C') != pRLBWT->getPC('C') ||
+       pBWT->getPC('G') != pRLBWT->getPC('G') ||
+       pBWT->getPC('T') != pRLBWT->getPC('T') ||
+       pBWT->getPC('$') != pRLBWT->getPC('$'))
+    {
+        std::cout << "Test fail -- Pred count does not match\n";
+        assert(false);
+    }
 
+    std::cout << "\nTesting occurrence lookup for RLBWT\n";
+    for(size_t i = 0; i < pBWT->getBWLen(); ++i)
+    {
+        size_t bAC = pBWT->getOcc('$', i);
+        size_t rAC = pRLBWT->getOcc('$', i);
+
+        //std::cout << "Test: RLBWT[" << i << "] = " << rAC << " BWT= " << bAC << "\n";
+
+        if(bAC != rAC)
+        {
+            std::cout << "Test failed: RLBWT[" << i << "] = " << rAC << " BWT= " << bAC << "\n";
+            assert(false);
+        }
+    }    
+#if 0
+    std::cout << "\nTesting occurrence diff lookup for RLBWT\n";
+    size_t prev = 0;
+    for(size_t i = 1; i < pBWT->getBWLen(); ++i)
+    {
+        size_t bAC = pBWT->getOcc('$', i);
+        size_t rAC = pRLBWT->getOcc('$', i);
+
+        //std::cout << "Test: RLBWT[" << i << "] = " << rAC << " BWT= " << bAC << "\n";
+
+        if(bAC != rAC)
+        {
+            std::cout << "Test failed: RLBWT[" << i << "] = " << rAC << " BWT= " << bAC << "\n";
+            assert(false);
+        }
+    }
+#endif
     std::cout << "\nTesting random access to RLBWT\n";
     for(size_t i = 0; i < pBWT->getBWLen(); ++i)
     {

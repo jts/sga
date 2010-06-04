@@ -6,8 +6,7 @@ libsuffixtools_a_CPPFLAGS = \
 	-I$(top_srcdir)/Bigraph \
 	-I$(top_srcdir)/Concurrency
 
-libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
-                           STCommon.cpp STCommon.h \
+libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
                            STGlobals.h \
                            Occurrence.cpp Occurrence.h \
                            SuffixArray.cpp SuffixArray.h \
@@ -22,4 +21,5 @@ libsuffixtools_a_SOURCES = BWT.cpp BWT.h \
 						   SAWriter.h SAWriter.cpp \
 						   GapArray.h GapArray.cpp \
 						   RankProcess.h RankProcess.cpp \
+                           SBWT.h SBWT.cpp \
                            RLBWT.h RLBWT.cpp

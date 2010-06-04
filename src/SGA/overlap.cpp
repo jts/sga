@@ -139,6 +139,8 @@ int overlapMain(int argc, char** argv)
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, opt::bIrreducibleOnly);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
+
+    pBWT->printInfo();
     size_t count;
     if(opt::numThreads <= 1)
     {

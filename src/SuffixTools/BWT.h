@@ -4,96 +4,20 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// BWT.h - Burrows Wheeler transform of a generalized suffix array
+// BWT - All functions that use a BWT include this file
+// it simple typedefs the BWT name to the implementation
+// of the BWT that we want, either the uncompressed version
+// (SBWT) or the run-length encoded version (RLBWT). This could 
+// be done using inheritence but the BWT is so used so much that 
+// overhead of calling virtual functions is unwanted
+//          
 //
 #ifndef BWT_H
 #define BWT_H
 
-#include "STCommon.h"
-#include "Occurrence.h"
-#include "SuffixArray.h"
-#include "ReadTable.h"
-#include "HitData.h"
-#include "BWTReader.h"
-#include "EncodedString.h"
+#include "RLBWT.h"
+#include "SBWT.h"
 
-//
-// BWT
-//
-class BWT
-{
-    public:
-    
-        // Constructors
-        BWT(const std::string& filename);
-        BWT(const SuffixArray* pSA, const ReadTable* pRT);
-        
-        //    
-        void initializeFMIndex();
+typedef RLBWT BWT;
 
-        // Exact match
-        void backwardSearch(std::string w) const;
-
-        // L[i] -> F mapping 
-        size_t LF(size_t idx) const;
-
-        inline char getChar(size_t idx) const { return m_bwStr.get(idx); }
-        inline BaseCount getPC(char b) const { return m_predCount.get(b); }
-
-        // Return the number of times char b appears in bwt[0, idx]
-        inline BaseCount getOcc(char b, size_t idx) const { return m_occurrence.get(m_bwStr, b, idx); }
-
-        // Return the number of times each symbol in the alphabet appears in bwt[0, idx]
-        inline AlphaCount getFullOcc(size_t idx) const { return m_occurrence.get(m_bwStr, idx); }
-
-        // Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
-        inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
-
-        inline size_t getNumStrings() const { return m_numStrings; } 
-        inline size_t getBWLen() const { return m_bwStr.length(); }
-
-        // Return the first letter of the suffix starting at idx
-        inline char getF(size_t idx) const
-        {
-            size_t ci = 0;
-            while(ci < ALPHABET_SIZE && m_predCount.getByIdx(ci) <= idx)
-                ci++;
-            assert(ci != 0);
-            return RANK_ALPHABET[ci - 1];
-        }
-
-        // Print the size of the BWT
-        void printInfo() const;
-        void print(const ReadTable* pRT, const SuffixArray* pSA) const;
-        void validate() const;
-
-        // IO
-        friend class BWTReader;
-        friend class BWTWriter;
-        void write(const std::string& filename);
-
-    private:
-
-        // calculate the lower bound of number of differences in w[0,i]
-        // if contains_w is true, the string (or read) w is contained in the bwt
-        // and should not be counted
-        void calculateD(std::string w, int minOverlap, const BWT* pRevBWT, bool contains_w, int* pD) const;
-
-        static const int DEFAULT_SAMPLE_RATE = 64;
-
-        // Default constructor is not allowed
-        BWT() {}
-
-        // The O(a,i) array
-        Occurrence m_occurrence;
-
-        // The C(a) array
-        AlphaCount m_predCount;
-        
-        // The bw string
-        BWTString m_bwStr;
-
-        // The number of strings in the collection
-        size_t m_numStrings;
-};
 #endif

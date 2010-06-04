@@ -8,7 +8,7 @@
 // the letter b appears in the string S from S[0..i] (inclusive)
 //
 #include "Occurrence.h"
-#include "BWT.h"
+#include "SBWT.h"
 
 // Initialize the counts from the bwt string b
 void Occurrence::initialize(const BWTString& bwStr, int sampleRate)

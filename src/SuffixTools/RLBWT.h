@@ -122,7 +122,8 @@ class RLBWT
     
         // Constructors
         RLBWT(const std::string& filename);
-        
+        RLBWT(const SuffixArray* /*pSA*/, const ReadTable* /*pRT*/) { assert(false); }
+
         //    
         void initializeFMIndex(int sample_rate = DEFAULT_SAMPLE_RATE);
 
@@ -167,8 +168,36 @@ class RLBWT
         // Return the number of times char b appears in bwt[0, idx]
         inline BaseCount getOcc(char b, size_t idx) const
         {
-            AlphaCount ac = getFullOcc(idx);
-            return ac.get(b);
+            // The counts in the marker are not inclusive (unlike the Occurrence class)
+            // so we increment the index by 1.
+            ++idx;
+
+            // Calculate the Marker with position not less than idx
+            const RLMarker& upperMarker = getUpperMarker(idx);
+            size_t current_position = upperMarker.getActualPosition();
+            assert(current_position >= idx);
+
+            size_t running_count = upperMarker.counts.get(b);
+            size_t symbol_index = upperMarker.unitIndex; 
+
+            // Search backwards (towards 0) until idx is found
+            while(current_position != idx)
+            {
+                size_t diff = current_position - idx;
+                assert(symbol_index != 0);
+                symbol_index -= 1;
+                const RLUnit& curr_unit = m_rlString[symbol_index];
+
+                uint8_t curr_count = curr_unit.getCount();
+                if(curr_count > diff)
+                    curr_count = diff;
+                
+                char curr_base = curr_unit.getChar();
+                if(curr_base == b)
+                    running_count -= curr_count;
+                current_position -= curr_count;
+            }
+            return running_count;            
         }
 
         // Return the number of times each symbol in the alphabet appears in bwt[0, idx]
@@ -242,15 +271,9 @@ class RLBWT
         // Default constructor is not allowed
         RLBWT() {}
 
-        // The O(a,i) array
-        Occurrence m_occurrence;
-
         // The C(a) array
         AlphaCount m_predCount;
         
-        // The bw string
-        BWTString m_bwStr;
-
         // The run-length encoded string
         RLVector m_rlString;
 

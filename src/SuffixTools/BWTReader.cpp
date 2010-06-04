@@ -7,7 +7,7 @@
 // BWTReader.h - Read a BWT file from disk
 //
 #include "BWTReader.h"
-#include "BWT.h"
+#include "SBWT.h"
 #include "RLBWT.h"
 
 //
@@ -23,7 +23,7 @@ BWTReader::~BWTReader()
     delete m_pReader;
 }
 
-void BWTReader::read(BWT* pBWT)
+void BWTReader::read(SBWT* pBWT)
 {
     size_t n;
     BWFlag flag;

@@ -4,9 +4,9 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// BWT.cpp - Burrows Wheeler transform of a generalized suffix array
+// SBWT.cpp - Burrows Wheeler transform of a generalized suffix array
 //
-#include "BWT.h"
+#include "SBWT.h"
 #include "Timer.h"
 #include "BWTReader.h"
 #include "BWTWriter.h"
@@ -19,14 +19,14 @@
 #define PRED(c) m_predCount.get((c))
 
 // Parse a BWT from a file
-BWT::BWT(const std::string& filename)
+SBWT::SBWT(const std::string& filename)
 {
     BWTReader reader(filename);
     reader.read(this);
 }
 
 // Construct the BWT from a suffix array
-BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
+SBWT::SBWT(const SuffixArray* pSA, const ReadTable* pRT)
 {
     Timer timer("BWT Construction");
     size_t n = pSA->getSize();
@@ -50,7 +50,7 @@ BWT::BWT(const SuffixArray* pSA, const ReadTable* pRT)
 }
 
 // Fill in the FM-index data structures
-void BWT::initializeFMIndex()
+void SBWT::initializeFMIndex()
 {
     // initialize the occurance table
     m_occurrence.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
@@ -72,13 +72,13 @@ void BWT::initializeFMIndex()
 }
 
 // Compute the last to first mapping
-size_t BWT::LF(size_t idx) const
+size_t SBWT::LF(size_t idx) const
 {
     return m_bwStr.get(idx) != '$' ? PRED(m_bwStr.get(idx)) + OCC(m_bwStr.get(idx), idx) : 0;
 }
 
 // Perform a exact search for the string w using the backwards algorithm
-void BWT::backwardSearch(std::string w) const
+void SBWT::backwardSearch(std::string w) const
 {
     std::cout << "Searching for " << w << "\n";
     int len = w.size();
@@ -104,21 +104,21 @@ void BWT::backwardSearch(std::string w) const
 }
 
 //
-void BWT::validate() const
+void SBWT::validate() const
 {
     std::cerr << "Warning BWT validation is turned on\n";
     m_occurrence.validate(m_bwStr);
 }
 
 // write the BWT to a file
-void BWT::write(const std::string& filename)
+void SBWT::write(const std::string& filename)
 {
     BWTWriter writer(filename);
     writer.write(this);
 }
 
 // Print the BWT
-void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
+void SBWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 {
     std::cout << "i\tL(i)\tF(i)\tO(-,i)\tSUFF\n";
     for(size_t i = 0; i < m_bwStr.length(); ++i)
@@ -129,7 +129,7 @@ void BWT::print(const ReadTable* pRT, const SuffixArray* pSA) const
 }
 
 // Print information about the BWT
-void BWT::printInfo() const
+void SBWT::printInfo() const
 {
     size_t o_size = m_occurrence.getByteSize();
     size_t p_size = sizeof(m_predCount);
