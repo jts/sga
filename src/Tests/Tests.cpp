@@ -2,7 +2,7 @@
 #include "Edge.h"
 #include "Vertex.h"
 #include "Bigraph.h"
-#include "BWT.h"
+#include "SBWT.h"
 #include "RLBWT.h"
 #include "BWTWriter.h"
 
@@ -14,7 +14,7 @@ int main(int argc, char** argv)
     (void)argv;
 
     std::string file = argv[1];
-    BWT* pBWT = new BWT(file);
+    SBWT* pBWT = new SBWT(file);
     RLBWT* pRLBWT = new RLBWT(file);
 
     std::cout << "Standard BWT info:\n";
@@ -53,8 +53,8 @@ int main(int argc, char** argv)
     std::cout << "\nTesting occurrence lookup for RLBWT\n";
     for(size_t i = 0; i < pBWT->getBWLen(); ++i)
     {
-        size_t bAC = pBWT->getOcc('$', i);
-        size_t rAC = pRLBWT->getOcc('$', i);
+        size_t bAC = pBWT->getOcc('A', i);
+        size_t rAC = pRLBWT->getOcc('A', i);
 
         //std::cout << "Test: RLBWT[" << i << "] = " << rAC << " BWT= " << bAC << "\n";
 

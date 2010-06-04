@@ -153,14 +153,43 @@ class RLBWT
             return unit.getChar();
         }
     
-        // Get the first marker who's actual position is at least idx
+        // Get the first marker with a position that is guaranteed to be 
+        // no greater than idx
         inline const RLMarker& getUpperMarker(size_t idx) const
+        {
+            idx >>= m_shiftValue;
+            ++idx;
+#ifdef RLBWT_VALIDATE
+            assert(idx < m_markers.size());
+#endif
+            return m_markers[idx];
+        }
+
+        // Get the the marker who's position is estimated to be at idx
+        // but it may be slightly more
+        inline const RLMarker& getLowerMarker(size_t idx) const
         {
             idx >>= m_shiftValue;
 #ifdef RLBWT_VALIDATE
             assert(idx < m_markers.size());
 #endif
             return m_markers[idx];
+        }
+
+        // Get the nearest marker to idx.
+        inline const RLMarker& getNearestMarker(size_t idx) const
+        {
+            size_t offset = MOD_POWER_2(idx, m_sampleRate); // equivalent to idx % m_sampleRate
+            if(offset < (m_sampleRate >> 1))
+            {
+                // Choose lower marker
+                return getLowerMarker(idx);    
+            }
+            else
+            {
+                // Choose upper marker
+                return getUpperMarker(idx);
+            }
         }
 
         inline BaseCount getPC(char b) const { return m_predCount.get(b); }
@@ -172,32 +201,19 @@ class RLBWT
             // so we increment the index by 1.
             ++idx;
 
-            // Calculate the Marker with position not less than idx
-            const RLMarker& upperMarker = getUpperMarker(idx);
-            size_t current_position = upperMarker.getActualPosition();
-            assert(current_position >= idx);
+            const RLMarker& marker = getNearestMarker(idx);
+            size_t current_position = marker.getActualPosition();
+            bool forwards = current_position < idx;
+            //printf("cp: %zu idx: %zu f: %d\n", current_position, idx, forwards);
 
-            size_t running_count = upperMarker.counts.get(b);
-            size_t symbol_index = upperMarker.unitIndex; 
+            size_t running_count = marker.counts.get(b);
+            size_t symbol_index = marker.unitIndex; 
 
-            // Search backwards (towards 0) until idx is found
-            while(current_position != idx)
-            {
-                size_t diff = current_position - idx;
-                assert(symbol_index != 0);
-                symbol_index -= 1;
-                const RLUnit& curr_unit = m_rlString[symbol_index];
-
-                uint8_t curr_count = curr_unit.getCount();
-                if(curr_count > diff)
-                    curr_count = diff;
-                
-                char curr_base = curr_unit.getChar();
-                if(curr_base == b)
-                    running_count -= curr_count;
-                current_position -= curr_count;
-            }
-            return running_count;            
+            if(forwards)
+                accumulateForwards(b, running_count, symbol_index, current_position, idx);
+            else
+                accumulateBackwards(b, running_count, symbol_index, current_position, idx);
+            return running_count;
         }
 
         // Return the number of times each symbol in the alphabet appears in bwt[0, idx]
@@ -234,6 +250,55 @@ class RLBWT
             return running_count;
         }
 
+        // Adds to the count of symbol b in the range [targetPosition, currentPosition)
+        // Precondition: currentPosition <= targetPosition
+        inline void accumulateBackwards(char b, size_t& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
+        {
+            // Search backwards (towards 0) until idx is found
+            while(currentPosition != targetPosition)
+            {
+                size_t diff = currentPosition - targetPosition;
+#ifdef RLBWT_VALIDATE                
+                assert(currentUnitIndex != 0);
+#endif
+                --currentUnitIndex;
+
+                const RLUnit& curr_unit = m_rlString[currentUnitIndex];
+                uint8_t curr_count = curr_unit.getCount();
+                if(curr_count > diff)
+                    curr_count = diff;
+                
+                char curr_base = curr_unit.getChar();
+                if(curr_base == b)
+                    running_count -= curr_count;
+                currentPosition -= curr_count;
+            }
+        }
+
+        // Adds to the count of symbol b in the range [currentPosition, targetPosition)
+        // Precondition: currentPosition <= targetPosition
+        inline void accumulateForwards(char b, size_t& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
+        {
+            // Search backwards (towards 0) until idx is found
+            while(currentPosition != targetPosition)
+            {
+                size_t diff = targetPosition - currentPosition;
+#ifdef RLBWT_VALIDATE
+                assert(currentUnitIndex != m_rlString.size());
+#endif
+                const RLUnit& curr_unit = m_rlString[currentUnitIndex];
+                uint8_t curr_count = curr_unit.getCount();
+                if(curr_count > diff)
+                    curr_count = diff;
+                
+                char curr_base = curr_unit.getChar();
+                if(curr_base == b)
+                    running_count += curr_count;
+                currentPosition += curr_count;
+                ++currentUnitIndex;
+            }
+        }
+
         // Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
         inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const 
         { 
@@ -266,7 +331,7 @@ class RLBWT
 
     private:
 
-        static const int DEFAULT_SAMPLE_RATE = 64;
+        static const int DEFAULT_SAMPLE_RATE = 128;
 
         // Default constructor is not allowed
         RLBWT() {}

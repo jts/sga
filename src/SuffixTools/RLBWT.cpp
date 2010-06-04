@@ -53,16 +53,21 @@ void RLBWT::initializeFMIndex(int sampleRate)
     m_sampleRate = sampleRate;
     m_shiftValue = Occurrence::calculateShiftValue(m_sampleRate);
 
-    // initialize the marker vector
-    size_t num_samples = (m_numSymbols % m_sampleRate == 0) ? (m_numSymbols / m_sampleRate) : (m_numSymbols / m_sampleRate + 1);
+    // initialize the marker vector, we place a marker at the beginning (with no accumulated counts), every m_sampleRate
+    // bases and one at the very end (with the total counts)
+    size_t num_samples = (m_numSymbols % m_sampleRate == 0) ? (m_numSymbols / m_sampleRate) + 1 : (m_numSymbols / m_sampleRate + 2);
     m_markers.resize(num_samples);
 
     // Fill in the marker values
     // We wish to place markers every sampleRate symbols however since a run may
     // not end exactly on sampleRate boundaries, we place the markers AFTER
     // the run crossing the boundary ends
-    size_t curr_marker_index = 0;
 
+    // Place a blank first marker at the start of the data
+    RLMarker& marker = m_markers[0];
+    marker.unitIndex = 0;
+
+    size_t curr_marker_index = 1;
     size_t next_marker = m_sampleRate;
     size_t running_total = 0;
     AlphaCount ac;
@@ -81,7 +86,7 @@ void RLBWT::initializeFMIndex(int sampleRate)
         while(running_total >= next_marker || place_last_marker)
         {
             // Place markers
-            size_t expected_marker_pos = (curr_marker_index + 1) * m_sampleRate;
+            size_t expected_marker_pos = curr_marker_index * m_sampleRate;
 
             //int diff = running_total - expected_marker_pos;
             //printf("Placing marker at index %zu, expected pos %zu, actual pos %zu, diff %d\n", 
