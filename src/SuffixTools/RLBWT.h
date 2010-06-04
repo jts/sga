@@ -223,31 +223,65 @@ class RLBWT
             // so we increment the index by 1.
             ++idx;
 
-            // Calculate the Marker with position not less than idx
-            const RLMarker& upperMarker = getUpperMarker(idx);
-            size_t current_position = upperMarker.getActualPosition();
-            assert(current_position >= idx);
+            const RLMarker& marker = getNearestMarker(idx);
+            size_t current_position = marker.getActualPosition();
+            bool forwards = current_position < idx;
 
-            AlphaCount running_count = upperMarker.counts;
-            size_t symbol_index = upperMarker.unitIndex; 
+            AlphaCount running_count = marker.counts;
+            size_t symbol_index = marker.unitIndex; 
 
+            if(forwards)
+                accumulateForwards(running_count, symbol_index, current_position, idx);
+            else
+                accumulateBackwards(running_count, symbol_index, current_position, idx);
+            return running_count;
+        }
+
+        // Adds to the count of symbol b in the range [targetPosition, currentPosition)
+        // Precondition: currentPosition <= targetPosition
+        inline void accumulateBackwards(AlphaCount& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
+        {
             // Search backwards (towards 0) until idx is found
-            while(current_position != idx)
+            while(currentPosition != targetPosition)
             {
-                size_t diff = current_position - idx;
-                assert(symbol_index != 0);
-                symbol_index -= 1;
-                const RLUnit& curr_unit = m_rlString[symbol_index];
+                size_t diff = currentPosition - targetPosition;
+#ifdef RLBWT_VALIDATE                
+                assert(currentUnitIndex != 0);
+#endif
+                --currentUnitIndex;
 
+                const RLUnit& curr_unit = m_rlString[currentUnitIndex];
                 uint8_t curr_count = curr_unit.getCount();
                 if(curr_count > diff)
                     curr_count = diff;
                 
                 char curr_base = curr_unit.getChar();
                 running_count.subtract(curr_base, curr_count);
-                current_position -= curr_count;
+                currentPosition -= curr_count;
             }
-            return running_count;
+        }
+
+        // Adds to the count of symbol b in the range [currentPosition, targetPosition)
+        // Precondition: currentPosition <= targetPosition
+        inline void accumulateForwards(AlphaCount& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
+        {
+            // Search backwards (towards 0) until idx is found
+            while(currentPosition != targetPosition)
+            {
+                size_t diff = targetPosition - currentPosition;
+#ifdef RLBWT_VALIDATE
+                assert(currentUnitIndex != m_rlString.size());
+#endif
+                const RLUnit& curr_unit = m_rlString[currentUnitIndex];
+                uint8_t curr_count = curr_unit.getCount();
+                if(curr_count > diff)
+                    curr_count = diff;
+                
+                char curr_base = curr_unit.getChar();
+                running_count.add(curr_base, curr_count);
+                currentPosition += curr_count;
+                ++currentUnitIndex;
+            }
         }
 
         // Adds to the count of symbol b in the range [targetPosition, currentPosition)
