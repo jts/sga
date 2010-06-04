@@ -130,6 +130,12 @@ class AlphaCount
             m_counts[getBaseRank(b)] += v;
         }
 
+        //
+        inline void subtract(char b, BaseCount v)
+        {
+            m_counts[getBaseRank(b)] -= v;
+        }
+
         // 
         inline BaseCount get(char b) const
         {
@@ -364,6 +370,19 @@ class AlphaCount
 #endif
             return out;
         }
+
+        inline friend bool operator==(const AlphaCount& left, const AlphaCount& right)
+        {
+            return left.m_counts[0] == right.m_counts[0] && left.m_counts[1] == right.m_counts[1] &&
+                   left.m_counts[2] == right.m_counts[2] && left.m_counts[3] == right.m_counts[3] &&
+                   left.m_counts[4] == right.m_counts[4];   
+        }
+        
+        inline friend bool operator!=(const AlphaCount& left, const AlphaCount& right)
+        {
+            return !(left == right);
+        }
+                
 
     private:
         BaseCount m_counts[ALPHABET_SIZE];

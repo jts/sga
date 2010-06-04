@@ -23,6 +23,22 @@ int main(int argc, char** argv)
     std::cout << "\nRun-length BWT info: \n";
     pRLBWT->printInfo();
 
+    std::cout << "\nTesting occurrence lookup for RLBWT\n";
+    for(size_t i = 0; i < pBWT->getBWLen(); ++i)
+    {
+    
+        AlphaCount bAC = pBWT->getFullOcc(i);
+        AlphaCount rAC = pRLBWT->getFullOcc(i);
+
+        //std::cout << "Test: RLBWT[" << i << "] = " << rAC << " BWT= " << bAC << "\n";
+
+        if(bAC != rAC)
+        {
+            std::cout << "Test failed: RLBWT[" << i << "] = " << rAC << " BWT= " << bAC << "\n";
+            assert(false);
+        }
+    }
+
 
     std::cout << "\nTesting random access to RLBWT\n";
     for(size_t i = 0; i < pBWT->getBWLen(); ++i)

@@ -165,13 +165,51 @@ class RLBWT
         inline BaseCount getPC(char b) const { return m_predCount.get(b); }
 
         // Return the number of times char b appears in bwt[0, idx]
-        inline BaseCount getOcc(char b, size_t idx) const { return m_occurrence.get(m_bwStr, b, idx); }
+        inline BaseCount getOcc(char b, size_t idx) const
+        {
+            AlphaCount ac = getFullOcc(idx);
+            return ac.get(b);
+        }
 
         // Return the number of times each symbol in the alphabet appears in bwt[0, idx]
-        inline AlphaCount getFullOcc(size_t idx) const { return m_occurrence.get(m_bwStr, idx); }
+        inline AlphaCount getFullOcc(size_t idx) const 
+        { 
+            // The counts in the marker are not inclusive (unlike the Occurrence class)
+            // so we increment the index by 1.
+            ++idx;
+
+            // Calculate the Marker with position not less than idx
+            const RLMarker& upperMarker = getUpperMarker(idx);
+            size_t current_position = upperMarker.getActualPosition();
+            assert(current_position >= idx);
+
+            AlphaCount running_count = upperMarker.counts;
+            size_t symbol_index = upperMarker.unitIndex; 
+
+            // Search backwards (towards 0) until idx is found
+            while(current_position != idx)
+            {
+                size_t diff = current_position - idx;
+                assert(symbol_index != 0);
+                symbol_index -= 1;
+                const RLUnit& curr_unit = m_rlString[symbol_index];
+
+                uint8_t curr_count = curr_unit.getCount();
+                if(curr_count > diff)
+                    curr_count = diff;
+                
+                char curr_base = curr_unit.getChar();
+                running_count.subtract(curr_base, curr_count);
+                current_position -= curr_count;
+            }
+            return running_count;
+        }
 
         // Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
-        inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
+        inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const 
+        { 
+            return getFullOcc(idx1) - getFullOcc(idx0); 
+        }
 
         inline size_t getNumStrings() const { return m_numStrings; } 
         inline size_t getBWLen() const { return m_numSymbols; }
