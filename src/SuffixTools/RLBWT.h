@@ -121,11 +121,11 @@ class RLBWT
     public:
     
         // Constructors
-        RLBWT(const std::string& filename);
+        RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE);
         RLBWT(const SuffixArray* /*pSA*/, const ReadTable* /*pRT*/) { assert(false); }
 
         //    
-        void initializeFMIndex(int sample_rate = DEFAULT_SAMPLE_RATE);
+        void initializeFMIndex();
 
         // Append a symbol to the bw string
         void append(char b);
@@ -157,6 +157,7 @@ class RLBWT
         // no greater than idx
         inline const RLMarker& getUpperMarker(size_t idx) const
         {
+            //printf("UPPER idx: %zu shifted: %zu nm: %zu\n", idx, idx >> m_shiftValue, m_markers.size());
             idx >>= m_shiftValue;
             ++idx;
 #ifdef RLBWT_VALIDATE
@@ -169,6 +170,7 @@ class RLBWT
         // but it may be slightly more
         inline const RLMarker& getLowerMarker(size_t idx) const
         {
+            //printf("LOWER idx: %zu shifted: %zu nm: %zu\n", idx, idx >> m_shiftValue, m_markers.size());
             idx >>= m_shiftValue;
 #ifdef RLBWT_VALIDATE
             assert(idx < m_markers.size());
@@ -204,7 +206,7 @@ class RLBWT
             const RLMarker& marker = getNearestMarker(idx);
             size_t current_position = marker.getActualPosition();
             bool forwards = current_position < idx;
-            //printf("cp: %zu idx: %zu f: %d\n", current_position, idx, forwards);
+            //printf("cp: %zu idx: %zu f: %d dist: %d\n", current_position, idx, forwards, (int)idx - (int)current_position);
 
             size_t running_count = marker.counts.get(b);
             size_t symbol_index = marker.unitIndex; 
@@ -363,9 +365,10 @@ class RLBWT
         friend class BWTWriter;
         void write(const std::string& filename);
 
+        static const int DEFAULT_SAMPLE_RATE = 128;
+
     private:
 
-        static const int DEFAULT_SAMPLE_RATE = 128;
 
         // Default constructor is not allowed
         RLBWT() {}
@@ -390,5 +393,6 @@ class RLBWT
 
         // The amount to shift values by to divide by m_sampleRate
         int m_shiftValue;
+
 };
 #endif

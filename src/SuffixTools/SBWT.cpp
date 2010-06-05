@@ -19,10 +19,11 @@
 #define PRED(c) m_predCount.get((c))
 
 // Parse a BWT from a file
-SBWT::SBWT(const std::string& filename)
+SBWT::SBWT(const std::string& filename, int sampleRate)
 {
     BWTReader reader(filename);
     reader.read(this);
+    initializeFMIndex(sampleRate);
 }
 
 // Construct the BWT from a suffix array
@@ -46,14 +47,14 @@ SBWT::SBWT(const SuffixArray* pSA, const ReadTable* pRT)
         m_bwStr.set(i, b);
     }
 
-    initializeFMIndex();
+    initializeFMIndex(DEFAULT_SAMPLE_RATE);
 }
 
 // Fill in the FM-index data structures
-void SBWT::initializeFMIndex()
+void SBWT::initializeFMIndex(int sampleRate)
 {
     // initialize the occurance table
-    m_occurrence.initialize(m_bwStr, DEFAULT_SAMPLE_RATE);
+    m_occurrence.initialize(m_bwStr, sampleRate);
 
     // Calculate the C(a) array
     
@@ -138,7 +139,9 @@ void SBWT::printInfo() const
     size_t offset_size = sizeof(m_numStrings);
     size_t total_size = o_size + p_size + bwStr_size + offset_size;
     double total_mb = ((double)total_size / (double)(1024 * 1024));
-    printf("BWT Size -- OCC: %zu C: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
+    printf("\nSBWT info\n");
+    printf("Sample rate: %zu\n", m_occurrence.getSampleRate());
+    printf("Memory -- OCC: %zu C: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
             o_size, p_size, bwStr_size, offset_size, total_size, total_mb);
     printf("N: %zu Bytes per suffix: %lf\n", m_bwStr.length(), (double)total_size / m_bwStr.length());
 }

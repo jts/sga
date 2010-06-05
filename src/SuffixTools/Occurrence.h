@@ -107,6 +107,7 @@ class Occurrence
         void print() const;
         size_t getByteSize() const;
         size_t size() const { return m_values.size(); }
+        size_t getSampleRate() const { return m_sampleRate; }
 
         // Calculate the amount a value should be shifted to perform a division
         // by divisor. The divisor must be a power of 2

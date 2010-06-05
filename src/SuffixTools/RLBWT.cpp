@@ -19,10 +19,11 @@
 #define PRED(c) m_predCount.get((c))
 
 // Parse a BWT from a file
-RLBWT::RLBWT(const std::string& filename) : m_numStrings(0), m_numSymbols(0), m_sampleRate(0)
+RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), m_numSymbols(0), m_sampleRate(sampleRate)
 {
     BWTReader reader(filename);
     reader.read(this);
+    initializeFMIndex();
 }
 
 void RLBWT::append(char b)
@@ -48,14 +49,13 @@ void RLBWT::append(char b)
 }
 
 // Fill in the FM-index data structures
-void RLBWT::initializeFMIndex(int sampleRate)
+void RLBWT::initializeFMIndex()
 {
-    m_sampleRate = sampleRate;
     m_shiftValue = Occurrence::calculateShiftValue(m_sampleRate);
 
     // initialize the marker vector, we place a marker at the beginning (with no accumulated counts), every m_sampleRate
     // bases and one at the very end (with the total counts)
-    size_t num_samples = (m_numSymbols % m_sampleRate == 0) ? (m_numSymbols / m_sampleRate) + 1 : (m_numSymbols / m_sampleRate + 2);
+    size_t num_samples = (m_numSymbols % m_sampleRate == 0) ? (m_numSymbols / m_sampleRate) + 1 : (m_numSymbols / m_sampleRate) + 2;
     m_markers.resize(num_samples);
 
     // Fill in the marker values
@@ -81,7 +81,7 @@ void RLBWT::initializeFMIndex(int sampleRate)
 
         running_total += run_len;
 
-        // If this is the last symbol, place a final marker at the end of the data
+        // If this is the last symbol, place the final marker(s)
         bool place_last_marker = (i == m_rlString.size() - 1) && curr_marker_index < num_samples;
         while(running_total >= next_marker || place_last_marker)
         {
@@ -105,11 +105,15 @@ void RLBWT::initializeFMIndex(int sampleRate)
             marker.counts = ac;
             next_marker += m_sampleRate;
             ++curr_marker_index;
-            place_last_marker = false;
+            place_last_marker = (i == m_rlString.size() - 1) && curr_marker_index < num_samples;
         }        
     }
 
-    assert(curr_marker_index = num_samples);
+    if(curr_marker_index != num_samples)
+    {
+        printf("Placed %zu markers, expected %zu\n", curr_marker_index, num_samples);
+    }
+    assert(curr_marker_index == num_samples);
 
     m_predCount.set('$', 0);
     m_predCount.set('A', ac.get('$')); 
@@ -146,9 +150,9 @@ void RLBWT::printInfo() const
 
     double total_mb = ((double)total_size / (double)(1024 * 1024));
     
-    printf("RLBWT contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());
-    printf("RLBWT Size -- Markers: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
-            m_size, bwStr_size, other_size, total_size, total_mb);
+    printf("\nRLBWT info:\n");
+    printf("Sample rate: %zu\n", m_sampleRate);
+    printf("Contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());
+    printf("Memory -- Markers: %zu Str: %zu Misc: %zu Total: %zu (%lf MB)\n", m_size, bwStr_size, other_size, total_size, total_mb);
     printf("N: %zu Bytes per symbol: %lf\n", m_numSymbols, (double)total_size / m_numSymbols);
-    printf("Debug -- size of marker: %zu size of alphacount: %zu\n", sizeof(RLMarker), sizeof(AlphaCount));    
 }

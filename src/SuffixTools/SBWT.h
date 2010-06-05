@@ -27,11 +27,11 @@ class SBWT
     public:
     
         // Constructors
-        SBWT(const std::string& filename);
+        SBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE);
         SBWT(const SuffixArray* pSA, const ReadTable* pRT);
         
         //    
-        void initializeFMIndex();
+        void initializeFMIndex(int sampleRate);
 
         // Exact match
         void backwardSearch(std::string w) const;
@@ -74,10 +74,11 @@ class SBWT
         friend class BWTWriter;
         void write(const std::string& filename);
 
-    private:
-
         static const int DEFAULT_SAMPLE_RATE = 64;
 
+    private:
+
+        
         // Default constructor is not allowed
         SBWT() {}
 

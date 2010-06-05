@@ -31,18 +31,9 @@ void BWTReader::read(SBWT* pBWT)
 
     pBWT->m_bwStr.resize(n);
     readBWStr(pBWT->m_bwStr);
-    
-    // If the flag indicates the FM-index is stored in the file
-    // read it, otherwise construct it from BWStr
-    if(flag == BWF_HASFMI)
-    {
-        readPred(pBWT->m_predCount);
-        readOccurrence(pBWT->m_occurrence);
-    }
-    else
-    {
-        pBWT->initializeFMIndex();
-    }
+ 
+    // Reading the occurrence array from disk is deprecated
+    // we ignore it if it is present
 }
 
 void BWTReader::read(RLBWT* pRLBWT)
@@ -66,8 +57,6 @@ void BWTReader::read(RLBWT* pRLBWT)
             break;
         }
     }
-    pRLBWT->initializeFMIndex();
-    std::cout << "Loaded RLBWT, num runs: " << pRLBWT->getNumRuns() << " num symbols: " << pRLBWT->getBWLen() << "\n";
 }
 
 //

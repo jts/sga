@@ -68,6 +68,8 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "                                       missing edges, this option may be preferable for some data sets.\n"
 "      -s, --seed-stride=LEN            force the seed stride to be LEN. This parameter will be ignored unless --seed-length\n"
 "                                       is specified (see above). This parameter defaults to the same value as --seed-length\n"
+"      -d, --sample-rate=N              sample the symbol counts every N symbols in the FM-index. Higher values use significantly\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2. Default is 128\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -85,6 +87,7 @@ namespace opt
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
     static int seedStride = 0;
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
     static bool bIrreducibleOnly;
 }
 
@@ -96,7 +99,7 @@ static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
     { "threads",     required_argument, NULL, 't' },
     { "min-overlap", required_argument, NULL, 'm' },
-    { "max-diff",    required_argument, NULL, 'd' },
+    { "sample-rate", required_argument, NULL, 'd' },
     { "prefix",      required_argument, NULL, 'p' },
     { "error-rate",  required_argument, NULL, 'e' },
     { "seed-length", required_argument, NULL, 'l' },
@@ -133,8 +136,8 @@ int overlapMain(int argc, char** argv)
 
     // Compute the overlap hits
     StringVector hitsFilenames;
-    BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
-    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
+    BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
+    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, opt::bIrreducibleOnly);
@@ -321,6 +324,7 @@ void parseOverlapOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
+            case 'd': arg >> opt::sampleRate; break;
             case 'i': opt::bIrreducibleOnly = true; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
@@ -350,6 +354,12 @@ void parseOverlapOptions(int argc, char** argv)
         die = true;
     }
 
+    if(!IS_POWER_OF_2(opt::sampleRate))
+    {
+        std::cerr << SUBPROGRAM ": invalid parameter to -d/--sample-rate, must be power of 2. got: " << opt::sampleRate << "\n";
+        die = true;
+    }
+
     if (die) 
     {
         std::cout << "\n" << OVERLAP_USAGE_MESSAGE;
@@ -365,7 +375,7 @@ void parseOverlapOptions(int argc, char** argv)
 
     if(opt::seedLength > 0 && opt::seedStride <= 0)
         opt::seedStride = opt::seedLength;
-
+    
     // Parse the input filenames
     opt::readsFile = argv[optind++];
 
