@@ -20,17 +20,6 @@
 //
 int overlapMain(int argc, char** argv);
 
-// Hits processing
-void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWriter);
-
-void convertHitsToOverlaps(const StringVector& hitsFilenames);
-void writeOverlap(Overlap& overlap, std::ofstream& containHandle, std::ofstream& overlapHandle);
-
-// Convert a line from a hits file into a vector of overlaps
-OverlapVector hitStringToOverlaps(const std::string& hitString, 
-                                  const ReadTable* pFwdRT, const ReadTable* pRevRT, 
-                                  const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI);
-
 // options
 void parseOverlapOptions(int argc, char** argv);
 

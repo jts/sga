@@ -14,12 +14,13 @@
 #include "SuffixArray.h"
 #include "SGACommon.h"
 #include "Timer.h"
+#include "ReadInfoTable.h"
 
 namespace OverlapCommon
 {
 
 void parseHitsString(const std::string& hitString, 
-                     const ReadTable* pFwdRT, 
+                     const ReadInfoTable* pRIT, 
                      const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI, 
                      size_t& readIdx, OverlapVector& outVector, bool& isSubstring);
 };

@@ -9,6 +9,7 @@ libutil_a_SOURCES = \
 		Alphabet.h Alphabet.cpp \
         Contig.h Contig.cpp \
         ReadTable.h ReadTable.cpp \
+        ReadInfoTable.h ReadInfoTable.cpp \
         SeqReader.h SeqReader.cpp \
         DNAString.h DNAString.cpp \
         Match.h Match.cpp \

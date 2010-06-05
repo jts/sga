@@ -14,7 +14,7 @@
 // Only the forward read table is used since we only care about the IDs and length
 // of the read, not the sequence, so that we don't need an explicit reverse read table
 void OverlapCommon::parseHitsString(const std::string& hitString, 
-                                    const ReadTable* pFwdRT, 
+                                    const ReadInfoTable* pRIT, 
                                     const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI, 
                                     size_t& readIdx, OverlapVector& outVector, bool& isSubstring)
 {
@@ -36,26 +36,25 @@ void OverlapCommon::parseHitsString(const std::string& hitString,
         // Iterate through the range and write the overlaps
         for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
         {
-            const ReadTable* pCurrRT = pFwdRT;
             const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
-            const SeqItem& query = pCurrRT->getRead(readIdx);
+            const ReadInfo& queryInfo = pRIT->getReadInfo(readIdx);
 
             int64_t saIdx = j;
 
             // The index of the second read is given as the position in the SuffixArray index
-            const SeqItem& target = pCurrRT->getRead(pCurrSAI->get(saIdx).getID());
+            const ReadInfo& targetInfo = pRIT->getReadInfo(pCurrSAI->get(saIdx).getID());
 
             // Skip self alignments and non-canonical (where the query read has a lexo. higher name)
-            if(query.id != target.id)
+            if(queryInfo.id != targetInfo.id)
             {    
                 // Compute the endpoints of the overlap
-                int s1 = query.seq.length() - record.overlapLen;
+                int s1 = queryInfo.length - record.overlapLen;
                 int e1 = s1 + record.overlapLen - 1;
-                SeqCoord sc1(s1, e1, query.seq.length());
+                SeqCoord sc1(s1, e1, queryInfo.length);
 
                 int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
                 int e2 = s2 + record.overlapLen - 1;
-                SeqCoord sc2(s2, e2, target.seq.length());
+                SeqCoord sc2(s2, e2, targetInfo.length);
 
                 // The coordinates are always with respect to the read, so flip them if
                 // we aligned to/from the reverse of the read
@@ -66,7 +65,7 @@ void OverlapCommon::parseHitsString(const std::string& hitString,
 
                 bool isRC = record.flags.isTargetRev() != record.flags.isQueryRev();
 
-                Overlap o(query.id, sc1, target.id, sc2, isRC, record.numDiff);
+                Overlap o(queryInfo.id, sc1, targetInfo.id, sc2, isRC, record.numDiff);
             
                 // The alignment logic above has the potential to produce duplicate alignments
                 // To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 

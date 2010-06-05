@@ -24,6 +24,7 @@
 #include "gzstream.h"
 #include "SequenceProcessFramework.h"
 #include "OverlapProcess.h"
+#include "ReadInfoTable.h"
 
 //
 enum OutputType
@@ -40,6 +41,10 @@ size_t computeHitsSerial(const std::string& prefix, const std::string& readsFile
 size_t computeHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
                            const OverlapAlgorithm* pOverlapper, int minOverlap, 
                            StringVector& filenameVec, std::ostream* pASQGWriter);
+
+//
+void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWriter);
+
 
 //
 // Getopt
@@ -156,6 +161,7 @@ int overlapMain(int argc, char** argv)
         count = computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
 
+    // Get the number of strings in the BWT, this is used to pre-allocated the read table
     delete pOverlapper;
     delete pBWT; 
     delete pRBWT;
@@ -233,8 +239,8 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
     SuffixArray* pFwdSAI = new SuffixArray(opt::prefix + SAI_EXT);
     SuffixArray* pRevSAI = new SuffixArray(opt::prefix + RSAI_EXT);
 
-    // Load the read table and output the initial vertex set, consisting of all the reads
-    ReadTable* pFwdRT = new ReadTable(opt::readsFile);
+    // Load the ReadInfoTable to look up the ID and lengths of the hits
+    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings());
 
     // Convert the hits to overlaps and write them to the asqg file as initial edges
     for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
@@ -249,7 +255,7 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
             size_t readIdx;
             bool isSubstring;
             OverlapVector ov;
-            OverlapCommon::parseHitsString(line, pFwdRT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(line, pRIT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
             for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
             {
                 ASQG::EdgeRecord edgeRecord(*iter);
@@ -263,48 +269,7 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
     // Delete allocated data
     delete pFwdSAI;
     delete pRevSAI;
-    delete pFwdRT;
-}
-
-// Before sanity checks on the overlaps and write them out
-void writeOverlap(Overlap& ovr, std::ofstream& containHandle, std::ofstream& overlapHandle)
-{
-    // Ensure that the overlap is not a containment
-    if(ovr.match.coord[0].isContained() || ovr.match.coord[1].isContained())
-    {
-        containHandle << ovr << "\n";
-        return;
-    }
-
-    // Unless both overlaps are extreme, skip
-    if(!ovr.match.coord[0].isExtreme() || !ovr.match.coord[1].isExtreme())
-    {
-        std::cerr << "Skipping non-extreme overlap: " << ovr << "\n";
-        return;
-    }
-
-    bool sameStrand = !ovr.match.isRC();
-    bool proper = false;
-    
-    if(sameStrand)
-    {
-        proper = (ovr.match.coord[0].isLeftExtreme() != ovr.match.coord[1].isLeftExtreme() && 
-                  ovr.match.coord[0].isRightExtreme() != ovr.match.coord[1].isRightExtreme());
-    }
-    else
-    {
-        proper = (ovr.match.coord[0].isLeftExtreme() == ovr.match.coord[1].isLeftExtreme() && 
-                  ovr.match.coord[0].isRightExtreme() == ovr.match.coord[1].isRightExtreme());
-    }
-    
-    if(!proper)
-    {
-        std::cerr << "Skipping improper overlap: " << ovr << "\n";
-        return;
-    }
-
-    // All checks passed, output the overlap
-    overlapHandle << ovr << "\n";
+    delete pRIT;
 }
 
 // 

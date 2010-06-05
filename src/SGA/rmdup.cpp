@@ -179,7 +179,7 @@ void parseDupHits(const StringVector& hitsFilenames)
     SuffixArray* pRevSAI = new SuffixArray(opt::prefix + RSAI_EXT);
 
     // Load the read table and output the initial vertex set, consisting of all the reads
-    ReadTable* pFwdRT = new ReadTable(opt::readsFile);
+    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings());
 
     std::string outFile = opt::prefix + ".rmdup.fa";
     std::ostream* pWriter = createWriter(outFile);
@@ -194,14 +194,13 @@ void parseDupHits(const StringVector& hitsFilenames)
         printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
         std::istream* pReader = createReader(*iter);
     
-        // Read each hit sequentially, converting it to an overlap
         std::string line;
         while(getline(*pReader, line))
         {
             size_t readIdx;
             bool isSubstring;
             OverlapVector ov;
-            OverlapCommon::parseHitsString(line, pFwdRT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(line, pRIT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
             
             if(isSubstring)
             {
@@ -227,9 +226,10 @@ void parseDupHits(const StringVector& hitsFilenames)
                 else
                 {
                     ++kept;
+                    assert(false && "fix rmdup for read info table");
                     // Write the read
-                    const SeqItem& item = pFwdRT->getRead(readIdx);
-                    item.write(*pWriter);
+                    //const SeqItem& item = pFwdRT->getRead(readIdx);
+                    //item.write(*pWriter);
                 }
             }
         }
@@ -243,7 +243,7 @@ void parseDupHits(const StringVector& hitsFilenames)
     // Delete allocated data
     delete pFwdSAI;
     delete pRevSAI;
-    delete pFwdRT;
+    delete pRIT;
     delete pWriter;
 }
 
