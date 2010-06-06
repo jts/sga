@@ -38,7 +38,8 @@ class OverlapAlgorithm
                                          m_errorRate(er),
                                          m_seedLength(seedLen),
                                          m_seedStride(seedStride),
-                                         m_bIrreducible(irrOnly) {}
+                                         m_bIrreducible(irrOnly),
+                                         m_exactMode(false) {}
 
         // Perform the overlap
         // This function is threaded so everything must be const
@@ -59,6 +60,9 @@ class OverlapAlgorithm
         // Write all the overlap blocks pList to the filehandle
         void writeOverlapBlocks(std::ostream& writer, size_t readIdx, bool isSubstring, const OverlapBlockList* pList) const;
 
+        // Set flag to use exact-match algorithms only
+        void setExactMode(bool b) { m_exactMode = b; }
+        
     private:
 
         // Calculate the ranges in pBWT that contain a prefix of at least minOverlap basepairs that
@@ -141,6 +145,7 @@ class OverlapAlgorithm
         int m_seedLength;
         int m_seedStride;
         bool m_bIrreducible;
+        bool m_exactMode;
 };
 
 #endif

@@ -51,6 +51,8 @@ void RLBWT::append(char b)
 // Fill in the FM-index data structures
 void RLBWT::initializeFMIndex()
 {
+    WARN_ONCE("RLBWT: Performing swap trick to trim excess capacity");
+    RLVector(m_rlString).swap(m_rlString);
     m_shiftValue = Occurrence::calculateShiftValue(m_sampleRate);
 
     // initialize the marker vector, we place a marker at the beginning (with no accumulated counts), every m_sampleRate

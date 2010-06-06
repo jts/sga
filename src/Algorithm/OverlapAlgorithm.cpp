@@ -20,8 +20,10 @@ static const AlignFlags preSufAF(true, true, false);
 OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, int minOverlap, OverlapBlockList* pOutList) const
 {
     OverlapResult r;
-    r = overlapReadInexact(read, minOverlap, pOutList);
-    //r = overlapReadExact(read, minOverlap, pOutList);
+    if(!m_exactMode)
+        r = overlapReadInexact(read, minOverlap, pOutList);
+    else
+        r = overlapReadExact(read, minOverlap, pOutList);
     return r;
 }
 
@@ -99,8 +101,7 @@ OverlapResult OverlapAlgorithm::overlapReadExact(const SeqRecord& read, int minO
     OverlapBlockList obWorkingList;
     std::string seq = read.seq.toString();
 
-    // Irreducible overlaps only
-    WARN_ONCE("Irreducible-only assumptions: All reads are the same length")
+    WARN_ONCE("Using exact mode")
 
     // Match the suffix of seq to prefixes
     findOverlapBlocksExact(seq, m_pBWT, m_pRevBWT, sufPreAF, minOverlap, &obWorkingList, pOBOut, result);

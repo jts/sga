@@ -62,7 +62,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
-"      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
+"      -t, --threads=NUM                use NUM worker threads to compute the overlaps (default: no threading)\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
@@ -94,6 +94,7 @@ namespace opt
     static int seedStride = 0;
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
     static bool bIrreducibleOnly;
+    static bool bExactMode = false;
 }
 
 static const char* shortopts = "p:m:d:e:t:l:s:vi";
@@ -110,6 +111,7 @@ static const struct option longopts[] = {
     { "seed-length", required_argument, NULL, 'l' },
     { "seed-stride", required_argument, NULL, 's' },
     { "irreducible", no_argument,       NULL, 'i' },
+    { "exact",       no_argument,       NULL, 'x' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -146,6 +148,7 @@ int overlapMain(int argc, char** argv)
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, opt::bIrreducibleOnly);
+    pOverlapper->setExactMode(opt::bExactMode);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
     pBWT->printInfo();
@@ -290,6 +293,7 @@ void parseOverlapOptions(int argc, char** argv)
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
             case 'd': arg >> opt::sampleRate; break;
+            case 'x': opt::bExactMode = true; break;
             case 'i': opt::bIrreducibleOnly = true; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
