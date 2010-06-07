@@ -123,8 +123,7 @@ void rmdup()
 size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& readsFile, 
                               const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
-    std::cout << "using new template hit func\n";
-    std::string filename = prefix + HITS_EXT + GZIP_EXT;
+    std::string filename = prefix + RMDUPHITS_EXT + GZIP_EXT;
     filenameVec.push_back(filename);
 
     RmdupProcess processor(filename, pOverlapper);
@@ -145,14 +144,13 @@ size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& read
 size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
                                 const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
-    std::cout << "using new template hit func parallel\n";
-    std::string filename = prefix + HITS_EXT + GZIP_EXT;
+    std::string filename = prefix + RMDUPHITS_EXT + GZIP_EXT;
 
     std::vector<RmdupProcess*> processorVector;
     for(int i = 0; i < numThreads; ++i)
     {
         std::stringstream ss;
-        ss << prefix << "-thread" << i << HITS_EXT << GZIP_EXT;
+        ss << prefix << "-thread" << i << RMDUPHITS_EXT << GZIP_EXT;
         std::string outfile = ss.str();
         filenameVec.push_back(outfile);
         RmdupProcess* pProcessor = new RmdupProcess(outfile, pOverlapper);
@@ -197,10 +195,19 @@ void parseDupHits(const StringVector& hitsFilenames)
         std::string line;
         while(getline(*pReader, line))
         {
+            std::string id;
+            std::string sequence;
+            std::string hitsStr;
             size_t readIdx;
             bool isSubstring;
+
+            std::stringstream parser(line);
+            parser >> id;
+            parser >> sequence;
+            getline(parser, hitsStr);
+
             OverlapVector ov;
-            OverlapCommon::parseHitsString(line, pRIT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(hitsStr, pRIT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
             
             if(isSubstring)
             {
@@ -226,10 +233,9 @@ void parseDupHits(const StringVector& hitsFilenames)
                 else
                 {
                     ++kept;
-                    assert(false && "fix rmdup for read info table");
+                    SeqItem item = {id, sequence};
                     // Write the read
-                    //const SeqItem& item = pFwdRT->getRead(readIdx);
-                    //item.write(*pWriter);
+                    item.write(*pWriter);
                 }
             }
         }

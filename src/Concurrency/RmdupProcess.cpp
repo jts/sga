@@ -28,6 +28,8 @@ RmdupProcess::~RmdupProcess()
 OverlapResult RmdupProcess::process(const SequenceWorkItem& workItem)
 {
     OverlapResult result = m_pOverlapper->alignReadDuplicate(workItem.read, &m_blockList);
+    // Write the read sequence and the overlap blocks to the file
+    *m_pWriter << workItem.read.id << "\t" << workItem.read.seq.toString() << "\t";
     m_pOverlapper->writeOverlapBlocks(*m_pWriter, workItem.idx, result.isSubstring, &m_blockList);
     m_blockList.clear();
     return result;
