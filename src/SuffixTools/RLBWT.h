@@ -122,7 +122,7 @@ class RLBWT
     
         // Constructors
         RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE);
-        RLBWT(const SuffixArray* /*pSA*/, const ReadTable* /*pRT*/) { assert(false); }
+        RLBWT(const SuffixArray* pSA, const ReadTable* pRT);
 
         //    
         void initializeFMIndex();

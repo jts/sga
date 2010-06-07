@@ -111,7 +111,7 @@ void buildIndexForTable(std::string prefix, const ReadTable* pRT, bool isReverse
 {
     // Create suffix array from read table
     SuffixArray* pSA = new SuffixArray(pRT);
-    BWT* pBWT = new BWT(pSA, pRT);
+    SBWT* pBWT = new SBWT(pSA, pRT);
 
     if(opt::validate)
     {

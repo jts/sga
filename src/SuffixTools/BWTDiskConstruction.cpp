@@ -96,7 +96,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
         {
             // Compute the SA and BWT for this group
             SuffixArray* pSA = new SuffixArray(pCurrRT);
-            BWT* pBWT = new BWT(pSA, pCurrRT);
+            SBWT* pBWT = new SBWT(pSA, pCurrRT);
 
             // Write the BWT to disk                
             std::string bwt_temp_filename = makeTempName(out_prefix, groupID, bwt_extension);

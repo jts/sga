@@ -26,6 +26,12 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), m_n
     initializeFMIndex();
 }
 
+// Create the RLBWT from a suffix array
+RLBWT::RLBWT(const SuffixArray* /*pSA*/, const ReadTable* /*pRT*/)
+{
+    assert(false);
+}
+
 void RLBWT::append(char b)
 {
     bool increment = false;
