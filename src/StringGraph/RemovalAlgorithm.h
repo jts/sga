@@ -26,7 +26,7 @@ namespace RemovalAlgorithm
 SGAlgorithms::EdgeDescOverlapMap computeRequiredOverlaps(const Vertex* pVertex, const Edge* pRemovalEdge, double maxER, int minLength);
 void findPotentialOverlaps(const Vertex* pX, const Edge* pRemovalEdge, double maxER, int minLength, SGAlgorithms::EdgeDescOverlapMap& outMap);
 void eliminateReachableEdges(const Vertex* pVertex, const Edge* pRemovalEdge, double maxER, int minLength, SGAlgorithms::EdgeDescOverlapMap& outMap);
-void enqueueEdges(const Vertex* pY, EdgeDir dirY, const Overlap& ovrXY, const EdgeDesc& edXY, int minOverlap, ExploreQueue& outQueue);
+void enqueueEdges(const Vertex* pY, EdgeDir dirY, const Overlap& ovrXY, const EdgeDesc& edXY, int minOverlap, ExploreQueue& outQueue, EdgeDescSet* pSeenSet);
 
 };
 

@@ -131,7 +131,7 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 void SGAlgorithms::remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
 {
     assert(pVertex == pDeleteEdge->getStart());
-
+    //std::cout << "Remodelling " << pVertex->getID() << " after removing " << pDeleteEdge->getEndID() << "\n";
     // If the edge is a containment edge, nothing needs to be done. No edges can be transitive
     // through containments
     if(pDeleteEdge->getOverlap().isContainment())
@@ -141,8 +141,6 @@ void SGAlgorithms::remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVerte
     int minLength = pGraph->getMinOverlap();
     
     EdgeDescOverlapMap addMap = RemovalAlgorithm::computeRequiredOverlaps(pVertex, pDeleteEdge, maxER, minLength);
-
-    //assert(removeMap.size() == 0);
     for(EdgeDescOverlapMap::iterator iter = addMap.begin();
         iter != addMap.end(); ++iter)
     {
