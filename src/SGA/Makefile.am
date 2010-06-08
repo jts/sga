@@ -31,4 +31,5 @@ sga_SOURCES = sga.cpp \
 			  preprocess.cpp preprocess.h \
               rmdup.cpp rmdup.h \
               merge.cpp merge.h \
+			  subgraph.cpp subgraph.h \
               OverlapCommon.h OverlapCommon.cpp

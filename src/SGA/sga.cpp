@@ -17,6 +17,7 @@
 #include "preprocess.h"
 #include "merge.h"
 #include "correct.h"
+#include "subgraph.h"
 
 #define VERSION "0.1"
 #define PROGRAM_BIN "sga"
@@ -37,7 +38,9 @@ int main(int argc, char** argv)
             return 0;
         }
 
-        if(command == "index")
+        if(command == "preprocess")
+            preprocessMain(argc - 1, argv + 1);
+        else if(command == "index")
             indexMain(argc - 1, argv + 1);
         else if(command == "merge")
             mergeMain(argc - 1, argv + 1);
@@ -49,10 +52,10 @@ int main(int argc, char** argv)
             correctMain(argc - 1, argv + 1);
         else if(command == "assemble")
             assembleMain(argc - 1, argv + 1);
+        else if(command == "subgraph")
+            subgraphMain(argc - 1, argv + 1);
         else if(command == "oview")
             oviewMain(argc - 1, argv + 1);
-        else if(command == "preprocess")
-            preprocessMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
@@ -79,5 +82,6 @@ void printUsage()
     std::cout << "           overlap      compute overlaps between reads\n";
     std::cout << "           assemble     generate contigs\n";
     std::cout << "           oview        view overlap alignments\n";
+    std::cout << "           subgraph     extract a subgraph from a graph\n";
     std::cout << "\n\n";
 }
