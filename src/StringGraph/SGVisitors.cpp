@@ -755,6 +755,129 @@ void SGBubbleVisitor::postvisit(StringGraph* pGraph)
 }
 
 //
+// SGBubbleEdgeVisitor 
+//
+void SGBubbleEdgeVisitor::previsit(StringGraph* pGraph)
+{
+    pGraph->setColors(GC_WHITE);
+    num_bubbles = 0;
+}
+
+// Find bubbles (nodes where there is a split and then immediate rejoin) and mark them for removal
+bool SGBubbleEdgeVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
+{    
+    bool bubble_found = false;
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        EdgePtrVec edges = pX->getEdges(dir);
+        if(edges.size() == 2) // di-bubbles only for now
+        {
+            // Determine which edge has a shorter overlap to pX
+            // Call the longer overlap pY, the shorter pZ
+            Edge* pXY;
+            Edge* pXZ;
+
+            if(edges[0]->getOverlap().getOverlapLength(0) > edges[1]->getOverlap().getOverlapLength(0))
+            {
+                pXY = edges[0];
+                pXZ = edges[1];
+            }
+            else if(edges[1]->getOverlap().getOverlapLength(0) > edges[0]->getOverlap().getOverlapLength(0))
+
+            {
+                pXY = edges[1];
+                pXZ = edges[0];
+            }
+            else
+            {
+                break; // equal length overlaps, cannot be a bubble or else the vertices would be contained
+            }
+            
+            // Mark the neighbors of pZ as the "target" vertices
+            // if they can be reached by pY we mark pY as being unreliable and remove it
+            typedef std::list<Vertex*> VertexPtrList;
+            VertexPtrList targetList;
+
+            EdgeDir targetDir = pXZ->getTransitiveDir();
+            EdgePtrVec targetEdges = pXZ->getEnd()->getEdges(targetDir);
+            for(size_t i = 0; i < targetEdges.size(); ++i)
+                targetList.push_back(targetEdges[i]->getEnd());
+
+            // Start exploring from pY
+            ExploreQueue queue;
+            Overlap ovrXY = pXY->getOverlap();
+            EdgeDesc edXY = pXY->getDesc();
+            queue.push(ExploreElement(edXY, ovrXY));
+
+            int numSteps = 100;
+            WARN_ONCE("USING FIXED NUMBER OF STEPS IN BUBBLE EDGE");
+            while(!queue.empty() && numSteps-- > 0)
+            {
+                ExploreElement ee = queue.front();
+                EdgeDesc& edXY = ee.ed;
+                Vertex* pY = edXY.pVertex;
+                Overlap& ovrXY = ee.ovr;
+
+                queue.pop();
+
+                // Check if Y is on the target list
+                VertexPtrList::iterator iter = targetList.begin();
+                while(iter != targetList.end())
+                {
+                    if(*iter == edXY.pVertex)
+                        targetList.erase(iter++);
+                    else
+                        ++iter;
+                }
+                
+                if(targetList.empty())
+                    break;
+
+                // Enqueue the neighbors of pY
+                EdgeDir dirY = edXY.getTransitiveDir();
+                EdgePtrVec edges = pY->getEdges(dirY);
+                for(size_t i = 0; i < edges.size(); ++i)
+                {
+                    Edge* pEdge = edges[i];
+                    Vertex* pZ = pEdge->getEnd();
+
+                    // Compute the edgeDesc and overlap on pX for this edge
+                    EdgeDesc edYZ = pEdge->getDesc();
+                    Overlap ovrYZ = pEdge->getOverlap();
+
+                    if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))
+                    {
+                        Overlap ovrXZ = SGAlgorithms::inferTransitiveOverlap(ovrXY, ovrYZ);
+                        EdgeDesc edXZ = SGAlgorithms::overlapToEdgeDesc(pZ, ovrXZ);
+                        queue.push(ExploreElement(edXZ, ovrXZ));
+                    }
+                }
+            }
+
+            if(targetList.empty())
+            {
+                // bubble found
+                pXZ->getEnd()->deleteEdges();
+                pXZ->getEnd()->setColor(GC_RED);
+                bubble_found = true;
+                ++num_bubbles;
+            }
+        }
+    }
+    return bubble_found;
+}
+
+// Remove all the marked vertices
+void SGBubbleEdgeVisitor::postvisit(StringGraph* pGraph)
+{
+    pGraph->sweepVertices(GC_RED);
+    printf("bubbles: %d\n", num_bubbles);
+    assert(pGraph->checkColors(GC_WHITE));
+}
+
+
+//
 // SGGraphStatsVisitor - Collect summary stasitics
 // about the graph
 //
@@ -802,7 +925,7 @@ bool SGGraphStatsVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
     return false;
 }
 
-// Remove all the marked edges
+//
 void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
 {
     printf("island: %d terminal: %d monobranch: %d dibranch: %d transitive: %d\n", num_island, num_terminal,
@@ -810,3 +933,38 @@ void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
     printf("Total Vertices: %d Total Edges: %d Sum edge length: %zu\n", num_vertex, num_edges, sum_edgeLen);
 }
 
+//
+bool SGBreakWriteVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+    int s_count = pVertex->countEdges(ED_SENSE);
+    int as_count = pVertex->countEdges(ED_ANTISENSE);
+
+    if(s_count == 0 && as_count == 0)
+    {
+        writeBreak("ISLAND", pVertex);
+    }
+    else if(s_count == 0)
+    {
+        writeBreak("STIP", pVertex);
+    }
+    else if(as_count == 0)
+    {
+        writeBreak("ASTIP", pVertex);
+    }
+
+    if(s_count > 1)
+    {
+        writeBreak("SBRANCHED", pVertex);
+    }
+    
+    if(as_count > 1)
+    {
+        writeBreak("ASBRANCH", pVertex);
+    }
+    return false;
+}
+
+void SGBreakWriteVisitor::writeBreak(const std::string& type, Vertex* pVertex)
+{
+    *m_pWriter << "BREAK\t" << type << "\t" << pVertex->getID() << "\t" << pVertex->getSeq() << "\n";
+}

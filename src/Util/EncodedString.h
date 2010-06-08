@@ -185,9 +185,7 @@ class EncodedString
         //
         friend std::ostream& operator<<(std::ostream& out, const EncodedString<Codec>& a)
         {
-            out << "Length: " << a.m_len << "\n";
-            out << "Capacity: " << a.m_capacity << "\n";
-            out << "Str: " << a.toString() << "\n";
+            out << a.toString();
             return out;
         }
 

@@ -179,6 +179,17 @@ struct SGBubbleVisitor
     int num_bubbles;
 };
 
+// Detect whether bubble edges and remove them
+struct SGBubbleEdgeVisitor
+{
+    SGBubbleEdgeVisitor() {}
+    void previsit(StringGraph* pGraph);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*);
+
+    int num_bubbles;
+};
+
 // Compile summary statistics for the graph
 struct SGGraphStatsVisitor
 {
@@ -195,6 +206,22 @@ struct SGGraphStatsVisitor
     int num_edges;
     int num_vertex;
     size_t sum_edgeLen;
+};
+
+// Write out any vertices that are going to be cause a contig to terminate
+// to the file
+struct SGBreakWriteVisitor
+{
+    SGBreakWriteVisitor(const std::string& filename) { m_pWriter = createWriter(filename); }
+    ~SGBreakWriteVisitor() { delete m_pWriter; }
+
+    void previsit(StringGraph*) {}
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*) {}
+    void writeBreak(const std::string& type, Vertex* pVertex);
+
+    std::ostream* m_pWriter;
+
 };
 
 #endif

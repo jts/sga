@@ -107,6 +107,7 @@ void assemble()
     SGEdgeStatsVisitor edgeStatsVisit;
     SGTrimVisitor trimVisit;
     SGBubbleVisitor bubbleVisit;
+    SGBubbleEdgeVisitor bubbleEdgeVisit;
     SGContainRemoveVisitor containVisit;
     SGErrorCorrectVisitor errorCorrectVisit;
     SGValidateStructureVisitor validationVisit;
@@ -211,11 +212,22 @@ void assemble()
         pGraph->visit(trimVisit);
     }
 
+    /*
+    if(opt::bBubble)
+    {
+        std::cout << "Removing bubble edges\n";
+        while(pGraph->visit(bubbleEdgeVisit)) {}
+    }
+    */
     // Simplify the graph by compacting edges
     std::cout << "Pre-simplify graph stats\n";
     pGraph->visit(statsVisit);
-    pGraph->simplify();
 
+    SGBreakWriteVisitor breakWriter("breaks.txt");
+    pGraph->visit(breakWriter);
+
+    pGraph->simplify();
+    
     if(opt::bBubble)
     {
         std::cout << "\nPerforming bubble removal\n";
@@ -234,6 +246,7 @@ void assemble()
 
     // Write the results
     pGraph->writeDot("final.dot");
+    pGraph->writeASQG("final.asqg");
     SGFastaVisitor av(opt::outFile);
     pGraph->visit(av);
 
