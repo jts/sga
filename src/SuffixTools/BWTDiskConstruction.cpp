@@ -61,9 +61,9 @@ std::string makeFilename(const std::string& prefix, const std::string& extension
 // to create the final BWT
 void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
                   const std::string& bwt_extension, const std::string& sai_extension,
-                  bool doReverse, int numThreads)
+                  bool doReverse, int numThreads, int numReadsPerBatch)
 {
-    size_t MAX_READS_PER_GROUP = 2000000;
+    size_t MAX_READS_PER_GROUP = numReadsPerBatch;
 
     SeqReader* pReader = new SeqReader(in_filename);
     SeqRecord record;

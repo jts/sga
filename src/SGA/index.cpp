@@ -35,7 +35,9 @@ static const char *INDEX_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"  -d, --disk                           use disk-based BWT construction algorithm\n"
+"  -d, --disk=NUM                       use disk-based BWT construction algorithm. The suffix array/BWT will be constructed\n"
+"                                       for batchs of NUM reads at a time. To construct the suffix array of 200 megabases of sequence\n"
+"                                       requires ~2GB of memory, set this parameter accordingly.\n"
 "  -t, --threads=NUM                    use NUM threads to construct the index (default: 1)\n"
 "  -c, --check                          validate that the suffix array/bwt is correct\n"
 "  -p, --prefix=PREFIX                  write index to file using PREFIX instead of prefix of READSFILE\n"
@@ -46,12 +48,13 @@ namespace opt
     static unsigned int verbose;
     static std::string readsFile;
     static std::string prefix;
+    static int numReadsPerBatch = 2000000;
     static int numThreads = 1;
     static bool bDiskAlgo = false;
     static bool validate;
 }
 
-static const char* shortopts = "p:m:t:dcv";
+static const char* shortopts = "p:m:t:d:cv";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -60,7 +63,7 @@ static const struct option longopts[] = {
     { "check",       no_argument,       NULL, 'c' },
     { "prefix",      required_argument, NULL, 'p' },
     { "threads",     required_argument, NULL, 't' },
-    { "disk",        no_argument,       NULL, 'd' },
+    { "disk",        required_argument, NULL, 'd' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -101,8 +104,8 @@ void indexInMemory()
 void indexOnDisk()
 {
     std::cout << "Building index for " << opt::readsFile << " on disk\n";
-    buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
-    buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
+    buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::numReadsPerBatch);
+    buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch);
 
 }
 
@@ -156,7 +159,7 @@ void parseIndexOptions(int argc, char** argv)
             case 'p': arg >> opt::prefix; break;
             case '?': die = true; break;
             case 'c': opt::validate = true; break;
-            case 'd': opt::bDiskAlgo = true; break;
+            case 'd': opt::bDiskAlgo = true; arg >> opt::numReadsPerBatch; break;
             case 't': arg >> opt::numThreads; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
