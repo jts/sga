@@ -18,7 +18,7 @@
 #include "Timer.h"
 
 // functions
-void addNeighborsToSubgraph(Vertex* pVertex, StringGraph* pSubgraph, int span);
+void addNeighborsToSubgraph(Vertex* pCurrVertex, StringGraph* pSubgraph, int span);
 void copyVertexToSubgraph(StringGraph* pSubgraph, const Vertex* pVertex);
 
 
@@ -84,6 +84,14 @@ void subgraph()
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
     pGraph->printMemSize();
 
+    // Remove containments from the graph
+    SGContainRemoveVisitor containVisit;
+    std::cout << "Removing contained vertices\n";
+    while(pGraph->hasContainment())
+    {
+        pGraph->visit(containVisit);
+    }
+
     StringGraph* pSubgraph = new StringGraph;
 
     // Set the graph parameters to match the main graph
@@ -94,36 +102,44 @@ void subgraph()
 
     // Get the root vertex
     Vertex* pRootVertex = pGraph->getVertex(opt::rootID);
-    copyVertexToSubgraph(pSubgraph, pRootVertex);
-    pRootVertex->setColor(GC_BLACK);
+    if(pRootVertex == NULL)
+    {
+        std::cout << "Vertex " << opt::rootID << " not found in the graph.\n";
+    }
+    else
+    {
+        copyVertexToSubgraph(pSubgraph, pRootVertex);
+        pRootVertex->setColor(GC_BLACK);
 
-    // Recursively add neighbors
-    addNeighborsToSubgraph(pRootVertex, pSubgraph, opt::span);
+        // Recursively add neighbors
+        addNeighborsToSubgraph(pRootVertex, pSubgraph, opt::span);
 
-    // Write the subgraph
-    pSubgraph->writeASQG(opt::outFile);
+        // Write the subgraph
+        pSubgraph->writeASQG(opt::outFile);
+    }
 
     delete pSubgraph;
     delete pGraph;
 }
 
 //
-void addNeighborsToSubgraph(Vertex* pVertex, StringGraph* pSubgraph, int span)
+void addNeighborsToSubgraph(Vertex* pCurrVertex, StringGraph* pSubgraph, int span)
 {
     if(span <= 0)
         return;
 
     // These are the edges in the main graph
-    EdgePtrVec edges = pVertex->getEdges();
+    EdgePtrVec edges = pCurrVertex->getEdges();
     for(size_t i = 0; i < edges.size(); ++i)
     {
-        Vertex* pY = edges[i]->getEnd();
-        if(pY->getColor() == GC_WHITE)
+        if(edges[i]->getColor() != GC_BLACK)
         {
-            pY->setColor(GC_BLACK);
+            Vertex* pY = edges[i]->getEnd();
             copyVertexToSubgraph(pSubgraph, pY);
             Overlap ovr = edges[i]->getOverlap();
             SGAlgorithms::createEdgesFromOverlap(pSubgraph, ovr, true);
+            edges[i]->setColor(GC_BLACK);
+            edges[i]->getTwin()->setColor(GC_BLACK);
 
             // Recurse
             addNeighborsToSubgraph(pY, pSubgraph, span - 1);
