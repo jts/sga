@@ -47,6 +47,7 @@ static const char *CORRECT_USAGE_MESSAGE =
 "      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them aligned\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
+"      -o, --outfile=FILE               write the corrected reads to FILE\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
 "                                       is calculated to guarantee all overlaps with --error-rate differences are found.\n"
 "                                       This option removes the guarantee but will be (much) faster. As SGA can tolerate some\n"
@@ -64,14 +65,15 @@ namespace opt
     static int numThreads = 1;
     static std::string prefix;
     static std::string readsFile;
-    
+    static std::string outFile;
+
     static double errorRate;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
     static int seedStride = 0;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:vi";
+static const char* shortopts = "p:m:d:e:t:l:s:o:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -79,6 +81,7 @@ static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
     { "threads",     required_argument, NULL, 't' },
     { "min-overlap", required_argument, NULL, 'm' },
+    { "outfile",     required_argument, NULL, 'o' },
     { "prefix",      required_argument, NULL, 'p' },
     { "error-rate",  required_argument, NULL, 'e' },
     { "seed-length", required_argument, NULL, 'l' },
@@ -102,7 +105,7 @@ int correctMain(int argc, char** argv)
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false);
-    std::string correctedReadsName = opt::prefix + ".ec.fa";
+    std::string correctedReadsName = opt::outFile;
     std::ostream* pWriter = createWriter(correctedReadsName);
 
     ErrorCorrectPostProcess postProcessor(pWriter);
@@ -160,6 +163,7 @@ void parseCorrectOptions(int argc, char** argv)
         {
             case 'm': arg >> opt::minOverlap; break;
             case 'p': arg >> opt::prefix; break;
+            case 'o': arg >> opt::outFile; break;
             case 'e': arg >> opt::errorRate; break;
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;
@@ -214,5 +218,10 @@ void parseCorrectOptions(int argc, char** argv)
     if(opt::prefix.empty())
     {
         opt::prefix = stripFilename(opt::readsFile);
+    }
+
+    if(opt::outFile.empty())
+    {
+        opt::outFile = opt::prefix + ".ec.fa";
     }
 }
