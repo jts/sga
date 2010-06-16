@@ -36,7 +36,7 @@ class ErrorCorrectProcess
 {
     public:
         ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
-                            int minOverlap);
+                            int minOverlap, int numRounds);
 
         ~ErrorCorrectProcess();
 
@@ -44,7 +44,7 @@ class ErrorCorrectProcess
     
     private:
 
-        MultiOverlap blockListToMultiOverlap(const SequenceWorkItem& item, 
+        MultiOverlap blockListToMultiOverlap(const SeqRecord& record, 
                                              OverlapBlockList& blockList);
 
         std::string makeIdxString(int64_t idx);
@@ -52,6 +52,7 @@ class ErrorCorrectProcess
         OverlapBlockList m_blockList;
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;
+        const int m_numRounds;
 };
 
 // Write the results from the overlap step to an ASQG file

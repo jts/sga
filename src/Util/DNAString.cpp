@@ -44,6 +44,14 @@ DNAString& DNAString::operator=(const std::string& str)
 }
 
 //
+bool DNAString::operator==(const DNAString& other)
+{
+    if(m_len != other.m_len)
+        return false;
+    return strncmp(m_data, other.m_data, m_len) == 0;
+}
+
+//
 void DNAString::_alloc(const char* pData, size_t l)
 {
     m_len = l;

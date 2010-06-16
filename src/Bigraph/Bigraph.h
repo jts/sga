@@ -17,7 +17,7 @@
 #include "Vertex.h"
 #include "Edge.h"
 #include <tr1/unordered_map>
-
+#include <google/sparse_hash_map>
 /*
 namespace __gnu_cxx                                                                              
 {                                                                                             
@@ -35,7 +35,9 @@ namespace __gnu_cxx
 //
 //typedef std::map<VertexID, Vertex*> VertexPtrMap;
 //typedef __gnu_cxx::hash_map<VertexID, Vertex*> VertexPtrMap;
-typedef std::tr1::unordered_map<VertexID, Vertex*> VertexPtrMap;
+//typedef std::tr1::unordered_map<VertexID, Vertex*> VertexPtrMap;
+typedef google::sparse_hash_map<VertexID, Vertex*> VertexPtrMap;
+
 typedef VertexPtrMap::iterator VertexPtrMapIter;
 typedef VertexPtrMap::const_iterator VertexPtrMapConstIter;
 
@@ -156,6 +158,9 @@ class Bigraph
         void setErrorRate(double er);
         double getErrorRate() const;
 
+        void setExactMode(bool b);
+        bool isExactMode() const;
+
         // Write the graph to a file
         void writeDot(const std::string& filename, int dotFlags = 0) const;
         void writeASQG(const std::string& filename) const;
@@ -175,6 +180,7 @@ class Bigraph
         // Graph parameters
         bool m_hasContainment;
         bool m_hasTransitive;
+        bool m_isExactMode;
 
         int m_minOverlap;
         double m_errorRate;

@@ -58,6 +58,7 @@ namespace opt
     static bool bTrim;
     static bool bBubble;
     static bool bValidate;
+    static bool bExact = false;
 }
 
 static const char* shortopts = "p:o:m:d:vbtc";
@@ -75,6 +76,7 @@ static const struct option longopts[] = {
     { "correct",        no_argument,       NULL, 'c' },    
     { "remodel",        no_argument,       NULL, 'r' },
     { "edge-stats",     no_argument,       NULL, 'x' },
+    { "exact",          no_argument,       NULL, 'e' },
     { "help",           no_argument,       NULL, OPT_HELP },
     { "version",        no_argument,       NULL, OPT_VERSION },
     { "validate",       no_argument,       NULL, OPT_VALIDATE},
@@ -98,6 +100,8 @@ void assemble()
 {
     Timer t("sga assemble");
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, opt::minOverlap, true);
+    if(opt::bExact)
+        pGraph->setExactMode(true);
     pGraph->printMemSize();
 
     // Visitor functors
@@ -208,23 +212,24 @@ void assemble()
     {
         WARN_ONCE("USING NAIVE TRIMMING");
         std::cout << "Trimming bad vertices\n"; 
-        pGraph->visit(trimVisit);
-        pGraph->visit(trimVisit);
+        int numTrims = 50;
+        while(--numTrims > 0)
+           pGraph->visit(trimVisit);
     }
 
-    /*
     if(opt::bBubble)
     {
         std::cout << "Removing bubble edges\n";
         while(pGraph->visit(bubbleEdgeVisit)) {}
     }
-    */
+
     // Simplify the graph by compacting edges
     std::cout << "Pre-simplify graph stats\n";
     pGraph->visit(statsVisit);
 
-    SGBreakWriteVisitor breakWriter("breaks.txt");
-    pGraph->visit(breakWriter);
+    //SGBreakWriteVisitor breakWriter("breaks.txt");
+    //pGraph->visit(breakWriter);
+    //pGraph->writeASQG("postmod.asqg.gz");
 
     pGraph->simplify();
     
@@ -232,7 +237,9 @@ void assemble()
     {
         std::cout << "\nPerforming bubble removal\n";
         // Bubble removal
-        pGraph->visit(bubbleVisit);
+        int numPops = 5;
+        while(--numPops > 0)
+            pGraph->visit(bubbleVisit);
         pGraph->simplify();
     }    
 
@@ -246,7 +253,7 @@ void assemble()
 
     // Write the results
     pGraph->writeDot("final.dot");
-    pGraph->writeASQG("final.asqg");
+    //pGraph->writeASQG("final.asqg");
     SGFastaVisitor av(opt::outFile);
     pGraph->visit(av);
 
@@ -279,6 +286,7 @@ void parseAssembleOptions(int argc, char** argv)
             case 'c': opt::bCorrectReads = true; break;
             case 'r': opt::bRemodelGraph = true; break;
             case 'x': opt::bEdgeStats = true; break;
+            case 'e': opt::bExact = true; break;
             case OPT_VALIDATE: opt::bValidate = true; break;
             case OPT_HELP:
                 std::cout << ASSEMBLE_USAGE_MESSAGE;

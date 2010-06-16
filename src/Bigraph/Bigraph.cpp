@@ -18,8 +18,11 @@
 //
 //
 //
-Bigraph::Bigraph() : m_hasContainment(false), m_hasTransitive(false), m_minOverlap(0), m_errorRate(0.0f)
+Bigraph::Bigraph() : m_hasContainment(false), m_hasTransitive(false), m_isExactMode(false), m_minOverlap(0), m_errorRate(0.0f)
 {
+    m_vertices.set_deleted_key("");
+    WARN_ONCE("HARDCODED HASH TABLE MAX SIZE");
+    m_vertices.resize(600000000);
 }
 
 //
@@ -460,6 +463,20 @@ void Bigraph::setContainmentFlag(bool b)
 bool Bigraph::hasContainment() const
 {
     return m_hasContainment;
+}
+
+//
+// Get/Set the exact mode flag
+//
+void Bigraph::setExactMode(bool b)
+{
+    m_isExactMode = b;
+}
+
+//
+bool Bigraph::isExactMode() const
+{
+    return m_isExactMode;
 }
 
 //

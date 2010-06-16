@@ -27,6 +27,7 @@ class DNAString
         // Operators
         DNAString& operator=(const DNAString& dna);
         DNAString& operator=(const std::string& str);
+        bool operator==(const DNAString& other);
 
         size_t length() const
         {

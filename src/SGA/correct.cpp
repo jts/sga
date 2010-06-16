@@ -46,6 +46,7 @@ static const char *CORRECT_USAGE_MESSAGE =
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them aligned\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
+"      -r, --rounds=NUM                 iteratively correct reads up to a maximum of NUM rounds. Default: 1 round of correction\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -o, --outfile=FILE               write the corrected reads to FILE\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
@@ -63,6 +64,7 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
+    static int numRounds = 1;
     static std::string prefix;
     static std::string readsFile;
     static std::string outFile;
@@ -73,7 +75,7 @@ namespace opt
     static int seedStride = 0;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:o:vi";
+static const char* shortopts = "p:m:d:e:t:l:s:o:r:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -81,6 +83,7 @@ static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
     { "threads",     required_argument, NULL, 't' },
     { "min-overlap", required_argument, NULL, 'm' },
+    { "rounds",      required_argument, NULL, 'r' },
     { "outfile",     required_argument, NULL, 'o' },
     { "prefix",      required_argument, NULL, 'p' },
     { "error-rate",  required_argument, NULL, 'e' },
@@ -113,7 +116,7 @@ int correctMain(int argc, char** argv)
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap);
+        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap, opt::numRounds);
         SequenceProcessFramework::processSequencesSerial<ErrorCorrectResult, 
                                                          ErrorCorrectProcess, 
                                                          ErrorCorrectPostProcess>(opt::readsFile, &processor, &postProcessor);
@@ -124,7 +127,7 @@ int correctMain(int argc, char** argv)
         std::vector<ErrorCorrectProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap);
+            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, opt::numRounds);
             processorVector.push_back(pProcessor);
         }
         
@@ -168,6 +171,7 @@ void parseCorrectOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
+            case 'r': arg >> opt::numRounds; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
@@ -193,6 +197,12 @@ void parseCorrectOptions(int argc, char** argv)
     if(opt::numThreads <= 0)
     {
         std::cerr << SUBPROGRAM ": invalid number of threads: " << opt::numThreads << "\n";
+        die = true;
+    }
+
+    if(opt::numRounds <= 0)
+    {
+        std::cerr << SUBPROGRAM ": invalid number of rounds: " << opt::numRounds << ", must be at least 1\n";
         die = true;
     }
 

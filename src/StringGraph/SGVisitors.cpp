@@ -188,7 +188,7 @@ void SGIdenticalRemoveVisitor::previsit(StringGraph* pGraph)
     count = 0;
 }
 
-// For all 
+// 
 bool SGIdenticalRemoveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
     if(!pVertex->isContained())
@@ -249,8 +249,7 @@ bool SGContainRemoveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     // If the graph has been transitively reduced, we have to check all
     // the neighbors to see if any new edges need to be added. If the graph is a
     // complete overlap graph we can just remove the edges to the deletion vertex
-
-    if(!pGraph->hasTransitive())
+    if(!pGraph->hasTransitive() && !pGraph->isExactMode())
     {
         // This must be done in order of edge length or some transitive edges
         // may be created

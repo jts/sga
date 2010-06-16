@@ -13,8 +13,10 @@
 //
 //
 ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
-                                         int minOverlap) : m_pOverlapper(pOverlapper), 
-                                                           m_minOverlap(minOverlap)
+                                         int minOverlap, int numRounds) : 
+                                            m_pOverlapper(pOverlapper), 
+                                            m_minOverlap(minOverlap),
+                                            m_numRounds(numRounds)
 {
 
 }
@@ -29,23 +31,40 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
     static const double p_error = 0.01f;
-    OverlapResult overlap_result = m_pOverlapper->overlapRead(workItem.read, m_minOverlap, &m_blockList);
-    // Convert the overlap block list into a multi-overlap 
-    MultiOverlap mo = blockListToMultiOverlap(workItem, m_blockList);
-    
-    // Perform correction
+    bool done = false;
+    int rounds = 0;
     ErrorCorrectResult result;
-    result.correctSequence = mo.calculateConsensusFromPartition(p_error);
-    result.flag = ECF_CORRECTED;
-    m_blockList.clear();
+    SeqRecord currRead = workItem.read;
+    while(!done)
+    {
+        OverlapResult overlap_result = m_pOverlapper->overlapRead(currRead, m_minOverlap, &m_blockList);
+
+        // Convert the overlap block list into a multi-overlap 
+        MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
+
+        // Perform correction
+        result.correctSequence = mo.calculateConsensusFromPartition(p_error);
+        result.flag = ECF_CORRECTED;
+        m_blockList.clear();
+        
+        ++rounds;
+        if(rounds == m_numRounds || result.correctSequence == currRead.seq)
+        {
+            done = true;
+        }
+        else
+        {
+            currRead.seq = result.correctSequence;
+        }
+    }
     return result;
 }
 
 //
-MultiOverlap ErrorCorrectProcess::blockListToMultiOverlap(const SequenceWorkItem& item, OverlapBlockList& blockList)
+MultiOverlap ErrorCorrectProcess::blockListToMultiOverlap(const SeqRecord& record, OverlapBlockList& blockList)
 {
     std::string read_idx = makeIdxString(-1);
-    std::string read_seq = item.read.seq.toString();
+    std::string read_seq = record.seq.toString();
     MultiOverlap out(read_idx, read_seq);
 
     for(OverlapBlockList::iterator iter = blockList.begin(); iter != blockList.end(); ++iter)
