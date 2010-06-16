@@ -13,8 +13,8 @@
 #include "Timer.h"
 #include "SeqReader.h"
 
-
 static unsigned int DEFAULT_MIN_LENGTH = 40;
+static int LOW_QUALITY_PHRED_SCORE = 3;
 
 //
 // Getopt
@@ -44,6 +44,9 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "                                       Reads are trimmed according to the formula:\n"
 "                                       argmax_x{\\sum_{i=x+1}^l(INT-q_i)} if q_l<INT\n"
 "                                       where l is the original read length.\n"
+"      -f, --quality-filter=INT         discard the read if it contains more than INT low-quality bases.\n"
+"                                       Bases with phred score <= 3 are considered low quality. Default: no filtering.\n"
+"                                       The filtering is applied after trimming so bases removed are not counted.\n"
 "      -m, --min-length=INT             discard sequences that are shorter than INT\n"
 "                                       this is most useful when used in conjunction with --quality-trim\n"
 "      -h, --hard-clip=INT              clip all reads to be length INT. In most cases it is better to use\n"
@@ -69,6 +72,7 @@ namespace opt
     static unsigned int qualityTrim = 0;
     static unsigned int hardClip = 0;
     static unsigned int minLength = DEFAULT_MIN_LENGTH;
+    static int qualityFilter = -1;
     static unsigned int peMode = 0;
     static double sampleFreq = 1.0f;
 
@@ -81,7 +85,7 @@ namespace opt
     static bool bIlluminaScaling = false;
 }
 
-static const char* shortopts = "o:q:m:h:p:s:vi";
+static const char* shortopts = "o:q:m:h:p:s:f:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC };
 
@@ -89,6 +93,7 @@ static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
     { "out",           required_argument, NULL, 'o' },
     { "quality-trim",  required_argument, NULL, 'q' },
+    { "quality-filter",required_argument, NULL, 'f' },
     { "pe-mode",       required_argument, NULL, 'p' },
     { "hard-clip",     required_argument, NULL, 'h' },
     { "min-length",    required_argument, NULL, 'm' },
@@ -117,11 +122,17 @@ int preprocessMain(int argc, char** argv)
 
     std::cerr << "Parameters:\n";
     std::cerr << "QualTrim: " << opt::qualityTrim << "\n";
+
+    if(opt::qualityFilter > 0)
+        std::cerr << "QualFilter: at most " << opt::qualityFilter << " low quality bases\n";
+    else
+        std::cerr << "QualFilter: no filtering\n"; 
+
     std::cerr << "HardClip: " << opt::hardClip << "\n";
     std::cerr << "Min length: " << opt::minLength << "\n";
     std::cerr << "Sample freq: " << opt::sampleFreq << "\n";
     std::cerr << "PE Mode: " << opt::peMode << "\n";
-    std::cerr << "Quality scaling:" << opt::qualityScale << "\n";
+    std::cerr << "Quality scaling: " << opt::qualityScale << "\n";
     std::cerr << "MinGC: " << opt::minGC << "\n";
     std::cerr << "MaxGC: " << opt::maxGC << "\n";
     std::cerr << "Outfile: " << (opt::outFile.empty() ? "stdout" : opt::outFile) << "\n";
@@ -265,6 +276,14 @@ bool processRead(SeqRecord& record)
     if(opt::qualityTrim > 0 && !qualStr.empty())
         softClip(opt::qualityTrim, seqStr, qualStr);
 
+    // Quality filter
+    if(opt::qualityFilter > 0 && !qualStr.empty())
+    {
+        int numLowQuality = countLowQuality(seqStr, qualStr);
+        if(numLowQuality > opt::qualityFilter)
+            return false;
+    }
+
     // Filter by GC content
     if(opt::bFilterGC)
     {
@@ -275,6 +294,7 @@ bool processRead(SeqRecord& record)
 
     record.seq = seqStr;
     record.qual = qualStr;
+
 
 
     if(record.seq.length() == 0 || record.seq.length() < opt::minLength)
@@ -325,6 +345,21 @@ void softClip(int qualTrim, std::string& seq, std::string& qual)
     qual = qual.substr(0, endpoint);
 }
 
+// Count the number of low quality bases in the read
+int countLowQuality(const std::string& seq, const std::string& qual)
+{
+    assert(seq.size() == qual.size());
+
+    int sum = 0;
+    for(size_t i = 0; i < seq.length(); ++i)
+    {
+        int ps = Quality::char2phred(qual[i]);
+        if(ps <= LOW_QUALITY_PHRED_SCORE)
+            ++sum;
+    }
+    return sum;
+}
+
 double calcGC(const std::string& seq)
 {
     double num_gc = 0.0f;
@@ -371,6 +406,7 @@ void parsePreprocessOptions(int argc, char** argv)
         {
             case 'o': arg >> opt::outFile; break;
             case 'q': arg >> opt::qualityTrim; break;
+            case 'f': arg >> opt::qualityFilter; break;
             case 'i': arg >> opt::bIlluminaScaling; break;
             case 'm': arg >> opt::minLength; break;
             case 'h': arg >> opt::hardClip; break;
