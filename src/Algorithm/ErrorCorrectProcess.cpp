@@ -41,7 +41,7 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
 
         // Convert the overlap block list into a multi-overlap 
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
-        mo.print();
+        //mo.print();
 
         // Perform correction
         result.correctSequence = mo.calculateConsensusFromPartition(p_error);
