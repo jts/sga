@@ -213,7 +213,7 @@ void assemble()
         WARN_ONCE("USING NAIVE TRIMMING");
         std::cout << "Trimming bad vertices\n"; 
         int numTrims = opt::numTrimRounds;
-        while(--numTrims > 0)
+        while(numTrims-- > 0)
            pGraph->visit(trimVisit);
     }
 
@@ -221,6 +221,7 @@ void assemble()
     {
         std::cout << "Removing bubble edges\n";
         while(pGraph->visit(bubbleEdgeVisit)) {}
+        pGraph->visit(trimVisit);
     }
 
     // Simplify the graph by compacting edges
@@ -238,7 +239,7 @@ void assemble()
         std::cout << "\nPerforming bubble removal\n";
         // Bubble removal
         int numPops = opt::numBubbleRounds;
-        while(--numPops > 0)
+        while(numPops-- > 0)
             pGraph->visit(bubbleVisit);
         pGraph->simplify();
     }    
