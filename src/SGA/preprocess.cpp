@@ -123,7 +123,7 @@ int preprocessMain(int argc, char** argv)
     std::cerr << "Parameters:\n";
     std::cerr << "QualTrim: " << opt::qualityTrim << "\n";
 
-    if(opt::qualityFilter > 0)
+    if(opt::qualityFilter >= 0)
         std::cerr << "QualFilter: at most " << opt::qualityFilter << " low quality bases\n";
     else
         std::cerr << "QualFilter: no filtering\n"; 
@@ -277,7 +277,7 @@ bool processRead(SeqRecord& record)
         softClip(opt::qualityTrim, seqStr, qualStr);
 
     // Quality filter
-    if(opt::qualityFilter > 0 && !qualStr.empty())
+    if(opt::qualityFilter >= 0 && !qualStr.empty())
     {
         int numLowQuality = countLowQuality(seqStr, qualStr);
         if(numLowQuality > opt::qualityFilter)

@@ -37,8 +37,8 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -o, --out=FILE                   write the contigs to FILE (default: contigs.fa)\n"
 "      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
-"      -b, --bubble                     perform bubble removal\n"
-"      -t, --trim                       trim terminal branches\n"
+"      -b, --bubble=N                   perform N bubble removal steps\n"
+"      -t, --trim=N                     trim terminal branches using N rounds\n"
 "      -c, --correct                    error correct reads and write to correctedReads.fa\n"
 "      --edge-stats                     print out the distribution of overlap lengths and number of errors\n"
 "                                       for edges found in the overlap step.\n"
@@ -55,13 +55,13 @@ namespace opt
     static bool bEdgeStats;
     static bool bCorrectReads;
     static bool bRemodelGraph;
-    static bool bTrim;
-    static bool bBubble;
+    static int  numTrimRounds = 0;
+    static int  numBubbleRounds = 0;
     static bool bValidate;
     static bool bExact = false;
 }
 
-static const char* shortopts = "p:o:m:d:vbtc";
+static const char* shortopts = "p:o:m:d:t:b:vc";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
@@ -71,8 +71,8 @@ static const struct option longopts[] = {
     { "out",            required_argument, NULL, 'o' },
     { "min-overlap",    required_argument, NULL, 'm' },
     { "debug-file",     required_argument, NULL, 'd' },
-    { "bubble",         no_argument,       NULL, 'b' },
-    { "trim",           no_argument,       NULL, 't' },
+    { "bubble",         required_argument, NULL, 'b' },
+    { "trim",           required_argument, NULL, 't' },
     { "correct",        no_argument,       NULL, 'c' },    
     { "remodel",        no_argument,       NULL, 'r' },
     { "edge-stats",     no_argument,       NULL, 'x' },
@@ -208,16 +208,16 @@ void assemble()
         //pGraph->writeASQG("afterRM.asqg.gz");
     }
 
-    if(opt::bTrim)
+    if(opt::numTrimRounds > 0)
     {
         WARN_ONCE("USING NAIVE TRIMMING");
         std::cout << "Trimming bad vertices\n"; 
-        int numTrims = 50;
+        int numTrims = opt::numTrimRounds;
         while(--numTrims > 0)
            pGraph->visit(trimVisit);
     }
 
-    if(opt::bBubble)
+    if(opt::numBubbleRounds > 0)
     {
         std::cout << "Removing bubble edges\n";
         while(pGraph->visit(bubbleEdgeVisit)) {}
@@ -227,17 +227,17 @@ void assemble()
     std::cout << "Pre-simplify graph stats\n";
     pGraph->visit(statsVisit);
 
-    //SGBreakWriteVisitor breakWriter("breaks.txt");
-    //pGraph->visit(breakWriter);
-    //pGraph->writeASQG("postmod.asqg.gz");
+    SGBreakWriteVisitor breakWriter("breaks.txt");
+    pGraph->visit(breakWriter);
+    pGraph->writeASQG("postmod.asqg.gz");
 
     pGraph->simplify();
     
-    if(opt::bBubble)
+    if(opt::numBubbleRounds > 0)
     {
         std::cout << "\nPerforming bubble removal\n";
         // Bubble removal
-        int numPops = 5;
+        int numPops = opt::numBubbleRounds;
         while(--numPops > 0)
             pGraph->visit(bubbleVisit);
         pGraph->simplify();
@@ -281,8 +281,8 @@ void parseAssembleOptions(int argc, char** argv)
             case 'd': arg >> opt::debugFile; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
-            case 'b': opt::bBubble = true; break;
-            case 't': opt::bTrim = true; break;
+            case 'b': arg >> opt::numBubbleRounds; break;
+            case 't': arg >> opt::numTrimRounds; break;
             case 'c': opt::bCorrectReads = true; break;
             case 'r': opt::bRemodelGraph = true; break;
             case 'x': opt::bEdgeStats = true; break;
