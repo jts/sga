@@ -219,6 +219,7 @@ struct SGBreakWriteVisitor
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*) {}
     void writeBreak(const std::string& type, Vertex* pVertex);
+    int calculateOverlapLengthDifference(const Vertex* pVertex, EdgeDir dir);
 
     std::ostream* m_pWriter;
 

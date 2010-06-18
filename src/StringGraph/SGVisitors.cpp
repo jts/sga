@@ -953,14 +953,28 @@ bool SGBreakWriteVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 
     if(s_count > 1)
     {
-        writeBreak("SBRANCHED", pVertex);
+        std::stringstream text;
+        text << "SBRANCHED," << calculateOverlapLengthDifference(pVertex, ED_SENSE);
+        writeBreak(text.str(), pVertex);
     }
     
     if(as_count > 1)
     {
-        writeBreak("ASBRANCH", pVertex);
+        std::stringstream text;
+        text << "ASBRANCHED," << calculateOverlapLengthDifference(pVertex, ED_ANTISENSE);
+        writeBreak(text.str(), pVertex);
     }
     return false;
+}
+
+int SGBreakWriteVisitor::calculateOverlapLengthDifference(const Vertex* pVertex, EdgeDir dir)
+{
+    EdgePtrVec edges = pVertex->getEdges(dir);
+    if(edges.size() < 2)
+        return 0;
+    int shortestLen = edges[edges.size() - 1]->getOverlap().getOverlapLength(0);
+    int secondLen = edges[edges.size() - 2]->getOverlap().getOverlapLength(0);
+    return secondLen - shortestLen;
 }
 
 void SGBreakWriteVisitor::writeBreak(const std::string& type, Vertex* pVertex)
