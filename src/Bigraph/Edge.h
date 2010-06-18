@@ -103,7 +103,7 @@ class Edge
         std::string getMatchStr() const;
         Match getMatch() const;
         Overlap getOverlap() const;
-
+        
         // setters
         void setTwin(Edge* pEdge) { m_pTwin = pEdge; }
         void setColor(GraphColor c) { m_color = c; }

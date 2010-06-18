@@ -40,6 +40,7 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -b, --bubble=N                   perform N bubble removal steps\n"
 "      -t, --trim=N                     trim terminal branches using N rounds\n"
 "      -c, --correct                    error correct reads and write to correctedReads.fa\n"
+"      -r, --resolve-small              resolve small repeats using spanning overlaps\n"
 "      --edge-stats                     print out the distribution of overlap lengths and number of errors\n"
 "                                       for edges found in the overlap step.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -52,16 +53,17 @@ namespace opt
     static std::string outFile;
     static std::string debugFile;
     static unsigned int minOverlap;
-    static bool bEdgeStats;
-    static bool bCorrectReads;
-    static bool bRemodelGraph;
+    static bool bEdgeStats = false;
+    static bool bCorrectReads = false;
+    static bool bRemodelGraph = false;
+    static bool bResolveSmallRepeats = false;
     static int  numTrimRounds = 0;
     static int  numBubbleRounds = 0;
     static bool bValidate;
     static bool bExact = false;
 }
 
-static const char* shortopts = "p:o:m:d:t:b:vc";
+static const char* shortopts = "p:o:m:d:t:b:rvc";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
@@ -73,8 +75,9 @@ static const struct option longopts[] = {
     { "debug-file",     required_argument, NULL, 'd' },
     { "bubble",         required_argument, NULL, 'b' },
     { "trim",           required_argument, NULL, 't' },
+    { "resolve-small",  no_argument,       NULL, 'r' },    
     { "correct",        no_argument,       NULL, 'c' },    
-    { "remodel",        no_argument,       NULL, 'r' },
+    { "remodel",        no_argument,       NULL, 'z' },
     { "edge-stats",     no_argument,       NULL, 'x' },
     { "exact",          no_argument,       NULL, 'e' },
     { "help",           no_argument,       NULL, OPT_HELP },
@@ -112,6 +115,7 @@ void assemble()
     SGTrimVisitor trimVisit;
     SGBubbleVisitor bubbleVisit;
     SGBubbleEdgeVisitor bubbleEdgeVisit;
+    SGSmallRepeatResolveVisitor smallRepeatVisit;
     SGContainRemoveVisitor containVisit;
     SGErrorCorrectVisitor errorCorrectVisit;
     SGValidateStructureVisitor validationVisit;
@@ -224,6 +228,15 @@ void assemble()
         pGraph->visit(trimVisit);
     }
 
+    if(opt::bResolveSmallRepeats)
+    {
+        std::cout << "Resolving small repeats\n";
+        while(pGraph->visit(smallRepeatVisit)) {}
+
+        std::cout << "After small repeat resolve graph stats\n";
+        pGraph->visit(statsVisit);
+    }
+
     // Simplify the graph by compacting edges
     std::cout << "Pre-simplify graph stats\n";
     pGraph->visit(statsVisit);
@@ -285,7 +298,8 @@ void parseAssembleOptions(int argc, char** argv)
             case 'b': arg >> opt::numBubbleRounds; break;
             case 't': arg >> opt::numTrimRounds; break;
             case 'c': opt::bCorrectReads = true; break;
-            case 'r': opt::bRemodelGraph = true; break;
+            case 'r': opt::bResolveSmallRepeats = true; break;
+            case 'z': opt::bRemodelGraph = true; break;
             case 'x': opt::bEdgeStats = true; break;
             case 'e': opt::bExact = true; break;
             case OPT_VALIDATE: opt::bValidate = true; break;

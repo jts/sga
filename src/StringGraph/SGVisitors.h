@@ -97,6 +97,15 @@ struct SGRemodelVisitor
     double m_remodelER;
 };
 
+// Remodel the graph to infer missing edges or remove erroneous edges
+struct SGSmallRepeatResolveVisitor
+{
+    SGSmallRepeatResolveVisitor() {}
+    void previsit(StringGraph* pGraph);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*);
+};
+
 // 
 struct SGErrorCorrectVisitor
 {

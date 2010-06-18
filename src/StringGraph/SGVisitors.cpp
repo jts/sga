@@ -645,6 +645,74 @@ void SGIslandVisitor::postvisit(StringGraph* pGraph)
     pGraph->sweepVertices(GC_BLACK);
 }
 
+//
+// Small repeat resolver - Remove edges induced from small (sub-read length)
+// repeats
+// 
+void SGSmallRepeatResolveVisitor::previsit(StringGraph*)
+{
+
+}
+
+//
+bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
+{
+    bool changed = false;
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        EdgePtrVec x_edges = pX->getEdges(dir); // These edges are already sorted
+        if(x_edges.size() < 2)
+            continue;
+
+        // Try to eliminate the shortest edge from this vertex (let this be X->Y)
+        // If Y has a longer edge than Y->X in the same direction, we remove X->Y
+
+        // Edges are sorted by length so the last edge is the shortest
+        Edge* pXY = x_edges.back();
+        size_t xy_len =  pXY->getOverlap().getOverlapLength(0);
+        size_t x_longest_len = x_edges.front()->getOverlap().getOverlapLength(0);
+        if(xy_len == x_longest_len)
+            continue;
+
+        Edge* pYX = pXY->getTwin();
+        Vertex* pY = pXY->getEnd();
+
+        EdgePtrVec y_edges = pY->getEdges(pYX->getDir());
+        size_t yx_len = pYX->getOverlap().getOverlapLength(0);
+
+        size_t y_longest_len = 0;
+        for(size_t i = 0; i < y_edges.size(); ++i)
+        {
+            Edge* pYZ = y_edges[i];
+            if(pYZ == pYX)
+                continue; // skip Y->X
+
+            size_t yz_len = pYZ->getOverlap().getOverlapLength(0);
+            if(yz_len > y_longest_len)
+                y_longest_len = yz_len;
+        }
+
+
+        if(y_longest_len > yx_len)
+        {
+            // Delete the edge
+            printf("Edge %s -> %s is likely a repeat\n", pX->getID().c_str(), pY->getID().c_str());
+            printf("Actual overlap lengths: %zu and %zu\n", xy_len, yx_len);
+            printf("Spanned by longer edges of size: %zu and %zu\n", x_longest_len, y_longest_len);
+            pX->deleteEdge(pXY);
+            pY->deleteEdge(pYX);
+        }
+    }
+
+    return changed;
+}
+
+//
+void SGSmallRepeatResolveVisitor::postvisit(StringGraph*)
+{
+
+}
 
 //
 // SGBubbleVisitor - Find and collapse variant
