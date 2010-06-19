@@ -8,6 +8,7 @@
 // for a sequence work item
 //
 #include "ErrorCorrectProcess.h"
+#include "ErrorCorrect.h"
 
 //
 //
@@ -31,32 +32,40 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
     static const double p_error = 0.01f;
+    //static const int conflicted_cutoff = 3;
     bool done = false;
     int rounds = 0;
+    
     ErrorCorrectResult result;
     SeqRecord currRead = workItem.read;
     while(!done)
     {
+        m_blockList.clear();
         OverlapResult overlap_result = m_pOverlapper->overlapRead(currRead, m_minOverlap, &m_blockList);
 
         // Convert the overlap block list into a multi-overlap 
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
         //mo.print();
-
-        // Perform correction
-        result.correctSequence = mo.calculateConsensusFromPartition(p_error);
-        result.flag = ECF_CORRECTED;
-        m_blockList.clear();
+        
+        /*
+        if(mo.isConflicted(conflicted_cutoff))
+        {
+            // Perform simple correction
+            SeqTrie leftTrie;
+            SeqTrie rightTrie;
+            mo.makeSeqTries(p_error, leftTrie, rightTrie);
+            result.correctSequence = ErrorCorrect::trieCorrect(currRead.seq.toString(), p_error, leftTrie, rightTrie);
+            // result.correctSequence = mo.consensusConflict(p_error);
+            result.flag = ECF_CORRECTED;
+        }
+        */
+        result.correctSequence = mo.consensusConflict(p_error);
         
         ++rounds;
         if(rounds == m_numRounds || result.correctSequence == currRead.seq)
-        {
             done = true;
-        }
         else
-        {
             currRead.seq = result.correctSequence;
-        }
     }
     return result;
 }

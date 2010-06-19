@@ -20,7 +20,7 @@ namespace ErrorCorrect
 
     // trieCorrect builds tries from the overlapping reads
     // to attempt to account for overcollapsed repeats 
-    std::string trieCorrect(Vertex* pVertex, double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie);
+    std::string trieCorrect(const std::string& original, double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie);
 }
 
 #endif

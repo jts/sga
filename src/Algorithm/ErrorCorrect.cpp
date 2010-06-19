@@ -22,7 +22,7 @@ std::string ErrorCorrect::correctVertex(const StringGraph* pGraph, Vertex* pVert
         SeqTrie leftTrie;
         SeqTrie rightTrie;
         SGAlgorithms::makeExtendedSeqTries(pGraph, pVertex, p_error, &leftTrie, &rightTrie);
-        return trieCorrect(pVertex, p_error, leftTrie, rightTrie);
+        return trieCorrect(pVertex->getSeq().toString(), p_error, leftTrie, rightTrie);
     }
     else
     {
@@ -32,15 +32,13 @@ std::string ErrorCorrect::correctVertex(const StringGraph* pGraph, Vertex* pVert
 
 // trieCorrect builds tries from the overlapping reads
 // to attempt to account for overcollapsed repeats 
-std::string ErrorCorrect::trieCorrect(Vertex* pVertex, double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie)
+std::string ErrorCorrect::trieCorrect(const std::string& original, double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie)
 {
     std::string consensus;
     
     // Re-map low quality branches in the tries
     leftTrie.remodel(2, log(p_error));
     rightTrie.remodel(2, log(p_error));
-
-    std::string original = pVertex->getSeq().toString();
 
     PathScoreVector left_psv;
     PathScoreVector right_psv;

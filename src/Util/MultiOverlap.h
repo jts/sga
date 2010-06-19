@@ -56,18 +56,10 @@ class MultiOverlap
         // Partition the multioverlap into groups
         int getPartition(size_t idx) const;
         void setPartition(size_t idx, int p);
-        void partitionMP(double p_error);
-        void partitionLI(double p_error);
-        bool partitionSL(double p_error, std::string dbg);
-        bool partitionConflict(double p_error, std::string dbg);
         std::string consensusConflict(double p_error);
 
         void partitionBest(double p_error, size_t n);
-        std::string consensusTemplate(const StringVector& templateVec);
-
-        SeqTrie toSeqTrie(double p_error);
-
-        double calcTemplateProb(const std::string& tmpStr, double p_error, const MOData& mod) const;
+        void makeSeqTries(double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie);
 
         // Count the number of members in the given partition
         size_t countPartition(int id) const;
