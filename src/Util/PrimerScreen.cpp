@@ -28,11 +28,11 @@ bool PrimerScreen::containsPrimer(const std::string& seq)
 {
     static PrimerScreen screener; // initializes singleton object if necessary
     
-    // For now we only check if the first 12
+    // For now we only check if the first 14
     // bases of seq is a perfect match to any sequence in the db
     // This is sufficient to get rid of the vast majority of the primer
     // contamination
-    const size_t check_size = 16;
+    const size_t check_size = 14;
     std::string check = seq.substr(0, check_size);
     for(size_t i = 0; i < screener.m_db.size(); ++i)
     {
