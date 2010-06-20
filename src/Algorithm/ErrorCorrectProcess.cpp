@@ -32,7 +32,7 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
     static const double p_error = 0.01f;
-    //static const int conflicted_cutoff = 3;
+    static const int conflicted_cutoff = 5;
     bool done = false;
     int rounds = 0;
     
@@ -47,7 +47,7 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
         //mo.print();
         
-        /*
+        
         if(mo.isConflicted(conflicted_cutoff))
         {
             // Perform simple correction
@@ -58,9 +58,11 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
             // result.correctSequence = mo.consensusConflict(p_error);
             result.flag = ECF_CORRECTED;
         }
-        */
-        result.correctSequence = mo.consensusConflict(p_error);
-        
+        else
+        {
+            result.correctSequence = mo.consensusConflict(p_error);
+            //result.correctSequence = mo.calculateConsensusFromPartition(p_error);
+        }
         ++rounds;
         if(rounds == m_numRounds || result.correctSequence == currRead.seq)
             done = true;

@@ -216,6 +216,12 @@ void parseCorrectOptions(int argc, char** argv)
     if(opt::errorRate <= 0)
         opt::errorRate = 0.0f;
 
+    if(opt::errorRate > 1.0f)
+    {
+        std::cerr << "Invalid error-rate parameter: " << opt::errorRate << "\n";
+        exit(EXIT_FAILURE);
+    }
+
     if(opt::seedLength < 0)
         opt::seedLength = 0;
 

@@ -221,13 +221,14 @@ void assemble()
            pGraph->visit(trimVisit);
     }
 
+/*
     if(opt::numBubbleRounds > 0)
     {
         std::cout << "Removing bubble edges\n";
         while(pGraph->visit(bubbleEdgeVisit)) {}
         pGraph->visit(trimVisit);
     }
-
+*/
     if(opt::bResolveSmallRepeats)
     {
         std::cout << "Resolving small repeats\n";
