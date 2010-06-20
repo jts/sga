@@ -12,6 +12,7 @@
 #include "preprocess.h"
 #include "Timer.h"
 #include "SeqReader.h"
+#include "PrimerScreen.h"
 
 static unsigned int DEFAULT_MIN_LENGTH = 40;
 static int LOW_QUALITY_PHRED_SCORE = 3;
@@ -111,6 +112,7 @@ static int64_t s_numReadsRead = 0;
 static int64_t s_numReadsKept = 0;
 static int64_t s_numBasesRead = 0;
 static int64_t s_numBasesKept = 0;
+static int64_t s_numReadsPrimer = 0;
 
 //
 // Main
@@ -228,7 +230,8 @@ int preprocessMain(int argc, char** argv)
 
     std::cerr << "Preprocess stats:\n";
     std::cerr << "Reads parsed:\t" << s_numReadsRead << "\n";
-    std::cerr << "Reads kept:\t" << s_numReadsKept << " (" << (double)s_numReadsKept / (double)s_numReadsRead << ")\n"; 
+    std::cerr << "Reads kept:\t" << s_numReadsKept << " (" << (double)s_numReadsKept / (double)s_numReadsRead << ")\n";
+    std::cerr << "Reads failed primer screen:\t" << s_numReadsPrimer << " (" << (double)s_numReadsPrimer / (double)s_numReadsRead << ")\n";
     std::cerr << "Bases parsed:\t" << s_numBasesRead << "\n";
     std::cerr << "Bases kept:\t" << s_numBasesKept << " (" << (double)s_numBasesKept / (double)s_numBasesRead << ")\n"; 
     delete pTimer;
@@ -290,6 +293,14 @@ bool processRead(SeqRecord& record)
         double gc = calcGC(seqStr);
         if(gc < opt::minGC || gc > opt::maxGC)
             return false;
+    }
+
+    // Primer screen
+    bool containsPrimer = PrimerScreen::containsPrimer(seqStr);
+    if(containsPrimer)
+    {
+        ++s_numReadsPrimer;
+        return false;
     }
 
     record.seq = seqStr;
