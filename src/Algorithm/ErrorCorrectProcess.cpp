@@ -14,10 +14,13 @@
 //
 //
 ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
-                                         int minOverlap, int numRounds) : 
+                                         int minOverlap, int numRounds, 
+                                         int conflictCutoff, ErrorCorrectAlgorithm algo) : 
                                             m_pOverlapper(pOverlapper), 
                                             m_minOverlap(minOverlap),
-                                            m_numRounds(numRounds)
+                                            m_numRounds(numRounds),
+                                            m_conflictCutoff(conflictCutoff),
+                                            m_algorithm(algo)
 {
 
 }
@@ -32,7 +35,6 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
     static const double p_error = 0.01f;
-    static const int conflicted_cutoff = 5;
     bool done = false;
     int rounds = 0;
     
@@ -47,22 +49,34 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
         //mo.print();
         
-        
-        if(mo.isConflicted(conflicted_cutoff))
+        if(m_algorithm == ECA_TRIE)
         {
-            // Perform simple correction
-            SeqTrie leftTrie;
-            SeqTrie rightTrie;
-            mo.makeSeqTries(p_error, leftTrie, rightTrie);
-            result.correctSequence = ErrorCorrect::trieCorrect(currRead.seq.toString(), p_error, leftTrie, rightTrie);
-            // result.correctSequence = mo.consensusConflict(p_error);
-            result.flag = ECF_CORRECTED;
+            if(mo.isConflicted(m_conflictCutoff))
+            {
+                // Perform simple correction
+                SeqTrie leftTrie;
+                SeqTrie rightTrie;
+                mo.makeSeqTries(p_error, leftTrie, rightTrie);
+                result.correctSequence = ErrorCorrect::trieCorrect(currRead.seq.toString(), p_error, leftTrie, rightTrie);
+            }
+            else
+            {
+                result.correctSequence = mo.consensusConflict(p_error, m_conflictCutoff);
+            }
+        }
+        else if(m_algorithm == ECA_CC)
+        {
+            result.correctSequence = mo.consensusConflict(p_error, m_conflictCutoff);
+        }
+        else if(m_algorithm == ECA_SIMPLE)
+        {
+            result.correctSequence = mo.calculateConsensusFromPartition(p_error);
         }
         else
         {
-            result.correctSequence = mo.consensusConflict(p_error);
-            //result.correctSequence = mo.calculateConsensusFromPartition(p_error);
+            assert(false);
         }
+
         ++rounds;
         if(rounds == m_numRounds || result.correctSequence == currRead.seq)
             done = true;

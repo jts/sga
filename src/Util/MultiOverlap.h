@@ -56,7 +56,7 @@ class MultiOverlap
         // Partition the multioverlap into groups
         int getPartition(size_t idx) const;
         void setPartition(size_t idx, int p);
-        std::string consensusConflict(double p_error);
+        std::string consensusConflict(double p_error, int conflictCutoff);
 
         void partitionBest(double p_error, size_t n);
         void makeSeqTries(double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie);

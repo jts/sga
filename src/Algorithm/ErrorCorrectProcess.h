@@ -10,6 +10,13 @@
 #ifndef CORRECTROCESS_H
 #define CORRECTPROCESS_H
 
+enum ErrorCorrectAlgorithm
+{
+    ECA_TRIE, // aggressive trie-based correction of conflicted sequences
+    ECA_CC, // conflict-aware consensus
+    ECA_SIMPLE // straightforward correct
+};
+
 #include "Util.h"
 #include "OverlapAlgorithm.h"
 #include "SequenceProcessFramework.h"
@@ -36,7 +43,8 @@ class ErrorCorrectProcess
 {
     public:
         ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
-                            int minOverlap, int numRounds);
+                            int minOverlap, int numRounds, 
+                            int conflictCutoff, ErrorCorrectAlgorithm algo);
 
         ~ErrorCorrectProcess();
 
@@ -53,6 +61,8 @@ class ErrorCorrectProcess
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;
         const int m_numRounds;
+        const int m_conflictCutoff;
+        const ErrorCorrectAlgorithm m_algorithm;
 };
 
 // Write the results from the overlap step to an ASQG file

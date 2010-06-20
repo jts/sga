@@ -55,6 +55,8 @@ static const char *CORRECT_USAGE_MESSAGE =
 "                                       missing edges, this option may be preferable for some data sets.\n"
 "      -s, --seed-stride=LEN            force the seed stride to be LEN. This parameter will be ignored unless --seed-length\n"
 "                                       is specified (see above). This parameter defaults to the same value as --seed-length\n"
+"      -a, --algorithm=STR              the correction algorithm to use. STR must be one of simple,conflict or trie\n"
+"      -c, --conflict=INT               use INT as the threshold to detect a conflicted base in the multi-overlap\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -73,9 +75,11 @@ namespace opt
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
     static int seedStride = 0;
+    static int conflictCutoff = 5;
+    static ErrorCorrectAlgorithm algorithm = ECA_CC;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:o:r:vi";
+static const char* shortopts = "p:m:d:e:t:l:s:o:r:a:c:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -89,6 +93,8 @@ static const struct option longopts[] = {
     { "error-rate",  required_argument, NULL, 'e' },
     { "seed-length", required_argument, NULL, 'l' },
     { "seed-stride", required_argument, NULL, 's' },
+    { "algorithm",   required_argument, NULL, 'a' },
+    { "conflict",    required_argument, NULL, 'c' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -116,7 +122,7 @@ int correctMain(int argc, char** argv)
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap, opt::numRounds);
+        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm);
         SequenceProcessFramework::processSequencesSerial<ErrorCorrectResult, 
                                                          ErrorCorrectProcess, 
                                                          ErrorCorrectPostProcess>(opt::readsFile, &processor, &postProcessor);
@@ -127,7 +133,7 @@ int correctMain(int argc, char** argv)
         std::vector<ErrorCorrectProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, opt::numRounds);
+            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm);
             processorVector.push_back(pProcessor);
         }
         
@@ -140,7 +146,6 @@ int correctMain(int argc, char** argv)
             delete processorVector[i];
         }
     }
-
 
     delete pBWT;
     delete pRBWT;
@@ -158,6 +163,7 @@ int correctMain(int argc, char** argv)
 //
 void parseCorrectOptions(int argc, char** argv)
 {
+    std::string algo_str;
     bool die = false;
     for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
     {
@@ -172,6 +178,8 @@ void parseCorrectOptions(int argc, char** argv)
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
             case 'r': arg >> opt::numRounds; break;
+            case 'a': arg >> algo_str; break;
+            case 'c': arg >> opt::conflictCutoff; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
@@ -204,6 +212,22 @@ void parseCorrectOptions(int argc, char** argv)
     {
         std::cerr << SUBPROGRAM ": invalid number of rounds: " << opt::numRounds << ", must be at least 1\n";
         die = true;
+    }
+    
+    // Determine the correctiona algorithm to use
+    if(!algo_str.empty())
+    {
+        if(algo_str == "simple")
+            opt::algorithm = ECA_SIMPLE;
+        else if(algo_str == "conflict")
+            opt::algorithm = ECA_CC;
+        else if(algo_str == "trie")
+            opt::algorithm = ECA_TRIE;
+        else
+        {
+            std::cerr << SUBPROGRAM << ": unrecognized -a,--algorithm parameter: " << algo_str << "\n";
+            die = true;
+        }
     }
 
     if (die) 

@@ -124,12 +124,8 @@ size_t MultiOverlap::getNumBases() const
 }
 
 //
-std::string MultiOverlap::consensusConflict(double p_error)
+std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
 {
-    (void)p_error;
-
-    const int CONFLICT_CUTOFF = 3;
-
     std::vector<AlphaCount> acVec;
     for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
@@ -153,7 +149,7 @@ std::string MultiOverlap::consensusConflict(double p_error)
             char sorted[ALPHABET_SIZE];
             acVec[i].getSorted(sorted, ALPHABET_SIZE);
             int second = acVec[i].get(sorted[1]);
-            bool isConflict = second > CONFLICT_CUTOFF;
+            bool isConflict = second > conflictCutoff;
             char b = getMODBase(m_overlaps[j], i);
 
             if(isConflict)
@@ -211,7 +207,7 @@ std::string MultiOverlap::consensusConflict(double p_error)
         char sorted[ALPHABET_SIZE];
         acVec[i].getSorted(sorted, ALPHABET_SIZE);
         int second = acVec[i].get(sorted[1]);
-        bool isConflict = second > CONFLICT_CUTOFF;
+        bool isConflict = second > conflictCutoff;
         if(!isConflict)
         {
             consensus[i] = sorted[0];
