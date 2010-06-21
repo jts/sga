@@ -242,10 +242,11 @@ void assemble()
     std::cout << "Pre-simplify graph stats\n";
     pGraph->visit(statsVisit);
 
+    /*
     SGBreakWriteVisitor breakWriter("breaks.txt");
     pGraph->visit(breakWriter);
     pGraph->writeASQG("postmod.asqg.gz");
-
+    */
     pGraph->simplify();
     
     if(opt::numBubbleRounds > 0)
