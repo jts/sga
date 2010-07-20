@@ -24,6 +24,8 @@ SeqReader::~SeqReader()
 // Return true if successful
 bool SeqReader::get(SeqRecord& sr)
 {
+    static int warn_count = 0;
+    const int MAX_WARN = 10;
     RecordType rt = RT_UNKNOWN;
     std::string header;
     while(m_fileHandle.good())
@@ -77,7 +79,12 @@ bool SeqReader::get(SeqRecord& sr)
         getline(m_fileHandle, qual);
 
         // FASTQ is required to have 4 fields, we must not have hit the EOF by this point
-        validRecord = seq.size() > 0 && seq.size() == qual.size() && !m_fileHandle.eof();
+        if(seq.size() != qual.size() && warn_count++ < MAX_WARN)
+        {
+            std::cerr << "Warning, FASTQ quality string is not the same length as the sequence string for read " << header << "\n";
+            
+        }
+        validRecord = seq.size() > 0 && qual.size() > 0 && !m_fileHandle.eof();
     }
 
     if(validRecord)
