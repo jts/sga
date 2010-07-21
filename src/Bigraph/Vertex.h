@@ -123,6 +123,7 @@ class Vertex
         void validate() const;
         
         // setters
+        void setID(VertexID id) { m_id = id; }
         void setEdgeColors(GraphColor c);
         void setSeq(const std::string& s) { m_seq = s; }
         void setColor(GraphColor c) { m_color = c; }

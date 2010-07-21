@@ -267,8 +267,11 @@ void assemble()
     pGraph->validate();
 #endif
 
+    // Rename the vertices to have contig IDs instead of read IDs
+    pGraph->renameVertices("contig-");
+
     // Write the results
-    pGraph->writeDot("final.dot");
+    //pGraph->writeDot("final.dot");
     //pGraph->writeASQG("final.asqg");
     SGFastaVisitor av(opt::outFile);
     pGraph->visit(av);

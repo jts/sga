@@ -88,6 +88,9 @@ class Bigraph
         // Merge vertices that are joined by the specified edge
         void merge(Vertex* pV1, Edge* pEdge);
 
+        // Rename all the vertices in the graph
+        void renameVertices(const std::string& prefix = "");
+
         // Simplify the graph by removing transitive edges
         void simplify();
 

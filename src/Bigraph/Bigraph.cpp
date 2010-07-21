@@ -268,6 +268,39 @@ void Bigraph::simplify(EdgeDir dir)
 }
 
 //
+// Rename the vertices to have a sequential idx
+// starting with prefix. This requires extra memory
+// as we need to keep a vector of vertex pointers to reconstruct
+// the graph after the vertices are renamed. This should
+// only be done after the string graph has been simplified or
+// else it could require a lot of memory.
+//
+void Bigraph::renameVertices(const std::string& prefix)
+{
+    size_t currIdx = 0;
+    size_t numVertices = m_vertices.size();
+    std::vector<Vertex*> vertexPtrVec(numVertices, 0);
+
+    VertexPtrMapIter iter = m_vertices.begin();
+    while(iter != m_vertices.end())
+    {
+        std::stringstream ss;
+        ss << prefix << currIdx;
+        iter->second->setID(ss.str());
+        vertexPtrVec[currIdx] = iter->second;
+        ++iter;
+        ++currIdx;
+    }
+
+    // Clear the old graph
+    m_vertices.clear();
+    
+    // Re-add the vertices
+    for(size_t i = 0; i < numVertices; ++i)
+        addVertex(vertexPtrVec[i]);
+}
+
+//
 // Sort the adjacency list for each vertex by length
 //
 void Bigraph::sortVertexAdjListsByLen()

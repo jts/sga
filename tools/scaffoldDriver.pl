@@ -57,6 +57,7 @@ run("$parseAligns -k $kmer -h $histFile --sam $bamFile > /dev/null");
 
 #
 run("$samtools sort $bamFile $finalPrefix");
+run("$samtools index $finalBam");
 unlink($bamFile);
 
 # Run DistanceEst to generate estimates between the contigs
