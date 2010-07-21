@@ -18,8 +18,8 @@ my $sacFile1 = $contigsFile . ".1.sac";
 my $sacFile2 = $contigsFile . ".2.sac";
 my $bamSEFile = $contigsFile . ".se.bam";
 my $bamFile = $contigsFile . ".bam";
-my $samFile = $contigsFile . ".sam";
-my $interContigSam = $contigsFile . ".inter.sam";
+my $finalPrefix = $contigsFile . ".final";
+my $finalBam = "$finalPrefix.bam";
 my $histFile = $contigsFile . ".hist";
 my $deFile = $contigsFile . ".de";
 
@@ -43,25 +43,26 @@ run("$splitReads $readsFile $splitReads1 $splitReads2");
 run("$bwa aln -o 0 $contigsFile $splitReads1 > $sacFile1");
 run("$bwa aln -o 0 $contigsFile $splitReads2 > $sacFile2");
 
-run("$bwa sampe $contigsFile $sacFile1 $sacFile2 $splitReads1 $splitReads2 | $samtools view -Sb -o $bamSEFile -");
+run("$bwa sampe -s $contigsFile $sacFile1 $sacFile2 $splitReads1 $splitReads2 | $samtools view -Sb -o $bamSEFile -");
 unlink($sacFile1);
 unlink($sacFile2);
 
 # Use Shaun Jackman's patched samtools fixmate to fill in the ISIZE field for the pairs
 run("$samtools fixmate $bamSEFile $bamFile");
-#unlink("$bamSEFile");
-
-# Convert bam to sam for distance est
-run("$samtools view -h $bamFile -o $samFile");
-#unlink($bamFile);
-}
+unlink("$bamSEFile");
 
 # Run ParseAligns to generate a new SAM file with only inter-contig pairs
 # and the fragment size histogram
-run("$parseAligns -k $kmer -h $histFile --sam $samFile > $interContigSam");
+run("$parseAligns -k $kmer -h $histFile --sam $bamFile > /dev/null");
+
+#
+run("$samtools sort $bamFile $finalPrefix");
+unlink($bamFile);
 
 # Run DistanceEst to generate estimates between the contigs
-run("$distanceEst -n $n -k $kmer $histFile $interContigSam > $deFile");
+run("$distanceEst -n $n -k $kmer $histFile $finalBam > $deFile");
+
+}
 
 sub run
 {
