@@ -36,6 +36,10 @@ class ErrorCorrectResult
     public:
         DNAString correctSequence;
         ECFlag flag;
+
+        // Metrics
+        size_t num_prefix_overlaps;
+        size_t num_suffix_overlaps;
 };
 
 //
@@ -44,7 +48,8 @@ class ErrorCorrectProcess
     public:
         ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
                             int minOverlap, int numRounds, 
-                            int conflictCutoff, ErrorCorrectAlgorithm algo);
+                            int conflictCutoff, ErrorCorrectAlgorithm algo,
+                            bool printMO);
 
         ~ErrorCorrectProcess();
 
@@ -63,6 +68,7 @@ class ErrorCorrectProcess
         const int m_numRounds;
         const int m_conflictCutoff;
         const ErrorCorrectAlgorithm m_algorithm;
+        const bool m_printOverlaps;
 };
 
 // Write the results from the overlap step to an ASQG file

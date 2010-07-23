@@ -122,7 +122,7 @@ int correctMain(int argc, char** argv)
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm);
+        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm, opt::verbose > 1);
         SequenceProcessFramework::processSequencesSerial<ErrorCorrectResult, 
                                                          ErrorCorrectProcess, 
                                                          ErrorCorrectPostProcess>(opt::readsFile, &processor, &postProcessor);
@@ -133,7 +133,7 @@ int correctMain(int argc, char** argv)
         std::vector<ErrorCorrectProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm);
+            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm, opt::verbose > 1);
             processorVector.push_back(pProcessor);
         }
         

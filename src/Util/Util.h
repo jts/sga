@@ -49,9 +49,9 @@ struct SeqItem
     std::string id;
     DNAString seq;
 
-    void write(std::ostream& out) const
+    void write(std::ostream& out, const std::string& meta = "") const
     {
-        out << ">" << id << "\n";
+        out << ">" << id << (meta.empty() ? "" : " ") << meta << "\n";
         out << seq.toString() << "\n";
     }    
 };
@@ -68,19 +68,20 @@ struct SeqRecord
         return r;
     }
 
-    void write(std::ostream& out)
+    // Write the sequence to the file handle. If the 
+    void write(std::ostream& out, const std::string& meta = "")
     {
         // If there is a quality string write the record as fastq, otherwise fasta
         if(!qual.empty())
         {
-            out << "@" << id << "\n";
+            out << "@" << id << (meta.empty() ? "" : " ") << meta << "\n";
             out << seq.toString() << "\n";
-            out << "+" << "\n"; // this field is optional
+            out << "+" << "\n";
             out << qual << "\n";
         }
         else
         {
-            toSeqItem().write(out);
+            toSeqItem().write(out, meta);
         }
     }
 

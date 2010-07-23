@@ -63,6 +63,7 @@ class MultiOverlap
 
         // Count the number of members in the given partition
         size_t countPartition(int id) const;
+        void countOverlaps(size_t& prefix_count, size_t& suffix_count) const;
 
         double calculateLikelihood() const;
         double calculateGroupedLikelihood() const;

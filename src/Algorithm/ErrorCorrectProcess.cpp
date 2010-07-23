@@ -15,12 +15,14 @@
 //
 ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
                                          int minOverlap, int numRounds, 
-                                         int conflictCutoff, ErrorCorrectAlgorithm algo) : 
+                                         int conflictCutoff, ErrorCorrectAlgorithm algo,
+                                         bool printMO) : 
                                             m_pOverlapper(pOverlapper), 
                                             m_minOverlap(minOverlap),
                                             m_numRounds(numRounds),
                                             m_conflictCutoff(conflictCutoff),
-                                            m_algorithm(algo)
+                                            m_algorithm(algo),
+                                            m_printOverlaps(printMO)
 {
 
 }
@@ -40,6 +42,7 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
     
     ErrorCorrectResult result;
     SeqRecord currRead = workItem.read;
+    std::string originalRead = workItem.read.seq.toString();
     while(!done)
     {
         m_blockList.clear();
@@ -47,8 +50,17 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
 
         // Convert the overlap block list into a multi-overlap 
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
-        //mo.print();
-        
+
+        result.num_prefix_overlaps = 0;
+        result.num_suffix_overlaps = 0;
+        mo.countOverlaps(result.num_prefix_overlaps, result.num_suffix_overlaps);
+
+        if(m_printOverlaps)
+        {
+            std::cout << "Prefix overlap: " << result.num_prefix_overlaps << " suffix overlaps: " << result.num_suffix_overlaps << "\n";
+            mo.print();
+        }
+
         if(m_algorithm == ECA_TRIE)
         {
             if(mo.isConflicted(m_conflictCutoff))
@@ -83,13 +95,22 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
         else
             currRead.seq = result.correctSequence;
     }
+
+    if(m_printOverlaps)
+    {
+        std::string corrected_seq = result.correctSequence.toString();
+        std::cout << "OS: " << originalRead << "\n";
+        std::cout << "CS: " << corrected_seq << "\n";
+        std::cout << "DS: " << getDiffString(originalRead, corrected_seq) << "\n";
+        std::cout << "QS: " << currRead.qual << "\n";
+    }
     return result;
 }
 
 //
 MultiOverlap ErrorCorrectProcess::blockListToMultiOverlap(const SeqRecord& record, OverlapBlockList& blockList)
 {
-    std::string read_idx = makeIdxString(-1);
+    std::string read_idx = record.id;
     std::string read_seq = record.seq.toString();
     MultiOverlap out(read_idx, read_seq);
 
@@ -148,6 +169,10 @@ void ErrorCorrectPostProcess::process(const SequenceWorkItem& item, const ErrorC
 {
     SeqRecord correctedRecord = item.read;
     correctedRecord.seq = result.correctSequence;
-    correctedRecord.write(*m_pWriter);
+    std::stringstream ss;
+    ss << "PO:" << result.num_prefix_overlaps;
+    ss << " SO:" << result.num_suffix_overlaps;
+
+    correctedRecord.write(*m_pWriter, ss.str());
     //m_pOverlapper->writeResultASQG(*m_pASQGWriter, item.read, result);
 }

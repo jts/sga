@@ -4,6 +4,10 @@
 # Usage: de2evidence.pl <contigs fasta> <de file>
 #
 use strict;
+use FindBin;
+use lib $FindBin::Bin;
+use ParseDE;
+
 my $NUM_OPEN_TAGS = 0;
 
 my $contigFile = $ARGV[0];
@@ -39,29 +43,20 @@ close(CTGS);
 # Build the link records
 open(DE, $deFile);
 
-# Skip the first line
+# Skip the first line, it is a header
 my $skip = <DE>;
 while(my $line = <DE>)
 {
-    chomp $line;
-    my @fields = split(' ', $line);
-    my $base = shift @fields;
-
-    foreach my $linkRec (@fields)
+    my ($baseCtg, $linkArray) = ParseDE::parseDERecord($line);
+    foreach my $linkRec (@{$linkArray})
     {
-        next if $linkRec eq ";";
-        #print "B $base $linkRec\n";
-        my ($tag, $dist, $n, $sd) = split(",", $linkRec);
-        my $id = substr($tag, 0, -1);
-        my $dir = substr($tag, -1, 1);
-
         #print "L $base $id $dir $dist " . ($base < $id) . "\n";
         # We only want to output one link per pair but the DE file
         # contains a record for both contigs. Only output the record
         # for the lexographically lower of the two
-        if($base lt $id)
+        if($baseCtg lt $linkRec->{ctg})
         {
-            writeLinkRecord($base, $id, $dir, $dist);
+            writeLinkRecord($baseCtg, $linkRec->{ctg}, $linkRec->{strand}, $linkRec->{dist});
         }
     }
 }

@@ -284,6 +284,24 @@ size_t MultiOverlap::countPartition(int id) const
     return count;
 }
 
+void MultiOverlap::countOverlaps(size_t& prefix_count, size_t& suffix_count) const
+{
+    prefix_count = 0;
+    suffix_count = 0;
+    for(size_t i = 0; i < m_overlaps.size(); ++i)
+    {
+        if(!m_overlaps[i].ovr.match.coord[0].isLeftExtreme() ||
+           !m_overlaps[i].ovr.match.coord[0].isRightExtreme())
+        {
+            if(m_overlaps[i].ovr.match.coord[0].isLeftExtreme())
+                ++prefix_count;
+            if(m_overlaps[i].ovr.match.coord[0].isRightExtreme())
+                ++suffix_count;
+        }
+    }
+}
+
+
 std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
 {
     std::string out;

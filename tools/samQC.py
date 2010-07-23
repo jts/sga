@@ -107,7 +107,7 @@ def hasIndel(a):
     return 0
 
 def usage():
-    print 'usage: samQC.py [-p|-c|-s|-l] [-t val] [-n num] [-d filename] [--range chr:start:stop] in.bam|in.sam ref.fasta'
+    print 'usage: samQC.py [-p|-c|-s|-l] [-t val] [-n num] [-d filename] [-o filename] [--range chr:start:stop] in.bam|in.sam ref.fasta'
     print 'Options:'
     print '    -p       Output summary of number of base calling errors per read-position'
     print '    -c       Output summary of number of base calling errors per read'
@@ -116,6 +116,7 @@ def usage():
     print '    -s       Output general summary (total reads, total error rate, etc)'
     print '    -t=INT   Only use the first INT bases of each read'
     print '    -n=INT   Only use INT reads to calculate statistics'
+    print '    -o=FILE  Write per-read statitics to FILE'
     print '    -d=FILE  Plot the result and save the figure in FILE'
     print '             If FILE is "-" the figure will be displayed immediately'
     print '    --range  The region of the reference to process stats for, in format chr:start:end'
@@ -131,9 +132,10 @@ numMaxReads = 10000
 trim = None
 drawFile = None
 total_errors = 0
+outFilename = None
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], 'pcshqtl:d:n:', ["range="])
+    opts, args = getopt.gnu_getopt(sys.argv[1:], 'pcshqtl:d:n:o:', ["range="])
 except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -154,6 +156,8 @@ for (oflag, oarg) in opts:
             trim = int(oarg)
         if oflag == '-d':
             drawFile = oarg
+        if oflag == '-o':
+            outFilename = oarg
         if oflag == '-n':
             numMaxReads = int(oarg)
         if oflag == '-h':
@@ -178,6 +182,11 @@ for i,s in reference.items():
 # Load the samfile
 samfile = pysam.Samfile(samFilename, "rb")
 
+# read stats output file
+outFile = None
+if outFilename is not None:
+    outFile = open(outFilename, 'w')
+
 # Intialize the count
 data = dict()
 readCoverage = dict()
@@ -193,7 +202,7 @@ for alignment in iter:
         break
 
     # Get the sequence in the reference that this read aligns to
-    if alignment.is_unmapped:
+    if alignment.is_unmapped or alignment.is_secondary:
         continue
     ref_name = samfile.getrname(alignment.rname)
     ref_slice = reference[ref_name][alignment.pos:alignment.pos+alignment.rlen]
@@ -218,12 +227,19 @@ for alignment in iter:
             nr += 1
 
             # Parse the stats
+            num_errors = 0
             if reportType == ReportType.POS:
-                total_errors += getErrorPositions(data, seq_slice, ref_slice)
+                num_errors = getErrorPositions(data, seq_slice, ref_slice)
             elif reportType == ReportType.COUNT:
-                total_errors += getErrorCounts(data, seq_slice, ref_slice)
+                num_errors = getErrorCounts(data, seq_slice, ref_slice)
             elif reportType == ReportType.QUAL:
-                total_errors += getErrorQual(data, seq_slice, ref_slice, qual_slice)
+                num_errors = getErrorQual(data, seq_slice, ref_slice, qual_slice)
+
+            if outFile is not None:
+                outFile.write(">" + alignment.qname + ' ' + str(num_errors) + '\n')
+                outFile.write(alignment.seq + '\n')
+
+            total_errors += num_errors
 
             # Accumulate read coverage
             getReadCoverage(readCoverage, seq_slice)
