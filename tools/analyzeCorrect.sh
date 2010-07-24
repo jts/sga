@@ -7,6 +7,7 @@ if [ $# > 1 ]; then
 else
     REF_PREFIX=/nfs/team71/phd/js18/work/devel/sga/data/ecoli_k12.fa
 fi
-
-~/work/devel/sga/tools/run_bwa.sh $IN $REF_PREFIX
-~/work/devel/sga/tools/samQC.py -s -p -n 100000 -o $IN.analyze $IN.bam $REF_PREFIX
+TOOLS_DIR=`dirname $0`
+echo $TOOLS_DIR
+$TOOLS_DIR/run_bwa.sh $IN $REF_PREFIX
+$TOOLS_DIR/samQC.py -s -p -n 100000 -o $IN.analyze $IN.bam $REF_PREFIX

@@ -1,6 +1,7 @@
-#! /nfs/team71/phd/js18/software/Python-2.6.4/python
+#! /usr/bin/python
 
-import pysamhack as pysam
+#import pysamhack as pysam
+import pysam
 import sys
 import getopt
 import math
@@ -209,11 +210,13 @@ for alignment in iter:
     seq_slice = alignment.seq
     qual_slice = alignment.qual
 
+    if seq_slice is None:
+        continue
+
     if trim != None:
         ref_slice = ref_slice[0:trim]
         seq_slice = seq_slice[0:trim]
         qual_slice = qual_slice[0:trim]
-
     if alignment.is_reverse:
         seq_slice = reverseComplement(seq_slice)
         ref_slice = reverseComplement(ref_slice)

@@ -57,7 +57,8 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
 
         if(m_printOverlaps)
         {
-            std::cout << "Prefix overlap: " << result.num_prefix_overlaps << " suffix overlaps: " << result.num_suffix_overlaps << "\n";
+            std::cout << "Prefix overlap: " << result.num_prefix_overlaps 
+                      << " suffix overlaps: " << result.num_suffix_overlaps << "\n";
             mo.print();
         }
 
@@ -159,7 +160,11 @@ std::string ErrorCorrectProcess::makeIdxString(int64_t idx)
 //
 //
 //
-ErrorCorrectPostProcess::ErrorCorrectPostProcess(std::ostream* pWriter) : m_pWriter(pWriter)
+ErrorCorrectPostProcess::ErrorCorrectPostProcess(std::ostream* pCorrectedWriter,
+                                                 std::ostream* pDiscardWriter) : 
+                                                      m_pCorrectedWriter(pCorrectedWriter),
+                                                      m_pDiscardWriter(pDiscardWriter)
+
 {
 
 }
@@ -167,12 +172,21 @@ ErrorCorrectPostProcess::ErrorCorrectPostProcess(std::ostream* pWriter) : m_pWri
 //
 void ErrorCorrectPostProcess::process(const SequenceWorkItem& item, const ErrorCorrectResult& result)
 {
-    SeqRecord correctedRecord = item.read;
-    correctedRecord.seq = result.correctSequence;
+    SeqRecord record = item.read;
+    record.seq = result.correctSequence;
     std::stringstream ss;
     ss << "PO:" << result.num_prefix_overlaps;
     ss << " SO:" << result.num_suffix_overlaps;
 
-    correctedRecord.write(*m_pWriter, ss.str());
-    //m_pOverlapper->writeResultASQG(*m_pASQGWriter, item.read, result);
+    // Determine if the read should be discarded
+    bool discardRead = result.num_prefix_overlaps == 0 || result.num_suffix_overlaps == 0;
+
+    if(!discardRead || m_pDiscardWriter == NULL)
+    {
+        record.write(*m_pCorrectedWriter, ss.str());
+    }
+    else
+    {
+        record.write(*m_pDiscardWriter, ss.str());
+    }
 }

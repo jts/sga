@@ -8,8 +8,10 @@ else
     REF_PREFIX=/nfs/team71/phd/js18/work/devel/sga/data/ecoli_k12.fa
 fi
 
-BWA=/software/solexa/bin/aligners/bwa/current/bwa
-SAMTOOLS=/software/solexa/bin/aligners/samtools/current/samtools
+# These environment variables must be defined, probably better
+# to require BWA/SAMTOOLS to be on the path
+#BWA=/software/solexa/bin/aligners/bwa/current/bwa
+#SAMTOOLS=/software/solexa/bin/aligners/samtools/current/samtools
 
 # Run bwa	
 $BWA aln $REF_PREFIX $IN > $IN.sai

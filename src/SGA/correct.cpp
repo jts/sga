@@ -70,6 +70,7 @@ namespace opt
     static std::string prefix;
     static std::string readsFile;
     static std::string outFile;
+    static std::string discardFile;
 
     static double errorRate;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
@@ -114,10 +115,10 @@ int correctMain(int argc, char** argv)
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false);
-    std::string correctedReadsName = opt::outFile;
-    std::ostream* pWriter = createWriter(correctedReadsName);
-
-    ErrorCorrectPostProcess postProcessor(pWriter);
+    
+    std::ostream* pWriter = createWriter(opt::outFile);
+    std::ostream* pDiscardWriter = createWriter(opt::discardFile);
+    ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter);
 
     if(opt::numThreads <= 1)
     {
@@ -264,4 +265,6 @@ void parseCorrectOptions(int argc, char** argv)
     {
         opt::outFile = opt::prefix + ".ec.fa";
     }
+
+    opt::discardFile = opt::prefix + ".discard.fa";
 }

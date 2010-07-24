@@ -75,11 +75,12 @@ class ErrorCorrectProcess
 class ErrorCorrectPostProcess
 {
     public:
-        ErrorCorrectPostProcess(std::ostream* pWriter);
+        ErrorCorrectPostProcess(std::ostream* pCorrectedWriter, std::ostream* pDiscardWriter);
         void process(const SequenceWorkItem& item, const ErrorCorrectResult& result);
 
     private:
-        std::ostream* m_pWriter;
+        std::ostream* m_pCorrectedWriter;
+        std::ostream* m_pDiscardWriter;
 };
 
 #endif
