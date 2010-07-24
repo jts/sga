@@ -63,7 +63,22 @@ class MultiOverlap
 
         // Count the number of members in the given partition
         size_t countPartition(int id) const;
+
+        // Count the number of prefix and suffix overlaps
         void countOverlaps(size_t& prefix_count, size_t& suffix_count) const;
+
+        // Calculate the amount of the sequence that is covered
+        // by both prefix and suffix overlaps. For instance:
+        // Read    ---------------
+        // OvrP --------------
+        // OvrX             -----------
+        //                  xx
+        // In this case the function would return 2.
+        // If there is no overlap, zero is returned
+        // Read    ---------------
+        // OvrP ---------
+        // OvrX           -------------
+        int calculateCoverageOverlap();
 
         double calculateLikelihood() const;
         double calculateGroupedLikelihood() const;

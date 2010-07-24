@@ -284,14 +284,14 @@ size_t MultiOverlap::countPartition(int id) const
     return count;
 }
 
+//
 void MultiOverlap::countOverlaps(size_t& prefix_count, size_t& suffix_count) const
 {
     prefix_count = 0;
     suffix_count = 0;
     for(size_t i = 0; i < m_overlaps.size(); ++i)
     {
-        if(!m_overlaps[i].ovr.match.coord[0].isLeftExtreme() ||
-           !m_overlaps[i].ovr.match.coord[0].isRightExtreme())
+        if(!m_overlaps[i].ovr.match.coord[0].isContained())
         {
             if(m_overlaps[i].ovr.match.coord[0].isLeftExtreme())
                 ++prefix_count;
@@ -301,6 +301,38 @@ void MultiOverlap::countOverlaps(size_t& prefix_count, size_t& suffix_count) con
     }
 }
 
+//
+int MultiOverlap::calculateCoverageOverlap()
+{
+    int rightmost_prefix = -1;
+    int leftmost_suffix = m_rootSeq.length();
+
+    for(size_t i = 0; i < m_overlaps.size(); ++i)
+    {
+        if(!m_overlaps[i].ovr.match.coord[0].isContained())
+        {
+            if(m_overlaps[i].ovr.match.coord[0].isLeftExtreme())
+            {
+                // Prefix overlap
+                int end = m_overlaps[i].ovr.match.coord[0].interval.end;
+                if(end > rightmost_prefix)
+                    rightmost_prefix = end;
+            }
+            else
+            {
+                // Suffix overlap
+                int start = m_overlaps[i].ovr.match.coord[0].interval.start;
+                if(start < leftmost_suffix)
+                    leftmost_suffix = start;
+            }
+        }
+    }
+
+    if(leftmost_suffix > rightmost_prefix)
+        return 0;
+    else
+        return rightmost_prefix - leftmost_suffix + 1;
+}
 
 std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
 {

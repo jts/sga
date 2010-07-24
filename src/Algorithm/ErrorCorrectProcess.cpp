@@ -59,6 +59,7 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
         {
             std::cout << "Prefix overlap: " << result.num_prefix_overlaps 
                       << " suffix overlaps: " << result.num_suffix_overlaps << "\n";
+            std::cout << "Coverage overlap: " << mo.calculateCoverageOverlap() << "\n";
             mo.print();
         }
 
