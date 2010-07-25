@@ -513,11 +513,15 @@ void OverlapAlgorithm::extendSeedInexactRight(SearchSeed& seed, const std::strin
     }
     else
     {
+        // Calculating the AlphaCounts is the heavy part of the computation so we cache
+        // the value outside the loop, it is the same for all bases
+        AlphaCount lower = pRevBWT->getFullOcc(seed.ranges.interval[1].lower - 1);
+        AlphaCount upper = pRevBWT->getFullOcc(seed.ranges.interval[1].upper);
         for(int i = 0; i < 4; ++i)
         {
             char b = ALPHABET[i];    
             BWTIntervalPair probe = seed.ranges;
-            BWTAlgorithms::updateBothR(probe, b, pRevBWT);
+            BWTAlgorithms::updateBothR(probe, b, pRevBWT, lower, upper);
             if(probe.interval[RIGHT_INT_IDX].isValid())
             {
                 SearchSeed branched = seed;
@@ -552,11 +556,15 @@ void OverlapAlgorithm::extendSeedInexactLeft(SearchSeed& seed, const std::string
         }
         else
         {
+            // Calculating the AlphaCounts is the heavy part of the computation so we cache
+            // the value outside the loop, it is the same for all bases
+            AlphaCount lower = pBWT->getFullOcc(seed.ranges.interval[0].lower - 1);
+            AlphaCount upper = pBWT->getFullOcc(seed.ranges.interval[0].upper);
             for(int i = 0; i < 4; ++i)
             {
                 char b = ALPHABET[i];
                 BWTIntervalPair probe = seed.ranges;
-                BWTAlgorithms::updateBothL(probe, b, pBWT);
+                BWTAlgorithms::updateBothL(probe, b, pBWT, lower, upper);
                 if(probe.interval[LEFT_INT_IDX].isValid())
                 {
                     SearchSeed branched = seed;
@@ -613,74 +621,6 @@ bool OverlapAlgorithm::extendSeedExactLeft(SearchSeed& seed, const std::string& 
     else
     {
         return false;
-    }
-}
-
-//
-void OverlapAlgorithm::branchSeedRight(const SearchSeed& seed, const std::string& w, const BWT* /*pBWT*/, const BWT* pRevBWT, SearchSeedQueue* pQueue) const
-{
-    int index = seed.right_index + 1;
-    
-    // Do not branch if the seed is terminal
-    if(index == static_cast<int>(w.length()))
-        return;
-
-    char c = w[index];
-    for(int i = 0; i < 4; ++i)
-    {
-        char b = ALPHABET[i];
-        if(b != c)
-        {
-            BWTIntervalPair probe = seed.ranges;
-            BWTAlgorithms::updateBothR(probe, b, pRevBWT);
-            if(probe.interval[RIGHT_INT_IDX].isValid())
-            {
-                SearchSeed branched = seed;
-                branched.right_index = index;
-                branched.ranges = probe;
-                ++branched.z;
-                // The history coordinates are wrt the right end of the read
-                // so that each position corresponds to the length of the overlap
-                // including that position
-                branched.historyLink = seed.historyLink->createChild(w.length() - index, b);
-                //branched.history.add(w.length() - index, b);
-                pQueue->push(branched);
-            }
-        }
-    }
-}
-
-//
-void OverlapAlgorithm::branchSeedLeft(const SearchSeed& seed, const std::string& w, const BWT* pBWT, const BWT* /*pRevBWT*/, SearchSeedQueue* pQueue) const
-{
-    int index = seed.left_index - 1;
-
-    // Do not branch if the seed is terminal
-    if(index < 0)
-        return;
-
-    char c = w[index];
-    for(int i = 0; i < 4; ++i)
-    {
-        char b = ALPHABET[i];
-        if(b != c)
-        {
-            BWTIntervalPair probe = seed.ranges;
-            BWTAlgorithms::updateBothL(probe, b, pBWT);
-            if(probe.interval[LEFT_INT_IDX].isValid())
-            {
-                SearchSeed branched = seed;
-                branched.ranges = probe;
-                branched.left_index = index;
-                ++branched.z;
-                // The history coordinates are wrt the right end of the read
-                // so that each position corresponds to the length of the overlap
-                // including that position
-                branched.historyLink = seed.historyLink->createChild(w.length() - index, b);                        
-                //branched.history.add(w.length() - index, b);
-                pQueue->push(branched);
-            }
-        }
     }
 }
 

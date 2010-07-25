@@ -37,16 +37,12 @@ inline void updateInterval(BWTInterval& interval, char b, const BWT* pBWT)
     interval.upper = pb + pBWT->getOcc(b, interval.upper) - 1;
 }
 
-//
-// Update both the left and right intervals using pRevBWT
-// This assumes that the left/right ranges in pair are for string S
-// It returns the updated left/right ranges for string Sb (appending b)
-// using the pRevBWT to update both
-inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
+// Update the interval pair for the right extension to symbol b.
+// In this version the AlphaCounts for the upper and lower intervals
+// have been calculated
+inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT,
+                        AlphaCount& l, AlphaCount& u)
 {
-    // Update the left index using the difference between the AlphaCounts in the reverse table
-    AlphaCount l = pRevBWT->getFullOcc(pair.interval[1].lower - 1);
-    AlphaCount u = pRevBWT->getFullOcc(pair.interval[1].upper);
     AlphaCount diff = u - l;
 
     pair.interval[0].lower = pair.interval[0].lower + diff.getLessThan(b);
@@ -59,16 +55,24 @@ inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 }
 
 //
-// Update both the left and right intervals using pBWT
-// This assumes that the left/right ranges in pair are for string S
-// It returns the updated left/right ranges for string bS (prepending b)
-inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT)
+// Update the interval pair for the right extension to symbol b.
+// 
+inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 {
     // Update the left index using the difference between the AlphaCounts in the reverse table
-    AlphaCount l = pBWT->getFullOcc(pair.interval[0].lower - 1);
-    AlphaCount u = pBWT->getFullOcc(pair.interval[0].upper);
-    AlphaCount diff = u - l;
+    AlphaCount l = pRevBWT->getFullOcc(pair.interval[1].lower - 1);
+    AlphaCount u = pRevBWT->getFullOcc(pair.interval[1].upper);
+    updateBothR(pair, b, pRevBWT, l, u);
+}
 
+// Update the interval pair for the left extension to symbol b.
+// In this version the AlphaCounts for the upper and lower intervals
+// have been calculated.
+inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT, 
+                        AlphaCount& l, AlphaCount& u)
+{
+    AlphaCount diff = u - l;
+    // Update the left index using the difference between the AlphaCounts in the reverse table
     pair.interval[1].lower = pair.interval[1].lower + diff.getLessThan(b);
     pair.interval[1].upper = pair.interval[1].lower + diff.get(b) - 1;
 
@@ -77,6 +81,18 @@ inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT)
     pair.interval[0].lower = pb + l.get(b);
     pair.interval[0].upper = pb + u.get(b) - 1;
 }
+
+//
+// Update the interval pair for the left extension to symbol b.
+//
+inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT)
+{
+    // Update the left index using the difference between the AlphaCounts in the reverse table
+    AlphaCount l = pBWT->getFullOcc(pair.interval[0].lower - 1);
+    AlphaCount u = pBWT->getFullOcc(pair.interval[0].upper);
+    updateBothL(pair, b, pBWT, l, u);
+}
+
 
 // Initialize the interval of index idx to be the range containining all the b suffixes
 inline void initInterval(BWTInterval& interval, char b, const BWT* pB)
