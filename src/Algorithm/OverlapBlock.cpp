@@ -75,8 +75,7 @@ void removeSubMaximalBlocks(OverlapBlockList* pList)
     // is repeated until each block in pList is a unique range
     // The bookkeeping in the intersecting case could be more efficient 
     // but the vast vast majority of the cases will not have overlapping 
-    // blocks and will just iterate straight through the list so we do
-    // something simple here.
+    // blocks.
     pList->sort(OverlapBlock::sortIntervalLeft);
     OverlapBlockList::iterator iter = pList->begin();
     OverlapBlockList::iterator last = pList->end();
@@ -236,3 +235,19 @@ OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B)
     return outList;
 }
 
+// Partition the overlap block list into two lists, 
+// one for the containment overlaps and one for the proper overlaps
+void partitionBlockList(int readLen, OverlapBlockList* pCompleteList, 
+                        OverlapBlockList* pOverlapList, 
+                        OverlapBlockList* pContainList)
+{
+    OverlapBlockList::iterator iter = pCompleteList->begin();
+    while(iter != pCompleteList->end())
+    {
+        if(iter->overlapLen == readLen)
+            pContainList->splice(pContainList->end(), *pCompleteList, iter++);
+        else
+            pOverlapList->splice(pOverlapList->end(), *pCompleteList, iter++);
+    }
+
+}

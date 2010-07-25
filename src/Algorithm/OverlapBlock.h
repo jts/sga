@@ -151,5 +151,10 @@ void removeSubMaximalBlocks(OverlapBlockList* pList);
 // Given the overlapping blocks A and B, construct a list of non-overlapping blocks
 OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B);
 
+// Partition the overlap block list into two lists, 
+// one for the containment overlaps and one for the proper overlaps
+void partitionBlockList(int readLen, OverlapBlockList* pCompleteList, 
+                        OverlapBlockList* pOverlapList, 
+                        OverlapBlockList* pContainList);
 
 #endif
