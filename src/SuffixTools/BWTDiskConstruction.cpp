@@ -18,6 +18,8 @@
 #include "GapArray.h"
 #include "RankProcess.h"
 #include "SequenceProcessFramework.h"
+#include "RLBWTReader.h"
+#include "RLBWTWriter.h"
 
 // Definitions and structures
 static const bool USE_GZ = false;
@@ -379,8 +381,8 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
                       const MergeItem& internalItem, const std::string& bwt_outname,
                       const std::string& sai_outname, const GapArray& gap_array)
 {
-    BWTWriter bwtWriter(bwt_outname);
-    BWTReader bwtExtReader(externalItem.bwt_filename);
+    RLBWTWriter bwtWriter(bwt_outname);
+    RLBWTReader bwtExtReader(externalItem.bwt_filename);
     
     SAWriter saiWriter(sai_outname);
     SAReader saiExtReader(externalItem.sai_filename);
@@ -424,7 +426,7 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
             
             if(b == '$')
             {
-                // The external indices are correct and only need to be copied
+                // The external indices only need to be copied
                 SAElem e = saiExtReader.readElem(); 
                 saiWriter.writeElem(e);
                 ++num_sai_wrote;
@@ -456,13 +458,14 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
     }
     assert(num_bwt_wrote == total_symbols);
     assert(num_sai_wrote == total_strings);
-
+    
     // Ensure we read the entire bw string from disk
     char last = bwtExtReader.readBWChar();
     assert(last == '\n');
     (void)last;
-    // Write a newline to finish the bwstr section
-    bwtWriter.writeBWChar('\n');
+
+    // Finalize the BWT disk file
+    bwtWriter.finalize();
 }
 
 //

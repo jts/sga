@@ -4,7 +4,7 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// BWTWriter.h - Write a BWT file to disk
+// BWTWriter - Write a BWT file to disk
 //
 #ifndef BWTWRITER_H
 #define BWTWRITER_H
@@ -14,6 +14,7 @@
 #include "Occurrence.h"
 #include "BWTReader.h"
 #include "EncodedString.h"
+#include "SuffixArray.h"
 
 class SBWT;
 class RLBWT;
@@ -27,6 +28,7 @@ class BWTWriter
         //
         void write(const SBWT* pBWT);
         void write(const RLBWT* pRLBWT);
+        void write(const SuffixArray* pSA, const ReadTable* pRT);
 
         void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);
         void writeBWStr(const BWTString& str); 

@@ -16,6 +16,7 @@
 #include "SACAInducedCopying.h"
 #include "BWTDiskConstruction.h"
 #include "BWT.h"
+#include "RLBWTWriter.h"
 #include "Timer.h"
 
 //
@@ -106,7 +107,6 @@ void indexOnDisk()
     std::cout << "Building index for " << opt::readsFile << " on disk\n";
     buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::numReadsPerBatch);
     buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch);
-
 }
 
 //
@@ -114,7 +114,6 @@ void buildIndexForTable(std::string prefix, const ReadTable* pRT, bool isReverse
 {
     // Create suffix array from read table
     SuffixArray* pSA = new SuffixArray(pRT);
-    SBWT* pBWT = new SBWT(pSA, pRT);
 
     if(opt::validate)
     {
@@ -122,27 +121,14 @@ void buildIndexForTable(std::string prefix, const ReadTable* pRT, bool isReverse
         pSA->validate(pRT);
     }
 
-    if(opt::verbose > 1)
-    {
-        //std::cout << "SuffixArray:\n";
-        //pSA->print(pRT);
-        std::cout << "BWT:\n";
-        pBWT->print(pRT, pSA);
-    }
-
-    //std::string sa_filename = prefix + (!isReverse ? SA_EXT : RSA_EXT);
-    //pSA->write(sa_filename);
-
     std::string bwt_filename = prefix + (!isReverse ? BWT_EXT : RBWT_EXT);
-    pBWT->write(bwt_filename);
+    pSA->writeBWT(bwt_filename, pRT);
 
     std::string sufidx_filename = prefix + (!isReverse ? SAI_EXT : RSAI_EXT);
     pSA->writeIndex(sufidx_filename);
 
     delete pSA;
     pSA = NULL;
-    delete pBWT;
-    pBWT = NULL;
 }
 
 // 

@@ -15,6 +15,8 @@
 #include "Timer.h"
 #include "SAReader.h"
 #include "SAWriter.h"
+#include "RLBWTWriter.h"
+#include "BWTWriter.h"
 
 // Read a suffix array from a file
 SuffixArray::SuffixArray(const std::string& filename)
@@ -168,10 +170,18 @@ void SuffixArray::print() const
 }
 
 // write the suffix array to a file
-void SuffixArray::write(std::string& filename)
+void SuffixArray::write(const std::string& filename)
 {
     SAWriter writer(filename);
     writer.write(this);
+}
+
+// write the suffix array to a file
+void SuffixArray::writeBWT(const std::string& filename, const ReadTable* pRT)
+{
+    //RLBWTWriter writer(filename);
+    RLBWTWriter writer(filename);
+    writer.write(this, pRT);
 }
 
 // write the index of the suffix array to a file

@@ -10,6 +10,7 @@
 #include "Timer.h"
 #include "BWTReader.h"
 #include "BWTWriter.h"
+#include "RLBWTReader.h"
 #include <istream>
 #include <queue>
 #include <inttypes.h>
@@ -21,7 +22,7 @@
 // Parse a BWT from a file
 RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), m_numSymbols(0), m_sampleRate(sampleRate)
 {
-    BWTReader reader(filename);
+    RLBWTReader reader(filename);
     reader.read(this);
     initializeFMIndex();
 }
@@ -57,8 +58,6 @@ void RLBWT::append(char b)
 // Fill in the FM-index data structures
 void RLBWT::initializeFMIndex()
 {
-    WARN_ONCE("RLBWT: Performing swap trick to trim excess capacity");
-    RLVector(m_rlString).swap(m_rlString);
     m_shiftValue = Occurrence::calculateShiftValue(m_sampleRate);
 
     // initialize the marker vector, we place a marker at the beginning (with no accumulated counts), every m_sampleRate
@@ -144,8 +143,18 @@ void RLBWT::write(const std::string& filename)
 }
 
 // Print the BWT
-void RLBWT::print(const ReadTable* /*pRT*/, const SuffixArray* /*pSA*/) const
+void RLBWT::print() const
 {
+    size_t numRuns = getNumRuns();
+    for(size_t i = 0; i < numRuns; ++i)
+    {
+        const RLUnit& unit = m_rlString[i];
+        char symbol = unit.getChar();
+        size_t length = unit.getCount();
+        for(size_t j = 0; j < length; ++j)
+            std::cout << symbol;
+        std::cout << " : " << symbol << "," << length << "\n"; 
+    }
 }
 
 // Print information about the BWT

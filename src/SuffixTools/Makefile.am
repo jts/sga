@@ -22,4 +22,6 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
 						   GapArray.h GapArray.cpp \
 						   RankProcess.h RankProcess.cpp \
                            SBWT.h SBWT.cpp \
-                           RLBWT.h RLBWT.cpp
+                           RLBWT.h RLBWT.cpp \
+                           RLBWTWriter.h RLBWTWriter.cpp \
+                           RLBWTReader.h RLBWTReader.cpp

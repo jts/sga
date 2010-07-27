@@ -41,6 +41,11 @@ struct RLUnit
         return (data & RL_COUNT_MASK) == FULL_COUNT;
     }
 
+    inline bool isEmpty() const
+    {
+        return (data & RL_COUNT_MASK) == 0;
+    }
+
     inline bool isInitialized() const
     {
         return data > 0;
@@ -54,6 +59,15 @@ struct RLUnit
 #endif
         ++data;
     }
+
+    // 
+    inline void decrementCount()
+    {
+#ifdef RLBWT_VALIDATE
+        assert(!isEmpty());
+#endif
+        --data;
+    }    
 
     inline uint8_t getCount() const
     {
@@ -84,6 +98,9 @@ struct RLUnit
 
     // 
     uint8_t data;
+
+    friend class RLBWTReader;
+    friend class RLBWTWriter;
 };
 typedef std::vector<RLUnit> RLVector;
 
@@ -357,12 +374,14 @@ class RLBWT
 
         // Print the size of the BWT
         void printInfo() const;
-        void print(const ReadTable* pRT, const SuffixArray* pSA) const;
+        void print() const;
         void validate() const;
 
         // IO
         friend class BWTReader;
         friend class BWTWriter;
+        friend class RLBWTReader;
+        friend class RLBWTWriter;
         void write(const std::string& filename);
 
         static const int DEFAULT_SAMPLE_RATE = 128;

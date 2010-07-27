@@ -46,7 +46,10 @@ class SuffixArray
         friend std::istream& operator>>(std::istream& in, SuffixArray& sa);
 
         // Output the entire suffix array
-        void write(std::string& filename);
+        void write(const std::string& filename);
+
+        // Write the BWT directly to disk
+        void writeBWT(const std::string& filename, const ReadTable* pRT);
 
         // Output the suffix array index
         // The suffix array index are the full-length suffixes (the entire string)

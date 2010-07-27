@@ -132,17 +132,17 @@ bool isGzip(const std::string& filename)
 
 // Open a file that may or may not be gzipped for reading
 // The caller is responsible for freeing the handle
-std::istream* createReader(const std::string& filename)
+std::istream* createReader(const std::string& filename, std::ios_base::openmode mode)
 {
     if(isGzip(filename))
     {
-        igzstream* pGZ = new igzstream(filename.c_str());
+        igzstream* pGZ = new igzstream(filename.c_str(), mode);
         assertGZOpen(*pGZ, filename);
         return pGZ;
     }
     else
     {
-        std::ifstream* pReader = new std::ifstream(filename.c_str());
+        std::ifstream* pReader = new std::ifstream(filename.c_str(), mode);
         assertFileOpen(*pReader, filename);
         return pReader;
     }
