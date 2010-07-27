@@ -10,7 +10,7 @@
 #include "Timer.h"
 #include "BWTReader.h"
 #include "BWTWriter.h"
-#include "RLBWTReader.h"
+#include "BWTReader.h"
 #include <istream>
 #include <queue>
 #include <inttypes.h>
@@ -22,9 +22,10 @@
 // Parse a BWT from a file
 RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), m_numSymbols(0), m_sampleRate(sampleRate)
 {
-    RLBWTReader reader(filename);
-    reader.read(this);
+    IBWTReader* pReader = BWTReader::createReader(filename);
+    pReader->read(this);
     initializeFMIndex();
+    delete pReader;
 }
 
 // Create the RLBWT from a suffix array
@@ -133,13 +134,6 @@ void RLBWT::initializeFMIndex()
 void RLBWT::validate() const
 {
     assert(false);
-}
-
-// write the BWT to a file
-void RLBWT::write(const std::string& filename)
-{
-    BWTWriter writer(filename);
-    writer.write(this);
 }
 
 // Print the BWT

@@ -4,50 +4,28 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// RLRLBWTWriter - Write a run-length encoded BWT to disk
+// BWTWriterBinary - Write a run-length encoded BWT to a binary file
 //
-#include "RLBWTWriter.h"
+#include "BWTWriterBinary.h"
 #include "SBWT.h"
 #include "RLBWT.h"
 
 //
-RLBWTWriter::RLBWTWriter(const std::string& filename) : m_numRuns(0), m_runFileOffset(0), m_stage(IOS_NONE)
+BWTWriterBinary::BWTWriterBinary(const std::string& filename) : m_numRuns(0), m_runFileOffset(0), m_stage(IOS_NONE)
 {
     m_pWriter = createWriter(filename, std::ios::out | std::ios::binary);
     m_stage = IOS_HEADER;
 }
 
 //
-RLBWTWriter::~RLBWTWriter()
+BWTWriterBinary::~BWTWriterBinary()
 {
     assert(m_stage == IOS_DONE);
     delete m_pWriter;
 }
 
 //
-void RLBWTWriter::write(const SuffixArray* pSA, const ReadTable* pRT)
-{
-    size_t num_symbols = pSA->getSize();
-    size_t num_strings = pSA->getNumStrings();
-    writeHeader(num_strings, num_symbols, BWF_NOFMI);
-
-    for(size_t i = 0; i < num_symbols; ++i)
-    {
-        SAElem saElem = pSA->get(i);
-        const SeqItem& si = pRT->getRead(saElem.getID());
-
-        // Get the position of the start of the suffix
-        uint64_t f_pos = saElem.getPos();
-        uint64_t l_pos = (f_pos == 0) ? si.seq.length() : f_pos - 1;
-        char b = (l_pos == si.seq.length()) ? '$' : si.seq.get(l_pos);
-        writeBWChar(b);
-    }
-
-    finalize();
-}
-
-//
-void RLBWTWriter::writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag)
+void BWTWriterBinary::writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag)
 {
     assert(m_stage == IOS_HEADER);
     m_pWriter->write(reinterpret_cast<const char*>(&RLBWT_FILE_MAGIC), sizeof(RLBWT_FILE_MAGIC));
@@ -69,7 +47,7 @@ void RLBWTWriter::writeHeader(const size_t& num_strings, const size_t& num_symbo
 
 // Write a single character of the BWStr
 // If the char is '\n' we are finished
-void RLBWTWriter::writeBWChar(char b)
+void BWTWriterBinary::writeBWChar(char b)
 {
     if(m_currRun.isInitialized())
     {
@@ -92,7 +70,7 @@ void RLBWTWriter::writeBWChar(char b)
 }
 
 //
-void RLBWTWriter::writeRun(RLUnit& unit)
+void BWTWriterBinary::writeRun(RLUnit& unit)
 {
     //std::cout << "Writing " << unit.getChar() << "," << (int)unit.getCount() << "\n";
     m_pWriter->write(reinterpret_cast<const char*>(&unit.data), sizeof(unit.data));
@@ -100,7 +78,7 @@ void RLBWTWriter::writeRun(RLUnit& unit)
 }
 
 // write the final run to the stream and fill in the number of runs
-void RLBWTWriter::finalize()
+void BWTWriterBinary::finalize()
 {
     assert(m_currRun.isInitialized());
     writeRun(m_currRun);

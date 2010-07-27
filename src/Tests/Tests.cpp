@@ -96,9 +96,6 @@ int main(int argc, char** argv)
         }
     }
 
-    pBWT->write("old.bwt");
-    pRLBWT->write("new.bwt");
-
     delete pBWT;
     delete pRLBWT;
 

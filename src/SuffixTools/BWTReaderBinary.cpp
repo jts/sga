@@ -4,26 +4,26 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// RLRLBWTReader - Read a run length encoded BWT file from disk
+// RLBWTReaderBinary - Read a run length encoded BWT file from disk
 //
-#include "RLBWTReader.h"
+#include "BWTReaderBinary.h"
 #include "SBWT.h"
 #include "RLBWT.h"
 
 //
-RLBWTReader::RLBWTReader(const std::string& filename) : m_stage(IOS_NONE), m_numRunsOnDisk(0), m_numRunsRead(0)
+BWTReaderBinary::BWTReaderBinary(const std::string& filename) : m_stage(IOS_NONE), m_numRunsOnDisk(0), m_numRunsRead(0)
 {
     m_pReader = createReader(filename, std::ios::binary);
     m_stage = IOS_HEADER;
 }
 
 //
-RLBWTReader::~RLBWTReader()
+BWTReaderBinary::~BWTReaderBinary()
 {
     delete m_pReader;
 }
 
-void RLBWTReader::read(RLBWT* pRLBWT)
+void BWTReaderBinary::read(RLBWT* pRLBWT)
 {
     BWFlag flag;
     readHeader(pRLBWT->m_numStrings, pRLBWT->m_numSymbols, flag);
@@ -36,12 +36,11 @@ void RLBWTReader::read(RLBWT* pRLBWT)
 }
 
 //
-void RLBWTReader::readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag)
+void BWTReaderBinary::readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag)
 {
     assert(m_stage == IOS_HEADER);
     uint16_t magic_number;
     m_pReader->read(reinterpret_cast<char*>(&magic_number), sizeof(magic_number));
-    std::cout << "Read magic: " << magic_number << "\n";
     
     if(magic_number != RLBWT_FILE_MAGIC)
     {
@@ -53,14 +52,16 @@ void RLBWTReader::readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& f
     m_pReader->read(reinterpret_cast<char*>(&num_symbols), sizeof(num_symbols));
     m_pReader->read(reinterpret_cast<char*>(&m_numRunsOnDisk), sizeof(m_numRunsOnDisk));
     m_pReader->read(reinterpret_cast<char*>(&flag), sizeof(flag));
-
-    std::cout << "strings:" << num_strings << "\n";
-    std::cout << "symbols: " << num_symbols << "\n";
-    std::cout << "runs: " << m_numRunsOnDisk << "\n";
+    
+    //std::cout << "Read magic: " << magic_number << "\n";
+    //std::cout << "strings:" << num_strings << "\n";
+    //std::cout << "symbols: " << num_symbols << "\n";
+    //std::cout << "runs: " << m_numRunsOnDisk << "\n";
+    
     m_stage = IOS_BWSTR;    
 }
 
-void RLBWTReader::readRuns(RLVector& out, size_t numRuns)
+void BWTReaderBinary::readRuns(RLVector& out, size_t numRuns)
 {
     out.resize(numRuns);
     m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
@@ -72,7 +73,7 @@ void RLBWTReader::readRuns(RLVector& out, size_t numRuns)
 // an internal buffer of a single run and emits characters from this buffer
 // and performs reads as necessary. If all the runs have been read, emit
 // a newline character to signal the end of the BWT
-char RLBWTReader::readBWChar()
+char BWTReaderBinary::readBWChar()
 {
     assert(m_stage == IOS_BWSTR);
 

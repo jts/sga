@@ -70,9 +70,10 @@ class SBWT
         void validate() const;
 
         // IO
-        friend class BWTReader;
-        friend class BWTWriter;
-        void write(const std::string& filename);
+        friend class BWTReaderBinary;
+        friend class BWTWriterBinary;
+        friend class BWTReaderAscii;
+        friend class BWTWriterAscii;
 
         static const int DEFAULT_SAMPLE_RATE = 64;
 

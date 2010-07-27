@@ -4,7 +4,7 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// BWTReader.h - Read a BWT file from disk
+// BWTReader - Abstract class for reading a BWT file
 //
 #ifndef BWTREADER_H
 #define BWTREADER_H
@@ -13,8 +13,6 @@
 #include "STCommon.h"
 #include "Occurrence.h"
 #include "EncodedString.h"
-
-const uint16_t BWT_FILE_MAGIC = 0xEFEF;
 
 enum BWIOStage
 {
@@ -32,27 +30,27 @@ enum BWFlag
     BWF_HASFMI
 };
 
-class SBWT;
+const uint16_t RLBWT_FILE_MAGIC = 0xCACA;
+const uint16_t BWT_FILE_MAGIC = 0xEFEF;
+
 class RLBWT;
 
-class BWTReader
+class IBWTReader
 {
     public:
-        BWTReader(const std::string& filename);
-        ~BWTReader();
+        IBWTReader() {}
+        IBWTReader(const std::string& /*filename*/) {}
+        virtual ~IBWTReader() {}
 
         //
-        void read(SBWT* pBWT);
-        void read(RLBWT* pRLBWT);
-        void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
-        void readBWStr(BWTString& out_str);
-        char readBWChar();
-        void readPred(AlphaCount& out_pc);
-        void readOccurrence(Occurrence& out_icc);
+        virtual void read(RLBWT* pRLBWT) = 0;
+        virtual void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag) = 0; 
+        virtual char readBWChar() = 0;
+};
 
-    private:
-        std::istream* m_pReader;
-        BWIOStage m_stage;
+namespace BWTReader
+{
+    IBWTReader* createReader(const std::string& filename);
 };
 
 #endif

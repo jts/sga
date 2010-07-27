@@ -4,41 +4,38 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// RLRLBWTReader - Read a run length encoded BWT file from disk
+// BWTReaderAsciiAscii.h - Read a plain-text BWT file from disk
 //
-#ifndef RLBWTREADER_H
-#define RLBWTREADER_H
+#ifndef BWTREADERASCII_H
+#define BWTREADERASCII_H
 
 #include "Util.h"
 #include "STCommon.h"
 #include "Occurrence.h"
 #include "EncodedString.h"
 #include "BWTReader.h"
-#include "RLBWT.h"
-
-const uint16_t RLBWT_FILE_MAGIC = 0xCACA;
 
 class SBWT;
 class RLBWT;
 
-class RLBWTReader
+class BWTReaderAscii : public IBWTReader
 {
     public:
-        RLBWTReader(const std::string& filename);
-        ~RLBWTReader();
+        BWTReaderAscii(const std::string& filename);
+        ~BWTReaderAscii();
 
         //
+        void read(SBWT* pBWT);
         void read(RLBWT* pRLBWT);
         void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
+        void readBWStr(BWTString& out_str);
         char readBWChar();
-        void readRuns(RLVector& out, size_t numRuns);
+        void readPred(AlphaCount& out_pc);
+        void readOccurrence(Occurrence& out_icc);
 
     private:
         std::istream* m_pReader;
         BWIOStage m_stage;
-        RLUnit m_currRun;
-        size_t m_numRunsOnDisk;
-        size_t m_numRunsRead;
 };
 
 #endif

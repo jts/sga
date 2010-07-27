@@ -4,33 +4,32 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// RLBWTWriter - Write a run-length encoded BWT to disk
+// BWTWriterBinary - Write a run-length encoded BWT to a binary file
 //
-#ifndef RLBWTWRITER_H
-#define RLBWTWRITER_H
+#ifndef BWTWRITERBINARY_H
+#define BWTWRITERBINARY_H
 
 #include "Util.h"
 #include "STCommon.h"
 #include "Occurrence.h"
-#include "BWTReader.h"
-#include "RLBWTReader.h"
+#include "BWTWriter.h"
+#include "BWTReaderBinary.h"
 #include "EncodedString.h"
 #include "RLBWT.h"
 
 class SBWT;
 class RLBWT;
 
-class RLBWTWriter
+class BWTWriterBinary : public IBWTWriter
 {
     public:
-        RLBWTWriter(const std::string& filename);
-        ~RLBWTWriter();
+        BWTWriterBinary(const std::string& filename);
+        virtual ~BWTWriterBinary();
 
         // Write an RLBWT file directly from a suffix array and read table
-        void write(const SuffixArray* pSA, const ReadTable* pRT);
-        void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);
-        void writeBWChar(char b);
-        void finalize(); // this method must be called after writing the BW string
+        virtual void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);
+        virtual void writeBWChar(char b);
+        virtual void finalize(); // this method must be called after writing the BW string
 
     private:
 

@@ -23,5 +23,9 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
 						   RankProcess.h RankProcess.cpp \
                            SBWT.h SBWT.cpp \
                            RLBWT.h RLBWT.cpp \
-                           RLBWTWriter.h RLBWTWriter.cpp \
-                           RLBWTReader.h RLBWTReader.cpp
+                           BWTReader.h BWTReader.cpp \
+                           BWTWriter.h BWTWriter.cpp \
+                           BWTWriterBinary.h BWTWriterBinary.cpp \
+                           BWTReaderBinary.h BWTReaderBinary.cpp \
+                           BWTWriterAscii.h BWTWriterAscii.cpp \
+                           BWTReaderAscii.h BWTReaderAscii.cpp

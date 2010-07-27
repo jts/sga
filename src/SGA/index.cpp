@@ -16,7 +16,6 @@
 #include "SACAInducedCopying.h"
 #include "BWTDiskConstruction.h"
 #include "BWT.h"
-#include "RLBWTWriter.h"
 #include "Timer.h"
 
 //

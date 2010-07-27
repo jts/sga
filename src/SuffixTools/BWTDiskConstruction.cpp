@@ -18,8 +18,6 @@
 #include "GapArray.h"
 #include "RankProcess.h"
 #include "SequenceProcessFramework.h"
-#include "RLBWTReader.h"
-#include "RLBWTWriter.h"
 
 // Definitions and structures
 static const bool USE_GZ = false;
@@ -98,11 +96,10 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
         {
             // Compute the SA and BWT for this group
             SuffixArray* pSA = new SuffixArray(pCurrRT);
-            SBWT* pBWT = new SBWT(pSA, pCurrRT);
 
             // Write the BWT to disk                
             std::string bwt_temp_filename = makeTempName(out_prefix, groupID, bwt_extension);
-            pBWT->write(bwt_temp_filename);
+            pSA->writeBWT(bwt_temp_filename, pCurrRT);
 
             std::string sai_temp_filename = makeTempName(out_prefix, groupID, sai_extension);
             pSA->writeIndex(sai_temp_filename);
@@ -115,7 +112,6 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
             mergeVector.push_back(mergeItem);
 
             // Cleanup
-            delete pBWT;
             delete pSA;
 
             // Start the new group
@@ -381,8 +377,8 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
                       const MergeItem& internalItem, const std::string& bwt_outname,
                       const std::string& sai_outname, const GapArray& gap_array)
 {
-    RLBWTWriter bwtWriter(bwt_outname);
-    RLBWTReader bwtExtReader(externalItem.bwt_filename);
+    IBWTWriter* pBWTWriter = BWTWriter::createWriter(bwt_outname);
+    IBWTReader* pBWTExtReader = BWTReader::createReader(externalItem.bwt_filename);
     
     SAWriter saiWriter(sai_outname);
     SAReader saiExtReader(externalItem.sai_filename);
@@ -392,11 +388,11 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
     size_t disk_strings;
     size_t disk_symbols;
     BWFlag flag;
-    bwtExtReader.readHeader(disk_strings, disk_symbols, flag);
+    pBWTExtReader->readHeader(disk_strings, disk_symbols, flag);
 
     size_t total_strings = disk_strings + pBWTInternal->getNumStrings();
     size_t total_symbols = disk_symbols + pBWTInternal->getBWLen();
-    bwtWriter.writeHeader(total_strings, total_symbols, BWF_NOFMI);
+    pBWTWriter->writeHeader(total_strings, total_symbols, BWF_NOFMI);
     
     // Discard the first two elements of each sai
     size_t discard1, discard2;
@@ -419,9 +415,9 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
         size_t v = gap_array[i];
         for(size_t j = 0; j < v; ++j)
         {
-            char b = bwtExtReader.readBWChar();
+            char b = pBWTExtReader->readBWChar();
             assert(b != '\n');
-            bwtWriter.writeBWChar(b);
+            pBWTWriter->writeBWChar(b);
             ++num_bwt_wrote;
             
             if(b == '$')
@@ -438,7 +434,7 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
         if(i != pBWTInternal->getBWLen())
         {
             char b = pBWTInternal->getChar(i);
-            bwtWriter.writeBWChar(b);
+            pBWTWriter->writeBWChar(b);
             ++num_bwt_wrote;
 
             if(b == '$')
@@ -460,12 +456,15 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
     assert(num_sai_wrote == total_strings);
     
     // Ensure we read the entire bw string from disk
-    char last = bwtExtReader.readBWChar();
+    char last = pBWTExtReader->readBWChar();
     assert(last == '\n');
     (void)last;
 
     // Finalize the BWT disk file
-    bwtWriter.finalize();
+    pBWTWriter->finalize();
+
+    delete pBWTExtReader;
+    delete pBWTWriter;
 }
 
 //

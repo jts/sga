@@ -4,131 +4,14 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// BWTReader.h - Read a BWT file from disk
+// BWTReader - Abstract class for reading a BWT file
 //
 #include "BWTReader.h"
-#include "SBWT.h"
-#include "RLBWT.h"
+#include "BWTReaderBinary.h"
+#include "BWTReaderAscii.h"
 
 //
-BWTReader::BWTReader(const std::string& filename) : m_stage(IOS_NONE)
+IBWTReader* BWTReader::createReader(const std::string& filename)
 {
-    m_pReader = createReader(filename);
-    m_stage = IOS_HEADER;
-}
-
-//
-BWTReader::~BWTReader()
-{
-    delete m_pReader;
-}
-
-void BWTReader::read(SBWT* pBWT)
-{
-    size_t n;
-    BWFlag flag;
-    readHeader(pBWT->m_numStrings, n, flag);
-
-    pBWT->m_bwStr.resize(n);
-    readBWStr(pBWT->m_bwStr);
- 
-    // Reading the occurrence array from disk is deprecated
-    // we ignore it if it is present
-}
-
-void BWTReader::read(RLBWT* pRLBWT)
-{
-    size_t n;
-    BWFlag flag;
-    readHeader(pRLBWT->m_numStrings, n, flag);
-
-    //pBWT->m_bwStr.resize(n);
-    bool done = false;
-    while(!done)
-    {
-        char b = readBWChar();
-        if(b != '\n')
-        {
-            pRLBWT->append(b);
-        }
-        else
-        {
-            done = false;
-            break;
-        }
-    }
-}
-
-//
-void BWTReader::readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag)
-{
-    assert(m_stage == IOS_HEADER);
-    uint16_t magic_number;
-
-    // Ensure the file format is sane
-    *m_pReader >> magic_number;
-    if(magic_number != BWT_FILE_MAGIC)
-    {
-        std::cerr << "BWT file is not properly formatted, aborting\n";
-        exit(EXIT_FAILURE);
-    }
-    *m_pReader >> num_strings;
-    *m_pReader >> num_symbols;
-    int temp;
-    *m_pReader >> temp;
-    flag = static_cast<BWFlag>(temp);
-    // We must explicitly set the stream
-    // to the start of the BWStr portion of
-    // the file. The above extraction
-    // does not discard the trailing newline 
-    // so we do it here
-    m_pReader->get();
-
-    m_stage = IOS_BWSTR;    
-}
-
-//
-void BWTReader::readBWStr(BWTString& out_str)
-{
-    assert(m_stage == IOS_BWSTR);
-    char b;
-    size_t idx = 0;
-    while(1)
-    {
-        m_pReader->get(b);
-        if(b != '\n')
-            out_str.set(idx++, b);
-        else
-            break;
-    }
-
-    assert(idx == out_str.length());
-    m_stage = IOS_PC;
-}
-
-// Read a single base from the BWStr
-char BWTReader::readBWChar()
-{
-    assert(m_stage == IOS_BWSTR);
-    char b;
-    m_pReader->get(b);
-    if(b == '\n')
-        m_stage = IOS_PC;
-    return b;
-}
-
-//
-void BWTReader::readPred(AlphaCount& out_pc)
-{
-    assert(m_stage == IOS_PC);
-    *m_pReader >> out_pc;
-    m_stage = IOS_OCC;
-}
-
-//
-void BWTReader::readOccurrence(Occurrence& out_occ)
-{
-    assert(m_stage == IOS_OCC);
-    *m_pReader >> out_occ;
-    m_stage = IOS_DONE;
+    return new BWTReaderBinary(filename);
 }

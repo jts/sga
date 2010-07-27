@@ -8,8 +8,8 @@
 //
 #include "SBWT.h"
 #include "Timer.h"
-#include "BWTReader.h"
-#include "BWTWriter.h"
+#include "BWTReaderAscii.h"
+#include "BWTWriterAscii.h"
 #include <istream>
 #include <queue>
 #include <inttypes.h>
@@ -21,7 +21,7 @@
 // Parse a BWT from a file
 SBWT::SBWT(const std::string& filename, int sampleRate)
 {
-    BWTReader reader(filename);
+    BWTReaderAscii reader(filename);
     reader.read(this);
     initializeFMIndex(sampleRate);
 }
@@ -109,13 +109,6 @@ void SBWT::validate() const
 {
     std::cerr << "Warning BWT validation is turned on\n";
     m_occurrence.validate(m_bwStr);
-}
-
-// write the BWT to a file
-void SBWT::write(const std::string& filename)
-{
-    BWTWriter writer(filename);
-    writer.write(this);
 }
 
 // Print the BWT

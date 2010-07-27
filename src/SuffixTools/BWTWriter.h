@@ -4,7 +4,7 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// BWTWriter - Write a BWT file to disk
+// BWTWriter - Abstract class for writing a BWT file to disk
 //
 #ifndef BWTWRITER_H
 #define BWTWRITER_H
@@ -16,29 +16,23 @@
 #include "EncodedString.h"
 #include "SuffixArray.h"
 
-class SBWT;
-class RLBWT;
-
-class BWTWriter
+class IBWTWriter
 {
     public:
-        BWTWriter(const std::string& filename);
-        ~BWTWriter();
+        IBWTWriter() {}
+        IBWTWriter(const std::string& /*filename*/) {}
+        virtual ~IBWTWriter() {}
 
         //
-        void write(const SBWT* pBWT);
-        void write(const RLBWT* pRLBWT);
         void write(const SuffixArray* pSA, const ReadTable* pRT);
-
-        void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag);
-        void writeBWStr(const BWTString& str); 
-        void writeBWChar(char b);
-        void writePred(const AlphaCount& pc);
-        void writeOccurrence(const Occurrence& icc);
-
-    private:
-        std::ostream* m_pWriter;
-        BWIOStage m_stage;
+        virtual void writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag) = 0;
+        virtual void writeBWChar(char b) = 0;
+        virtual void finalize() = 0;
 };
+
+namespace BWTWriter
+{
+    IBWTWriter* createWriter(const std::string& filename);
+}
 
 #endif
