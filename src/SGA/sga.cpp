@@ -19,7 +19,6 @@
 #include "correct.h"
 #include "subgraph.h"
 
-#define VERSION "0.1"
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
 
