@@ -24,5 +24,16 @@ libutil_a_SOURCES = \
 		SeqDAVG.h SeqDAVG.cpp \
 		Quality.h Quality.cpp \
 		PrimerScreen.h PrimerScreen.cpp \
+        Timer.h \
         EncodedString.h \
-        DNACodec.h
+        DNACodec.h \
+        DNADouble.h \
+        BWT4Codec.h \
+        BWTCodec.h \
+        DNACodec.h \
+        NoCodec.h \
+        SimpleAllocator.h \
+        SimplePool.h \
+        mkqs.h \
+        bucketSort.h
+

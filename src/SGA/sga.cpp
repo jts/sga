@@ -12,7 +12,6 @@
 #include "overlap.h"
 #include "assemble.h"
 #include "oview.h"
-#include "extract.h"
 #include "rmdup.h"
 #include "preprocess.h"
 #include "merge.h"

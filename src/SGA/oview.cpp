@@ -14,9 +14,7 @@
 #include "oview.h"
 #include "SuffixArray.h"
 #include "BWT.h"
-#include "LCPArray.h"
 #include "SGUtil.h"
-#include "OverlapQuality.h"
 #include "MultiOverlap.h"
 
 void detectMisalignments(const ReadTable* pRT, const OverlapMap* pOM);

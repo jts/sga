@@ -11,4 +11,5 @@ libbigraph_a_SOURCES = \
                        Edge.h Edge.cpp \
 					   TransitiveGroup.h TransitiveGroup.cpp \
 					   TransitiveGroupCollection.h TransitiveGroupCollection.cpp \
-					   EdgeDesc.h EdgeDesc.cpp
+					   EdgeDesc.h EdgeDesc.cpp \
+                       GraphCommon.h
