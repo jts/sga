@@ -131,7 +131,6 @@ void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex
 void SGAlgorithms::remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
 {
     assert(pVertex == pDeleteEdge->getStart());
-    //std::cout << "Remodelling " << pVertex->getID() << " after removing " << pDeleteEdge->getEndID() << "\n";
     // If the edge is a containment edge, nothing needs to be done. No edges can be transitive
     // through containments
     if(pDeleteEdge->getOverlap().isContainment())
@@ -284,6 +283,34 @@ void SGAlgorithms::partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap,
             {
                 ++iter;
             }
+        }
+    }
+}
+
+void SGAlgorithms::removeSubmaximalOverlaps(EdgeDescOverlapMap* pOverlapMap)
+{
+    SGAlgorithms::EDOPairQueue overlapQueue;
+    for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = pOverlapMap->begin();
+        iter != pOverlapMap->end(); ++iter)
+    {
+        overlapQueue.push(*iter);
+    }
+
+    // Traverse the list of overlaps in order of length
+    // Only add the first seen overlap for each vertex
+    pOverlapMap->clear();
+    VertexIDSet seenVerts;
+    // the irreducible map to the transitive map
+    while(!overlapQueue.empty())
+    {
+        SGAlgorithms::EdgeDescOverlapPair edoPair = overlapQueue.top();
+        overlapQueue.pop();
+
+        EdgeDesc& edXY = edoPair.first;
+        if(seenVerts.count(edXY.pVertex->getID()) == 0)
+        {
+            seenVerts.insert(edXY.pVertex->getID());
+            pOverlapMap->insert(edoPair);
         }
     }
 }

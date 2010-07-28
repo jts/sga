@@ -22,6 +22,7 @@ namespace SGAlgorithms
 //
 
 typedef std::pair<EdgeDesc, Overlap> EdgeDescOverlapPair;
+typedef std::set<VertexID> VertexIDSet;
 
 // Comparator
 struct EDOPairCompare
@@ -72,6 +73,10 @@ bool hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovrYZ);
 void partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap, 
                                  EdgeDescOverlapMap* pTransitive,
                                  double maxER, int minLength);
+
+// Each read can have at most one edge to any other read in a given direction
+// This function removes any duplicates
+void removeSubmaximalOverlaps(EdgeDescOverlapMap* pOverlapMap);
 
 // Construct an extended multioverlap for a vertex
 MultiOverlap makeExtendedMultiOverlap(const StringGraph* pGraph, const Vertex* pVertex);

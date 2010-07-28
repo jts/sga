@@ -84,6 +84,7 @@ void subgraph()
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
     pGraph->printMemSize();
 
+    /*
     // Remove containments from the graph
     SGContainRemoveVisitor containVisit;
     std::cout << "Removing contained vertices\n";
@@ -91,7 +92,7 @@ void subgraph()
     {
         pGraph->visit(containVisit);
     }
-
+    */
     StringGraph* pSubgraph = new StringGraph;
 
     // Set the graph parameters to match the main graph

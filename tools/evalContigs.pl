@@ -1,6 +1,8 @@
 #! /usr/bin/perl
 
 use strict;
+use Set::IntSpan;
+use Bio::Perl;
 
 my $contig_file = $ARGV[0];
 my $ref_prefix = $ARGV[1]; #"~/work/devel/sga/data/ecoli_k12.fa";
@@ -23,6 +25,8 @@ my $sum_misassembled = 0;
 my $len_filter = 500;
 my $missing_threshold = 100; # if more than this value is missing from the alignment the contig is incorrect
 my %best_match;
+my %matched_coords;
+my %contig_lengths;
 
 open(OUT, ">divergent.fa");
 while(<SAM>)
@@ -39,6 +43,28 @@ while(<SAM>)
     next if $seq_length < $len_filter;
     my $matched = parseCigar($cigar);
     my $align_frac = ($matched / $seq_length);
+    my $left_clip = cigarLeftClipped($cigar);
+    my $right_clip = cigarRightClipped($cigar);
+    print "$cigar lc: $left_clip rc: $right_clip\n";
+    my $start = $left_clip;
+    my $end = $seq_length - $right_clip;
+    my $coord = "$start-$end";
+    $contig_lengths{$name} = $seq_length;
+
+    if(!defined($matched_coords{$name}))
+    {
+        $matched_coords{$name} = new Set::IntSpan($coord);
+    }
+    else
+    {
+        print "s before: $matched_coords{$name}\n";
+        $matched_coords{$name}->U($coord);
+    }
+    print "k: $name\n";
+    print "p: $fields[2] $fields[3]\n";
+    print "l: $seq_length\n";
+    print "c: $coord\n";
+    print "s after: $matched_coords{$name}\n";
     my $nm = findField(\@fields, "NM");
 
     #print "$name $matched $seq_length " . ($matched / $seq_length) . "\n";
@@ -53,6 +79,26 @@ while(<SAM>)
     }
 }
 
+# If any contigs did not have an alignment at all, add them here
+my $file  = Bio::SeqIO->new(-file => $contig_file, '-format' => 'Fasta');
+while(my $elem = $file->next_seq())
+{
+    my $name = $elem->id;
+    my $seq = $elem->seq;
+    if(!defined($best_match{$name}))
+    {
+        $best_match{$name}->{af} = 0;
+        $best_match{$name}->{seq} = $seq;
+        $best_match{$name}->{a_str} = "unaligned";
+        $best_match{$name}->{cigar} = "";
+        $best_match{$name}->{nm} = "N/A";
+        $best_match{$name}->{matched} = 0;
+        $contig_lengths{$name} = length($seq);
+        $matched_coords{$name} = new Set::IntSpan;
+        print $name . " unaligned\n";
+    }
+}
+
 foreach my $k (keys %best_match)
 {
     my $af = $best_match{$k}->{af};
@@ -61,7 +107,7 @@ foreach my $k (keys %best_match)
     my $matched = $best_match{$k}->{matched};
     if($len >= $len_filter)
     {
-        print "af: $af softclipped: $num_sc matched: $matched\n";
+        print "$k af: $af softclipped: $num_sc matched: $matched\n";
         if(($len - $matched) >= $missing_threshold)
         {
             print "$k (len: " . $len . ") is potentially misassembled, best match $af\n";
@@ -86,6 +132,41 @@ print "Num mismatches: $num_base_mismatch\n";
 print "Num softclip: $num_base_softclip\n";
 print "Total mismatches: " . ($num_base_mismatch + $num_base_softclip) . "\n";
 
+open(FA, ">$contig_file" . ".unmatched.fa");
+open(SPLIT, ">$contig_file" . ".split.fa");
+foreach my $k (keys %matched_coords)
+{
+    my $match = $matched_coords{$k};
+    my $len = $contig_lengths{$k};
+    my $full = "0-$len";
+    my $full_set = new Set::IntSpan $full;
+    my $unmatched = $full_set - $match;
+    my $len_unmatched = $unmatched->cardinality();
+    my $seq = $best_match{$k}->{seq};
+    print "$k len: $len matched: $match unmatched: $unmatched ($len_unmatched)\n";
+    print "$k LEN: $len_unmatched\n";
+
+    if($len_unmatched > $len_filter)
+    {
+        print FA ">$k unmatched: $unmatched\n";
+        print FA $best_match{$k}->{seq} . "\n";
+    }
+
+    my @spans = spans $unmatched;
+    foreach my $s (@spans)
+    {
+        my $l = $s->[1] - $s->[0];
+        if($l >= $len_filter)
+        {
+            my $sub = substr($seq, $s->[0], $l);
+            print SPLIT ">$k:$s->[0]-$s->[1]\n";
+            print SPLIT "$sub\n";
+        }
+    }
+}
+close(FA);
+close(SPLIT);
+
 sub parseCigar
 {
     my($cs) = @_;
@@ -103,6 +184,30 @@ sub parseCigar
     }
     print "matched: $amount_matched\n";
     return $amount_matched;
+}
+
+sub cigarLeftClipped
+{
+    my($cs) = @_;
+
+    # Parse the first code
+    my ($len, $code, $rest) = ($cs =~ /(\d+)(\w)(.*)/);
+    if($code eq 'S')
+    {
+        return $len;
+    }
+    return 0;
+}
+
+sub cigarRightClipped
+{
+    my($cs) = @_;
+    my ($len, $code) = ($cs =~ /(\d+)(\w)$/);
+    if($code eq 'S')
+    {
+        return $len;
+    }
+    return 0;
 }
 
 # for contigs we calculate the number of mismatches as the value in the NM field plus
