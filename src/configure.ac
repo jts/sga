@@ -20,7 +20,7 @@ AC_CHECK_HEADERS([google/sparse_hash_set],,[AC_MSG_ERROR([google sparse hash lib
 AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
 
 # Set compiler flags.
-AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
+AC_SUBST(AM_CXXFLAGS, '-O3 -Wall -Wextra -Werror')
 
 AC_CONFIG_FILES([Makefile
 		Thirdparty/Makefile
@@ -31,7 +31,6 @@ AC_CONFIG_FILES([Makefile
 		StringGraph/Makefile
 		Concurrency/Makefile
 		SuffixTools/Makefile
-		Tests/Makefile
 		SGA/Makefile])
 
 AC_OUTPUT
