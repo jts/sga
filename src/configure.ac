@@ -12,7 +12,9 @@ AC_PROG_CC
 AC_PROG_RANLIB
 
 # Check for headers
-AC_CHECK_HEADERS([zlib.h])
+AC_LANG([C++])
+AC_CHECK_HEADER([zlib.h])
+AC_CHECK_HEADERS([google/sparse_hash_set],,[AC_MSG_ERROR([google sparse hash library is required: http://code.google.com/p/google-sparsehash/])])
 
 # Check for libraries
 AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
