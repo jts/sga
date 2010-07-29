@@ -31,6 +31,22 @@ void BWTWriterAscii::write(const SBWT* pBWT)
     writeOccurrence(pBWT->m_occurrence);
 }
 
+void BWTWriterAscii::write(const RLBWT* pRLBWT)
+{
+    writeHeader(pRLBWT->m_numStrings, pRLBWT->m_numSymbols, BWF_NOFMI);
+    size_t numRuns = pRLBWT->getNumRuns();
+    for(size_t i = 0; i < numRuns; ++i)
+    {
+        const RLUnit& unit = pRLBWT->m_rlString[i];
+        char symbol = unit.getChar();
+        size_t length = unit.getCount();
+        for(size_t j = 0; j < length; ++j)
+            writeBWChar(symbol);
+    }
+    // Finalize the string
+    writeBWChar('\n');
+}
+
 //
 void BWTWriterAscii::writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag)
 {

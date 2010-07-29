@@ -34,7 +34,7 @@ RankVector RankProcess::process(const SequenceWorkItem& workItem)
     size_t l = w.length();
     int i = l - 1;
 
-    // Compute the rank of the last character of seq. We consider $ to be implicitly
+    // Compute the rank of the last character of seq. We consider the string to be implicitly
     // terminated by a $ character. The first rank calculated is for this and it is given
     // by the C(a) array in BWTInternal
     int64_t rank = m_pBWT->getPC('$'); // always zero
@@ -61,7 +61,7 @@ RankVector RankProcess::process(const SequenceWorkItem& workItem)
 //
 //
 //
-RankPostProcess::RankPostProcess(GapArray* pGapArray) : m_pGapArray(pGapArray)
+RankPostProcess::RankPostProcess(GapArray* pGapArray) : m_pGapArray(pGapArray), num_strings(0), num_symbols(0)
 {
 
 }
@@ -69,6 +69,11 @@ RankPostProcess::RankPostProcess(GapArray* pGapArray) : m_pGapArray(pGapArray)
 //
 void RankPostProcess::process(const SequenceWorkItem& /*item*/, const RankVector& result)
 {
+    ++num_strings;
+    num_symbols += result.size(); // one rank was generated per symbol
+
     for(RankVector::const_iterator iter = result.begin(); iter != result.end(); ++iter)
+    {
         incrementGapArray(*iter, *m_pGapArray);
+    }
 }

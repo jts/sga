@@ -13,5 +13,5 @@
 //
 IBWTReader* BWTReader::createReader(const std::string& filename)
 {
-    return new BWTReaderBinary(filename);
+    return new BWTReaderAscii(filename);
 }

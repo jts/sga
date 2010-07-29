@@ -16,6 +16,7 @@
 #include "OverlapCommon.h"
 #include "SequenceProcessFramework.h"
 #include "RmdupProcess.h"
+#include "BWTDiskConstruction.h"
 
 // functions
 size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& readsFile, 
@@ -57,6 +58,7 @@ namespace opt
     static std::string readsFile;
     static unsigned int numThreads;
     static double errorRate;
+    static bool bReindex = true;
 }
 
 static const char* shortopts = "p:o:e:t:v";
@@ -115,7 +117,16 @@ void rmdup()
     delete pRBWT;
     delete pTimer;
 
-    parseDupHits(hitsFilenames);
+    std::string out_prefix = opt::prefix + ".rmdup";
+    std::string dupsFile = parseDupHits(hitsFilenames, out_prefix);
+
+    // Rebuild the indices without the duplicated sequences
+    if(opt::bReindex)
+    {
+        std::cout << "Rebuilding indices without duplicated reads\n";
+        removeReadsFromIndices(opt::prefix, dupsFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
+        removeReadsFromIndices(opt::prefix, dupsFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
+    }
 }
 
 // Compute the hits for each read in the input file without threading
@@ -169,7 +180,7 @@ size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const
     return numProcessed;
 }
 
-void parseDupHits(const StringVector& hitsFilenames)
+std::string parseDupHits(const StringVector& hitsFilenames, const std::string& out_prefix)
 {
     // Load the suffix array index and the reverse suffix array index
     // Note these are not the full suffix arrays
@@ -179,8 +190,10 @@ void parseDupHits(const StringVector& hitsFilenames)
     // Load the read table and output the initial vertex set, consisting of all the reads
     ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings());
 
-    std::string outFile = opt::prefix + ".rmdup.fa";
+    std::string outFile = out_prefix + ".fa";
+    std::string dupFile = out_prefix + ".dups.fa";
     std::ostream* pWriter = createWriter(outFile);
+    std::ostream* pDupWriter = createWriter(dupFile);
 
     size_t substringRemoved = 0;
     size_t identicalRemoved = 0;
@@ -225,15 +238,16 @@ void parseDupHits(const StringVector& hitsFilenames)
                         break;
                     }
                 }
-
+                
+                SeqItem item = {id, sequence};
                 if(isContained)
                 {
                     ++identicalRemoved;
+                    item.write(*pDupWriter);
                 }
                 else
                 {
                     ++kept;
-                    SeqItem item = {id, sequence};
                     // Write the read
                     item.write(*pWriter);
                 }
@@ -251,6 +265,9 @@ void parseDupHits(const StringVector& hitsFilenames)
     delete pRevSAI;
     delete pRIT;
     delete pWriter;
+    delete pDupWriter;
+
+    return dupFile;
 }
 
 // 

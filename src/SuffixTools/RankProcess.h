@@ -37,9 +37,13 @@ class RankPostProcess
     public:
         RankPostProcess(GapArray* pGapArray);
         void process(const SequenceWorkItem& item, const RankVector& rankVec);
+        size_t getNumStringsProcessed() const { return num_strings; }
+        size_t getNumSymbolsProcessed() const { return num_symbols; }
 
     private:
         GapArray* m_pGapArray;
+        size_t num_strings;
+        size_t num_symbols;
 };
 
 #endif

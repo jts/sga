@@ -50,6 +50,15 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
                       const MergeItem& internalItem, const std::string& bwt_outname,
                       const std::string& sai_outname, const GapArray& gap_array);
 
+void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
+                       const std::string& bwt_outname, const std::string& sai_outname, 
+                       size_t num_strings_remove, size_t num_symbols_remove,
+                       const GapArray& gap_array);
+
+void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doReverse, 
+                     int numThreads, GapArray& gap_array, 
+                     size_t& num_strings_read, size_t& num_symbols_read);
+
 //
 std::string makeTempName(const std::string& prefix, int id, const std::string& extension);
 std::string makeFilename(const std::string& prefix, const std::string& extension);
@@ -230,6 +239,39 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     delete pReader;
 }
 
+// Construct new indices without the reads in readsToRemove
+void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string& readsToRemove,
+                             const std::string& outPrefix, const std::string& bwt_extension, 
+                             const std::string& sai_extension, bool doReverse, int numThreads)
+{
+    std::string bwt_filename = makeFilename(allReadsPrefix, bwt_extension);
+    std::string sai_filename = makeFilename(allReadsPrefix, sai_extension);
+
+    // Prepare the input filehandle
+    SeqReader* pReader = new SeqReader(readsToRemove);
+    
+    // Build the outnames
+    std::string bwt_out_name = makeFilename(outPrefix, bwt_extension);
+    std::string sai_out_name = makeFilename(outPrefix, sai_extension);
+
+    // Compute the gap array
+    BWT* pBWT = new BWT(bwt_filename);
+
+    GapArray gap_array;
+    size_t num_strings_remove;
+    size_t num_symbols_remove;
+    computeGapArray(pReader, -1, pBWT, doReverse, numThreads, gap_array, num_strings_remove, num_symbols_remove);
+
+    //writeRemovalIndex();
+    writeRemovalIndex(pBWT, sai_filename, bwt_out_name, sai_out_name, num_strings_remove, num_symbols_remove, gap_array);
+
+    // Perform the actual merge
+    //merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse, numThreads);
+
+    delete pReader;
+    delete pBWT;
+}
+
 // Merge two readsFiles together
 void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2, const std::string& outPrefix)
 {
@@ -257,6 +299,53 @@ void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2
     while(reader.get(record))
         record.write(*pWriter);
     delete pWriter;
+}
+
+// Compute the gap array for the first n items in pReader
+// Returns the number of sequences that were processed
+void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doReverse, int numThreads, GapArray& gap_array, 
+                     size_t& num_strings_read, size_t& num_symbols_read)
+{
+    // Create the gap array
+    size_t gap_array_size = pBWT->getBWLen() + 1;
+    gap_array.resize(gap_array_size, 0);
+
+    // The rank processor calculates the rank of every suffix of a given sequence
+    // and returns a vector of ranks. The postprocessor takes in the vector
+    // and updates the gap array
+    RankPostProcess postProcessor(&gap_array);
+    size_t numProcessed = 0;
+    if(numThreads <= 1)
+    {
+        RankProcess processor(pBWT, doReverse);
+
+        numProcessed = 
+           SequenceProcessFramework::processSequencesSerial<RankVector, 
+                                                            RankProcess, 
+                                                            RankPostProcess>(*pReader, &processor, &postProcessor, n);
+    }
+    else
+    {
+        typedef std::vector<RankProcess*> RankProcessVector;
+        RankProcessVector rankProcVec;
+        for(int i = 0; i < numThreads; ++i)
+        {
+            RankProcess* pProcess = new RankProcess(pBWT, doReverse);
+            rankProcVec.push_back(pProcess);
+        }
+    
+        numProcessed = 
+           SequenceProcessFramework::processSequencesParallel<RankVector, 
+                                                              RankProcess, 
+                                                              RankPostProcess>(*pReader, rankProcVec, &postProcessor, n);
+
+        for(int i = 0; i < numThreads; ++i)
+            delete rankProcVec[i];
+    }
+
+    num_strings_read = postProcessor.getNumStringsProcessed();
+    num_symbols_read = postProcessor.getNumSymbolsProcessed();
+    assert(n == (size_t)-1 || (numProcessed == n));
 }
 
 // Merge a pair of BWTs using disk storage
@@ -328,50 +417,6 @@ int64_t merge(SeqReader* pReader,
     return curr_idx;
 }
 
-// Merge a pair of BWTs using disk storage
-// Precondition: pReader is positioned at the start of the read block for item1
-int64_t mergeOld(SeqReader* pReader,
-              const MergeItem& item1, const MergeItem& item2,
-              const std::string& bwt_outname, const std::string& sai_outname,
-              bool doReverse)
-{
-    std::cout << "Merge1: " << item1 << "\n";
-    std::cout << "Merge2: " << item2 << "\n";
-
-    // Load the bwt of item2 into memory as the internal bwt
-    BWT* pBWTInternal = new BWT(item2.bwt_filename);
-
-    // Create the gap array
-    size_t gap_array_size = pBWTInternal->getBWLen() + 1;
-    GapArray gap_array(gap_array_size, 0);
-
-    // Calculate the rank of every read from item1.start_index to item1.end_index
-    // and increment the gap counts
-    int64_t curr_idx = item1.start_index;
-    SeqRecord record;
-    while(pReader->get(record))
-    {
-        DNAString& seq = record.seq;
-        if(doReverse)
-            seq.reverse();
-
-        // Compute the ranks of all suffixes of seq
-        updateGapArray(seq, pBWTInternal, gap_array);
-        ++curr_idx;
-
-        // If the end index is -1 we want to process every read,
-        // otherwise stop once we are outside this block's range
-        if(item1.end_index != -1 && curr_idx > item1.end_index)
-            break;
-    }
-    assert(item1.end_index == -1 || (curr_idx == item1.end_index + 1 && curr_idx == item2.start_index));
-
-    // Write the merged BWT/SAI to disk
-    writeMergedIndex(pBWTInternal, item1, item2, bwt_outname, sai_outname, gap_array);
-    delete pBWTInternal;
-    return curr_idx;
-}
-
 // Merge the internal and external BWTs and the SAIs
 void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
                       const MergeItem& internalItem, const std::string& bwt_outname,
@@ -394,7 +439,7 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
     size_t total_symbols = disk_symbols + pBWTInternal->getBWLen();
     pBWTWriter->writeHeader(total_strings, total_symbols, BWF_NOFMI);
     
-    // Discard the first two elements of each sai
+    // Discard the first header each sai
     size_t discard1, discard2;
     saiExtReader.readHeader(discard1, discard2);
     saiIntReader.readHeader(discard1, discard2);
@@ -464,6 +509,124 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
     pBWTWriter->finalize();
 
     delete pBWTExtReader;
+    delete pBWTWriter;
+}
+
+// Write a new BWT and SAI that skips the elements marked
+// by the gap array. This is used to remove entire strings from the 
+// index
+void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
+                       const std::string& bwt_outname, const std::string& sai_outname, 
+                       size_t num_strings_remove, size_t num_symbols_remove,
+                       const GapArray& gap_array)
+{
+    IBWTWriter* pBWTWriter = BWTWriter::createWriter(bwt_outname);
+    
+    SAWriter* pSAIWriter = new SAWriter(sai_outname);
+    SAReader* pSAIReader = new SAReader(sai_inname);
+
+    // Calculate and write header values
+    assert(num_strings_remove < pBWTInternal->getNumStrings());
+    assert(num_symbols_remove < pBWTInternal->getBWLen());
+    size_t input_strings = pBWTInternal->getNumStrings();
+    size_t input_symbols = pBWTInternal->getBWLen();
+
+    size_t output_strings = input_strings - num_strings_remove;
+    size_t output_symbols = input_symbols - num_symbols_remove;
+
+    pBWTWriter->writeHeader(output_strings, output_symbols, BWF_NOFMI);
+    
+    // Discard the header of the sai
+    size_t discard1, discard2;
+    pSAIReader->readHeader(discard1, discard2);
+
+    // Write the header of the SAI which is just the number of strings and elements in the SAI
+    pSAIWriter->writeHeader(output_strings, output_strings);
+
+    // We need to fix the IDs in the SAI. We do this by tracking
+    // the number of IDs that are removed that are lower than a given
+    // id.
+    std::vector<int> id_vector(pBWTInternal->getNumStrings(), 0);
+
+    // Calculate and write the actual string
+    // The gap array marks the symbols that should be removed. We
+    // iterate over the gap array, if the value is zero, we output 
+    // the BWT symbol. Otherwise we skip the number of elements
+    // indicated by the gap. 
+    size_t num_bwt_wrote = 0;
+    size_t num_sai_wrote = 0;
+    size_t i = 0;
+    while(i < input_symbols)
+    {
+        size_t v = gap_array[i];
+        // If v is zero we output a single symbol, otherwise
+        // we skip v elements. 
+        size_t num_to_read = (v == 0) ? 1 : v;
+        for(size_t j = 0; j < num_to_read; ++j)
+        {
+            char b = pBWTInternal->getChar(i);
+            std::cout << "v: " << v  << " b: " << b << "\n";
+            if(b == '$')
+            {
+                SAElem e = pSAIReader->readElem(); 
+            
+                // This element of the SAI will be removed,
+                // increment the id vector so we can correct
+                // the indices later
+                if(v > 0)
+                {
+                    id_vector[e.getID()]++;
+                }
+            }
+            
+            // output
+            if(v == 0)
+            {
+                pBWTWriter->writeBWChar(b);
+                assert(b != '\n');
+                ++num_bwt_wrote;
+            }
+        }
+        i += num_to_read;
+    }
+    assert(num_bwt_wrote == output_symbols);
+
+    // Finalize the BWT disk file
+    pBWTWriter->finalize();
+
+    // Accumulate the counts for each id
+    int prev = 0;
+    for(size_t i = 0; i < id_vector.size(); ++i)
+    {
+        id_vector[i] += prev;
+        prev = id_vector[i];
+    }
+
+    // Read the SAI file again, writing out the
+    // corrected IDs that are not marked for removal
+    delete pSAIReader;
+    pSAIReader = new SAReader(sai_inname);
+    pSAIReader->readHeader(discard1, discard2);
+    std::cout << "Fixing SAI\n";
+    for(size_t i = 0; i < input_strings; ++i)
+    {
+        SAElem e = pSAIReader->readElem();
+        uint64_t id = e.getID();
+        int prev_count = (id > 0) ? id_vector[id - 1] : 0;
+        int count = id_vector[id];
+        if(count == prev_count)
+        {
+            // the current element should be output, it wasn't marked for removal
+            id -= count;
+            e.setID(id);
+            pSAIWriter->writeElem(e);
+            ++num_sai_wrote;
+        }
+    }
+    assert(num_sai_wrote == output_strings);
+
+    delete pSAIReader;
+    delete pSAIWriter;
     delete pBWTWriter;
 }
 

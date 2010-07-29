@@ -17,8 +17,9 @@
 #include "Vertex.h"
 #include "Edge.h"
 #include <tr1/unordered_map>
+# undef __DEPRECATED
 #include <google/sparse_hash_map>
-/*
+#include <ext/hash_map>
 namespace __gnu_cxx                                                                              
 {                                                                                             
   template<> struct hash< std::string >                                                       
@@ -29,7 +30,7 @@ namespace __gnu_cxx
     }                                                                                         
   };                                                                                          
 }
-*/
+
 //
 // Typedefs
 //
