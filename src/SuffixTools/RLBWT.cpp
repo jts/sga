@@ -28,12 +28,7 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), m_n
     delete pReader;
 }
 
-// Create the RLBWT from a suffix array
-RLBWT::RLBWT(const SuffixArray* /*pSA*/, const ReadTable* /*pRT*/)
-{
-    assert(false);
-}
-
+//
 void RLBWT::append(char b)
 {
     bool increment = false;
@@ -96,10 +91,6 @@ void RLBWT::initializeFMIndex()
             // Place markers
             size_t expected_marker_pos = curr_marker_index * m_sampleRate;
 
-            //int diff = running_total - expected_marker_pos;
-            //printf("Placing marker at index %zu, expected pos %zu, actual pos %zu, diff %d\n", 
-            //        curr_marker_index, expected_marker_pos, running_total, diff);
-
             // Sanity checks
             // The marker position should always be less than the running total unless 
             // the number of symbols is smaller than the sample rate
@@ -117,23 +108,14 @@ void RLBWT::initializeFMIndex()
         }        
     }
 
-    if(curr_marker_index != num_samples)
-    {
-        printf("Placed %zu markers, expected %zu\n", curr_marker_index, num_samples);
-    }
     assert(curr_marker_index == num_samples);
 
+    // Initialize C(a)
     m_predCount.set('$', 0);
     m_predCount.set('A', ac.get('$')); 
     m_predCount.set('C', m_predCount.get('A') + ac.get('A'));
     m_predCount.set('G', m_predCount.get('C') + ac.get('C'));
     m_predCount.set('T', m_predCount.get('G') + ac.get('G'));    
-}
-
-//
-void RLBWT::validate() const
-{
-    assert(false);
 }
 
 // Print the BWT

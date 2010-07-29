@@ -91,4 +91,3 @@ AlphaCount BWTAlgorithms::calculateExactExtensions(const unsigned int overlapLen
     return ext_counts;
 }
 
-

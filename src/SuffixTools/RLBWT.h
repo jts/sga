@@ -139,7 +139,6 @@ class RLBWT
     
         // Constructors
         RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE);
-        RLBWT(const SuffixArray* pSA, const ReadTable* pRT);
 
         //    
         void initializeFMIndex();
@@ -375,7 +374,6 @@ class RLBWT
         // Print the size of the BWT
         void printInfo() const;
         void print() const;
-        void validate() const;
 
         // IO
         friend class BWTReaderBinary;

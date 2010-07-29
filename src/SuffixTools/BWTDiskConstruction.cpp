@@ -56,7 +56,7 @@ void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
                        const GapArray& gap_array);
 
 void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doReverse, 
-                     int numThreads, GapArray& gap_array, 
+                     int numThreads, GapArray& gap_array, bool removeMode,
                      size_t& num_strings_read, size_t& num_symbols_read);
 
 //
@@ -260,7 +260,7 @@ void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string
     GapArray gap_array;
     size_t num_strings_remove;
     size_t num_symbols_remove;
-    computeGapArray(pReader, -1, pBWT, doReverse, numThreads, gap_array, num_strings_remove, num_symbols_remove);
+    computeGapArray(pReader, -1, pBWT, doReverse, numThreads, gap_array, true, num_strings_remove, num_symbols_remove);
 
     //writeRemovalIndex();
     writeRemovalIndex(pBWT, sai_filename, bwt_out_name, sai_out_name, num_strings_remove, num_symbols_remove, gap_array);
@@ -304,7 +304,7 @@ void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2
 // Compute the gap array for the first n items in pReader
 // Returns the number of sequences that were processed
 void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doReverse, int numThreads, GapArray& gap_array, 
-                     size_t& num_strings_read, size_t& num_symbols_read)
+                     bool removeMode, size_t& num_strings_read, size_t& num_symbols_read)
 {
     // Create the gap array
     size_t gap_array_size = pBWT->getBWLen() + 1;
@@ -317,7 +317,7 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
     size_t numProcessed = 0;
     if(numThreads <= 1)
     {
-        RankProcess processor(pBWT, doReverse);
+        RankProcess processor(pBWT, doReverse, removeMode);
 
         numProcessed = 
            SequenceProcessFramework::processSequencesSerial<RankVector, 
@@ -330,7 +330,7 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
         RankProcessVector rankProcVec;
         for(int i = 0; i < numThreads; ++i)
         {
-            RankProcess* pProcess = new RankProcess(pBWT, doReverse);
+            RankProcess* pProcess = new RankProcess(pBWT, doReverse, removeMode);
             rankProcVec.push_back(pProcess);
         }
     
@@ -380,7 +380,7 @@ int64_t merge(SeqReader* pReader,
     size_t numProcessed = 0;
     if(numThreads <= 1)
     {
-        RankProcess processor(pBWTInternal, doReverse);
+        RankProcess processor(pBWTInternal, doReverse, false);
 
         numProcessed = 
            SequenceProcessFramework::processSequencesSerial<RankVector, 
@@ -393,7 +393,7 @@ int64_t merge(SeqReader* pReader,
         RankProcessVector rankProcVec;
         for(int i = 0; i < numThreads; ++i)
         {
-            RankProcess* pProcess = new RankProcess(pBWTInternal, doReverse);
+            RankProcess* pProcess = new RankProcess(pBWTInternal, doReverse, false);
             rankProcVec.push_back(pProcess);
         }
     
@@ -565,7 +565,6 @@ void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
         for(size_t j = 0; j < num_to_read; ++j)
         {
             char b = pBWTInternal->getChar(i);
-            std::cout << "v: " << v  << " b: " << b << "\n";
             if(b == '$')
             {
                 SAElem e = pSAIReader->readElem(); 
@@ -607,7 +606,6 @@ void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
     delete pSAIReader;
     pSAIReader = new SAReader(sai_inname);
     pSAIReader->readHeader(discard1, discard2);
-    std::cout << "Fixing SAI\n";
     for(size_t i = 0; i < input_strings; ++i)
     {
         SAElem e = pSAIReader->readElem();

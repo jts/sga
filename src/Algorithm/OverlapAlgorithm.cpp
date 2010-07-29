@@ -14,7 +14,7 @@ static const AlignFlags prePreAF(false, true, true);
 static const AlignFlags sufSufAF(true, false, true);
 static const AlignFlags preSufAF(true, true, false);
 
-//#define TEMPDEBUG 1
+//#define DEBUGOVERLAP 1
 
 // Perform the overlap
 OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, int minOverlap, OverlapBlockList* pOutList) const
@@ -34,7 +34,7 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, int mi
     OverlapBlockList obWorkingList;
     std::string seq = read.seq.toString();
 
-#ifdef TEMPDEBUG
+#ifdef DEBUGOVERLAP
     std::cout << "\n\n***Overlapping read " << read.id << " suffix\n";
 #endif
 
@@ -53,7 +53,7 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, int mi
         assert(obWorkingList.empty());
     }
 
-#ifdef TEMPDEBUG
+#ifdef DEBUGOVERLAP
     std::cout << "\n\n***Overlapping read " << read.id << " prefix\n";
 #endif
 
@@ -399,12 +399,6 @@ int OverlapAlgorithm::createSearchSeeds(const std::string& w, const BWT* pBWT,
     // The maximum possible number of differences occurs for a fully-aligned read
     int read_len = w.length();
     int max_diff_high = static_cast<int>(m_errorRate * read_len);
-    static int once = 1;
-    if(once)
-    {
-        printf("Using seed length %d, seed stride %d, max diff %d\n", seed_length, seed_stride, max_diff_high);
-        once = 0;
-    }    
 
     // Start the seeds at the end of the read
     int seed_start = read_len - seed_length;
@@ -764,7 +758,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
         OverlapBlockList::iterator terminalIter = terminalList.begin();
         for(; terminalIter != terminalList.end(); ++terminalIter)
         {
-#ifdef TEMPDEBUG
+#ifdef DEBUGOVERLAP
             std::cout << "***TLB of length " << terminalIter->overlapLen << " has ended\n";
 #endif       
             all_eliminated = true;
@@ -781,7 +775,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
                 if(activeIter->overlapLen < terminalIter->overlapLen && 
                    isErrorRateAcceptable(inferredErrorRate, m_errorRate))
                 {
-#ifdef TEMPDEBUG                            
+#ifdef DEBUGOVERLAP                            
                     std::cout << "Marking block of length " << activeIter->overlapLen << " as eliminated\n";
 #endif
                     activeIter->isEliminated = true;
@@ -795,7 +789,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
             // Move this block to the final list if it has not been previously marked eliminated
             if(!terminalIter->isEliminated)
             {
-#ifdef TEMPDEBUG
+#ifdef DEBUGOVERLAP
                 std::cout << "Adding block of length " << terminalIter->overlapLen << " to final\n";
                 std::cout << "  extension: " << terminalIter->forwardHistory << "\n";
 #endif                
@@ -834,7 +828,7 @@ void OverlapAlgorithm::extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevB
                 OverlapBlock branched = *iter;
                 BWTAlgorithms::updateBothR(branched.ranges, '$', branched.getExtensionBWT(pBWT, pRevBWT));
                 terminalList.push_back(branched);
-#ifdef TEMPDEBUG            
+#ifdef DEBUGOVERLAP            
                 std::cout << "Block of length " << iter->overlapLen << " moved to terminal\n";
 #endif
             }
@@ -900,7 +894,7 @@ double OverlapAlgorithm::calculateBlockErrorRate(const OverlapBlock& terminalBlo
     int trans_overlap_length = back_max + forward_len;
     double er = static_cast<double>(backwards_diff + forward_diff) / trans_overlap_length;
             
-#ifdef TEMPDEBUG
+#ifdef DEBUGOVERLAP
     std::cout << "OL: " << terminalBlock.overlapLen << "\n";
     std::cout << "TLB BH: " << terminalBlock.backHistory << "\n";
     std::cout << "TB  BH: " << otherBlock.backHistory << "\n";

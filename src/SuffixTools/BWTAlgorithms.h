@@ -4,7 +4,7 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// bwt_algorithms.h - Algorithms for aligning to a bwt structure
+// BWTAlgorithms.h - Algorithms for aligning to a bwt structure
 //
 #ifndef BWT_ALGORITHMS_H
 #define BWT_ALGORITHMS_H
@@ -17,7 +17,6 @@
 
 #define LEFT_INT_IDX 0
 #define RIGHT_INT_IDX 1
-
 
 // functions
 namespace BWTAlgorithms

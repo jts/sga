@@ -155,6 +155,9 @@ size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& read
 size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
                                 const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
+    std::cout << "rmdup-parallel mode needs to be changed to preserve ordering of reads in output\n";
+    assert(false);
+
     std::string filename = prefix + RMDUPHITS_EXT + GZIP_EXT;
 
     std::vector<RmdupProcess*> processorVector;
@@ -199,7 +202,7 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
     size_t identicalRemoved = 0;
     size_t kept = 0;
 
-    // Convert the hits to overlaps and write them to the asqg file as initial edges
+    // Parse the hits and write out the non-duplicate sequences
     for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
     {
         printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
@@ -242,8 +245,19 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
                 SeqItem item = {id, sequence};
                 if(isContained)
                 {
+                    // The read's index in the sequence data base
+                    // is needed when removing it from the FM-index.
+                    // In the output fasta, we set the reads ID to be the index
+                    // and record its old id in the fasta header.
+                    std::stringstream newID;
+                    newID << readIdx;
+                    item.id = newID.str();
+
+                    // Write some metadata with the fasta record
+                    std::stringstream meta;
+                    meta << id << " NumOverlaps: " << ov.size();
+                    item.write(*pDupWriter, meta.str());
                     ++identicalRemoved;
-                    item.write(*pDupWriter);
                 }
                 else
                 {

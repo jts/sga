@@ -21,7 +21,7 @@ typedef std::vector<int64_t> RankVector;
 class RankProcess
 {
     public:
-        RankProcess(const BWT* pBWT, bool doReverse);
+        RankProcess(const BWT* pBWT, bool doReverse, bool removeMode);
         ~RankProcess();
 
         RankVector process(const SequenceWorkItem& item);
@@ -29,6 +29,7 @@ class RankProcess
     private:
         const BWT* m_pBWT;
         bool m_doReverse;
+        bool m_removeMode;
 };
 
 // Update the gap array with 
