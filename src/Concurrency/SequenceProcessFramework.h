@@ -17,6 +17,8 @@
 namespace SequenceProcessFramework
 {
 
+const size_t BUFFER_SIZE = 1000;
+
 // Process n sequences from a file. With the default value of -1, n becomes the largest value representable for
 // a size_t and all values will be read
 template<class Output, class Processor, class PostProcessor>
@@ -62,13 +64,13 @@ size_t processSequencesSerial(const std::string& readsFile, Processor* pProcesso
 // can be specified to process the results that the threads return. If the n
 // parameter is used, at most n sequences will be read from the file
 template<class Output, class Processor, class PostProcessor>
-size_t processSequencesParallel(SeqReader& reader, std::vector<Processor*> processPtrVector, PostProcessor* pPostProcessor, size_t n = -1)
+size_t processSequencesParallel(SeqReader& reader, 
+                                std::vector<Processor*> processPtrVector, 
+                                PostProcessor* pPostProcessor, 
+                                size_t n = -1)
 {
     Timer timer("SequenceProcess", true);
-    
-    // The number of items to buffer before dispatching to the threads
-    size_t MAX_ITEMS = 1000;
-    
+
     // Helpful typedefs
     typedef ThreadWorker<SequenceWorkItem, Output, Processor> Thread;
     typedef std::vector<Thread*> ThreadPtrVector;
@@ -95,14 +97,14 @@ size_t processSequencesParallel(SeqReader& reader, std::vector<Processor*> proce
         sem_init( semVec[i], PTHREAD_PROCESS_PRIVATE, 0 );
 
         // Create and start the thread
-        threadVec[i] = new Thread(semVec[i], processPtrVector[i], MAX_ITEMS);
+        threadVec[i] = new Thread(semVec[i], processPtrVector[i], BUFFER_SIZE);
         threadVec[i]->start();
 
         inputBuffers[i] = new SeqWorkItemVector;
-        inputBuffers[i]->reserve(MAX_ITEMS);
+        inputBuffers[i]->reserve(BUFFER_SIZE);
 
         outputBuffers[i] = new OutputVector;
-        outputBuffers[i]->reserve(MAX_ITEMS);
+        outputBuffers[i]->reserve(BUFFER_SIZE);
     }
 
     size_t numRead = 0;
@@ -119,7 +121,7 @@ size_t processSequencesParallel(SeqReader& reader, std::vector<Processor*> proce
         if(valid)
         {
             inputBuffers[next_thread]->push_back(SequenceWorkItem(numRead++, read));
-            if(inputBuffers[next_thread]->size() == MAX_ITEMS)
+            if(inputBuffers[next_thread]->size() == BUFFER_SIZE)
             {
                 ++num_buffers_full;
                 ++next_thread;
@@ -160,7 +162,7 @@ size_t processSequencesParallel(SeqReader& reader, std::vector<Processor*> proce
                     outputBuffers[i]->clear();
                 }
 
-                if(numWrote % (50 * MAX_ITEMS * numThreads) == 0)
+                if(numWrote % (50 * BUFFER_SIZE * numThreads) == 0)
                     printf("[sga] Processed %zu sequences\n", numWrote);
 
                 // This should never loop more than twice

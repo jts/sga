@@ -155,9 +155,6 @@ size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& read
 size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
                                 const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
-    std::cout << "rmdup-parallel mode needs to be changed to preserve ordering of reads in output\n";
-    assert(false);
-
     std::string filename = prefix + RMDUPHITS_EXT + GZIP_EXT;
 
     std::vector<RmdupProcess*> processorVector;
@@ -201,15 +198,53 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
     size_t substringRemoved = 0;
     size_t identicalRemoved = 0;
     size_t kept = 0;
+    size_t buffer_size = SequenceProcessFramework::BUFFER_SIZE;
 
-    // Parse the hits and write out the non-duplicate sequences
-    for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
+    // The reads must be output in their original ordering.
+    // The hits are in the blocks of buffer_size items. We read
+    // buffer_size items from the first hits file, then buffer_size
+    // from the second and so on until all the hits have been processed.
+    size_t num_files = hitsFilenames.size();
+    std::vector<std::istream*> reader_vec(num_files, 0);
+
+    for(size_t i = 0; i < num_files; ++i)
     {
-        printf("[%s] parsing file %s\n", PROGRAM_IDENT, iter->c_str());
-        std::istream* pReader = createReader(*iter);
-    
-        std::string line;
-        while(getline(*pReader, line))
+        std::cout << "Opening " << hitsFilenames[i] << "\n";
+        reader_vec[i] = createReader(hitsFilenames[i]);
+    }
+
+    bool done = false;
+    size_t currReaderIdx = 0;
+    size_t numRead = 0;
+    size_t numReadersDone = 0;
+    std::string line;
+
+    while(!done)
+    {
+        // Parse a line from the current file
+        bool valid = getline(*reader_vec[currReaderIdx], line);
+        ++numRead;
+        // Deal with switching the active reader and the end of files
+        if(!valid || numRead == buffer_size)
+        {
+            // Switch the reader
+            currReaderIdx = (currReaderIdx + 1) % num_files;
+            numRead = 0;
+
+            // Break once all the readers are invalid
+            if(!valid)
+            {
+                ++numReadersDone;
+                if(numReadersDone == num_files)
+                {
+                    done = true;
+                    break;
+                }
+            }
+        }
+
+        // Parse the data
+        if(valid)
         {
             std::string id;
             std::string sequence;
@@ -267,8 +302,13 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
                 }
             }
         }
-        delete pReader;
     }
+
+    for(size_t i = 0; i < num_files; ++i)
+    {
+        delete reader_vec[i];
+    }
+
     
     printf("[%s] Removed %zu substring reads\n", PROGRAM_IDENT, substringRemoved);
     printf("[%s] Removed %zu identical reads\n", PROGRAM_IDENT, identicalRemoved);
