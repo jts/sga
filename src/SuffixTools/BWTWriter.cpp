@@ -34,5 +34,5 @@ void IBWTWriter::write(const SuffixArray* pSA, const ReadTable* pRT)
 //
 IBWTWriter* BWTWriter::createWriter(const std::string& filename)
 {
-    return new BWTWriterAscii(filename);
+    return new BWTWriterBinary(filename);
 }
