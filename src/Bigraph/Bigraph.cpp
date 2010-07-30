@@ -13,7 +13,6 @@
 #include "Bigraph.h"
 #include "Timer.h"
 #include "ASQG.h"
-#include <malloc.h>
 
 //
 //

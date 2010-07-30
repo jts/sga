@@ -260,46 +260,47 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
             OverlapVector ov;
             OverlapCommon::parseHitsString(hitsStr, pRIT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
             
+            bool isContained = false;
             if(isSubstring)
             {
                 ++substringRemoved;
+                isContained = true;
             }
             else
             {
-                bool isContained = false;
                 for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
                 {
                     if(iter->isContainment() && iter->getContainedIdx() == 0)
                     {
                         // This read is contained by some other read
+                        ++identicalRemoved;
                         isContained = true;
                         break;
                     }
                 }
-                
-                SeqItem item = {id, sequence};
-                if(isContained)
-                {
-                    // The read's index in the sequence data base
-                    // is needed when removing it from the FM-index.
-                    // In the output fasta, we set the reads ID to be the index
-                    // and record its old id in the fasta header.
-                    std::stringstream newID;
-                    newID << readIdx;
-                    item.id = newID.str();
+            }
 
-                    // Write some metadata with the fasta record
-                    std::stringstream meta;
-                    meta << id << " NumOverlaps: " << ov.size();
-                    item.write(*pDupWriter, meta.str());
-                    ++identicalRemoved;
-                }
-                else
-                {
-                    ++kept;
-                    // Write the read
-                    item.write(*pWriter);
-                }
+            SeqItem item = {id, sequence};
+            if(isContained)
+            {
+                // The read's index in the sequence data base
+                // is needed when removing it from the FM-index.
+                // In the output fasta, we set the reads ID to be the index
+                // and record its old id in the fasta header.
+                std::stringstream newID;
+                newID << readIdx;
+                item.id = newID.str();
+
+                // Write some metadata with the fasta record
+                std::stringstream meta;
+                meta << id << " NumOverlaps: " << ov.size();
+                item.write(*pDupWriter, meta.str());
+            }
+            else
+            {
+                ++kept;
+                // Write the read
+                item.write(*pWriter);
             }
         }
     }

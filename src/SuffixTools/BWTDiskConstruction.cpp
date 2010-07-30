@@ -260,7 +260,7 @@ void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string
     GapArray gap_array;
     size_t num_strings_remove;
     size_t num_symbols_remove;
-    computeGapArray(pReader, -1, pBWT, doReverse, numThreads, gap_array, true, num_strings_remove, num_symbols_remove);
+    computeGapArray(pReader, (size_t)-1, pBWT, doReverse, numThreads, gap_array, true, num_strings_remove, num_symbols_remove);
 
     //writeRemovalIndex();
     writeRemovalIndex(pBWT, sai_filename, bwt_out_name, sai_out_name, num_strings_remove, num_symbols_remove, gap_array);

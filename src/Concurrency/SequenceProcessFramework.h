@@ -85,10 +85,10 @@ size_t processSequencesParallel(SeqReader& reader,
     // Initialize threads, one thread per processor that was passed in
     int numThreads = processPtrVector.size();
 
-    ThreadPtrVector threadVec(numThreads, NULL);
-    InputBufferVector inputBuffers(numThreads, NULL);
-    OutputBufferVector outputBuffers(numThreads, NULL);
-    SemaphorePtrVector semVec(numThreads, NULL);
+    ThreadPtrVector threadVec(numThreads);
+    InputBufferVector inputBuffers(numThreads);
+    OutputBufferVector outputBuffers(numThreads);
+    SemaphorePtrVector semVec(numThreads);
 
     // Create the threads
     for(int i = 0; i < numThreads; ++i)

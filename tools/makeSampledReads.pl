@@ -132,6 +132,7 @@ sub outputPEReads
 
 		$seq_2 = rc($seq_2) unless $bSameStrand;
 		next if($seq_1 =~ /N/ || $seq_2 =~ /N/);
+        next if(length($seq_1) < $rl || length($seq_2) < $rl);
 		print join("\n", (">$name_1", $seq_1, ">$name_2", $seq_2)) . "\n";
 		++$total;
 	}
@@ -144,7 +145,7 @@ sub outputSEReads
 	my $num_reads = $gl * $coverage /  $rl;
 	while($total < $num_reads)
 	{
-	        my $read_length = $rl;#randUniformLength(0.5*$rl,$rl);
+	    my $read_length = $rl;#randUniformLength(0.5*$rl,$rl);
 
 		my $start = int(rand($gl));
 		my $end = $start + $read_length - 1;
