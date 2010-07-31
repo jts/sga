@@ -41,7 +41,6 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
                 if(overlapTag.isInitialized())
                     pGraph->setMinOverlap(overlapTag.get());
 
-
                 const SQG::FloatTag& errorRateTag = headerRecord.getErrorRateTag();
                 if(errorRateTag.isInitialized())
                     pGraph->setErrorRate(errorRateTag.get());

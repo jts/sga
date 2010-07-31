@@ -94,7 +94,17 @@ void ReadTable::indexReadsByID()
 {
     m_pIndex = new ReadIndex;
     for(size_t i = 0; i < m_table.size(); ++i)
-        m_pIndex->insert(std::make_pair(m_table[i].id, &m_table[i]));
+    {
+        std::pair<ReadIndex::iterator, bool> result = 
+            m_pIndex->insert(std::make_pair(m_table[i].id, &m_table[i]));
+        if(!result.second)
+        {
+            std::cerr << "Error: Attempted to insert vertex into table with a duplicate id: " <<
+                         m_table[i].id << "\n";
+            std::cerr << "All reads must have a unique identifier\n";
+            exit(1);
+        }
+    }
 }
 
 //
