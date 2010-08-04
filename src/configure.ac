@@ -14,7 +14,16 @@ AC_PROG_RANLIB
 # Check for headers
 AC_LANG([C++])
 AC_CHECK_HEADER([zlib.h])
+
+# Ensure the sparse hash is available
 AC_CHECK_HEADERS([google/sparse_hash_set],,[AC_MSG_ERROR([google sparse hash library is required: http://code.google.com/p/google-sparsehash/])])
+
+# Check for hash table headers
+AC_CHECK_HEADERS([ \
+	google/sparse_hash_set google/sparse_hash_map \
+	unordered_map tr1/unordered_map ext/hash_map \
+	unordered_set tr1/unordered_set ext/hash_set \
+])
 
 # Check for libraries
 AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
@@ -31,6 +40,7 @@ AC_CONFIG_FILES([Makefile
 		StringGraph/Makefile
 		Concurrency/Makefile
 		SuffixTools/Makefile
+        Scaffold/Makefile
 		SGA/Makefile])
 
 AC_OUTPUT

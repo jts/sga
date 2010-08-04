@@ -35,5 +35,6 @@ libutil_a_SOURCES = \
         SimpleAllocator.h \
         SimplePool.h \
         mkqs.h \
-        bucketSort.h
+        bucketSort.h \
+        HashMap.h
 

@@ -34,7 +34,7 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = Scaffold$(EXEEXT)
+bin_PROGRAMS = sga_scaffold$(EXEEXT)
 subdir = Scaffold
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -47,9 +47,14 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_Scaffold_OBJECTS = Scaffold-Scaffold.$(OBJEXT)
-Scaffold_OBJECTS = $(am_Scaffold_OBJECTS)
-Scaffold_DEPENDENCIES = $(top_builddir)/Util/libutil.a
+am_sga_scaffold_OBJECTS = sga_scaffold-sga-scaffold.$(OBJEXT) \
+	sga_scaffold-ScaffoldVertex.$(OBJEXT) \
+	sga_scaffold-ScaffoldEdge.$(OBJEXT) \
+	sga_scaffold-ScaffoldGraph.$(OBJEXT) \
+	sga_scaffold-ScaffoldVisitors.$(OBJEXT)
+sga_scaffold_OBJECTS = $(am_sga_scaffold_OBJECTS)
+sga_scaffold_DEPENDENCIES = $(top_builddir)/Util/libutil.a \
+	$(top_builddir)/Thirdparty/libthirdparty.a
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -58,8 +63,12 @@ CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
-SOURCES = $(Scaffold_SOURCES)
-DIST_SOURCES = $(Scaffold_SOURCES)
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+CCLD = $(CC)
+LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+SOURCES = $(sga_scaffold_SOURCES)
+DIST_SOURCES = $(sga_scaffold_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -77,6 +86,7 @@ CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
+CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
@@ -85,10 +95,9 @@ DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
+EGREP = @EGREP@
 EXEEXT = @EXEEXT@
-GSL_CFLAGS = @GSL_CFLAGS@
-GSL_CONFIG = @GSL_CONFIG@
-GSL_LIBS = @GSL_LIBS@
+GREP = @GREP@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -149,14 +158,21 @@ sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
-Scaffold_CPPFLAGS = \
+sga_scaffold_CPPFLAGS = \
 	-I$(top_srcdir)/Util \
-	-I$(top_srcdir)/Bigraph
+    -I$(top_srcdir)/Thirdparty \
+    -I$(top_srcdir)/Bigraph
 
-Scaffold_LDADD = \
-	$(top_builddir)/Util/libutil.a 
+sga_scaffold_LDADD = \
+	$(top_builddir)/Util/libutil.a \
+    $(top_builddir)/Thirdparty/libthirdparty.a
 
-Scaffold_SOURCES = Scaffold.cpp
+sga_scaffold_SOURCES = sga-scaffold.cpp \
+                       ScaffoldVertex.h ScaffoldVertex.cpp \
+                       ScaffoldEdge.h ScaffoldEdge.cpp \
+                       ScaffoldGraph.h ScaffoldGraph.cpp \
+                       ScaffoldVisitors.h ScaffoldVisitors.cpp
+
 all: all-am
 
 .SUFFIXES:
@@ -213,9 +229,9 @@ uninstall-binPROGRAMS:
 
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
-Scaffold$(EXEEXT): $(Scaffold_OBJECTS) $(Scaffold_DEPENDENCIES) 
-	@rm -f Scaffold$(EXEEXT)
-	$(CXXLINK) $(Scaffold_LDFLAGS) $(Scaffold_OBJECTS) $(Scaffold_LDADD) $(LIBS)
+sga_scaffold$(EXEEXT): $(sga_scaffold_OBJECTS) $(sga_scaffold_DEPENDENCIES) 
+	@rm -f sga_scaffold$(EXEEXT)
+	$(CXXLINK) $(sga_scaffold_LDFLAGS) $(sga_scaffold_OBJECTS) $(sga_scaffold_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -223,7 +239,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Scaffold-Scaffold.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga_scaffold-ScaffoldEdge.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga_scaffold-ScaffoldGraph.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga_scaffold-ScaffoldVertex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sga_scaffold-sga-scaffold.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -239,19 +259,75 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
-Scaffold-Scaffold.o: Scaffold.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Scaffold-Scaffold.o -MD -MP -MF "$(DEPDIR)/Scaffold-Scaffold.Tpo" -c -o Scaffold-Scaffold.o `test -f 'Scaffold.cpp' || echo '$(srcdir)/'`Scaffold.cpp; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/Scaffold-Scaffold.Tpo" "$(DEPDIR)/Scaffold-Scaffold.Po"; else rm -f "$(DEPDIR)/Scaffold-Scaffold.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Scaffold.cpp' object='Scaffold-Scaffold.o' libtool=no @AMDEPBACKSLASH@
+sga_scaffold-sga-scaffold.o: sga-scaffold.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-sga-scaffold.o -MD -MP -MF "$(DEPDIR)/sga_scaffold-sga-scaffold.Tpo" -c -o sga_scaffold-sga-scaffold.o `test -f 'sga-scaffold.cpp' || echo '$(srcdir)/'`sga-scaffold.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-sga-scaffold.Tpo" "$(DEPDIR)/sga_scaffold-sga-scaffold.Po"; else rm -f "$(DEPDIR)/sga_scaffold-sga-scaffold.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sga-scaffold.cpp' object='sga_scaffold-sga-scaffold.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Scaffold-Scaffold.o `test -f 'Scaffold.cpp' || echo '$(srcdir)/'`Scaffold.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-sga-scaffold.o `test -f 'sga-scaffold.cpp' || echo '$(srcdir)/'`sga-scaffold.cpp
 
-Scaffold-Scaffold.obj: Scaffold.cpp
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Scaffold-Scaffold.obj -MD -MP -MF "$(DEPDIR)/Scaffold-Scaffold.Tpo" -c -o Scaffold-Scaffold.obj `if test -f 'Scaffold.cpp'; then $(CYGPATH_W) 'Scaffold.cpp'; else $(CYGPATH_W) '$(srcdir)/Scaffold.cpp'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/Scaffold-Scaffold.Tpo" "$(DEPDIR)/Scaffold-Scaffold.Po"; else rm -f "$(DEPDIR)/Scaffold-Scaffold.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Scaffold.cpp' object='Scaffold-Scaffold.obj' libtool=no @AMDEPBACKSLASH@
+sga_scaffold-sga-scaffold.obj: sga-scaffold.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-sga-scaffold.obj -MD -MP -MF "$(DEPDIR)/sga_scaffold-sga-scaffold.Tpo" -c -o sga_scaffold-sga-scaffold.obj `if test -f 'sga-scaffold.cpp'; then $(CYGPATH_W) 'sga-scaffold.cpp'; else $(CYGPATH_W) '$(srcdir)/sga-scaffold.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-sga-scaffold.Tpo" "$(DEPDIR)/sga_scaffold-sga-scaffold.Po"; else rm -f "$(DEPDIR)/sga_scaffold-sga-scaffold.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='sga-scaffold.cpp' object='sga_scaffold-sga-scaffold.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(Scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Scaffold-Scaffold.obj `if test -f 'Scaffold.cpp'; then $(CYGPATH_W) 'Scaffold.cpp'; else $(CYGPATH_W) '$(srcdir)/Scaffold.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-sga-scaffold.obj `if test -f 'sga-scaffold.cpp'; then $(CYGPATH_W) 'sga-scaffold.cpp'; else $(CYGPATH_W) '$(srcdir)/sga-scaffold.cpp'; fi`
+
+sga_scaffold-ScaffoldVertex.o: ScaffoldVertex.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-ScaffoldVertex.o -MD -MP -MF "$(DEPDIR)/sga_scaffold-ScaffoldVertex.Tpo" -c -o sga_scaffold-ScaffoldVertex.o `test -f 'ScaffoldVertex.cpp' || echo '$(srcdir)/'`ScaffoldVertex.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-ScaffoldVertex.Tpo" "$(DEPDIR)/sga_scaffold-ScaffoldVertex.Po"; else rm -f "$(DEPDIR)/sga_scaffold-ScaffoldVertex.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldVertex.cpp' object='sga_scaffold-ScaffoldVertex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-ScaffoldVertex.o `test -f 'ScaffoldVertex.cpp' || echo '$(srcdir)/'`ScaffoldVertex.cpp
+
+sga_scaffold-ScaffoldVertex.obj: ScaffoldVertex.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-ScaffoldVertex.obj -MD -MP -MF "$(DEPDIR)/sga_scaffold-ScaffoldVertex.Tpo" -c -o sga_scaffold-ScaffoldVertex.obj `if test -f 'ScaffoldVertex.cpp'; then $(CYGPATH_W) 'ScaffoldVertex.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldVertex.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-ScaffoldVertex.Tpo" "$(DEPDIR)/sga_scaffold-ScaffoldVertex.Po"; else rm -f "$(DEPDIR)/sga_scaffold-ScaffoldVertex.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldVertex.cpp' object='sga_scaffold-ScaffoldVertex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-ScaffoldVertex.obj `if test -f 'ScaffoldVertex.cpp'; then $(CYGPATH_W) 'ScaffoldVertex.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldVertex.cpp'; fi`
+
+sga_scaffold-ScaffoldEdge.o: ScaffoldEdge.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-ScaffoldEdge.o -MD -MP -MF "$(DEPDIR)/sga_scaffold-ScaffoldEdge.Tpo" -c -o sga_scaffold-ScaffoldEdge.o `test -f 'ScaffoldEdge.cpp' || echo '$(srcdir)/'`ScaffoldEdge.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-ScaffoldEdge.Tpo" "$(DEPDIR)/sga_scaffold-ScaffoldEdge.Po"; else rm -f "$(DEPDIR)/sga_scaffold-ScaffoldEdge.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldEdge.cpp' object='sga_scaffold-ScaffoldEdge.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-ScaffoldEdge.o `test -f 'ScaffoldEdge.cpp' || echo '$(srcdir)/'`ScaffoldEdge.cpp
+
+sga_scaffold-ScaffoldEdge.obj: ScaffoldEdge.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-ScaffoldEdge.obj -MD -MP -MF "$(DEPDIR)/sga_scaffold-ScaffoldEdge.Tpo" -c -o sga_scaffold-ScaffoldEdge.obj `if test -f 'ScaffoldEdge.cpp'; then $(CYGPATH_W) 'ScaffoldEdge.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldEdge.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-ScaffoldEdge.Tpo" "$(DEPDIR)/sga_scaffold-ScaffoldEdge.Po"; else rm -f "$(DEPDIR)/sga_scaffold-ScaffoldEdge.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldEdge.cpp' object='sga_scaffold-ScaffoldEdge.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-ScaffoldEdge.obj `if test -f 'ScaffoldEdge.cpp'; then $(CYGPATH_W) 'ScaffoldEdge.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldEdge.cpp'; fi`
+
+sga_scaffold-ScaffoldGraph.o: ScaffoldGraph.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-ScaffoldGraph.o -MD -MP -MF "$(DEPDIR)/sga_scaffold-ScaffoldGraph.Tpo" -c -o sga_scaffold-ScaffoldGraph.o `test -f 'ScaffoldGraph.cpp' || echo '$(srcdir)/'`ScaffoldGraph.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-ScaffoldGraph.Tpo" "$(DEPDIR)/sga_scaffold-ScaffoldGraph.Po"; else rm -f "$(DEPDIR)/sga_scaffold-ScaffoldGraph.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldGraph.cpp' object='sga_scaffold-ScaffoldGraph.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-ScaffoldGraph.o `test -f 'ScaffoldGraph.cpp' || echo '$(srcdir)/'`ScaffoldGraph.cpp
+
+sga_scaffold-ScaffoldGraph.obj: ScaffoldGraph.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-ScaffoldGraph.obj -MD -MP -MF "$(DEPDIR)/sga_scaffold-ScaffoldGraph.Tpo" -c -o sga_scaffold-ScaffoldGraph.obj `if test -f 'ScaffoldGraph.cpp'; then $(CYGPATH_W) 'ScaffoldGraph.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldGraph.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-ScaffoldGraph.Tpo" "$(DEPDIR)/sga_scaffold-ScaffoldGraph.Po"; else rm -f "$(DEPDIR)/sga_scaffold-ScaffoldGraph.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldGraph.cpp' object='sga_scaffold-ScaffoldGraph.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-ScaffoldGraph.obj `if test -f 'ScaffoldGraph.cpp'; then $(CYGPATH_W) 'ScaffoldGraph.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldGraph.cpp'; fi`
+
+sga_scaffold-ScaffoldVisitors.o: ScaffoldVisitors.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-ScaffoldVisitors.o -MD -MP -MF "$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Tpo" -c -o sga_scaffold-ScaffoldVisitors.o `test -f 'ScaffoldVisitors.cpp' || echo '$(srcdir)/'`ScaffoldVisitors.cpp; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Tpo" "$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Po"; else rm -f "$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldVisitors.cpp' object='sga_scaffold-ScaffoldVisitors.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-ScaffoldVisitors.o `test -f 'ScaffoldVisitors.cpp' || echo '$(srcdir)/'`ScaffoldVisitors.cpp
+
+sga_scaffold-ScaffoldVisitors.obj: ScaffoldVisitors.cpp
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT sga_scaffold-ScaffoldVisitors.obj -MD -MP -MF "$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Tpo" -c -o sga_scaffold-ScaffoldVisitors.obj `if test -f 'ScaffoldVisitors.cpp'; then $(CYGPATH_W) 'ScaffoldVisitors.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldVisitors.cpp'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Tpo" "$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Po"; else rm -f "$(DEPDIR)/sga_scaffold-ScaffoldVisitors.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ScaffoldVisitors.cpp' object='sga_scaffold-ScaffoldVisitors.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(sga_scaffold_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sga_scaffold-ScaffoldVisitors.obj `if test -f 'ScaffoldVisitors.cpp'; then $(CYGPATH_W) 'ScaffoldVisitors.cpp'; else $(CYGPATH_W) '$(srcdir)/ScaffoldVisitors.cpp'; fi`
 uninstall-info-am:
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)

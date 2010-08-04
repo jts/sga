@@ -11,12 +11,18 @@
 #ifndef ALPHABET_H
 #define ALPHABET_H
 
+//#define USE_SSE 1
+
 #include <utility>
 #include <stdint.h>
 #include <limits>
 #include <math.h>
+
+#if USE_SSE
 #include <emmintrin.h>
 #include <xmmintrin.h>
+#endif
+
 #include <iostream>
 #include <algorithm>
 #include "Util.h"
@@ -294,8 +300,6 @@ class AlphaCount
         friend std::ostream& operator<<(std::ostream& out, const AlphaCount& ac);
         friend std::istream& operator>>(std::istream& in, AlphaCount& ac);
         
-#define USE_SSE 0
-
         inline friend AlphaCount operator+(const AlphaCount& left, const AlphaCount& right)
         {
             AlphaCount out;

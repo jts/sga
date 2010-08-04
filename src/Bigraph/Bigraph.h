@@ -1,7 +1,7 @@
 //-----------------------------------------------
 // Copyright 2009 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
-// Released under the GPL license
+// Released under the GPL 
 //-----------------------------------------------
 //
 // Bidirectional graph 
@@ -16,20 +16,7 @@
 #include "GraphCommon.h"
 #include "Vertex.h"
 #include "Edge.h"
-#include <tr1/unordered_map>
-# undef __DEPRECATED
-#include <google/sparse_hash_map>
-#include <ext/hash_map>
-namespace __gnu_cxx                                                                              
-{                                                                                             
-  template<> struct hash< std::string >                                                       
-  {                                                                                           
-    size_t operator()( const std::string& x ) const                                           
-    {                                                                                         
-      return hash< const char* >()( x.c_str() );                                              
-    }                                                                                         
-  };                                                                                          
-}
+#include "HashMap.h"
 
 //
 // Typedefs
@@ -37,7 +24,7 @@ namespace __gnu_cxx
 //typedef std::map<VertexID, Vertex*> VertexPtrMap;
 //typedef __gnu_cxx::hash_map<VertexID, Vertex*> VertexPtrMap;
 //typedef std::tr1::unordered_map<VertexID, Vertex*> VertexPtrMap;
-typedef google::sparse_hash_map<VertexID, Vertex*> VertexPtrMap;
+typedef SparseHashMap<VertexID, Vertex*> VertexPtrMap;
 
 typedef VertexPtrMap::iterator VertexPtrMapIter;
 typedef VertexPtrMap::const_iterator VertexPtrMapConstIter;
