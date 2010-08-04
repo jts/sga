@@ -42,7 +42,15 @@ Bigraph::~Bigraph()
 //
 void Bigraph::addVertex(Vertex* pVert)
 {
-    m_vertices.insert(std::make_pair(pVert->getID(), pVert));
+    std::pair<VertexPtrMapIter, bool> result = 
+           m_vertices.insert(std::make_pair(pVert->getID(), pVert));
+    if(!result.second)
+    {
+        std::cerr << "Error: Attempted to insert vertex into graph with a duplicate id: " <<
+                     pVert->getID() << "\n";
+        std::cerr << "All reads must have a unique identifier\n";
+        exit(1);
+    }
 }
 
 //
