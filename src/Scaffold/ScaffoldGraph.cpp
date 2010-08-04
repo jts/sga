@@ -165,10 +165,7 @@ void ScaffoldGraph::writeDot(const std::string& outFile) const
     ScaffoldVertexMap::const_iterator iter = m_vertices.begin(); 
     for(; iter != m_vertices.end(); ++iter)
     {
-        VertexID id = iter->second->getID();
-        *pWriter << "\"" << id << "\" [ label =\"" << id << "," << iter->second->getSeqLen() << "\" ";
-        *pWriter << "];\n";
-        iter->second->writeEdgesDot(pWriter);
+        iter->second->writeDot(pWriter);
     }
     *pWriter << "}\n";
     delete pWriter;

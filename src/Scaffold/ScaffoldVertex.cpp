@@ -9,7 +9,7 @@
 #include "ScaffoldVertex.h"
 
 //
-ScaffoldVertex::ScaffoldVertex(VertexID id, size_t seqLen) : m_id(id), m_seqLen(seqLen)
+ScaffoldVertex::ScaffoldVertex(VertexID id, size_t seqLen) : m_id(id), m_seqLen(seqLen), m_classification(SVC_UNKNOWN)
 {
 
 }
@@ -59,6 +59,32 @@ size_t ScaffoldVertex::getNumEdges() const
 size_t ScaffoldVertex::getSeqLen() const
 {
     return m_seqLen;
+}
+
+//
+std::string ScaffoldVertex::getColorString() const
+{
+    switch(m_classification)
+    {
+        case SVC_UNKNOWN:
+            return "gray";
+        case SVC_UNIQUE:
+            return "white";
+        case SVC_REPEAT:
+            return "red";
+        default:
+            return "white";
+    }
+}
+
+//
+void ScaffoldVertex::writeDot(std::ostream* pWriter) const
+{
+   VertexID id = getID();
+   *pWriter << "\"" << id << "\" [ label =\"" << id << "," << getSeqLen() << "\" ";
+   *pWriter << "style=\"filled\" fillcolor=\"" << getColorString() << "\" ";
+   *pWriter << "];\n";
+   writeEdgesDot(pWriter);
 }
 
 //
