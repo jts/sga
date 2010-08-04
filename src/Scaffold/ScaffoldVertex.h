@@ -16,12 +16,24 @@ typedef std::vector<ScaffoldEdge*> ScaffoldEdgePtrVector;
 class ScaffoldVertex
 {
     public:
+        
+        //
         ScaffoldVertex(VertexID id, size_t seqLen);
         ~ScaffoldVertex();
         
+        //
         void addEdge(ScaffoldEdge* pEdge);
-
+        
+        //
         VertexID getID() const;
+        size_t getNumEdges() const;
+        size_t getSeqLen() const;
+
+        //
+        ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldEdgeType type);
+            
+        // I/O
+        void writeEdgesDot(std::ostream* pWriter) const;
 
     private:
         VertexID m_id;

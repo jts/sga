@@ -22,6 +22,7 @@ class ScaffoldStatsVisitor
 
     private:
         size_t m_numVertices;
+        size_t m_numEdges;
 };
 
 #endif

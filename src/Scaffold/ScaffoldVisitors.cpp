@@ -13,15 +13,18 @@
 void ScaffoldStatsVisitor::previsit(ScaffoldGraph* /*pGraph*/)
 {
     m_numVertices = 0;
+    m_numEdges = 0;
 }
 
-bool ScaffoldStatsVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* /*pVertex*/)
+bool ScaffoldStatsVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex)
 {
     ++m_numVertices;
+    m_numEdges += pVertex->getNumEdges();
+
     return false;
 }
 
 void ScaffoldStatsVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
 {
-    printf("Scaffold Stats -- Num vertices: %zu\n", m_numVertices);
+    printf("Scaffold Stats -- Num vertices: %zu Num edges: %zu\n", m_numVertices, m_numEdges);
 }

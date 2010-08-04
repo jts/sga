@@ -28,6 +28,7 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+"      -m, --minContingLength=N         only use contigs at least N bp in length to build scaffolds.\n"  
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -35,14 +36,16 @@ namespace opt
     static unsigned int verbose;
     static std::string contigsFile;
     static std::string distanceEstFile;
+    static int minContigLength = 0;
 }
 
-static const char* shortopts = "v";
+static const char* shortopts = "vm:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
+    { "minLength",   required_argument, NULL, 'm' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -59,8 +62,12 @@ int main(int argc, char** argv)
 
     ScaffoldStatsVisitor statsVisitor;
     ScaffoldGraph graph;
-    graph.loadVertices(opt::contigsFile);
+    
+    graph.loadVertices(opt::contigsFile, opt::minContigLength);
+    graph.loadDistanceEstimateEdges(opt::distanceEstFile);
+
     graph.visit(statsVisitor);
+    graph.writeDot("scaffold.dot");
 }
 
 //
@@ -74,6 +81,7 @@ void parseScaffoldOptions(int argc, char** argv)
         {
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case 'm': arg >> opt::minContigLength; break;
             case OPT_HELP:
                 std::cout << SCAFFOLD_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

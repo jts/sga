@@ -24,7 +24,9 @@ class ScaffoldGraph
         ScaffoldGraph();
         ~ScaffoldGraph();
 
-        void loadVertices(const std::string& filename);
+        void loadVertices(const std::string& filename, int minLength);
+        void loadDistanceEstimateEdges(const std::string& filename);
+
         void addVertex(ScaffoldVertex* pVertex);
         void addEdge(ScaffoldVertex* pVertex, ScaffoldEdge* pEdge);
 
@@ -48,6 +50,9 @@ class ScaffoldGraph
         void writeDot(const std::string& outFile) const;
 
     private:
+
+        void parseDERecord(const std::string& record, std::string& id, 
+                           EdgeComp& comp, int& distance, int& numPairs, double& stdDev);
 
         ScaffoldVertexMap m_vertices;
 
