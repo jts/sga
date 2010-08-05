@@ -115,8 +115,8 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
                 }
                 else
                 {
-                    ScaffoldEdge* pEdge1 = new ScaffoldEdge(pVertex2, currDir, comp, distance, numPairs, stdDev, SET_DISTANCEEST);
-                    ScaffoldEdge* pEdge2 = new ScaffoldEdge(pVertex1, !correctDir(currDir, comp), comp, distance, numPairs, stdDev, SET_DISTANCEEST);
+                    ScaffoldEdge* pEdge1 = new ScaffoldEdge(pVertex2, currDir, comp, distance, stdDev, numPairs, SET_DISTANCEEST);
+                    ScaffoldEdge* pEdge2 = new ScaffoldEdge(pVertex1, !correctDir(currDir, comp), comp, distance, stdDev, numPairs, SET_DISTANCEEST);
                     pEdge1->setTwin(pEdge2);
                     pEdge2->setTwin(pEdge1);
 

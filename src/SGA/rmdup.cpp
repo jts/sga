@@ -59,7 +59,7 @@ namespace opt
     static unsigned int numThreads;
     static double errorRate;
     static bool bReindex = true;
-    static int gapArrayStorage = 8;
+    static int gapArrayStorage = 4;
 }
 
 static const char* shortopts = "p:o:e:t:v";
