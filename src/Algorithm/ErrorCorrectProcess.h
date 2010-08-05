@@ -98,6 +98,8 @@ class ErrorCorrectPostProcess
 
         size_t m_totalBases;
         size_t m_totalErrors;
+        size_t m_readsKept;
+        size_t m_readsDiscarded;
 
 };
 

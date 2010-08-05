@@ -167,7 +167,8 @@ ErrorCorrectPostProcess::ErrorCorrectPostProcess(std::ostream* pCorrectedWriter,
                                                       m_pCorrectedWriter(pCorrectedWriter),
                                                       m_pDiscardWriter(pDiscardWriter),
                                                       m_bCollectMetrics(bCollectMetrics),
-                                                      m_totalBases(0), m_totalErrors(0)
+                                                      m_totalBases(0), m_totalErrors(0),
+                                                      m_readsKept(0), m_readsDiscarded(0)
 
 {
 
@@ -182,7 +183,9 @@ void ErrorCorrectPostProcess::writeMetrics(std::ostream* pWriter)
     m_qualityMetrics.write(pWriter, "\nBases corrected by quality value\n\n", "quality");
         
     std::cout << "ErrorCorrect -- Corrected " << m_totalErrors << " out of " << m_totalBases <<
-                 "(" << (double)m_totalErrors / m_totalBases << ")\n";
+                 " bases (" << (double)m_totalErrors / m_totalBases << ")\n";
+    std::cout << "Kept " << m_readsKept << " reads. Discarded " << m_readsDiscarded <<
+                 " reads (" << (double)m_readsDiscarded / m_readsKept << ")\n";
 }
 
 //
@@ -209,10 +212,12 @@ void ErrorCorrectPostProcess::process(const SequenceWorkItem& item, const ErrorC
     if(!discardRead || m_pDiscardWriter == NULL)
     {
         record.write(*m_pCorrectedWriter, ss.str());
+        ++m_readsKept;
     }
     else
     {
         record.write(*m_pDiscardWriter, ss.str());
+        ++m_readsDiscarded;
     }
 }
 
