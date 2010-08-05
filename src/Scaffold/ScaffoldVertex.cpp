@@ -95,7 +95,6 @@ void ScaffoldVertex::writeEdgesDot(std::ostream* pWriter) const
     {
         *pWriter << "\"" << (*iter)->getStartID() << "\" -> \"" << (*iter)->getEndID();
         std::string color = ((*iter)->getDir() == ED_SENSE) ? "black" : "red";
-        std::string label = ((*iter)->getComp() == EC_SAME) ? "S" : "F";
         *pWriter << "\" [";
         *pWriter << "label=\"" << (*iter)->getDistance() << "\" ";
         *pWriter << "color=\"" << color << "\" ";
