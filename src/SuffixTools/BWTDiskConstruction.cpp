@@ -258,7 +258,7 @@ void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string
     // Compute the gap array
     BWT* pBWT = new BWT(bwt_filename);
 
-    GapArray* pGapArray = new SimpleGapArray;
+    GapArray* pGapArray = new SparseGapArray4;
     size_t num_strings_remove;
     size_t num_symbols_remove;
     computeGapArray(pReader, (size_t)-1, pBWT, doReverse, numThreads, pGapArray, true, num_strings_remove, num_symbols_remove);
@@ -371,7 +371,7 @@ int64_t merge(SeqReader* pReader,
     int64_t curr_idx = item1.start_index;
     
     // Compute the gap/rank array
-    GapArray* pGapArray = new SparseGapArray8;
+    GapArray* pGapArray = new SparseGapArray4;
     size_t num_strings_read = 0;
     size_t num_symbols_read = 0;
     computeGapArray(pReader, n, pBWTInternal, doReverse, numThreads, pGapArray, 
