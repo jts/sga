@@ -55,6 +55,8 @@ static const char *CORRECT_USAGE_MESSAGE =
 "                                       is specified (see above). This parameter defaults to the same value as --seed-length\n"
 "      -a, --algorithm=STR              the correction algorithm to use. STR must be one of simple,conflict or trie\n"
 "      -c, --conflict=INT               use INT as the threshold to detect a conflicted base in the multi-overlap\n"
+"          --metrics=FILE               collect error correction metrics (error rate by position in read, etc) and write\n"
+"                                       them to FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -69,6 +71,7 @@ namespace opt
     static std::string readsFile;
     static std::string outFile;
     static std::string discardFile;
+    static std::string metricsFile;
 
     static double errorRate;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
@@ -80,7 +83,7 @@ namespace opt
 
 static const char* shortopts = "p:m:d:e:t:l:s:o:r:a:c:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS };
 
 static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
@@ -96,6 +99,7 @@ static const struct option longopts[] = {
     { "conflict",    required_argument, NULL, 'c' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
+    { "metrics",     required_argument, NULL, OPT_METRICS },
     { NULL, 0, NULL, 0 }
 };
 
@@ -116,7 +120,9 @@ int correctMain(int argc, char** argv)
     
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = createWriter(opt::discardFile);
-    ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter);
+    bool bCollectMetrics = !opt::metricsFile.empty();
+
+    ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter, bCollectMetrics);
 
     if(opt::numThreads <= 1)
     {
@@ -146,11 +152,20 @@ int correctMain(int argc, char** argv)
         }
     }
 
+    if(bCollectMetrics)
+    {
+        std::ostream* pMetricsWriter = createWriter(opt::metricsFile);
+        postProcessor.writeMetrics(pMetricsWriter);
+        delete pMetricsWriter;
+    }
+
     delete pBWT;
     delete pRBWT;
     delete pOverlapper;
     delete pWriter;
     delete pTimer;
+
+
     if(opt::numThreads > 1)
         pthread_exit(NULL);
 
@@ -181,6 +196,7 @@ void parseCorrectOptions(int argc, char** argv)
             case 'c': arg >> opt::conflictCutoff; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_METRICS: arg >> opt::metricsFile; break;
             case OPT_HELP:
                 std::cout << CORRECT_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

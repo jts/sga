@@ -36,5 +36,6 @@ libutil_a_SOURCES = \
         SimplePool.h \
         mkqs.h \
         bucketSort.h \
-        HashMap.h
+        HashMap.h \
+		Metrics.h
 

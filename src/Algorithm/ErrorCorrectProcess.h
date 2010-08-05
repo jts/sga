@@ -10,18 +10,19 @@
 #ifndef CORRECTROCESS_H
 #define CORRECTPROCESS_H
 
+#include "Util.h"
+#include "OverlapAlgorithm.h"
+#include "SequenceProcessFramework.h"
+#include "SequenceWorkItem.h"
+#include "MultiOverlap.h"
+#include "Metrics.h"
+
 enum ErrorCorrectAlgorithm
 {
     ECA_TRIE, // aggressive trie-based correction of conflicted sequences
     ECA_CC, // conflict-aware consensus
     ECA_SIMPLE // straightforward correct
 };
-
-#include "Util.h"
-#include "OverlapAlgorithm.h"
-#include "SequenceProcessFramework.h"
-#include "SequenceWorkItem.h"
-#include "MultiOverlap.h"
 
 enum ECFlag
 {
@@ -75,12 +76,29 @@ class ErrorCorrectProcess
 class ErrorCorrectPostProcess
 {
     public:
-        ErrorCorrectPostProcess(std::ostream* pCorrectedWriter, std::ostream* pDiscardWriter);
+        ErrorCorrectPostProcess(std::ostream* pCorrectedWriter, 
+                                std::ostream* pDiscardWriter, bool bCollectMetrics);
+
         void process(const SequenceWorkItem& item, const ErrorCorrectResult& result);
+        void writeMetrics(std::ostream* pWriter);
 
     private:
+
+        void collectMetrics(const std::string& originalSeq, 
+                            const std::string& correctedSeq, const std::string& qualityStr);
+
         std::ostream* m_pCorrectedWriter;
         std::ostream* m_pDiscardWriter;
+        bool m_bCollectMetrics;
+
+        ErrorCountMap<char> m_qualityMetrics;
+        ErrorCountMap<int> m_positionMetrics;
+        ErrorCountMap<char> m_originalBaseMetrics;
+        ErrorCountMap<std::string> m_precedingSeqMetrics;
+
+        size_t m_totalBases;
+        size_t m_totalErrors;
+
 };
 
 #endif

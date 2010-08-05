@@ -162,25 +162,49 @@ std::string ErrorCorrectProcess::makeIdxString(int64_t idx)
 //
 //
 ErrorCorrectPostProcess::ErrorCorrectPostProcess(std::ostream* pCorrectedWriter,
-                                                 std::ostream* pDiscardWriter) : 
+                                                 std::ostream* pDiscardWriter,
+                                                 bool bCollectMetrics) : 
                                                       m_pCorrectedWriter(pCorrectedWriter),
-                                                      m_pDiscardWriter(pDiscardWriter)
+                                                      m_pDiscardWriter(pDiscardWriter),
+                                                      m_bCollectMetrics(bCollectMetrics),
+                                                      m_totalBases(0), m_totalErrors(0)
 
 {
 
 }
 
 //
+void ErrorCorrectPostProcess::writeMetrics(std::ostream* pWriter)
+{
+    m_positionMetrics.write(pWriter, "Bases corrected by position\n", "pos");
+    m_originalBaseMetrics.write(pWriter, "\nOriginal base that was corrected\n", "base");
+    m_precedingSeqMetrics.write(pWriter, "\nkmer preceding the corrected base\n", "kmer");
+    m_qualityMetrics.write(pWriter, "\nBases corrected by quality value\n\n", "quality");
+        
+    std::cout << "ErrorCorrect -- Corrected " << m_totalErrors << " out of " << m_totalBases <<
+                 "(" << (double)m_totalErrors / m_totalBases << ")\n";
+}
+
+//
 void ErrorCorrectPostProcess::process(const SequenceWorkItem& item, const ErrorCorrectResult& result)
 {
+    
+    // Determine if the read should be discarded
+    bool discardRead = result.num_prefix_overlaps == 0 || result.num_suffix_overlaps == 0;
+
+    // Collect metrics for the reads that were actually corrected
+    if(m_bCollectMetrics && !discardRead)
+    {
+        collectMetrics(item.read.seq.toString(), 
+                       result.correctSequence.toString(), 
+                       item.read.qual);
+    }
+
     SeqRecord record = item.read;
     record.seq = result.correctSequence;
     std::stringstream ss;
     ss << "PO:" << result.num_prefix_overlaps;
     ss << " SO:" << result.num_suffix_overlaps;
-
-    // Determine if the read should be discarded
-    bool discardRead = result.num_prefix_overlaps == 0 || result.num_suffix_overlaps == 0;
 
     if(!discardRead || m_pDiscardWriter == NULL)
     {
@@ -189,5 +213,43 @@ void ErrorCorrectPostProcess::process(const SequenceWorkItem& item, const ErrorC
     else
     {
         record.write(*m_pDiscardWriter, ss.str());
+    }
+}
+
+void ErrorCorrectPostProcess::collectMetrics(const std::string& originalSeq,
+                                             const std::string& correctedSeq,
+                                             const std::string& qualityStr)
+{
+    size_t precedingLen = 2;
+    for(size_t i = 0; i < originalSeq.length(); ++i)
+    {
+        char qc = qualityStr[i];
+        char ob = originalSeq[i];
+
+        ++m_totalBases;
+        
+        m_positionMetrics.incrementSample(i);
+        m_qualityMetrics.incrementSample(qc);
+        m_originalBaseMetrics.incrementSample(ob);
+
+        std::string precedingMer;
+        if(i > precedingLen)
+        {
+            precedingMer = originalSeq.substr(i - precedingLen, precedingLen);
+            m_precedingSeqMetrics.incrementSample(precedingMer);
+        }
+
+        if(originalSeq[i] != correctedSeq[i])
+        {
+            m_positionMetrics.incrementError(i);
+            m_qualityMetrics.incrementError(qc);
+            m_originalBaseMetrics.incrementError(ob);
+
+            if(!precedingMer.empty())
+            {
+                m_precedingSeqMetrics.incrementError(precedingMer);
+            }
+            ++m_totalErrors;
+        }
     }
 }
