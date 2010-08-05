@@ -58,7 +58,6 @@ class MultiOverlap
         void setPartition(size_t idx, int p);
         std::string consensusConflict(double p_error, int conflictCutoff);
 
-        void partitionBest(double p_error, size_t n);
         void makeSeqTries(double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie);
 
         // Count the number of members in the given partition
@@ -79,14 +78,7 @@ class MultiOverlap
         // OvrP ---------
         // OvrX           -------------
         int calculateCoverageOverlap();
-
-        double calculateLikelihood() const;
-        double calculateGroupedLikelihood() const;
         std::string calculateConsensusFromPartition(double p_error);
-
-        DNADouble calcAlphaProb(size_t idx) const;
-        AlphaCount calcAlphaCount(size_t idx) const;
-        void calcProb() const;
 
         char getMODBase(const MOData& mod, int idx) const;
 

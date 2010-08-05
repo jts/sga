@@ -88,16 +88,6 @@ class Vertex
         // Construct a trie from the edges, one for each each direction
         void fillTries(double p_error, SeqTrie* pSenseTrie, SeqTrie* pAntisenseTrie) const;
 
-        // Return the inferred quality value for each base in the sequence
-        // using the overlap information
-        QualityVector getInferredQuality() const;
-
-        //
-        std::string getInferredConsensus() const;
-
-        // Return the prior probabiltiy based on quality scores
-        QualityVector getPriorQuality() const;
-
         // Edge list operations
         void addEdge(Edge* ep);
         void removeEdge(Edge* pEdge);

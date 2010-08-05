@@ -77,7 +77,7 @@ std::string MultiOverlap::simpleConsensus() const
 }
 
 // Determine if this multi-overlap has a conflicted position,
-// a position in the multioverlap where the second-most 
+// which is a position in the multioverlap where the second-most 
 // prevalent base has a frequency greater than cutoff
 bool MultiOverlap::isConflicted(size_t cutoff) const
 {
@@ -123,9 +123,15 @@ size_t MultiOverlap::getNumBases() const
     return count;
 }
 
-//
+// Conflict-aware consensus algorithm
+// For each position of the read, it calculates whether that position is conflicted (there is 
+// sufficient support for an alternative base at that position). All reads that differ from the
+// root read at a conflicted position are filtered out. The remaining set of reads match the root read
+// at all the conflicted positions and the consensus is called from this set. Bases that are not conflicted
+// are called from the entire set of overlaps.
 std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
 {
+    // Calculate the frequency vector for each base of the read
     std::vector<AlphaCount> acVec;
     for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
@@ -134,74 +140,67 @@ std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
         acVec.push_back(ac);
     }
 
+    // Filter out overlaps that do not match the reference
+    // at conflicted positions
     for(size_t j = 0; j < m_overlaps.size(); ++j)
     {
-        std::string cstr;
-        std::string sc;
-        std::string nc;
-
-        int score = 0;
-        int sum = 0;
-        int wrong = 0;
+        int numMatch = 0;
+        int numMismatch = 0;
+        int numConflicted = 0;
         for(size_t i = 0; i < acVec.size(); ++i)
         {
             char rootBase = m_rootSeq[i];
             char sorted[ALPHABET_SIZE];
             acVec[i].getSorted(sorted, ALPHABET_SIZE);
             int second = acVec[i].get(sorted[1]);
+
+            // If the second-most prevelent base is above the conflict cutoff,
+            // call this position conflicted
             bool isConflict = second > conflictCutoff;
+
+            // Get the basecall for read j at position i
             char b = getMODBase(m_overlaps[j], i);
 
             if(isConflict)
             {
+                // Check if the read matches the root if:
+                // a) the read contains a basecall at this position (it overlaps
+                //  the read at this position)
+                // b) the root read base is one of the two most frequent bases 
+                //  (to filter out sequencing errors at this position in the root).
                 if(b != '\0' && (rootBase == sorted[0] || rootBase == sorted[1]))
                 {
                     if(b == rootBase)
-                        ++score;
+                        ++numMatch;
                     else
-                        ++wrong;
-                    ++sum;
-                }
-
-                if(b == sorted[0] || b == sorted[1])
-                {
-                    nc.push_back(b);
-                }
-                else
-                {
-                    nc.push_back('N');
+                        ++numMismatch;
+                    ++numConflicted;
                 }
             }
-            
-            if(b != '\0')
-                cstr.push_back(b);    
-            else
-                cstr.push_back('N');
         }
 
+        // Set the overlap score to be the fraction of conflict bases that this read
+        // matches the root read at. 
         double frac;
-        if(sum == 0)
+        if(numConflicted == 0)
             frac = 1.0f;
         else
-            frac = (double)score/(double)sum;
-
+            frac = (double)numMatch/(double)numConflicted;
         m_overlaps[j].score = frac;
-        if(sum > 0 && wrong > 0)
+
+        // Filter out the read if there are any conflicted bases
+        // that this read does not match the root read at
+        if(numConflicted > 0 && numMismatch > 0)
             m_overlaps[j].partitionID = 1;
         else
             m_overlaps[j].partitionID = 0;
-
-        //printf("CFT\t*%s\t%d,%lf\t%s\n", cstr.c_str(), (int)j, frac, nc.c_str());
     }
 
-    /*
-    std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
-    for(size_t i = 0; i < m_overlaps.size() && i < 15; ++i)
-    {
-        m_overlaps[i].partitionID = 0;
-    }
-    */
+    // Perform the consensus calculation with the remaining reads
     std::string consensus = calculateConsensusFromPartition(p_error);
+
+    // For the bases that aren't conflicted, just set the bases to be the most frequent base
+    // using all the reads
     for(size_t i = 0; i < acVec.size(); ++i)
     {
         char sorted[ALPHABET_SIZE];
@@ -215,43 +214,6 @@ std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
     }
     
     return consensus;
-}
-
-void MultiOverlap::partitionBest(double p_error, size_t n)
-{
-    // Compute the likelihood of the alignment between the root sequence
-    // and every member of the multioverlap
-    for(size_t i = 0; i < m_overlaps.size(); ++i)
-    {
-        double likelihood = 0.0f;
-        double total_bases = 0;
-        double mismatches = 0;
-        double overlap_len = 0;
-        for(size_t j = 0; j < m_rootSeq.size(); ++j)
-        {
-            Pileup pileup = getSingletonPileup(j, i);
-            if(pileup.getDepth() == 2)
-            {
-                ++overlap_len;
-                if(pileup.getBase(0) != pileup.getBase(1))
-                {
-                    ++mismatches;
-                }
-            }
-            DNADouble ap = pileup.calculateLikelihoodNoQuality(p_error);
-            likelihood += ap.marginalize(0.25f);
-            total_bases += pileup.getDepth();
-        }
-
-        m_overlaps[i].score = likelihood / total_bases;
-        m_overlaps[i].partitionID = 1;
-        //std::cout << "ERS\t" << m_overlaps[i].score << "\t" << likelihood << "\n";
-    }
-
-    std::sort(m_overlaps.begin(), m_overlaps.end(), MOData::compareScore);
-
-    for(size_t i = 0; i < m_overlaps.size() && i < n; ++i)
-        m_overlaps[i].partitionID = 0;
 }
 
 // Construct the left and right seqtries representing the multioverlap
@@ -364,110 +326,6 @@ std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
         }
     }
     return out;
-}
-
-// Compute the likelihood of the multioverlap
-double MultiOverlap::calculateLikelihood() const
-{
-    WARN_ONCE("Compute likelihood using fixed error rate");
-
-    double likelihood = 0.0f;
-    for(size_t i = 0; i < m_rootSeq.size(); ++i)
-    {
-        Pileup pileup = getPileup(i);
-        DNADouble ap = pileup.calculateLikelihoodNoQuality(0.01);
-        likelihood += ap.marginalize(0.25f);
-    }
-    return likelihood;
-}
-
-// Calculate the likelihood of the multioverlap given the groups defined by IntVector
-// There are only two possible groups, 0 and 1. The root_sequence (index 0 in the vector) is assumed to belong
-// to group 1
-double MultiOverlap::calculateGroupedLikelihood() const
-{
-    double likelihood = 0.0f;
-    for(size_t i = 0; i < m_rootSeq.size(); ++i)
-    {
-        Pileup g0;
-        Pileup g1;
-        getPartitionedPileup(i, g0, g1);
-        if(g0.getDepth() > 0)
-            likelihood += g0.calculateLikelihoodNoQuality(0.01).marginalize(0.25f);
-        if(g1.getDepth() > 0)
-            likelihood += g1.calculateLikelihoodNoQuality(0.01).marginalize(0.25f);
-    }
-    return likelihood;
-}
-
-
-// Calculate the probability of the 4 bases given the multi-overlap
-// for a single position
-DNADouble MultiOverlap::calcAlphaProb(size_t idx) const
-{
-    Pileup pileup = getPileup(idx);
-    return pileup.calculateSimpleAlphaProb();
-}
-
-// Get the number of times each base appears at position
-// idx in the multi-align
-AlphaCount MultiOverlap::calcAlphaCount(size_t idx) const
-{
-    Pileup pileup = getPileup(idx);
-    return pileup.getAlphaCount();
-}
-
-
-// Calculate the probability of this multioverlap
-void MultiOverlap::calcProb() const
-{
-    for(size_t i = 0; i < m_rootSeq.size(); ++i)
-    {
-        Pileup pileup = getPileup(i);
-        if(pileup.getDepth() > 1)
-        {
-            char cnsBase = pileup.calculateSimpleConsensus();
-            DNADouble ap = pileup.calculateSimpleAlphaProb();
-            char refBase = pileup.getBase(0);
-            
-            if(refBase != cnsBase)
-            {
-                int ref_count = pileup.getCount(pileup.getBase(0));
-                int cons_count = pileup.getCount(cnsBase);
-                int depth = pileup.getDepth();
-                double rp = ap.get(refBase);
-                double cp = ap.get(cnsBase);
-                printf("CNS\t%d\t%d\t%d\t%lf\t%lf\n", ref_count, cons_count, depth, rp, cp);
-            }
-        }
-    }
-
-    /*
-    int numMismatches = 0;
-    int numAlignedBases = 0;
-    double errorRate = 0.01;
-
-    for(size_t i = 0; i < m_rootSeq.size(); ++i)
-    {
-        Pileup pileup = getPileup(i);
-        if(pileup.getDepth() > 1)
-        {
-            char consensus = pileup.calculateSimpleConsensus();
-            
-            // Calculate the number of bases in the pileup that do not match the consensus
-            for(size_t j = 0; j < pileup.getDepth(); ++j)
-            {
-                if(pileup.getBase(j) != consensus)
-                    ++numMismatches;
-                ++numAlignedBases;
-            }
-        }
-    }
-
-    double actualRate = double(numMismatches) / double(numAlignedBases);
-    double expectedMismatches = errorRate * double(numAlignedBases);
-    printf("MM\t%d\t%lf\t%d\t%lf\t%lf\n", numMismatches, expectedMismatches, numAlignedBases, actualRate, errorRate);
-    */
 }
 
 // Return the base in mod that matches the base at
