@@ -16,6 +16,7 @@
 #include "SAWriter.h"
 #include "SAReader.h"
 #include "GapArray.h"
+#include "SparseGapArray.h"
 #include "RankProcess.h"
 #include "SequenceProcessFramework.h"
 
@@ -48,15 +49,15 @@ int64_t merge(SeqReader* pReader,
 //
 void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
                       const MergeItem& internalItem, const std::string& bwt_outname,
-                      const std::string& sai_outname, const GapArray& gap_array);
+                      const std::string& sai_outname, const GapArray* pGapArray);
 
 void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
                        const std::string& bwt_outname, const std::string& sai_outname, 
                        size_t num_strings_remove, size_t num_symbols_remove,
-                       const GapArray& gap_array);
+                       const GapArray* pGapArray);
 
 void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doReverse, 
-                     int numThreads, GapArray& gap_array, bool removeMode,
+                     int numThreads, GapArray* pGapArray, bool removeMode,
                      size_t& num_strings_read, size_t& num_symbols_read);
 
 //
@@ -257,17 +258,18 @@ void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string
     // Compute the gap array
     BWT* pBWT = new BWT(bwt_filename);
 
-    GapArray gap_array;
+    GapArray* pGapArray = new SimpleGapArray;
     size_t num_strings_remove;
     size_t num_symbols_remove;
-    computeGapArray(pReader, (size_t)-1, pBWT, doReverse, numThreads, gap_array, true, num_strings_remove, num_symbols_remove);
+    computeGapArray(pReader, (size_t)-1, pBWT, doReverse, numThreads, pGapArray, true, num_strings_remove, num_symbols_remove);
 
     //writeRemovalIndex();
-    writeRemovalIndex(pBWT, sai_filename, bwt_out_name, sai_out_name, num_strings_remove, num_symbols_remove, gap_array);
+    writeRemovalIndex(pBWT, sai_filename, bwt_out_name, sai_out_name, num_strings_remove, num_symbols_remove, pGapArray);
 
     // Perform the actual merge
     //merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse, numThreads);
 
+    delete pGapArray;
     delete pReader;
     delete pBWT;
 }
@@ -302,18 +304,17 @@ void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2
 }
 
 // Compute the gap array for the first n items in pReader
-// Returns the number of sequences that were processed
-void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doReverse, int numThreads, GapArray& gap_array, 
+void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doReverse, int numThreads, GapArray* pGapArray, 
                      bool removeMode, size_t& num_strings_read, size_t& num_symbols_read)
 {
     // Create the gap array
     size_t gap_array_size = pBWT->getBWLen() + 1;
-    gap_array.resize(gap_array_size, 0);
+    pGapArray->resize(gap_array_size);
 
     // The rank processor calculates the rank of every suffix of a given sequence
     // and returns a vector of ranks. The postprocessor takes in the vector
     // and updates the gap array
-    RankPostProcess postProcessor(&gap_array);
+    RankPostProcess postProcessor(pGapArray);
     size_t numProcessed = 0;
     if(numThreads <= 1)
     {
@@ -360,67 +361,40 @@ int64_t merge(SeqReader* pReader,
 
     // Load the bwt of item2 into memory as the internal bwt
     BWT* pBWTInternal = new BWT(item2.bwt_filename);
-
-    // Create the gap array
-    size_t gap_array_size = pBWTInternal->getBWLen() + 1;
-    GapArray gap_array(gap_array_size, 0);
-
-    // Calculate the rank of every read from item1.start_index to item1.end_index
-    // and increment the gap counts
-    int64_t curr_idx = item1.start_index;
-
+    
     // If end_index is -1, calculate the ranks for every sequence in the file
     // otherwise only calculate the rank for the next (end_index - start_index + 1) sequences
     size_t n = (item1.end_index == -1) ? -1 : item1.end_index - item1.start_index + 1;
-
-    // The rank processor calculates the rank of every suffix of a given sequence
-    // and returns a vector of ranks. The postprocessor takes in the vector
-    // and updates the gap array
-    RankPostProcess postProcessor(&gap_array);
-    size_t numProcessed = 0;
-    if(numThreads <= 1)
-    {
-        RankProcess processor(pBWTInternal, doReverse, false);
-
-        numProcessed = 
-           SequenceProcessFramework::processSequencesSerial<RankVector, 
-                                                            RankProcess, 
-                                                            RankPostProcess>(*pReader, &processor, &postProcessor, n);
-    }
-    else
-    {
-        typedef std::vector<RankProcess*> RankProcessVector;
-        RankProcessVector rankProcVec;
-        for(int i = 0; i < numThreads; ++i)
-        {
-            RankProcess* pProcess = new RankProcess(pBWTInternal, doReverse, false);
-            rankProcVec.push_back(pProcess);
-        }
     
-        numProcessed = 
-           SequenceProcessFramework::processSequencesParallel<RankVector, 
-                                                              RankProcess, 
-                                                              RankPostProcess>(*pReader, rankProcVec, &postProcessor, n);
+    // Calculate the rank of every read from item1.start_index to item1.end_index
+    // and increment the gap counts
+    int64_t curr_idx = item1.start_index;
+    
+    // Compute the gap/rank array
+    GapArray* pGapArray = new SparseGapArray8;
+    size_t num_strings_read = 0;
+    size_t num_symbols_read = 0;
+    computeGapArray(pReader, n, pBWTInternal, doReverse, numThreads, pGapArray, 
+                    false, num_strings_read, num_symbols_read);
 
-        for(int i = 0; i < numThreads; ++i)
-            delete rankProcVec[i];
-    }
+    assert(n == (size_t)-1 || (num_strings_read == n));
 
-    assert(n == (size_t)-1 || (numProcessed == n));
     // At this point, the gap array has been calculated for all the sequences
-    curr_idx += numProcessed;
+    curr_idx += num_strings_read;
     assert(item1.end_index == -1 || (curr_idx == item1.end_index + 1 && curr_idx == item2.start_index));
 
     // Write the merged BWT/SAI to disk
-    writeMergedIndex(pBWTInternal, item1, item2, bwt_outname, sai_outname, gap_array);
+    writeMergedIndex(pBWTInternal, item1, item2, bwt_outname, sai_outname, pGapArray);
+
     delete pBWTInternal;
+    delete pGapArray;
     return curr_idx;
 }
 
 // Merge the internal and external BWTs and the SAIs
 void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
                       const MergeItem& internalItem, const std::string& bwt_outname,
-                      const std::string& sai_outname, const GapArray& gap_array)
+                      const std::string& sai_outname, const GapArray* pGapArray)
 {
     IBWTWriter* pBWTWriter = BWTWriter::createWriter(bwt_outname);
     IBWTReader* pBWTExtReader = BWTReader::createReader(externalItem.bwt_filename);
@@ -455,9 +429,9 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
     // sai file.
     size_t num_bwt_wrote = 0;
     size_t num_sai_wrote = 0;
-    for(size_t i = 0; i < gap_array.size(); ++i)
+    for(size_t i = 0; i < pGapArray->size(); ++i)
     {
-        size_t v = gap_array[i];
+        size_t v = pGapArray->get(i);
         for(size_t j = 0; j < v; ++j)
         {
             char b = pBWTExtReader->readBWChar();
@@ -518,7 +492,7 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
 void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
                        const std::string& bwt_outname, const std::string& sai_outname, 
                        size_t num_strings_remove, size_t num_symbols_remove,
-                       const GapArray& gap_array)
+                       const GapArray* pGapArray)
 {
     IBWTWriter* pBWTWriter = BWTWriter::createWriter(bwt_outname);
     
@@ -558,7 +532,7 @@ void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
     size_t i = 0;
     while(i < input_symbols)
     {
-        size_t v = gap_array[i];
+        size_t v = pGapArray->get(i);
         // If v is zero we output a single symbol, otherwise
         // we skip v elements. 
         size_t num_to_read = (v == 0) ? 1 : v;

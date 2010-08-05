@@ -98,6 +98,6 @@ void RankPostProcess::process(const SequenceWorkItem& /*item*/, const RankVector
 
     for(RankVector::const_iterator iter = result.begin(); iter != result.end(); ++iter)
     {
-        incrementGapArray(*iter, *m_pGapArray);
+        m_pGapArray->increment(*iter);
     }
 }

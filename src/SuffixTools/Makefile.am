@@ -31,4 +31,5 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
                            BWTReaderAscii.h BWTReaderAscii.cpp \
                            BWT.h \
                            BWTInterval.h \
-                           HitData.h
+                           HitData.h \
+                           SparseGapArray.h
