@@ -59,6 +59,7 @@ namespace opt
     static unsigned int numThreads;
     static double errorRate;
     static bool bReindex = true;
+    static int gapArrayStorage = 8;
 }
 
 static const char* shortopts = "p:o:e:t:v";
@@ -124,8 +125,8 @@ void rmdup()
     if(opt::bReindex)
     {
         std::cout << "Rebuilding indices without duplicated reads\n";
-        removeReadsFromIndices(opt::prefix, dupsFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
-        removeReadsFromIndices(opt::prefix, dupsFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
+        removeReadsFromIndices(opt::prefix, dupsFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
+        removeReadsFromIndices(opt::prefix, dupsFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
     }
 }
 

@@ -38,6 +38,11 @@ static const char *MERGE_USAGE_MESSAGE =
 "  -t, --threads=NUM                    use NUM threads to merge the indices (default: 1)\n"
 "  -p, --prefix=PREFIX                  write final index to file using PREFIX (the default is to concatenate the input filenames)\n"
 "  -r, --remove                         remove the original BWT, SAI and reads files after the merge\n"
+"  -g, --gap-array=N                    use N bits of storage for each element of the gap array. Acceptable values are 4,8,16 or 32. Lower\n"
+"                                       values can substantially reduce the amount of memory required at the cost of less predictable memory usage.\n"
+"                                       When this value is set to 32, the memory requirement is essentially deterministic and requires ~5N bytes where\n"
+"                                       N is the size of the FM-index of READS2.\n"
+"                                       The default value is 8.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -46,9 +51,10 @@ namespace opt
     static std::string prefix;
     static int numThreads = 1;
     static bool bRemove;
+    static int gapArrayStorage = 8;
 }
 
-static const char* shortopts = "p:m:t:vr";
+static const char* shortopts = "p:m:t:g:vr";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -57,6 +63,7 @@ static const struct option longopts[] = {
     { "prefix",      required_argument, NULL, 'p' },
     { "remove",      no_argument,       NULL, 'r' },
     { "threads",     required_argument, NULL, 't' },
+    { "gap-array",   required_argument, NULL, 'g' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -85,8 +92,8 @@ int mergeMain(int argc, char** argv)
     }
 
     // Merge the forward and reverse indices
-    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
-    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
+    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
+    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
 
     // Merge the read files
     mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
@@ -132,6 +139,7 @@ void parseMergeOptions(int argc, char** argv)
             case 'r': opt::bRemove = true; break;
             case '?': die = true; break;
             case 't': arg >> opt::numThreads; break;
+            case 'g': arg >> opt::gapArrayStorage; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
                 std::cout << MERGE_USAGE_MESSAGE;
@@ -140,6 +148,13 @@ void parseMergeOptions(int argc, char** argv)
                 std::cout << MERGE_VERSION_MESSAGE;
                 exit(EXIT_SUCCESS);
         }
+    }
+
+    if(opt::gapArrayStorage != 4 && opt::gapArrayStorage != 8 &&
+       opt::gapArrayStorage != 16 && opt::gapArrayStorage != 32)
+    {
+        std::cerr << SUBPROGRAM ": invalid argument, --gap-array,-g must be one of 4,8,16,32 (found: " << opt::gapArrayStorage << ")\n";
+        die = true;
     }
 
     if(opt::numThreads <= 0)

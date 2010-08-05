@@ -16,7 +16,6 @@
 #include "SAWriter.h"
 #include "SAReader.h"
 #include "GapArray.h"
-#include "SparseGapArray.h"
 #include "RankProcess.h"
 #include "SequenceProcessFramework.h"
 
@@ -43,7 +42,7 @@ typedef std::vector<MergeItem> MergeVector;
 int64_t merge(SeqReader* pReader, 
               const MergeItem& item1, const MergeItem& item2, 
               const std::string& bwt_outname, const std::string& sai_outname,
-              bool doReverse, int numThreads);
+              bool doReverse, int numThreads, int storageLevel);
 
 
 //
@@ -71,7 +70,7 @@ std::string makeFilename(const std::string& prefix, const std::string& extension
 // to create the final BWT
 void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
                   const std::string& bwt_extension, const std::string& sai_extension,
-                  bool doReverse, int numThreads, int numReadsPerBatch)
+                  bool doReverse, int numThreads, int numReadsPerBatch, int storageLevel)
 {
     size_t MAX_READS_PER_GROUP = numReadsPerBatch;
 
@@ -153,7 +152,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
                 // Perform the actual merge
                 int64_t curr_idx = merge(pReader, item1, item2, 
                                          bwt_merged_name, sai_merged_name, 
-                                         doReverse, numThreads);
+                                         doReverse, numThreads, storageLevel);
 
                 // pReader now points to the end of item1's block of 
                 // reads. Skip item2's reads
@@ -210,7 +209,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 // Merge the indices for the two independent sets of reads in readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
                              const std::string& outPrefix, const std::string& bwt_extension, 
-                             const std::string& sai_extension, bool doReverse, int numThreads)
+                             const std::string& sai_extension, bool doReverse, int numThreads, int storageLevel)
 {
     MergeItem item1;
     std::string prefix1 = stripFilename(readsFile1);
@@ -236,14 +235,14 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     std::string sai_merged_name = makeFilename(outPrefix, sai_extension);
 
     // Perform the actual merge
-    merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse, numThreads);
+    merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse, numThreads, storageLevel);
     delete pReader;
 }
 
 // Construct new indices without the reads in readsToRemove
 void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string& readsToRemove,
                              const std::string& outPrefix, const std::string& bwt_extension, 
-                             const std::string& sai_extension, bool doReverse, int numThreads)
+                             const std::string& sai_extension, bool doReverse, int numThreads, int storageLevel)
 {
     std::string bwt_filename = makeFilename(allReadsPrefix, bwt_extension);
     std::string sai_filename = makeFilename(allReadsPrefix, sai_extension);
@@ -258,7 +257,8 @@ void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string
     // Compute the gap array
     BWT* pBWT = new BWT(bwt_filename);
 
-    GapArray* pGapArray = new SparseGapArray4;
+    GapArray* pGapArray = createGapArray(storageLevel);
+
     size_t num_strings_remove;
     size_t num_symbols_remove;
     computeGapArray(pReader, (size_t)-1, pBWT, doReverse, numThreads, pGapArray, true, num_strings_remove, num_symbols_remove);
@@ -354,7 +354,7 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
 int64_t merge(SeqReader* pReader,
               const MergeItem& item1, const MergeItem& item2,
               const std::string& bwt_outname, const std::string& sai_outname,
-              bool doReverse, int numThreads)
+              bool doReverse, int numThreads, int storageLevel)
 {
     std::cout << "Merge1: " << item1 << "\n";
     std::cout << "Merge2: " << item2 << "\n";
@@ -371,7 +371,7 @@ int64_t merge(SeqReader* pReader,
     int64_t curr_idx = item1.start_index;
     
     // Compute the gap/rank array
-    GapArray* pGapArray = new SparseGapArray4;
+    GapArray* pGapArray = createGapArray(storageLevel);
     size_t num_strings_read = 0;
     size_t num_symbols_read = 0;
     computeGapArray(pReader, n, pBWTInternal, doReverse, numThreads, pGapArray, 

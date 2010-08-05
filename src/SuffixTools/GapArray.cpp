@@ -8,6 +8,7 @@
 // the number of times a suffix of a given rank occurs in a data set
 //
 #include "GapArray.h"
+#include "SparseGapArray.h"
 
 // SimpleGapArray
 SimpleGapArray::SimpleGapArray()
@@ -40,6 +41,27 @@ size_t SimpleGapArray::get(size_t i) const
 size_t SimpleGapArray::size() const
 {
     return m_data.size();
+}
+
+// Construct a gap array for the given underlying storage storage
+GapArray* createGapArray(int storage)
+{
+    switch(storage)
+    {
+        case 4:
+            return new SparseGapArray4;
+        case 8:
+            return new SparseGapArray8;
+        case 16:
+            return new SparseGapArray16;
+        case 32:
+            return new SparseGapArray32;
+        default:
+        {
+            std::cerr << "Invalid gap array storage parameter: " << storage << "\n";
+            exit(1);
+        }
+    }
 }
 
 // Increment the gap array for each suffix of seq

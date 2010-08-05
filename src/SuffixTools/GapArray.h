@@ -51,7 +51,7 @@ class SimpleGapArray : public GapArray
 
 //typedef uint32_t GAP_TYPE;
 //typedef std::vector<GAP_TYPE> GapArray;
-
+GapArray* createGapArray(int storage);
 void updateGapArray(const DNAString& w, const BWT* pBWTInternal, GapArray* pGapArray);
 void analyzeGapArray(GapArray* pGapArray);
 

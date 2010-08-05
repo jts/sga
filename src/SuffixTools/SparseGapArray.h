@@ -22,37 +22,7 @@
 #define SPARSEGAPARRAY_H
 
 #include "HashMap.h"
-
-/* 
-// This is a simple wrapper around one of the standard 
-// integer representations, uint8_t, uint16_t, etc
-template<class IntType>
-class SimpleIntStorage
-{
-    IntType() : m_value(0) {}
-    
-    void increment() { ++m_value; }
-    IntType get() { return m_value; }
-    void set(IntType v) { m_value = v; }
-    
-    // Return the maximum representable value with IntType
-    static size_t getMax() const
-    {
-        static size_t max = std::numeric_limits<IntType>::max();
-        return max;
-    }
-    
-    bool isMax() const 
-    { 
-        if(m_value >= getMax())
-            return true;
-        else
-            return false;
-    }
-
-    IntType m_value;
-};
-*/
+#include "GapArray.h"
 
 // Template base storage for the sparse gap array
 template<class IntType>
@@ -264,7 +234,9 @@ class SparseGapArray : public GapArray
         BaseStorage m_baseStorage;
 };
 
-typedef SparseGapArray<SparseBaseStorage<uint8_t>, size_t> SparseGapArray8;
 typedef SparseGapArray<SparseBaseStorage4, size_t> SparseGapArray4;
+typedef SparseGapArray<SparseBaseStorage<uint8_t>, size_t> SparseGapArray8;
+typedef SparseGapArray<SparseBaseStorage<uint16_t>, size_t> SparseGapArray16;
+typedef SparseGapArray<SparseBaseStorage<uint32_t>, size_t> SparseGapArray32;
 
 #endif

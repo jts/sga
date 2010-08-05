@@ -41,6 +41,11 @@ static const char *INDEX_USAGE_MESSAGE =
 "  -t, --threads=NUM                    use NUM threads to construct the index (default: 1)\n"
 "  -c, --check                          validate that the suffix array/bwt is correct\n"
 "  -p, --prefix=PREFIX                  write index to file using PREFIX instead of prefix of READSFILE\n"
+"  -g, --gap-array=N                    use N bits of storage for each element of the gap array. Acceptable values are 4,8,16 or 32. Lower\n"
+"                                       values can substantially reduce the amount of memory required at the cost of less predictable memory usage.\n"
+"                                       When this value is set to 32, the memory requirement is essentially deterministic and requires ~5N bytes where\n"
+"                                       N is the size of the FM-index of READS2.\n"
+"                                       The default value is 8.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -52,9 +57,10 @@ namespace opt
     static int numThreads = 1;
     static bool bDiskAlgo = false;
     static bool validate;
+    static int gapArrayStorage = 8;
 }
 
-static const char* shortopts = "p:m:t:d:cv";
+static const char* shortopts = "p:m:t:d:g:cv";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -64,6 +70,7 @@ static const struct option longopts[] = {
     { "prefix",      required_argument, NULL, 'p' },
     { "threads",     required_argument, NULL, 't' },
     { "disk",        required_argument, NULL, 'd' },
+    { "gap-array",   required_argument, NULL, 'g' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -104,8 +111,8 @@ void indexInMemory()
 void indexOnDisk()
 {
     std::cout << "Building index for " << opt::readsFile << " on disk\n";
-    buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::numReadsPerBatch);
-    buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch);
+    buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
+    buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
 }
 
 //
@@ -146,6 +153,7 @@ void parseIndexOptions(int argc, char** argv)
             case 'c': opt::validate = true; break;
             case 'd': opt::bDiskAlgo = true; arg >> opt::numReadsPerBatch; break;
             case 't': arg >> opt::numThreads; break;
+            case 'g': arg >> opt::gapArrayStorage; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
                 std::cout << INDEX_USAGE_MESSAGE;
@@ -164,6 +172,13 @@ void parseIndexOptions(int argc, char** argv)
     else if (argc - optind > 1) 
     {
         std::cerr << SUBPROGRAM ": too many arguments\n";
+        die = true;
+    }
+
+    if(opt::gapArrayStorage != 4 && opt::gapArrayStorage != 8 &&
+       opt::gapArrayStorage != 16 && opt::gapArrayStorage != 32)
+    {
+        std::cerr << SUBPROGRAM ": invalid argument, --gap-array,-g must be one of 4,8,16,32 (found: " << opt::gapArrayStorage << ")\n";
         die = true;
     }
 
