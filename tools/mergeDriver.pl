@@ -53,11 +53,11 @@ sub makeMergeLine
 
     if($mode == $MODE_OPT_MEMORY)
     {
-        return qw($SGA) . " merge -r $finalParam $larger $smaller\n";
+        return qw(sga) . " merge -r $finalParam $larger $smaller\n";
     }
     else
     {
-        return qw($SGA) . " merge -r $finalParam $smaller $larger\n";
+        return qw(sga) . " merge -r $finalParam $smaller $larger\n";
     }
 }
 

@@ -30,8 +30,8 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2010 Wellcome Trust Sanger Institute\n";
 
 static const char *MERGE_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READS1 READS2 ...\n"
-"Merge the sequence files READS1, READS2, ... READSN and their associated indices into a single file/index\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READS1 READS2\n"
+"Merge the sequence files READS1, READS2 into a single file/index\n"
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
@@ -168,6 +168,12 @@ void parseMergeOptions(int argc, char** argv)
         std::cerr << SUBPROGRAM ": missing arguments\n";
         die = true;
     } 
+
+    if (argc - optind > 2)
+    {
+        std::cerr << SUBPROGRAM ": too many arguments\n";
+        die = true;
+    }
 
     if (die) 
     {
