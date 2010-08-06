@@ -89,7 +89,7 @@ contigData.sort(key=lambda c : c.len, reverse=True)
 # when calculating the expected number of reads is a better
 # approximation for small contigs
 for cd in contigData:
-    cd.nlen = cd.len - avgReadLen
+    cd.nlen = cd.len - avgReadLen + 1
 
 # Estimate the initial arrival rate using the longest contigs
 bootstrapLen = 0;
