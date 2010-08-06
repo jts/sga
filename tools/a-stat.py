@@ -12,6 +12,7 @@ class ContigData:
     def __init__(self, name, len):
         self.name = name
         self.len = len
+        self.nlen = len
         self.n = 0
         self.astat = 0.0
         self.bUnique = True
@@ -66,6 +67,8 @@ for (name, len) in zip(bamFile.references, bamFile.lengths):
 
 # Read the alignments and populate the counts
 totalReads = 0
+sumReadLength = 0
+
 iter = bamFile.fetch()
 for alignment in iter:
     ref_idx = alignment.rname
@@ -75,9 +78,18 @@ for alignment in iter:
     cd = contigData[ref_idx]
     cd.n += 1
     totalReads += 1
+    sumReadLength += alignment.rlen
     assert(cd.name == ref_name)
 
+avgReadLen = sumReadLength / totalReads
 contigData.sort(key=lambda c : c.len, reverse=True)
+
+# Compute the length of the contigs in number of positions
+# that can generate a read of length avgReadLen. Using
+# when calculating the expected number of reads is a better
+# approximation for small contigs
+for cd in contigData:
+    cd.nlen = cd.len - avgReadLen
 
 # Estimate the initial arrival rate using the longest contigs
 bootstrapLen = 0;
@@ -85,7 +97,7 @@ bootstrapReads = 0;
 
 for i in range(0, numContigsForInitialEstimate):
     cd = contigData[i]
-    bootstrapLen += cd.len
+    bootstrapLen += cd.nlen
     bootstrapReads += cd.n
 
 arrivalRate = float(bootstrapReads) / float(bootstrapLen)
@@ -99,11 +111,11 @@ for i in range(0, numIterations):
     bootstrapLen = 0;
     bootstrapReads = 0;
     for cd in contigData:
-        cd.astat = computeAStat(arrivalRate, cd.len, cd.n)
+        cd.astat = computeAStat(arrivalRate, cd.nlen, cd.n)
         cd.bUnique = cd.astat > singleCopyThreshold
 
         if cd.len >= minLength and cd.bUnique:
-            bootstrapLen += cd.len
+            bootstrapLen += cd.nlen
             bootstrapReads += cd.n
 
     # Estimate arrival rate based on unique contigs
@@ -114,4 +126,4 @@ for i in range(0, numIterations):
 
 for cd in contigData:
     if cd.len >= minLength:
-        print '%s\t%d\t%d\t%f\t%f' % (cd.name, cd.len, cd.n, cd.n / (cd.len * arrivalRate), cd.astat)
+        print '%s\t%d\t%d\t%d\t%f\t%f' % (cd.name, cd.len, cd.nlen, cd.n, cd.n / (cd.nlen * arrivalRate), cd.astat)
