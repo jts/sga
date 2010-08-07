@@ -1,5 +1,6 @@
 #! /usr/bin/perl
 use strict;
+use File::Basename;
 
 #
 # scaffoldDriver.pl CONTIGS READS
@@ -8,8 +9,15 @@ use strict;
 #
 my $contigsFile = $ARGV[0];
 my $readsFile = $ARGV[1];
+
+if($contigsFile eq "" || $readsFile eq "")
+{
+    print "Usage: scaffoldDriver.pl <contigsFile> <readsFile>\n";
+    exit(1);
+}
+
 my $kmer = 100;
-my $n = 10;
+my $n = 5;
 
 # Output files
 my $splitReads1 = "splitReads.1.fa";
@@ -24,11 +32,12 @@ my $histFile = $contigsFile . ".hist";
 my $deFile = $contigsFile . ".de";
 
 # Program paths
-my $splitReads = "/nfs/team71/phd/js18/work/devel/sga/tools/splitReads.pl";
-my $bwa = "/software/solexa/bin/aligners/bwa/current/bwa";
-my $samtools = "/nfs/team71/phd/js18/software/samtools/samtools-dev/samtools"; # this uses Shaun Jackman's patch to calculate ISIZE
-my $parseAligns = "/nfs/team71/phd/js18/bin/ParseAligns";
-my $distanceEst = "/nfs/team71/phd/js18/bin/DistanceEst";
+my $toolsDir = dirname($0);
+my $splitReads = "$toolsDir/splitReads.pl";
+my $bwa = "bwa"; #"/software/solexa/bin/aligners/bwa/current/bwa";
+my $samtools = "samtools"; #"/nfs/team71/phd/js18/software/samtools/samtools-dev/samtools"; # this uses Shaun Jackman's patch to calculate ISIZE
+my $parseAligns = "ParseAligns";
+my $distanceEst = "DistanceEst";
 
 if(1) {
 # Index the contigs
@@ -61,7 +70,7 @@ run("$samtools index $finalBam");
 unlink($bamFile);
 
 # Run DistanceEst to generate estimates between the contigs
-run("$distanceEst -n $n -k $kmer $histFile $finalBam > $deFile");
+run("$distanceEst -n $n -k $kmer -o $deFile $histFile $finalBam ");
 
 }
 

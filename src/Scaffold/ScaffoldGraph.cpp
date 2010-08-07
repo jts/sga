@@ -73,7 +73,6 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
     while(getline(*pReader, line))
     {
         assert(line.substr(0,4) != "Mate");
-        std::cout << "DE LINE: " << line << "\n";
         StringVector fields = split(line, ' ');
         assert(fields.size() >= 1);
 
@@ -130,6 +129,29 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
     delete pReader;
 }
 
+void ScaffoldGraph::loadAStatistic(const std::string& filename)
+{
+    std::istream* pReader = createReader(filename);
+    std::string line;
+
+    while(getline(*pReader, line))
+    {
+        StringVector fields = split(line, '\t');
+        assert(fields.size() == 5);
+
+        VertexID id = fields[0];
+        std::stringstream parser(fields[4]);
+        double as;
+        parser >> as;
+
+        ScaffoldVertex* pVertex = getVertex(id);
+        assert(pVertex != NULL);
+        pVertex->setAStatistic(as);
+    }
+}
+
+
+//
 void ScaffoldGraph::parseDERecord(const std::string& record, std::string& id, 
                                   EdgeComp& comp, int& distance, int& numPairs, double& stdDev)
 {
@@ -159,7 +181,7 @@ void ScaffoldGraph::writeDot(const std::string& outFile) const
 {
     std::ostream* pWriter = createWriter(outFile);
     
-    std::string graphType = "digraph";
+    std::string graphType = "graph";
 
     *pWriter << graphType << " G\n{\n";
     ScaffoldVertexMap::const_iterator iter = m_vertices.begin(); 

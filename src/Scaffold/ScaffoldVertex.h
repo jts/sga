@@ -36,6 +36,12 @@ class ScaffoldVertex
         size_t getNumEdges() const;
         size_t getSeqLen() const;
         std::string getColorString() const;
+        double getAStatistic() const;
+        ScaffoldVertexClassification getClassification() const;
+
+        //
+        void setAStatistic(double v);
+        void setClassification(ScaffoldVertexClassification classification);
 
         //
         ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldEdgeType type);
@@ -47,6 +53,7 @@ class ScaffoldVertex
     private:
         VertexID m_id;
         size_t m_seqLen;
+        double m_AStatistic;
         ScaffoldEdgePtrVector m_edges;
         ScaffoldVertexClassification m_classification;
 };
