@@ -33,6 +33,9 @@ class ScaffoldGraph
 
         ScaffoldVertex* getVertex(VertexID id) const;
 
+        // Remove all the vertices in the graph with the given classification
+        void deleteVertices(ScaffoldVertexClassification classification);
+
         // Visit each vertex in the graph and call the visit functor object
         template<typename VF>
         bool visit(VF& vf)

@@ -16,7 +16,8 @@ class ScaffoldVertex;
 enum ScaffoldEdgeType
 {
     SET_DISTANCEEST,
-    SET_REFERENCE
+    SET_REFERENCE,
+    SET_INFERRED
 };
 
 class ScaffoldEdge
@@ -26,14 +27,22 @@ class ScaffoldEdge
         ScaffoldEdge(ScaffoldVertex* pEnd, EdgeDir dir, EdgeComp comp,
                      int distance, double stdDev, int numPairs, ScaffoldEdgeType type);
 
+        //
         void setTwin(ScaffoldEdge* pEdge);
+
+        //
         VertexID getStartID() const;
         VertexID getEndID() const;
+        ScaffoldVertex* getEnd() const;
+        ScaffoldEdge* getTwin() const;
         EdgeDir getDir() const;
         EdgeComp getComp() const;
         int getDistance() const;
         double getStdDev() const;
         ScaffoldEdgeType getType() const;
+
+        //
+        friend std::ostream& operator<<(std::ostream& out, ScaffoldEdge& edge);
 
     private:
         ScaffoldVertex* m_pEnd;
@@ -45,5 +54,8 @@ class ScaffoldEdge
         ScaffoldEdgeType m_type;
 
 };
+
+bool ScaffoldEdgePtrDistanceCompare(ScaffoldEdge* pXY, ScaffoldEdge* pXZ);
+
 
 #endif

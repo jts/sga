@@ -12,7 +12,7 @@
 
 ScaffoldGraph::ScaffoldGraph()
 {
-
+    m_vertices.set_deleted_key("");
 }
 
 //
@@ -21,6 +21,7 @@ ScaffoldGraph::~ScaffoldGraph()
     for(ScaffoldVertexMap::iterator iter = m_vertices.begin();
          iter != m_vertices.end(); ++iter)
     {
+        iter->second->deleteEdges();
         delete iter->second;
         iter->second = NULL;
     }
@@ -46,6 +47,26 @@ ScaffoldVertex* ScaffoldGraph::getVertex(VertexID id) const
     if(iter == m_vertices.end())
         return NULL;
     return iter->second;
+}
+
+//
+void ScaffoldGraph::deleteVertices(ScaffoldVertexClassification classification)
+{
+    ScaffoldVertexMap::iterator iter = m_vertices.begin(); 
+    while(iter != m_vertices.end())
+    {
+        if(iter->second->getClassification() == classification)
+        {
+            iter->second->deleteEdgesAndTwins();
+            delete iter->second;
+            iter->second = NULL;
+            m_vertices.erase(iter++);
+        }
+        else
+        {
+            ++iter;
+        }
+    }
 }
 
 // 
@@ -145,8 +166,8 @@ void ScaffoldGraph::loadAStatistic(const std::string& filename)
         parser >> as;
 
         ScaffoldVertex* pVertex = getVertex(id);
-        assert(pVertex != NULL);
-        pVertex->setAStatistic(as);
+        if(pVertex != NULL)
+            pVertex->setAStatistic(as);
     }
 }
 
@@ -181,7 +202,7 @@ void ScaffoldGraph::writeDot(const std::string& outFile) const
 {
     std::ostream* pWriter = createWriter(outFile);
     
-    std::string graphType = "graph";
+    std::string graphType = "digraph";
 
     *pWriter << graphType << " G\n{\n";
     ScaffoldVertexMap::const_iterator iter = m_vertices.begin(); 

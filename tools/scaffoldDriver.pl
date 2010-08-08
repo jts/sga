@@ -9,10 +9,11 @@ use File::Basename;
 #
 my $contigsFile = $ARGV[0];
 my $readsFile = $ARGV[1];
+my $libName = $ARGV[2];
 
-if($contigsFile eq "" || $readsFile eq "")
+if($contigsFile eq "" || $readsFile eq "" || $libName eq "")
 {
-    print "Usage: scaffoldDriver.pl <contigsFile> <readsFile>\n";
+    print "Usage: scaffoldDriver.pl <contigsFile> <readsFile> <libName>\n";
     exit(1);
 }
 
@@ -24,12 +25,13 @@ my $splitReads1 = "splitReads.1.fa";
 my $splitReads2 = "splitReads.2.fa";
 my $sacFile1 = $contigsFile . ".1.sac";
 my $sacFile2 = $contigsFile . ".2.sac";
-my $bamSEFile = $contigsFile . ".se.bam";
-my $bamFile = $contigsFile . ".bam";
-my $finalPrefix = $contigsFile . ".final";
+my $bamSEFile = $libName . ".se.bam";
+my $bamFile = $libName . ".bam";
+my $finalPrefix = $libName . ".final";
 my $finalBam = "$finalPrefix.bam";
-my $histFile = $contigsFile . ".hist";
-my $deFile = $contigsFile . ".de";
+my $histFile = $libName . ".hist";
+my $deFile = $libName . ".de";
+my $asFile = $libName . ".astat";
 
 # Program paths
 my $toolsDir = dirname($0);
@@ -38,6 +40,7 @@ my $bwa = "bwa"; #"/software/solexa/bin/aligners/bwa/current/bwa";
 my $samtools = "samtools"; #"/nfs/team71/phd/js18/software/samtools/samtools-dev/samtools"; # this uses Shaun Jackman's patch to calculate ISIZE
 my $parseAligns = "ParseAligns";
 my $distanceEst = "DistanceEst";
+my $astat = "$toolsDir/a-stat.py";
 
 if(1) {
 # Index the contigs
@@ -71,6 +74,9 @@ unlink($bamFile);
 
 # Run DistanceEst to generate estimates between the contigs
 run("$distanceEst -n $n -k $kmer -o $deFile $histFile $finalBam ");
+
+# Run a-statistic calculator
+run("$astat $finalBam > $asFile");
 
 }
 

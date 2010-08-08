@@ -32,15 +32,81 @@ void ScaffoldVertex::addEdge(ScaffoldEdge* pEdge)
 }
 
 //
-ScaffoldEdge* ScaffoldVertex::findEdgeTo(VertexID id, ScaffoldEdgeType type)
+ScaffoldEdge* ScaffoldVertex::findEdgeTo(VertexID id, ScaffoldEdgeType type) const
 {
-    for(ScaffoldEdgePtrVector::iterator iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+    for(ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin(); iter != m_edges.end(); ++iter)
     {
         if((*iter)->getEndID() == id && (*iter)->getType() == type)
             return *iter;
     }
 
     return NULL;
+}
+
+//
+ScaffoldEdge* ScaffoldVertex::findEdgeTo(VertexID id, EdgeDir dir, EdgeComp comp) const
+{
+    for(ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+    {
+        if((*iter)->getEndID() == id && (*iter)->getDir() == dir && (*iter)->getComp() == comp)
+            return *iter;
+    }
+
+    return NULL;
+}
+
+
+//
+ScaffoldEdgePtrVector ScaffoldVertex::getEdges(EdgeDir dir)
+{
+    ScaffoldEdgePtrVector out;
+    for(ScaffoldEdgePtrVector::iterator iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+    {
+        if((*iter)->getDir() == dir)
+            out.push_back(*iter);
+    }
+    return out;
+}
+
+void ScaffoldVertex::deleteEdges()
+{
+    ScaffoldEdgePtrVector::iterator iter = m_edges.begin();
+    while(iter != m_edges.end())
+    {
+        delete *iter;
+        *iter = NULL;
+        ++iter;
+    }
+    m_edges.clear();
+}
+
+void ScaffoldVertex::deleteEdgesAndTwins()
+{
+    ScaffoldEdgePtrVector::iterator iter = m_edges.begin();
+    while(iter != m_edges.end())
+    {
+        ScaffoldEdge* pEdge = *iter;
+        pEdge->getEnd()->deleteEdge(pEdge->getTwin());
+        delete pEdge;
+        *iter = NULL;
+        ++iter;
+    }
+    m_edges.clear();
+}
+
+// Remove an edge from the edge vector and delete it
+void ScaffoldVertex::deleteEdge(ScaffoldEdge* pEdge)
+{
+    ScaffoldEdgePtrVector::iterator iter = m_edges.begin();
+    while(iter != m_edges.end())
+    {
+        if(*iter == pEdge)
+            break;
+        ++iter;
+    }
+    assert(iter != m_edges.end());
+    m_edges.erase(iter);
+    delete pEdge;
 }
 
 //
@@ -61,6 +127,11 @@ VertexID ScaffoldVertex::getID() const
     return m_id;
 }
 
+//
+bool ScaffoldVertex::isRepeat() const
+{
+    return m_classification == SVC_REPEAT;
+}
 //
 size_t ScaffoldVertex::getNumEdges() const
 {
@@ -117,15 +188,12 @@ void ScaffoldVertex::writeEdgesDot(std::ostream* pWriter) const
     ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin();
     for(; iter != m_edges.end(); ++iter)
     {
-        if((*iter)->getStartID() < (*iter)->getEndID())
-        {
-            *pWriter << "\"" << (*iter)->getStartID() << "\" -- \"" << (*iter)->getEndID();
-            std::string color = ((*iter)->getDir() == ED_SENSE) ? "black" : "red";
-            *pWriter << "\" [";
-            *pWriter << "label=\"" << (*iter)->getDistance() << "\" ";
-            *pWriter << "color=\"" << color << "\" ";
-            *pWriter << "];";
-            *pWriter << "\n";
-        }
+        *pWriter << "\"" << (*iter)->getStartID() << "\" -> \"" << (*iter)->getEndID();
+        std::string color = ((*iter)->getDir() == ED_SENSE) ? "black" : "red";
+        *pWriter << "\" [";
+        *pWriter << "label=\"" << (*iter)->getDistance() << "\" ";
+        *pWriter << "color=\"" << color << "\" ";
+        *pWriter << "];";
+        *pWriter << "\n";
     }
 }

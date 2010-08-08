@@ -44,8 +44,8 @@ namespace opt
     static std::string contigsFile;
     static std::string distanceEstFile;
     static std::string astatFile;
-    static double uniqueAstatThreshold = 30.0f;
-    static double repeatAstatThreshold = -5.0f;
+    static double uniqueAstatThreshold = 20.0f;
+    static double repeatAstatThreshold = 5.0f;
     static int minContigLength = 0;
 }
 
@@ -73,6 +73,8 @@ int main(int argc, char** argv)
     parseScaffoldOptions(argc, argv);
     std::cout << "Building scaffolds from " << opt::contigsFile << " using " << opt::distanceEstFile << "\n";
 
+    int maxOverlap = 100;
+
     ScaffoldStatsVisitor statsVisitor;
     ScaffoldGraph graph;
     
@@ -86,8 +88,30 @@ int main(int argc, char** argv)
                                                opt::repeatAstatThreshold);
         graph.visit(astatVisitor);
     }
+
+    //ScaffoldEdgeSetClassificationVisitor edgeSetClassVisitor(maxOverlap, 0.2f);   
+    //graph.visit(edgeSetClassVisitor);
+
     graph.visit(statsVisitor);
+
+    // Create chains of vertices from the links
+    graph.writeDot("pregraph.dot");
+    graph.deleteVertices(SVC_REPEAT);
     graph.writeDot("scaffold.dot");
+
+    ScaffoldChainVisitor chainVisitor(maxOverlap);
+    graph.visit(chainVisitor);
+
+    graph.writeDot("afterChain.dot");
+    graph.visit(statsVisitor);
+
+    graph.visit(chainVisitor);
+    graph.writeDot("afterChain2.dot");
+    graph.visit(statsVisitor);
+
+    graph.visit(chainVisitor);
+    graph.writeDot("afterChain3.dot");
+    graph.visit(statsVisitor);
 }
 
 //
