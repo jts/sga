@@ -9,7 +9,7 @@
 #include "ScaffoldVertex.h"
 
 //
-ScaffoldVertex::ScaffoldVertex(VertexID id, size_t seqLen) : m_id(id), m_seqLen(seqLen), m_classification(SVC_UNKNOWN)
+ScaffoldVertex::ScaffoldVertex(VertexID id, size_t seqLen) : m_id(id), m_seqLen(seqLen), m_classification(SVC_UNKNOWN), m_color(GC_WHITE)
 {
 
 }
@@ -55,6 +55,11 @@ ScaffoldEdge* ScaffoldVertex::findEdgeTo(VertexID id, EdgeDir dir, EdgeComp comp
     return NULL;
 }
 
+//
+ScaffoldEdgePtrVector ScaffoldVertex::getEdges()
+{
+    return m_edges;
+}
 
 //
 ScaffoldEdgePtrVector ScaffoldVertex::getEdges(EdgeDir dir)
@@ -94,6 +99,42 @@ void ScaffoldVertex::deleteEdgesAndTwins()
     m_edges.clear();
 }
 
+void ScaffoldVertex::deleteEdgesAndTwins(EdgeDir dir)
+{
+    ScaffoldEdgePtrVector out;
+
+    ScaffoldEdgePtrVector::iterator iter = m_edges.begin();
+    while(iter != m_edges.end())
+    {
+        ScaffoldEdge* pEdge = *iter;
+
+        // We have to clean up the twin of each deleted edge. If the twin
+        // points to this vertex (self-edge) we can't clean it up with a call to deleteEdge
+        // or else our iterator will be invalidated. We handle it here by deleting
+        // each edge if it matches the direction or it is the twin of an edge that
+        // matches the direction. In the inner body we skip the standard twin cleanup
+        // for self-edges
+        if(pEdge->getDir() == dir || (pEdge->getEnd() == this && pEdge->getTwin()->getDir() == dir))
+        {
+            // If the twin resides on this node and points in the same direction
+            // it will be cleaned up in a later cycle so do not delete it
+            if(pEdge->getEnd() != this)
+            {
+                pEdge->getEnd()->deleteEdge(pEdge->getTwin());
+            }
+            delete pEdge;
+            *iter = NULL;
+        }
+        else
+        {
+            out.push_back(*iter);
+        }
+        ++iter;
+    }
+    
+    m_edges = out;
+}
+
 // Remove an edge from the edge vector and delete it
 void ScaffoldVertex::deleteEdge(ScaffoldEdge* pEdge)
 {
@@ -106,7 +147,19 @@ void ScaffoldVertex::deleteEdge(ScaffoldEdge* pEdge)
     }
     assert(iter != m_edges.end());
     m_edges.erase(iter);
+
+    for(iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+        std::cout << "\tedge: " << **iter << "\n";
     delete pEdge;
+}
+
+// Remove an edge from the edge vector and delete it and its twin
+void ScaffoldVertex::deleteEdgeAndTwin(ScaffoldEdge* pEdge)
+{
+    std::cout << "Delete edge and twin: " << *pEdge << "\n";
+    assert(pEdge != pEdge->getTwin());
+    pEdge->getEnd()->deleteEdge(pEdge->getTwin());
+    deleteEdge(pEdge);
 }
 
 //
@@ -119,6 +172,12 @@ void ScaffoldVertex::setAStatistic(double v)
 void ScaffoldVertex::setClassification(ScaffoldVertexClassification classification)
 {
     m_classification = classification;
+}
+
+//
+void ScaffoldVertex::setColor(GraphColor c)
+{
+    m_color = c;
 }
 
 //
@@ -154,6 +213,12 @@ double ScaffoldVertex::getAStatistic() const
 ScaffoldVertexClassification ScaffoldVertex::getClassification() const
 {
     return m_classification;
+}
+
+//
+GraphColor ScaffoldVertex::getColor() const
+{
+    return m_color;
 }
 
 //

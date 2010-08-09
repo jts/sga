@@ -217,6 +217,7 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
                 ScaffoldEdge* pZY = new ScaffoldEdge(pY, dir_zy, comp, dist, 0, 0, SET_INFERRED);
                 pYZ->setTwin(pZY);
                 pZY->setTwin(pYZ);
+
                 std::cout << "\nCreating edge: " << *pYZ << " " << *pZY << "\n";
                 std::cout << "\tFrom: " << *pXY << " " << *pXZ << "\n";
                 pY->addEdge(pYZ);
@@ -243,7 +244,92 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
     return changed_graph;
 }
 
+//
 void ScaffoldChainVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
 {
 
+}
+
+//
+bool ScaffoldMultiEdgeRemoveVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex)
+{
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        ScaffoldEdgePtrVector edgeVec = pVertex->getEdges(dir);
+        if(edgeVec.size() > 1)
+        {
+            pVertex->deleteEdgesAndTwins(dir);
+        }
+    }
+    return false;
+}
+
+//
+ScaffoldWriterVisitor::ScaffoldWriterVisitor(const std::string& filename)
+{
+    m_pWriter = createWriter(filename);
+}
+
+//
+ScaffoldWriterVisitor::~ScaffoldWriterVisitor()
+{
+    delete m_pWriter;
+}
+
+//
+void ScaffoldWriterVisitor::previsit(ScaffoldGraph* pGraph)
+{
+    pGraph->setVertexColors(GC_WHITE);
+}
+
+//
+bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex)
+{
+    if(pVertex->getColor() == GC_RED)
+        return false; //already output
+
+    ScaffoldEdgePtrVector edges = pVertex->getEdges();
+
+    if(edges.size() == 1)
+    {
+        // Start of a chain found, traverse it to the other end
+        size_t num_contigs = 0;
+        size_t bases = 0; // number of bases in contigs
+        size_t span = 0; // number of bases plus gaps
+
+        ScaffoldEdge* pStartEdge = edges[0];
+        pVertex->setColor(GC_RED);
+
+        // write the start of the scaffold
+        *m_pWriter << pVertex->getID() << "," << pStartEdge->getDir();
+        bases += pVertex->getSeqLen();
+        num_contigs += 1;
+
+        ScaffoldEdge* pXY = pStartEdge;
+        while(1)
+        {
+            *m_pWriter << "\t" << *pXY;
+
+            //
+            ScaffoldVertex* pY = pXY->getEnd();
+            pY->setColor(GC_RED);
+            bases += pY->getSeqLen();
+            span += pY->getSeqLen() + pXY->getDistance();
+            num_contigs += 1;
+
+            // get the next direction
+            EdgeDir nextDir = !pXY->getTwin()->getDir();
+            ScaffoldEdgePtrVector nextEdges = pY->getEdges(nextDir);
+            
+            if(nextEdges.size() == 1)
+                pXY = nextEdges[0];
+            else
+                break;
+        }
+        *m_pWriter << "\n";
+
+        printf("Wrote scaffold with %zu components, %zu bases (%zu span)\n", num_contigs, bases, span);
+    }
+    return false;
 }

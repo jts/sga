@@ -37,21 +37,26 @@ class ScaffoldVertex
         double getAStatistic() const;
         bool isRepeat() const;
         VertexID getID() const;
+        GraphColor getColor() const;
         std::string getColorString() const;
         ScaffoldVertexClassification getClassification() const;
 
         //
         void setAStatistic(double v);
         void setClassification(ScaffoldVertexClassification classification);
+        void setColor(GraphColor c);
 
         //
         void deleteEdge(ScaffoldEdge* pEdge);
+        void deleteEdgeAndTwin(ScaffoldEdge* pEdge);
         void deleteEdges();
+        void deleteEdgesAndTwins(EdgeDir dir);
         void deleteEdgesAndTwins();
 
         ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldEdgeType type) const;
         ScaffoldEdge* findEdgeTo(VertexID id, EdgeDir dir, EdgeComp comp) const;
 
+        ScaffoldEdgePtrVector getEdges();
         ScaffoldEdgePtrVector getEdges(EdgeDir dir);
 
         // I/O
@@ -64,6 +69,7 @@ class ScaffoldVertex
         double m_AStatistic;
         ScaffoldEdgePtrVector m_edges;
         ScaffoldVertexClassification m_classification;
+        GraphColor m_color;
 };
 
 #endif

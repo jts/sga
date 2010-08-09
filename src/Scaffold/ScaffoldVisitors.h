@@ -85,6 +85,34 @@ class ScaffoldChainVisitor
 
     private:
         int m_maxOverlap;
+};
+
+// Walk through the graph breaking up components whenever a vertex has more
+// than one edge in a particular direction
+class ScaffoldMultiEdgeRemoveVisitor
+{
+    public:
+        
+        ScaffoldMultiEdgeRemoveVisitor() {}
+        void previsit(ScaffoldGraph* /*pGraph*/) {}
+        bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+        void postvisit(ScaffoldGraph* /*pGraph*/) {}
 
 };
+
+// Output scaffolds
+class ScaffoldWriterVisitor
+{
+    public:
+        ScaffoldWriterVisitor(const std::string& filename);
+        ~ScaffoldWriterVisitor();
+
+        void previsit(ScaffoldGraph* /*pGraph*/);
+        bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+        void postvisit(ScaffoldGraph* /*pGraph*/) {}
+
+    private:
+        std::ostream* m_pWriter;
+};
+
 #endif

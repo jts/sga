@@ -69,6 +69,17 @@ void ScaffoldGraph::deleteVertices(ScaffoldVertexClassification classification)
     }
 }
 
+//
+void ScaffoldGraph::setVertexColors(GraphColor c)
+{
+    ScaffoldVertexMap::iterator iter = m_vertices.begin(); 
+    while(iter != m_vertices.end())
+    {
+        iter->second->setColor(c);
+        ++iter;
+    }
+}
+
 // 
 void ScaffoldGraph::loadVertices(const std::string& filename, int minLength)
 {
@@ -126,6 +137,12 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
 
             if(pVertex1 != NULL && pVertex2 != NULL)
             {
+                if(pVertex1 == pVertex2)
+                {
+                    std::cout << "Self-edges not allowed\n";
+                    continue;
+                }
+
                 // Check if there already exists a DistanceEstimate edge between these vertices
                 ScaffoldEdge* pEdge = pVertex1->findEdgeTo(id, SET_DISTANCEEST);
                 if(pEdge != NULL)

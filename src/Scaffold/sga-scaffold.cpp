@@ -102,16 +102,22 @@ int main(int argc, char** argv)
     ScaffoldChainVisitor chainVisitor(maxOverlap);
     graph.visit(chainVisitor);
 
-    graph.writeDot("afterChain.dot");
+  //  graph.writeDot("afterChain.dot");
     graph.visit(statsVisitor);
 
     graph.visit(chainVisitor);
-    graph.writeDot("afterChain2.dot");
+//    graph.writeDot("afterChain2.dot");
     graph.visit(statsVisitor);
 
     graph.visit(chainVisitor);
-    graph.writeDot("afterChain3.dot");
+    graph.writeDot("finalChain.dot");
     graph.visit(statsVisitor);
+
+    ScaffoldMultiEdgeRemoveVisitor cutVisitor;
+    graph.visit(cutVisitor);
+
+    ScaffoldWriterVisitor writer("scaffolds.scaf");
+    graph.visit(writer);
 }
 
 //
