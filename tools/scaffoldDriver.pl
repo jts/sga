@@ -40,7 +40,7 @@ my $bwa = "bwa"; #"/software/solexa/bin/aligners/bwa/current/bwa";
 my $samtools = "samtools"; #"/nfs/team71/phd/js18/software/samtools/samtools-dev/samtools"; # this uses Shaun Jackman's patch to calculate ISIZE
 my $parseAligns = "ParseAligns";
 my $distanceEst = "DistanceEst";
-my $astat = "$toolsDir/a-stat.py";
+my $astat = "python $toolsDir/a-stat.py";
 
 if(1) {
 # Index the contigs

@@ -33,7 +33,7 @@ void ScaffoldAlgorithms::inferScaffoldEdgeYZ(ScaffoldEdge* pXY, ScaffoldEdge* pX
 {
     comp = (pXY->getComp() == pXZ->getComp() ? EC_SAME : EC_REVERSE);
     dir_yz = !pXY->getTwin()->getDir(); // Opposite direction of X <- Y
-    dir_zy = pXY->getTwin()->getDir();  // Same direction as X <- Z since Z is after Y
+    dir_zy = pXZ->getTwin()->getDir();  // Same direction as X <- Z since Z is after Y
     dist = pXZ->getDistance() - (pXY->getDistance() + pXY->getEnd()->getSeqLen());
 }
 
@@ -204,8 +204,8 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
             bool isConsistent = (dist > -1*m_maxOverlap);
             if(!isConsistent)
             {
-                std::cout << "Inferred edge is not consistent with max overlap: " << dist << "\n";
-                std::cout << "Input: " << *pXY << " " << *pXZ << "\n";
+                std::cout << "\nInferred edge is not consistent with max overlap: " << dist << "\n";
+                std::cout << "\tInput: " << *pXY << " " << *pXZ << "\n";
             }
 
             // Check if an edge between Y->Z already exists
@@ -217,8 +217,8 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
                 ScaffoldEdge* pZY = new ScaffoldEdge(pY, dir_zy, comp, dist, 0, 0, SET_INFERRED);
                 pYZ->setTwin(pZY);
                 pZY->setTwin(pYZ);
-                std::cout << "Creating edge: " << *pYZ << " " << *pZY << "\n";
-                std::cout << "From: " << *pXY << " " << *pXZ << "\n";
+                std::cout << "\nCreating edge: " << *pYZ << " " << *pZY << "\n";
+                std::cout << "\tFrom: " << *pXY << " " << *pXZ << "\n";
                 pY->addEdge(pYZ);
                 pZ->addEdge(pZY);
             }
@@ -229,6 +229,8 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
 
             // Remove the edges pXZ and pZX
             ScaffoldEdge* pZX = pXZ->getTwin();
+
+            std::cout << "\t Deleting edge: " << *pXZ << "\n";
             pVertex->deleteEdge(pXZ); // deallocates
             pZ->deleteEdge(pZX); // deallocates
             

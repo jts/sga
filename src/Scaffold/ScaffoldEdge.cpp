@@ -84,7 +84,8 @@ ScaffoldEdgeType ScaffoldEdge::getType() const
 //
 std::ostream& operator<<(std::ostream& out, ScaffoldEdge& edge)
 {
-    out << edge.getStartID() << " -- " << edge.getEndID() << "," << edge.getDistance() << "," << edge.getStdDev();
+    out << edge.getStartID() << " -- " << edge.getEndID() << "," << edge.getDistance() << "," << edge.getStdDev() 
+        << "," << edge.getDir() << "," << edge.getComp();
     return out;
 }
 

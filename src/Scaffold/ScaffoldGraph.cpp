@@ -131,7 +131,7 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
                 if(pEdge != NULL)
                 {
                     // An edge to this vertex already exists
-                    WARN_ONCE("Update duplicate edges\n");
+                    std::cerr << "Update duplicate edges\n";
                 }
                 else
                 {
@@ -158,10 +158,10 @@ void ScaffoldGraph::loadAStatistic(const std::string& filename)
     while(getline(*pReader, line))
     {
         StringVector fields = split(line, '\t');
-        assert(fields.size() == 5);
+        assert(fields.size() == 6);
 
         VertexID id = fields[0];
-        std::stringstream parser(fields[4]);
+        std::stringstream parser(fields[5]);
         double as;
         parser >> as;
 

@@ -23,7 +23,7 @@ def computeAStat(arrivalRate, len, n):
 # Params
 numContigsForInitialEstimate = 20
 numIterations = 3
-singleCopyThreshold = 17 # Myers' default
+singleCopyThreshold = 30
 
 def usage():
     print 'usage: a-stat.py in.bam'
