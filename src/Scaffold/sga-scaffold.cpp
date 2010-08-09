@@ -28,7 +28,14 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
-"      -m, --minContingLength=N         only use contigs at least N bp in length to build scaffolds.\n"  
+"      -m, --minContingLength=N         only use contigs at least N bp in length to build scaffolds.\n"
+"      -a, --astatistic-file=FILE            load Myers' A-statistic values from FILE. This is used to\n"
+"                                       determine unique and repetitive contigs with the -u/--unique-astat\n"
+"                                       and -r/--repeat-astat parameters\n"
+"      -u, --unique-astat=FLOAT         Contigs with an a-statitic value about FLOAT will be considered unique\n"
+"      -r, --repeat-astat=FLOAT         Contigs with an a-statistic below FLOAT will be considered repetitive\n"
+"                                       Contigs with an a-statistic between these thresholds will not be\n"
+"                                       classified as unique or repetitive\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -36,18 +43,24 @@ namespace opt
     static unsigned int verbose;
     static std::string contigsFile;
     static std::string distanceEstFile;
+    static std::string astatFile;
+    static double uniqueAstatThreshold = 20.0f;
+    static double repeatAstatThreshold = 5.0f;
     static int minContigLength = 0;
 }
 
-static const char* shortopts = "vm:";
+static const char* shortopts = "vm:a:u:r:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-    { "verbose",     no_argument,       NULL, 'v' },
-    { "minLength",   required_argument, NULL, 'm' },
-    { "help",        no_argument,       NULL, OPT_HELP },
-    { "version",     no_argument,       NULL, OPT_VERSION },
+    { "verbose",        no_argument,       NULL, 'v' },
+    { "minLength",      required_argument, NULL, 'm' },
+    { "astatistic-file",required_argument, NULL, 'a' },
+    { "unique-astat",   required_argument, NULL, 'u' },
+    { "repeat-astat",   required_argument, NULL, 'r' },
+    { "help",           no_argument,       NULL, OPT_HELP },
+    { "version",        no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
 };
 
@@ -60,14 +73,45 @@ int main(int argc, char** argv)
     parseScaffoldOptions(argc, argv);
     std::cout << "Building scaffolds from " << opt::contigsFile << " using " << opt::distanceEstFile << "\n";
 
+    int maxOverlap = 100;
+
     ScaffoldStatsVisitor statsVisitor;
     ScaffoldGraph graph;
     
     graph.loadVertices(opt::contigsFile, opt::minContigLength);
     graph.loadDistanceEstimateEdges(opt::distanceEstFile);
 
+    if(!opt::astatFile.empty())
+    {
+        graph.loadAStatistic(opt::astatFile);
+        ScaffoldAStatisticVisitor astatVisitor(opt::uniqueAstatThreshold, 
+                                               opt::repeatAstatThreshold);
+        graph.visit(astatVisitor);
+    }
+
+    //ScaffoldEdgeSetClassificationVisitor edgeSetClassVisitor(maxOverlap, 0.2f);   
+    //graph.visit(edgeSetClassVisitor);
+
     graph.visit(statsVisitor);
+
+    // Create chains of vertices from the links
+    graph.writeDot("pregraph.dot");
+    graph.deleteVertices(SVC_REPEAT);
     graph.writeDot("scaffold.dot");
+
+    ScaffoldChainVisitor chainVisitor(maxOverlap);
+    graph.visit(chainVisitor);
+
+    graph.writeDot("afterChain.dot");
+    graph.visit(statsVisitor);
+
+    graph.visit(chainVisitor);
+    graph.writeDot("afterChain2.dot");
+    graph.visit(statsVisitor);
+
+    graph.visit(chainVisitor);
+    graph.writeDot("afterChain3.dot");
+    graph.visit(statsVisitor);
 }
 
 //
@@ -82,6 +126,9 @@ void parseScaffoldOptions(int argc, char** argv)
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case 'm': arg >> opt::minContigLength; break;
+            case 'a': arg >> opt::astatFile; break;
+            case 'u': arg >> opt::uniqueAstatThreshold; break;
+            case 'r': arg >> opt::repeatAstatThreshold; break;
             case OPT_HELP:
                 std::cout << SCAFFOLD_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
@@ -115,13 +162,20 @@ void parseScaffoldOptions(int argc, char** argv)
     if(opt::contigsFile.empty())
     {
         std::cerr << PROGRAM ": a contigs file must be provided\n";
-        die = true;
+        exit(1);
     }
 
     if(opt::distanceEstFile.empty())
     {
         std::cerr << PROGRAM ": a distance estimation file must be provided\n";
-        die = true;
+        exit(1);
+    }
+
+    if(opt::uniqueAstatThreshold < opt::repeatAstatThreshold)
+    {
+        std::cerr << PROGRAM ": the unique a-stat threshold must be greater than the repeat a-stat threshold\n";
+        std::cerr << "Found unique value: " << opt::uniqueAstatThreshold << " repeat value: " << opt::repeatAstatThreshold << "\n";
+        exit(1);
     }
 
     

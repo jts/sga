@@ -32,14 +32,28 @@ class ScaffoldVertex
         void addEdge(ScaffoldEdge* pEdge);
         
         //
-        VertexID getID() const;
         size_t getNumEdges() const;
         size_t getSeqLen() const;
+        double getAStatistic() const;
+        bool isRepeat() const;
+        VertexID getID() const;
         std::string getColorString() const;
+        ScaffoldVertexClassification getClassification() const;
 
         //
-        ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldEdgeType type);
-            
+        void setAStatistic(double v);
+        void setClassification(ScaffoldVertexClassification classification);
+
+        //
+        void deleteEdge(ScaffoldEdge* pEdge);
+        void deleteEdges();
+        void deleteEdgesAndTwins();
+
+        ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldEdgeType type) const;
+        ScaffoldEdge* findEdgeTo(VertexID id, EdgeDir dir, EdgeComp comp) const;
+
+        ScaffoldEdgePtrVector getEdges(EdgeDir dir);
+
         // I/O
         void writeDot(std::ostream* pWriter) const;
         void writeEdgesDot(std::ostream* pWriter) const;
@@ -47,6 +61,7 @@ class ScaffoldVertex
     private:
         VertexID m_id;
         size_t m_seqLen;
+        double m_AStatistic;
         ScaffoldEdgePtrVector m_edges;
         ScaffoldVertexClassification m_classification;
 };

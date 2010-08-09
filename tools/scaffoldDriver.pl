@@ -1,5 +1,6 @@
 #! /usr/bin/perl
 use strict;
+use File::Basename;
 
 #
 # scaffoldDriver.pl CONTIGS READS
@@ -8,27 +9,38 @@ use strict;
 #
 my $contigsFile = $ARGV[0];
 my $readsFile = $ARGV[1];
+my $libName = $ARGV[2];
+
+if($contigsFile eq "" || $readsFile eq "" || $libName eq "")
+{
+    print "Usage: scaffoldDriver.pl <contigsFile> <readsFile> <libName>\n";
+    exit(1);
+}
+
 my $kmer = 100;
-my $n = 10;
+my $n = 5;
 
 # Output files
 my $splitReads1 = "splitReads.1.fa";
 my $splitReads2 = "splitReads.2.fa";
 my $sacFile1 = $contigsFile . ".1.sac";
 my $sacFile2 = $contigsFile . ".2.sac";
-my $bamSEFile = $contigsFile . ".se.bam";
-my $bamFile = $contigsFile . ".bam";
-my $finalPrefix = $contigsFile . ".final";
+my $bamSEFile = $libName . ".se.bam";
+my $bamFile = $libName . ".bam";
+my $finalPrefix = $libName . ".final";
 my $finalBam = "$finalPrefix.bam";
-my $histFile = $contigsFile . ".hist";
-my $deFile = $contigsFile . ".de";
+my $histFile = $libName . ".hist";
+my $deFile = $libName . ".de";
+my $asFile = $libName . ".astat";
 
 # Program paths
-my $splitReads = "/nfs/team71/phd/js18/work/devel/sga/tools/splitReads.pl";
-my $bwa = "/software/solexa/bin/aligners/bwa/current/bwa";
-my $samtools = "/nfs/team71/phd/js18/software/samtools/samtools-dev/samtools"; # this uses Shaun Jackman's patch to calculate ISIZE
-my $parseAligns = "/nfs/team71/phd/js18/bin/ParseAligns";
-my $distanceEst = "/nfs/team71/phd/js18/bin/DistanceEst";
+my $toolsDir = dirname($0);
+my $splitReads = "$toolsDir/splitReads.pl";
+my $bwa = "bwa"; #"/software/solexa/bin/aligners/bwa/current/bwa";
+my $samtools = "samtools"; #"/nfs/team71/phd/js18/software/samtools/samtools-dev/samtools"; # this uses Shaun Jackman's patch to calculate ISIZE
+my $parseAligns = "ParseAligns";
+my $distanceEst = "DistanceEst";
+my $astat = "$toolsDir/a-stat.py";
 
 if(1) {
 # Index the contigs
@@ -61,7 +73,10 @@ run("$samtools index $finalBam");
 unlink($bamFile);
 
 # Run DistanceEst to generate estimates between the contigs
-run("$distanceEst -n $n -k $kmer $histFile $finalBam > $deFile");
+run("$distanceEst -n $n -k $kmer -o $deFile $histFile $finalBam ");
+
+# Run a-statistic calculator
+run("$astat $finalBam > $asFile");
 
 }
 

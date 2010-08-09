@@ -26,11 +26,15 @@ class ScaffoldGraph
 
         void loadVertices(const std::string& filename, int minLength);
         void loadDistanceEstimateEdges(const std::string& filename);
+        void loadAStatistic(const std::string& filename);
 
         void addVertex(ScaffoldVertex* pVertex);
         void addEdge(ScaffoldVertex* pVertex, ScaffoldEdge* pEdge);
 
         ScaffoldVertex* getVertex(VertexID id) const;
+
+        // Remove all the vertices in the graph with the given classification
+        void deleteVertices(ScaffoldVertexClassification classification);
 
         // Visit each vertex in the graph and call the visit functor object
         template<typename VF>

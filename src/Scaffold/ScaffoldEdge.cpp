@@ -40,6 +40,18 @@ VertexID ScaffoldEdge::getEndID() const
 }
 
 //
+ScaffoldVertex* ScaffoldEdge::getEnd() const
+{
+    return m_pEnd;
+}
+
+//
+ScaffoldEdge* ScaffoldEdge::getTwin() const
+{
+    return m_pTwin;
+}
+
+//
 EdgeDir ScaffoldEdge::getDir() const
 {
     return m_edgeData.getDir();
@@ -68,3 +80,17 @@ ScaffoldEdgeType ScaffoldEdge::getType() const
 {
     return m_type;
 }
+
+//
+std::ostream& operator<<(std::ostream& out, ScaffoldEdge& edge)
+{
+    out << edge.getStartID() << " -- " << edge.getEndID() << "," << edge.getDistance() << "," << edge.getStdDev();
+    return out;
+}
+
+//
+bool ScaffoldEdgePtrDistanceCompare(ScaffoldEdge* pXY, ScaffoldEdge* pXZ)
+{
+    return pXY->getDistance() < pXZ->getDistance();
+}
+

@@ -1,4 +1,4 @@
-#! /nfs/team71/phd/js18/software/Python-2.6.4/python
+#! /usr/bin/python
 #
 # a-stat.py - Compute Myers' a-statistic for a set of contigs using read alignments
 # in a bam file
@@ -35,7 +35,7 @@ def usage():
     print '    -n=INT   perform INT bootstrap iterations of the estimate'
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], 'm:b:n:')
+    opts, args = getopt.gnu_getopt(sys.argv[1:], 'm:b:n:', ['help'])
 except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -50,6 +50,14 @@ for (oflag, oarg) in opts:
             numContigsForInitialEstimate = int(oarg)
         if oflag == '-n':
             numIterations = int(oarg)
+        if oflag == '--help':
+            usage()
+            sys.exit(1)
+
+if len(args) == 0:
+    print 'A BAM file must be provided'
+    usage()
+    sys.exit(2)
 
 bamFilename = args[0]
 

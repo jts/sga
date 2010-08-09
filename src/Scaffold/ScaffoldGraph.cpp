@@ -12,7 +12,7 @@
 
 ScaffoldGraph::ScaffoldGraph()
 {
-
+    m_vertices.set_deleted_key("");
 }
 
 //
@@ -21,6 +21,7 @@ ScaffoldGraph::~ScaffoldGraph()
     for(ScaffoldVertexMap::iterator iter = m_vertices.begin();
          iter != m_vertices.end(); ++iter)
     {
+        iter->second->deleteEdges();
         delete iter->second;
         iter->second = NULL;
     }
@@ -48,6 +49,26 @@ ScaffoldVertex* ScaffoldGraph::getVertex(VertexID id) const
     return iter->second;
 }
 
+//
+void ScaffoldGraph::deleteVertices(ScaffoldVertexClassification classification)
+{
+    ScaffoldVertexMap::iterator iter = m_vertices.begin(); 
+    while(iter != m_vertices.end())
+    {
+        if(iter->second->getClassification() == classification)
+        {
+            iter->second->deleteEdgesAndTwins();
+            delete iter->second;
+            iter->second = NULL;
+            m_vertices.erase(iter++);
+        }
+        else
+        {
+            ++iter;
+        }
+    }
+}
+
 // 
 void ScaffoldGraph::loadVertices(const std::string& filename, int minLength)
 {
@@ -73,7 +94,6 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
     while(getline(*pReader, line))
     {
         assert(line.substr(0,4) != "Mate");
-        std::cout << "DE LINE: " << line << "\n";
         StringVector fields = split(line, ' ');
         assert(fields.size() >= 1);
 
@@ -130,6 +150,29 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
     delete pReader;
 }
 
+void ScaffoldGraph::loadAStatistic(const std::string& filename)
+{
+    std::istream* pReader = createReader(filename);
+    std::string line;
+
+    while(getline(*pReader, line))
+    {
+        StringVector fields = split(line, '\t');
+        assert(fields.size() == 5);
+
+        VertexID id = fields[0];
+        std::stringstream parser(fields[4]);
+        double as;
+        parser >> as;
+
+        ScaffoldVertex* pVertex = getVertex(id);
+        if(pVertex != NULL)
+            pVertex->setAStatistic(as);
+    }
+}
+
+
+//
 void ScaffoldGraph::parseDERecord(const std::string& record, std::string& id, 
                                   EdgeComp& comp, int& distance, int& numPairs, double& stdDev)
 {
