@@ -36,6 +36,7 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "      -r, --repeat-astat=FLOAT         Contigs with an a-statistic below FLOAT will be considered repetitive\n"
 "                                       Contigs with an a-statistic between these thresholds will not be\n"
 "                                       classified as unique or repetitive\n"
+"      -o, --outfile=FILE               write the scaffolds to FILE (default: CONTIGSFILE.scaf\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -44,12 +45,13 @@ namespace opt
     static std::string contigsFile;
     static std::string distanceEstFile;
     static std::string astatFile;
+    static std::string outFile;
     static double uniqueAstatThreshold = 20.0f;
     static double repeatAstatThreshold = 5.0f;
     static int minContigLength = 0;
 }
 
-static const char* shortopts = "vm:a:u:r:";
+static const char* shortopts = "vm:a:u:r:o:";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -59,6 +61,7 @@ static const struct option longopts[] = {
     { "astatistic-file",required_argument, NULL, 'a' },
     { "unique-astat",   required_argument, NULL, 'u' },
     { "repeat-astat",   required_argument, NULL, 'r' },
+    { "outfile",        required_argument, NULL, 'o' },
     { "help",           no_argument,       NULL, OPT_HELP },
     { "version",        no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -116,7 +119,7 @@ int main(int argc, char** argv)
     ScaffoldMultiEdgeRemoveVisitor cutVisitor;
     graph.visit(cutVisitor);
 
-    ScaffoldWriterVisitor writer("scaffolds.scaf");
+    ScaffoldWriterVisitor writer(opt::outFile);
     graph.visit(writer);
 }
 
@@ -135,6 +138,7 @@ void parseScaffoldOptions(int argc, char** argv)
             case 'a': arg >> opt::astatFile; break;
             case 'u': arg >> opt::uniqueAstatThreshold; break;
             case 'r': arg >> opt::repeatAstatThreshold; break;
+            case 'o': arg >> opt::outFile; break;
             case OPT_HELP:
                 std::cout << SCAFFOLD_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
@@ -182,6 +186,11 @@ void parseScaffoldOptions(int argc, char** argv)
         std::cerr << PROGRAM ": the unique a-stat threshold must be greater than the repeat a-stat threshold\n";
         std::cerr << "Found unique value: " << opt::uniqueAstatThreshold << " repeat value: " << opt::repeatAstatThreshold << "\n";
         exit(1);
+    }
+
+    if(opt::outFile.empty())
+    {
+        opt::outFile = opt::contigsFile + ".scaf";
     }
 
     

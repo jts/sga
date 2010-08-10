@@ -147,16 +147,12 @@ void ScaffoldVertex::deleteEdge(ScaffoldEdge* pEdge)
     }
     assert(iter != m_edges.end());
     m_edges.erase(iter);
-
-    for(iter = m_edges.begin(); iter != m_edges.end(); ++iter)
-        std::cout << "\tedge: " << **iter << "\n";
     delete pEdge;
 }
 
 // Remove an edge from the edge vector and delete it and its twin
 void ScaffoldVertex::deleteEdgeAndTwin(ScaffoldEdge* pEdge)
 {
-    std::cout << "Delete edge and twin: " << *pEdge << "\n";
     assert(pEdge != pEdge->getTwin());
     pEdge->getEnd()->deleteEdge(pEdge->getTwin());
     deleteEdge(pEdge);
