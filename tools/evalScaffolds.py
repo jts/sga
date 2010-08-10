@@ -127,6 +127,8 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
 
     print 'Scaffold %d ordering is %s ' %(idx, correct_str)
 
+    gaps = 0
+    gap_error = 0
     sum_bases = 0
     for p in positions:
         sum_bases += p.len()
@@ -149,7 +151,8 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
             est_sd.append(s.sd)
             diff = abs(s.dist - d)
             differences.append(diff)
-
+            gap_error += diff
+            gaps += 1
             n += 1
             sum_diff += diff
             if diff > max_diff:
@@ -163,7 +166,7 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
 
         print '\nEstimate accuracy: Maximum difference: %d Mean difference: %f' %(max_diff, sum_diff / n)
         print 'Scaffold has %d components, contains %d bases and spans %d reference bases' %(n, sum_bases, span)
-    return (ordered, sum_bases, span)
+    return (ordered, sum_bases, span, gaps, gap_error)
 
 def usage():
     print 'usage: evalScaffolds.py SCAFFOLDS SAM'
@@ -211,7 +214,8 @@ idx = 0
 total = 0
 num_correct = 0
 num_wrong = 0
-
+num_gaps = 0
+sum_gap_error = 0
 correct_bases = list()
 correct_span = list()
 
@@ -227,12 +231,14 @@ for line in open(scaffoldFilename,'r'):
 
     # Evaluate the scaffold
     if len(scaffold) > 1 or bEvalSingletons:
-        [ordered, bases, ref_span] = evaluateScaffoldOrdering(idx, scaffold, alignments)
+        [ordered, bases, ref_span, gaps, error] = evaluateScaffoldOrdering(idx, scaffold, alignments)
 
         if ordered:
             num_correct += 1
             correct_bases.append(bases)
             correct_span.append(ref_span)
+            num_gaps += gaps
+            sum_gap_error += error
         else:
             num_wrong += 1
         total += 1
@@ -241,6 +247,10 @@ for line in open(scaffoldFilename,'r'):
 print '\n===\nTotal scaffolds: %d Correctly ordered: %d Incorrectly ordered: %d' %(total, num_correct, num_wrong)
 
 print '\nStatistics for correct scaffolds:'
+print 'Num scaffolds: %d' %(num_correct)
+print 'Num gaps: %d' %(num_gaps)
+print 'Mean gap estimate error: %d' %(sum_gap_error / num_gaps)
+print ''
 print 'Sum bases: %d' %(calcSum(correct_bases))
 print 'Mean bases: %d' %(calcMean(correct_bases))
 print 'N50 bases: %d' %(calcN50(correct_bases))

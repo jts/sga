@@ -12,6 +12,7 @@
 #include "config.h"
 #include "ScaffoldGraph.h"
 #include "ScaffoldVisitors.h"
+#include "SGUtil.h"
 
 #define SUBPROGRAM "scaffold2fasta"
 static const char *SCAFFOLD2FASTA_VERSION_MESSAGE =
@@ -70,8 +71,15 @@ void parseScaffold2fastaOptions(int argc, char** argv);
 int scaffold2fastaMain(int argc, char** argv)
 {
     parseScaffold2fastaOptions(argc, argv);
+
+    if(opt::asqgFile.empty())
+        assert(false && "only asqg file is implemented atm");
+
     std::cout << "Reading graph from " << opt::asqgFile << "\n";
     std::cout << "Reading scaffolds from " << opt::scafFile << "\n";
+
+    StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
+    delete pGraph;
     return 0;
 }
 
