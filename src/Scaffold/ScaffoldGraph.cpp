@@ -186,6 +186,7 @@ void ScaffoldGraph::loadAStatistic(const std::string& filename)
         if(pVertex != NULL)
             pVertex->setAStatistic(as);
     }
+    delete pReader;
 }
 
 
