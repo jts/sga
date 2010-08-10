@@ -26,7 +26,7 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
-"      -m, --minContingLength=N         only use contigs at least N bp in length to build scaffolds.\n"
+"      -m, --min-length=N               only use contigs at least N bp in length to build scaffolds.\n"
 "      -a, --astatistic-file=FILE            load Myers' A-statistic values from FILE. This is used to\n"
 "                                       determine unique and repetitive contigs with the -u/--unique-astat\n"
 "                                       and -r/--repeat-astat parameters\n"
@@ -55,7 +55,7 @@ enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
     { "verbose",        no_argument,       NULL, 'v' },
-    { "minLength",      required_argument, NULL, 'm' },
+    { "min-length",      required_argument, NULL, 'm' },
     { "astatistic-file",required_argument, NULL, 'a' },
     { "unique-astat",   required_argument, NULL, 'u' },
     { "repeat-astat",   required_argument, NULL, 'r' },

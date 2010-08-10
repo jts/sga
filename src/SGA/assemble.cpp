@@ -41,6 +41,7 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -t, --trim=N                     trim terminal branches using N rounds\n"
 "      -c, --correct                    error correct reads and write to correctedReads.fa\n"
 "      -r, --resolve-small              resolve small repeats using spanning overlaps\n"
+"      -a, --asqg-outfile=FILE          write the final graph to FILE\n"
 "      --edge-stats                     print out the distribution of overlap lengths and number of errors\n"
 "                                       for edges found in the overlap step.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -52,6 +53,7 @@ namespace opt
     static std::string prefix;
     static std::string outFile;
     static std::string debugFile;
+    static std::string asqgOutfile;
     static unsigned int minOverlap;
     static bool bEdgeStats = false;
     static bool bCorrectReads = false;
@@ -63,7 +65,7 @@ namespace opt
     static bool bExact = false;
 }
 
-static const char* shortopts = "p:o:m:d:t:b:rvc";
+static const char* shortopts = "p:o:m:d:t:b:a:rvc";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
@@ -75,6 +77,7 @@ static const struct option longopts[] = {
     { "debug-file",     required_argument, NULL, 'd' },
     { "bubble",         required_argument, NULL, 'b' },
     { "trim",           required_argument, NULL, 't' },
+    { "asqg-outfile",   required_argument, NULL, 'a' },
     { "resolve-small",  no_argument,       NULL, 'r' },    
     { "correct",        no_argument,       NULL, 'c' },    
     { "remodel",        no_argument,       NULL, 'z' },
@@ -275,7 +278,10 @@ void assemble()
     //pGraph->writeASQG("final.asqg");
     SGFastaVisitor av(opt::outFile);
     pGraph->visit(av);
-
+    if(!opt::asqgOutfile.empty())
+    {
+        pGraph->writeASQG(opt::asqgOutfile);
+    }
     delete pGraph;
 }
 
@@ -302,6 +308,7 @@ void parseAssembleOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case 'b': arg >> opt::numBubbleRounds; break;
             case 't': arg >> opt::numTrimRounds; break;
+            case 'a': arg >> opt::asqgOutfile; break;
             case 'c': opt::bCorrectReads = true; break;
             case 'r': opt::bResolveSmallRepeats = true; break;
             case 'z': opt::bRemodelGraph = true; break;

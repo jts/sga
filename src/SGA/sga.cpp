@@ -18,6 +18,7 @@
 #include "correct.h"
 #include "subgraph.h"
 #include "scaffold.h"
+#include "scaffold2fasta.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -57,6 +58,8 @@ int main(int argc, char** argv)
             oviewMain(argc - 1, argv + 1);
         else if(command == "scaffold")
             scaffoldMain(argc - 1, argv + 1);
+        else if(command == "scaffold2fasta")
+            scaffold2fastaMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
@@ -75,15 +78,16 @@ void printUsage()
     std::cout << "Contact: " << AUTHOR << " [" << PACKAGE_BUGREPORT << "]\n";
     std::cout << "Usage: " << PROGRAM_BIN << " <command> [options]\n\n";
     std::cout << "Commands:\n";
-    std::cout << "           preprocess   filter and quality-trim reads\n";
-    std::cout << "           index        build the BWT and FM-index for a set of reads\n";
-    std::cout << "           merge        merge multiple BWT/FM-index files into a single index\n";
-    std::cout << "           correct      correct sequencing errors in a set of reads\n";
-    std::cout << "           rmdup        remove duplicated or identical reads from the data set\n";
-    std::cout << "           overlap      compute overlaps between reads\n";
-    std::cout << "           assemble     generate contigs\n";
-    std::cout << "           scaffold     generate ordered sets of contigs using distance estimates\n";
-    std::cout << "           oview        view overlap alignments\n";
-    std::cout << "           subgraph     extract a subgraph from a graph\n";
+    std::cout << "           preprocess      filter and quality-trim reads\n";
+    std::cout << "           index           build the BWT and FM-index for a set of reads\n";
+    std::cout << "           merge           merge multiple BWT/FM-index files into a single index\n";
+    std::cout << "           correct         correct sequencing errors in a set of reads\n";
+    std::cout << "           rmdup           remove duplicated or identical reads from the data set\n";
+    std::cout << "           overlap         compute overlaps between reads\n";
+    std::cout << "           assemble        generate contigs\n";
+    std::cout << "           scaffold        generate ordered sets of contigs using distance estimates\n";
+    std::cout << "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n";
+    std::cout << "           oview           view overlap alignments\n";
+    std::cout << "           subgraph        extract a subgraph from a graph\n";
     std::cout << "\n\n";
 }
