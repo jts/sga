@@ -8,6 +8,7 @@ sga_CPPFLAGS = \
 	-I$(top_srcdir)/Concurrency \
 	-I$(top_srcdir)/Algorithm \
 	-I$(top_srcdir)/SQG \
+	-I$(top_srcdir)/Scaffold \
 	-I$(top_srcdir)/Thirdparty
 
 sga_LDADD = \
@@ -18,6 +19,7 @@ sga_LDADD = \
 	$(top_builddir)/Bigraph/libbigraph.a \
 	$(top_builddir)/Util/libutil.a \
 	$(top_builddir)/SQG/libsqg.a \
+	$(top_builddir)/Scaffold/libscaffold.a \
 	$(top_builddir)/Thirdparty/libthirdparty.a
 
 sga_LDFLAGS = -pthread
@@ -32,5 +34,6 @@ sga_SOURCES = sga.cpp \
               rmdup.cpp rmdup.h \
               merge.cpp merge.h \
 			  subgraph.cpp subgraph.h \
+			  scaffold.cpp scaffold.h \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

@@ -17,6 +17,7 @@
 #include "merge.h"
 #include "correct.h"
 #include "subgraph.h"
+#include "scaffold.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -54,6 +55,8 @@ int main(int argc, char** argv)
             subgraphMain(argc - 1, argv + 1);
         else if(command == "oview")
             oviewMain(argc - 1, argv + 1);
+        else if(command == "scaffold")
+            scaffoldMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
@@ -79,6 +82,7 @@ void printUsage()
     std::cout << "           rmdup        remove duplicated or identical reads from the data set\n";
     std::cout << "           overlap      compute overlaps between reads\n";
     std::cout << "           assemble     generate contigs\n";
+    std::cout << "           scaffold     generate ordered sets of contigs using distance estimates\n";
     std::cout << "           oview        view overlap alignments\n";
     std::cout << "           subgraph     extract a subgraph from a graph\n";
     std::cout << "\n\n";

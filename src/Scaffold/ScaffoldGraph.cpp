@@ -127,10 +127,6 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
             double stdDev;
             parseDERecord(record, id, comp, distance, numPairs, stdDev);
 
-            std::cout << "Link from " << rootID << " to " << id << " comp " << comp << 
-                         " distance " << distance << " dir " << currDir << " np " << 
-                         numPairs << " sd " << stdDev << "\n";
-
             // Get the vertices that are linked
             ScaffoldVertex* pVertex1 = getVertex(rootID);
             ScaffoldVertex* pVertex2 = getVertex(id);
@@ -140,6 +136,7 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
                 if(pVertex1 == pVertex2)
                 {
                     std::cout << "Self-edges not allowed\n";
+                    assert(false);
                     continue;
                 }
 

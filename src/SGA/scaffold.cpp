@@ -4,7 +4,8 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// sga-scaffold - Post-assembly scaffolder
+// scaffold - Scaffold a set of contigs using
+// distances estimates and/or reference information.
 //
 #include <getopt.h>
 #include "Util.h"
@@ -12,18 +13,15 @@
 #include "ScaffoldGraph.h"
 #include "ScaffoldVisitors.h"
 
-#define PROGRAM "sga-scaffold"
-#define AUTHOR "Jared Simpson"
-
-#define SUBPROGRAM "overlap"
+#define SUBPROGRAM "scaffold"
 static const char *SCAFFOLD_VERSION_MESSAGE =
-PROGRAM " Version " PACKAGE_VERSION "\n"
-"Written by " AUTHOR ".\n"
+SUBPROGRAM " Version " PACKAGE_VERSION "\n"
+"Written by Jared Simpson.\n"
 "\n"
 "Copyright 2010 Wellcome Trust Sanger Institute\n";
 
 static const char *SCAFFOLD_USAGE_MESSAGE =
-"Usage: " PROGRAM " [OPTION] ... CONTIGSFILE DISTANCE-EST\n"
+"Usage: " SUBPROGRAM " [OPTION] ... CONTIGSFILE DISTANCE-EST\n"
 "Construct scaffolds from CONTIGSFILE using distance estimates in DISTANCE-EST\n"
 "\n"
 "      --help                           display this help and exit\n"
@@ -71,7 +69,7 @@ static const struct option longopts[] = {
 void parseScaffoldOptions(int argc, char** argv);
 
 //
-int main(int argc, char** argv)
+int scaffoldMain(int argc, char** argv)
 {
     parseScaffoldOptions(argc, argv);
     std::cout << "Building scaffolds from " << opt::contigsFile << " using " << opt::distanceEstFile << "\n";
@@ -121,6 +119,8 @@ int main(int argc, char** argv)
 
     ScaffoldWriterVisitor writer(opt::outFile);
     graph.visit(writer);
+
+    return 0;
 }
 
 //
@@ -150,18 +150,18 @@ void parseScaffoldOptions(int argc, char** argv)
 
     if (argc - optind < 2) 
     {
-        std::cerr << PROGRAM ": missing arguments\n";
+        std::cerr << SUBPROGRAM ": missing arguments\n";
         die = true;
     } 
     else if (argc - optind > 3) 
     {
-        std::cerr << PROGRAM ": too many arguments\n";
+        std::cerr << SUBPROGRAM ": too many arguments\n";
         die = true;
     }
 
     if (die) 
     {
-        std::cerr << "Try `" << PROGRAM << " --help' for more information.\n";
+        std::cerr << "Try `" << SUBPROGRAM << " --help' for more information.\n";
         exit(EXIT_FAILURE);
     }
 
@@ -171,19 +171,19 @@ void parseScaffoldOptions(int argc, char** argv)
 
     if(opt::contigsFile.empty())
     {
-        std::cerr << PROGRAM ": a contigs file must be provided\n";
+        std::cerr << SUBPROGRAM ": a contigs file must be provided\n";
         exit(1);
     }
 
     if(opt::distanceEstFile.empty())
     {
-        std::cerr << PROGRAM ": a distance estimation file must be provided\n";
+        std::cerr << SUBPROGRAM ": a distance estimation file must be provided\n";
         exit(1);
     }
 
     if(opt::uniqueAstatThreshold < opt::repeatAstatThreshold)
     {
-        std::cerr << PROGRAM ": the unique a-stat threshold must be greater than the repeat a-stat threshold\n";
+        std::cerr << SUBPROGRAM ": the unique a-stat threshold must be greater than the repeat a-stat threshold\n";
         std::cerr << "Found unique value: " << opt::uniqueAstatThreshold << " repeat value: " << opt::repeatAstatThreshold << "\n";
         exit(1);
     }
