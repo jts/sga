@@ -49,8 +49,7 @@ def calcN50(data):
     return 0
 
 def parseStartNode(text):
-    fields = text.split(",")
-    return ScaffoldNode(fields[0], 0, 0.0, 0, 'N')
+    return ScaffoldNode(text, 0, 0.0, 0, 'N')
 
 def parseInteriorNode(text):
     fields = text.split(",")
@@ -127,7 +126,6 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
         correct_str = 'not correct'
 
     print 'Scaffold %d ordering is %s ' %(idx, correct_str)
-    print 'Positions: ' + str(positions)
 
     sum_bases = 0
     for p in positions:
@@ -135,7 +133,7 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
 
     span = calcOuterDistance(positions[0], positions[-1])
 
-    if ordered:
+    if ordered and len(scaffold) > 1:
         ref_distances = calculateDistanceVector(positions)
         
         est_dist = list()
@@ -157,6 +155,7 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
             if diff > max_diff:
                 max_diff = diff
 
+        print 'Positions: ' + str(positions)
         print 'Ref distances: ' + str(ref_distances)
         print 'Est distances: ' + str(est_dist)
         #print 'Est sd:        ' + str(est_sd)
@@ -169,10 +168,13 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
 def usage():
     print 'usage: evalScaffolds.py SCAFFOLDS SAM'
     print 'evaluate the correctness of the SCAFFOLDS using the alignments of the components to the reference in SAM'
-#   print 'Options:'
+    print 'Options:'
+    print '            --no-singleton Skip evaluating singleton scaffolds'
+    print ''
 
+bEvalSingletons = True
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], '', ["help"])
+    opts, args = getopt.gnu_getopt(sys.argv[1:], 'h', ["help", "no-singleton"])
 except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -182,6 +184,8 @@ for (oflag, oarg) in opts:
         if oflag == '-h' or oflag == '--help':
             usage()
             sys.exit(0)
+        if oflag == '--no-singleton':
+            bEvalSingletons = False
 
 if len(args) == 2:
     scaffoldFilename = args[0]
@@ -204,6 +208,7 @@ for record in iter:
 
 # Evalulate the scaffolds, one by one
 idx = 0
+total = 0
 num_correct = 0
 num_wrong = 0
 
@@ -221,17 +226,19 @@ for line in open(scaffoldFilename,'r'):
         scaffold.append(parseInteriorNode(f))
 
     # Evaluate the scaffold
-    [ordered, bases, ref_span] = evaluateScaffoldOrdering(idx, scaffold, alignments)
+    if len(scaffold) > 1 or bEvalSingletons:
+        [ordered, bases, ref_span] = evaluateScaffoldOrdering(idx, scaffold, alignments)
 
-    if ordered:
-        num_correct += 1
-        correct_bases.append(bases)
-        correct_span.append(ref_span)
-    else:
-        num_wrong += 1
+        if ordered:
+            num_correct += 1
+            correct_bases.append(bases)
+            correct_span.append(ref_span)
+        else:
+            num_wrong += 1
+        total += 1
     idx += 1
 
-print '\n===\nTotal scaffolds: %d Correctly ordered: %d Incorrectly ordered: %d' %(idx, num_correct, num_wrong)
+print '\n===\nTotal scaffolds: %d Correctly ordered: %d Incorrectly ordered: %d' %(total, num_correct, num_wrong)
 
 print '\nStatistics for correct scaffolds:'
 print 'Sum bases: %d' %(calcSum(correct_bases))

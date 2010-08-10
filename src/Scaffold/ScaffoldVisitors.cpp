@@ -292,42 +292,46 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
         return false; //already output
 
     ScaffoldEdgePtrVector edges = pVertex->getEdges();
-
-    if(edges.size() == 1)
+    
+    if(edges.size() <= 1)
     {
         // Start of a chain found, traverse it to the other end
         size_t num_contigs = 0;
         size_t bases = 0; // number of bases in contigs
         size_t span = 0; // number of bases plus gaps
 
-        ScaffoldEdge* pStartEdge = edges[0];
         pVertex->setColor(GC_RED);
 
         // write the start of the scaffold
-        *m_pWriter << pVertex->getID() << "," << pStartEdge->getDir();
+        *m_pWriter << pVertex->getID();
         bases += pVertex->getSeqLen();
         num_contigs += 1;
-
-        ScaffoldEdge* pXY = pStartEdge;
-        while(1)
+        
+        if(edges.size() == 1)
         {
-            *m_pWriter << "\t" << pXY->makeLinkString();
+            // Write the linked contigs
+            ScaffoldEdge* pStartEdge = edges[0];
+            ScaffoldEdge* pXY = pStartEdge;
+            while(1)
+            {
+                *m_pWriter << "\t" << pXY->makeLinkString();
 
-            //
-            ScaffoldVertex* pY = pXY->getEnd();
-            pY->setColor(GC_RED);
-            bases += pY->getSeqLen();
-            span += pY->getSeqLen() + pXY->getDistance();
-            num_contigs += 1;
+                //
+                ScaffoldVertex* pY = pXY->getEnd();
+                pY->setColor(GC_RED);
+                bases += pY->getSeqLen();
+                span += pY->getSeqLen() + pXY->getDistance();
+                num_contigs += 1;
 
-            // get the next direction
-            EdgeDir nextDir = !pXY->getTwin()->getDir();
-            ScaffoldEdgePtrVector nextEdges = pY->getEdges(nextDir);
-            
-            if(nextEdges.size() == 1)
-                pXY = nextEdges[0];
-            else
-                break;
+                // get the next direction
+                EdgeDir nextDir = !pXY->getTwin()->getDir();
+                ScaffoldEdgePtrVector nextEdges = pY->getEdges(nextDir);
+                
+                if(nextEdges.size() == 1)
+                    pXY = nextEdges[0];
+                else
+                    break;
+            }
         }
         *m_pWriter << "\n";
 
