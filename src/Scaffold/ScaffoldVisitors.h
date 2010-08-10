@@ -17,7 +17,7 @@ namespace ScaffoldAlgorithms
 {
     bool areEdgesAmbiguous(ScaffoldEdge* pXY, ScaffoldEdge* pXZ);
     void inferScaffoldEdgeYZ(ScaffoldEdge* pXY, ScaffoldEdge* pXZ,
-                                             int& dist, EdgeDir& dir_yz, 
+                                             int& dist, double& sd, EdgeDir& dir_yz, 
                                              EdgeDir& dir_zy, EdgeComp& comp);
 
 };

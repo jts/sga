@@ -81,11 +81,35 @@ ScaffoldEdgeType ScaffoldEdge::getType() const
     return m_type;
 }
 
+char ScaffoldEdge::getTypeCode() const
+{
+    switch(m_type)
+    {
+        case SET_DISTANCEEST:
+            return 'D';
+        case SET_REFERENCE:
+            return 'R';
+        case SET_INFERRED:
+            return 'I';
+        default:
+            return 'N';
+    }
+}
+
+std::string ScaffoldEdge::makeLinkString() const
+{
+    std::stringstream ss;
+    ss << getEndID() << "," << getDistance() << "," << getStdDev() << "," <<
+          getDir() << "," << getComp() << "," << getTypeCode();
+
+    return ss.str();
+}
+
 //
 std::ostream& operator<<(std::ostream& out, ScaffoldEdge& edge)
 {
     out << edge.getStartID() << " -- " << edge.getEndID() << "," << edge.getDistance() << "," << edge.getStdDev() 
-        << "," << edge.getDir() << "," << edge.getComp();
+        << "," << edge.getDir() << "," << edge.getComp() << "," << edge.getTypeCode();
     return out;
 }
 

@@ -28,13 +28,14 @@ bool ScaffoldAlgorithms::areEdgesAmbiguous(ScaffoldEdge* pXY, ScaffoldEdge* pXZ)
 //
 // Returns the edge properties inferred from the edges X->Y and X->Z
 void ScaffoldAlgorithms::inferScaffoldEdgeYZ(ScaffoldEdge* pXY, ScaffoldEdge* pXZ,
-                                             int& dist, EdgeDir& dir_yz, 
+                                             int& dist, double& sd, EdgeDir& dir_yz, 
                                              EdgeDir& dir_zy, EdgeComp& comp)
 {
     comp = (pXY->getComp() == pXZ->getComp() ? EC_SAME : EC_REVERSE);
     dir_yz = !pXY->getTwin()->getDir(); // Opposite direction of X <- Y
     dir_zy = pXZ->getTwin()->getDir();  // Same direction as X <- Z since Z is after Y
     dist = pXZ->getDistance() - (pXY->getDistance() + pXY->getEnd()->getSeqLen());
+    sd = sqrt(pow(pXY->getStdDev(), 2.0) + pow(pXZ->getStdDev(), 2.0));
 }
 
 // ScaffoldStatsVisitor
@@ -195,10 +196,11 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
 
             // Infer the edge data for the edge Y->Z
             int dist;
+            double sd;
             EdgeDir dir_yz;
             EdgeDir dir_zy; 
             EdgeComp comp;
-            ScaffoldAlgorithms::inferScaffoldEdgeYZ(pXY, pXZ, dist, dir_yz, dir_zy, comp);
+            ScaffoldAlgorithms::inferScaffoldEdgeYZ(pXY, pXZ, dist, sd, dir_yz, dir_zy, comp);
 
             // Sanity checks
             bool isConsistent = (dist > -1*m_maxOverlap);
@@ -213,8 +215,8 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
             if(pCheckEdge == NULL)
             {
                 // Create the new edges
-                ScaffoldEdge* pYZ = new ScaffoldEdge(pZ, dir_yz, comp, dist, 0, 0, SET_INFERRED);
-                ScaffoldEdge* pZY = new ScaffoldEdge(pY, dir_zy, comp, dist, 0, 0, SET_INFERRED);
+                ScaffoldEdge* pYZ = new ScaffoldEdge(pZ, dir_yz, comp, dist, sd, 0, SET_INFERRED);
+                ScaffoldEdge* pZY = new ScaffoldEdge(pY, dir_zy, comp, dist, sd, 0, SET_INFERRED);
                 pYZ->setTwin(pZY);
                 pZY->setTwin(pYZ);
 
@@ -309,7 +311,7 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
         ScaffoldEdge* pXY = pStartEdge;
         while(1)
         {
-            *m_pWriter << "\t" << *pXY;
+            *m_pWriter << "\t" << pXY->makeLinkString();
 
             //
             ScaffoldVertex* pY = pXY->getEnd();

@@ -40,6 +40,9 @@ class ScaffoldEdge
         int getDistance() const;
         double getStdDev() const;
         ScaffoldEdgeType getType() const;
+        char getTypeCode() const;
+
+        std::string makeLinkString() const;
 
         //
         friend std::ostream& operator<<(std::ostream& out, ScaffoldEdge& edge);
