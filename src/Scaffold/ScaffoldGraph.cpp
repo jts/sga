@@ -141,7 +141,7 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
                 }
 
                 // Check if there already exists a DistanceEstimate edge between these vertices
-                ScaffoldEdge* pEdge = pVertex1->findEdgeTo(id, SET_DISTANCEEST);
+                ScaffoldEdge* pEdge = pVertex1->findEdgeTo(id, SLT_DISTANCEEST);
                 if(pEdge != NULL)
                 {
                     // An edge to this vertex already exists
@@ -149,8 +149,12 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
                 }
                 else
                 {
-                    ScaffoldEdge* pEdge1 = new ScaffoldEdge(pVertex2, currDir, comp, distance, stdDev, numPairs, SET_DISTANCEEST);
-                    ScaffoldEdge* pEdge2 = new ScaffoldEdge(pVertex1, !correctDir(currDir, comp), comp, distance, stdDev, numPairs, SET_DISTANCEEST);
+                    ScaffoldLink link1(currDir, comp, distance, stdDev, numPairs, SLT_DISTANCEEST);
+                    ScaffoldLink link2(!correctDir(currDir, comp), comp, distance, stdDev, numPairs, SLT_DISTANCEEST);
+
+                    ScaffoldEdge* pEdge1 = new ScaffoldEdge(pVertex2, link1);
+                    ScaffoldEdge* pEdge2 = new ScaffoldEdge(pVertex1, link2);
+
                     pEdge1->setTwin(pEdge2);
                     pEdge2->setTwin(pEdge1);
 

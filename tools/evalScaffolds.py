@@ -126,6 +126,7 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
         correct_str = 'not correct'
 
     print 'Scaffold %d ordering is %s ' %(idx, correct_str)
+    print 'Positions: ' + str(positions)
 
     gaps = 0
     gap_error = 0
@@ -158,7 +159,6 @@ def evaluateScaffoldOrdering(idx, scaffold, alignments):
             if diff > max_diff:
                 max_diff = diff
 
-        print 'Positions: ' + str(positions)
         print 'Ref distances: ' + str(ref_distances)
         print 'Est distances: ' + str(est_dist)
         #print 'Est sd:        ' + str(est_sd)

@@ -8,4 +8,5 @@ libscaffold_a_CPPFLAGS = \
 libscaffold_a_SOURCES = ScaffoldVertex.h ScaffoldVertex.cpp \
                         ScaffoldEdge.h ScaffoldEdge.cpp \
                         ScaffoldGraph.h ScaffoldGraph.cpp \
-                        ScaffoldVisitors.h ScaffoldVisitors.cpp
+                        ScaffoldVisitors.h ScaffoldVisitors.cpp \
+                        ScaffoldLink.h ScaffoldLink.cpp

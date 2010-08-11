@@ -32,7 +32,7 @@ void ScaffoldVertex::addEdge(ScaffoldEdge* pEdge)
 }
 
 //
-ScaffoldEdge* ScaffoldVertex::findEdgeTo(VertexID id, ScaffoldEdgeType type) const
+ScaffoldEdge* ScaffoldVertex::findEdgeTo(VertexID id, ScaffoldLinkType type) const
 {
     for(ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin(); iter != m_edges.end(); ++iter)
     {

@@ -53,7 +53,7 @@ class ScaffoldVertex
         void deleteEdgesAndTwins(EdgeDir dir);
         void deleteEdgesAndTwins();
 
-        ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldEdgeType type) const;
+        ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldLinkType type) const;
         ScaffoldEdge* findEdgeTo(VertexID id, EdgeDir dir, EdgeComp comp) const;
 
         ScaffoldEdgePtrVector getEdges();

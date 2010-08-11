@@ -215,8 +215,10 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
             if(pCheckEdge == NULL)
             {
                 // Create the new edges
-                ScaffoldEdge* pYZ = new ScaffoldEdge(pZ, dir_yz, comp, dist, sd, 0, SET_INFERRED);
-                ScaffoldEdge* pZY = new ScaffoldEdge(pY, dir_zy, comp, dist, sd, 0, SET_INFERRED);
+                ScaffoldLink linkYZ(dir_yz, comp, dist, sd, 0, SLT_INFERRED);
+                ScaffoldLink linkZY(dir_zy, comp, dist, sd, 0, SLT_INFERRED);
+                ScaffoldEdge* pYZ = new ScaffoldEdge(pZ, linkYZ);
+                ScaffoldEdge* pZY = new ScaffoldEdge(pY, linkZY);
                 pYZ->setTwin(pZY);
                 pZY->setTwin(pYZ);
 

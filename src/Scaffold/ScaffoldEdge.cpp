@@ -9,15 +9,8 @@
 #include "ScaffoldEdge.h"
 #include "ScaffoldVertex.h"
 
-ScaffoldEdge::ScaffoldEdge(ScaffoldVertex* pEnd, 
-                           EdgeDir dir, EdgeComp comp, 
-                           int distance, double stdDev, 
-                           int numPairs, ScaffoldEdgeType type) : m_pEnd(pEnd), m_pTwin(NULL),
-                                                                  m_distance(distance), m_stdDev(stdDev),
-                                                                  m_numPairs(numPairs), m_type(type)
+ScaffoldEdge::ScaffoldEdge(ScaffoldVertex* pEnd, ScaffoldLink link) : m_pEnd(pEnd), m_pTwin(NULL), m_link(link)
 {
-    m_edgeData.setDir(dir);
-    m_edgeData.setComp(comp);
 }
 
 //
@@ -54,47 +47,48 @@ ScaffoldEdge* ScaffoldEdge::getTwin() const
 //
 EdgeDir ScaffoldEdge::getDir() const
 {
-    return m_edgeData.getDir();
+    return m_link.edgeData.getDir();
 }
 
 //
 EdgeComp ScaffoldEdge::getComp() const
 {
-    return m_edgeData.getComp();
+    return m_link.edgeData.getComp();
 }
 
 //
 int ScaffoldEdge::getDistance() const
 {
-    return m_distance;
+    return m_link.distance;
 }
 
 //
 double ScaffoldEdge::getStdDev() const
 {
-    return m_stdDev;
+    return m_link.stdDev;
 }
 
 //
-ScaffoldEdgeType ScaffoldEdge::getType() const
+ScaffoldLinkType ScaffoldEdge::getType() const
 {
-    return m_type;
+    return m_link.type;
 }
 
 char ScaffoldEdge::getTypeCode() const
 {
-    switch(m_type)
+    switch(m_link.type)
     {
-        case SET_DISTANCEEST:
+        case SLT_DISTANCEEST:
             return 'D';
-        case SET_REFERENCE:
+        case SLT_REFERENCE:
             return 'R';
-        case SET_INFERRED:
+        case SLT_INFERRED:
             return 'I';
         default:
             return 'N';
     }
 }
+
 
 std::string ScaffoldEdge::makeLinkString() const
 {

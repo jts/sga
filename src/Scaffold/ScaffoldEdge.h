@@ -5,27 +5,21 @@
 //-----------------------------------------------
 //
 // ScaffoldEdge - An edge in a scaffold graph. 
+// Wraps the ScaffoldLink data.
 //
 #ifndef SCAFFOLDEDGE_H
 #define SCAFFOLDEDGE_H
 
 #include "Edge.h"
+#include "ScaffoldLink.h"
 
 class ScaffoldVertex;
-
-enum ScaffoldEdgeType
-{
-    SET_DISTANCEEST,
-    SET_REFERENCE,
-    SET_INFERRED
-};
 
 class ScaffoldEdge
 {
     public:
 
-        ScaffoldEdge(ScaffoldVertex* pEnd, EdgeDir dir, EdgeComp comp,
-                     int distance, double stdDev, int numPairs, ScaffoldEdgeType type);
+        ScaffoldEdge(ScaffoldVertex* pEnd, ScaffoldLink link);
 
         //
         void setTwin(ScaffoldEdge* pEdge);
@@ -35,13 +29,17 @@ class ScaffoldEdge
         VertexID getEndID() const;
         ScaffoldVertex* getEnd() const;
         ScaffoldEdge* getTwin() const;
+        ScaffoldLink& getLink() const;
+
+        //
         EdgeDir getDir() const;
-        EdgeComp getComp() const;
+        EdgeComp getComp() const;        
+        ScaffoldLinkType getType() const;
         int getDistance() const;
         double getStdDev() const;
-        ScaffoldEdgeType getType() const;
         char getTypeCode() const;
-
+        
+        //
         std::string makeLinkString() const;
 
         //
@@ -50,12 +48,7 @@ class ScaffoldEdge
     private:
         ScaffoldVertex* m_pEnd;
         ScaffoldEdge* m_pTwin;
-        EdgeData m_edgeData; // dir/comp member
-        int m_distance;
-        double m_stdDev;
-        int m_numPairs;
-        ScaffoldEdgeType m_type;
-
+        ScaffoldLink m_link; // distance, direction information
 };
 
 bool ScaffoldEdgePtrDistanceCompare(ScaffoldEdge* pXY, ScaffoldEdge* pXZ);
