@@ -101,16 +101,9 @@ int scaffoldMain(int argc, char** argv)
     graph.writeDot("scaffold.dot");
 
     ScaffoldChainVisitor chainVisitor(maxOverlap);
-    graph.visit(chainVisitor);
 
-  //  graph.writeDot("afterChain.dot");
-    graph.visit(statsVisitor);
-
-    graph.visit(chainVisitor);
-//    graph.writeDot("afterChain2.dot");
-    graph.visit(statsVisitor);
-
-    graph.visit(chainVisitor);
+    // Collapse all chains
+    while(graph.visit(chainVisitor)) {}
     graph.writeDot("finalChain.dot");
     graph.visit(statsVisitor);
 
