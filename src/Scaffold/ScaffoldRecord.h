@@ -12,6 +12,7 @@
 #define SCAFFOLDRECORD_H
 
 #include "ScaffoldLink.h"
+#include "SGUtil.h"
 
 class ScaffoldRecord
 {
@@ -20,6 +21,8 @@ class ScaffoldRecord
 
         void setRoot(const std::string& root);
         void addLink(const ScaffoldLink& link);
+
+        std::string generateString(const StringGraph* pGraph) const;
 
         void parse(const std::string& text);
         void writeScaf(std::ostream* pWriter);

@@ -100,6 +100,9 @@ std::string stripDirectories(const std::string& filename);
 std::string getFileExtension(const std::string& filename);
 bool isGzip(const std::string& filename);
 
+// Write out a fasta record
+void writeFastaRecord(std::ostream* pWriter, const std::string& id, const std::string& seq, size_t maxLength = 80);
+
 // Wrapper function for opening a reader of compressed or uncompressed file
 std::istream* createReader(const std::string& filename, std::ios_base::openmode mode = std::ios_base::in);
 std::ostream* createWriter(const std::string& filename, 

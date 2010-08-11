@@ -109,7 +109,7 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
         assert(fields.size() >= 1);
 
         std::string rootID = fields[0];
-        EdgeDir currDir = ED_ANTISENSE;
+        EdgeDir currDir = ED_SENSE; // abyss distance estimate outputs the sense contigs first
 
         for(size_t i = 1; i < fields.size(); ++i)
         {

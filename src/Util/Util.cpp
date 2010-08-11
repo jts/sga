@@ -123,6 +123,13 @@ std::string getFileExtension(const std::string& filename)
         return filename.substr(suffixPos + 1);
 }
 
+// Write out a fasta record
+void writeFastaRecord(std::ostream* pWriter, const std::string& id, const std::string& seq, size_t /*maxLength*/)
+{
+    *pWriter << ">" << id << " " << seq.length() << "\n";
+    *pWriter << seq << "\n";
+}
+
 // Returns true if the filename has an extension indicating it is compressed
 bool isGzip(const std::string& filename)
 {

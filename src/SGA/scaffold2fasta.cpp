@@ -83,17 +83,24 @@ int scaffold2fastaMain(int argc, char** argv)
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
 
     std::istream* pReader = new std::ifstream(opt::scafFile.c_str());
+    std::ostream* pWriter = createWriter(opt::outFile);
 
     std::string line;
+    size_t idx = 0;
     while(getline(*pReader, line))
     {
         ScaffoldRecord record;
         record.parse(line);
-        record.writeScaf(&std::cout);
+        std::string sequence = record.generateString(pGraph);
+        std::stringstream idss;
+        idss << "scaffold-" << idx;
+        writeFastaRecord(pWriter, idss.str(), sequence);
+        ++idx;
     }
 
     delete pReader;
     delete pGraph;
+    delete pWriter;
     return 0;
 }
 
