@@ -74,7 +74,7 @@ class Vertex
         void sortAdjListByLen();
 
         // Ensure that all the edges are unique
-        void makeUnique(); 
+        bool markDuplicateEdges(GraphColor dupColor); 
 
         // Compute the transitive groups for this vertex
         // A transitive group is a set of edges s.t. one
@@ -145,7 +145,7 @@ class Vertex
     private:
 
         // Ensure all the edges in DIR are unique
-        void makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec);
+        bool markDuplicateEdges(EdgeDir dir, GraphColor dupColor);
 
         VertexID m_id;
         EdgePtrVec m_edges;

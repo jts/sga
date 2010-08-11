@@ -29,7 +29,7 @@ class ScaffoldEdge
         VertexID getEndID() const;
         ScaffoldVertex* getEnd() const;
         ScaffoldEdge* getTwin() const;
-        ScaffoldLink& getLink() const;
+        const ScaffoldLink& getLink() const;
 
         //
         EdgeDir getDir() const;
@@ -43,7 +43,7 @@ class ScaffoldEdge
         std::string makeLinkString() const;
 
         //
-        friend std::ostream& operator<<(std::ostream& out, ScaffoldEdge& edge);
+        friend std::ostream& operator<<(std::ostream& out, const ScaffoldEdge& edge);
 
     private:
         ScaffoldVertex* m_pEnd;

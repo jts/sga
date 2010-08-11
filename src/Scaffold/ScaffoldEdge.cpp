@@ -74,36 +74,25 @@ ScaffoldLinkType ScaffoldEdge::getType() const
     return m_link.type;
 }
 
-char ScaffoldEdge::getTypeCode() const
+//
+const ScaffoldLink& ScaffoldEdge::getLink() const
 {
-    switch(m_link.type)
-    {
-        case SLT_DISTANCEEST:
-            return 'D';
-        case SLT_REFERENCE:
-            return 'R';
-        case SLT_INFERRED:
-            return 'I';
-        default:
-            return 'N';
-    }
+    return m_link;
 }
 
-
+//
 std::string ScaffoldEdge::makeLinkString() const
 {
     std::stringstream ss;
-    ss << getEndID() << "," << getDistance() << "," << getStdDev() << "," <<
-          getDir() << "," << getComp() << "," << getTypeCode();
-
+    ss << m_link;
     return ss.str();
 }
 
 //
-std::ostream& operator<<(std::ostream& out, ScaffoldEdge& edge)
+std::ostream& operator<<(std::ostream& out, const ScaffoldEdge& edge)
 {
     out << edge.getStartID() << " -- " << edge.getEndID() << "," << edge.getDistance() << "," << edge.getStdDev() 
-        << "," << edge.getDir() << "," << edge.getComp() << "," << edge.getTypeCode();
+        << "," << edge.getDir() << "," << edge.getComp() << "," << edge.m_link.getTypeCode();
     return out;
 }
 

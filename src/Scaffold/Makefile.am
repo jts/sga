@@ -9,4 +9,5 @@ libscaffold_a_SOURCES = ScaffoldVertex.h ScaffoldVertex.cpp \
                         ScaffoldEdge.h ScaffoldEdge.cpp \
                         ScaffoldGraph.h ScaffoldGraph.cpp \
                         ScaffoldVisitors.h ScaffoldVisitors.cpp \
-                        ScaffoldLink.h ScaffoldLink.cpp
+                        ScaffoldLink.h ScaffoldLink.cpp \
+                        ScaffoldRecord.h ScaffoldRecord.cpp

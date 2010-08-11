@@ -107,21 +107,22 @@ void Vertex::sortAdjListByLen()
     std::sort(m_edges.begin(), m_edges.end(), comp);
 }
 
-// Ensure that this vertex has at most one edge per direction to any other vertex
-void Vertex::makeUnique()
+// Mark duplicate edges with dupColor
+// Returns true if a duplicate has been marked
+bool Vertex::markDuplicateEdges(GraphColor dupColor)
 {
     // Sort the edge lists by length
     sortAdjListByLen();
-    EdgePtrVec uniqueVec;
-    makeUnique(ED_SENSE, uniqueVec);
-    makeUnique(ED_ANTISENSE, uniqueVec);
-    m_edges.swap(uniqueVec);
+    bool hasDup = false;
+    hasDup = markDuplicateEdges(ED_SENSE, dupColor) || hasDup;
+    hasDup = markDuplicateEdges(ED_ANTISENSE, dupColor) || hasDup;
+    return hasDup;
 }
 
-// Ensure each edge of the vertex is unique, assumes all vertices in the graph
-// are initially colored white
-void Vertex::makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec)
+// Mark duplicate edges in the specified direction
+bool Vertex::markDuplicateEdges(EdgeDir dir, GraphColor dupColor)
 {
+    bool marked = false;
     for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
     {
         Edge* pEdge = *iter;
@@ -131,27 +132,26 @@ void Vertex::makeUnique(EdgeDir dir, EdgePtrVec& uniqueVec)
             if(pY->getColor() == GC_BLACK)
             {
                 std::cerr << getID() << " has a duplicate edge to " << pEdge->getEndID() << " in direction " << dir << "\n";
-                // This vertex is the endpoint of some other (longer) edge
-                // Delete the edge and remove it from the twin
+
+                // This vertex is the endpoint of some other (potentially longer) edge
+                // Delete the edge
                 Edge* pTwin = pEdge->getTwin();
-                Vertex* pPartner = pEdge->getEnd();
-                pPartner->removeEdge(pTwin);
-                delete pEdge;
-                pEdge = NULL;
-                delete pTwin;
-                pTwin = NULL;
+                pTwin->setColor(dupColor);
+                pEdge->setColor(dupColor);
+                marked = true;
             }
             else
             {
                 assert(pY->getColor() == GC_WHITE);
                 pY->setColor(GC_BLACK);
-                uniqueVec.push_back(*iter);
             }
         }
     }
 
-    for(EdgePtrVecIter iter = uniqueVec.begin(); iter != uniqueVec.end(); ++iter)
+    // Reset vertex colors
+    for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
         (*iter)->getEnd()->setColor(GC_WHITE);
+    return true;
 }
 
 

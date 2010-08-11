@@ -18,19 +18,28 @@ enum ScaffoldLinkType
 {
     SLT_DISTANCEEST,
     SLT_REFERENCE,
-    SLT_INFERRED
+    SLT_INFERRED,
+    SLT_NOTYPE
 };
 
 class ScaffoldLink
 {
     public:
         ScaffoldLink() {}
-        ScaffoldLink(EdgeDir dir, EdgeComp comp, int dist, 
-                     double sd, int np, ScaffoldLinkType slt);
+        ScaffoldLink(const std::string& id, EdgeDir dir, EdgeComp comp, 
+                     int dist, double sd, int np, ScaffoldLinkType slt);
 
         EdgeDir getDir() const;
         EdgeComp getComp() const;
+        char getTypeCode() const;
+        static ScaffoldLinkType getType(char tc);
 
+        // IO
+        void parse(const std::string& text);
+        friend std::ostream& operator<<(std::ostream& out, const ScaffoldLink& link);
+
+        // data 
+        std::string endpointID;
         int distance;
         double stdDev;
         int numPairs;

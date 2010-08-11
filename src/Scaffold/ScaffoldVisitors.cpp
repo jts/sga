@@ -8,6 +8,7 @@
 // some operation on a ScaffoldVertex/Graph
 //
 #include "ScaffoldVisitors.h"
+#include "ScaffoldRecord.h"
 #include <limits.h>
 
 //
@@ -215,8 +216,8 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
             if(pCheckEdge == NULL)
             {
                 // Create the new edges
-                ScaffoldLink linkYZ(dir_yz, comp, dist, sd, 0, SLT_INFERRED);
-                ScaffoldLink linkZY(dir_zy, comp, dist, sd, 0, SLT_INFERRED);
+                ScaffoldLink linkYZ(pZ->getID(), dir_yz, comp, dist, sd, 0, SLT_INFERRED);
+                ScaffoldLink linkZY(pY->getID(), dir_zy, comp, dist, sd, 0, SLT_INFERRED);
                 ScaffoldEdge* pYZ = new ScaffoldEdge(pZ, linkYZ);
                 ScaffoldEdge* pZY = new ScaffoldEdge(pY, linkZY);
                 pYZ->setTwin(pZY);
@@ -303,9 +304,10 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
         size_t span = 0; // number of bases plus gaps
 
         pVertex->setColor(GC_RED);
-
-        // write the start of the scaffold
-        *m_pWriter << pVertex->getID();
+    
+        ScaffoldRecord record;
+        record.setRoot(pVertex->getID());
+        
         bases += pVertex->getSeqLen();
         num_contigs += 1;
         
@@ -316,9 +318,7 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
             ScaffoldEdge* pXY = pStartEdge;
             while(1)
             {
-                *m_pWriter << "\t" << pXY->makeLinkString();
-
-                //
+                record.addLink(pXY->getLink());
                 ScaffoldVertex* pY = pXY->getEnd();
                 pY->setColor(GC_RED);
                 bases += pY->getSeqLen();
@@ -335,8 +335,7 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
                     break;
             }
         }
-        *m_pWriter << "\n";
-
+        record.writeScaf(m_pWriter);
         printf("Wrote scaffold with %zu components, %zu bases (%zu span)\n", num_contigs, bases, span);
     }
     return false;

@@ -166,6 +166,8 @@ struct SGDuplicateVisitor
     void previsit(StringGraph*);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*);
+
+    bool m_hasDuplicate;
 };
 
 // Detect small island vertices and removal them

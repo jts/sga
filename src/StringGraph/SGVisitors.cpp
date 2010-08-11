@@ -605,11 +605,12 @@ void SGDuplicateVisitor::previsit(StringGraph* pGraph)
 {
     assert(pGraph->checkColors(GC_WHITE));
     (void)pGraph;
+    m_hasDuplicate = false;
 }
 
 bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-    pVertex->makeUnique();
+    m_hasDuplicate = pVertex->markDuplicateEdges(GC_RED) || m_hasDuplicate;
     return false;
 }
 
@@ -617,7 +618,8 @@ bool SGDuplicateVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 void SGDuplicateVisitor::postvisit(StringGraph* pGraph)
 {
     assert(pGraph->checkColors(GC_WHITE));
-    (void)pGraph;
+    if(m_hasDuplicate)
+        pGraph->sweepEdges(GC_RED);
 }
 
 //

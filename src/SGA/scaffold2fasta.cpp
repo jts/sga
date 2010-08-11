@@ -12,7 +12,9 @@
 #include "config.h"
 #include "ScaffoldGraph.h"
 #include "ScaffoldVisitors.h"
+#include "ScaffoldRecord.h"
 #include "SGUtil.h"
+
 
 #define SUBPROGRAM "scaffold2fasta"
 static const char *SCAFFOLD2FASTA_VERSION_MESSAGE =
@@ -79,6 +81,18 @@ int scaffold2fastaMain(int argc, char** argv)
     std::cout << "Reading scaffolds from " << opt::scafFile << "\n";
 
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
+
+    std::istream* pReader = new std::ifstream(opt::scafFile.c_str());
+
+    std::string line;
+    while(getline(*pReader, line))
+    {
+        ScaffoldRecord record;
+        record.parse(line);
+        record.writeScaf(&std::cout);
+    }
+
+    delete pReader;
     delete pGraph;
     return 0;
 }
