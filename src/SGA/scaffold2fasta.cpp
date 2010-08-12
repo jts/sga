@@ -72,15 +72,19 @@ void parseScaffold2fastaOptions(int argc, char** argv);
 //
 int scaffold2fastaMain(int argc, char** argv)
 {
-    std::string s1 = "ACGTACTCAGATAGGTAGATACACATAGACAAGGGTTACCCAAATACCCGTAGGTAGTACA";
-    std::string s2 = "TCAGATAGGTAGATACACATCGACACGGGGTZACCCAATACCCGTAGGTAGTACCAGATAA";
+    /*
+    //std::string s1 = "ACGTACTCAGATAGGTAGATACACATAGACAAGGGTTACCCAAATACCCGTAGGTAGTACA";
+    //std::string s2 = "TCAGATAGGTAGATACACATCGACACGGGGTZACCCAATACCCGTAGGTAGTACCAGATAA";
     //std::string s1 = "AGTACAGATACA";
-    //std::string s2 = "ATACATTACAGA";
+    //std::string s2 = "AGTCAGATAGA";
+    std::string s1 = "ACGTACTCAGATAGGTAGATACACATAGACAAGGGTTACCCAAATACCCGTAGGTAGTACA";
+    std::string s2 = "AGATAGGTAGATACACATAGACAAGGGTTACCCAAATACCCGTAGGTAGTGTATTTTT";
+
     //std::string s1 = "AGTCA";
     //std::string s2 = "TCATA";
     OverlapTools::dpOverlap(s1, s2);
     exit(1);
-
+    */
     parseScaffold2fastaOptions(argc, argv);
 
 

@@ -16,4 +16,5 @@ libalgorithm_a_SOURCES = \
 		OverlapBlock.h OverlapBlock.cpp \
 		SearchHistory.h SearchHistory.cpp \
         ErrorCorrectProcess.h ErrorCorrectProcess.cpp \
-        OverlapTools.h OverlapTools.cpp
+        OverlapTools.h OverlapTools.cpp \
+		DPAlignment.h DPAlignment.cpp

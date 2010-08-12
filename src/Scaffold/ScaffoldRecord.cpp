@@ -9,6 +9,7 @@
 // links
 //
 #include "ScaffoldRecord.h"
+#include "OverlapTools.h"
 
 //
 ScaffoldRecord::ScaffoldRecord()

@@ -5,6 +5,7 @@ libscaffold_a_CPPFLAGS = \
     -I$(top_srcdir)/Thirdparty \
     -I$(top_srcdir)/Bigraph \
     -I$(top_srcdir)/SQG \
+	-I$(top_srcdir)/Algorithm \
     -I$(top_srcdir)/StringGraph
 
 libscaffold_a_SOURCES = ScaffoldVertex.h ScaffoldVertex.cpp \

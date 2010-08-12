@@ -14,12 +14,12 @@ sga_CPPFLAGS = \
 sga_LDADD = \
     $(top_builddir)/StringGraph/libstringgraph.a \
 	$(top_builddir)/Concurrency/libconcurrency.a \
+	$(top_builddir)/Scaffold/libscaffold.a \
     $(top_builddir)/Algorithm/libalgorithm.a \
 	$(top_builddir)/SuffixTools/libsuffixtools.a \
 	$(top_builddir)/Bigraph/libbigraph.a \
 	$(top_builddir)/Util/libutil.a \
 	$(top_builddir)/SQG/libsqg.a \
-	$(top_builddir)/Scaffold/libscaffold.a \
 	$(top_builddir)/Thirdparty/libthirdparty.a
 
 sga_LDFLAGS = -pthread
