@@ -8,6 +8,7 @@
 //
 #include <iostream>
 #include "DNAString.h"
+#include "Util.h"
 
 DNAString::DNAString() : m_len(0), m_data(0) {}
 
@@ -86,6 +87,20 @@ void DNAString::reverse()
         char tmp = m_data[opp];
         m_data[opp] = m_data[idx];
         m_data[idx] = tmp;
+    }
+}
+
+void DNAString::disambiguate()
+{
+    if(m_len == 0)
+        return;
+    
+    for(size_t idx = 0; idx < m_len; ++idx)
+    {
+        if(m_data[idx] == 'N')
+        {
+            m_data[idx] = randomBase();
+        }
     }
 }
 

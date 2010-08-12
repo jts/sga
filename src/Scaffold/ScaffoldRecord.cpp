@@ -79,6 +79,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph) const
             // Calculate the amount of overlap or gap characters to use
             if(link.distance < 0)
             {
+                // Attempt to find an overlap between these sequences
                 int remove = -1 * link.distance;
                 final.append(10, 'N');
                 final.append(toAppend.substr(remove));

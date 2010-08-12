@@ -112,6 +112,8 @@ void assertFileOpen(std::ifstream& fh, const std::string& fn);
 void assertFileOpen(std::ofstream& fh, const std::string& fn);
 void assertGZOpen(gzstreambase& gh, const std::string& fn);
 
+char randomBase();
+
 // Key-value operations
 template <class C>
 std::string makeKeyValue(std::string key, C value)

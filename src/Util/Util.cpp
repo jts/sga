@@ -80,6 +80,26 @@ std::string getDiffString(const std::string& s1, const std::string& s2)
     return out;
 }
 
+// 
+char randomBase()
+{
+    int i = rand() % 4;
+    switch(i)
+    {
+        case 0:
+            return 'A';
+        case 1:
+            return 'C';
+        case 2:
+            return 'G';
+        case 3:
+            return 'T';
+        default:
+            assert(false);
+    }
+    return 'A';        
+}
+
 // Strip the leading directories and
 // the last trailling suffix from a filename
 std::string stripFilename(const std::string& filename)

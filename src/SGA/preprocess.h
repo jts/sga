@@ -17,7 +17,6 @@ int preprocessMain(int argc, char** argv);
 void parsePreprocessOptions(int argc, char** argv);
 bool processRead(SeqRecord& record);
 bool samplePass();
-char randomBase();
 void softClip(int qualTrim, std::string& seq, std::string& qual);
 int countLowQuality(const std::string& seq, const std::string& qual);
 double calcGC(const std::string& seq);

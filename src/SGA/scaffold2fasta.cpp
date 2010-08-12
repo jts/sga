@@ -14,7 +14,7 @@
 #include "ScaffoldVisitors.h"
 #include "ScaffoldRecord.h"
 #include "SGUtil.h"
-
+#include "OverlapTools.h"
 
 #define SUBPROGRAM "scaffold2fasta"
 static const char *SCAFFOLD2FASTA_VERSION_MESSAGE =
@@ -72,7 +72,17 @@ void parseScaffold2fastaOptions(int argc, char** argv);
 //
 int scaffold2fastaMain(int argc, char** argv)
 {
+    std::string s1 = "ACGTACTCAGATAGGTAGATACACATAGACAAGGGTTACCCAAATACCCGTAGGTAGTACA";
+    std::string s2 = "TCAGATAGGTAGATACACATCGACACGGGGTZACCCAATACCCGTAGGTAGTACCAGATAA";
+    //std::string s1 = "AGTACAGATACA";
+    //std::string s2 = "ATACATTACAGA";
+    //std::string s1 = "AGTCA";
+    //std::string s2 = "TCATA";
+    OverlapTools::dpOverlap(s1, s2);
+    exit(1);
+
     parseScaffold2fastaOptions(argc, argv);
+
 
     if(opt::asqgFile.empty())
         assert(false && "only asqg file is implemented atm");

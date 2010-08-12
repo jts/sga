@@ -66,6 +66,9 @@ class DNAString
             return m_data[idx];
         }
 
+        // randomly change the 'N' bases to one of ACGT so that the string is not ambiguous
+        void disambiguate();
+
         void reverse();
         std::string getSuffixString(size_t idx) const;
         std::string toString() const;
