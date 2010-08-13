@@ -11,7 +11,7 @@
 #include "SuffixArray.h"
 #include "RLBWT.h"
 
-#define DPOVERLAPPRINT 1
+//#define DPOVERLAPPRINT 1
 
 // Find a suffix of s1 that matches a prefix of s2 with minimal edit distance
 bool OverlapTools::boundedOverlapDP(const std::string& s1, const std::string& s2, int minOverlap, int maxOverlap, double maxErrorRate, Match& outMatch)
