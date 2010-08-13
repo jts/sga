@@ -206,7 +206,7 @@ iter = samFile.fetch()
 for record in iter:
     if record.qname not in alignments:
         alignments[record.qname] = list()
-    alignments[record.qname].append(ContigPosition(record.pos, record.pos + record.rlen))
+    alignments[record.qname].append(ContigPosition(record.pos, record.pos + record.alen))
 
 # Evalulate the scaffolds, one by one
 idx = 0
