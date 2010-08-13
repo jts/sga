@@ -77,40 +77,22 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOv
 
 
             std::string final;
-            // Calculate the amount of overlap or gap characters to use
+            
             if(link.distance < 0)
             {
-                // Attempt to find an overlap between these sequences
-                int expectedOverlap = -1 * link.distance;
+                // Attempt to resolve a negative gap
                 bool overlapFound = false;
                 if(!bNoOverlap)
-                {
-                    // If the maximum overlap was not set, set it to the expected overlap * 3 stddev
-                    int upperBound = 0;
-                    if(maxOverlap == -1)
-                        upperBound = expectedOverlap + 3 * link.stdDev;
-                    else
-                        upperBound = maxOverlap;
-                    Match match;
-                    std::cout << "Searching for overlap of length: " << expectedOverlap << " max: " << upperBound << " sd: " << link.stdDev << "\n";
-                    overlapFound = OverlapTools::boundedOverlapDP(sequence, toAppend, minOverlap, upperBound, maxErrorRate, match);
-                    if(overlapFound)
-                    {
-                        std::cout << "Overlap found, length: " << match.getMinOverlapLength() << "\n";
-                        SeqCoord overlapCoord = match.coord[1];
-                        SeqCoord overhangCoord = overlapCoord.complement();
-                        final = overhangCoord.getSubstring(toAppend);
-                    }
-                }
-                
-                // If a legitamite overlap was not found between these two sequences,
-                // truncate the second one and put in a 10bp gap
+                    overlapFound = resolveOverlap(sequence, toAppend, link, minOverlap, maxOverlap, maxErrorRate, final);
+
+                // If no overlap was found, truncate the sequences and insert a small gap
                 if(!overlapFound)
                 {
                     assert(final.empty());
                     // Truncate the string using the expected overlap and add a gap
                     std::cout << "No overlap found.\n";
                     final.append(10, 'N');
+                    int expectedOverlap = -1 * link.distance;
                     final.append(toAppend.substr(expectedOverlap));
                 }
             }
@@ -119,7 +101,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOv
                 final.append(link.distance, 'N');
                 final.append(toAppend);
             }
-
+            std::cout << "Component length: " << toAppend.size() << " merging in sequence with length: " << final.size() << "\n";
             sequence.append(final);
         }
 
@@ -127,6 +109,40 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOv
             sequence = reverse(sequence);
     }
     return sequence;
+}
+
+// Attempt to resolve a predicted overlap between s1 and s2
+// Returns true if there overlap was found and the overhang of s2 is placed in outString
+bool ScaffoldRecord::resolveOverlap(const std::string& s1, const std::string& s2, 
+                                    const ScaffoldLink& link, int minOverlap, int maxOverlap, 
+                                    double maxErrorRate, std::string& outString) const
+{
+    // Attempt to find an overlap between these sequences
+    int expectedOverlap = -1 * link.distance;
+
+    // If the maximum overlap was not set, set it to the expected overlap * 3 stddev
+    int upperBound = 0;
+    if(maxOverlap == -1)
+        upperBound = expectedOverlap + 3 * link.stdDev;
+    else
+        upperBound = maxOverlap;
+    
+    // Calculate the best match
+    Match match;
+    std::cout << "Searching for overlap of length: " << expectedOverlap << " max: " << upperBound << " sd: " << link.stdDev << "\n";
+    bool overlapFound = OverlapTools::boundedOverlapDP(s1, s2, minOverlap, upperBound, maxErrorRate, match);
+    if(overlapFound)
+    {
+        std::cout << "Overlap found, length: " << match.getMinOverlapLength() << "\n";
+        SeqCoord overlapCoord = match.coord[1];
+        SeqCoord overhangCoord = overlapCoord.complement();
+        outString = overhangCoord.getSubstring(s2);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 //

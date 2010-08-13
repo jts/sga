@@ -48,7 +48,7 @@ while(my $scaffold = $scaffolds->next_seq())
             }
             else
             {
-                print SCAF "\t" . join(",", $currGap, 0, 1, 0, "R");
+                print SCAF "\t" . join(",", $id, $currGap, 0, 1, 0, "R");
             }
             $seqout->write_seq($outobj); 
 

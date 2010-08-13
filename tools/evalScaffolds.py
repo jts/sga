@@ -204,7 +204,6 @@ alignments = dict()
 
 iter = samFile.fetch()
 for record in iter:
-    print '%s pos: %d' %(record.qname, record.pos)
     if record.qname not in alignments:
         alignments[record.qname] = list()
     alignments[record.qname].append(ContigPosition(record.pos, record.pos + record.rlen))

@@ -1,12 +1,7 @@
 #! /bin/sh -x
 
 IN=$1
-
-if [ $# > 1 ]; then
-    REF_PREFIX=$2
-else
-    REF_PREFIX=/nfs/team71/phd/js18/work/devel/sga/data/ecoli_k12.fa
-fi
+REF_PREFIX=$2
 
 # These environment variables must be defined, probably better
 # to require BWA/SAMTOOLS to be on the path
