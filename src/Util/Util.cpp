@@ -144,10 +144,14 @@ std::string getFileExtension(const std::string& filename)
 }
 
 // Write out a fasta record
-void writeFastaRecord(std::ostream* pWriter, const std::string& id, const std::string& seq, size_t /*maxLength*/)
+void writeFastaRecord(std::ostream* pWriter, const std::string& id, const std::string& seq, size_t maxLineLength)
 {
     *pWriter << ">" << id << " " << seq.length() << "\n";
-    *pWriter << seq << "\n";
+    for(size_t i = 0; i < seq.size(); i += maxLineLength)
+    {
+        size_t span = std::min(seq.size() - i, maxLineLength);
+        *pWriter << seq.substr(i, span) << "\n";
+    }
 }
 
 // Returns true if the filename has an extension indicating it is compressed

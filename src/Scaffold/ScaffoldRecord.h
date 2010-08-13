@@ -22,7 +22,7 @@ class ScaffoldRecord
         void setRoot(const std::string& root);
         void addLink(const ScaffoldLink& link);
 
-        std::string generateString(const StringGraph* pGraph) const;
+        std::string generateString(const StringGraph* pGraph, bool bNoOverlap, int minOverlap, int maxOverlap, double maxErrorRate) const;
 
         void parse(const std::string& text);
         void writeScaf(std::ostream* pWriter);

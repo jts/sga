@@ -54,7 +54,7 @@ struct Match
     // Expand a match outwards so each end is terminal for both coordinates
     void expand();
 
-    // Count the number of differences between the strings
+    // Count the number of differences between the strings assuming no indels
     int countDifferences(const std::string& s1, const std::string& s2) const;
 
     // Print the matched strings

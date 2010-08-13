@@ -30,7 +30,7 @@ void ScaffoldRecord::addLink(const ScaffoldLink& link)
 }
 
 // Construct a string from the scaffold
-std::string ScaffoldRecord::generateString(const StringGraph* pGraph) const
+std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOverlap, int minOverlap, int maxOverlap, double maxErrorRate) const
 {
     EdgeComp currComp = EC_SAME;
 
@@ -81,9 +81,38 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph) const
             if(link.distance < 0)
             {
                 // Attempt to find an overlap between these sequences
-                int remove = -1 * link.distance;
-                final.append(10, 'N');
-                final.append(toAppend.substr(remove));
+                int expectedOverlap = -1 * link.distance;
+                bool overlapFound = false;
+                if(!bNoOverlap)
+                {
+                    // If the maximum overlap was not set, set it to the expected overlap * 3 stddev
+                    int upperBound = 0;
+                    if(maxOverlap == -1)
+                        upperBound = expectedOverlap + 3 * link.stdDev;
+                    else
+                        upperBound = maxOverlap;
+                    Match match;
+                    std::cout << "Searching for overlap of length: " << expectedOverlap << " max: " << upperBound << " sd: " << link.stdDev << "\n";
+                    overlapFound = OverlapTools::boundedOverlapDP(sequence, toAppend, minOverlap, upperBound, maxErrorRate, match);
+                    if(overlapFound)
+                    {
+                        std::cout << "Overlap found, length: " << match.getMinOverlapLength() << "\n";
+                        SeqCoord overlapCoord = match.coord[1];
+                        SeqCoord overhangCoord = overlapCoord.complement();
+                        final = overhangCoord.getSubstring(toAppend);
+                    }
+                }
+                
+                // If a legitamite overlap was not found between these two sequences,
+                // truncate the second one and put in a 10bp gap
+                if(!overlapFound)
+                {
+                    assert(final.empty());
+                    // Truncate the string using the expected overlap and add a gap
+                    std::cout << "No overlap found.\n";
+                    final.append(10, 'N');
+                    final.append(toAppend.substr(expectedOverlap));
+                }
             }
             else
             {

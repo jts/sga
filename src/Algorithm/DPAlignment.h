@@ -104,7 +104,7 @@ class DPAlignment
             switch(m_scoring)
             {
                 case DPSS_SIMILARITY:
-                    return (a == b) ? 2 : -1; 
+                    return (a == b) ? 7 : -3; 
                 case DPSS_EDIT:
                     return (a == b) ? 0 : 1; 
                 default:
@@ -118,7 +118,7 @@ class DPAlignment
             switch(m_scoring)
             {
                 case DPSS_SIMILARITY:
-                    return -1;
+                    return -10;
                 case DPSS_EDIT:
                     return 1;
                 default:

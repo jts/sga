@@ -37,6 +37,7 @@ static const char *SCAFFOLD2FASTA_USAGE_MESSAGE =
 "          --no-singletons              do not output scaffolds that consist of a single contig\n"
 "      -o, --outfile=FILE               write the scaffolds to FILE (default: scaffolds.fa)\n"
 "      -m, --min-length=N               only output scaffolds longer than N bases\n"
+"          --no-overlap                 do not attempt to find overlaps to join contigs\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -46,13 +47,17 @@ namespace opt
     static std::string asqgFile;
     static std::string outFile = "scaffolds.fa";
     static std::string scafFile;
+    static int minOverlap = 20;
+    static int maxOverlap = 100;
+    static double maxErrorRate = 0.05f;
     static bool bNoSingletons = false;
+    static bool bNoOverlap = false;
     static int minScaffoldLength = 0;
 }
 
 static const char* shortopts = "vm:o:f:a:";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_NOSINGLETON };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_NOSINGLETON, OPT_NOOVERLAP };
 
 static const struct option longopts[] = {
     { "verbose",        no_argument,       NULL, 'v' },
@@ -61,6 +66,7 @@ static const struct option longopts[] = {
     { "contig-file",    required_argument, NULL, 'f' },
     { "asqg-file",      required_argument, NULL, 'a' },
     { "no-singleton",   no_argument,       NULL, OPT_NOSINGLETON },
+    { "no-overlap",     no_argument,       NULL, OPT_NOOVERLAP },
     { "help",           no_argument,       NULL, OPT_HELP },
     { "version",        no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -72,21 +78,7 @@ void parseScaffold2fastaOptions(int argc, char** argv);
 //
 int scaffold2fastaMain(int argc, char** argv)
 {
-    /*
-    //std::string s1 = "ACGTACTCAGATAGGTAGATACACATAGACAAGGGTTACCCAAATACCCGTAGGTAGTACA";
-    //std::string s2 = "TCAGATAGGTAGATACACATCGACACGGGGTZACCCAATACCCGTAGGTAGTACCAGATAA";
-    //std::string s1 = "AGTACAGATACA";
-    //std::string s2 = "AGTCAGATAGA";
-    std::string s1 = "ACGTACTCAGATAGGTAGATACACATAGACAAGGGTTACCCAAATACCCGTAGGTAGTACA";
-    std::string s2 = "AGATAGGTAGATACACATAGACAAGGGTTACCCAAATACCCGTAGGTAGTGTATTTTT";
-
-    //std::string s1 = "AGTCA";
-    //std::string s2 = "TCATA";
-    OverlapTools::dpOverlap(s1, s2);
-    exit(1);
-    */
     parseScaffold2fastaOptions(argc, argv);
-
 
     if(opt::asqgFile.empty())
         assert(false && "only asqg file is implemented atm");
@@ -105,7 +97,7 @@ int scaffold2fastaMain(int argc, char** argv)
     {
         ScaffoldRecord record;
         record.parse(line);
-        std::string sequence = record.generateString(pGraph);
+        std::string sequence = record.generateString(pGraph, opt::bNoOverlap, opt::minOverlap, opt::maxOverlap, opt::maxErrorRate);
         std::stringstream idss;
         idss << "scaffold-" << idx;
         writeFastaRecord(pWriter, idss.str(), sequence);
@@ -134,6 +126,7 @@ void parseScaffold2fastaOptions(int argc, char** argv)
             case 'a': arg >> opt::asqgFile; break;
             case 'o': arg >> opt::outFile; break;
             case OPT_NOSINGLETON: opt::bNoSingletons = false; break;
+            case OPT_NOOVERLAP: opt::bNoOverlap = true; break;
             case OPT_HELP:
                 std::cout << SCAFFOLD2FASTA_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
