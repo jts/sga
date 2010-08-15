@@ -16,7 +16,6 @@
 namespace SGPairedAlgorithms
 {
     // Find paths between the two vertices that are no longer than maxDistance
-    void searchPaths(const Vertex* pX, const Vertex* pY, int maxDistance, PathVector& outPaths);
     std::string pathToString(const Vertex* pX, const Path& path);
 
     //

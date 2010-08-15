@@ -10,6 +10,7 @@
 //
 #include "ScaffoldRecord.h"
 #include "OverlapTools.h"
+#include "SGSearch.h"
 
 //
 ScaffoldRecord::ScaffoldRecord()
@@ -39,6 +40,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOv
     Vertex* pVertex = pGraph->getVertex(m_rootID);
     assert(pVertex != NULL);
     
+    std::string currID = m_rootID;
     std::string sequence = pVertex->getSeq().toString();
 
     // Add in the sequences of linked contigs, if any
@@ -75,7 +77,8 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOv
                 toAppend = reverse(toAppend);
             }
 
-
+            // Look for a path through the graph to resolve the link
+            graphResolve(pGraph, currID, link);
             std::string final;
             
             if(link.distance < 0)
@@ -101,14 +104,34 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOv
                 final.append(link.distance, 'N');
                 final.append(toAppend);
             }
-            std::cout << "Component length: " << toAppend.size() << " merging in sequence with length: " << final.size() << "\n";
+
             sequence.append(final);
+            currID = link.endpointID;
         }
 
         if(reverseAll)
             sequence = reverse(sequence);
     }
     return sequence;
+}
+
+// Attempt to resolve a scaffold link by finding a walk through the graph linking the two vertices
+void ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& startID, const ScaffoldLink& link) const
+{
+    // Get the vertex to start the search from
+    Vertex* pStartVertex = pGraph->getVertex(startID);
+    Vertex* pEndVertex = pGraph->getVertex(link.endpointID);
+    assert(pStartVertex != NULL && pEndVertex != NULL);
+
+    SGWalkVector walks;
+    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), 5000, walks);
+    std::cout << "Found " << walks.size() << " paths that resolve the " << 
+                  startID << " -> " <<link.endpointID << " link (de: " << link.distance << ")\n";
+    for(size_t i = 0; i < walks.size(); ++i)
+    {
+        std::cout << "Walk " << i << ":\n";
+        walks[i].print();
+    }
 }
 
 // Attempt to resolve a predicted overlap between s1 and s2

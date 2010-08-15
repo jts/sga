@@ -27,6 +27,9 @@ class ScaffoldRecord
                                    bool bNoOverlap, int minOverlap, 
                                    int maxOverlap, double maxErrorRate) const;
 
+
+        void graphResolve(const StringGraph* pGraph, const std::string& startID, const ScaffoldLink& link) const;
+
         // Resolve a predicted overlap between s1 and s2 by aligning the ends of the sequences
         bool resolveOverlap(const std::string& s1, const std::string& s2, 
                             const ScaffoldLink& link, int minOverlap, 

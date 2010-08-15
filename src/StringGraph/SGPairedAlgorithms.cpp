@@ -14,85 +14,6 @@
 // Generic paired end algorithms
 //
 
-// Perform a depth-first search for paths between pX and pY
-// Terminate the search when the total path length (the length of the
-// string implied by the path) is greater than maxDistance
-struct SearchNode
-{
-    Path path;
-    int distance;
-};
-
-typedef std::queue<SearchNode> SearchQueue;
-void SGPairedAlgorithms::searchPaths(const Vertex* pX, const Vertex* pY, 
-                                     int maxDistance, PathVector& outPaths)
-{
-    //std::cout << "Resolving path from " << pX->getID() << " to " << pY->getID() << "\n";
-    // Get the initial search direction
-    EdgeDir dir = getDirectionToPair(pX->getID());
-
-    // Create the initial path nodes
-    SearchQueue queue;
-    EdgePtrVec edges = pX->getEdges(dir);
-
-    for(size_t i = 0; i < edges.size(); ++i)
-    {
-        Edge* pEdge = edges[i];
-        assert(!pEdge->getOverlap().isContainment());
-
-        SearchNode node;
-        node.path.push_back(pEdge);
-        node.distance = pX->getSeqLen() + pEdge->getSeqLen();
-        queue.push(node);
-    }
-
-    while(!queue.empty())
-    {
-        SearchNode& currNode = queue.front();
-        
-        // Check if we have found pY or exceeded the distance
-        Edge* pWZ = currNode.path.back(); 
-        Vertex* pZ = pWZ->getEnd();
-        if(pZ == pY)
-        {
-            outPaths.push_back(currNode.path);
-            queue.pop();
-        }
-        else if(currNode.distance > maxDistance)
-        {
-            queue.pop();
-        }
-        else
-        {
-            // Path is still valid, continue
-            EdgeDir continueDir = pWZ->getTransitiveDir();
-            EdgePtrVec zEdges = pZ->getEdges(continueDir);
-
-            if(!zEdges.empty())
-            {
-                // Update curr node with the first edge
-                Edge* pNextEdge = zEdges[0];
-                currNode.distance += pNextEdge->getSeqLen();
-                currNode.path.push_back(pNextEdge);
-
-                // 
-                for(size_t i = 1; i < zEdges.size(); ++i)
-                {
-                    SearchNode branch = currNode;
-                    Edge* pBranchEdge = zEdges[i];
-                    branch.distance += pBranchEdge->getSeqLen();
-                    branch.path.push_back(pBranchEdge);
-                    queue.push(branch);
-                }
-            }
-            else
-            {
-                queue.pop();
-            }
-        }
-    }
-}
-
 // Return the direction to the pair of this sequence based on the ID
 EdgeDir SGPairedAlgorithms::getDirectionToPair(const std::string& /*id*/)
 {
@@ -118,8 +39,6 @@ std::string SGPairedAlgorithms::pathToString(const Vertex* pX, const Path& path)
         else
             ecXZ = !currComp;
         
-        // The string return is in Y's frame
-        // If the lastComp (which is
         std::string edge_str = pYZ->getLabel();
         assert(edge_str.size() != 0);
         if(currComp == EC_REVERSE)
@@ -153,8 +72,10 @@ void SGPairedPathResolveVisitor::previsit(StringGraph* pGraph)
 }
 
 
-bool SGPairedPathResolveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+bool SGPairedPathResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* /*pVertex*/)
 {
+    assert(false); 
+#if 0
     if(pVertex->getColor() == GC_BLACK)
         return false; // has been resolved already
 
@@ -164,7 +85,9 @@ bool SGPairedPathResolveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
     if(pPair != NULL)
     {
         PathVector paths;
-        SGPairedAlgorithms::searchPaths(pVertex, pPair, 300, paths);   
+        // get the expected direction between the vertices based on the PE info
+        EdgeDir dir = SGPairedAlgorithms::getDirectionToPair(pVertex->getID());
+        SGPairedAlgorithms::searchPaths(pVertex, pPair, dir, 300, paths);   
         pVertex->setColor(GC_BLACK);
         pPair->setColor(GC_BLACK);
 
@@ -193,7 +116,7 @@ bool SGPairedPathResolveVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
             recordY.write(*m_pWriter);
         }
     }
-
+#endif
     return false;
 }
 

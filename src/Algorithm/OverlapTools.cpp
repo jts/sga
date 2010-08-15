@@ -137,8 +137,8 @@ bool OverlapTools::findBestOverlapByScore(const std::string& s1, const std::stri
                     outMatch = currMatch;
                 }
             }
-            
-            /*
+         
+            /*   
             std::cout << "\n";
             dpAlign.printAlignment(s1, s2, overlapRowIdx, j);
             std::cout << "OL: " << overlapLen << "\n";

@@ -12,9 +12,9 @@ sga_CPPFLAGS = \
 	-I$(top_srcdir)/Thirdparty
 
 sga_LDADD = \
+	$(top_builddir)/Scaffold/libscaffold.a \
     $(top_builddir)/StringGraph/libstringgraph.a \
 	$(top_builddir)/Concurrency/libconcurrency.a \
-	$(top_builddir)/Scaffold/libscaffold.a \
     $(top_builddir)/Algorithm/libalgorithm.a \
 	$(top_builddir)/SuffixTools/libsuffixtools.a \
 	$(top_builddir)/Bigraph/libbigraph.a \
