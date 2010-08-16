@@ -86,7 +86,7 @@ namespace opt
     static std::string prefix;
     static std::string readsFile;
     
-    static double errorRate;
+    static double errorRate = 0.0f;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
     static int seedStride = 0;
@@ -336,7 +336,7 @@ void parseOverlapOptions(int argc, char** argv)
     // Validate parameters
     if(opt::errorRate <= 0)
         opt::errorRate = 0.0f;
-
+    
     if(opt::seedLength < 0)
         opt::seedLength = 0;
 

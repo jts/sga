@@ -719,7 +719,6 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
         return;
     
     // The activeList contains all the blocks that are not yet right terminal
-
     // Count the extensions in the top level (longest) blocks first
     bool all_eliminated = false;
     while(!activeList.empty() && !all_eliminated)
@@ -738,6 +737,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
         OverlapBlockList::iterator containedIter = potentialContainedList.begin();
         for(; containedIter != potentialContainedList.end(); ++containedIter)
         {
+            std::cout << "contain check\n";
            if(!isBlockSubstring(*containedIter, terminalList, m_errorRate) && 
               !isBlockSubstring(*containedIter, activeList, m_errorRate))
            {
@@ -770,7 +770,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
                 
                 // Two conditions must be met for a block to be transitive wrt terminal:
                 // 1) It must have a strictly shorter overlap than the terminal block
-                // 2) The error rate between the block and terminal must be less than the threshold 
+                // 2) The error rate between the block and terminal must be less than the threshold
                 double inferredErrorRate = calculateBlockErrorRate(*terminalIter, *activeIter);
                 if(activeIter->overlapLen < terminalIter->overlapLen && 
                    isErrorRateAcceptable(inferredErrorRate, m_errorRate))
@@ -791,7 +791,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
             {
 #ifdef DEBUGOVERLAP
                 std::cout << "Adding block of length " << terminalIter->overlapLen << " to final\n";
-                std::cout << "  extension: " << terminalIter->forwardHistory << "\n";
+                //std::cout << "  extension: " << terminalIter->forwardHistory << "\n";
 #endif                
                 pOBFinal->push_back(*terminalIter);
             }
@@ -837,23 +837,52 @@ void OverlapAlgorithm::extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevB
         int curr_extension = iter->forwardHistory.size();
 
         // Perform the right extensions
-        for(size_t idx = 0; idx < DNA_ALPHABET_SIZE; ++idx)
+        
+        // Best case, there is only a single extension character
+        // Handle this case specially so we don't need to copy the potentially
+        // large OverlapBlock structure and its full history
+        if(ext_count.hasUniqueDNAChar())
         {
-            OverlapBlock branched = *iter;
-            char b = ALPHABET[idx];
-            char cb = iter->flags.isQueryComp() ? complement(b) : b;
-            BWTAlgorithms::updateBothR(branched.ranges, cb, branched.getExtensionBWT(pBWT, pRevBWT));
+            // Get the extension character with respect to the queried sequence
+            char canonical_base = ext_count.getUniqueDNAChar();
 
-            if(branched.ranges.isValid())
+            // Flip the base into the frame of reference for the block
+            char block_base = iter->flags.isQueryComp() ? complement(canonical_base) : canonical_base;
+
+            // Update the block using the base in its frame of reference
+            BWTAlgorithms::updateBothR(iter->ranges, block_base, iter->getExtensionBWT(pBWT, pRevBWT));
+
+            // Add the base to the history in the frame of reference of the query read
+            // This is so the history is consistent when comparing between blocks from different strands
+            iter->forwardHistory.add(curr_extension, canonical_base);
+        }
+        else
+        {
+            for(size_t idx = 0; idx < DNA_ALPHABET_SIZE; ++idx)
             {
-                branched.forwardHistory.add(curr_extension, b);
+                char canonical_base = ALPHABET[idx];
+                char block_base = iter->flags.isQueryComp() ? complement(canonical_base) : canonical_base;
+                if(ext_count.get(canonical_base) == 0)
+                    continue;
+
+                // Branch the sequence. This involves copying the entire history which can be large
+                // if the input sequences are very long. This could be avoided by using the SearchHistoyNode/Link
+                // structure but branches are infrequent enough to not have a large impact
+                OverlapBlock branched = *iter;
+                BWTAlgorithms::updateBothR(branched.ranges, block_base, branched.getExtensionBWT(pBWT, pRevBWT));
+                assert(branched.ranges.isValid());
+
+                // Add the base in the canonical frame
+                branched.forwardHistory.add(curr_extension, canonical_base);
+
                 // Insert the new block after the iterator
                 activeList.insert(iter, branched);
             }
+
+            // Remove the original block, which has been superceded by the branches
+            activeList.erase(iter);
         }
 
-        // All extensions of iter have been made, remove it from the list
-        activeList.erase(iter);
         iter = next; // this skips the newly-inserted blocks
     }
 } 

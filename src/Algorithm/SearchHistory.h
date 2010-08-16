@@ -89,8 +89,7 @@ class SearchHistoryLink
         SearchHistoryNode* pNode;
 };
 
-// A search history node is one link in a chain of history items. It is
-// only acceptable through SearchHistoryLink. createChild makes a 
+// A search history node is one link in a chain of history items. createChild makes a 
 // new element in the chain, indicating a divergence from the parent history
 class SearchHistoryNode
 {
