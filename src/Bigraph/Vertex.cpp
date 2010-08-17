@@ -558,7 +558,8 @@ void Vertex::writeEdges(std::ostream& out, int dotFlags) const
             std::string color = ((*iter)->getDir() == ED_SENSE) ? "black" : "red";
             std::string label = ((*iter)->getComp() == EC_SAME) ? "S" : "F";
             out << "\" [color=\"" << color << "\" ";
-            out << "label=\"" << (*iter)->getLabel() << "\"];";
+            out << "label=\"" << (*iter)->getMatchLength() << "\"";
+            out << "];";
         }
         out << "\n";
     }

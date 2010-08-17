@@ -698,14 +698,21 @@ bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
 
         if(y_longest_len > yx_len)
         {
-            // Delete the edge
-            /*
-            printf("Edge %s -> %s is likely a repeat\n", pX->getID().c_str(), pY->getID().c_str());
-            printf("Actual overlap lengths: %zu and %zu\n", xy_len, yx_len);
-            printf("Spanned by longer edges of size: %zu and %zu\n", x_longest_len, y_longest_len);
-            */
-            pX->deleteEdge(pXY);
-            pY->deleteEdge(pYX);
+            // Delete the edge if the difference between the shortest and longest is greater than minDiff
+            int x_diff = x_longest_len - xy_len;
+            int y_diff = y_longest_len - yx_len;
+
+            if(x_diff > m_minDiff && y_diff > m_minDiff)
+            {
+                printf("Edge %s -> %s is likely a repeat\n", pX->getID().c_str(), pY->getID().c_str());
+                printf("Actual overlap lengths: %zu and %zu\n", xy_len, yx_len);
+                printf("Spanned by longer edges of size: %zu and %zu\n", x_longest_len, y_longest_len);
+                printf("Differences: %d and %d\n", x_diff, y_diff);
+               
+                pX->deleteEdge(pXY);
+                pY->deleteEdge(pYX);
+                changed = true;
+            }
         }
     }
 

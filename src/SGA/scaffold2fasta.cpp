@@ -97,11 +97,14 @@ int scaffold2fastaMain(int argc, char** argv)
     {
         ScaffoldRecord record;
         record.parse(line);
-        std::string sequence = record.generateString(pGraph, opt::bNoOverlap, opt::minOverlap, opt::maxOverlap, opt::maxErrorRate);
-        std::stringstream idss;
-        idss << "scaffold-" << idx;
-        writeFastaRecord(pWriter, idss.str(), sequence);
-        ++idx;
+        if(record.getNumComponents() > 1 || !opt::bNoSingletons)
+        {
+            std::string sequence = record.generateString(pGraph, opt::minOverlap, opt::maxOverlap, opt::maxErrorRate);
+            std::stringstream idss;
+            idss << "scaffold-" << idx;
+            writeFastaRecord(pWriter, idss.str(), sequence);
+            ++idx;
+        }
     }
 
     delete pReader;
@@ -125,7 +128,7 @@ void parseScaffold2fastaOptions(int argc, char** argv)
             case 'f': arg >> opt::contigFile; break;
             case 'a': arg >> opt::asqgFile; break;
             case 'o': arg >> opt::outFile; break;
-            case OPT_NOSINGLETON: opt::bNoSingletons = false; break;
+            case OPT_NOSINGLETON: opt::bNoSingletons = true; break;
             case OPT_NOOVERLAP: opt::bNoOverlap = true; break;
             case OPT_HELP:
                 std::cout << SCAFFOLD2FASTA_USAGE_MESSAGE;

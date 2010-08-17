@@ -40,7 +40,8 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -b, --bubble=N                   perform N bubble removal steps\n"
 "      -t, --trim=N                     trim terminal branches using N rounds\n"
 "      -c, --correct                    error correct reads and write to correctedReads.fa\n"
-"      -r, --resolve-small              resolve small repeats using spanning overlaps\n"
+"      -r,--resolve-small=LEN           resolve small repeats using spanning overlaps when the difference between the shortest\n"
+"                                       and longest overlap is greater than LEN\n"
 "      -a, --asqg-outfile=FILE          write the final graph to FILE\n"
 "      --edge-stats                     print out the distribution of overlap lengths and number of errors\n"
 "                                       for edges found in the overlap step.\n"
@@ -58,14 +59,14 @@ namespace opt
     static bool bEdgeStats = false;
     static bool bCorrectReads = false;
     static bool bRemodelGraph = false;
-    static bool bResolveSmallRepeats = false;
+    static int resolveSmallRepeatLen = -1;
     static int  numTrimRounds = 0;
     static int  numBubbleRounds = 0;
     static bool bValidate;
     static bool bExact = false;
 }
 
-static const char* shortopts = "p:o:m:d:t:b:a:rvc";
+static const char* shortopts = "p:o:m:d:t:b:a:r:vc";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
@@ -78,7 +79,7 @@ static const struct option longopts[] = {
     { "bubble",         required_argument, NULL, 'b' },
     { "trim",           required_argument, NULL, 't' },
     { "asqg-outfile",   required_argument, NULL, 'a' },
-    { "resolve-small",  no_argument,       NULL, 'r' },    
+    { "resolve-small",  required_argument, NULL, 'r' },    
     { "correct",        no_argument,       NULL, 'c' },    
     { "remodel",        no_argument,       NULL, 'z' },
     { "edge-stats",     no_argument,       NULL, 'x' },
@@ -118,7 +119,7 @@ void assemble()
     SGTrimVisitor trimVisit;
     SGBubbleVisitor bubbleVisit;
     SGBubbleEdgeVisitor bubbleEdgeVisit;
-    SGSmallRepeatResolveVisitor smallRepeatVisit;
+
     SGContainRemoveVisitor containVisit;
     SGErrorCorrectVisitor errorCorrectVisit;
     SGValidateStructureVisitor validationVisit;
@@ -224,6 +225,17 @@ void assemble()
            pGraph->visit(trimVisit);
     }
 
+    if(opt::resolveSmallRepeatLen >= 0)
+    {
+        SGSmallRepeatResolveVisitor smallRepeatVisit(opt::resolveSmallRepeatLen);
+        std::cout << "Resolving small repeats\n";
+
+        while(pGraph->visit(smallRepeatVisit)) {}
+        
+        std::cout << "After small repeat resolve graph stats\n";
+        pGraph->visit(statsVisit);
+    }
+
 /*
     if(opt::numBubbleRounds > 0)
     {
@@ -232,15 +244,6 @@ void assemble()
         pGraph->visit(trimVisit);
     }
 */
-    if(opt::bResolveSmallRepeats)
-    {
-        std::cout << "Resolving small repeats\n";
-        while(pGraph->visit(smallRepeatVisit)) {}
-
-        std::cout << "After small repeat resolve graph stats\n";
-        pGraph->visit(statsVisit);
-    }
-
     // Simplify the graph by compacting edges
     std::cout << "Pre-simplify graph stats\n";
     pGraph->visit(statsVisit);
@@ -274,7 +277,7 @@ void assemble()
     pGraph->renameVertices("contig-");
 
     // Write the results
-    //pGraph->writeDot("final.dot");
+    pGraph->writeDot("final.dot");
     //pGraph->writeASQG("final.asqg");
     SGFastaVisitor av(opt::outFile);
     pGraph->visit(av);
@@ -310,7 +313,7 @@ void parseAssembleOptions(int argc, char** argv)
             case 't': arg >> opt::numTrimRounds; break;
             case 'a': arg >> opt::asqgOutfile; break;
             case 'c': opt::bCorrectReads = true; break;
-            case 'r': opt::bResolveSmallRepeats = true; break;
+            case 'r': arg >> opt::resolveSmallRepeatLen; break;
             case 'z': opt::bRemodelGraph = true; break;
             case 'x': opt::bEdgeStats = true; break;
             case 'e': opt::bExact = true; break;

@@ -100,10 +100,12 @@ struct SGRemodelVisitor
 // Remodel the graph to infer missing edges or remove erroneous edges
 struct SGSmallRepeatResolveVisitor
 {
-    SGSmallRepeatResolveVisitor() {}
+    SGSmallRepeatResolveVisitor(int minDiff) : m_minDiff(minDiff) {}
     void previsit(StringGraph* pGraph);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*);
+
+    int m_minDiff;
 };
 
 // 

@@ -14,6 +14,9 @@
 #include "ScaffoldLink.h"
 #include "SGUtil.h"
 
+const int RESOLVE_GRAPH = 1;
+const int RESOLVE_OVERLAP = 2;
+
 class ScaffoldRecord
 {
     public:
@@ -21,20 +24,26 @@ class ScaffoldRecord
 
         void setRoot(const std::string& root);
         void addLink(const ScaffoldLink& link);
+        size_t getNumComponents() const;
 
         // Generate a sequence string representing the constructed scaffold
         std::string generateString(const StringGraph* pGraph, 
-                                   bool bNoOverlap, int minOverlap, 
-                                   int maxOverlap, double maxErrorRate) const;
+                                   int minOverlap, int maxOverlap, 
+                                   double maxErrorRate) const;
 
 
-        void graphResolve(const StringGraph* pGraph, const std::string& startID, const ScaffoldLink& link) const;
+        // Resolve a link by find walks through the graph
+        bool graphResolve(const StringGraph* pGraph, const std::string& startID, 
+                          const ScaffoldLink& link, std::string& extensionString) const;
 
         // Resolve a predicted overlap between s1 and s2 by aligning the ends of the sequences
-        bool resolveOverlap(const std::string& s1, const std::string& s2, 
+        bool overlapResolve(const std::string& s1, const std::string& s2, 
                             const ScaffoldLink& link, int minOverlap, 
                             int maxOverlap, double maxErrorRate, 
                             std::string& outString) const;
+
+        // Resolve a link by introducing a gap
+        bool introduceGap(const std::string& contigString, const ScaffoldLink& link, std::string& outString) const;
 
         void parse(const std::string& text);
         void writeScaf(std::ostream* pWriter);

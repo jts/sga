@@ -30,16 +30,29 @@ void ScaffoldRecord::addLink(const ScaffoldLink& link)
     m_links.push_back(link);
 }
 
-// Construct a string from the scaffold
-std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOverlap, int minOverlap, int maxOverlap, double maxErrorRate) const
+//
+size_t ScaffoldRecord::getNumComponents() const
 {
-    EdgeComp currComp = EC_SAME;
+    if(m_rootID.empty())
+        return 0;
+    
+    return 1 + m_links.size();
+}
+
+// Construct a string from the scaffold
+std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOverlap, int maxOverlap, double maxErrorRate) const
+{
+    int resolveMask = RESOLVE_GRAPH;// | RESOLVE_OVERLAP;
+
 
     // Starting from the root, join the sequence(s) of the scaffold
     // together along with the appropriate gaps/overlap
     Vertex* pVertex = pGraph->getVertex(m_rootID);
     assert(pVertex != NULL);
     
+    EdgeComp relativeComp = EC_SAME;
+    EdgeComp prevComp = EC_SAME;
+
     std::string currID = m_rootID;
     std::string sequence = pVertex->getSeq().toString();
 
@@ -62,51 +75,61 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOv
 
             pVertex = pGraph->getVertex(link.endpointID);
 
-            // Calculate the strand this sequence is, on relative to the root
+            // Calculate the strand this sequence is on relative to the root
             if(link.getComp() == EC_REVERSE)
-                currComp = !currComp;
+                relativeComp = !relativeComp;
 
-            std::string toAppend = pVertex->getSeq().toString();
-            if(currComp == EC_REVERSE)
-            {
-                toAppend = reverseComplement(toAppend);
-            }
-
-            if(reverseAll)
-            {
-                toAppend = reverse(toAppend);
-            }
-
-            // Look for a path through the graph to resolve the link
-            graphResolve(pGraph, currID, link);
-            std::string final;
+            //
+            // Attempt to resolve the sequence of the link
+            //
+            std::string resolvedSequence;
             
-            if(link.distance < 0)
+            // Step 1, try to walk through the graph between the vertices
+            bool resolved = false;
+            if(resolveMask & RESOLVE_GRAPH)
             {
-                // Attempt to resolve a negative gap
-                bool overlapFound = false;
-                if(!bNoOverlap)
-                    overlapFound = resolveOverlap(sequence, toAppend, link, minOverlap, maxOverlap, maxErrorRate, final);
-
-                // If no overlap was found, truncate the sequences and insert a small gap
-                if(!overlapFound)
+                resolved = graphResolve(pGraph, currID, link, resolvedSequence);
+                /*
+                std::cout << "GR " << link.endpointID << " PC: " << prevComp << " LC: " << 
+                             link.getComp() << " RC: " << relativeComp << " LD: " << 
+                             link.getDir() << " resolved: " << resolved << "\n";
+                */
+                
+                if(resolved)
                 {
-                    assert(final.empty());
-                    // Truncate the string using the expected overlap and add a gap
-                    std::cout << "No overlap found.\n";
-                    final.append(10, 'N');
-                    int expectedOverlap = -1 * link.distance;
-                    final.append(toAppend.substr(expectedOverlap));
+                    // The returned sequence is wrt currID. If we flipped the sequence of currID, we must
+                    // flip this sequence
+                    if(prevComp == EC_REVERSE)
+                        resolvedSequence = reverseComplement(resolvedSequence);
+
+                    if(reverseAll)
+                        resolvedSequence = reverse(resolvedSequence);
                 }
             }
-            else
+
+            // Step 2, try to resolve a predicted overlap between current sequence
+            // and the sequence of the linked contig
+            if(!resolved)
             {
-                final.append(link.distance, 'N');
-                final.append(toAppend);
+                // Get the sequence that should be potentially appended in
+                std::string toAppend = pVertex->getSeq().toString();
+                if(relativeComp == EC_REVERSE)
+                    toAppend = reverseComplement(toAppend);
+                if(reverseAll)
+                    toAppend = reverse(toAppend);
+                
+                //
+                if(!resolved && link.distance < 0 && resolveMask & RESOLVE_OVERLAP)
+                    resolved = overlapResolve(sequence, toAppend, link, minOverlap, maxOverlap, maxErrorRate, resolvedSequence);
+
+                // Step 3, just introduce a gap between the sequences
+                if(!resolved)
+                    introduceGap(toAppend, link, resolvedSequence);
             }
 
-            sequence.append(final);
+            sequence.append(resolvedSequence);
             currID = link.endpointID;
+            prevComp = relativeComp;
         }
 
         if(reverseAll)
@@ -116,7 +139,8 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, bool bNoOv
 }
 
 // Attempt to resolve a scaffold link by finding a walk through the graph linking the two vertices
-void ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& startID, const ScaffoldLink& link) const
+bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& startID, 
+                                  const ScaffoldLink& link, std::string& outExtensionString) const
 {
     // Get the vertex to start the search from
     Vertex* pStartVertex = pGraph->getVertex(startID);
@@ -124,19 +148,44 @@ void ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
     assert(pStartVertex != NULL && pEndVertex != NULL);
 
     SGWalkVector walks;
-    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), 5000, walks);
+    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), 5000, 10000, walks);
     std::cout << "Found " << walks.size() << " paths that resolve the " << 
                   startID << " -> " <<link.endpointID << " link (de: " << link.distance << ")\n";
+
+                 
+    int NUM_STDDEV = 3;
+    int threshold = NUM_STDDEV * link.stdDev;
+    int numWalksConsistent = 0;
+    std::string str;
     for(size_t i = 0; i < walks.size(); ++i)
     {
-        std::cout << "Walk " << i << ":\n";
-        walks[i].print();
+        int walkDistance = walks[i].getEndToStartDistance();
+        int diff = abs(abs(link.distance - walkDistance));
+        if(diff <= threshold)
+        {
+            ++numWalksConsistent;
+            str = walks[i].getString(SGWT_EXTENSION);
+            walks[i].print();
+            std::cout << "Walk distance: " << walkDistance << " diff: " << diff << " threshold: " << threshold << "\n";
+        }
+    }
+    std::cout << "Num walks satisfying distance: " << numWalksConsistent << "\n";
+
+    if(numWalksConsistent == 1)
+    {
+        outExtensionString = str;
+        return true;
+    }
+    else
+    {
+        assert(outExtensionString.empty());
+        return false;
     }
 }
 
 // Attempt to resolve a predicted overlap between s1 and s2
 // Returns true if there overlap was found and the overhang of s2 is placed in outString
-bool ScaffoldRecord::resolveOverlap(const std::string& s1, const std::string& s2, 
+bool ScaffoldRecord::overlapResolve(const std::string& s1, const std::string& s2, 
                                     const ScaffoldLink& link, int minOverlap, int maxOverlap, 
                                     double maxErrorRate, std::string& outString) const
 {
@@ -166,6 +215,25 @@ bool ScaffoldRecord::resolveOverlap(const std::string& s1, const std::string& s2
     {
         return false;
     }
+}
+
+// Resolve a link with a gap
+bool ScaffoldRecord::introduceGap(const std::string& contigString, const ScaffoldLink& link, std::string& out) const
+{
+    assert(out.empty());
+    if(link.distance < 0)
+    {
+        // Truncate the string using the expected overlap and add a gap with a fixed number of Ns
+        out.append(10, 'N');
+        int expectedOverlap = -1 * link.distance;
+        out.append(contigString.substr(expectedOverlap));
+    }
+    else
+    {
+        out.append(link.distance, 'N');
+        out.append(contigString);
+    }
+    return true;
 }
 
 //
