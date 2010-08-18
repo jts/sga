@@ -320,6 +320,9 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
             {
                 record.addLink(pXY->getLink());
                 ScaffoldVertex* pY = pXY->getEnd();
+                if(pY->getColor() == GC_RED)
+                    break; // loop found
+
                 pY->setColor(GC_RED);
                 bases += pY->getSeqLen();
                 span += pY->getSeqLen() + pXY->getDistance();

@@ -12,8 +12,10 @@
 #include "OverlapTools.h"
 #include "SGSearch.h"
 
+//#define DEBUGRESOLVE 1
+
 //
-ScaffoldRecord::ScaffoldRecord()
+ScaffoldRecord::ScaffoldRecord() 
 {
 
 }
@@ -40,10 +42,11 @@ size_t ScaffoldRecord::getNumComponents() const
 }
 
 // Construct a string from the scaffold
-std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOverlap, int maxOverlap, double maxErrorRate) const
+std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOverlap, 
+                                           int maxOverlap, double maxErrorRate, int resolveMask, 
+                                           ResolveStats* pStats) const
 {
-    int resolveMask = RESOLVE_GRAPH;// | RESOLVE_OVERLAP;
-
+    pStats->numScaffolds += 1;
 
     // Starting from the root, join the sequence(s) of the scaffold
     // together along with the appropriate gaps/overlap
@@ -59,6 +62,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
     // Add in the sequences of linked contigs, if any
     if(m_links.size() > 0)
     {
+
         EdgeDir rootDir = m_links[0].getDir();
         
         // If this scaffold grows in the antisense direction,
@@ -71,6 +75,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
 
         for(size_t i = 0; i < m_links.size(); ++i)
         {   
+            pStats->numGapsAttempted += 1;
             const ScaffoldLink& link = m_links[i];
 
             pVertex = pGraph->getVertex(link.endpointID);
@@ -86,9 +91,9 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
             
             // Step 1, try to walk through the graph between the vertices
             bool resolved = false;
-            if(resolveMask & RESOLVE_GRAPH)
+            if(resolveMask & RESOLVE_GRAPH_BEST || resolveMask & RESOLVE_GRAPH_UNIQUE)
             {
-                resolved = graphResolve(pGraph, currID, link, resolvedSequence);
+                resolved = graphResolve(pGraph, currID, link, resolveMask, pStats, resolvedSequence);
                 /*
                 std::cout << "GR " << link.endpointID << " PC: " << prevComp << " LC: " << 
                              link.getComp() << " RC: " << relativeComp << " LD: " << 
@@ -104,6 +109,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
 
                     if(reverseAll)
                         resolvedSequence = reverse(resolvedSequence);
+                    pStats->numGapsResolved += 1;
                 }
             }
 
@@ -120,11 +126,23 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
                 
                 //
                 if(!resolved && link.distance < 0 && resolveMask & RESOLVE_OVERLAP)
+                {
                     resolved = overlapResolve(sequence, toAppend, link, minOverlap, maxOverlap, maxErrorRate, resolvedSequence);
+                    if(resolved)
+                    {
+                        pStats->numGapsResolved += 1;
+                        pStats->overlapFound += 1;
+                    }
+                    else
+                    {
+                        pStats->overlapFailed += 1;
+                    }
+                }
 
                 // Step 3, just introduce a gap between the sequences
                 if(!resolved)
                     introduceGap(toAppend, link, resolvedSequence);
+
             }
 
             sequence.append(resolvedSequence);
@@ -140,44 +158,89 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
 
 // Attempt to resolve a scaffold link by finding a walk through the graph linking the two vertices
 bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& startID, 
-                                  const ScaffoldLink& link, std::string& outExtensionString) const
+                                  const ScaffoldLink& link, int resolveMask, 
+                                  ResolveStats* pStats, std::string& outExtensionString) const
 {
     // Get the vertex to start the search from
     Vertex* pStartVertex = pGraph->getVertex(startID);
     Vertex* pEndVertex = pGraph->getVertex(link.endpointID);
     assert(pStartVertex != NULL && pEndVertex != NULL);
 
-    SGWalkVector walks;
-    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), 5000, 10000, walks);
-    std::cout << "Found " << walks.size() << " paths that resolve the " << 
-                  startID << " -> " <<link.endpointID << " link (de: " << link.distance << ")\n";
-
-                 
     int NUM_STDDEV = 3;
     int threshold = NUM_STDDEV * link.stdDev;
-    int numWalksConsistent = 0;
-    std::string str;
+    int maxDistance = link.distance + threshold;
+    SGWalkVector walks;
+    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), maxDistance, 10000, walks);
+
+                 
+    int numWalksValid = 0;
+    int numWalksClosest = 0;
+    int selectedIdx = -1;
+    int closestDist = std::numeric_limits<int>::max();
+    
+    // Select the closest walk to the distance estimate
     for(size_t i = 0; i < walks.size(); ++i)
     {
         int walkDistance = walks[i].getEndToStartDistance();
         int diff = abs(abs(link.distance - walkDistance));
         if(diff <= threshold)
         {
-            ++numWalksConsistent;
-            str = walks[i].getString(SGWT_EXTENSION);
-            walks[i].print();
-            std::cout << "Walk distance: " << walkDistance << " diff: " << diff << " threshold: " << threshold << "\n";
+
+#ifdef DEBUGRESOLVE
+            std::cout << "Walk distance: " << walkDistance << " diff: " << diff << " threshold: " << threshold << " close: " << closestDist << "\n";
+#endif
+            ++numWalksValid;
+            if(diff < closestDist)
+            {
+                selectedIdx = i;
+                closestDist = diff;
+                numWalksClosest = 1;
+            }
+            else if(diff == closestDist)
+            {
+                numWalksClosest += 1;
+            }
+
         }
     }
-    std::cout << "Num walks satisfying distance: " << numWalksConsistent << "\n";
 
-    if(numWalksConsistent == 1)
+    // Choose the best path, if any, depending on the algorithm to use
+    bool useWalk = false;
+
+    if(numWalksValid > 0)
     {
-        outExtensionString = str;
+        if(resolveMask & RESOLVE_GRAPH_BEST)
+        {
+            // If the unique flag is not set, or we only have 1 closest walk, select it
+            if(!(resolveMask & RESOLVE_GRAPH_UNIQUE) || numWalksClosest == 1)
+                useWalk = true;
+            else if((resolveMask & RESOLVE_GRAPH_UNIQUE) && numWalksClosest > 1)
+                pStats->graphWalkTooMany += 1;
+        }
+        else
+        {
+            if(numWalksValid == 1)
+                useWalk = true;
+            else if(numWalksValid > 1)
+                pStats->graphWalkTooMany += 1;
+        }
+    }
+
+#ifdef DEBUGRESOLVE    
+    std::cout << "Num walks: " << walks.size() << " Num valid: " << numWalksValid << " Num closest: " << numWalksClosest << " using: " << useWalk << "\n";
+#endif
+
+    if(useWalk)
+    {
+        assert(selectedIdx != -1);
+        outExtensionString = walks[selectedIdx].getString(SGWT_EXTENSION);
+        pStats->graphWalkFound += 1;
         return true;
     }
     else
     {
+        if(numWalksValid == 0)
+            pStats->graphWalkNoPath += 1;
         assert(outExtensionString.empty());
         return false;
     }

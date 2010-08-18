@@ -67,8 +67,8 @@ class Bigraph
         void removeEdge(const EdgeDesc& ed);
 
         // Remove all edges marked by color c
-        void sweepVertices(GraphColor c);
-        void sweepEdges(GraphColor c);
+        int sweepVertices(GraphColor c);
+        int sweepEdges(GraphColor c);
 
         // Merge vertices
         void mergeVertices(VertexID id1, VertexID id2);

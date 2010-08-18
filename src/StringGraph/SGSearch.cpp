@@ -136,8 +136,6 @@ void SGWalk::print() const
 void SGSearch::findWalks(const Vertex* pX, const Vertex* pY, EdgeDir initialDir,
                          int maxDistance, size_t maxQueue, SGWalkVector& outWalks)
 {
-    std::cout << "Resolving path from " << pX->getID() << " to " << pY->getID() << "\n";
-
     // Create the initial path nodes
     typedef std::queue<SGWalk> WalkQueue;
     EdgeDir dir = initialDir;

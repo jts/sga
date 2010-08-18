@@ -131,7 +131,7 @@ bool Vertex::markDuplicateEdges(EdgeDir dir, GraphColor dupColor)
             Vertex* pY = pEdge->getEnd();
             if(pY->getColor() == GC_BLACK)
             {
-                std::cerr << getID() << " has a duplicate edge to " << pEdge->getEndID() << " in direction " << dir << "\n";
+                //std::cerr << getID() << " has a duplicate edge to " << pEdge->getEndID() << " in direction " << dir << "\n";
 
                 // This vertex is the endpoint of some other (potentially longer) edge
                 // Delete the edge
@@ -405,8 +405,9 @@ void Vertex::deleteEdges()
 
 // Delete edges that are marked
 // This only deletes the edge and not its twin
-void Vertex::sweepEdges(GraphColor c)
+int Vertex::sweepEdges(GraphColor c)
 {
+    int numRemoved = 0;
     EdgePtrVecIter iter = m_edges.begin();
     while(iter != m_edges.end())
     {
@@ -416,10 +417,12 @@ void Vertex::sweepEdges(GraphColor c)
             delete pEdge;
             pEdge = NULL;
             iter = m_edges.erase(iter);
+            ++numRemoved;
         }
         else
             ++iter;
     }
+    return numRemoved;
 }
 
 // Return the iterator to the edge matching edgedesc

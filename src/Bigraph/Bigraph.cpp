@@ -204,25 +204,32 @@ void Bigraph::merge(Vertex* pV1, Edge* pEdge)
 }
 
 //
-void Bigraph::sweepVertices(GraphColor c)
+int Bigraph::sweepVertices(GraphColor c)
 {
+    int numRemoved = 0;
     VertexPtrMapIter iter = m_vertices.begin();
     while(iter != m_vertices.end())
     {
         VertexPtrMapIter next = iter;
         ++next;
         if(iter->second->getColor() == c)
-            removeConnectedVertex(iter->second);
+        {
+            removeConnectedVertex(iter->second); 
+            ++numRemoved;
+        }
         iter = next;
     }
+    return numRemoved;
 }
 
 
 //
-void Bigraph::sweepEdges(GraphColor c)
+int Bigraph::sweepEdges(GraphColor c)
 {
+    int numRemoved = 0;
     for(VertexPtrMapIter iter = m_vertices.begin(); iter != m_vertices.end(); ++iter)
-        iter->second->sweepEdges(c);
+        numRemoved += iter->second->sweepEdges(c);
+    return numRemoved;
 }
 
 //    Simplify the graph by compacting singular edges

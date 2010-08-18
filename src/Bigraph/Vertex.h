@@ -94,7 +94,7 @@ class Vertex
         void removeEdge(const EdgeDesc& ed);
         void deleteEdge(Edge* pEdge);
         void deleteEdges();
-        void sweepEdges(GraphColor c);
+        int sweepEdges(GraphColor c);
         bool hasEdge(Edge* pEdge) const;
         bool hasEdge(const EdgeDesc& ed) const;
         bool hasEdgeTo(const Vertex* pY) const;
