@@ -17,9 +17,9 @@
 // that pXY is closer than pXZ
 bool ScaffoldAlgorithms::areEdgesAmbiguous(ScaffoldEdge* pXY, ScaffoldEdge* pXZ)
 {
-    const int AMBIGUOUS_TOLERANCE = 2;
+    const double AMBIGUOUS_TOLERANCE = 2.0f;
     assert(pXY->getDistance() <= pXZ->getDistance());
-    int translated = pXZ->getDistance() - AMBIGUOUS_TOLERANCE*pXZ->getStdDev();
+    int translated = pXZ->getDistance() - static_cast<int>(AMBIGUOUS_TOLERANCE*pXZ->getStdDev());
     if(translated < pXY->getDistance())
         return true;
     else

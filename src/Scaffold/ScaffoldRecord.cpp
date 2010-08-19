@@ -166,8 +166,8 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
     Vertex* pEndVertex = pGraph->getVertex(link.endpointID);
     assert(pStartVertex != NULL && pEndVertex != NULL);
 
-    int NUM_STDDEV = 3;
-    int threshold = NUM_STDDEV * link.stdDev;
+    double NUM_STDDEV = 3.0f;
+    int threshold = static_cast<int>(NUM_STDDEV * link.stdDev);
     int maxDistance = link.distance + threshold;
     SGWalkVector walks;
     SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), maxDistance, 10000, walks);
@@ -258,7 +258,7 @@ bool ScaffoldRecord::overlapResolve(const std::string& s1, const std::string& s2
     // If the maximum overlap was not set, set it to the expected overlap * 3 stddev
     int upperBound = 0;
     if(maxOverlap == -1)
-        upperBound = expectedOverlap + 3 * link.stdDev;
+        upperBound = static_cast<int>(expectedOverlap + 3.0f * link.stdDev);
     else
         upperBound = maxOverlap;
     
