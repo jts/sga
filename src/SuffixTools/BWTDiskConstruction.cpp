@@ -321,7 +321,8 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
         RankProcess processor(pBWT, doReverse, removeMode);
 
         numProcessed = 
-           SequenceProcessFramework::processSequencesSerial<RankVector, 
+           SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
+                                                            RankVector, 
                                                             RankProcess, 
                                                             RankPostProcess>(*pReader, &processor, &postProcessor, n);
     }
@@ -336,7 +337,8 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
         }
     
         numProcessed = 
-           SequenceProcessFramework::processSequencesParallel<RankVector, 
+           SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
+                                                              RankVector, 
                                                               RankProcess, 
                                                               RankPostProcess>(*pReader, rankProcVec, &postProcessor, n);
 

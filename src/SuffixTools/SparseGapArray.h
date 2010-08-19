@@ -151,7 +151,7 @@ class SparseGapArray : public GapArray
         SparseGapArray() {}
         ~SparseGapArray()
         {
-            printf("SparseGapArray -- n: %zu overflow: %zu (%lf)\n", m_baseStorage.size(), m_overflow.size(), (double)m_overflow.size() / m_baseStorage.size());    
+            //printf("SparseGapArray -- n: %zu overflow: %zu (%lf)\n", m_baseStorage.size(), m_overflow.size(), (double)m_overflow.size() / m_baseStorage.size());    
         }
 
         //

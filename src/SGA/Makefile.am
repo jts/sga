@@ -36,5 +36,6 @@ sga_SOURCES = sga.cpp \
 			  subgraph.cpp subgraph.h \
 			  scaffold.cpp scaffold.h \
 			  scaffold2fasta.cpp scaffold2fasta.h \
+              connect.cpp connect.h \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

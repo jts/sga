@@ -1,17 +1,19 @@
 //-----------------------------------------------
-// Copyright 2009 Wellcome Trust Sanger Institute
+// Copyright 2010 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
 // Released under the GPL
 //-----------------------------------------------
 //
-// correct - Correct sequencing errors in reads using the FM-index
+// connect - Determine the complete sequence of a 
+// paired end fragment by finding a walk that
+// connects the ends.
 //
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iterator>
 #include "Util.h"
-#include "correct.h"
+#include "connect.h"
 #include "SuffixArray.h"
 #include "BWT.h"
 #include "SGACommon.h"
@@ -28,35 +30,30 @@
 //
 // Getopt
 //
-#define SUBPROGRAM "correct"
-static const char *CORRECT_VERSION_MESSAGE =
+#define SUBPROGRAM "connect"
+static const char *CONNECT_VERSION_MESSAGE =
 SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Written by Jared Simpson.\n"
 "\n"
 "Copyright 2010 Wellcome Trust Sanger Institute\n";
 
-static const char *CORRECT_USAGE_MESSAGE =
+static const char *CONNECT_USAGE_MESSAGE =
 "Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READSFILE\n"
-"Correct sequencing errors in all the reads in READSFILE\n"
+"Resolve the complete sequence of a paired end fragment by finding a walk through the graph connecting the ends\n"
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them aligned\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
-"      -r, --rounds=NUM                 iteratively correct reads up to a maximum of NUM rounds. Default: 1 round of correction\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
-"      -o, --outfile=FILE               write the corrected reads to FILE\n"
+"      -o, --outfile=FILE               write the connected reads to FILE\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
 "                                       is calculated to guarantee all overlaps with --error-rate differences are found.\n"
 "                                       This option removes the guarantee but will be (much) faster. As SGA can tolerate some\n"
 "                                       missing edges, this option may be preferable for some data sets.\n"
 "      -s, --seed-stride=LEN            force the seed stride to be LEN. This parameter will be ignored unless --seed-length\n"
 "                                       is specified (see above). This parameter defaults to the same value as --seed-length\n"
-"      -a, --algorithm=STR              the correction algorithm to use. STR must be one of simple,conflict or trie\n"
-"      -c, --conflict=INT               use INT as the threshold to detect a conflicted base in the multi-overlap\n"
-"          --metrics=FILE               collect error correction metrics (error rate by position in read, etc) and write\n"
-"                                       them to FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -66,22 +63,17 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
-    static int numRounds = 1;
     static std::string prefix;
     static std::string readsFile;
     static std::string outFile;
-    static std::string discardFile;
-    static std::string metricsFile;
 
     static double errorRate;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
     static int seedStride = 0;
-    static int conflictCutoff = 5;
-    static ErrorCorrectAlgorithm algorithm = ECA_CC;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:o:r:a:c:vi";
+static const char* shortopts = "p:m:e:t:l:s:o:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS };
 
@@ -89,28 +81,23 @@ static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
     { "threads",     required_argument, NULL, 't' },
     { "min-overlap", required_argument, NULL, 'm' },
-    { "rounds",      required_argument, NULL, 'r' },
     { "outfile",     required_argument, NULL, 'o' },
     { "prefix",      required_argument, NULL, 'p' },
     { "error-rate",  required_argument, NULL, 'e' },
     { "seed-length", required_argument, NULL, 'l' },
     { "seed-stride", required_argument, NULL, 's' },
-    { "algorithm",   required_argument, NULL, 'a' },
-    { "conflict",    required_argument, NULL, 'c' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
-    { "metrics",     required_argument, NULL, OPT_METRICS },
     { NULL, 0, NULL, 0 }
 };
 
 //
 // Main
 //
-int correctMain(int argc, char** argv)
+int connectMain(int argc, char** argv)
 {
-    parseCorrectOptions(argc, argv);
+    parseConnectOptions(argc, argv);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
-
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
@@ -119,17 +106,15 @@ int correctMain(int argc, char** argv)
                                                          opt::seedStride, false);
     
     std::ostream* pWriter = createWriter(opt::outFile);
-    std::ostream* pDiscardWriter = createWriter(opt::discardFile);
-    bool bCollectMetrics = !opt::metricsFile.empty();
 
+    /*
     ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter, bCollectMetrics);
 
     if(opt::numThreads <= 1)
     {
         // Serial mode
         ErrorCorrectProcess processor(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm, opt::verbose > 1);
-        SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
-                                                         ErrorCorrectResult, 
+        SequenceProcessFramework::processSequencesSerial<ErrorCorrectResult, 
                                                          ErrorCorrectProcess, 
                                                          ErrorCorrectPostProcess>(opt::readsFile, &processor, &postProcessor);
     }
@@ -143,23 +128,16 @@ int correctMain(int argc, char** argv)
             processorVector.push_back(pProcessor);
         }
         
-        SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
-                                                           ErrorCorrectResult, 
-                                                           ErrorCorrectProcess, 
-                                                           ErrorCorrectPostProcess>(opt::readsFile, processorVector, &postProcessor);
+        SequenceProcessFramework::processSequencesParallel<ErrorCorrectResult, 
+                                                         ErrorCorrectProcess, 
+                                                         ErrorCorrectPostProcess>(opt::readsFile, processorVector, &postProcessor);
 
         for(int i = 0; i < opt::numThreads; ++i)
         {
             delete processorVector[i];
         }
     }
-
-    if(bCollectMetrics)
-    {
-        std::ostream* pMetricsWriter = createWriter(opt::metricsFile);
-        postProcessor.writeMetrics(pMetricsWriter);
-        delete pMetricsWriter;
-    }
+    */
 
     delete pBWT;
     delete pRBWT;
@@ -177,7 +155,7 @@ int correctMain(int argc, char** argv)
 // 
 // Handle command line arguments
 //
-void parseCorrectOptions(int argc, char** argv)
+void parseConnectOptions(int argc, char** argv)
 {
     std::string algo_str;
     bool die = false;
@@ -193,17 +171,13 @@ void parseCorrectOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
-            case 'r': arg >> opt::numRounds; break;
-            case 'a': arg >> algo_str; break;
-            case 'c': arg >> opt::conflictCutoff; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
-            case OPT_METRICS: arg >> opt::metricsFile; break;
             case OPT_HELP:
-                std::cout << CORRECT_USAGE_MESSAGE;
+                std::cout << CONNECT_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
             case OPT_VERSION:
-                std::cout << CORRECT_VERSION_MESSAGE;
+                std::cout << CONNECT_VERSION_MESSAGE;
                 exit(EXIT_SUCCESS);
         }
     }
@@ -225,31 +199,9 @@ void parseCorrectOptions(int argc, char** argv)
         die = true;
     }
 
-    if(opt::numRounds <= 0)
-    {
-        std::cerr << SUBPROGRAM ": invalid number of rounds: " << opt::numRounds << ", must be at least 1\n";
-        die = true;
-    }
-    
-    // Determine the correctiona algorithm to use
-    if(!algo_str.empty())
-    {
-        if(algo_str == "simple")
-            opt::algorithm = ECA_SIMPLE;
-        else if(algo_str == "conflict")
-            opt::algorithm = ECA_CC;
-        else if(algo_str == "trie")
-            opt::algorithm = ECA_TRIE;
-        else
-        {
-            std::cerr << SUBPROGRAM << ": unrecognized -a,--algorithm parameter: " << algo_str << "\n";
-            die = true;
-        }
-    }
-
     if (die) 
     {
-        std::cout << "\n" << CORRECT_USAGE_MESSAGE;
+        std::cout << "\n" << CONNECT_USAGE_MESSAGE;
         exit(EXIT_FAILURE);
     }
 
@@ -281,6 +233,4 @@ void parseCorrectOptions(int argc, char** argv)
     {
         opt::outFile = opt::prefix + ".ec.fa";
     }
-
-    opt::discardFile = opt::prefix + ".discard.fa";
 }

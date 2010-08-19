@@ -64,7 +64,7 @@ class ThreadWorker
         Processor* m_pProcessor;
 
         volatile bool m_stopRequested;
-        bool m_isReady;        
+        bool m_isReady;
 };
 
 // Implementation

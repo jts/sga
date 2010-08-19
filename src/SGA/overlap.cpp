@@ -192,7 +192,8 @@ size_t computeHitsSerial(const std::string& prefix, const std::string& readsFile
     OverlapPostProcess postProcessor(pASQGWriter, pOverlapper);
 
     size_t numProcessed = 
-           SequenceProcessFramework::processSequencesSerial<OverlapResult, 
+           SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
+                                                            OverlapResult, 
                                                             OverlapProcess, 
                                                             OverlapPostProcess>(readsFile, &processor, &postProcessor);
     return numProcessed;
@@ -200,7 +201,7 @@ size_t computeHitsSerial(const std::string& prefix, const std::string& readsFile
 
 // Compute the hits for each read in the SeqReader file with threading
 // The way this works is we create a vector of numThreads OverlapProcess pointers and 
-// pass this to the SequenceProcessFragmework which wraps the processes
+// pass this to the SequenceProcessFramework which wraps the processes
 // in threads and distributes the reads to each thread.
 // The number of reads processsed is returned
 size_t computeHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
@@ -224,7 +225,8 @@ size_t computeHitsParallel(int numThreads, const std::string& prefix, const std:
     OverlapPostProcess postProcessor(pASQGWriter, pOverlapper);
     
     size_t numProcessed = 
-           SequenceProcessFramework::processSequencesParallel<OverlapResult, 
+           SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
+                                                              OverlapResult, 
                                                               OverlapProcess, 
                                                               OverlapPostProcess>(readsFile, processorVector, &postProcessor);
     for(int i = 0; i < numThreads; ++i)

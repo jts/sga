@@ -18,6 +18,7 @@
 #include "correct.h"
 #include "subgraph.h"
 #include "scaffold.h"
+#include "connect.h"
 #include "scaffold2fasta.h"
 
 #define PROGRAM_BIN "sga"
@@ -52,6 +53,8 @@ int main(int argc, char** argv)
             correctMain(argc - 1, argv + 1);
         else if(command == "assemble")
             assembleMain(argc - 1, argv + 1);
+        else if(command == "connect")
+            connectMain(argc - 1, argv + 1);
         else if(command == "subgraph")
             subgraphMain(argc - 1, argv + 1);
         else if(command == "oview")
@@ -82,6 +85,7 @@ void printUsage()
     std::cout << "           index           build the BWT and FM-index for a set of reads\n";
     std::cout << "           merge           merge multiple BWT/FM-index files into a single index\n";
     std::cout << "           correct         correct sequencing errors in a set of reads\n";
+    std::cout << "           connect         resolve the complete sequence of a paired-end fragment\n";
     std::cout << "           rmdup           remove duplicated or identical reads from the data set\n";
     std::cout << "           overlap         compute overlaps between reads\n";
     std::cout << "           assemble        generate contigs\n";

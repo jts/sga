@@ -142,7 +142,8 @@ size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& read
     RmdupPostProcess postProcessor;
 
     size_t numProcessed = 
-           SequenceProcessFramework::processSequencesSerial<OverlapResult, 
+           SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
+                                                            OverlapResult, 
                                                             RmdupProcess, 
                                                             RmdupPostProcess>(readsFile, &processor, &postProcessor);
     return numProcessed;
@@ -173,7 +174,8 @@ size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const
     RmdupPostProcess postProcessor;
     
     size_t numProcessed = 
-           SequenceProcessFramework::processSequencesParallel<OverlapResult, 
+           SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
+                                                              OverlapResult, 
                                                               RmdupProcess, 
                                                               RmdupPostProcess>(readsFile, processorVector, &postProcessor);
     for(int i = 0; i < numThreads; ++i)
