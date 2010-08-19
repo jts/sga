@@ -57,6 +57,7 @@ static const char *CORRECT_USAGE_MESSAGE =
 "      -c, --conflict=INT               use INT as the threshold to detect a conflicted base in the multi-overlap\n"
 "          --metrics=FILE               collect error correction metrics (error rate by position in read, etc) and write\n"
 "                                       them to FILE\n"
+"          --no-discard                 do not discard low-quality reads\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -83,7 +84,7 @@ namespace opt
 
 static const char* shortopts = "p:m:d:e:t:l:s:o:r:a:c:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_NODISCARD };
 
 static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
@@ -97,6 +98,7 @@ static const struct option longopts[] = {
     { "seed-stride", required_argument, NULL, 's' },
     { "algorithm",   required_argument, NULL, 'a' },
     { "conflict",    required_argument, NULL, 'c' },
+    { "no-discard",  no_argument,       NULL, OPT_NODISCARD },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { "metrics",     required_argument, NULL, OPT_METRICS },
@@ -119,7 +121,8 @@ int correctMain(int argc, char** argv)
                                                          opt::seedStride, false);
     
     std::ostream* pWriter = createWriter(opt::outFile);
-    std::ostream* pDiscardWriter = createWriter(opt::discardFile);
+    std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
+
     bool bCollectMetrics = !opt::metricsFile.empty();
 
     ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter, bCollectMetrics);
@@ -164,9 +167,11 @@ int correctMain(int argc, char** argv)
     delete pBWT;
     delete pRBWT;
     delete pOverlapper;
-    delete pWriter;
     delete pTimer;
-
+    
+    delete pWriter;
+    if(pDiscardWriter != NULL)
+        delete pDiscardWriter;
 
     if(opt::numThreads > 1)
         pthread_exit(NULL);
@@ -180,6 +185,7 @@ int correctMain(int argc, char** argv)
 void parseCorrectOptions(int argc, char** argv)
 {
     std::string algo_str;
+    bool bDoNotDiscard = false;
     bool die = false;
     for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
     {
@@ -198,6 +204,7 @@ void parseCorrectOptions(int argc, char** argv)
             case 'c': arg >> opt::conflictCutoff; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_NODISCARD: bDoNotDiscard = true; break;
             case OPT_METRICS: arg >> opt::metricsFile; break;
             case OPT_HELP:
                 std::cout << CORRECT_USAGE_MESSAGE;
@@ -282,5 +289,8 @@ void parseCorrectOptions(int argc, char** argv)
         opt::outFile = opt::prefix + ".ec.fa";
     }
 
-    opt::discardFile = opt::prefix + ".discard.fa";
+    if(!bDoNotDiscard)
+        opt::discardFile = opt::prefix + ".discard.fa";
+    else
+        opt::discardFile.clear();
 }
