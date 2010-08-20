@@ -229,7 +229,16 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
 
     // Remove sub-maximal OverlapBlocks and move the remainder to the output list
     removeSubMaximalBlocks(&workingList);
-    partitionBlockList(w.length(), &workingList, pOverlapList, pContainList);
+
+    OverlapBlockList containedWorkingList;
+    partitionBlockList(w.length(), &workingList, pOverlapList, &containedWorkingList);
+    
+    // Terminate the contained blocks
+    terminateContainedBlocks(containedWorkingList);
+    
+    // Move the contained blocks to the final contained list
+    pContainList->splice(pContainList->end(), containedWorkingList);
+
     return;
 }
 
@@ -341,12 +350,25 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
     // we only keep the longest
     removeSubMaximalBlocks(&workingList);
 
-    // Partition the overlap block list into two lists, one for the containments
-    // and one for the proper overlaps
-    partitionBlockList(len, &workingList, pOverlapList, pContainList);
+    OverlapBlockList containedWorkingList;
+    partitionBlockList(len, &workingList, pOverlapList, &containedWorkingList);
+    
+    // Terminate the contained blocks
+    terminateContainedBlocks(containedWorkingList);
+    
+    // Move the contained blocks to the final contained list
+    pContainList->splice(pContainList->end(), containedWorkingList);
 
     delete pCurrVector;
     delete pNextVector;
+}
+
+// Calculate the single right extension to the '$' for each the contained blocks
+// so that the interval ranges are consistent
+void OverlapAlgorithm::terminateContainedBlocks(OverlapBlockList& containedBlocks) const
+{
+    for(OverlapBlockList::iterator iter = containedBlocks.begin(); iter != containedBlocks.end(); ++iter)
+        BWTAlgorithms::updateBothR(iter->ranges, '$', iter->getExtensionBWT(m_pBWT, m_pRevBWT));
 }
 
 // Calculate the seed length and stride to ensure that we will find all 

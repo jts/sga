@@ -47,26 +47,8 @@ void OverlapCommon::parseHitsString(const std::string& hitString,
             // Skip self alignments and non-canonical (where the query read has a lexo. higher name)
             if(queryInfo.id != targetInfo.id)
             {    
-                // Compute the endpoints of the overlap
-                int s1 = queryInfo.length - record.overlapLen;
-                int e1 = s1 + record.overlapLen - 1;
-                SeqCoord sc1(s1, e1, queryInfo.length);
+                Overlap o = record.toOverlap(queryInfo.id, targetInfo.id, queryInfo.length, targetInfo.length);
 
-                int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
-                int e2 = s2 + record.overlapLen - 1;
-                SeqCoord sc2(s2, e2, targetInfo.length);
-
-                // The coordinates are always with respect to the read, so flip them if
-                // we aligned to/from the reverse of the read
-                if(record.flags.isQueryRev())
-                    sc1.flip();
-                if(record.flags.isTargetRev())
-                    sc2.flip();
-
-                bool isRC = record.flags.isTargetRev() != record.flags.isQueryRev();
-
-                Overlap o(queryInfo.id, sc1, targetInfo.id, sc2, isRC, record.numDiff);
-            
                 // The alignment logic above has the potential to produce duplicate alignments
                 // To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
                 // the second or the match is a containment and the query is reversed (containments can be 

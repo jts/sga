@@ -16,6 +16,7 @@
 #include "BitChar.h"
 #include "BWT.h"
 #include "SearchHistory.h"
+#include "GraphCommon.h"
 
 // Flags indicating how a given read was aligned to the FM-index
 // Used for internal bookkeeping
@@ -32,7 +33,10 @@ struct AlignFlags
 
         bool isQueryRev() const { return data.test(QUERYREV_BIT); }
         bool isTargetRev() const { return data.test(TARGETREV_BIT);    }
-        bool isQueryComp() const { return data.test(QUERYCOMP_BIT); }    
+        bool isQueryComp() const { return data.test(QUERYCOMP_BIT); }
+
+        // Returns true if the relationship between the query and target is reverse complement
+        bool isReverseComplement() const { return isTargetRev() != isQueryRev(); }
 
         friend std::ostream& operator<<(std::ostream& out, const AlignFlags& af)
         {
@@ -89,6 +93,13 @@ struct OverlapBlock
     // history while correcting for the reverse-complement searches
     std::string getOverlapString(const std::string& original);
 
+    // Get the full string that is indicated by this overlap
+    // The overlap cannot be a containment and it must have a 
+    // forward extension history. The returned string is the string
+    // of the actual read that forms the overlap with original. In other words
+    // it might not be the same strand as the original read.
+    std::string getFullString(const std::string& original);
+
     // Return a pointer to the BWT that should be used to extend the block
     // this is the opposite BWT that was used in the backwards search
     const BWT* getExtensionBWT(const BWT* pBWT, const BWT* pRevBWT) const;
@@ -97,6 +108,16 @@ struct OverlapBlock
     // The counts are given in the canonical frame, which means that
     // if the query string was reversed, we flip the counts
     AlphaCount getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBWT) const;
+
+    // Return the index of the interval corresponding to the frame of 
+    // reference for the original read
+    int getCanonicalIntervalIndex() const;
+
+    // Return the direction of the edge that this overlap block describes
+    EdgeDir getEdgeDir() const;
+
+    // Construct an overlap record from this overlap block
+    Overlap toOverlap(const std::string queryID, const std::string targetID, int queryLen, int targetLen) const;
 
     // Comparison operator, compare by lower coordinate of 0 
     friend bool operator<(const OverlapBlock& a, const OverlapBlock& b)
@@ -148,7 +169,7 @@ typedef OverlapBlockList::iterator OBLIter;
 // Ensure all the overlap blocks in the list are distinct
 void removeSubMaximalBlocks(OverlapBlockList* pList);
 
-// Given the overlapping blocks A and B, construct a list of non-overlapping blocks
+// Given the overlapping blocks A and B, construct a list of blocks where the index ranges do not intersect
 OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B);
 
 // Partition the overlap block list into two lists, 

@@ -8,14 +8,15 @@
 // connecting two ends of a paired end read
 //
 #include "ConnectProcess.h"
+#include "StringGraphGenerator.h"
 
 //
 //
 //
 ConnectProcess::ConnectProcess(const OverlapAlgorithm* pOverlapper, 
                                int minOverlap) : 
-                                            m_pOverlapper(pOverlapper), 
-                                            m_minOverlap(minOverlap)
+                                                 m_pOverlapper(pOverlapper), 
+                                                 m_minOverlap(minOverlap)
 {
 
 }
@@ -29,10 +30,12 @@ ConnectProcess::~ConnectProcess()
 //
 ConnectResult ConnectProcess::process(const SequenceWorkItemPair& workItemPair)
 {
-    (void)workItemPair;
-    std::cout << "Work pair: " << workItemPair.first.read.id << "," << workItemPair.second.read.id << "\n";
+//    std::cout << "Work pair: " << workItemPair.first.read.id << "," << workItemPair.second.read.id << "\n";
+    assert(getPairID(workItemPair.first.read.id) == workItemPair.second.read.id);
     ConnectResult result;
 
+    StringGraphGenerator localGraph(m_pOverlapper, workItemPair.first.read, workItemPair.second.read, m_minOverlap, ED_SENSE);
+    assert(false);
     return result;
 }
 

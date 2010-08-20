@@ -28,8 +28,8 @@ size_t processSequencesSerial(SeqReader& reader, Processor* pProcessor, PostProc
 
     std::cout << "Using new generator\n";
 
-    WorkItemGenerator<SequenceWorkItem> generator(&reader);
-    SequenceWorkItem workItem;
+    WorkItemGenerator<Input> generator(&reader);
+    Input workItem;
     
     // Generate work items using the generic generation class while the number
     // of sequences consumed from the SeqReader is less than n and there 

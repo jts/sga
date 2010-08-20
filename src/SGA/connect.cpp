@@ -23,7 +23,7 @@
 #include "ASQG.h"
 #include "gzstream.h"
 #include "SequenceProcessFramework.h"
-#include "ErrorCorrectProcess.h"
+#include "ConnectProcess.h"
 
 // Functions
 
@@ -103,48 +103,46 @@ int connectMain(int argc, char** argv)
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
-                                                         opt::seedStride, false);
+                                                         opt::seedStride, true);
     
     std::ostream* pWriter = createWriter(opt::outFile);
 
-    /*
-    ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter, bCollectMetrics);
+    ConnectPostProcess postProcessor(pWriter);
 
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm, opt::verbose > 1);
-        SequenceProcessFramework::processSequencesSerial<ErrorCorrectResult, 
-                                                         ErrorCorrectProcess, 
-                                                         ErrorCorrectPostProcess>(opt::readsFile, &processor, &postProcessor);
+        ConnectProcess processor(pOverlapper, opt::minOverlap);
+        SequenceProcessFramework::processSequencesSerial<SequenceWorkItemPair,
+                                                         ConnectResult, 
+                                                         ConnectProcess, 
+                                                         ConnectPostProcess>(opt::readsFile, &processor, &postProcessor);
     }
     else
     {
         // Parallel mode
-        std::vector<ErrorCorrectProcess*> processorVector;
+        std::vector<ConnectProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, opt::algorithm, opt::verbose > 1);
+            ConnectProcess* pProcessor = new ConnectProcess(pOverlapper, opt::minOverlap);
             processorVector.push_back(pProcessor);
         }
         
-        SequenceProcessFramework::processSequencesParallel<ErrorCorrectResult, 
-                                                         ErrorCorrectProcess, 
-                                                         ErrorCorrectPostProcess>(opt::readsFile, processorVector, &postProcessor);
-
+        SequenceProcessFramework::processSequencesParallel<SequenceWorkItemPair,
+                                                         ConnectResult, 
+                                                         ConnectProcess, 
+                                                         ConnectPostProcess>(opt::readsFile, processorVector, &postProcessor); 
         for(int i = 0; i < opt::numThreads; ++i)
         {
             delete processorVector[i];
         }
     }
-    */
 
     delete pBWT;
     delete pRBWT;
     delete pOverlapper;
     delete pWriter;
     delete pTimer;
-
 
     if(opt::numThreads > 1)
         pthread_exit(NULL);

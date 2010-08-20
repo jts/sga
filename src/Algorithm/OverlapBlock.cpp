@@ -43,6 +43,15 @@ AlphaCount OverlapBlock::getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBW
     return out;
 }
 
+// Returns 0 if the BWT used for the overlap step was the forward BWT
+int OverlapBlock::getCanonicalIntervalIndex() const
+{
+    if(!flags.isTargetRev())
+        return 0;
+    else
+        return 1;
+}
+
 // Get the string corresponding to the overlap block. This is the string found
 // during the backwards search
 std::string OverlapBlock::getOverlapString(const std::string& original)
@@ -54,6 +63,69 @@ std::string OverlapBlock::getOverlapString(const std::string& original)
         return transformed.substr(0, overlapLen);
     else
         return transformed.substr(transformed.length() - overlapLen);
+}
+
+// Get the full string corresponding to this overlapblock using the forward history
+std::string OverlapBlock::getFullString(const std::string& original)
+{
+    std::string str = getOverlapString(original);
+    std::string history = forwardHistory.getBaseString();
+
+/*
+    std::cout << "OVERLAP: " << str << "\n";
+    std::cout << "HIST: " << history << "\n";
+    std::cout << "QREV: " << flags.isQueryRev() << "\n";
+    std::cout << "RC: " << flags.isReverseComplement() << "\n";
+    std::cout << "QC: " << flags.isQueryComp() << "\n";
+*/
+    if(!flags.isQueryRev())
+    {
+        str.append(history);
+    }
+    else
+    {
+        history = reverse(history);
+        history.append(str);
+        str.swap(history);
+    }
+
+    if(flags.isReverseComplement())
+        str = reverseComplement(str);
+    return str;
+}
+
+
+EdgeDir OverlapBlock::getEdgeDir() const
+{
+    if(flags.isQueryRev())
+        return ED_ANTISENSE;
+    else
+        return ED_SENSE;
+}
+
+//
+Overlap OverlapBlock::toOverlap(const std::string queryID, const std::string targetID, int queryLen, int targetLen) const
+{
+    // Compute the sequence coordinates
+    int s1 = queryLen - overlapLen;
+    int e1 = s1 + overlapLen - 1;
+    SeqCoord sc1(s1, e1, queryLen);
+
+    int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
+    int e2 = s2 + overlapLen - 1;
+    SeqCoord sc2(s2, e2, targetLen);
+
+    // The coordinates are always with respect to the read, so flip them if
+    // we aligned to/from the reverse of the read
+    if(flags.isQueryRev())
+        sc1.flip();
+    if(flags.isTargetRev())
+        sc2.flip();
+
+    bool isRC = flags.isReverseComplement();
+
+    Overlap o(queryID, sc1, targetID, sc2, isRC, numDiff);
+    return o;
 }
 
 //

@@ -44,6 +44,7 @@ class SearchHistoryVector
         void add(SearchHistoryItem& item);
         void normalize(bool doComplement);
         size_t size() const { return m_history.size(); }
+        std::string getBaseString() const;
 
         // Transform the original string using the history into a string representing
         // the sequence of bases searched to create the history

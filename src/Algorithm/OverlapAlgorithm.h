@@ -31,6 +31,7 @@ struct OverlapResult
 class OverlapAlgorithm
 {
     public:
+
         OverlapAlgorithm(const BWT* pBWT, const BWT* pRevBWT, 
                          double er, int seedLen, int seedStride,
                          bool irrOnly) : m_pBWT(pBWT), 
@@ -109,7 +110,10 @@ class OverlapAlgorithm
         inline void extendSeedsExactRight(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                                  ExtendDirection dir, const SearchSeedVector* pInVector, 
                                                  SearchSeedVector* pOutVector) const;
-          
+        
+        // Calculate the terminal extension for the contained blocks to make the intervals consistent
+        void terminateContainedBlocks(OverlapBlockList& containedBlocks) const;
+
         //                    
         // Irreducible-only processing algorithms
         //

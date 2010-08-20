@@ -215,6 +215,16 @@ std::string SearchHistoryVector::transform(const std::string& original, bool que
     return transformed;
 }
 
+// Return the string of bases that make up the history
+std::string SearchHistoryVector::getBaseString() const
+{
+    std::string out;
+    out.reserve(m_history.size());
+    for(size_t i = 0; i < m_history.size(); ++i)
+        out.push_back(m_history[i].base);
+    return out;
+}
+
 //
 std::ostream& operator<<(std::ostream& out, const SearchHistoryVector& hist)
 {
