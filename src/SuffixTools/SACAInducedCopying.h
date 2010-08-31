@@ -12,7 +12,7 @@
 #include "SuffixArray.h"
 #include "ReadTable.h"
 
-void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT);
+void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT, int numThreads);
 
 void induceSAl(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int64_t* counts, int64_t* buckets, size_t n, int K, bool end);
 void induceSAs(const ReadTable* pRT, SuffixArray* pSA, char** p_array, int64_t* counts, int64_t* buckets, size_t n, int K, bool end);

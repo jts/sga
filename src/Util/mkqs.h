@@ -20,6 +20,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <queue>
+#include "MkqsThread.h"
 
 #define mkqs_swap(a, b) { T tmp = x[a]; x[a] = x[b]; x[b] = tmp; }
 
@@ -33,79 +35,6 @@ inline void vecswap(int i, int j, int n, T* x)
         i++;
         j++;
     }
-}
-
-template<typename T, typename PrimarySorter, typename FinalSorter>
-void mkqs(T* x, int n, int depth, const PrimarySorter& primarySorter, const FinalSorter& finalSorter)
-{   
-    int a, b, c, d, r, v;
-    if (n <= 1)
-        return;
-    
-    // Select a random element to use as the key
-    // and swap it to the front
-    a = rand() % n;
-    mkqs_swap(0, a);
-    // Return the character at position depth
-    // which will be used for the split
-    v = primarySorter.getChar(x[0],depth);
-    
-    // Swap all the elements that have a character at pos depth
-    // that is less than v to the low portion of the array
-    // and all that are higher to the upper portion
-    a = b = 1;
-    c = d = n-1;
-    for (;;) 
-    {
-        while (b <= c && (r = primarySorter.getChar(x[b],depth) - v) <= 0)
-        {
-            if (r == 0) 
-            {
-                mkqs_swap(a, b); 
-                a++; 
-            }
-            b++;
-        }
-        while (b <= c && (r = primarySorter.getChar(x[c],depth) - v) >= 0) 
-        {
-            if (r == 0) 
-            { 
-                mkqs_swap(c, d); 
-                d--; 
-            }
-            c--;
-        }
-        if (b > c) 
-            break;
-        mkqs_swap(b, c);
-        b++;
-        c--;
-    }
-
-
-    r = std::min(a, b-a);
-    vecswap(0, b-r, r, x);
-
-    r = std::min(d-c, n-d-1); 
-    vecswap(b, n-r, r, x);
-
-    r = b-a; 
-
-    mkqs(x, r, depth, primarySorter, finalSorter);
-
-    if (primarySorter.getChar(x[r], depth) != 0)
-    {
-        mkqs(x + r, a + n-d-1, depth+1, primarySorter, finalSorter);
-    }
-    else
-    {
-        // Finalize the sort by using std::sort
-        int n2 = a + n - d - 1;
-        std::sort(x + r, x + r + n2, finalSorter);
-    }
-
-    r = d-c; 
-    mkqs(x + n-r, r, depth, primarySorter, finalSorter);
 }
 
 #define mkqs_swap2(a, b) { T t = *(a); *(a) = *(b); *(b) = t; }
@@ -142,26 +71,6 @@ inline void inssort(T* a, int n, int d, const PrimarySorter& primarySorter, cons
     {
         for (pj = pi; pj > a; pj--) 
         {
-            /*
-            // Inline strcmp: break if *(pj-1) <= *pj
-            T s = *(pj - 1);
-            T t = *pj;
-            char* 
-            int i = 0;
-            char curr_s;
-            char curr_t;
-            while(true)
-            {
-                curr_s = elem2char(s, d + i);
-                curr_t = elem2char(t, d + i);
-                if(curr_s != curr_t || curr_s == 0)
-                    break;
-                ++i;
-            }
-            if (curr_s < curr_t || (curr_s == curr_t && finalSorter(s, t))) 
-                break;
-            mkqs_swap2(pj, pj-1);
-            */
             // Inline strcmp: break if *(pj-1) <= *pj
             T elem_s = *(pj - 1);
             T elem_t = *pj;
@@ -177,36 +86,23 @@ inline void inssort(T* a, int n, int d, const PrimarySorter& primarySorter, cons
     }
 }
 
-
+// 
 template<typename T, typename PrimarySorter, typename FinalSorter>
 void mkqs2(T* a, int n, int depth, const PrimarySorter& primarySorter, const FinalSorter& finalSorter)
 {   
     int r, partval;
     T *pa, *pb, *pc, *pd, *pl, *pm, *pn, t;
    
-       
-       if (n < 10) 
+    if (n < 10) 
     {
         inssort(a, n, depth, primarySorter, finalSorter);
         return;
     }
-    
 
     pl = a;
     pm = a + (n/2);
     pn = a + (n-1);
 
-    /*
-    if (n > 30) 
-    { 
-        // On big arrays, pseudomedian of 9
-        d = (n/8);
-        pl = med3(pl, pl+d, pl+2*d);
-        pm = med3(pm-d, pm, pm+d);
-        pn = med3(pn-2*d, pn-d, pn);
-    }
-    */
-    //pm = med3(pl, pm, pn);
     int mid_idx = rand() % n;
 
     pm = &a[mid_idx];
@@ -245,6 +141,200 @@ void mkqs2(T* a, int n, int depth, const PrimarySorter& primarySorter, const Fin
     }
     if ((r = pd-pc) > 1)
         mkqs2(a + n-r, r, depth, primarySorter, finalSorter);
+}
+
+// Parallel multikey quicksort. It performs mkqs but will
+// subdivide the array to sort into sub jobs which can be sorted using threads.
+template<typename T, typename PrimarySorter, typename FinalSorter>
+void parallel_mkqs(T* pData, int n, int numThreads, const PrimarySorter& primarySorter, const FinalSorter& finalSorter)
+{
+    std::cout << "Using parallel mkqs\n";
+    typedef MkqsJob<T> Job;
+    typedef std::queue<Job> JobQueue;
+    Job initialJob(pData, n, 0);
+    JobQueue queue;
+    queue.push(initialJob);
+    
+    // Create the mutex that guards the queue
+    pthread_mutex_t queue_mutex;
+    int ret = pthread_mutex_init(&queue_mutex, NULL);
+    if(ret != 0)
+    {
+        std::cerr << "Mutex initialization failed with error " << ret << ", aborting" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // Calculate the threshold size for performing serial continuation of the sort. Once the chunks 
+    // are below this size, it is better to not subdivide the problem into smaller chunks
+    // to avoid the overhead of locking, adding to the queue, etc. 
+    int threshold_size = n / numThreads;
+
+    // Create the semaphore used to signal that data is ready to be processed
+    // Initial value is 1 as there is one item on the queue to start
+    sem_t queue_sem;
+    sem_init( &queue_sem, PTHREAD_PROCESS_PRIVATE, 1 );
+
+    // Create the semaphore indicating a thread is finished working.
+    // This semaphore is incremented by the threads in their run loop
+    // before waiting for queue items. If the thread takes an item,
+    // this semaphore is decremented. The main thread checks
+    // this semaphore after confirming the queue is empty. If this 
+    // semaphore value equals the total number of threads, 
+    // no more work can remain the the threads are cleaned up
+    sem_t done_sem;
+    sem_init( &done_sem, PTHREAD_PROCESS_PRIVATE, 0 );
+
+    // Create and start the threads
+    MkqsThread<T, PrimarySorter, FinalSorter>* threads[numThreads];
+    for(int i = 0; i < numThreads; ++i)
+    {
+        threads[i] = new MkqsThread<T, PrimarySorter, FinalSorter>(i, &queue, &queue_mutex, &queue_sem, &done_sem, threshold_size, &primarySorter, &finalSorter);   
+        threads[i]->start();
+    }
+
+    // Check for the end condition
+    bool done = false;
+    while(!done)
+    {
+        sleep(1);
+
+        // Check if the queue is empty
+        // If it is and all threads are finished working (all have posted to
+        // the done semaphore), then the threads can be cleaned up.
+        pthread_mutex_lock(&queue_mutex);
+        if(queue.empty())
+        {
+            int semval;
+            sem_getvalue(&done_sem, &semval);
+            if(semval == numThreads)
+                done = true;
+        }
+        pthread_mutex_unlock(&queue_mutex);
+    }
+
+    // Signal all the threads to stop, then post to the semaphore they are waiting on
+    // All threads will pick up the stop request after the posts and call pthread exit
+    for(int i = 0; i < numThreads; ++i)
+    {
+        threads[i]->stop();
+    }
+
+    for(int i = 0; i < numThreads; ++i)
+    {
+        sem_post(&queue_sem);
+    }
+
+    // Join and destroy the threads
+    for(int i = 0; i < numThreads; ++i)
+    {
+        threads[i]->join();
+        delete threads[i];
+    }
+
+    // Destroy the semaphore
+    sem_destroy(&queue_sem);
+    sem_destroy(&done_sem);
+
+    // Destroy the queue mutex
+    ret = pthread_mutex_destroy(&queue_mutex);
+    if(ret != 0)
+    {
+        std::cerr << "Mutex destruction failed with error " << ret << ", aborting" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+//
+// Perform a partial sort of the data using the mkqs algorithm
+// Iterative sort jobs are created and added to pQueue which is
+// protected by pQueueMutex. After addition, pQueueSem is updated.
+//
+template<typename T, class PrimarySorter, class FinalSorter>
+void parallel_mkqs_process(MkqsJob<T>& job, 
+                           std::queue<MkqsJob<T> >* pQueue, 
+                           pthread_mutex_t* pQueueMutex, 
+                           sem_t* pQueueSem,
+                           const PrimarySorter& primarySorter, 
+                           const FinalSorter& finalSorter)
+{
+    T* a = job.pData;
+    int n = job.n;
+    int depth = job.depth;
+    
+    int r, partval;
+    T *pa, *pb, *pc, *pd, *pl, *pm, *pn, t;
+    
+    if(n < 10) 
+    {
+        inssort(a, n, depth, primarySorter, finalSorter);
+        return;
+    }
+    
+    pl = a;
+    pm = a + (n/2);
+    pn = a + (n-1);
+
+    int mid_idx = rand() % n;
+
+    pm = &a[mid_idx];
+    mkqs_swap2(a, pm);
+    partval = ptr2char(a);
+    pa = pb = a + 1;
+    pc = pd = a + n-1;
+    for (;;) 
+    {
+        while (pb <= pc && (r = ptr2char(pb)-partval) <= 0) 
+        {
+            if (r == 0) { mkqs_swap2(pa, pb); pa++; }
+            pb++;
+        }
+        while (pb <= pc && (r = ptr2char(pc)-partval) >= 0) 
+        {
+            if (r == 0) { mkqs_swap2(pc, pd); pd--; }
+            pc--;
+        }
+        if (pb > pc) break;
+        mkqs_swap2(pb, pc);
+        pb++;
+        pc--;
+    }
+    pn = a + n;
+    r = std::min(pa-a, pb-pa);    vecswap2(a,  pb-r, r);
+    r = std::min(pd-pc, pn-pd-1); vecswap2(pb, pn-r, r);
+
+    // Lock the queue and push new items if necessary
+    // If new items are added to the queue, the semaphore is posted to
+    pthread_mutex_lock(pQueueMutex);
+
+    if ((r = pb-pa) > 1)
+    {
+        MkqsJob<T> job(a, r, depth);
+        pQueue->push(job);
+        sem_post(pQueueSem);
+    }
+    
+    if (ptr2char(a + r) != 0)
+    {
+        MkqsJob<T> job(a + r, pa-a + pn-pd-1, depth + 1);
+        pQueue->push(job);
+        sem_post(pQueueSem);
+    }
+    else
+    {
+        // Finalize the sort
+        int n2 = pa - a + pn - pd - 1;
+        std::sort(a + r, a + r + n2, finalSorter);
+    }
+
+    if ((r = pd-pc) > 1)
+    {
+        MkqsJob<T> job(a + n-r, r, depth);
+        pQueue->push(job);
+        sem_post(pQueueSem);
+    }
+
+    // Unlock the mutex
+    pthread_mutex_unlock(pQueueMutex);
 }
 #endif
 

@@ -119,7 +119,7 @@ void indexOnDisk()
 void buildIndexForTable(std::string prefix, const ReadTable* pRT, bool isReverse)
 {
     // Create suffix array from read table
-    SuffixArray* pSA = new SuffixArray(pRT);
+    SuffixArray* pSA = new SuffixArray(pRT, opt::numThreads);
 
     if(opt::validate)
     {

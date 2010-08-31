@@ -21,7 +21,7 @@ class SuffixArray
         //
         SuffixArray() {}
         SuffixArray(const std::string& filename);
-        SuffixArray(const ReadTable* pRT);
+        SuffixArray(const ReadTable* pRT, int numThreads);
 
         // Construction/Validation functions
         void initialize(const ReadTable& rt);
@@ -64,7 +64,7 @@ class SuffixArray
         void print(const ReadTable* pRT) const;
 
         // friends
-        friend void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT);
+        friend void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT, int numThreads);
         friend class SAReader;
         friend class SAWriter;
 

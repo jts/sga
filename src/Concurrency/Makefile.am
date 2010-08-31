@@ -12,4 +12,5 @@ libconcurrency_a_SOURCES = \
         RmdupProcess.h RmdupProcess.cpp \
         SequenceProcessFramework.h \
         SequenceWorkItem.h \
-        ThreadWorker.h
+        ThreadWorker.h \
+		MkqsThread.h

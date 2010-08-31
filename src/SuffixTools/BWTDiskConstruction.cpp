@@ -21,6 +21,8 @@
 
 // Definitions and structures
 static const bool USE_GZ = false;
+static const int BWT_SAMPLE_RATE = 512;
+
 struct MergeItem
 {
     int64_t start_index;
@@ -104,7 +106,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
         if(pCurrRT->getCount() >= MAX_READS_PER_GROUP || (done && pCurrRT->getCount() > 0))
         {
             // Compute the SA and BWT for this group
-            SuffixArray* pSA = new SuffixArray(pCurrRT);
+            SuffixArray* pSA = new SuffixArray(pCurrRT, numThreads);
 
             // Write the BWT to disk                
             std::string bwt_temp_filename = makeTempName(out_prefix, groupID, bwt_extension);
@@ -255,7 +257,7 @@ void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string
     std::string sai_out_name = makeFilename(outPrefix, sai_extension);
 
     // Compute the gap array
-    BWT* pBWT = new BWT(bwt_filename);
+    BWT* pBWT = new BWT(bwt_filename, BWT_SAMPLE_RATE);
 
     GapArray* pGapArray = createGapArray(storageLevel);
 
@@ -362,7 +364,7 @@ int64_t merge(SeqReader* pReader,
     std::cout << "Merge2: " << item2 << "\n";
 
     // Load the bwt of item2 into memory as the internal bwt
-    BWT* pBWTInternal = new BWT(item2.bwt_filename);
+    BWT* pBWTInternal = new BWT(item2.bwt_filename, BWT_SAMPLE_RATE);
     
     // If end_index is -1, calculate the ranks for every sequence in the file
     // otherwise only calculate the rank for the next (end_index - start_index + 1) sequences

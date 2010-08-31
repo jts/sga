@@ -22,7 +22,7 @@ unsigned char mask[]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
 // Nong, Zhang, Chan
 // Follows implementation given as an appendix to their 2008 paper
 // '\0' is the sentinenl in this algorithm
-void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
+void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT, int numThreads)
 {
 
     // In the multiple strings case, we need a 2D bit array
@@ -100,14 +100,17 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT)
     */
 
     double ratio = (double)n1 / (double)num_suffixes;
-    std::cout << "[saca] calling mkqs on " << n1 << " suffixes " << ratio << "\n";
+    std::cout << "[saca] calling mkqs on " << n1 << " suffixes " << ratio << " using " << numThreads << " threads \n";
 
     // Call MKQS, first on the sequence and then on the index in the read table
     SuffixCompareRadix radix_compare(pRT, 6);
     SuffixCompareIndex index_compare;
     //SuffixCompareID id_compare(pRT);
     
-    mkqs2(&pSA->m_data[0], n1, 0, radix_compare, index_compare);
+    if(numThreads <= 1)
+        mkqs2(&pSA->m_data[0], n1, 0, radix_compare, index_compare);
+    else
+        parallel_mkqs(&pSA->m_data[0], n1, numThreads, radix_compare, index_compare);
 
     // Induction sort the remaining suffixes
     for(size_t i = n1; i < num_suffixes; ++i)
