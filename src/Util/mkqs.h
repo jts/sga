@@ -148,7 +148,6 @@ void mkqs2(T* a, int n, int depth, const PrimarySorter& primarySorter, const Fin
 template<typename T, typename PrimarySorter, typename FinalSorter>
 void parallel_mkqs(T* pData, int n, int numThreads, const PrimarySorter& primarySorter, const FinalSorter& finalSorter)
 {
-    std::cout << "Using parallel mkqs\n";
     typedef MkqsJob<T> Job;
     typedef std::queue<Job> JobQueue;
     Job initialJob(pData, n, 0);
