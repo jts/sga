@@ -125,6 +125,8 @@ std::string makeKeyValue(std::string key, C value)
 
 StringVector split(std::string in, char delimiter);
 void splitKeyValue(std::string in, std::string& key, std::string& value);
+
+std::string getPairBasename(const std::string& id);
 std::string getPairID(const std::string& id);
 
 // Returns 0 if the id indicates the first read in a pair, 1 otherwise

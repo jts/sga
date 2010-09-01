@@ -164,12 +164,13 @@ struct SGTrimVisitor
 // Detect and remove duplicate edges
 struct SGDuplicateVisitor
 {
-    SGDuplicateVisitor() {}
+    SGDuplicateVisitor(bool silent = false) : m_bSilent(silent) {}
     void previsit(StringGraph*);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*);
 
     bool m_hasDuplicate;
+    bool m_bSilent;
 };
 
 // Detect small island vertices and removal them

@@ -46,11 +46,15 @@ class ConnectPostProcess
 {
     public:
         ConnectPostProcess(std::ostream* pWriter);
+        ~ConnectPostProcess();
+
         void process(const SequenceWorkItemPair& workPair, const ConnectResult& result);
 
     private:
 
         std::ostream* m_pWriter;
+        int m_numPairsTotal;
+        int m_numPairsResolved;
 };
 
 #endif

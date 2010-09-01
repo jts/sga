@@ -621,7 +621,8 @@ void SGDuplicateVisitor::postvisit(StringGraph* pGraph)
     if(m_hasDuplicate)
     {
         int numRemoved = pGraph->sweepEdges(GC_RED);
-        std::cerr << "Warning: removed " << numRemoved << " duplicate edges\n";
+        if(!m_bSilent)
+            std::cerr << "Warning: removed " << numRemoved << " duplicate edges\n";
     }
 }
 

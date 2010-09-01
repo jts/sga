@@ -261,6 +261,19 @@ void splitKeyValue(std::string in, std::string& key, std::string& value)
     assert(key.size() > 0 && value.size() > 0 && "Invalid key-value pair");
 }
 
+// Get the shared component of a read pair name
+// This is the part of the name preceding the "/"
+std::string getPairBasename(const std::string& id)
+{
+    assert(!id.empty());
+
+    size_t pos = id.find_last_of('/');
+    if(pos == std::string::npos)
+        return id;
+    else
+        return id.substr(0, pos);
+}
+
 // Get the ID of the pair of a given read
 std::string getPairID(const std::string& id)
 {

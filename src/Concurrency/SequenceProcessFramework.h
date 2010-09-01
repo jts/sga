@@ -26,8 +26,6 @@ size_t processSequencesSerial(SeqReader& reader, Processor* pProcessor, PostProc
 {
     Timer timer("SequenceProcess", true);
 
-    std::cout << "Using new generator\n";
-
     WorkItemGenerator<Input> generator(&reader);
     Input workItem;
     

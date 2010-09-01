@@ -20,8 +20,8 @@
 Bigraph::Bigraph() : m_hasContainment(false), m_hasTransitive(false), m_isExactMode(false), m_minOverlap(0), m_errorRate(0.0f)
 {
     m_vertices.set_deleted_key("");
-    WARN_ONCE("HARDCODED HASH TABLE MAX SIZE");
-    m_vertices.resize(600000000);
+    //WARN_ONCE("HARDCODED HASH TABLE MAX SIZE");
+    //m_vertices.resize(600000000);
 }
 
 //

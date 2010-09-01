@@ -10,10 +10,11 @@
 #ifndef STRINGGRAPHGENERATOR_H
 #define STRINGGRAPHGENERATOR_H
 
+#include <queue>
 #include "OverlapAlgorithm.h"
 #include "SGUtil.h"
 #include "GraphCommon.h"
-#include <queue>
+#include "SGSearch.h"
 
 // The GraphFrontier is a node that is on the edge
 // of the graph - it can be used to search the FM-index
@@ -34,18 +35,22 @@ class StringGraphGenerator
                              const SeqRecord& startRead, 
                              const SeqRecord& endRead, 
                              int minOverlap,
-                             EdgeDir startDir);
+                             EdgeDir startDir,
+                             int maxDistance);
 
         ~StringGraphGenerator();
 
+        // Find walks between the start vertex and the end vertex
+        SGWalkVector searchWalks();
 
     private:
 
         //
-        void buildGraph(FrontierQueue& queue, int maxDistance);
-        void updateGraphAndQueue(GraphFrontier& currNode, FrontierQueue& queue, OverlapBlockList& blockList, int maxDistance);
+        void buildGraph(FrontierQueue& queue);
+        void updateGraphAndQueue(GraphFrontier& currNode, FrontierQueue& queue, OverlapBlockList& blockList);
         
         Vertex* addTerminalVertex(const SeqRecord& record);
+        void resetContainmentFlags(Vertex* pVertex);
 
         //
         std::string overlapBlockToCanonicalID(OverlapBlock& block);
@@ -53,10 +58,12 @@ class StringGraphGenerator
         // Data
         const OverlapAlgorithm* m_pOverlapper;
         int m_minOverlap;
-        StringGraph* m_pGraph;
 
+        StringGraph* m_pGraph;
         Vertex* m_pStartVertex;
         Vertex* m_pEndVertex;
+        EdgeDir m_startDir;
+        int m_maxDistance;
 
         static const GraphColor UNEXPLORED_COLOR = GC_WHITE;
         static const GraphColor EXPLORED_COLOR = GC_BLACK;

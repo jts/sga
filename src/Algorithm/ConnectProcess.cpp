@@ -30,12 +30,18 @@ ConnectProcess::~ConnectProcess()
 //
 ConnectResult ConnectProcess::process(const SequenceWorkItemPair& workItemPair)
 {
-//    std::cout << "Work pair: " << workItemPair.first.read.id << "," << workItemPair.second.read.id << "\n";
     assert(getPairID(workItemPair.first.read.id) == workItemPair.second.read.id);
     ConnectResult result;
 
-    StringGraphGenerator localGraph(m_pOverlapper, workItemPair.first.read, workItemPair.second.read, m_minOverlap, ED_SENSE);
-    assert(false);
+    StringGraphGenerator localGraph(m_pOverlapper, workItemPair.first.read, workItemPair.second.read, m_minOverlap, ED_SENSE, 300);
+    SGWalkVector walks = localGraph.searchWalks();
+    //std::cout << "Found " << walks.size() << " walk between " << workItemPair.first.read.id << " and " << workItemPair.second.read.id << "\n";
+    if(walks.size() == 1)
+    {
+        SGWalk& solution = walks.front();
+        result.resolvedSequence = solution.getString(SGWT_START_TO_END);
+        //std::cout << "Solution has length " << solution.getStartToEndDistance() << "\n";
+    }
     return result;
 }
 
@@ -43,14 +49,31 @@ ConnectResult ConnectProcess::process(const SequenceWorkItemPair& workItemPair)
 //
 //
 ConnectPostProcess::ConnectPostProcess(std::ostream* pWriter) : 
-                                                      m_pWriter(pWriter)
+                                                                m_pWriter(pWriter),
+                                                                m_numPairsTotal(0),
+                                                                m_numPairsResolved(0)
 {
 
 }
 
 //
+ConnectPostProcess::~ConnectPostProcess()
+{
+    printf("connect: Resolved %d out of %d pairs (%lf)\n", m_numPairsResolved, m_numPairsTotal, (double)m_numPairsResolved / m_numPairsTotal);
+}
+
+//
 void ConnectPostProcess::process(const SequenceWorkItemPair& workItemPair, const ConnectResult& result)
 {
-    (void)workItemPair;
-    (void)result;
+    ++m_numPairsTotal;
+
+    if(result.resolvedSequence.length() > 0)
+    {
+        ++m_numPairsResolved;
+
+        SeqRecord record;
+        record.id = getPairBasename(workItemPair.first.read.id);
+        record.seq = result.resolvedSequence;
+        record.write(*m_pWriter);
+    }
 }

@@ -172,7 +172,6 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
     SGWalkVector walks;
     SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), maxDistance, 10000, walks);
 
-                 
     int numWalksValid = 0;
     int numWalksClosest = 0;
     int selectedIdx = -1;

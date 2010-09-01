@@ -129,9 +129,9 @@ int connectMain(int argc, char** argv)
         }
         
         SequenceProcessFramework::processSequencesParallel<SequenceWorkItemPair,
-                                                         ConnectResult, 
-                                                         ConnectProcess, 
-                                                         ConnectPostProcess>(opt::readsFile, processorVector, &postProcessor); 
+                                                           ConnectResult, 
+                                                           ConnectProcess, 
+                                                           ConnectPostProcess>(opt::readsFile, processorVector, &postProcessor); 
         for(int i = 0; i < opt::numThreads; ++i)
         {
             delete processorVector[i];
@@ -191,6 +191,12 @@ void parseConnectOptions(int argc, char** argv)
         die = true;
     }
 
+    if(opt::numThreads > 1)
+    {
+        std::cerr << SUBPROGRAM ": Warning: threading disabled\n";
+        opt::numThreads = 1;
+    }
+
     if(opt::numThreads <= 0)
     {
         std::cerr << SUBPROGRAM ": invalid number of threads: " << opt::numThreads << "\n";
@@ -229,6 +235,6 @@ void parseConnectOptions(int argc, char** argv)
 
     if(opt::outFile.empty())
     {
-        opt::outFile = opt::prefix + ".ec.fa";
+        opt::outFile = opt::prefix + ".connect.fa";
     }
 }
