@@ -76,6 +76,9 @@ void StringGraphGenerator::buildGraph(FrontierQueue& queue)
 {
     while(!queue.empty())
     {
+        if(queue.size() > 200)
+            break;
+
         GraphFrontier node = queue.front();
         queue.pop();
         if(node.pVertex->getColor() == EXPLORED_COLOR)
@@ -193,8 +196,12 @@ Vertex* StringGraphGenerator::addTerminalVertex(const SeqRecord& record)
     // Construct the canonical ID from the matching interval
     std::string endID = overlapBlockToCanonicalID(*matchIter);
 
-    Vertex* pVertex = new Vertex(endID, record.seq.toString());
-    m_pGraph->addVertex(pVertex);
+    Vertex* pVertex = m_pGraph->getVertex(endID);
+    if(pVertex == NULL)
+    {
+        pVertex = new Vertex(endID, record.seq.toString());
+        m_pGraph->addVertex(pVertex);
+    }
     return pVertex;
 }
 

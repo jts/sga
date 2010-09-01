@@ -39,12 +39,9 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
 "      -b, --bubble=N                   perform N bubble removal steps\n"
 "      -t, --trim=N                     trim terminal branches using N rounds\n"
-"      -c, --correct                    error correct reads and write to correctedReads.fa\n"
 "      -r,--resolve-small=LEN           resolve small repeats using spanning overlaps when the difference between the shortest\n"
 "                                       and longest overlap is greater than LEN\n"
 "      -a, --asqg-outfile=FILE          write the final graph to FILE\n"
-"      --edge-stats                     print out the distribution of overlap lengths and number of errors\n"
-"                                       for edges found in the overlap step.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt

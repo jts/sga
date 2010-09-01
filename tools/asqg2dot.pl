@@ -2,7 +2,7 @@
 
 use strict;
 
-print "digraph G {\n";
+print "graph G {\n";
 
 while(<>)
 {
@@ -16,7 +16,7 @@ while(<>)
 	{
 		my @record = split;
 		my $ol = $record[4] - $record[3] + 1;
-		print quoteStr($record[1]) . " -> " . quoteStr($record[2]) . " " . makeLabel($ol) . ";\n";
+		print quoteStr($record[1]) . " -- " . quoteStr($record[2]) . " " . makeLabel($ol) . ";\n";
 	}
 }
 

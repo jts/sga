@@ -40,9 +40,6 @@ bool SGOverlapWriterVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
     return false;
 }
 
-
-
-
 //
 // SGTransRedVisitor - Perform a transitive reduction about this vertex
 // This uses Myers' algorithm (2005, The fragment assembly string graph)

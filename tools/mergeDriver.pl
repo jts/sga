@@ -3,6 +3,10 @@
 # Merge driver - make commands for merging BWTs together
 
 use strict;
+use Getopt::Long;
+
+my $numThreads = 1;
+GetOptions("threads=i" => \$numThreads);
 
 my @files = @ARGV;
 my $n = scalar(@files);
@@ -51,13 +55,14 @@ sub makeMergeLine
         $smaller = $f1;
     }
 
+    my $preamble = qw($SGA) . " merge -r -t $numThreads $finalParam";
     if($mode == $MODE_OPT_MEMORY)
     {
-        return qw(sga) . " merge -r $finalParam $larger $smaller\n";
+        return "$preamble $larger $smaller\n";
     }
     else
     {
-        return qw(sga) . " merge -r $finalParam $smaller $larger\n";
+        return "$preamble $finalParam $smaller $larger\n";
     }
 }
 
