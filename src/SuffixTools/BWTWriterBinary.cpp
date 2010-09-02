@@ -58,6 +58,7 @@ void BWTWriterBinary::writeBWChar(char b)
         else
         {
             // Write out the old run and start a new one
+            assert(m_currRun.isInitialized());
             writeRun(m_currRun);
             m_currRun = RLUnit(b);
         }        

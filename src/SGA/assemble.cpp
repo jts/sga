@@ -38,6 +38,7 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
 "      -b, --bubble=N                   perform N bubble removal steps\n"
+"      -s, --smooth                     perform variation smoothing algorithm\n"
 "      -t, --trim=N                     trim terminal branches using N rounds\n"
 "      -r,--resolve-small=LEN           resolve small repeats using spanning overlaps when the difference between the shortest\n"
 "                                       and longest overlap is greater than LEN\n"
@@ -56,6 +57,7 @@ namespace opt
     static bool bEdgeStats = false;
     static bool bCorrectReads = false;
     static bool bRemodelGraph = false;
+    static bool bSmoothGraph = false;
     static int resolveSmallRepeatLen = -1;
     static int  numTrimRounds = 0;
     static int  numBubbleRounds = 0;
@@ -63,7 +65,7 @@ namespace opt
     static bool bExact = false;
 }
 
-static const char* shortopts = "p:o:m:d:t:b:a:r:vc";
+static const char* shortopts = "p:o:m:d:t:b:a:r:svc";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
@@ -77,6 +79,7 @@ static const struct option longopts[] = {
     { "trim",           required_argument, NULL, 't' },
     { "asqg-outfile",   required_argument, NULL, 'a' },
     { "resolve-small",  required_argument, NULL, 'r' },    
+    { "smooth",         no_argument,       NULL, 's' },    
     { "correct",        no_argument,       NULL, 'c' },    
     { "remodel",        no_argument,       NULL, 'z' },
     { "edge-stats",     no_argument,       NULL, 'x' },
@@ -260,7 +263,18 @@ void assemble()
         while(numPops-- > 0)
             pGraph->visit(bubbleVisit);
         pGraph->simplify();
-    }    
+    }
+    
+    if(opt::bSmoothGraph)
+    {
+        std::cout << "\nPerforming variation smoothing\n";
+        int numSmooth = 4;
+        SGSmoothingVisitor smoothingVisit;
+        while(numSmooth-- > 0)
+            pGraph->visit(smoothingVisit);
+        //pGraph->visit(trimVisit);
+        //pGraph->simplify();
+    }
 
     std::cout << "\nFinal graph stats\n";
     pGraph->visit(statsVisit);
@@ -271,7 +285,7 @@ void assemble()
 #endif
 
     // Rename the vertices to have contig IDs instead of read IDs
-    pGraph->renameVertices("contig-");
+    //pGraph->renameVertices("contig-");
 
     // Write the results
     pGraph->writeDot("final.dot");
@@ -307,6 +321,7 @@ void parseAssembleOptions(int argc, char** argv)
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case 'b': arg >> opt::numBubbleRounds; break;
+            case 's': opt::bSmoothGraph = true; break;
             case 't': arg >> opt::numTrimRounds; break;
             case 'a': arg >> opt::asqgOutfile; break;
             case 'c': opt::bCorrectReads = true; break;

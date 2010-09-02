@@ -11,9 +11,52 @@
 #include <queue>
 
 //
-SGWalk::SGWalk(const Vertex* pStartVertex) : m_pStartVertex(pStartVertex), m_extensionDistance(0)
+SGWalk::SGWalk(const Vertex* pStartVertex, bool bIndexWalk) : m_pStartVertex(pStartVertex), m_extensionDistance(0)
 {
+    if(bIndexWalk)
+        m_pWalkIndex = new WalkIndex;
+    else
+        m_pWalkIndex = NULL;
+}
 
+//
+SGWalk::~SGWalk()
+{
+    if(m_pWalkIndex != NULL)
+    {
+        delete m_pWalkIndex;
+        m_pWalkIndex = NULL;
+    }
+}
+
+//
+SGWalk::SGWalk(const SGWalk& other)
+{
+    m_pStartVertex = other.m_pStartVertex;
+    m_edges = other.m_edges;
+    m_extensionDistance = other.m_extensionDistance;
+
+    if(other.m_pWalkIndex != NULL)
+        m_pWalkIndex = new WalkIndex(*other.m_pWalkIndex);
+}
+
+//
+SGWalk& SGWalk::operator=(const SGWalk& other)
+{
+    if(&other == this)
+        return *this; // self-assign
+   
+    m_pStartVertex = other.m_pStartVertex;
+    m_edges = other.m_edges;
+    m_extensionDistance = other.m_extensionDistance;
+    
+    if(m_pWalkIndex != NULL)
+        delete m_pWalkIndex;
+    
+    if(other.m_pWalkIndex != NULL)
+        m_pWalkIndex = new WalkIndex(*other.m_pWalkIndex);
+        
+    return *this;
 }
 
 //
@@ -21,6 +64,38 @@ void SGWalk::addEdge(Edge* pEdge)
 {
     m_edges.push_back(pEdge);
     m_extensionDistance += pEdge->getSeqLen();
+
+    // Add the vertex ID to the index if necessary
+    if(m_pWalkIndex != NULL)
+        m_pWalkIndex->insert(m_edges.back()->getEndID());
+}
+
+//
+size_t SGWalk::getNumEdges() const
+{
+    return m_edges.size();
+}
+
+//
+bool SGWalk::containsVertex(const VertexID& id) const
+{
+    if(m_pWalkIndex == NULL)
+        assert(false);
+    return m_pWalkIndex->count(id) > 0;
+}
+
+//
+void SGWalk::truncate(const VertexID& id)
+{
+    EdgePtrVec::iterator iter = m_edges.begin();
+    while(iter != m_edges.end())
+    {
+        if((*iter)->getEndID() == id)
+            break;
+        ++iter;
+    }
+    assert(iter != m_edges.end());
+    m_edges.erase(iter + 1, m_edges.end());
 }
 
 // Construct the extension string corresponding to the path
@@ -32,7 +107,6 @@ std::string SGWalk::getString(SGWalkType type) const
     {
         out.append(m_pStartVertex->getSeq().toString());
     }
-
 
     // Determine if the string should go to the end of the last vertex
     // in the path
@@ -117,6 +191,12 @@ Edge* SGWalk::getLastEdge() const
     return m_edges.back();
 }
 
+//
+Edge* SGWalk::getEdge(size_t idx) const
+{
+    return m_edges[idx];
+}
+
 // 
 void SGWalk::print() const
 {
@@ -137,27 +217,14 @@ void SGSearch::findWalks(const Vertex* pX, const Vertex* pY, EdgeDir initialDir,
                          int maxDistance, size_t maxQueue, SGWalkVector& outWalks)
 {
     // Create the initial path nodes
-    typedef std::queue<SGWalk> WalkQueue;
-    EdgeDir dir = initialDir;
     WalkQueue queue;
-    EdgePtrVec edges = pX->getEdges(dir);
-
-    for(size_t i = 0; i < edges.size(); ++i)
-    {
-        Edge* pEdge = edges[i];
-        assert(!pEdge->getOverlap().isContainment());
-
-        SGWalk walk(pX);
-        walk.addEdge(pEdge);
-        queue.push(walk);
-    }
+    initializeWalkQueue(pX, initialDir, false, queue);
 
     while(!queue.empty())
     {
         if(queue.size() > maxQueue)
         {
             // Give up the search if there are too many possible paths to continue
-            std::cerr << "Warning queue too large " << queue.size() << "\n";
             outWalks.clear();
             return;
         }
@@ -185,41 +252,126 @@ void SGSearch::findWalks(const Vertex* pX, const Vertex* pY, EdgeDir initialDir,
             }
             else
             {
-                // Path is still valid, continue
-                EdgeDir continueDir = pWZ->getTransitiveDir();
-                EdgePtrVec zEdges = pZ->getEdges(continueDir);
-
-                if(!zEdges.empty())
-                {
-                    // If there is one extension, just add it to the current walk
-                    if(zEdges.size() == 1)
-                    {
-                        Edge* pNextEdge = zEdges[0];
-                        currWalk.addEdge(pNextEdge);
-                        bPop = false;
-                    }
-                    else
-                    {
-                        // Multiple extensions, remove the current walk and branch
-                        bPop = true;
-                        for(size_t i = 0; i < zEdges.size(); ++i)
-                        {
-                            SGWalk branch = currWalk;
-                            Edge* pBranchEdge = zEdges[i];
-                            branch.addEdge(pBranchEdge);
-                            queue.push(branch);
-                        }
-                    }
-                }
-                else
-                {
-                    bPop = true;
-                }
+                bPop = !extendWalk(pZ, pWZ->getTransitiveDir(), currWalk, queue);
             }
         }
 
         if(bPop)
-            queue.pop();
+            queue.pop_front();
     }
 }
 
+// Return a set of walks that all start from pX and join together at some later vertex
+// If no such walk exists, an empty set is returned
+void SGSearch::findCollapsedWalks(const Vertex* pX, EdgeDir initialDir, 
+                                  int maxDistance, size_t maxQueue, 
+                                  SGWalkVector& outWalks)
+{
+    // Create the initial path nodes
+    WalkQueue queue;
+    initializeWalkQueue(pX, initialDir, true, queue);
+
+    //
+    while(queue.size() > 1)
+    {
+        // Check the last element of each walk in the queue to see if all
+        // the walks share a common vertex
+        for(size_t i = 0; i < queue.size(); ++i)
+        {
+            VertexID iLastID = queue[i].getLastEdge()->getEndID();
+            bool isCommonVertex = true;
+            for(size_t j = 0; j < queue.size(); ++j)
+            {
+                if(j == i)
+                    continue;
+                if(!queue[j].containsVertex(iLastID))
+                {
+                    isCommonVertex = false;
+                    break;
+                }
+            }
+
+            if(isCommonVertex)
+            {
+                // This vertex is common between all walks, return the found walks in outWalks
+                //std::cout << "Vertex " << iLastID << " is common to all walks\n";
+                for(size_t i = 0; i < queue.size(); ++i)
+                {
+                    // Truncate the path at the common vertex
+                    queue[i].truncate(iLastID);
+                    outWalks.push_back(queue[i]);
+                }
+                return;
+            }
+        }
+
+        if(queue.size() > maxQueue)
+        {
+            // Give up the search if there are too many possible paths to continue
+            outWalks.clear();
+            return;
+        }
+
+        bool bPop = false;
+        {
+            SGWalk& currWalk = queue.front();
+            Edge* pWZ = currWalk.getLastEdge(); 
+            Vertex* pZ = pWZ->getEnd();
+            if(currWalk.getExtensionDistance() > maxDistance)
+            {
+                //std::cout << "Too far: " << currWalk.getExtensionDistance() << "\n";
+                bPop = true;
+            }
+            else
+            {
+                bPop = !extendWalk(pZ, pWZ->getTransitiveDir(), currWalk, queue);
+            }
+        }
+
+        if(bPop)
+            queue.pop_front();
+    }
+
+    (void)outWalks;
+}
+
+//
+void SGSearch::initializeWalkQueue(const Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue)
+{
+    EdgePtrVec edges = pX->getEdges(initialDir);
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        Edge* pEdge = edges[i];
+        assert(!pEdge->getOverlap().isContainment());
+
+        SGWalk walk(pX, bIndexWalks);
+        walk.addEdge(pEdge);
+        queue.push_back(walk);
+    }
+}
+
+// Extend the walk by addding the neighbors of the last vertex (pX) to the walk
+// Returns true if the branch was extended
+bool SGSearch::extendWalk(const Vertex* pX, EdgeDir dir, SGWalk& currWalk, WalkQueue& queue)
+{
+    EdgePtrVec edges = pX->getEdges(dir);
+
+    if(edges.empty())
+        return false;
+    
+    // If there are multiple extensions, create new branches and add them to the queue
+    for(size_t i = 1; i < edges.size(); ++i)
+    {
+        //std::cout << "Branching from " << pX->getID() << " to " << edges[i]->getEndID() << "\n";
+        SGWalk branch = currWalk; 
+        Edge* pBranchEdge = edges[i];
+        branch.addEdge(pBranchEdge);
+        queue.push_back(branch);
+    }
+
+    // Extend the current walk with the first edge
+    //std::cout << "Extending from " << pX->getID() << " to " << edges[0]->getEndID() << "\n";
+    Edge* pFirstEdge = edges[0];
+    currWalk.addEdge(pFirstEdge);
+    return true;
+}

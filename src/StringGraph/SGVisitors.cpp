@@ -11,6 +11,7 @@
 #include "SGVisitors.h"
 #include "ErrorCorrect.h"
 #include "CompleteOverlapSet.h"
+#include "SGSearch.h"
 
 //
 // SGFastaVisitor - output the vertices in the graph in 
@@ -955,6 +956,80 @@ void SGBubbleEdgeVisitor::postvisit(StringGraph* pGraph)
     assert(pGraph->checkColors(GC_WHITE));
 }
 
+//
+// SGSmoothingVisitor - Find branches in the graph
+// which arise from variation and remove them
+//
+void SGSmoothingVisitor::previsit(StringGraph* pGraph)
+{
+    pGraph->setColors(GC_WHITE);
+}
+
+//
+bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
+{
+    (void)pGraph;
+    if(pVertex->getColor() == GC_RED)
+        return false;
+
+    bool found = false;
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        EdgePtrVec edges = pVertex->getEdges(dir);
+        if(edges.size() <= 1)
+            continue;
+
+        for(size_t i = 0; i < edges.size(); ++i)
+        {
+            if(edges[i]->getEnd()->getColor() == GC_RED)
+                return false;
+        }
+
+        //std::cout << "Smoothing " << pVertex->getID() << "\n";
+        SGWalkVector collapsedWalks;
+        SGSearch::findCollapsedWalks(pVertex, dir, 1000, 20, collapsedWalks);
+        if(collapsedWalks.size() > 0)
+        {
+            found = true;
+            size_t selectedIdx = -1;
+            size_t selectedLength = 0;
+
+            // Select the walk with the longest length
+            for(size_t i = 0; i < collapsedWalks.size(); ++i)
+            {
+                if(collapsedWalks[i].getNumEdges() > selectedLength)
+                {
+                    selectedIdx = i;
+                    selectedLength = collapsedWalks[i].getNumEdges();
+                }
+                //collapsedWalks[i].print();
+            }
+            assert(selectedIdx != (size_t)-1);
+
+            // Mark all the nodes in the non-selected walks for deletion
+            for(size_t i = 0; i < collapsedWalks.size(); ++i)
+            {
+                if(i == selectedIdx)
+                    continue;
+                SGWalk& currWalk = collapsedWalks[i];
+                for(size_t j = 0; j < currWalk.getNumEdges() - 1; ++j)
+                {
+                    Edge* currEdge = currWalk.getEdge(j);
+                    currEdge->getEnd()->setColor(GC_RED);
+                }
+            }
+        }
+    }
+    return found;
+}
+
+// Remove all the marked edges
+void SGSmoothingVisitor::postvisit(StringGraph* pGraph)
+{
+    pGraph->sweepVertices(GC_RED);
+    assert(pGraph->checkColors(GC_WHITE));
+}
 
 //
 // SGGraphStatsVisitor - Collect summary stasitics

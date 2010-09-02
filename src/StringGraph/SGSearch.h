@@ -11,6 +11,7 @@
 #define SGSEARCH_H
 
 #include "Bigraph.h"
+#include <deque>
 
 // A walk on the string graph is given by the starting vertex
 // then a vector of edges used in the walk
@@ -23,9 +24,26 @@ enum SGWalkType
 class SGWalk
 {
     public:
-        SGWalk(const Vertex* pStartVertex);
+        
+        SGWalk(const Vertex* pStartVertex, bool bIndexWalk = false);
+        SGWalk(const SGWalk& other);
+
+        ~SGWalk();
+
+        SGWalk& operator=(const SGWalk& other);
+
+
         void addEdge(Edge* pEdge);
         Edge* getLastEdge() const;
+        Edge* getEdge(size_t idx) const;
+        size_t getNumEdges() const;
+
+        // Returns true if the walk contains the specified vertex
+        // If the walk is not indexed, this will assert
+        bool containsVertex(const VertexID& id) const;
+
+        // Truncate the walk after the first instance of id
+        void truncate(const VertexID& id);
 
         //
         std::string getString(SGWalkType type) const;
@@ -42,6 +60,9 @@ class SGWalk
         
         const Vertex* m_pStartVertex;
         EdgePtrVec m_edges;
+        
+        typedef std::set<VertexID> WalkIndex;
+        WalkIndex* m_pWalkIndex;
 
         // The distance from the end of pStart to the last vertex in the walk
         // This equals the length of the extension string
@@ -52,13 +73,22 @@ class SGWalk
         int m_extensionDistance;
 };
 typedef std::vector<SGWalk> SGWalkVector;
+typedef std::deque<SGWalk> WalkQueue;
 
 // String Graph searching algorithms
 namespace SGSearch
 {
+    //
     void findWalks(const Vertex* pX, const Vertex* pY, EdgeDir initialDir,
                    int maxDistance, size_t maxQueue, SGWalkVector& outWalks);
 
+    void findCollapsedWalks(const Vertex* pX, EdgeDir initialDir, 
+                            int maxDistance, size_t maxQueue, 
+                            SGWalkVector& outWalks);
+
+    //
+    void initializeWalkQueue(const Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue);
+    bool extendWalk(const Vertex* pX, EdgeDir dir, SGWalk& currWalk, WalkQueue& queue);
 };
 
 #endif

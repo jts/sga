@@ -111,6 +111,7 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT, int numThreads
         mkqs2(&pSA->m_data[0], n1, 0, radix_compare, index_compare);
     else
         parallel_mkqs(&pSA->m_data[0], n1, numThreads, radix_compare, index_compare);
+    std::cout << "[saca] mkqs finished\n";
 
     // Induction sort the remaining suffixes
     for(size_t i = n1; i < num_suffixes; ++i)

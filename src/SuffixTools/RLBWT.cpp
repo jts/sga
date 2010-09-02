@@ -121,6 +121,7 @@ void RLBWT::initializeFMIndex()
     {
         // Update the count and advance the running total
         RLUnit& unit = m_rlString[i];
+
         char symbol = unit.getChar();
         uint8_t run_len = unit.getCount();
         ac.add(symbol, run_len);
