@@ -35,6 +35,7 @@ SGWalk::SGWalk(const SGWalk& other)
     m_pStartVertex = other.m_pStartVertex;
     m_edges = other.m_edges;
     m_extensionDistance = other.m_extensionDistance;
+    m_pWalkIndex = NULL;
 
     if(other.m_pWalkIndex != NULL)
         m_pWalkIndex = new WalkIndex(*other.m_pWalkIndex);
