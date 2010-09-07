@@ -225,6 +225,17 @@ void assemble()
            pGraph->visit(trimVisit);
     }
 
+    if(opt::bSmoothGraph)
+    {
+        std::cout << "\nPerforming variation smoothing\n";
+        int numSmooth = 4;
+        SGSmoothingVisitor smoothingVisit;
+        while(numSmooth-- > 0)
+            pGraph->visit(smoothingVisit);
+        //pGraph->visit(trimVisit);
+        //pGraph->simplify();
+    }
+
     if(opt::resolveSmallRepeatLen >= 0)
     {
         SGSmallRepeatResolveVisitor smallRepeatVisit(opt::resolveSmallRepeatLen);
@@ -235,6 +246,8 @@ void assemble()
         std::cout << "After small repeat resolve graph stats\n";
         pGraph->visit(statsVisit);
     }
+    
+    pGraph->writeASQG("postmod.asqg.gz");
 
 /*
     if(opt::numBubbleRounds > 0)
@@ -265,17 +278,6 @@ void assemble()
         pGraph->simplify();
     }
     
-    if(opt::bSmoothGraph)
-    {
-        std::cout << "\nPerforming variation smoothing\n";
-        int numSmooth = 4;
-        SGSmoothingVisitor smoothingVisit;
-        while(numSmooth-- > 0)
-            pGraph->visit(smoothingVisit);
-        //pGraph->visit(trimVisit);
-        //pGraph->simplify();
-    }
-
     std::cout << "\nFinal graph stats\n";
     pGraph->visit(statsVisit);
 
@@ -285,7 +287,7 @@ void assemble()
 #endif
 
     // Rename the vertices to have contig IDs instead of read IDs
-    //pGraph->renameVertices("contig-");
+    pGraph->renameVertices("contig-");
 
     // Write the results
     pGraph->writeDot("final.dot");

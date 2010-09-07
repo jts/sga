@@ -58,6 +58,8 @@ static const char *CORRECT_USAGE_MESSAGE =
 "          --metrics=FILE               collect error correction metrics (error rate by position in read, etc) and write\n"
 "                                       them to FILE\n"
 "          --no-discard                 do not discard low-quality reads\n"
+"      -d, --sample-rate=N              sample the symbol counts every N symbols in the FM-index. Higher values use significantly\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2. Default is 128\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -73,7 +75,8 @@ namespace opt
     static std::string outFile;
     static std::string discardFile;
     static std::string metricsFile;
-
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
+    
     static double errorRate;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
@@ -97,6 +100,7 @@ static const struct option longopts[] = {
     { "seed-length", required_argument, NULL, 'l' },
     { "seed-stride", required_argument, NULL, 's' },
     { "algorithm",   required_argument, NULL, 'a' },
+    { "sample-rate", required_argument, NULL, 'd' },
     { "conflict",    required_argument, NULL, 'c' },
     { "no-discard",  no_argument,       NULL, OPT_NODISCARD },
     { "help",        no_argument,       NULL, OPT_HELP },
@@ -114,8 +118,8 @@ int correctMain(int argc, char** argv)
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
 
-    BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
-    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
+    BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
+    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false);
@@ -124,6 +128,7 @@ int correctMain(int argc, char** argv)
     std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
 
     bool bCollectMetrics = !opt::metricsFile.empty();
+    pBWT->printInfo();
 
     ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter, bCollectMetrics);
 
@@ -201,6 +206,7 @@ void parseCorrectOptions(int argc, char** argv)
             case 's': arg >> opt::seedStride; break;
             case 'r': arg >> opt::numRounds; break;
             case 'a': arg >> algo_str; break;
+            case 'd': arg >> opt::sampleRate; break;
             case 'c': arg >> opt::conflictCutoff; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
