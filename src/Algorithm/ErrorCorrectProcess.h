@@ -70,6 +70,7 @@ class ErrorCorrectProcess
         const int m_conflictCutoff;
         const ErrorCorrectAlgorithm m_algorithm;
         const bool m_printOverlaps;
+        const int m_depthFilter;
 };
 
 // Write the results from the overlap step to an ASQG file

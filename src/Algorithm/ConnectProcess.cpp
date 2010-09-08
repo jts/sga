@@ -33,7 +33,7 @@ ConnectResult ConnectProcess::process(const SequenceWorkItemPair& workItemPair)
     assert(getPairID(workItemPair.first.read.id) == workItemPair.second.read.id);
     ConnectResult result;
 
-    StringGraphGenerator localGraph(m_pOverlapper, workItemPair.first.read, workItemPair.second.read, m_minOverlap, ED_SENSE, 300);
+    StringGraphGenerator localGraph(m_pOverlapper, workItemPair.first.read, workItemPair.second.read, m_minOverlap, ED_SENSE, 350);
     SGWalkVector walks = localGraph.searchWalks();
     //std::cout << "Found " << walks.size() << " walk between " << workItemPair.first.read.id << " and " << workItemPair.second.read.id << "\n";
     if(walks.size() == 1)

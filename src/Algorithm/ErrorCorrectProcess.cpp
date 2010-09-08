@@ -22,7 +22,8 @@ ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper,
                                             m_numRounds(numRounds),
                                             m_conflictCutoff(conflictCutoff),
                                             m_algorithm(algo),
-                                            m_printOverlaps(printMO)
+                                            m_printOverlaps(printMO),
+                                            m_depthFilter(100)
 {
 
 }
@@ -47,6 +48,21 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
     {
         m_blockList.clear();
         OverlapResult overlap_result = m_pOverlapper->overlapRead(currRead, m_minOverlap, &m_blockList);
+        int sumOverlaps = 0;
+        // Sum the spans of the overlap blocks to calculate the total number of overlaps this read has
+        for(OverlapBlockList::iterator iter = m_blockList.begin(); iter != m_blockList.end(); ++iter)
+        {
+            assert(iter->ranges.interval[0].size() == iter->ranges.interval[1].size());
+            sumOverlaps += iter->ranges.interval[0].size();
+        }
+
+        if(m_depthFilter > 0 && sumOverlaps > m_depthFilter)
+        {
+            result.num_prefix_overlaps = sumOverlaps;
+            result.num_suffix_overlaps = sumOverlaps;
+            result.correctSequence = currRead.seq;
+            break;
+        }
 
         // Convert the overlap block list into a multi-overlap 
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
