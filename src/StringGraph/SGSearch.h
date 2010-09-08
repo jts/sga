@@ -34,6 +34,8 @@ class SGWalk
 
 
         void addEdge(Edge* pEdge);
+        void popLast();
+
         Edge* getLastEdge() const;
         Edge* getEdge(size_t idx) const;
         size_t getNumEdges() const;
@@ -69,7 +71,7 @@ class SGWalk
         // x -----------
         // y     ------------
         // z              ----------
-        // distance     *****
+        // distance     ************
         int m_extensionDistance;
 };
 typedef std::vector<SGWalk> SGWalkVector;
@@ -85,6 +87,10 @@ namespace SGSearch
     void findCollapsedWalks(const Vertex* pX, EdgeDir initialDir, 
                             int maxDistance, size_t maxQueue, 
                             SGWalkVector& outWalks);
+
+    // Count the number of vertices that span the sequence junction
+    // described by edge XY. Returns -1 if the search was not completed
+    int countSpanningCoverage(Edge* pXY, size_t maxQueue);
 
     //
     void initializeWalkQueue(const Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue);

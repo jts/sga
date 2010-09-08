@@ -1031,6 +1031,61 @@ void SGSmoothingVisitor::postvisit(StringGraph* pGraph)
     assert(pGraph->checkColors(GC_WHITE));
 }
 
+
+//
+// Coverage analysis
+//
+void SGCoverageVisitor::previsit(StringGraph* pGraph)
+{
+    pGraph->setColors(GC_WHITE);
+}
+
+//
+bool SGCoverageVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
+{
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        EdgePtrVec edges = pVertex->getEdges(dir);
+        if(edges.size() <= 1)
+            continue;
+
+        int bestCoverage = 0;
+        int worstCoverage = std::numeric_limits<int>::max();
+        int popIndex = -1;
+
+        std::cout << "Bubble coverage:\n";
+        for(size_t i = 0; i < edges.size(); ++i)
+        {
+            int coverage = SGSearch::countSpanningCoverage(edges[i], 20);
+
+            std::cout << "\t" << i << " cov: " << coverage << "\n";
+            
+            if(coverage > bestCoverage)
+                bestCoverage = coverage;
+
+            if(coverage < worstCoverage)
+            {
+                worstCoverage = coverage;
+                popIndex = i;
+            }            
+        }
+
+        if(worstCoverage == 1 && bestCoverage > 1)
+        {
+            assert(popIndex != -1);
+            edges[popIndex]->getEnd()->setColor(GC_RED);
+        }
+    }
+    return false;
+}
+
+//
+void SGCoverageVisitor::postvisit(StringGraph* pGraph)
+{
+    pGraph->sweepVertices(GC_RED);
+}
+
 //
 // SGGraphStatsVisitor - Collect summary stasitics
 // about the graph

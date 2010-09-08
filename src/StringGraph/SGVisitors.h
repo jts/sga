@@ -213,6 +213,15 @@ struct SGSmoothingVisitor
     void postvisit(StringGraph*);
 };
 
+// Remove vertices/edges that have low coverage
+struct SGCoverageVisitor
+{
+    SGCoverageVisitor() {}
+    void previsit(StringGraph* pGraph);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*);
+};
+
 // Compile summary statistics for the graph
 struct SGGraphStatsVisitor
 {

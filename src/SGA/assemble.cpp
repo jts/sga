@@ -187,35 +187,6 @@ void assemble()
     std::cout << "Pre-remodelling graph stats\n";
     pGraph->visit(statsVisit);
 
-    if(opt::bCorrectReads)
-    {
-        std::cout << "Correcting reads\n";
-        pGraph->visit(errorCorrectVisit);
-
-        std::cout << "Writing corrected reads\n";
-        SGFastaVisitor correctedVisitor("correctedReads.fa");
-        pGraph->visit(correctedVisitor);
-        pGraph->writeASQG("afterEC.asqg.gz");
-    }
-
-    if(opt::bRemodelGraph)
-    {
-        // Remodel graph
-        std::cout << "Remodelling graph\n";
-        pGraph->visit(remodelVisit);
-        pGraph->writeASQG("afterRM.asqg.gz");
-
-        while(pGraph->hasContainment())
-        {
-            std::cout << "Removing contained reads\n";
-            pGraph->visit(containVisit);
-        }
-        pGraph->visit(trVisit);
-        std::cout << "After remodel graph stats: \n";
-        pGraph->visit(statsVisit);
-        //pGraph->writeASQG("afterRM.asqg.gz");
-    }
-
     if(opt::numTrimRounds > 0)
     {
         WARN_ONCE("USING NAIVE TRIMMING");
@@ -246,9 +217,16 @@ void assemble()
         std::cout << "After small repeat resolve graph stats\n";
         pGraph->visit(statsVisit);
     }
-    
-    pGraph->writeASQG("postmod.asqg.gz");
 
+    /*
+    std::cout << "Coverage visit\n";
+    SGCoverageVisitor coverageVisit;
+    pGraph->visit(coverageVisit);
+    pGraph->visit(trimVisit);
+    pGraph->visit(trimVisit);
+
+    pGraph->writeASQG("postmod.asqg.gz");
+    */
 /*
     if(opt::numBubbleRounds > 0)
     {

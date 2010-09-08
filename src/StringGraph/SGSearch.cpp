@@ -72,6 +72,12 @@ void SGWalk::addEdge(Edge* pEdge)
 }
 
 //
+void SGWalk::popLast()
+{
+    m_edges.pop_back();
+}
+
+//
 size_t SGWalk::getNumEdges() const
 {
     return m_edges.size();
@@ -334,6 +340,79 @@ void SGSearch::findCollapsedWalks(const Vertex* pX, EdgeDir initialDir,
     }
 
     (void)outWalks;
+}
+
+// Count the number of reads that span the junction described by edge XY
+// X --------------
+// Y        ------------
+// Z            -----------
+// W                ----------
+// In this case Z spans the junction but W does not. 
+int SGSearch::countSpanningCoverage(Edge* pXY, size_t maxQueue)
+{
+    Vertex* pX = pXY->getStart();
+
+    SGWalk walk(pX, false);
+    walk.addEdge(pXY);
+    
+    WalkQueue queue;
+    queue.push_back(walk);
+
+    // Create the initial queue
+    SGWalkVector outWalks;
+
+    //
+    while(queue.size() > 0)
+    {
+        if(queue.size() > maxQueue)
+        {
+            // Give up the search if there are too many possible paths to continue
+            return -1;
+        }
+
+        bool bPop = false;
+        {
+            SGWalk& currWalk = queue.front();
+            Edge* pWZ = currWalk.getLastEdge(); 
+            Vertex* pZ = pWZ->getEnd();
+
+            // Calculate the length of the overlap of pZ on pX. If it is <= 0
+            // pZ does not overlap pX and will be removed from the walk and the walk
+            // is not processed further
+            int extensionDistance = currWalk.getExtensionDistance();
+            int overlap = pZ->getSeqLen() - extensionDistance;
+            if(overlap <= 0)
+            {
+                //std::cout << "Too far: " << currWalk.getExtensionDistance() << "\n";
+                bPop = true;
+                currWalk.popLast();
+                outWalks.push_back(currWalk);
+            }
+            else
+            {
+                // Continue walk
+                bPop = !extendWalk(pZ, pWZ->getTransitiveDir(), currWalk, queue);
+            }
+        }
+
+        if(bPop)
+            queue.pop_front();
+    }
+
+    // The outwalks may have redundant sequences
+    // Make a set to calculate the coverage by unique vertices
+    std::set<VertexID> vertexSet;
+
+    for(size_t i = 0; i < outWalks.size(); ++i)
+    {
+        SGWalk& walk = outWalks[i];
+        for(size_t j = 0; j < walk.getNumEdges(); ++j)
+        {
+            vertexSet.insert(walk.getEdge(j)->getEndID());
+        }
+    }
+
+    return vertexSet.size();
 }
 
 //
