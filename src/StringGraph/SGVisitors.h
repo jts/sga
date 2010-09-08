@@ -216,10 +216,13 @@ struct SGSmoothingVisitor
 // Remove vertices/edges that have low coverage
 struct SGCoverageVisitor
 {
-    SGCoverageVisitor() {}
+    SGCoverageVisitor(int cutoff) : m_cutoff(cutoff) {}
     void previsit(StringGraph* pGraph);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*);
+
+    int m_cutoff;
+    int m_numRemoved;
 };
 
 // Compile summary statistics for the graph

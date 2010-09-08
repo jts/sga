@@ -4,6 +4,7 @@
 #
 # Split the READS fasta file into two files, one for each half of a read pair
 #
+use strict;
 my $inFile = $ARGV[0];
 my $out1File = $ARGV[1];
 my $out2File = $ARGV[2];
@@ -19,6 +20,7 @@ while(my $header = <IN>)
 {
     chomp $header;
     my $record = "";
+
     if($header =~ /^>/)
     {
         # parse fasta, assume 1 line per sequence
@@ -27,7 +29,7 @@ while(my $header = <IN>)
     elsif($header =~ /^@/)
     {
         # parse fastq
-        my $record = substr($header, 0, -2) . "\n";
+        $record = substr($header, 0, -2) . "\n";
         $record .= <IN>;
         $record .= <IN>;
         $record .= <IN>;
@@ -55,7 +57,7 @@ close(IN);
 sub isFirstRead
 {
     my ($header) = @_;
-    return 1 if($header =~ /A|1$/);
-    return 0 if($header =~ /B|2$/);
+    return 1 if($header =~ /A$|1$/);
+    return 0 if($header =~ /B$|2$/);
     die("Cannot parse record $header");
 }

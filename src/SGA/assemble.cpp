@@ -40,6 +40,8 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -b, --bubble=N                   perform N bubble removal steps\n"
 "      -s, --smooth                     perform variation smoothing algorithm\n"
 "      -t, --trim=N                     trim terminal branches using N rounds\n"
+"      -c, --coverage=N                 remove edges that have junction-sequence coverage less than N. This can be used\n"
+"                                       to detect and remove chimeric reads\n"
 "      -r,--resolve-small=LEN           resolve small repeats using spanning overlaps when the difference between the shortest\n"
 "                                       and longest overlap is greater than LEN\n"
 "      -a, --asqg-outfile=FILE          write the final graph to FILE\n"
@@ -55,17 +57,16 @@ namespace opt
     static std::string asqgOutfile;
     static unsigned int minOverlap;
     static bool bEdgeStats = false;
-    static bool bCorrectReads = false;
-    static bool bRemodelGraph = false;
     static bool bSmoothGraph = false;
     static int resolveSmallRepeatLen = -1;
-    static int  numTrimRounds = 0;
-    static int  numBubbleRounds = 0;
+    static int numTrimRounds = 0;
+    static int numBubbleRounds = 0;
+    static int coverageCutoff = 0;
     static bool bValidate;
     static bool bExact = false;
 }
 
-static const char* shortopts = "p:o:m:d:t:b:a:r:svc";
+static const char* shortopts = "p:o:m:d:t:b:a:c:r:sv";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
@@ -79,9 +80,8 @@ static const struct option longopts[] = {
     { "trim",           required_argument, NULL, 't' },
     { "asqg-outfile",   required_argument, NULL, 'a' },
     { "resolve-small",  required_argument, NULL, 'r' },    
+    { "coverage",       required_argument, NULL, 'c' },    
     { "smooth",         no_argument,       NULL, 's' },    
-    { "correct",        no_argument,       NULL, 'c' },    
-    { "remodel",        no_argument,       NULL, 'z' },
     { "edge-stats",     no_argument,       NULL, 'x' },
     { "exact",          no_argument,       NULL, 'e' },
     { "help",           no_argument,       NULL, OPT_HELP },
@@ -196,17 +196,6 @@ void assemble()
            pGraph->visit(trimVisit);
     }
 
-    if(opt::bSmoothGraph)
-    {
-        std::cout << "\nPerforming variation smoothing\n";
-        int numSmooth = 4;
-        SGSmoothingVisitor smoothingVisit;
-        while(numSmooth-- > 0)
-            pGraph->visit(smoothingVisit);
-        //pGraph->visit(trimVisit);
-        //pGraph->simplify();
-    }
-
     if(opt::resolveSmallRepeatLen >= 0)
     {
         SGSmallRepeatResolveVisitor smallRepeatVisit(opt::resolveSmallRepeatLen);
@@ -218,15 +207,29 @@ void assemble()
         pGraph->visit(statsVisit);
     }
 
-    /*
-    std::cout << "Coverage visit\n";
-    SGCoverageVisitor coverageVisit;
-    pGraph->visit(coverageVisit);
-    pGraph->visit(trimVisit);
-    pGraph->visit(trimVisit);
+    if(opt::bSmoothGraph)
+    {
+        std::cout << "\nPerforming variation smoothing\n";
+        int numSmooth = 4;
+        SGSmoothingVisitor smoothingVisit;
+        while(numSmooth-- > 0)
+            pGraph->visit(smoothingVisit);
+        //pGraph->visit(trimVisit);
+        //pGraph->simplify();
+    }
+    
+    if(opt::coverageCutoff > 0)
+    {
+        std::cout << "Coverage visit\n";
+        SGCoverageVisitor coverageVisit(opt::coverageCutoff);
+        pGraph->visit(coverageVisit);
+        pGraph->visit(trimVisit);
+        pGraph->visit(trimVisit);
+        pGraph->visit(trimVisit);
+    }
 
-    pGraph->writeASQG("postmod.asqg.gz");
-    */
+    //pGraph->writeASQG("postmod.asqg.gz");
+    
 /*
     if(opt::numBubbleRounds > 0)
     {
@@ -304,9 +307,8 @@ void parseAssembleOptions(int argc, char** argv)
             case 's': opt::bSmoothGraph = true; break;
             case 't': arg >> opt::numTrimRounds; break;
             case 'a': arg >> opt::asqgOutfile; break;
-            case 'c': opt::bCorrectReads = true; break;
+            case 'c': arg >> opt::coverageCutoff; break;
             case 'r': arg >> opt::resolveSmallRepeatLen; break;
-            case 'z': opt::bRemodelGraph = true; break;
             case 'x': opt::bEdgeStats = true; break;
             case 'e': opt::bExact = true; break;
             case OPT_VALIDATE: opt::bValidate = true; break;

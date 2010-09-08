@@ -706,11 +706,12 @@ bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
 
             if(x_diff > m_minDiff && y_diff > m_minDiff)
             {
+                /*
                 printf("Edge %s -> %s is likely a repeat\n", pX->getID().c_str(), pY->getID().c_str());
                 printf("Actual overlap lengths: %zu and %zu\n", xy_len, yx_len);
                 printf("Spanned by longer edges of size: %zu and %zu\n", x_longest_len, y_longest_len);
                 printf("Differences: %d and %d\n", x_diff, y_diff);
-               
+                */
                 pX->deleteEdge(pXY);
                 pY->deleteEdge(pYX);
                 changed = true;
@@ -1038,6 +1039,7 @@ void SGSmoothingVisitor::postvisit(StringGraph* pGraph)
 void SGCoverageVisitor::previsit(StringGraph* pGraph)
 {
     pGraph->setColors(GC_WHITE);
+    m_numRemoved = 0;
 }
 
 //
@@ -1071,10 +1073,14 @@ bool SGCoverageVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
             }            
         }
 
-        if(worstCoverage == 1 && bestCoverage > 1)
+        if(worstCoverage > 0 && worstCoverage < m_cutoff && bestCoverage > m_cutoff)
         {
             assert(popIndex != -1);
-            edges[popIndex]->getEnd()->setColor(GC_RED);
+            if(edges[popIndex]->getEnd()->getColor() != GC_RED)
+            {
+                edges[popIndex]->getEnd()->setColor(GC_RED);
+                ++m_numRemoved;
+            }
         }
     }
     return false;
@@ -1084,6 +1090,7 @@ bool SGCoverageVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 void SGCoverageVisitor::postvisit(StringGraph* pGraph)
 {
     pGraph->sweepVertices(GC_RED);
+    printf("Removed %d low-coverage nodes\n", m_numRemoved);
 }
 
 //
