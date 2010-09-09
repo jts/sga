@@ -45,6 +45,8 @@ static const char *RMDUP_USAGE_MESSAGE =
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences identical\n"
 "      -t, --threads=NUM                use NUM computation threads (default: 1)\n"
+"      -d, --sample-rate=N              sample the symbol counts every N symbols in the FM-index. Higher values use significantly\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2. Default is 128\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -60,9 +62,10 @@ namespace opt
     static double errorRate;
     static bool bReindex = true;
     static int gapArrayStorage = 4;
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
 }
 
-static const char* shortopts = "p:o:e:t:v";
+static const char* shortopts = "p:o:e:t:d:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
 
@@ -72,6 +75,7 @@ static const struct option longopts[] = {
     { "out",            required_argument, NULL, 'o' },
     { "error-rate",     required_argument, NULL, 'e' },
     { "threads",        required_argument, NULL, 't' },
+    { "sample-rate",    required_argument, NULL, 'd' },
     { "help",           no_argument,       NULL, OPT_HELP },
     { "version",        no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -95,8 +99,8 @@ int rmdupMain(int argc, char** argv)
 void rmdup()
 {
     StringVector hitsFilenames;
-    BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
-    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
+    BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
+    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, 0, 
                                                          0, false);
@@ -343,6 +347,7 @@ void parseRmdupOptions(int argc, char** argv)
             case 'p': arg >> opt::prefix; break;
             case 'o': arg >> opt::outFile; break;
             case 'e': arg >> opt::errorRate; break;
+            case 'd': arg >> opt::sampleRate; break;
             case 't': arg >> opt::numThreads; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
