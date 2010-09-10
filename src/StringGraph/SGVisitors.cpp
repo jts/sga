@@ -748,6 +748,8 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
         EdgePtrVec edges = pVertex->getEdges(dir);
         if(edges.size() > 1)
         {
+            Vertex* pStart = pVertex;
+            Vertex* pEnd = NULL;
             // Check the vertices
             for(size_t i = 0; i < edges.size(); ++i)
             {
@@ -790,6 +792,7 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
                         // and set the endpoint as unvisited
                         pWVert->setColor(GC_RED);
                         bubble_found = true;
+                        pEnd = pBubbleEnd;
                     }
                     else
                     {
@@ -820,7 +823,29 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
             }
 
             if(bubble_found)
+            {
+                SGWalkVector walkVector;
+                SGSearch::findWalks(pStart, pEnd, dir, 1000, 20, walkVector);
+                
+                if(walkVector.size() == 2)
+                {
+                    SGWalk& walk1 = walkVector[0];
+                    SGWalk& walk2 = walkVector[1];
+
+                    int len1 = walk1.getStartToEndDistance();
+                    int len2 = walk2.getStartToEndDistance();
+                    int diff = len1 - len2;
+                    std::string type = "SNP";
+                    if(diff != 0)
+                    {
+                        type = "INDEL";
+                    }
+                    std::cout << "Bubble " << pStart->getID() << " to " << pEnd->getID() << " is a "
+                              << type << "(d: " << diff << ")\n";
+                }
+
                 ++num_bubbles;
+            }
 
         }
     }

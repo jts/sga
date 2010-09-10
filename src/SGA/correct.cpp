@@ -60,6 +60,9 @@ static const char *CORRECT_USAGE_MESSAGE =
 "          --no-discard                 do not discard low-quality reads\n"
 "      -d, --sample-rate=N              sample the symbol counts every N symbols in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2. Default is 128\n"
+"      -b, --branch-cutoff=N            stop the overlap search at N branches. This parameter is used to control the search time for\n"
+"                                       highly-repetitive reads. If the number of branches exceeds N, the search stops and the read\n"
+"                                       will not be corrected. This is not enabled by default.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -82,30 +85,32 @@ namespace opt
     static int seedLength = 0;
     static int seedStride = 0;
     static int conflictCutoff = 5;
+    static int branchCutoff = -1;
     static ErrorCorrectAlgorithm algorithm = ECA_CC;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:o:r:a:c:vi";
+static const char* shortopts = "p:m:d:e:t:l:s:o:r:b:a:c:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_NODISCARD };
 
 static const struct option longopts[] = {
-    { "verbose",     no_argument,       NULL, 'v' },
-    { "threads",     required_argument, NULL, 't' },
-    { "min-overlap", required_argument, NULL, 'm' },
-    { "rounds",      required_argument, NULL, 'r' },
-    { "outfile",     required_argument, NULL, 'o' },
-    { "prefix",      required_argument, NULL, 'p' },
-    { "error-rate",  required_argument, NULL, 'e' },
-    { "seed-length", required_argument, NULL, 'l' },
-    { "seed-stride", required_argument, NULL, 's' },
-    { "algorithm",   required_argument, NULL, 'a' },
-    { "sample-rate", required_argument, NULL, 'd' },
-    { "conflict",    required_argument, NULL, 'c' },
-    { "no-discard",  no_argument,       NULL, OPT_NODISCARD },
-    { "help",        no_argument,       NULL, OPT_HELP },
-    { "version",     no_argument,       NULL, OPT_VERSION },
-    { "metrics",     required_argument, NULL, OPT_METRICS },
+    { "verbose",       no_argument,       NULL, 'v' },
+    { "threads",       required_argument, NULL, 't' },
+    { "min-overlap",   required_argument, NULL, 'm' },
+    { "rounds",        required_argument, NULL, 'r' },
+    { "outfile",       required_argument, NULL, 'o' },
+    { "prefix",        required_argument, NULL, 'p' },
+    { "error-rate",    required_argument, NULL, 'e' },
+    { "seed-length",   required_argument, NULL, 'l' },
+    { "seed-stride",   required_argument, NULL, 's' },
+    { "algorithm",     required_argument, NULL, 'a' },
+    { "sample-rate",   required_argument, NULL, 'd' },
+    { "conflict",      required_argument, NULL, 'c' },
+    { "branch-cutoff", required_argument, NULL, 'b' },
+    { "no-discard",    no_argument,       NULL, OPT_NODISCARD },
+    { "help",          no_argument,       NULL, OPT_HELP },
+    { "version",       no_argument,       NULL, OPT_VERSION },
+    { "metrics",       required_argument, NULL, OPT_METRICS },
     { NULL, 0, NULL, 0 }
 };
 
@@ -122,7 +127,7 @@ int correctMain(int argc, char** argv)
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
-                                                         opt::seedStride, false);
+                                                         opt::seedStride, false, opt::branchCutoff);
     
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
@@ -210,6 +215,7 @@ void parseCorrectOptions(int argc, char** argv)
             case 'c': arg >> opt::conflictCutoff; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case 'b': arg >> opt::branchCutoff; break;
             case OPT_NODISCARD: bDoNotDiscard = true; break;
             case OPT_METRICS: arg >> opt::metricsFile; break;
             case OPT_HELP:

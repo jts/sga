@@ -9,8 +9,12 @@ my $attrFile = "";
 my $bDirected = 0;
 my $bUseShapes = 1;
 my $bUseLabels = 0;
-my $defaultShape = "point";
+my $defaultShape = "circle";
 GetOptions("attribute=s" => \$attrFile);
+
+my $small_size = 0.4;
+my $medium_size = 0.6;
+my $large_size = 1.0;
 
 my %vertexColors;
 my %vertexShapes;
@@ -38,8 +42,10 @@ while(<>)
 	{
 		my @record = split;
         my $id = $record[1];
+        my $len = length($record[2]);
         my @attributes;
-        push @attributes, makeAttribute("label", quoteStr($id)) if $bUseLabels;
+        #push @attributes, makeAttribute("label", quoteStr($id)) if $bUseLabels;
+        push @attributes, makeAttribute("label", quoteStr($id));
         push @attributes, makeAttribute("shape", getVertexShape($id)) if $bUseShapes;
         push @attributes, makeAttribute("fillcolor", getVertexColor($id));
         push @attributes, makeAttribute("style", "filled");
@@ -55,7 +61,15 @@ while(<>)
 		my $ol = $record[4] - $record[3] + 1;
         my $s1 = $record[3];
         my $s2 = $record[6];
-		print quoteStr($record[1]) . " " . getArrow() . " " . quoteStr($record[2]) . " " . makeLabel($ol, getEdgeColor($s1)) . ";\n";
+        my @attributes; 
+
+        my $edgeStr = quoteStr($record[1]) . " " . getArrow() . " " . quoteStr($record[2]);
+        
+#        push @attributes, makeAttribute("label", $ol);
+#        push @attributes, makeAttribute("color", getEdgeColor($s1));
+        my $attrStr = attributes2string(@attributes);
+
+		print $edgeStr . " " . $attrStr . ";\n";
         if($bDirected)
         {
             print quoteStr($record[2]) . " " . getArrow() . " " . quoteStr($record[1]) . " " . makeLabel($ol, getEdgeColor($s2)) . ";\n";
@@ -138,11 +152,11 @@ sub loadVertexAttributes
         my $color = "gray";
         if($f1 > 0.75)
         {
-            $color = "red";
+            $color = "brown1";
         }
         elsif($f2 > 0.75)
         {
-            $color = "blue";
+            $color = "skyblue1";
         }
         else
         {
@@ -157,15 +171,15 @@ sub loadVertexAttributes
         # Compute vertex size
         if($len > 1000)
         {
-            $vertexSizes{$id} = 1.0;
+            $vertexSizes{$id} = $large_size;
         }
         if($len > 500)
         {
-            $vertexSizes{$id} = 0.5;
+            $vertexSizes{$id} = $medium_size;
         }
         else
         {
-            $vertexSizes{$id} = 0.2;
+            $vertexSizes{$id} = $small_size;
         }
     }
 }

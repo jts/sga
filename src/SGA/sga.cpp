@@ -19,6 +19,7 @@
 #include "subgraph.h"
 #include "scaffold.h"
 #include "connect.h"
+#include "walk.h"
 #include "scaffold2fasta.h"
 
 #define PROGRAM_BIN "sga"
@@ -57,6 +58,8 @@ int main(int argc, char** argv)
             connectMain(argc - 1, argv + 1);
         else if(command == "subgraph")
             subgraphMain(argc - 1, argv + 1);
+        else if(command == "walk")
+            walkMain(argc - 1, argv + 1);
         else if(command == "oview")
             oviewMain(argc - 1, argv + 1);
         else if(command == "scaffold")

@@ -34,13 +34,14 @@ class OverlapAlgorithm
 
         OverlapAlgorithm(const BWT* pBWT, const BWT* pRevBWT, 
                          double er, int seedLen, int seedStride,
-                         bool irrOnly) : m_pBWT(pBWT), 
+                         bool irrOnly, int maxSeeds = -1) : m_pBWT(pBWT), 
                                          m_pRevBWT(pRevBWT),
                                          m_errorRate(er),
                                          m_seedLength(seedLen),
                                          m_seedStride(seedStride),
                                          m_bIrreducible(irrOnly),
-                                         m_exactMode(false) {}
+                                         m_exactMode(false),
+                                         m_maxSeeds(maxSeeds) {}
 
         // Perform the overlap
         // This function is threaded so everything must be const
@@ -73,7 +74,7 @@ class OverlapAlgorithm
                                     OverlapBlockList* pOBFinal, OverlapResult& result) const;
 
         // Same as above while allowing mismatches
-        void findOverlapBlocksInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
+        bool findOverlapBlocksInexact(const std::string& w, const BWT* pBWT, const BWT* pRevBWT, 
                                       const AlignFlags& af, const int minOverlap, OverlapBlockList* pOBList, 
                                       OverlapBlockList* pOBFinal, OverlapResult& result) const;
 
@@ -150,6 +151,9 @@ class OverlapAlgorithm
         int m_seedStride;
         bool m_bIrreducible;
         bool m_exactMode;
+        
+        // Optional parameter to limit the amount of branching that is performed
+        int m_maxSeeds; 
 };
 
 #endif

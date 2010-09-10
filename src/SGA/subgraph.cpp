@@ -80,7 +80,6 @@ int subgraphMain(int argc, char** argv)
 
 void subgraph()
 {
-    Timer t("sga subgraph");
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
     pGraph->printMemSize();
 

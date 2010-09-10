@@ -39,18 +39,29 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, int mi
 #endif
 
     // Match the suffix of seq to prefixes
-    findOverlapBlocksInexact(seq, m_pBWT, m_pRevBWT, sufPreAF, minOverlap, &obWorkingList, pOBOut, result);
-    findOverlapBlocksInexact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, minOverlap, &obWorkingList, pOBOut, result);
 
-    if(m_bIrreducible)
+    // findInexact returns false is the maximum search time was exceeded. In this
+    // case we dont run any of the subsequent commands and return no overlaps.
+    bool valid = true;
+    valid = findOverlapBlocksInexact(seq, m_pBWT, m_pRevBWT, sufPreAF, 
+                                     minOverlap, &obWorkingList, pOBOut, result);
+
+    if(valid)
+        valid = findOverlapBlocksInexact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, 
+                                         minOverlap, &obWorkingList, pOBOut, result);
+
+    if(valid)
     {
-        computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
-        obWorkingList.clear();
-    }
-    else
-    {
-        pOBOut->splice(pOBOut->end(), obWorkingList);
-        assert(obWorkingList.empty());
+        if(m_bIrreducible)
+        {
+            computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
+            obWorkingList.clear();
+        }
+        else
+        {
+            pOBOut->splice(pOBOut->end(), obWorkingList);
+            assert(obWorkingList.empty());
+        }
     }
 
 #ifdef DEBUGOVERLAP
@@ -58,18 +69,31 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, int mi
 #endif
 
     // Match the prefix of seq to suffixes
-    findOverlapBlocksInexact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, minOverlap, &obWorkingList, pOBOut, result);
-    findOverlapBlocksInexact(reverse(seq), m_pRevBWT, m_pBWT, preSufAF, minOverlap, &obWorkingList, pOBOut, result);
+    if(valid)
+        valid = findOverlapBlocksInexact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, minOverlap, &obWorkingList, pOBOut, result);
+    
+    if(valid)
+        valid = findOverlapBlocksInexact(reverse(seq), m_pRevBWT, m_pBWT, preSufAF, minOverlap, &obWorkingList, pOBOut, result);
 
-    if(m_bIrreducible)
+    if(valid)
     {
-        computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
-        obWorkingList.clear();
+        if(m_bIrreducible)
+        {
+            computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
+            obWorkingList.clear();
+        }
+        else
+        {
+            pOBOut->splice(pOBOut->end(), obWorkingList);
+            assert(obWorkingList.empty());
+        }
     }
-    else
+
+    if(!valid)
     {
-        pOBOut->splice(pOBOut->end(), obWorkingList);
-        assert(obWorkingList.empty());
+        pOBOut->clear();
+        result.isSubstring = false;
+        return result;
     }
 
     return result;
@@ -248,7 +272,7 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
 // at least 1 of these seeds must align exactly for there to be an alignment with 
 // at most maxDiff differences between the prefix/suffix. Only alignments within the
 // range [block_start, block_end] are output. The block_end coordinate is inclusive.
-void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT* pBWT, 
+bool OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT* pBWT, 
                                                 const BWT* pRevBWT, const AlignFlags& af, int minOverlap,
                                                 OverlapBlockList* pOverlapList, OverlapBlockList* pContainList, 
                                                 OverlapResult& result) const
@@ -281,6 +305,9 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
     // Perform the inexact extensions
     while(!pCurrVector->empty())
     {
+        if(m_maxSeeds != -1 && (int)pCurrVector->size() > m_maxSeeds)
+            return false;
+
         iter = pCurrVector->begin();
         while(iter != pCurrVector->end())
         {
@@ -361,6 +388,7 @@ void OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
 
     delete pCurrVector;
     delete pNextVector;
+    return true;
 }
 
 // Calculate the single right extension to the '$' for each the contained blocks
