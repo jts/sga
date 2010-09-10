@@ -303,10 +303,14 @@ bool OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
     int num_steps = 0;
 
     // Perform the inexact extensions
+    bool fail = false;
     while(!pCurrVector->empty())
     {
         if(m_maxSeeds != -1 && (int)pCurrVector->size() > m_maxSeeds)
-            return false;
+        {
+            fail = true;
+            break;
+        }
 
         iter = pCurrVector->begin();
         while(iter != pCurrVector->end())
@@ -372,23 +376,26 @@ bool OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
         ++num_steps;
     }
 
-    // parse the working list to remove any submaximal overlap blocks
-    // these blocks correspond to reads that have multiple valid overlaps. 
-    // we only keep the longest
-    removeSubMaximalBlocks(&workingList);
+    if(!fail)
+    {
+        // parse the working list to remove any submaximal overlap blocks
+        // these blocks correspond to reads that have multiple valid overlaps. 
+        // we only keep the longest
+        removeSubMaximalBlocks(&workingList);
 
-    OverlapBlockList containedWorkingList;
-    partitionBlockList(len, &workingList, pOverlapList, &containedWorkingList);
-    
-    // Terminate the contained blocks
-    terminateContainedBlocks(containedWorkingList);
-    
-    // Move the contained blocks to the final contained list
-    pContainList->splice(pContainList->end(), containedWorkingList);
+        OverlapBlockList containedWorkingList;
+        partitionBlockList(len, &workingList, pOverlapList, &containedWorkingList);
+        
+        // Terminate the contained blocks
+        terminateContainedBlocks(containedWorkingList);
+        
+        // Move the contained blocks to the final contained list
+        pContainList->splice(pContainList->end(), containedWorkingList);
+    }
 
     delete pCurrVector;
     delete pNextVector;
-    return true;
+    return !fail;
 }
 
 // Calculate the single right extension to the '$' for each the contained blocks
