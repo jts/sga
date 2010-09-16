@@ -23,9 +23,8 @@ ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper,
                                             m_conflictCutoff(conflictCutoff),
                                             m_algorithm(algo),
                                             m_printOverlaps(printMO),
-                                            m_depthFilter(100)
+                                            m_depthFilter(10000)
 {
-
 }
 
 //
@@ -37,6 +36,11 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 //
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
+
+    if(m_algorithm == ECA_KMER)
+        return kmerCorrection(workItem);
+
+    // Overlap based correction
     static const double p_error = 0.01f;
     bool done = false;
     int rounds = 0;
@@ -44,6 +48,7 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
     ErrorCorrectResult result;
     SeqRecord currRead = workItem.read;
     std::string originalRead = workItem.read.seq.toString();
+
     while(!done)
     {
         m_blockList.clear();
@@ -122,6 +127,13 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
         std::cout << "DS: " << getDiffString(originalRead, corrected_seq) << "\n";
         std::cout << "QS: " << currRead.qual << "\n";
     }
+    
+    // Quality checks
+    if(result.num_prefix_overlaps > 0 && result.num_suffix_overlaps > 0)
+        result.passedQC = true;
+    else
+        result.passedQC = false;
+
     return result;
 }
 
@@ -174,6 +186,44 @@ std::string ErrorCorrectProcess::makeIdxString(int64_t idx)
     return ss.str();
 }
 
+// Correct a read with a k-mer based corrector
+ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& workItem)
+{
+    //bool done = false;
+    //int rounds = 0;
+    
+    ErrorCorrectResult result;
+    SeqRecord currRead = workItem.read;
+    std::string originalRead = workItem.read.seq.toString();
+    size_t count_threshold = 10;
+    size_t k_size = 41;
+    size_t nk = originalRead.size() - k_size + 1;
+
+    //
+    std::vector<size_t> countVector(nk, 0);
+//    std::cout << "Printing kmer spectrum for read\n";
+    for(size_t i = 0; i < nk; ++i)
+    {
+        std::string kmer = originalRead.substr(i, k_size);
+        size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT(), m_pOverlapper->getRBWT());
+        countVector[i] = count;
+        //std::cout << "count " << count << "\n";
+    }
+
+    // Find potentially incorrect positions in the reads
+    for(size_t i = 0; i < nk; ++i)
+    {
+        if(countVector[i] < count_threshold)
+        {
+          //  std::cout << "Base " << i << " may be incorrect\n";
+        }
+    }
+
+    result.correctSequence = originalRead;
+    result.passedQC = true;
+    return result;
+}
+
 //
 //
 //
@@ -201,7 +251,7 @@ void ErrorCorrectPostProcess::writeMetrics(std::ostream* pWriter)
     std::cout << "ErrorCorrect -- Corrected " << m_totalErrors << " out of " << m_totalBases <<
                  " bases (" << (double)m_totalErrors / m_totalBases << ")\n";
     std::cout << "Kept " << m_readsKept << " reads. Discarded " << m_readsDiscarded <<
-                 " reads (" << (double)m_readsDiscarded / m_readsKept << ")\n";
+                 " reads (" << (double)m_readsDiscarded / (m_readsKept + m_readsDiscarded)<< ")\n";
 }
 
 //
@@ -209,7 +259,7 @@ void ErrorCorrectPostProcess::process(const SequenceWorkItem& item, const ErrorC
 {
     
     // Determine if the read should be discarded
-    bool discardRead = result.num_prefix_overlaps == 0 || result.num_suffix_overlaps == 0;
+    bool discardRead = !result.passedQC;
 
     // Collect metrics for the reads that were actually corrected
     if(m_bCollectMetrics && !discardRead)

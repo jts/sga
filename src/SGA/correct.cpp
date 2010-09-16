@@ -259,6 +259,8 @@ void parseCorrectOptions(int argc, char** argv)
             opt::algorithm = ECA_CC;
         else if(algo_str == "trie")
             opt::algorithm = ECA_TRIE;
+        else if(algo_str == "kmer")
+            opt::algorithm = ECA_KMER;
         else
         {
             std::cerr << SUBPROGRAM << ": unrecognized -a,--algorithm parameter: " << algo_str << "\n";

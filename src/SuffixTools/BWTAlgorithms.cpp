@@ -52,6 +52,20 @@ BWTIntervalPair BWTAlgorithms::findIntervalPair(const BWT* pBWT, const BWT* pRev
     return intervals;
 }
 
+// Count the number of occurrences of string w, including the reverse complement
+size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWT* pBWT, const BWT* pRBWT)
+{
+    BWTInterval fwd_interval = findInterval(pBWT, w);
+    BWTInterval rc_interval = findInterval(pRBWT, complement(w));
+
+    size_t count = 0;
+    if(fwd_interval.isValid())
+        count += fwd_interval.size();
+    if(rc_interval.isValid())
+        count += rc_interval.size();
+    return count;
+}
+
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
 // appears in the FM-index for all i s.t. length(w[i, l]) == overlapLen.

@@ -26,6 +26,10 @@ namespace BWTAlgorithms
 BWTInterval findInterval(const BWT* pBWT, const std::string& w);
 BWTIntervalPair findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std::string& w);
 
+// Count the number of times the sequence w appears in the collection, including
+// its reverse complement
+size_t countSequenceOccurrences(const std::string& w, const BWT* pBWT, const BWT* pRBWT);
+
 // Update the given interval using backwards search
 // If the interval corrsponds to string S, it will be updated 
 // for string bS

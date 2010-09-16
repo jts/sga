@@ -64,6 +64,10 @@ class OverlapAlgorithm
 
         // Set flag to use exact-match algorithms only
         void setExactMode(bool b) { m_exactMode = b; }
+
+        //
+        const BWT* getBWT() const { return m_pBWT; }
+        const BWT* getRBWT() const { return m_pRevBWT; }
         
     private:
 

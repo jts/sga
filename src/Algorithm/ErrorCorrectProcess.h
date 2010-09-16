@@ -21,7 +21,8 @@ enum ErrorCorrectAlgorithm
 {
     ECA_TRIE, // aggressive trie-based correction of conflicted sequences
     ECA_CC, // conflict-aware consensus
-    ECA_SIMPLE // straightforward correct
+    ECA_SIMPLE, // straightforward correct
+    ECA_KMER // K-mer based correction algorithm
 };
 
 enum ECFlag
@@ -39,6 +40,7 @@ class ErrorCorrectResult
         ECFlag flag;
 
         // Metrics
+        bool passedQC;
         size_t num_prefix_overlaps;
         size_t num_suffix_overlaps;
 };
@@ -57,6 +59,8 @@ class ErrorCorrectProcess
         ErrorCorrectResult process(const SequenceWorkItem& item);
     
     private:
+        
+        ErrorCorrectResult kmerCorrection(const SequenceWorkItem& item);
 
         MultiOverlap blockListToMultiOverlap(const SeqRecord& record, 
                                              OverlapBlockList& blockList);

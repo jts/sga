@@ -45,7 +45,7 @@ while(<>)
         my $len = length($record[2]);
         my @attributes;
         #push @attributes, makeAttribute("label", quoteStr($id)) if $bUseLabels;
-        push @attributes, makeAttribute("label", quoteStr($id));
+        push @attributes, makeAttribute("label", $len);
         push @attributes, makeAttribute("shape", getVertexShape($id)) if $bUseShapes;
         push @attributes, makeAttribute("fillcolor", getVertexColor($id));
         push @attributes, makeAttribute("style", "filled");
