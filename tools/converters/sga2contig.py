@@ -1,6 +1,6 @@
 #! /nfs/team71/phd/js18/software/Python-2.6.4/python
 
-import pysamhack as pysam
+import pysam
 import sys
 import getopt
 
