@@ -17,7 +17,7 @@ def printSequence(seq):
     step = 80
     l = len(seq)
     for x in range(0, l, step):
-        print seq[x:x+step-1]
+        print seq[x:x+step]
 
 #
 def countAlignedReads(contigID, samFile):

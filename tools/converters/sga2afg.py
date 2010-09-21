@@ -4,6 +4,7 @@
 import pysam
 import sys
 import getopt
+from string import maketrans
 
 # Classes
 class Contig:
@@ -19,8 +20,8 @@ class Contig:
         self.qual = qual
         self.tle = list()
 
-    def addTLE(self, clr, off, readIID):
-        data = (clr, off, readIID)
+    def addTLE(self, clr, off, readIID, readEID):
+        data = (clr, off, readIID, readEID)
         self.tle.append(data)
 
     def printTiles(self):
@@ -29,6 +30,7 @@ class Contig:
             print 'clr:%d,%d' % (tile[0][0], tile[0][1])
             print 'off:%d' % (tile[1])
             print 'src:%d' % (tile[2])
+            print 'eid:%s' % (tile[3])
             print '}'
     def printAFG(self):
         print '{CTG\niid:%d\neid:%s' % (self.iid, self.eid)
@@ -107,6 +109,14 @@ def usage():
     print 'Options:'
     print '    -h       Print this message and exit'
 
+def reverseComplement(seq):
+    intab = "ACGT"
+    outtab = "TGCA"
+    transtab = maketrans(intab, outtab)
+    t = seq.translate(transtab)
+    t = t[::-1]
+    return t
+
 # Add a read to the fragment database
 def addReadToFragment(fragmentName, read):
     global fragmentDB
@@ -135,18 +145,21 @@ def printSequence(seq):
     step = 80
     l = len(seq)
     for x in range(0, l, step):
-        print seq[x:x+step-1]
+        print seq[x:x+step]
 
 def processContig(contigEID, contigSeq, bamFile):
     global currIID
 
     contig = Contig(contigEID, contigSeq)
-
+    contigLen = len(contigSeq)
     # Process all the reads aligned to this contig
     iter = bamFile.fetch(contigEID)
     n = 0
 
     for currRead in iter:
+        
+        if currRead.is_unmapped:
+            continue
 
         fragmentName = currRead.qname
         readName = fragmentName
@@ -156,6 +169,9 @@ def processContig(contigEID, contigSeq, bamFile):
             readName += "/2"
         
         seqStr = currRead.seq
+        if currRead.is_reverse:
+            seqStr = reverseComplement(seqStr)
+
         qualStr = currRead.qual
         if qualStr is None:
             qualStr = 'K' * len(seqStr)
@@ -163,20 +179,22 @@ def processContig(contigEID, contigSeq, bamFile):
         readObj = Read(readName, seqStr, qualStr)
         # If the read is a pair and the mate is mapped, don't print it
         # until its mate has been added to the fragment DB
-        if currRead.is_paired and not currRead.mate_is_unmapped:
+        #if currRead.is_paired and not currRead.mate_is_unmapped:
             # Get the fragment IID
-            addReadToFragment(fragmentName, readObj)
-            processFragment(fragmentName)
-        else:
-            readObj.printAFG(None)
+         #   addReadToFragment(fragmentName, readObj)
+          #  processFragment(fragmentName)
+        #else:
+        readObj.printAFG(None)
 
         # Add the tile to the contig
-        clearCoord = [0, currRead.rlen]
+        clearCoord = [0, currRead.rlen - 10]
         if currRead.is_reverse:
-            clearCoord.reverse()
+            start = clearCoord[0]
+            end = clearCoord[1]
+            clearCoord = [currRead.rlen - end, currRead.rlen - start]
+            clearCoord.reverse();
         offset = currRead.pos
-        contig.addTLE(clearCoord, offset, readObj.iid)
-
+        contig.addTLE(clearCoord, offset, readObj.iid, readObj.eid)
         #print('#{0}({1}) [{2}] {3} bases, {4} checksum. {{{5} {6}}} <{7} {8}>'.format(
          #      outName, currRead.pos, rcStr, currRead.rlen, '00000000', 
           #     clearCoord[0], clearCoord[1], alignCoord[0], alignCoord[1]))
