@@ -11,6 +11,7 @@ import copy
 class Vertex:
     def __init__(self, idx, seq, preds):
         self.idx = idx;
+        self.pos = 0
         self.seq = seq
         self.preds = preds
         self.b = 'X'
@@ -57,7 +58,8 @@ class FMIndex:
         for v in vertices:
             rotations = self.generateRotations(v)
             for r in rotations:
-                if (r.seq[0] == 'S') and len(r.preds) > 1:
+                if ("ACGT$".find(r.seq[0]) == -1) and len(r.preds) > 1 and r.pos == 0:
+                    print "Duplicating ", r
                     for i in xrange(0, len(r.preds)):
                         dup = Vertex(r.idx, r.seq, [r.preds[i]])
                         rotateList.append(dup)
@@ -67,7 +69,7 @@ class FMIndex:
         # Sort the rotation list into lexo order
         rotateList.sort(key=lambda c : c.seq)
         self.saTable = rotateList
-
+        
         # Set up the mapping of split symbols in the BWT string to their corresponding entry
         # in the split section
 
@@ -77,15 +79,14 @@ class FMIndex:
             if rotateList[i].seq[0] == "S" and s_idx == -1:
                 s_idx = i
             
-        print "S-strings start at %d" % (s_idx)
         
         # Write the symbol of the predecessor nodes for each S in the BWT
-        for r in rotateList:
-            if r.seq[0] == "S":
-                predSeq = self.vertices[r.preds[0]].seq
-                b = predSeq[-2]
-                rotateList[s_idx].b = b
-                s_idx += 1
+        #for r in rotateList:
+        #    if r.seq[0] == "S":
+        #        predSeq = self.vertices[r.preds[0]].seq
+        #        b = predSeq[-2]
+        #        rotateList[s_idx].b = b
+        #        s_idx += 1
 
         # Get the BWT string
         self.bwt = str()
@@ -100,6 +101,7 @@ class FMIndex:
         for i in xrange(0, n):
             rotated = copy.copy(vertex)
             rotated.seq = rotated.seq[i:n] + "$"
+            rotated.pos = i
             if i == 0:
                 rotated.b = "$"
             else:
@@ -115,59 +117,68 @@ class FMIndex:
                 seq += line.rstrip()
 
         # Scan the string left to right. Variants are encoded regex-style within square brackets '[C|G]'
-        # The start of the varition (and the end of the last reference) is delimited by a J (join)
-        # symbol. The end of the variation is delimited by an S (split) symbol.
-        # Example: A[C|G]T would yield the components $AJ, JCS, JGS, ST$.
+        # Each linear segment is indexed seperately and bounded by ambiguity codes, indicating the first
+        # base of the branch.
+        # Example: A[C|G]T would yield the components $AS, SCS, SGS, ST$.
         components = re.split('[\[\]]', seq)
         n = len(components)
         vertices = list()
         predecessors = list()
+        prevCode = "$"
+        nextCode = "$"
         idx = 0
         for i in xrange(0, n):
-            c = components[i]
-            isVariant = c.find("|") != -1
+            currComp = components[i]
+            isVariant = currComp.find("|") != -1
             isFirst = i == 0
             isLast = i == n - 1
 
-
+            # Determine the left and right code for this segment
+            # If the segment is a variant, the code is the ambiguity code
+            # of the variant. Otherwise, the left code is the ambi code of the previous
+            # variant, and the right code is the ambi code of the next variant
             if isVariant and (isFirst or isLast):
                 print 'Error, reference cannot start or end with a variant in the prototype'
                 sys.exit(1)
             
-            # Set the first and last character of the component
-            # If this is the first component of the ref, this is termination symbol '$'
-            # Otherwise it is a S for non-variants, J for variants. The opposite is true for
-            # the trailing symbol
-            header = str()
-            if isFirst:
-                header = "$"
+            leftCode = str()
+            rightCode = str()
+
+            if isVariant:
+                ambiCode = getAmbiCode(currComp)
+                leftCode = ambiCode
+                rightCode = ambiCode
             else:
-                if isVariant:
-                    header = "J"
+                leftCode = prevCode
+                if not isLast:
+                    rightCode = getAmbiCode(components[i+1])
                 else:
-                    header = "S"
-            
-            trailer = str()
-            if isLast:
-                trailer = "$"
-            else:
-                if isVariant:
-                    trailer = "S"
-                else:
-                    trailer = "J"
+                    rightCode = "$"
 
             # Fill in the internal sequence
             next = list()
-            sub = c.split("|")
+            sub = currComp.split("|")
             for v in sub:
-                out = Vertex(idx, header + v + trailer, predecessors)
+                out = Vertex(idx, leftCode + v + rightCode, predecessors)
                 vertices.append(out)
                 next.append(idx)
                 idx += 1
             predecessors = next
+            prevCode = rightCode
         return vertices
 
 # Functions
+def getAmbiCode(ambiStr):
+    ambiDict = dict({'A':'A', 'C':'C', 'G':'G', 'T':'T', 'AC':'M', 'AG':'R', 'AT':'W', 'CG':'S', 'CT':'Y', 'GT':'K', 'ACG':'V', 'ACT':'H', 'AGT':'D', 'CGT':'B', 'ACGT':'N'})
+    if ambiStr.find("|") == -1:
+        print "Error: No ambiguity in segment", ambiStr
+        sys.exit(1)
+    print ambiStr
+    sortedChars = ambiStr.split("|")
+    sortedChars.sort()
+    ambiLookup = "".join(sortedChars)
+    return ambiDict[ambiLookup]
+
 def usage():
     print 'usage: gfm.py target.fa query.fa'
     print 'Align the sequences in query.fa against the polymorphic reference in target.fa'

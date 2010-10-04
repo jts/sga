@@ -6,7 +6,9 @@ import sys
 import getopt
 from string import maketrans
 
+#
 # Classes
+#
 class Contig:
     def __init__(self, eid, seq):
         l = len(seq)
@@ -43,6 +45,7 @@ class Contig:
         self.printTiles()
         print '}'
 
+# 
 class Fragment:
     def __init__(self, eid):
         global currIID
@@ -76,6 +79,7 @@ class Fragment:
     def __repr__(self):
         return 'Fragment iid: ' + str(self.iid)
 
+#
 class Read:
     def __init__(self, eid, seq, qual):
         global currIID
@@ -102,9 +106,12 @@ class Read:
         
     def __repr__(self):
         return 'Read iid: ' + str(self.iid)
+
+#
 # Functions
+#
 def usage():
-    print 'usage: sga2afg.py <contigs fasta> <alignments bam>'
+    print 'usage: sga2afg.py --pe-mean=N --pe-sd=SD <contigs fasta> <alignments bam>'
     print 'Create an AMOS message file using a fasta file of contigs and a bam file'
     print 'Options:'
     print '    -h       Print this message and exit'
@@ -132,7 +139,7 @@ def addReadToFragment(fragmentName, read):
     return frag
 
 # If both reads of a fragment have been added, write the reads
-# and the fragment out and delete it from the DB
+# and the fragment as an AFG record and delete it from the DB
 def processFragment(fragmentName):
     global fragmentDB
     frag = fragmentDB[fragmentName]
@@ -147,6 +154,8 @@ def printSequence(seq):
     for x in range(0, l, step):
         print seq[x:x+step]
 
+# Read the alignments to the given contig
+# from the bam file and build the AFG record
 def processContig(contigEID, contigSeq, bamFile):
     global currIID
 
@@ -177,17 +186,18 @@ def processContig(contigEID, contigSeq, bamFile):
             qualStr = 'K' * len(seqStr)
 
         readObj = Read(readName, seqStr, qualStr)
+
         # If the read is a pair and the mate is mapped, don't print it
         # until its mate has been added to the fragment DB
-        #if currRead.is_paired and not currRead.mate_is_unmapped:
+        if currRead.is_paired and not currRead.mate_is_unmapped:
             # Get the fragment IID
-         #   addReadToFragment(fragmentName, readObj)
-          #  processFragment(fragmentName)
-        #else:
-        readObj.printAFG(None)
+            addReadToFragment(fragmentName, readObj)
+            processFragment(fragmentName)
+        else:
+            readObj.printAFG(None)
 
         # Add the tile to the contig
-        clearCoord = [0, currRead.rlen - 10]
+        clearCoord = [0, currRead.rlen]
         if currRead.is_reverse:
             start = clearCoord[0]
             end = clearCoord[1]
@@ -195,14 +205,11 @@ def processContig(contigEID, contigSeq, bamFile):
             clearCoord.reverse();
         offset = currRead.pos
         contig.addTLE(clearCoord, offset, readObj.iid, readObj.eid)
-        #print('#{0}({1}) [{2}] {3} bases, {4} checksum. {{{5} {6}}} <{7} {8}>'.format(
-         #      outName, currRead.pos, rcStr, currRead.rlen, '00000000', 
-          #     clearCoord[0], clearCoord[1], alignCoord[0], alignCoord[1]))
-        #printSequence(currRead.seq)
-    contig.printAFG()
-    #sys.exit(1)
 
-# Data print functions
+    # Write the contig record
+    contig.printAFG()
+
+#
 def printMeta():
     print '{UNV'
     print 'eid:afg'
@@ -212,6 +219,7 @@ def printMeta():
     print '}\n'
 
 
+#
 def printLibrary(pe_mean, pe_sd):
     print '{LIB'
     print 'eid:1'
@@ -225,17 +233,29 @@ def printLibrary(pe_mean, pe_sd):
 #
 # Main
 #
+
+pe_mean = 2000
+pe_sd = 200
+
+# Parse args
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], 'h:')
+    opts, args = getopt.gnu_getopt(sys.argv[1:], 'h', ["help", "pe-mean=", "pe-sd="])
 except getopt.GetoptError, err:
         print str(err)
         usage()
         sys.exit(2)
 	
 for (oflag, oarg) in opts:
-        if oflag == '-h':
+        if oflag == '-h' or oflag == '--help':
             usage()
             sys.exit(0)
+        elif oflag == '--pe-mean':
+            pe_mean = int(oarg)
+        elif oflag == '--pe-sd':
+            pe_sd = int(oarg)
+        else:
+            print 'Unhandled argument: ' + str(oflag)
+            sys.exit(2)
 
 if len(args) == 2:
     contigsFilename = args[0]
@@ -244,15 +264,13 @@ else:
     usage()
     sys.exit(2)
 
-pe_mean = 2000
-pe_sd = 200
-
+# 
 printMeta()
 printLibrary(pe_mean, pe_sd)
 
 bamFile = pysam.Samfile(bamFilename, "rb")
 
-# Process every contig and write out a record
+# Process every contig and write an AFG record
 contigFile = open(contigsFilename)
 currCID = ""
 currSeq = ""
