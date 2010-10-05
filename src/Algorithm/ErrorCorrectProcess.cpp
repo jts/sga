@@ -10,6 +10,8 @@
 #include "ErrorCorrectProcess.h"
 #include "ErrorCorrect.h"
 
+//#define KMER_TESTING 1
+
 //
 //
 //
@@ -189,40 +191,125 @@ std::string ErrorCorrectProcess::makeIdxString(int64_t idx)
 // Correct a read with a k-mer based corrector
 ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& workItem)
 {
-    //bool done = false;
-    //int rounds = 0;
-    
     ErrorCorrectResult result;
     SeqRecord currRead = workItem.read;
-    std::string originalRead = workItem.read.seq.toString();
-    size_t count_threshold = 10;
-    size_t k_size = 41;
-    size_t nk = originalRead.size() - k_size + 1;
+    std::string readSequence = workItem.read.seq.toString();
 
-    //
-    std::vector<size_t> countVector(nk, 0);
-//    std::cout << "Printing kmer spectrum for read\n";
-    for(size_t i = 0; i < nk; ++i)
-    {
-        std::string kmer = originalRead.substr(i, k_size);
-        size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT(), m_pOverlapper->getRBWT());
-        countVector[i] = count;
-        //std::cout << "count " << count << "\n";
-    }
+#ifdef KMER_TESTING
+    std::cout << "Kmer correcting read " << workItem.read.id << "\n";
+#endif
 
-    // Find potentially incorrect positions in the reads
-    for(size_t i = 0; i < nk; ++i)
+    size_t count_threshold = 3;
+    size_t k_size = 27;
+    size_t n = readSequence.size();
+    size_t nk = n - k_size + 1;
+    
+    bool done = false;
+    int rounds = 0;
+
+    while(!done)
     {
-        if(countVector[i] < count_threshold)
+        if(rounds++ > 2)
+            break;
+
+        // Compute the kmer counts across the read
+        // and determine the positions in the read that are not covered by any solid kmers
+        // These are the candidate incorrect bases
+        std::vector<size_t> countVector(nk, 0);
+        std::vector<size_t> solidVector(n, 0);
+
+        for(size_t i = 0; i < nk; ++i)
         {
-          //  std::cout << "Base " << i << " may be incorrect\n";
+            std::string kmer = readSequence.substr(i, k_size);
+            size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT(), m_pOverlapper->getRBWT());
+            countVector[i] = count;
+
+            if(count > count_threshold)
+            {
+                for(size_t j = i; j < i + k_size; ++j)
+                {
+                    solidVector[j] = 1;
+                }
+            }
         }
+
+        bool allSolid = true;
+        for(size_t i = 0; i < n; ++i)
+        {
+#ifdef KMER_TESTING
+            std::cout << "Position[" << i << "] = " << solidVector[i] << "\n";
+#endif
+            if(solidVector[i] != 1)
+                allSolid = false;
+        }
+        
+#ifdef KMER_TESTING  
+        std::cout << "Read " << workItem.read.id << (allSolid ? " is solid\n" : " has potential errors\n");
+#endif
+
+        if(allSolid)
+            break;
+
+        // Attempt to correct the leftmost potentially incorrect base
+        bool corrected = false;
+        for(size_t i = 0; i < n; ++i)
+        {
+            if(solidVector[i] != 1)
+            {
+                // Get the index of the leftmost kmer that contains this position
+                size_t k_idx = (i + 1 >= k_size ? i + 1 - k_size : 0);
+                size_t base_idx = i - k_idx;
+                // Correct the kmer by trying the other 3 bases
+                char originalBase = readSequence[i];
+                std::string kmer = readSequence.substr(k_idx, k_size);
+                size_t bestCount = 0;
+                char bestBase = '$';
+                attemptKmerCorrection(kmer, base_idx, originalBase, bestCount, bestBase);
+
+                // Changing this base improved the count, correct the base in the read
+                if(bestCount > countVector[k_idx] && bestCount > count_threshold)
+                {
+                    assert(bestBase != '$');
+                    readSequence[i] = bestBase;
+#if KMER_TESTING
+                    std::cout << "Corrected base " << i << " to " << bestBase << "\n";
+#endif
+                    corrected = true;
+                    break;
+                }
+            }
+        }
+
+        if(!corrected)
+            done = true;
     }
 
-    result.correctSequence = originalRead;
+    result.correctSequence = readSequence;
     result.passedQC = true;
     return result;
 }
+
+// Attempt to correct the kmer at position i in read. bestCount/bestBase are out parameters
+void ErrorCorrectProcess::attemptKmerCorrection(std::string kmer, size_t base_idx, char originalBase, size_t& bestCount, char& bestBase)
+{
+    for(int i = 0; i < DNA_ALPHABET::size; ++i)
+    {
+        char currBase = ALPHABET[i];
+        if(currBase == originalBase)
+            continue;
+        kmer[base_idx] = currBase;
+        size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT(), m_pOverlapper->getRBWT());
+#if KMER_TESTING
+        printf("%c %zu\n", currBase, count);
+#endif
+        if(count > bestCount)
+        {
+            bestCount = count;
+            bestBase = currBase;
+        }
+    }
+}
+
 
 //
 //
