@@ -55,7 +55,7 @@ Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o
         {
             EdgeDir dir = o.match.coord[idx].isLeftExtreme() ? ED_ANTISENSE : ED_SENSE;
             const SeqCoord& coord = o.match.coord[idx];
-            pEdges[idx] = new Edge(pVerts[1 - idx], dir, comp, coord);
+            pEdges[idx] = new(pGraph->getEdgeAllocator()) Edge(pVerts[1 - idx], dir, comp, coord);
         }
 
         pEdges[0]->setTwin(pEdges[1]);
@@ -75,8 +75,8 @@ Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o
         for(size_t idx = 0; idx < 2; ++idx)
         {
             const SeqCoord& coord = o.match.coord[idx];
-            pEdges[idx] = new Edge(pVerts[1 - idx], ED_SENSE, comp, coord);
-            pEdges[idx + 2] = new Edge(pVerts[1 - idx], ED_ANTISENSE, comp, coord);
+            pEdges[idx] = new(pGraph->getEdgeAllocator()) Edge(pVerts[1 - idx], ED_SENSE, comp, coord);
+            pEdges[idx + 2] = new(pGraph->getEdgeAllocator()) Edge(pVerts[1 - idx], ED_ANTISENSE, comp, coord);
         }
         
         // Twin the edges and add them to the graph
