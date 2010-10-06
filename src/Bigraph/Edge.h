@@ -75,7 +75,7 @@ class Edge
             m_edgeData.setComp(comp);
         }
 
-        ~Edge() {}
+        ~Edge() { }
         
         // High level modification functions
         
@@ -136,19 +136,16 @@ class Edge
         void flip() { flipComp(); flipDir(); }
 
         // Memory management
-        void* operator new(size_t /*size*/)
+        void* operator new(size_t /*size*/, SimpleAllocator<Edge>* pAllocator)
         {
-            return SimpleAllocator<Edge>::Instance()->alloc();
+            return pAllocator->alloc();
         }
 
-        void* operator new(size_t /*size*/, Edge* /*pEdge*/)
+        void operator delete(void* /*target*/, size_t /*size*/)
         {
-            return SimpleAllocator<Edge>::Instance()->alloc();
-        }
-        
-        void operator delete(void* target, size_t /*size*/)
-        {
-            SimpleAllocator<Edge>::Instance()->dealloc(target);
+            // Deletions are handled at the graph/pool level. The lifetime of an edge
+            // is as long as the graph it belongs to, even if it is deleted before
+            // the graph.
         }
 
         // Validate that the edge is sane
@@ -158,7 +155,11 @@ class Edge
         friend std::ostream& operator<<(std::ostream& out, const Edge& obj);
 
     protected:
-            
+        
+        // Global new is not allowed, allocation must go through the memory pool
+        // belonging to the graph.
+        void* operator new(size_t size) { return malloc(size); } 
+        
         Edge() {}; // Default constructor is not allowed
 
         Vertex* m_pEnd;

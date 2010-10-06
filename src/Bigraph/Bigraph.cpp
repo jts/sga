@@ -19,6 +19,10 @@
 //
 Bigraph::Bigraph() : m_hasContainment(false), m_hasTransitive(false), m_isExactMode(false), m_minOverlap(0), m_errorRate(0.0f)
 {
+    // Set up the memory pools for the graph
+    m_pEdgeAllocator = new SimpleAllocator<Edge>();
+    m_pVertexAllocator = new SimpleAllocator<Vertex>();
+
     m_vertices.set_deleted_key("");
     //WARN_ONCE("HARDCODED HASH TABLE MAX SIZE");
     //m_vertices.resize(600000000);
@@ -35,6 +39,10 @@ Bigraph::~Bigraph()
         delete iter->second;
         iter->second = NULL;
     }
+
+    // Clean up the memory pools
+    delete m_pEdgeAllocator;
+    delete m_pVertexAllocator;
 }
 
 //

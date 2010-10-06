@@ -156,6 +156,12 @@ class Bigraph
         void writeDot(const std::string& filename, int dotFlags = 0) const;
         void writeASQG(const std::string& filename) const;
 
+        // Returns an allocator for the edges of the graph
+        SimpleAllocator<Edge>* getEdgeAllocator() { return m_pEdgeAllocator; }
+
+        // Returns an allocator for the vertices of the graph
+        SimpleAllocator<Vertex>* getVertexAllocator() { return m_pVertexAllocator; }
+
     private:
         
         // Simplify the graph by compacting edges in the given direction
@@ -175,6 +181,10 @@ class Bigraph
 
         int m_minOverlap;
         double m_errorRate;
+
+        // Memory management
+        SimpleAllocator<Vertex>* m_pVertexAllocator;
+        SimpleAllocator<Edge>* m_pEdgeAllocator;
 };
 
 #endif

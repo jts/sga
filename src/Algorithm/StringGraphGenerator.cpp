@@ -152,7 +152,7 @@ void StringGraphGenerator::updateGraphAndQueue(GraphFrontier& currNode, Frontier
 #endif
             // Generate the new vertex
             vertexSeq = iter->getFullString(pX->getSeq().toString());
-            pVertex = new Vertex(vertexID, vertexSeq);
+            pVertex = new(m_pGraph->getVertexAllocator()) Vertex(vertexID, vertexSeq);
             pVertex->setColor(UNEXPLORED_COLOR);
             m_pGraph->addVertex(pVertex);
         }
@@ -199,7 +199,7 @@ Vertex* StringGraphGenerator::addTerminalVertex(const SeqRecord& record)
     Vertex* pVertex = m_pGraph->getVertex(endID);
     if(pVertex == NULL)
     {
-        pVertex = new Vertex(endID, record.seq.toString());
+        pVertex = new(m_pGraph->getVertexAllocator()) Vertex(endID, record.seq.toString());
         m_pGraph->addVertex(pVertex);
     }
     return pVertex;
