@@ -61,7 +61,7 @@ class ErrorCorrectProcess
     private:
         
         ErrorCorrectResult kmerCorrection(const SequenceWorkItem& item);
-        void attemptKmerCorrection(std::string kmer, size_t base_idx, char originalBase, size_t& bestCount, char& bestBase);
+        bool attemptKmerCorrection(size_t i, size_t k_idx, size_t k_size, size_t minCount, std::string& readSequence);
 
         MultiOverlap blockListToMultiOverlap(const SeqRecord& record, 
                                              OverlapBlockList& blockList);
