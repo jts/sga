@@ -209,7 +209,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 
     while(!done)
     {
-        if(rounds++ > 2)
+        if(rounds++ > 4)
             break;
 
         // Compute the kmer counts across the read
@@ -256,27 +256,17 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
         {
             if(solidVector[i] != 1)
             {
-                // Get the index of the leftmost kmer that contains this position
-                size_t k_idx = (i + 1 >= k_size ? i + 1 - k_size : 0);
-                size_t base_idx = i - k_idx;
-                // Correct the kmer by trying the other 3 bases
-                char originalBase = readSequence[i];
-                std::string kmer = readSequence.substr(k_idx, k_size);
-                size_t bestCount = 0;
-                char bestBase = '$';
-                attemptKmerCorrection(kmer, base_idx, originalBase, bestCount, bestBase);
-
-                // Changing this base improved the count, correct the base in the read
-                if(bestCount > countVector[k_idx] && bestCount > count_threshold)
-                {
-                    assert(bestBase != '$');
-                    readSequence[i] = bestBase;
-#if KMER_TESTING
-                    std::cout << "Corrected base " << i << " to " << bestBase << "\n";
-#endif
-                    corrected = true;
+                // Attempt to correct the base using the leftmost covering kmer
+                size_t left_k_idx = (i + 1 >= k_size ? i + 1 - k_size : 0);
+                corrected = attemptKmerCorrection(i, left_k_idx, k_size, std::max(countVector[left_k_idx], count_threshold), readSequence);
+                if(corrected)
                     break;
-                }
+
+                // base was not corrected, try using the rightmost covering kmer
+                size_t right_k_idx = std::min(i, n - k_size);
+                corrected = attemptKmerCorrection(i, right_k_idx, k_size, std::max(countVector[right_k_idx], count_threshold), readSequence);
+                if(corrected)
+                    break;
             }
         }
 
@@ -289,25 +279,50 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     return result;
 }
 
-// Attempt to correct the kmer at position i in read. bestCount/bestBase are out parameters
-void ErrorCorrectProcess::attemptKmerCorrection(std::string kmer, size_t base_idx, char originalBase, size_t& bestCount, char& bestBase)
+// Attempt to correct the base at position idx in readSequence. Returns true if a correction was made
+// The correction is made only if the count of the corrected kmer is at least minCount
+bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t k_size, size_t minCount, std::string& readSequence)
 {
-    for(int i = 0; i < DNA_ALPHABET::size; ++i)
+    assert(i >= k_idx && i < k_idx + k_size);
+    size_t base_idx = i - k_idx;
+    char originalBase = readSequence[i];
+    std::string kmer = readSequence.substr(k_idx, k_size);
+    size_t bestCount = 0;
+    char bestBase = '$';
+
+#if KMER_TESTING
+    std::cout << "i: " << i << " k-idx: " << k_idx << " " << kmer << " " << reverseComplement(kmer) << "\n";
+#endif
+
+    for(int j = 0; j < DNA_ALPHABET::size; ++j)
     {
-        char currBase = ALPHABET[i];
+        char currBase = ALPHABET[j];
         if(currBase == originalBase)
             continue;
         kmer[base_idx] = currBase;
         size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT(), m_pOverlapper->getRBWT());
+
 #if KMER_TESTING
         printf("%c %zu\n", currBase, count);
 #endif
-        if(count > bestCount)
+        if(count > bestCount && count >= minCount)
         {
+            // Multiple corrections exist, do not correct
+            if(bestBase != '$')
+                return false;
+
             bestCount = count;
             bestBase = currBase;
         }
     }
+
+    if(bestCount >= minCount)
+    {
+        assert(bestBase != '$');
+        readSequence[i] = bestBase;
+        return true;
+    }
+    return false;
 }
 
 
