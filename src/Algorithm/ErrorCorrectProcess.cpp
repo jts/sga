@@ -41,7 +41,12 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
 
     if(m_algorithm == ECA_KMER)
         return kmerCorrection(workItem);
+    else
+        return overlapCorrection(workItem);
+}
 
+ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem& workItem)
+{
     // Overlap based correction
     static const double p_error = 0.01f;
     bool done = false;
@@ -204,14 +209,14 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     size_t n = readSequence.size();
     size_t nk = n - k_size + 1;
     
+    // Are all kmers in the read well-represented?
+    bool allSolid = false;
+
     bool done = false;
     int rounds = 0;
-
+    int maxAttempts = 4;
     while(!done)
     {
-        if(rounds++ > 4)
-            break;
-
         // Compute the kmer counts across the read
         // and determine the positions in the read that are not covered by any solid kmers
         // These are the candidate incorrect bases
@@ -233,7 +238,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             }
         }
 
-        bool allSolid = true;
+        allSolid = true;
         for(size_t i = 0; i < n; ++i)
         {
 #ifdef KMER_TESTING
@@ -247,7 +252,8 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
         std::cout << "Read " << workItem.read.id << (allSolid ? " is solid\n" : " has potential errors\n");
 #endif
 
-        if(allSolid)
+        // Stop if all kmers are well represented or we have exceeded the number of correction rounds
+        if(allSolid || rounds++ > maxAttempts)
             break;
 
         // Attempt to correct the leftmost potentially incorrect base
@@ -270,12 +276,23 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             }
         }
 
+        // If no base in the read was corrected, stop the correction process
         if(!corrected)
+        {
+            assert(!allSolid);
             done = true;
+        }
     }
 
-    result.correctSequence = readSequence;
-    result.passedQC = true;
+    if(allSolid)
+    {
+        result.correctSequence = readSequence;
+        result.passedQC = true;
+    }
+    else
+    {
+        result.passedQC = false;
+    }
     return result;
 }
 
@@ -396,13 +413,16 @@ void ErrorCorrectPostProcess::collectMetrics(const std::string& originalSeq,
     size_t precedingLen = 2;
     for(size_t i = 0; i < originalSeq.length(); ++i)
     {
-        char qc = qualityStr[i];
+        char qc = !qualityStr.empty() ? qualityStr[i] : '\0';
         char ob = originalSeq[i];
 
         ++m_totalBases;
         
         m_positionMetrics.incrementSample(i);
-        m_qualityMetrics.incrementSample(qc);
+
+        if(!qualityStr.empty())
+            m_qualityMetrics.incrementSample(qc);
+
         m_originalBaseMetrics.incrementSample(ob);
 
         std::string precedingMer;
@@ -415,7 +435,8 @@ void ErrorCorrectPostProcess::collectMetrics(const std::string& originalSeq,
         if(originalSeq[i] != correctedSeq[i])
         {
             m_positionMetrics.incrementError(i);
-            m_qualityMetrics.incrementError(qc);
+            if(!qualityStr.empty())
+                m_qualityMetrics.incrementError(qc);
             m_originalBaseMetrics.incrementError(ob);
 
             if(!precedingMer.empty())
