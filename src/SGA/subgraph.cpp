@@ -154,7 +154,7 @@ void copyVertexToSubgraph(StringGraph* pSubgraph, const Vertex* pVertex)
     // Make sure the vertex hasn't been added yet
     if(pSubgraph->getVertex(pVertex->getID()) == NULL)
     {
-        Vertex* pCopy = new Vertex(pVertex->getID(), pVertex->getSeq().toString());
+        Vertex* pCopy = new(pSubgraph->getVertexAllocator()) Vertex(pVertex->getID(), pVertex->getSeq().toString());
         pSubgraph->addVertex(pCopy);
     }
 }

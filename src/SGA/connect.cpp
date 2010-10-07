@@ -191,12 +191,6 @@ void parseConnectOptions(int argc, char** argv)
         die = true;
     }
 
-    if(opt::numThreads > 1)
-    {
-        std::cerr << SUBPROGRAM ": Warning: threading disabled\n";
-        opt::numThreads = 1;
-    }
-
     if(opt::numThreads <= 0)
     {
         std::cerr << SUBPROGRAM ": invalid number of threads: " << opt::numThreads << "\n";

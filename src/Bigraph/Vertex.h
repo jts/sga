@@ -129,20 +129,28 @@ class Vertex
         bool isContained() const { return m_isContained; }
 
         // Memory management
-        void* operator new(size_t /*size*/)
+        void* operator new(size_t /*size*/, SimpleAllocator<Vertex>* pAllocator)
         {
-            return SimpleAllocator<Vertex>::Instance()->alloc();
+            return pAllocator->alloc();
         }
 
-        void operator delete(void* target, size_t /*size*/)
+        void operator delete(void* /*target*/, size_t /*size*/)
         {
-            SimpleAllocator<Vertex>::Instance()->dealloc(target);
+            // delete does nothing since all allocations go through the memory pool
+            // belonging to the graph. The memory allocated for the vertex will be
+            // cleaned up when the graph is destroyed.
         }
 
         // Output edges in graphviz format
         void writeEdges(std::ostream& out, int dotFlags) const;
 
     private:
+
+        // Global new is disallowed, all allocations must go through the pool
+        void* operator new(size_t size)
+        {
+            return malloc(size);
+        }
 
         // Ensure all the edges in DIR are unique
         bool markDuplicateEdges(EdgeDir dir, GraphColor dupColor);
