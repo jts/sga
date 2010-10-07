@@ -79,7 +79,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
                 ASQG::VertexRecord vertexRecord(recordLine);
                 const SQG::IntTag& ssTag = vertexRecord.getSubstringTag();
 
-                Vertex* pVertex = new Vertex(vertexRecord.getID(), vertexRecord.getSeq());
+                Vertex* pVertex = new(pGraph->getVertexAllocator()) Vertex(vertexRecord.getID(), vertexRecord.getSeq());
                 if(ssTag.isInitialized() && ssTag.get() == 1)
                 {
                     // Vertex is a substring of some other vertex, mark it as contained

@@ -21,10 +21,15 @@ class SimpleAllocator
     typedef std::list<StorageType* > StorageList;
 
     public:
-        static SimpleAllocator* Instance()
+        SimpleAllocator() {}
+
+        ~SimpleAllocator()
         {
-            static SimpleAllocator<T> instance;
-            return &instance;
+            for(typename StorageList::iterator iter = m_pPoolList.begin(); iter != m_pPoolList.end(); ++iter)
+            {
+                delete *iter;
+            }
+            m_pPoolList.clear();
         }
 
         void* alloc()
@@ -45,16 +50,6 @@ class SimpleAllocator
         }
 
     private:
-
-        SimpleAllocator() {}
-        ~SimpleAllocator()
-        {
-            for(typename StorageList::iterator iter = m_pPoolList.begin(); iter != m_pPoolList.end(); ++iter)
-            {
-                delete *iter;
-            }
-            m_pPoolList.clear();
-        }
 
         StorageList m_pPoolList;
 };
