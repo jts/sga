@@ -61,13 +61,12 @@ void SGTransitiveReductionVisitor::previsit(StringGraph* pGraph)
 bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
     size_t trans_count = 0;
-    static const size_t FUZZ = 10; // see myers...
+    static const size_t FUZZ = 10; // see myers
 
     for(size_t idx = 0; idx < ED_COUNT; idx++)
     {
         EdgeDir dir = EDGE_DIRECTIONS[idx];
         EdgePtrVec edges = pVertex->getEdges(dir); // These edges are already sorted
-
         if(edges.size() == 0)
             continue;
 
@@ -822,6 +821,9 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
                     pWVert->setColor(GC_WHITE);
             }
 
+            (void)pStart;
+            (void)pEnd;
+            /*
             if(bubble_found)
             {
                 SGWalkVector walkVector;
@@ -846,7 +848,7 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 
                 ++num_bubbles;
             }
-
+            */
         }
     }
     return bubble_found;

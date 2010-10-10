@@ -292,6 +292,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     else
     {
         result.passedQC = false;
+        result.correctSequence = workItem.read.seq.toString();
     }
     return result;
 }
