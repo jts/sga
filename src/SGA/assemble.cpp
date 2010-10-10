@@ -168,9 +168,12 @@ void assemble()
     std::cout << "Post-contain graph stats\n";
     pGraph->visit(statsVisit);    
 
-    // Remove transitive edges from the graph
-    std::cout << "Removing transitive edges\n";
-    pGraph->visit(trVisit);
+    if(pGraph->hasTransitive() || true)
+    {
+        // Remove transitive edges from the graph
+        std::cout << "Removing transitive edges\n";
+        pGraph->visit(trVisit);
+    }
 
     // Resolve PE paths
     //pGraph->visit(peResolveVisit);
@@ -272,7 +275,7 @@ void assemble()
 
     // Write the results
     pGraph->writeDot("final.dot");
-    //pGraph->writeASQG("final.asqg");
+    pGraph->writeASQG("final.asqg");
     SGFastaVisitor av(opt::outFile);
     pGraph->visit(av);
     if(!opt::asqgOutfile.empty())

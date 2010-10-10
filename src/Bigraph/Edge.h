@@ -49,12 +49,12 @@ struct EdgeData
         void flipComp() { m_data.flip(COMP_BIT); }
 
         // Getters
-        EdgeDir getDir() const
+        inline EdgeDir getDir() const
         {
             return m_data.test(DIR_BIT) ? ED_ANTISENSE : ED_SENSE;
         }
 
-        EdgeComp getComp() const
+        inline EdgeComp getComp() const
         {
             return m_data.test(COMP_BIT) ? EC_REVERSE : EC_SAME;
         }
