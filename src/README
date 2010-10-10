@@ -45,23 +45,24 @@ it will discard reads that have uncalled bases ('N' or '.'). If you wish to keep
 flag which will randomly change any uncalled bases to one of [ACGT]. It is mandatory to run this command 
 on real data. If you are using simulated data without uncalled bases, you do not need to run this command.
 Refer to sga preprocess --help for more options and their use. If your reads are paired, the --pe-mode 1 option
-should be specified. The paired reads can be input in two files (sga preprocess READS1 READS2) where the corresponding
-reads in the files are assumed to go together or they can be interleaved in a single file where the two reads
-are expected to appear in consecutive records. By default, the output is written to stdout.
+should be specified. The paired reads can be input in two files (sga preprocess READS1 READS2) where the first read
+in READS1 is paired with the first read on READS2 and so on. Alternatively, they can be specified in a single file
+where the two reads are expected to appear in consecutive records. By default, output is written to stdout.
 
 * sga index READS
 
-Build the FM-index for READS. READS can be fasta or fastq. The -d option can be used to limit
+Build the FM-index for READS, which is a fasta or fastq file. The -d option can be used to limit
 the amount of memory consumed, at the cost of higher running time. Typical values of -d are 2000000 or 4000000.
 This program is threaded (-t N).
 
 * sga correct READS
 
-Perform error correction on the sequence reads in READS. Overlap and kmer-based correction algorithms
-are provided. By default, a hybrid algorithm is used which first attempts to correct the reads
+Perform error correction on READS file. Overlap and kmer-based correction algorithms
+are implemented. By default, a hybrid algorithm is used which first attempts to correct the reads
 using long kmers. This method of correction is very fast and will get rid of most singleton errors. 
 The reads that cannot be corrected using kmers are corrected by finding inexact overlaps 
-from which a multiple alignment and consensus sequence is found. 
+from which a multiple alignment and consensus sequence is found. Any remaining uncorrectable 
+reads can be discarded by specifying the --discard flag. 
 
 Many options exist for this program, see --help. Substantially improved results can be found
 by changing the --min-overlap, --error-rate, --kmer, --count-threshold parameters. This program
@@ -86,53 +87,9 @@ Assemble takes the output of the overlap step and constructs contigs. The output
 exist for cleaning the graph before assembly which will substantially increase assembly continuity. 
 See the --trim, --bubble, --resolve-small options.
 
-*** Example usage
+*** Workflow examples 
 
-This is a walk-through of an example run of SGA. Suppose the reads are contained in a single file called 
-reads.fastq. First, we preprocess the data:
-
-sga preprocess -f4 reads.fastq > reads.pp.fastq
-
-This command will discard any read that has more than 4 very-low quality bases and any read that has an uncalled
-base. The output is placed in reads.pp.fastq and is ready to assemble.
-
-sga index -d 2000000 -t 4 reads.pp.fastq
-
-This command builds the FM-index. The -d parameter tells SGA to only construct the index for 2,000,000 reads
-at a time, then merge the results together. The -t parameter tells SGA to use 4 threads when merging the indices
-together.
-
-sga correct -m 50 -e 0.05 -l 16 -t 4 reads.pp.fasta
-
-This command performs error correction on the reads. Only reads that overlap by 50bp or more will be used
-in the correction process (specified by -m). The maximum allowable edit distance between two overlapping 
-reads is 5% (-e parameter). The -l parameter requires there to be a 16bp or more exact match between reads
-to find an overlap. If this parameter is not set, all matches between reads within the -e/-m thresholds will
-be found at the cost of computation time. The -t flag indicates that 4 threads should be used for the computation.
-
-sga index reads.pp.ec.fa
-
-After correction, we must build the FM-index for the corrected reads.
-
-sga rmdup -e 0.02 -t 4 reads.pp.ec.fa
-
-This command removes any duplicated/identical reads as they do not contribute to the string graph. The -e 
-parameter indicates that to reads are considered to be identical if the edit distance is 2% of lower. Again,
-4 threads will be used for the computation. The index files for the rmdup'd reads is automatically generated.
-
-sga overlap -m 50 -e 0.0 -t 4 reads.pp.ec.rmdup.fa
-
-This constructs the ASQG file (reads.pp.ec.rmdup.asqg.gz) which is used for the assembly. The parameters are similar
-to sga correct, -m specifies the length of the minimum overlap and -e specifies the tolerable error rate. In this
-case we used -e 0.0 which means we want exact matches only which is HIGHLY RECOMMENDED after error correcting the reads. 
-The -m/-e parameters can have a large effect on the assembly so it is worth trying different values.
-
-sga assemble -r 10 -t 10 -b 2 reads.pp.ec.rmdup.asqg.gz
-
-Assemble the reads into contigs. The -r parameter turns on small-repeat resolution which can increase the length 
-of the contigs by untangling repeats that are less than a read length. The -t parameter specifies that 10 rounds
-of dead-branch trimming should be performed to clean up the graph. The -b parameter specifies that two rounds of 
-bubble removal should be performed. The constructed contigs will be placed in contigs.fa.
+Refer to the wiki on the sga github page for usage examples.
 
 *** Data quality issues
 
@@ -141,8 +98,8 @@ using tools like FastQC (http://www.bioinformatics.bbsrc.ac.uk/projects/fastqc/)
 of assembly parameters. Low-quality data should be filtered or trimmed.
 
 Very highly-represented sequences (>1000X) can cause problems for SGA. This can happen when sequencing a virus
-or when mitochondria contamination is present in the sequencing run. In these cases, it might be worth 
-running an initial 'rmdup' step before error correction.
+or when mitochondria contamination is present in the sequencing run. In these cases, it is worth considering
+pre-filtering the data or running an initial 'rmdup' step before error correction.
 
 *** History 
 
