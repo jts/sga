@@ -29,7 +29,7 @@ AC_CHECK_HEADERS([ \
 AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
 
 # Set compiler flags.
-AC_SUBST(AM_CXXFLAGS, '-O3 -Wall -Wextra -Werror')
+AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
 
 AC_CONFIG_FILES([Makefile
 		Thirdparty/Makefile
