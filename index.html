@@ -10,20 +10,20 @@
 	<style type="text/css">
 		body {
   		margin-top: 1.0em;
-  		background-color: #112fb4;
+  		background-color: #FFFFFF;
 		  font-family: "Helvetica,Arial,FreeSans";
-  		color: #ffffff;
+  		color: #000000;
     }
     #container {
       margin: 0 auto;
       width: 700px;
     }
-		h1 { font-size: 3.8em; color: #eed04b; margin-bottom: 3px; }
+		h1 { font-size: 3.8em; color: #000000; margin-bottom: 3px; }
 		h1 .small { font-size: 0.4em; }
 		h1 a { text-decoration: none }
-		h2 { font-size: 1.5em; color: #eed04b; }
-    h3 { text-align: center; color: #eed04b; }
-    a { color: #eed04b; }
+		h2 { font-size: 1.5em; color: #000000; }
+    h3 { text-align: center; color: #000000; }
+    a { color: #000000; }
     .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
     .download { float: right; }
 		pre { background: #000; color: #fff; padding: 15px;}
@@ -52,17 +52,28 @@
       experimental de novo sequence assembler using string graphs
     </div>
 
-    <p>SGA is a de novo sequence assembler based on Gene Myers' string graph formulation of assembly. It uses the FM-index/Burrows-Wheeler transform to index and search a set of sequence reads. Programs to remove sequence duplicates, correct read errors and construct assembly graphs are provided. This package is experimental.</p><h2>Dependencies</h2>
-<p>google-sparsehash (http://code.google.com/p/google-sparsehash/)
-zlib (www.zlib.net)</p>
-<h2>Install</h2>
-<p>Refer to src/README</p>
+<p>
+SGA is a de novo sequence assembler based on the assembly string graph [1]. It is implemented as a collection of algorithms
+based on the FM-index/Burrows-Wheeler transform. This includes the efficient FM-index to string graph construction algorithm described in [2]. 
+The package also contains programs to correct sequencing errors and remove duplicate reads without using a reference genome.  
+
+<h2>Dependencies</h2>
+<ul>
+<li>google-sparsehash (http://code.google.com/p/google-sparsehash/)</li>
+<li> zlib (www.zlib.net)</li>
+</ul>
+
 <h2>License</h2>
 <p>GPLv3</p>
+
+<h2>References</h2>
+<ol>
+<li> E.W. Myers. The fragment assembly string graph. <em>Bioinformatics</em>. 21(suppl_2):ii79–85, 2005. <a href="http://www.ncbi.nlm.nih.gov/pubmed/16204131">[Pubmed]</a></li>
+<li>J.T. Simpson, R. Durbin. Efficient construction of an assembly string graph using the FM-index. <em>Bioinformatics</em>, 26(12):i367-373, 2010. <a href="http://www.ncbi.nlm.nih.gov/pubmed/20529929">[Pubmed]</a></li>
+</ol>
+
 <h2>Authors</h2>
-<p>Jared Simpson (js18@sanger.ac.uk)<br/><br/>      </p>
-<h2>Contact</h2>
-<p> (jared.simpson@gmail.com)<br/>      </p>
+<p>Jared Simpson (js18@sanger.ac.uk)<br/></p>
 
 
     <h2>Download</h2>
