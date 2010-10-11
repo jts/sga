@@ -1,7 +1,7 @@
 SGA - String Graph Assembler
 
 SGA is a de novo assembler for DNA sequence reads. It is based on Gene Myers' string graph
-formulation of assembly and uses the FM-index/Burrows-Wheeler transform as to efficiently
+formulation of assembly and uses the FM-index/Burrows-Wheeler transform to efficiently
 find overlaps between sequence reads. The core algorithms are described in this paper:
 
 http://bioinformatics.oxfordjournals.org/cgi/content/abstract/26/12/i367
@@ -26,11 +26,11 @@ location use the --prefix option to configure:
 
 ./configure --prefix=/home/jsimpson/ && make && make install
 
-This command would copy sga to /home/jsimpson/bin/sga
+This command will copy sga to /home/jsimpson/bin/sga
 
 *** Running SGA
 
-SGA is made up of a number of subprograms, together which form the assembly pipeline. The subprograms
+SGA consists of a number of subprograms, together which form the assembly pipeline. The subprograms
 can also be used to perform other interesting tasks, like read error correction or removing PCR duplicates.
 Each program and subprogram will print a brief description and its usage instructions if the --help flag is used.
 
@@ -40,44 +40,45 @@ The major subprograms are:
 
 * sga preprocess READS > out.fastq
 
-Preprocess prepares reads for assembly. It can perform optional quality filtering/trimming. By default
+Prepare reads for assembly. It can perform optional quality filtering/trimming. By default
 it will discard reads that have uncalled bases ('N' or '.'). If you wish to keep these reads, use the --permuteN 
 flag which will randomly change any uncalled bases to one of [ACGT]. It is mandatory to run this command 
-on real data. If you are using simulated data without uncalled bases, you do not need to run this command.
-Refer to sga preprocess --help for more options and their use. If your reads are paired, the --pe-mode 1 option
-should be specified. The paired reads can be input in two files (sga preprocess READS1 READS2) where the first read
-in READS1 is paired with the first read on READS2 and so on. Alternatively, they can be specified in a single file
-where the two reads are expected to appear in consecutive records. By default, output is written to stdout.
+on real data. 
+
+If your reads are paired, the --pe-mode 1 option should be specified. The paired reads can be input in two 
+files (sga preprocess READS1 READS2) where the first read in READS1 is paired with the first read on READS2 
+and so on. Alternatively, they can be specified in a single file where the two reads are expected to appear 
+in consecutive records. By default, output is written to stdout.
 
 * sga index READS
 
 Build the FM-index for READS, which is a fasta or fastq file. The -d option can be used to limit
-the amount of memory consumed, at the cost of higher running time. Typical values of -d are 2000000 or 4000000.
+the amount of memory consumed at the cost of higher running time. Typical values of -d are 2000000 or 4000000.
 This program is threaded (-t N).
 
 * sga correct READS
 
 Perform error correction on READS file. Overlap and kmer-based correction algorithms
 are implemented. By default, a hybrid algorithm is used which first attempts to correct the reads
-using long kmers. This method of correction is very fast and will get rid of most singleton errors. 
+using long kmers. This method of correction is fast and will get rid of most singleton errors. 
 The reads that cannot be corrected using kmers are corrected by finding inexact overlaps 
-from which a multiple alignment and consensus sequence is found. Any remaining uncorrectable 
+from which a multiple alignment and consensus sequence is computed. Any remaining uncorrected
 reads can be discarded by specifying the --discard flag. 
 
 Many options exist for this program, see --help. Substantially improved results can be found
-by changing the --min-overlap, --error-rate, --kmer, --count-threshold parameters. This program
+by changing the --min-overlap, --error-rate, --kmer-size and --kmer-threshold parameters. This program
 is threaded (-t N). By default, the corrected reads will be output to READS.ec.fa. 
 
 * sga rmdup READS
 
-Remove duplicated sequences from the READS file. This is useful for removing PCR/optical duplicates. 
+Remove duplicate sequences from READS file. This is useful for removing PCR/optical duplicates. 
 The --error-rate parameter controls the edit percentage that is allowed to consider two reads to be identical.
 This program automatically regenerates the FM-index without the duplicated reads.
 
 * sga overlap -m N READS
 
-Find overlaps between reads that will be used to construct the string graph. The -m parameter specifies
-the minimum length of the overlaps to find. By default only non-transitive edges are output and edges
+Find overlaps between reads to construct the string graph. The -m parameter specifies
+the minimum length of the overlaps to find. By default only non-transitive (irreducible) edges are output and edges
 between identical sequences. If all overlaps between reads are desired, the --exhaustive option can be specified.
 This program is threaded. The output file is READS.asqg.gz by default.
 
@@ -93,18 +94,18 @@ Refer to the wiki on the sga github page for usage examples.
 
 *** Data quality issues
 
-Sequence assembly generally requires high quality data. It is worth assessing the quality of your reads
+Sequence assembly requires high quality data. It is worth assessing the quality of your reads
 using tools like FastQC (http://www.bioinformatics.bbsrc.ac.uk/projects/fastqc/) to help guide the choice
 of assembly parameters. Low-quality data should be filtered or trimmed.
 
-Very highly-represented sequences (>1000X) can cause problems for SGA. This can happen when sequencing a virus
-or when mitochondria contamination is present in the sequencing run. In these cases, it is worth considering
+Very highly-represented sequences (>1000X) can cause problems for SGA. This can happen when sequencing a small genome
+or when mitochondria or other contamination is present in the sequencing run. In these cases, it is worth considering
 pre-filtering the data or running an initial 'rmdup' step before error correction.
 
 *** History 
 
 The first SGA code check-in was August, 2009. The algorithms for directly constructing the string graph from
-the FM-index were developed and implemented in the fall of 2009.  
+the FM-index were developed and implemented in the fall of 2009. The initial public release was October 2010.
 
 *** Third party code
 
