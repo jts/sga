@@ -19,10 +19,9 @@
 
 enum ErrorCorrectAlgorithm
 {
-    ECA_TRIE, // aggressive trie-based correction of conflicted sequences
-    ECA_CC, // conflict-aware consensus
-    ECA_SIMPLE, // straightforward correct
-    ECA_KMER // K-mer based correction algorithm
+    ECA_HYBRID, // hybrid kmer/overlap correction
+    ECA_KMER, // kmer correction
+    ECA_OVERLAP, // overlap correction
 };
 
 enum ECFlag
@@ -36,13 +35,16 @@ enum ECFlag
 class ErrorCorrectResult
 {
     public:
+        ErrorCorrectResult() : num_prefix_overlaps(0), num_suffix_overlaps(0), kmerQC(false), overlapQC(false) {}
+
         DNAString correctSequence;
         ECFlag flag;
 
         // Metrics
-        bool passedQC;
         size_t num_prefix_overlaps;
         size_t num_suffix_overlaps;
+        bool kmerQC;
+        bool overlapQC;
 };
 
 //
@@ -51,7 +53,8 @@ class ErrorCorrectProcess
     public:
         ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
                             int minOverlap, int numRounds, 
-                            int conflictCutoff, ErrorCorrectAlgorithm algo,
+                            int conflictCutoff, int kmerLength,
+                            int kmerThreshold, ErrorCorrectAlgorithm algo,
                             bool printMO);
 
         ~ErrorCorrectProcess();
@@ -63,7 +66,7 @@ class ErrorCorrectProcess
         ErrorCorrectResult kmerCorrection(const SequenceWorkItem& item);
         ErrorCorrectResult overlapCorrection(const SequenceWorkItem& workItem);
 
-        bool attemptKmerCorrection(size_t i, size_t k_idx, size_t k_size, size_t minCount, std::string& readSequence);
+        bool attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence);
 
         MultiOverlap blockListToMultiOverlap(const SeqRecord& record, 
                                              OverlapBlockList& blockList);
@@ -75,6 +78,8 @@ class ErrorCorrectProcess
         const int m_minOverlap;
         const int m_numRounds;
         const int m_conflictCutoff;
+        const int m_kmerLength;
+        const int m_kmerThreshold;
         const ErrorCorrectAlgorithm m_algorithm;
         const bool m_printOverlaps;
         const int m_depthFilter;
@@ -86,6 +91,8 @@ class ErrorCorrectPostProcess
     public:
         ErrorCorrectPostProcess(std::ostream* pCorrectedWriter, 
                                 std::ostream* pDiscardWriter, bool bCollectMetrics);
+
+        ~ErrorCorrectPostProcess();
 
         void process(const SequenceWorkItem& item, const ErrorCorrectResult& result);
         void writeMetrics(std::ostream* pWriter);
@@ -109,6 +116,9 @@ class ErrorCorrectPostProcess
         size_t m_readsKept;
         size_t m_readsDiscarded;
 
+        int m_kmerQCPassed;
+        int m_overlapQCPassed;
+        int m_qcFail;
 };
 
 #endif
