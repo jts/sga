@@ -100,7 +100,7 @@ int scaffold2fastaMain(int argc, char** argv)
     std::cout << "Find overlaps: " << (opt::resolveMask & RESOLVE_OVERLAP) << "\n";
 
     if(opt::asqgFile.empty())
-        assert(false && "only asqg file is implemented atm");
+        assert(false && "only asqg mode is implemented, please provide an ASQG file");
 
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
     std::istream* pReader = new std::ifstream(opt::scafFile.c_str());

@@ -288,6 +288,7 @@ bool ScaffoldRecord::introduceGap(const std::string& contigString, const Scaffol
         // Truncate the string using the expected overlap and add a gap with a fixed number of Ns
         out.append(10, 'N');
         int expectedOverlap = -1 * link.distance;
+        assert(expectedOverlap < (int)contigString.length());
         out.append(contigString.substr(expectedOverlap));
     }
     else
