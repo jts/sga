@@ -87,14 +87,15 @@ void printUsage()
     std::cout << "           preprocess      filter and quality-trim reads\n";
     std::cout << "           index           build the BWT and FM-index for a set of reads\n";
     std::cout << "           merge           merge multiple BWT/FM-index files into a single index\n";
-    std::cout << "           correct         correct sequencing errors in a set of reads\n";
-    std::cout << "           connect         resolve the complete sequence of a paired-end fragment\n";
     std::cout << "           rmdup           remove duplicated or identical reads from the data set\n";
+    std::cout << "           correct         correct sequencing errors in a set of reads\n";
     std::cout << "           overlap         compute overlaps between reads\n";
     std::cout << "           assemble        generate contigs\n";
-    std::cout << "           scaffold        generate ordered sets of contigs using distance estimates\n";
-    std::cout << "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n";
     std::cout << "           oview           view overlap alignments\n";
     std::cout << "           subgraph        extract a subgraph from a graph\n";
-    std::cout << "\n\n";
+    std::cout << "\nExperimental commands:\n";
+    std::cout << "           connect         resolve the complete sequence of a paired-end fragment\n";
+    std::cout << "           scaffold        generate ordered sets of contigs using distance estimates\n";
+    std::cout << "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n";
+    std::cout << "\n";
 }
