@@ -64,7 +64,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
-"      -i, --irreducible                only output the irreducible edges for each node\n"
+"      -x, --exhaustive                 output all overlaps, including transitive edges\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
 "                                       is calculated to guarantee all overlaps with --error-rate differences are found.\n"
 "                                       This option removes the guarantee but will be (much) faster. As SGA can tolerate some\n"
@@ -91,11 +91,10 @@ namespace opt
     static int seedLength = 0;
     static int seedStride = 0;
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
-    static bool bIrreducibleOnly;
-    static bool bExactMode = false;
+    static bool bIrreducibleOnly = true;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:vi";
+static const char* shortopts = "p:m:d:e:t:l:s:vix";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -108,8 +107,7 @@ static const struct option longopts[] = {
     { "error-rate",  required_argument, NULL, 'e' },
     { "seed-length", required_argument, NULL, 'l' },
     { "seed-stride", required_argument, NULL, 's' },
-    { "irreducible", no_argument,       NULL, 'i' },
-    { "exact",       no_argument,       NULL, 'x' },
+    { "exhaustive",  no_argument,       NULL, 'x' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -146,7 +144,8 @@ int overlapMain(int argc, char** argv)
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, opt::bIrreducibleOnly);
-    pOverlapper->setExactMode(opt::bExactMode);
+    pOverlapper->setExactMode(opt::errorRate <= 0.0001);
+
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
     pBWT->printInfo();
@@ -293,8 +292,7 @@ void parseOverlapOptions(int argc, char** argv)
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
             case 'd': arg >> opt::sampleRate; break;
-            case 'x': opt::bExactMode = true; break;
-            case 'i': opt::bIrreducibleOnly = true; break;
+            case 'x': opt::bIrreducibleOnly = false; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:

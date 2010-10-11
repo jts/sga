@@ -192,7 +192,6 @@ void assemble()
 
     if(opt::numTrimRounds > 0)
     {
-        WARN_ONCE("USING NAIVE TRIMMING");
         std::cout << "Trimming bad vertices\n"; 
         int numTrims = opt::numTrimRounds;
         while(numTrims-- > 0)
