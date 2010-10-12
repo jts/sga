@@ -1,0 +1,276 @@
+#! /usr/bin/python
+
+# sga assembly pipeline implemented with ruffus (http://ruffus.org.uk)
+# The standard assembly pipeline is as follows:
+#   sga preprocess
+#   sga index
+#   sga rmdup (single-end or paired-end)
+#   sga correct
+#   sga index
+#   sga rmdup [single-end]
+#   sga overlap
+#   sga assemble
+from ruffus import *
+import sys
+import os.path
+import subprocess
+import getopt
+
+
+# get the basename of a file by stripping off leading directories
+# and the last file extension
+def getBasename(inFile):
+    (dirName, fileName) = os.path.split(inFile)
+    (fileBaseName, fileExtension)=os.path.splitext(fileName)
+    return fileBaseName
+
+# Return the last file extension
+def getExtension(inFile):
+    (dirName, fileName) = os.path.split(inFile)
+    (fileBaseName, fileExtension)=os.path.splitext(fileName)
+    return fileExtension
+
+# auto generate the output file name for a stage
+def makeStageOutput(inFile, outExtension):
+    fileBasename = getBasename(inFile)
+    return fileBasename + outExtension
+
+# Parse a stage name into a task name
+def parseStagename(stage):
+    if stage == "correct":
+        return "correctRawTask"
+    elif stage == "overlap" or stage == "assemble":
+        return stage + "Task"
+    else:
+        print 'Unrecognized pipeline stage: ', stage
+        sys.exit(0)
+
+def stub(name, inFile, outFile):
+    print "%s: %s -> %s" % (name, inFile, outFile)
+    runCmd("touch " + outFile)
+
+# Run a shell command
+def runCmd(cmd):
+    print '===\n', cmd, '\n==='
+    subprocess.Popen(cmd, shell=True).wait()
+
+#
+def usage():
+    print 'usage: sga-pipeline [options] <input files>'
+    print 'run the sga assembly pipeline'
+    print 'Options:'
+    print '       --name=STR          Use STR as the basename for the output files'
+    print '       --target=STR        Stop the pipeline at the STR stage. STR can be correct, overlap or assemble'
+    print '    -m,--min-overlap       Minimum overlap allowed between reads. Used in both the correction and overlap subprograms'
+    print '    -e,--error-rate        Maximum error rate allowed between reads. Used in the correction subprogram'
+    print '    -t,--num-threads       Number of threads to use.'
+    print '    --force-start=STR      Force the pipeline to restart at STR stage. STR can be one of correct, overlap, assemble.'
+    print ''
+    print 'Custom command options:'
+    print '    --correction-args=STR  Use STR as the arguments for the correction subprogram'
+    print '    --assemble-args=STR    Use STR as the arguments for the assemble subprogram'
+
+#
+# sga subprogram wrappers. These are called by the ruffus tasks
+#
+def sga_preprocess(input, output, args):
+    global sga_bin
+    cmd = "%s preprocess %s -o %s %s" % (sga_bin, args, output, input)
+    runCmd(cmd)
+
+def sga_index(input, args):
+    global sga_bin
+    cmd = "%s index %s %s" % (sga_bin, args, input)
+    runCmd(cmd)
+
+def sga_rmdup(input, output, args):
+    global sga_bin
+    cmd = "%s rmdup %s -o %s %s" % (sga_bin, args, output, input)
+    runCmd(cmd)
+
+def sga_correct(input, output, args):
+    global sga_bin
+    cmd = "%s correct %s -o %s %s" % (sga_bin, args, output, input)
+    runCmd(cmd)
+
+def sga_overlap(input, output, args):
+    global sga_bin
+    cmd = "%s overlap %s -o %s %s" % (sga_bin, args, output, input)
+    runCmd(cmd)
+
+def sga_assemble(input, output, args):
+    global sga_bin
+    cmd = "%s assemble %s -o %s %s" % (sga_bin, args, output, input)
+    runCmd(cmd)
+
+# Get the command line arguments
+
+# Defaults
+sga_bin = "sga"
+min_overlap = 57
+error_rate = 0.05
+num_threads = 1
+assembleArgs = ""
+correctArgs = ""
+projectName = ""
+forceStartStage = ""
+targetStage = "assemble" # By default, assemble the data
+
+try:
+    opts, args = getopt.gnu_getopt(sys.argv[1:], 'm:e:t:', ["min-overlap=", 
+                                                            "error-rate=", 
+                                                            "num-threads=", 
+                                                            "correction-args=", 
+                                                            "assemble-args=", 
+                                                            "force=",
+                                                            "target=",
+                                                            "name=",
+                                                            "help"])
+except getopt.GetoptError, err:
+        print str(err)
+        usage()
+        sys.exit(2)
+    
+for (oflag, oarg) in opts:
+        if oflag == '-m' or oflag == '--min-overlap':
+            min_overlap = int(oarg)
+        elif oflag == '-e' or oflag == '--error-rate':
+            error_rate = float(oarg)
+        elif oflag == '-t' or oflag == '--num-threads':
+            num_threads = int(oarg)    
+        elif oflag == "--correction-args":
+            correctArgs = oarg
+        elif oflag == "--assemble-args":
+            assembleArgs = oarg
+        elif oflag == "--force":
+            forceStartStage = oarg
+        elif oflag == "--name":
+            projectName = oarg
+        elif oflag == "--target":
+            targetStage = oarg
+        elif oflag == '--help':
+            usage()
+            sys.exit(1)
+        else:
+            print 'Unrecognized argument', oflag
+            usage()
+            sys.exit(0)
+
+rawInputFiles = args
+if len(rawInputFiles) == 0:
+    print 'Error, at least one input file must be specified'
+    sys.exit(0)
+
+print 'Parameters: '
+print 'input files ', " ".join(rawInputFiles)
+print 'min overlap', str(min_overlap)
+print 'error rate',  str(error_rate)
+print 'num threads', str(num_threads)
+
+# Check if a specific stage was requested to be re-run
+if forceStartStage != "":
+    forceStartStage = parseStagename(forceStartStage)
+
+# Check if a specific target (stop) stage was requested
+if targetStage != "":
+    targetStage = parseStagename(targetStage)
+
+# Set up arguments for each task
+ppArgs = "-f 3"
+indexArgs = "-t %d" % (num_threads)
+rmdupArgs = "-e 0.02 -t %d" % (num_threads)
+overlapArgs = "-m %d -t %d" % (min_overlap, num_threads)
+
+# If the correction and/or assemble arguments were directly passed in, dont override them
+if correctArgs == "":
+    correctArgs = "-m %d -e %f -l 16 -t %d" % (min_overlap, error_rate, num_threads)
+
+if assembleArgs == "":
+    assembleArgs = "--exact -t 10 -b 10 -r 20"
+
+# Set up the names of the input/output files per stage
+projectExtension = getExtension(rawInputFiles[0])
+if projectName == "":
+    projectName = getBasename(rawInputFiles[0])
+
+ppInput = rawInputFiles
+ppOutput = projectName + ".pp" + projectExtension
+
+indexRawInput = ppOutput
+indexRawOutput = [makeStageOutput(indexRawInput, ".bwt"), makeStageOutput(indexRawInput, ".rbwt")]
+
+rmdupRawInput = ppOutput
+rmdupRawOutput = projectName + ".rmdup1" + projectExtension
+
+correctRawInput = rmdupRawOutput
+correctRawOutput = projectName + ".ec" + projectExtension
+
+indexECInput = correctRawOutput
+indexECOutput = makeStageOutput(indexECInput, ".bwt")
+
+overlapECInput = correctRawOutput
+overlapECOutput = projectName + ".asqg.gz"
+
+assembleInput = overlapECOutput
+assembleOutput = projectName + ".contigs.fa"
+
+# Set up the names of the task that each task follows.
+# This defines the pipeline
+indexRawFollow = "preprocessTask"
+rmdupRawFollow = "indexRawTask"
+correctRawFollow = "rmdupRawTask"
+indexECFollow = "correctRawTask"
+overlapECFollow = "indexECTask"
+assembleFollow = "overlapECTask"
+
+# Construct the ruffus tasks that will be run as the assembly pipeline
+# using the setup follows and input/output files
+
+# Preprocess the reads
+@files(rawInputFiles, ppOutput, ppArgs)
+def preprocessTask(inputList, output, args):
+    sga_preprocess(" ".join(inputList), output, args)
+
+# Index the raw data
+@follows(indexRawFollow)
+@files(indexRawInput, indexRawOutput, indexArgs)
+def indexRawTask(input, output, args):
+    sga_index(input, args)
+
+# Remove duplicate reads from the initial data set
+@follows(rmdupRawFollow)
+@files(rmdupRawInput, rmdupRawOutput, rmdupArgs)
+def rmdupRawTask(input, output, args):
+    sga_rmdup(input, output, args)
+
+# Correct read errors
+@follows(correctRawFollow)
+@files(correctRawInput, correctRawOutput, correctArgs)
+def correctRawTask(input, output, args):
+    sga_correct(input, output, args)
+
+# Index corrected reads
+@follows(indexECFollow)
+@files(indexECInput, indexECOutput, indexArgs)
+def indexECTask(input, output, args):
+    sga_index(input, args)
+
+# Compute overlaps
+@follows(overlapECFollow)
+@files(overlapECInput, overlapECOutput, overlapArgs)
+def overlapECTask(input, output, args):
+    sga_overlap(input, output, args)
+    
+# Assemble the reads into contigs
+@follows(assembleFollow)
+@files(assembleInput, assembleOutput, assembleArgs)
+def assembleTask(input, output, args):
+    sga_assemble(input, output, args)
+
+# Run the pipeline
+if forceStartStage != "":
+    pipeline_run([targetStage], forcedtorun_tasks=forceStartStage, verbose=0)
+else:
+    pipeline_run([targetStage], verbose=0)
+
+#pipeline_printout(sys.stdout, [assembleTask], verbose=1)

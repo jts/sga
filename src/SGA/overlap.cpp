@@ -85,6 +85,7 @@ namespace opt
     static OutputType outputType = OT_ASQG;
     static std::string prefix;
     static std::string readsFile;
+    static std::string outFile;
     
     static double errorRate = 0.0f;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
@@ -94,7 +95,7 @@ namespace opt
     static bool bIrreducibleOnly = true;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:vix";
+static const char* shortopts = "p:m:d:e:t:l:s:o:vix";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -103,6 +104,7 @@ static const struct option longopts[] = {
     { "threads",     required_argument, NULL, 't' },
     { "min-overlap", required_argument, NULL, 'm' },
     { "sample-rate", required_argument, NULL, 'd' },
+    { "outfile",     required_argument, NULL, 'o' },
     { "prefix",      required_argument, NULL, 'p' },
     { "error-rate",  required_argument, NULL, 'e' },
     { "seed-length", required_argument, NULL, 'l' },
@@ -125,8 +127,7 @@ int overlapMain(int argc, char** argv)
     (void)opt::outputType;
 
     // Open output file
-    std::string asqgFilename = opt::prefix + ASQG_EXT + GZIP_EXT;
-    std::ostream* pASQGWriter = createWriter(asqgFilename);
+    std::ostream* pASQGWriter = createWriter(opt::outFile);
 
     // Build and write the ASQG header
     ASQG::HeaderRecord headerRecord;
@@ -287,6 +288,7 @@ void parseOverlapOptions(int argc, char** argv)
         {
             case 'm': arg >> opt::minOverlap; break;
             case 'p': arg >> opt::prefix; break;
+            case 'o': arg >> opt::outFile; break;
             case 'e': arg >> opt::errorRate; break;
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;
@@ -349,5 +351,10 @@ void parseOverlapOptions(int argc, char** argv)
     if(opt::prefix.empty())
     {
         opt::prefix = stripFilename(opt::readsFile);
+    }
+
+    if(opt::outFile.empty())
+    {
+        opt::outFile = opt::prefix + ASQG_EXT + GZIP_EXT;
     }
 }

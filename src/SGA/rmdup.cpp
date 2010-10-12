@@ -122,7 +122,7 @@ void rmdup()
     delete pRBWT;
     delete pTimer;
 
-    std::string out_prefix = opt::prefix + ".rmdup";
+    std::string out_prefix = stripFilename(opt::outFile);
     std::string dupsFile = parseDupHits(hitsFilenames, out_prefix);
 
     // Rebuild the indices without the duplicated sequences
@@ -383,6 +383,11 @@ void parseRmdupOptions(int argc, char** argv)
     if(opt::prefix.empty())
     {
         opt::prefix = stripFilename(opt::readsFile);
+    }
+
+    if(opt::outFile.empty())
+    {
+        opt::outFile = stripFilename(opt::readsFile) + ".rmdup.fa";
     }
 }
 
