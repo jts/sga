@@ -188,7 +188,7 @@ if assembleArgs == "":
     assembleArgs = "--exact -t 10 -b 10 -r 20"
 
 # Set up the names of the input/output files per stage
-projectExtension = getExtension(rawInputFiles[0])
+projectExtension = ".fa"
 if projectName == "":
     projectName = getBasename(rawInputFiles[0])
 
