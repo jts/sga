@@ -4,10 +4,9 @@
 # The standard assembly pipeline is as follows:
 #   sga preprocess
 #   sga index
-#   sga rmdup (single-end or paired-end)
+#   sga rmdup
 #   sga correct
 #   sga index
-#   sga rmdup [single-end]
 #   sga overlap
 #   sga assemble
 from ruffus import *

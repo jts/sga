@@ -36,6 +36,11 @@ Each program and subprogram will print a brief description and its usage instruc
 
 To get a listing of all subprograms, run sga --help.
 
+The bin/sga-pipeline script implements a simple assembly pipeline and is a good place to start. 
+It is implemented in python using the ruffus library (http://ruffus.org.uk). The most important options
+(--min-overlap, --error-rate) are exposed in the pipeline script but tweaking the parameters of the 
+individual subprograms may give better results. 
+
 The major subprograms are:
 
 * sga preprocess READS > out.fastq
