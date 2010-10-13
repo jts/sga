@@ -41,6 +41,11 @@ def makeStageOutput(inFile, outExtension):
     fileBasename = getBasename(inFile)
     return fileBasename + outExtension
 
+# Make the names of the FM-index files for a reads file
+def makeIndexNames(inFile):
+    fileBasename = getBasename(inFile)
+    return [fileBasename + ".bwt", fileBasename + ".rbwt", fileBasename + ".sai", fileBasename + ".rsai"]
+
 # Parse a stage name into a task name
 def parseStagename(stage):
     if stage == "correct":
@@ -114,6 +119,14 @@ def sga_assemble(input, output, args):
     cmd = "%s assemble %s -o %s %s" % (sga_bin, args, output, input)
     runCmd(cmd)
 
+def sga_joinpairs(input, output):
+    cmd = "sga-joinedpe --join -o %s %s" % (output, input)
+    runCmd(cmd)
+
+def sga_splitpairs(input, output):
+    cmd = "sga-joinedpe --split -o %s %s" % (output, input)
+    runCmd(cmd)
+
 #
 # Pipeline definitions
 #
@@ -134,8 +147,8 @@ def preprocessPipeline(inputFileList):
     pipeline_run([preprocessPipeline], verbose=0)
     return preprocessOutput
 
-# rmdup pipeline - index the reads then perform sga rmdup
-def rmdupPipeline(inputFile):
+# rmdup-se pipeline - index the reads then perform sga rmdup without considering read pairs
+def rmdupSEPipeline(inputFile):
     global projectExtension
     global arguments
 
@@ -158,6 +171,51 @@ def rmdupPipeline(inputFile):
     # Run the pipeline
     pipeline_run([rmdupPipelineRmdup], verbose=0)
     return rmdupOutput
+
+
+# rmdup-pe pipeline - concatenate the ends of PE reads then perform rmdup on the joined sequence
+# this allows us to get rid of PCR duplicates. This shares a sub-pipeline with rmdup-se
+# but ruffus won't allow reuse of the sub-pipeline in the same run so we duplicate it here
+def rmdupPEPipeline(inputFile):
+    global projectExtension
+    global arguments
+
+    # Input/Output names
+    fileBasename = getBasename(inputFile)
+    joinOutput = fileBasename + ".joined" + projectExtension
+    joinBasename = getBasename(joinOutput)
+
+    indexInput = joinOutput
+    indexOutput = makeIndexNames(joinOutput)
+
+    rmdupInput = [joinOutput, indexOutput]
+    rmdupOutput = joinBasename + ".rmdup" + projectExtension
+    
+    splitInput = rmdupOutput
+    splitOutput = fileBasename + ".rmdup-pe" + projectExtension
+
+    # Task definitions
+    @files(inputFile, joinOutput)
+    def rmdupPEPipelineJoin(input, output):
+        sga_joinpairs(input, output)
+ 
+    @files(indexInput, indexOutput, arguments["index"])
+    def rmdupPEPipelineIndex(input, output, args):
+        sga_index(input, args)
+ 
+    @follows(rmdupPEPipelineIndex)
+    @files(rmdupInput, rmdupOutput, arguments["rmdup"])
+    def rmdupPEPipelineRmdup(input, output, args):
+        sga_rmdup(input[0], output, args)
+
+    @follows(rmdupPEPipelineRmdup)
+    @files(splitInput, splitOutput)
+    def rmdupPEPipelineSplit(input, output):
+        sga_splitpairs(input, output)
+    
+    # Run the pipeline
+    pipeline_run([rmdupPEPipelineRmdup], verbose=0)
+    return splitOutput
 
 # correction pipeline
 def correctionPipeline(inputFile):
@@ -228,6 +286,7 @@ num_threads = 1
 assembleArgs = ""
 correctArgs = ""
 projectName = ""
+paired = True
 taskString = "rmdup,correct,assemble"
 arguments = dict()
 
@@ -283,6 +342,11 @@ if len(rawInputFiles) == 0:
     print 'Error, at least one input file must be specified'
     sys.exit(0)
 
+# If the task string contains a paired-end specific task,
+# force the paired flag to true
+if taskString.find("rmduppe") != -1 or taskString.find("connect") != -1:
+    paired = True
+
 # Parse the command list 
 commandList = taskString.split(',')
 
@@ -292,10 +356,14 @@ print 'min overlap', str(min_overlap)
 print 'error rate',  str(error_rate)
 print 'num threads', str(num_threads)
 print 'tasks to run: ', " ".join(commandList)
-
+print 'paired mode: ', paired
 # If the explicit arguments string was not set, generate the arguments
 if "preprocess" not in arguments:
-    arguments["preprocess"] = preprocessArgs = "-f 3"
+        arguments["preprocess"] = preprocessArgs = "-f 3"
+
+# Force the pe-mode flag on the preprocess arguments if we are in paired mode
+if paired and arguments["preprocess"].find("--pe-mode 1") == -1:
+    arguments["preprocess"] = arguments["preprocess"] + " --pe-mode 1"
 
 if "index" not in arguments:
     arguments["index"] = "-t %d" % (num_threads)
@@ -326,8 +394,10 @@ input = preprocessPipeline(rawInputFiles)
 
 # Run the remaining requested commands
 for task in commandList:
-    if task == "rmdup":
-        input = rmdupPipeline(input)
+    if task == "rmdup-se":
+        input = rmdupSEPipeline(input)
+    elif task == "rmdup-pe":
+        input = rmdupPEPipeline(input)
     elif task == "correct":
         input = correctionPipeline(input)
     elif task == "assemble":
