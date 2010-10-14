@@ -62,19 +62,28 @@ def stub(name, inFile, outFile):
 
 # Run a shell command
 def runCmd(cmd):
-    print '===\n', cmd, '\n==='
-    subprocess.Popen(cmd, shell=True).wait()
+    global silent
+    global log
+    if not silent:
+        print '===\n', cmd, '\n==='
+    subprocess.Popen(cmd, shell=True, stderr=log, stdout=log).wait()
 
 #
 def usage():
     print 'usage: sga-pipeline [options] <input files>'
     print 'run the sga assembly pipeline'
     print 'Options:'
-    print '       --name=STR          Use STR as the basename for the output files'
+    print '       --name=STR          Use STR as the basename for the output files.'
     print '       --tasks=STR         Perform the tasks listed in the comma-delimited STR. The possible tasks are'
     print '                           rmdup (remove duplicated sequences), correct (correct read errors) and assemble (build contigs)'
     print '                           The default task string is rmdup,correct,assemble'
     print '                           pipeline would be rmdup,correct,assemble'
+    #print '      --logging=STR        amount of logging to perform. STR must be one of silent, file, full'
+    #print '                           In "silent" mode, no output will be generated. In "file" mode (default), progress messages'
+    #print '                           are written to stdout and output from the programs is capture to <projectName>.log.'
+    #print '                           In "full" mode, program output is both captured to the file and printed to stdout.'
+    print ''
+    print 'Assembly parameters:'
     print '    -m,--min-overlap       Minimum overlap allowed between reads. Used in both the correction and overlap subprograms'
     print '    -e,--error-rate        Maximum error rate allowed between reads. Used in the correction subprogram'
     print '    -t,--num-threads       Number of threads to use.'
@@ -101,12 +110,12 @@ def sga_index(input, args):
 
 def sga_rmdup(input, output, args):
     global sga_bin
-    cmd = "%s rmdup %s -o %s %s" % (sga_bin, args, output, input)
+    cmd = "%s rmdup %s -o %s %s %s" % (sga_bin, args, output, input)
     runCmd(cmd)
 
 def sga_correct(input, output, args):
     global sga_bin
-    cmd = "%s correct %s -o %s %s" % (sga_bin, args, output, input)
+    cmd = "%s correct %s -o %s %s %s" % (sga_bin, args, output, input)
     runCmd(cmd)
 
 def sga_overlap(input, output, args):
@@ -286,8 +295,10 @@ num_threads = 1
 assembleArgs = ""
 correctArgs = ""
 projectName = ""
-paired = True
-taskString = "rmdup,correct,assemble"
+paired = False
+silent = False
+loggingStr = "file"
+taskString = "rmdup-se,correct,assemble"
 arguments = dict()
 
 try:
@@ -298,10 +309,10 @@ try:
                                                             "rmdup-args=", 
                                                             "correction-args=", 
                                                             "assemble-args=", 
-                                                            "force=",
-                                                            "target=",
+                                                            "paired",
                                                             "name=",
                                                             "tasks=",
+                                                            "logging=",
                                                             "help"])
 except getopt.GetoptError, err:
         print str(err)
@@ -327,8 +338,12 @@ for (oflag, oarg) in opts:
             arguments["assemble"] = oarg
         elif oflag == "--name":
             projectName = oarg
+        elif oflag == "--logging":
+            loggingStr = oarg
         elif oflag == "--tasks":
             taskString = oarg
+        elif oflag == "--paired":
+            paired = True
         elif oflag == '--help':
             usage()
             sys.exit(1)
@@ -342,24 +357,37 @@ if len(rawInputFiles) == 0:
     print 'Error, at least one input file must be specified'
     sys.exit(0)
 
-# If the task string contains a paired-end specific task,
-# force the paired flag to true
-if taskString.find("rmduppe") != -1 or taskString.find("connect") != -1:
-    paired = True
+# Set up the names of the input/output files per stage
+projectExtension = ".fa"
+if projectName == "":
+    projectName = getBasename(rawInputFiles[0])
+
+# Set the redirect argument. 
+logName = projectName + ".log"
+log = open(logName, 'aw')
 
 # Parse the command list 
 commandList = taskString.split(',')
 
-print 'Parameters: '
-print 'input files ', " ".join(rawInputFiles)
-print 'min overlap', str(min_overlap)
-print 'error rate',  str(error_rate)
-print 'num threads', str(num_threads)
-print 'tasks to run: ', " ".join(commandList)
-print 'paired mode: ', paired
+if not silent:
+    print 'Parameters: '
+    print 'input files ', " ".join(rawInputFiles)
+    print 'min overlap', str(min_overlap)
+    print 'error rate',  str(error_rate)
+    print 'num threads', str(num_threads)
+    print 'tasks to run: ', " ".join(commandList)
+    print 'paired mode: ', paired
+    print 'Output being written to', logName
+
+
+# If the task string contains a paired-end specific task,
+# force the paired flag to true
+if taskString.find("rmdup-pe") != -1 or taskString.find("connect") != -1:
+    paired = True
+
 # If the explicit arguments string was not set, generate the arguments
 if "preprocess" not in arguments:
-        arguments["preprocess"] = preprocessArgs = "-f 3"
+        arguments["preprocess"] = preprocessArgs = "-f 4"
 
 # Force the pe-mode flag on the preprocess arguments if we are in paired mode
 if paired and arguments["preprocess"].find("--pe-mode 1") == -1:
@@ -380,11 +408,6 @@ if "assemble" not in arguments:
 if "correct" not in arguments:
     arguments["correct"] = "-m %d -e %f -l 16 -t %d" % (min_overlap, error_rate, num_threads)
 
-# Set up the names of the input/output files per stage
-projectExtension = ".fa"
-if projectName == "":
-    projectName = getBasename(rawInputFiles[0])
-
 #
 # Perform the run
 #
@@ -394,6 +417,7 @@ input = preprocessPipeline(rawInputFiles)
 
 # Run the remaining requested commands
 for task in commandList:
+    task = task.strip()
     if task == "rmdup-se":
         input = rmdupSEPipeline(input)
     elif task == "rmdup-pe":
