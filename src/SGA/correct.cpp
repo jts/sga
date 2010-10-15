@@ -42,20 +42,20 @@ static const char *CORRECT_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -p, --prefix=PREFIX              use PREFIX for the names of the index files (default: prefix of the input file)\n"
-"      -o, --outfile=FILE               write the corrected reads to FILE\n"
+"      -o, --outfile=FILE               write the corrected reads to FILE (default: READSFILE.ec.fa)\n"
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "          --discard                    detect and discard low-quality reads\n"
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
-"                                       less memory at the cost of higher runtime. This value must be a power of 2. Default is 128\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      -a, --algorithm=STR              specify the correction algorithm to use. STR must be one of hybrid, kmer, overlap.\n"
 "                                       The default algorithm is hybrid which first attempts kmer correction, then performs\n"
 "                                       overlap correction on the remaining uncorrected reads.\n"
 "          --metrics=FILE               collect error correction metrics (error rate by position in read, etc) and write\n"
 "                                       them to FILE\n"
 "\nOverlap correction parameters:\n"
-"      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them overlapped\n"
-"      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
-"      -c, --conflict=INT               use INT as the threshold to detect a conflicted base in the multi-overlap\n"
+"      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them overlapped (default: 0.04)\n"
+"      -m, --min-overlap=LEN            minimum overlap required between two reads (default: 45)\n"
+"      -c, --conflict=INT               use INT as the threshold to detect a conflicted base in the multi-overlap (default: 5)\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
 "                                       is calculated to guarantee all overlaps with --error-rate differences are found.\n"
 "                                       This option removes the guarantee but will be (much) faster. As SGA can tolerate some\n"
@@ -65,10 +65,10 @@ static const char *CORRECT_USAGE_MESSAGE =
 "      -b, --branch-cutoff=N            stop the overlap search at N branches. This parameter is used to control the search time for\n"
 "                                       highly-repetitive reads. If the number of branches exceeds N, the search stops and the read\n"
 "                                       will not be corrected. This is not enabled by default.\n"
-"      -r, --rounds=NUM                 iteratively correct reads up to a maximum of NUM rounds. Default: 1 round of correction\n"
+"      -r, --rounds=NUM                 iteratively correct reads up to a maximum of NUM rounds (default: 1)\n"
 "\nKmer correction parameters:\n"
-"      -k, --kmer-size=N                The length of the kmer to use.\n"
-"      -x, --kmer-threshold=N           Attempt to correct kmers that are seen less than N times.\n"
+"      -k, --kmer-size=N                The length of the kmer to use. (default: 41)\n"
+"      -x, --kmer-threshold=N           Attempt to correct kmers that are seen less than N times. (default: 3)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -86,7 +86,7 @@ namespace opt
     static std::string metricsFile;
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
     
-    static double errorRate;
+    static double errorRate = 0.04;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
     static int seedStride = 0;

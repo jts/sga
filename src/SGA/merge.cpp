@@ -36,7 +36,7 @@ static const char *MERGE_USAGE_MESSAGE =
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "  -t, --threads=NUM                    use NUM threads to merge the indices (default: 1)\n"
-"  -p, --prefix=PREFIX                  write final index to file using PREFIX (the default is to concatenate the input filenames)\n"
+"  -p, --prefix=PREFIX                  write final index to files starting with PREFIX (the default is to concatenate the input filenames)\n"
 "  -r, --remove                         remove the original BWT, SAI and reads files after the merge\n"
 "  -g, --gap-array=N                    use N bits of storage for each element of the gap array. Acceptable values are 4,8,16 or 32. Lower\n"
 "                                       values can substantially reduce the amount of memory required at the cost of less predictable memory usage.\n"

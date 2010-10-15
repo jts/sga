@@ -61,8 +61,8 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -t, --threads=NUM                use NUM worker threads to compute the overlaps (default: no threading)\n"
-"      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned\n"
-"      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
+"      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned (default: exact matches only)\n"
+"      -m, --min-overlap=LEN            minimum overlap required between two reads (default: 45)\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -x, --exhaustive                 output all overlaps, including transitive edges\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
@@ -72,7 +72,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      -s, --seed-stride=LEN            force the seed stride to be LEN. This parameter will be ignored unless --seed-length\n"
 "                                       is specified (see above). This parameter defaults to the same value as --seed-length\n"
 "      -d, --sample-rate=N              sample the symbol counts every N symbols in the FM-index. Higher values use significantly\n"
-"                                       less memory at the cost of higher runtime. This value must be a power of 2. Default is 128\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =

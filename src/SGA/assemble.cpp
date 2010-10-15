@@ -37,13 +37,13 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -o, --out=FILE                   write the contigs to FILE (default: contigs.fa)\n"
 "      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
-"      -b, --bubble=N                   perform N bubble removal steps\n"
-"      -s, --smooth                     perform variation smoothing algorithm\n"
-"      -t, --trim=N                     trim terminal branches using N rounds\n"
-"      -c, --coverage=N                 remove edges that have junction-sequence coverage less than N. This can be used\n"
-"                                       to detect and remove chimeric reads\n"
+"      -b, --bubble=N                   perform N bubble removal steps (default: 3)\n"
+//"      -s, --smooth                     perform variation smoothing algorithm\n"
+"      -x, --cut-terminal=N             cut off terminal branches in N rounds (default: 10)\n"
+"      -c, --coverage=N                 remove edges that have junction-sequence coverage less than N. This is used\n"
+"                                       to detect and remove chimeric reads (default: not performed)\n"
 "      -r,--resolve-small=LEN           resolve small repeats using spanning overlaps when the difference between the shortest\n"
-"                                       and longest overlap is greater than LEN\n"
+"                                       and longest overlap is greater than LEN (default: not performed)\n"
 "      -a, --asqg-outfile=FILE          write the final graph to FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -51,7 +51,6 @@ namespace opt
 {
     static unsigned int verbose;
     static std::string asqgFile;
-    static std::string prefix;
     static std::string outFile;
     static std::string debugFile;
     static std::string asqgOutfile;
@@ -59,31 +58,30 @@ namespace opt
     static bool bEdgeStats = false;
     static bool bSmoothGraph = false;
     static int resolveSmallRepeatLen = -1;
-    static int numTrimRounds = 0;
-    static int numBubbleRounds = 0;
+    static int numTrimRounds = 10;
+    static int numBubbleRounds = 3;
     static int coverageCutoff = 0;
     static bool bValidate;
-    static bool bExact = false;
+    static bool bExact = true;
 }
 
-static const char* shortopts = "p:o:m:d:t:b:a:c:r:sv";
+static const char* shortopts = "p:o:m:d:b:a:c:r:x:sv";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT };
 
 static const struct option longopts[] = {
     { "verbose",        no_argument,       NULL, 'v' },
-    { "prefix",         required_argument, NULL, 'p' },
     { "out",            required_argument, NULL, 'o' },
     { "min-overlap",    required_argument, NULL, 'm' },
     { "debug-file",     required_argument, NULL, 'd' },
     { "bubble",         required_argument, NULL, 'b' },
-    { "trim",           required_argument, NULL, 't' },
+    { "cut-terminal",   required_argument, NULL, 'x' },
     { "asqg-outfile",   required_argument, NULL, 'a' },
     { "resolve-small",  required_argument, NULL, 'r' },    
     { "coverage",       required_argument, NULL, 'c' },    
     { "smooth",         no_argument,       NULL, 's' },    
-    { "edge-stats",     no_argument,       NULL, 'x' },
-    { "exact",          no_argument,       NULL, 'e' },
+    { "edge-stats",     no_argument,       NULL, OPT_EDGESTATS },
+    { "exact",          no_argument,       NULL, OPT_EXACT },
     { "help",           no_argument,       NULL, OPT_HELP },
     { "version",        no_argument,       NULL, OPT_VERSION },
     { "validate",       no_argument,       NULL, OPT_VALIDATE},
@@ -273,8 +271,8 @@ void assemble()
     pGraph->renameVertices("contig-");
 
     // Write the results
-    pGraph->writeDot("final.dot");
-    pGraph->writeASQG("final.asqg");
+    //pGraph->writeDot("final.dot");
+    pGraph->writeASQG("final-graph.asqg.gz");
     SGFastaVisitor av(opt::outFile);
     pGraph->visit(av);
     if(!opt::asqgOutfile.empty())
@@ -299,7 +297,6 @@ void parseAssembleOptions(int argc, char** argv)
         std::istringstream arg(optarg != NULL ? optarg : "");
         switch (c) 
         {
-            case 'p': arg >> opt::prefix; break;
             case 'o': arg >> opt::outFile; break;
             case 'm': arg >> opt::minOverlap; break;
             case 'd': arg >> opt::debugFile; break;
@@ -307,12 +304,12 @@ void parseAssembleOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case 'b': arg >> opt::numBubbleRounds; break;
             case 's': opt::bSmoothGraph = true; break;
-            case 't': arg >> opt::numTrimRounds; break;
+            case 'x': arg >> opt::numTrimRounds; break;
             case 'a': arg >> opt::asqgOutfile; break;
             case 'c': arg >> opt::coverageCutoff; break;
             case 'r': arg >> opt::resolveSmallRepeatLen; break;
-            case 'x': opt::bEdgeStats = true; break;
-            case 'e': opt::bExact = true; break;
+            case OPT_EXACT: opt::bExact = true; break;
+            case OPT_EDGESTATS: opt::bEdgeStats = true; break;
             case OPT_VALIDATE: opt::bValidate = true; break;
             case OPT_HELP:
                 std::cout << ASSEMBLE_USAGE_MESSAGE;

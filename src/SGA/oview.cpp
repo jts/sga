@@ -38,8 +38,8 @@ static const char *OVIEW_USAGE_MESSAGE =
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -i, --id=ID                      only show overlaps for read with ID\n"
-"      -m, --max-overhang=D             only show D overhanging bases of the alignments (default=6)\n"
-"      -d, --default-padding=D          pad the overlap lines with D characters (default=20)\n"
+"      -m, --max-overhang=D             only show D overhanging bases of the alignments (default: 6)\n"
+"      -d, --default-padding=D          pad the overlap lines with D characters (default: 20)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt

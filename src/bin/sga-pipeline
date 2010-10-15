@@ -403,7 +403,7 @@ if "overlap" not in arguments:
     arguments["overlap"] = "-m %d -t %d" % (min_overlap, num_threads)
 
 if "assemble" not in arguments:
-    arguments["assemble"] = "--exact -t 10 -b 10 -r 20"
+    arguments["assemble"] = "--exact -x 10 -b 10 -r 20"
 
 if "correct" not in arguments:
     arguments["correct"] = "-m %d -e %f -l 16 -t %d" % (min_overlap, error_rate, num_threads)

@@ -25,7 +25,7 @@
 #define RSAI_EXT ".rsai"
 
 // Default values
-#define DEFAULT_MIN_OVERLAP 25
+#define DEFAULT_MIN_OVERLAP 45
 #define DEFAULT_EXTRACT_LEN 100
 
 #endif

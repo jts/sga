@@ -39,8 +39,8 @@ static const char *SUBGRAPH_USAGE_MESSAGE =
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -o, --out=FILE                   write the subgraph to FILE (default: subgraph.asqg.gz)\n"
-"      -s, --size=NUM                   the size of the subgraph to extract, all vertices that are at most NUM hops\n"
-"                                       away from the root will be included. Default: 5\n"
+"      -s, --size=N                     the size of the subgraph to extract, all vertices that are at most N hops\n"
+"                                       away from the root will be included (default: 5)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt

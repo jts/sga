@@ -43,10 +43,10 @@ static const char *RMDUP_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -o, --out=FILE                   write the output to FILE (default: READFILE.rmdup.fa)\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
-"      -e, --error-rate                 the maximum error rate allowed to consider two sequences identical\n"
-"      -t, --threads=NUM                use NUM computation threads (default: 1)\n"
+"      -e, --error-rate                 the maximum error rate allowed to consider two sequences identical (default: exact matches required)\n"
+"      -t, --threads=N                  use N threads (default: 1)\n"
 "      -d, --sample-rate=N              sample the symbol counts every N symbols in the FM-index. Higher values use significantly\n"
-"                                       less memory at the cost of higher runtime. This value must be a power of 2. Default is 128\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =

@@ -44,8 +44,8 @@ static const char *CONNECT_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
-"      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them aligned\n"
-"      -m, --min-overlap=LEN            minimum overlap required between two reads\n"
+"      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them aligned (default: exact matches only)\n"
+"      -m, --min-overlap=LEN            minimum overlap required between two reads (default: 45)\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -o, --outfile=FILE               write the connected reads to FILE\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
@@ -67,7 +67,7 @@ namespace opt
     static std::string readsFile;
     static std::string outFile;
 
-    static double errorRate;
+    static double errorRate = 0.0f;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
     static int seedStride = 0;
