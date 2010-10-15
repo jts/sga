@@ -198,7 +198,7 @@ int preprocessMain(int argc, char** argv)
             SeqReader reader1(filename1, SRF_NO_VALIDATION);
             SeqReader reader2(filename2, SRF_NO_VALIDATION);
 
-            std::cerr << "Processing pe files" << filename1 << ", " << filename2 << "\n";
+            std::cerr << "Processing pe files " << filename1 << ", " << filename2 << "\n";
             SeqRecord record1;
             SeqRecord record2;
             while(reader1.get(record1) && reader2.get(record2))

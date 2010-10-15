@@ -66,7 +66,7 @@ def runCmd(cmd):
     global log
     if not silent:
         print '===\n', cmd, '\n==='
-    subprocess.Popen(cmd, shell=True, stderr=log, stdout=log).wait()
+    return subprocess.Popen(cmd, shell=True, stderr=log, stdout=log).wait()
 
 #
 def usage():
@@ -78,6 +78,7 @@ def usage():
     print '                           rmdup (remove duplicated sequences), correct (correct read errors) and assemble (build contigs)'
     print '                           The default task string is rmdup,correct,assemble'
     print '                           pipeline would be rmdup,correct,assemble'
+    print '       --skip-preprocess   skip the preprocessing step.'
     #print '      --logging=STR        amount of logging to perform. STR must be one of silent, file, full'
     #print '                           In "silent" mode, no output will be generated. In "file" mode (default), progress messages'
     #print '                           are written to stdout and output from the programs is capture to <projectName>.log.'
@@ -101,7 +102,8 @@ def usage():
 def sga_preprocess(input, output, args):
     global sga_bin
     cmd = "%s preprocess %s -o %s %s" % (sga_bin, args, output, input)
-    runCmd(cmd)
+    code = runCmd(cmd)
+    print 'preprocess returned ', str(code)
 
 def sga_index(input, args):
     global sga_bin
@@ -328,6 +330,7 @@ correctArgs = ""
 projectName = ""
 paired = False
 silent = False
+skipPreprocess = False
 loggingStr = "file"
 taskString = "rmdup-se,correct,assemble"
 arguments = dict()
@@ -342,6 +345,7 @@ try:
                                                             "connect-args=", 
                                                             "assemble-args=", 
                                                             "paired",
+                                                            "skip-preprocess",
                                                             "name=",
                                                             "tasks=",
                                                             "logging=",
@@ -378,6 +382,8 @@ for (oflag, oarg) in opts:
             taskString = oarg
         elif oflag == "--paired":
             paired = True
+        elif oflag == "--skip-preprocess":
+            skipPreprocess = True
         elif oflag == '--help':
             usage()
             sys.exit(1)
@@ -450,7 +456,11 @@ if "connect" not in arguments:
 #
 
 # We always first preprocess the data
-input = preprocessPipeline(rawInputFiles)
+input = ""
+if not skipPreprocess or len(rawInputFiles) > 1:
+    input = preprocessPipeline(rawInputFiles)
+else:
+    input = rawInputFiles[0]
 
 # Run the remaining requested commands
 for task in commandList:
