@@ -10,14 +10,14 @@
 #include "SeqReader.h"
 #include "Util.h"
 
-SeqReader::SeqReader(std::string filename) : m_fileHandle(filename.c_str())
+SeqReader::SeqReader(std::string filename)
 {
-    assertFileOpen(m_fileHandle, filename);
+    m_pHandle = createReader(filename);
 }
     
 SeqReader::~SeqReader()
 {
-    m_fileHandle.close();
+    delete m_pHandle;
 }
 
 // Extract an element from the file
@@ -28,9 +28,9 @@ bool SeqReader::get(SeqRecord& sr)
     const int MAX_WARN = 10;
     RecordType rt = RT_UNKNOWN;
     std::string header;
-    while(m_fileHandle.good())
+    while(m_pHandle->good())
     {
-        getline(m_fileHandle, header);
+        getline(*m_pHandle, header);
         if(header.empty())
             continue;
 
@@ -60,10 +60,10 @@ bool SeqReader::get(SeqRecord& sr)
     if(rt == RT_FASTA)
     {
         std::string temp;
-        while(m_fileHandle.good() && m_fileHandle.peek() != '>')
+        while(m_pHandle->good() && m_pHandle->peek() != '>')
         {
-            getline(m_fileHandle, temp);
-            if(m_fileHandle.good() && temp.size() > 0)
+            getline(*m_pHandle, temp);
+            if(m_pHandle->good() && temp.size() > 0)
                 seq.append(temp);
         }
 
@@ -74,9 +74,9 @@ bool SeqReader::get(SeqRecord& sr)
     else if(rt == RT_FASTQ)
     {
         std::string temp;
-        getline(m_fileHandle, seq);
-        getline(m_fileHandle, temp); //discard
-        getline(m_fileHandle, qual);
+        getline(*m_pHandle, seq);
+        getline(*m_pHandle, temp); //discard
+        getline(*m_pHandle, qual);
 
         // FASTQ is required to have 4 fields, we must not have hit the EOF by this point
         if(seq.size() != qual.size() && warn_count++ < MAX_WARN)
@@ -84,7 +84,7 @@ bool SeqReader::get(SeqRecord& sr)
             std::cerr << "Warning, FASTQ quality string is not the same length as the sequence string for read " << header << "\n";
             
         }
-        validRecord = seq.size() > 0 && qual.size() > 0 && !m_fileHandle.eof();
+        validRecord = seq.size() > 0 && qual.size() > 0 && !m_pHandle->eof();
     }
 
     if(validRecord)

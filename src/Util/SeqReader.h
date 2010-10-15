@@ -28,7 +28,7 @@ class SeqReader
         bool get(SeqRecord& sr);
 
     private:
-        std::ifstream m_fileHandle;
+        std::istream* m_pHandle;
 };
 
 #endif
