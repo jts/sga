@@ -91,7 +91,7 @@ This program is threaded. The output file is READS.asqg.gz by default.
 
 Assemble takes the output of the overlap step and constructs contigs. The output is in contigs.fa by default. Options
 exist for cleaning the graph before assembly which will substantially increase assembly continuity. 
-See the --trim, --bubble, --resolve-small options.
+See the --cut-terminal, --bubble, --resolve-small options.
 
 *** Workflow examples 
 
