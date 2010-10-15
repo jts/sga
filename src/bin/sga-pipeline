@@ -110,12 +110,12 @@ def sga_index(input, args):
 
 def sga_rmdup(input, output, args):
     global sga_bin
-    cmd = "%s rmdup %s -o %s %s %s" % (sga_bin, args, output, input)
+    cmd = "%s rmdup %s -o %s %s" % (sga_bin, args, output, input)
     runCmd(cmd)
 
 def sga_correct(input, output, args):
     global sga_bin
-    cmd = "%s correct %s -o %s %s %s" % (sga_bin, args, output, input)
+    cmd = "%s correct %s -o %s %s" % (sga_bin, args, output, input)
     runCmd(cmd)
 
 def sga_overlap(input, output, args):
