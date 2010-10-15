@@ -13,6 +13,7 @@
 #include "Timer.h"
 #include "SeqReader.h"
 #include "PrimerScreen.h"
+#include "Alphabet.h"
 
 static unsigned int DEFAULT_MIN_LENGTH = 40;
 static int LOW_QUALITY_PHRED_SCORE = 3;
@@ -52,7 +53,9 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "                                       this is most useful when used in conjunction with --quality-trim\n"
 "      -h, --hard-clip=INT              clip all reads to be length INT. In most cases it is better to use\n"
 "                                       the soft clip (quality-trim) option.\n"
-"      --permuteN                       If a basecall is N, randomly change it to one of ACGT instead of discarding the read.\n"
+"      --permute-ambiguous              If an ambiguous basecall is found randomly change it to one of possible bases\n"
+"                                       to allow the read to be kept. For example N will be changed to one of [ACGT],\n"
+"                                       M will be changed to [AC] and so on.\n"
 "                                       The quality value (if present) is not changed.\n"
 "      -s, --sample=FLOAT               Randomly sample reads or pairs with acceptance probability FLOAT.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -77,7 +80,7 @@ namespace opt
     static unsigned int peMode = 0;
     static double sampleFreq = 1.0f;
 
-    static bool bDiscardUncalled = true;
+    static bool bDiscardAmbiguous = true;
     static QualityScaling qualityScale = QS_SANGER;
 
     static bool bFilterGC = false;
@@ -91,20 +94,20 @@ static const char* shortopts = "o:q:m:h:p:s:f:vi";
 enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC };
 
 static const struct option longopts[] = {
-    { "verbose",       no_argument,       NULL, 'v' },
-    { "out",           required_argument, NULL, 'o' },
-    { "quality-trim",  required_argument, NULL, 'q' },
-    { "quality-filter",required_argument, NULL, 'f' },
-    { "pe-mode",       required_argument, NULL, 'p' },
-    { "hard-clip",     required_argument, NULL, 'h' },
-    { "min-length",    required_argument, NULL, 'm' },
-    { "sample",        required_argument, NULL, 's' },
-    { "quality-scale", required_argument, NULL, OPT_QSCALE},
-    { "min-gc",        required_argument, NULL, OPT_MINGC},
-    { "max-gc",        required_argument, NULL, OPT_MAXGC},
-    { "help",          no_argument,       NULL, OPT_HELP },
-    { "version",       no_argument,       NULL, OPT_VERSION },
-    { "permuteN",      no_argument,       NULL, OPT_PERMUTE },
+    { "verbose",                no_argument,       NULL, 'v' },
+    { "out",                    required_argument, NULL, 'o' },
+    { "quality-trim",           required_argument, NULL, 'q' },
+    { "quality-filter",         required_argument, NULL, 'f' },
+    { "pe-mode",                required_argument, NULL, 'p' },
+    { "hard-clip",              required_argument, NULL, 'h' },
+    { "min-length",             required_argument, NULL, 'm' },
+    { "sample",                 required_argument, NULL, 's' },
+    { "quality-scale",          required_argument, NULL, OPT_QSCALE},
+    { "min-gc",                 required_argument, NULL, OPT_MINGC},
+    { "max-gc",                 required_argument, NULL, OPT_MAXGC},
+    { "help",                   no_argument,       NULL, OPT_HELP },
+    { "version",                no_argument,       NULL, OPT_VERSION },
+    { "permute-ambiguous",      no_argument,       NULL, OPT_PERMUTE },
     { NULL, 0, NULL, 0 }
 };
 
@@ -138,8 +141,8 @@ int preprocessMain(int argc, char** argv)
     std::cerr << "MinGC: " << opt::minGC << "\n";
     std::cerr << "MaxGC: " << opt::maxGC << "\n";
     std::cerr << "Outfile: " << (opt::outFile.empty() ? "stdout" : opt::outFile) << "\n";
-    if(opt::bDiscardUncalled)
-        std::cerr << "Discarding sequences with uncalled bases\n";
+    if(opt::bDiscardAmbiguous)
+        std::cerr << "Discarding sequences with ambiguous bases\n";
     
     // Seed the RNG
     srand(time(NULL));
@@ -249,17 +252,28 @@ bool processRead(SeqRecord& record)
     ++s_numReadsRead;
     s_numBasesRead += seqStr.size();
 
-    // Check for uncalled bases
-    for(size_t i = 0; i < seqStr.size(); ++i)
+    // If ambiguity codes are present in the sequence
+    // and the user wants to keep them, we randomly
+    // select one of the DNA symbols from the set of
+    // possible bases
+    if(!opt::bDiscardAmbiguous)
     {
-        if(seqStr[i] == 'N' || seqStr[i] == '.')
+        for(size_t i = 0; i < seqStr.size(); ++i)
         {
-            if(!opt::bDiscardUncalled)
-                seqStr[i] = randomBase();
+            // Convert '.' to 'N'
+            if(seqStr[i] == '.')
+                seqStr[i] = 'N';
+
+            if(!IUPAC::isAmbiguous(seqStr[i]))
+                continue;
+
+            // Get the string of possible bases for this ambiguity code
+            std::string possibles = IUPAC::getPossibleSymbols(seqStr[i]);
+
+            // select one of the bases at random
+            int j = rand() % possibles.size();
+            seqStr[i] = possibles[j];
         }
-        
-        // Ensure base is upper case
-        seqStr[i] = toupper(seqStr[i]);
     }
 
     // Ensure sequence is entirely ACGT
@@ -405,7 +419,7 @@ void parsePreprocessOptions(int argc, char** argv)
             case 's': arg >> opt::sampleFreq; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
-            case OPT_PERMUTE: opt::bDiscardUncalled = false; break;
+            case OPT_PERMUTE: opt::bDiscardAmbiguous = false; break;
             case OPT_MINGC: arg >> opt::minGC; opt::bFilterGC = true; break;
             case OPT_MAXGC: arg >> opt::maxGC; opt::bFilterGC = true; break;
             case OPT_QSCALE:
