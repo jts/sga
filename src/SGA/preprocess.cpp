@@ -163,7 +163,7 @@ int preprocessMain(int argc, char** argv)
         {
             std::string filename = argv[optind++];
             std::cerr << "Processing " << filename << "\n";
-            SeqReader reader(filename);
+            SeqReader reader(filename, SRF_NO_VALIDATION);
             SeqRecord record;
 
             while(reader.get(record))
@@ -193,8 +193,8 @@ int preprocessMain(int argc, char** argv)
             std::string filename1 = argv[optind++];
             std::string filename2 = argv[optind++];
             
-            SeqReader reader1(filename1);
-            SeqReader reader2(filename2);
+            SeqReader reader1(filename1, SRF_NO_VALIDATION);
+            SeqReader reader2(filename2, SRF_NO_VALIDATION);
 
             std::cerr << "Processing pe files" << filename1 << ", " << filename2 << "\n";
             SeqRecord record1;
