@@ -128,6 +128,11 @@ def sga_assemble(input, output, args):
     cmd = "%s assemble %s -o %s %s" % (sga_bin, args, output, input)
     runCmd(cmd)
 
+def sga_connect(input, output, args):
+    global sga_bin
+    cmd = "%s connect %s -o %s %s" % (sga_bin, args, output, input)
+    runCmd(cmd)
+
 def sga_joinpairs(input, output):
     cmd = "sga-joinedpe --join -o %s %s" % (output, input)
     runCmd(cmd)
@@ -251,6 +256,32 @@ def correctionPipeline(inputFile):
     pipeline_run([correctPipelineCorrect], verbose=0)
     return correctOutput
 
+# pe connection pipeline
+def connectPipeline(inputFile):
+    global projectExtension
+    global arguments
+
+    # Input/Output names
+    fileBasename = getBasename(inputFile)
+    indexOutput = [fileBasename + ".bwt", fileBasename + ".rbwt", fileBasename + ".sai", fileBasename + ".rsai"]
+    connectInput = [inputFile, indexOutput]
+    connectOutput = fileBasename + ".connect" + projectExtension
+
+    # Task definitions
+    @files(inputFile, indexOutput, arguments["index"])
+    def connectPipelineIndex(input, output, args):
+        sga_index(input, args)
+ 
+    @follows(connectPipelineIndex)
+    @files(connectInput, connectOutput, arguments["connect"])
+    def connectPipelineConnect(input, output, args):
+        sga_connect(input[0], output, args)
+    
+    # Run the pipeline
+    pipeline_run([connectPipelineConnect], verbose=0)
+    return connectOutput
+
+
 # assembly pipeline
 def assemblePipeline(inputFile):
     global projectExtension
@@ -308,6 +339,7 @@ try:
                                                             "preprocess-args=", 
                                                             "rmdup-args=", 
                                                             "correction-args=", 
+                                                            "connect-args=", 
                                                             "assemble-args=", 
                                                             "paired",
                                                             "name=",
@@ -336,6 +368,8 @@ for (oflag, oarg) in opts:
             arguments["correct"] = oarg
         elif oflag == "--assemble-args":
             arguments["assemble"] = oarg
+        elif oflag == "--connect-args":
+            arguments["connect"] = oarg    
         elif oflag == "--name":
             projectName = oarg
         elif oflag == "--logging":
@@ -408,6 +442,9 @@ if "assemble" not in arguments:
 if "correct" not in arguments:
     arguments["correct"] = "-m %d -e %f -l 16 -t %d" % (min_overlap, error_rate, num_threads)
 
+if "connect" not in arguments:
+    arguments["connect"] = "-m %d -e 0.0 -t %d" % (min_overlap, num_threads)
+
 #
 # Perform the run
 #
@@ -424,6 +461,8 @@ for task in commandList:
         input = rmdupPEPipeline(input)
     elif task == "correct":
         input = correctionPipeline(input)
+    elif task == "connect":
+        input = connectPipeline(input)    
     elif task == "assemble":
         input = assemblePipeline(input)
     else:
