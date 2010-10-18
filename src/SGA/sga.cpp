@@ -25,18 +25,51 @@
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
 
-void printUsage();
+static const char *SGA_VERSION_MESSAGE =
+"String Graph Assembler (sga) Version " PACKAGE_VERSION "\n"
+"Written by Jared Simpson.\n"
+"\n"
+"Copyright 2009 Wellcome Trust Sanger Institute\n";
+
+static const char *SGA_USAGE_MESSAGE =
+"Program: " PACKAGE_NAME "\n"
+"Version: " PACKAGE_VERSION "\n"
+"Contact: " AUTHOR " [" PACKAGE_BUGREPORT "]\n"
+"Usage: " PROGRAM_BIN " <command> [options]\n\n"
+"Commands:\n"
+"           preprocess      filter and quality-trim reads\n"
+"           index           build the BWT and FM-index for a set of reads\n"
+"           merge           merge multiple BWT/FM-index files into a single index\n"
+"           rmdup           remove duplicated or identical reads from the data set\n"
+"           correct         correct sequencing errors in a set of reads\n"
+"           overlap         compute overlaps between reads\n"
+"           assemble        generate contigs from an assembly graph\n"
+"           oview           view overlap alignments\n"
+"           subgraph        extract a subgraph from a graph\n"
+"\nExperimental commands:\n"
+"           connect         resolve the complete sequence of a paired-end fragment\n"
+"           scaffold        generate ordered sets of contigs using distance estimates\n"
+"           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
+"\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 int main(int argc, char** argv)
 {
     if(argc <= 1)
-        printUsage();
+    {
+        std::cout << SGA_USAGE_MESSAGE;
+        return 0;
+    }
     else
     {
         std::string command(argv[1]);
         if(command == "help" || command == "--help")
         {
-            printUsage();
+            std::cout << SGA_USAGE_MESSAGE;
+            return 0;
+        }
+        else if(command == "version" || command == "--version")
+        {
+            std::cout << SGA_VERSION_MESSAGE;
             return 0;
         }
 
@@ -74,28 +107,4 @@ int main(int argc, char** argv)
     }
 
     return 0;
-}
-
-//
-void printUsage()
-{
-    std::cout << "Program: "  << PACKAGE_NAME << "\n";
-    std::cout << "Version: " << PACKAGE_VERSION << "\n";
-    std::cout << "Contact: " << AUTHOR << " [" << PACKAGE_BUGREPORT << "]\n";
-    std::cout << "Usage: " << PROGRAM_BIN << " <command> [options]\n\n";
-    std::cout << "Commands:\n";
-    std::cout << "           preprocess      filter and quality-trim reads\n";
-    std::cout << "           index           build the BWT and FM-index for a set of reads\n";
-    std::cout << "           merge           merge multiple BWT/FM-index files into a single index\n";
-    std::cout << "           rmdup           remove duplicated or identical reads from the data set\n";
-    std::cout << "           correct         correct sequencing errors in a set of reads\n";
-    std::cout << "           overlap         compute overlaps between reads\n";
-    std::cout << "           assemble        generate contigs\n";
-    std::cout << "           oview           view overlap alignments\n";
-    std::cout << "           subgraph        extract a subgraph from a graph\n";
-    std::cout << "\nExperimental commands:\n";
-    std::cout << "           connect         resolve the complete sequence of a paired-end fragment\n";
-    std::cout << "           scaffold        generate ordered sets of contigs using distance estimates\n";
-    std::cout << "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n";
-    std::cout << "\n";
 }
