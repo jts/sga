@@ -41,7 +41,12 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 //
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
-
+    ErrorCorrectResult result = correct(workItem);
+    return result;
+}
+    
+ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem)
+{
     switch(m_algorithm)
     {
         case ECA_HYBRID:

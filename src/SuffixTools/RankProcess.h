@@ -27,6 +27,9 @@ class RankProcess
         RankVector process(const SequenceWorkItem& item);
     
     private:
+
+        int64_t parseRankFromID(const std::string& id);
+
         const BWT* m_pBWT;
         bool m_doReverse;
         bool m_removeMode;

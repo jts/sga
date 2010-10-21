@@ -45,8 +45,7 @@ RankVector RankProcess::process(const SequenceWorkItem& workItem)
     if(m_removeMode)
     {
         // Parse the read index from the read id
-        std::stringstream ss(workItem.read.id);
-        ss >> rank;
+        rank = parseRankFromID(workItem.read.id);
     }
 
     out.push_back(rank);
@@ -82,6 +81,25 @@ RankVector RankProcess::process(const SequenceWorkItem& workItem)
     return out;
 }
 
+// Parse the rank of a read from its ID. This must be set by the process
+// which discards the read.
+int64_t RankProcess::parseRankFromID(const std::string& id)
+{
+    static const std::string rank_str = "seqrank=";
+    // Find the position of the rank expression in the string
+    size_t rank_pos = id.rfind(rank_str);
+    if(rank_pos == std::string::npos)
+    {
+        std::cout << "Error: rank token not found in the discarded read with id: " << id << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    assert(rank_pos + rank_str.length() < id.length());
+    std::stringstream rp(id.substr(rank_pos + rank_str.length()));
+    int64_t rank;
+    rp >> rank;
+    return rank;
+}
 //
 //
 //

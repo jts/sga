@@ -38,5 +38,6 @@ sga_SOURCES = sga.cpp \
 			  scaffold2fasta.cpp scaffold2fasta.h \
               connect.cpp connect.h \
               walk.cpp walk.h \
+              qc.cpp qc.h \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

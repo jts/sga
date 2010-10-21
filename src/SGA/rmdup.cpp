@@ -295,7 +295,7 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
                 // In the output fasta, we set the reads ID to be the index
                 // and record its old id in the fasta header.
                 std::stringstream newID;
-                newID << readIdx;
+                newID << item.id << ",seqrank=" << readIdx;
                 item.id = newID.str();
 
                 // Write some metadata with the fasta record

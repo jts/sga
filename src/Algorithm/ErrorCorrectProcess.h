@@ -60,7 +60,8 @@ class ErrorCorrectProcess
         ~ErrorCorrectProcess();
 
         ErrorCorrectResult process(const SequenceWorkItem& item);
-    
+        ErrorCorrectResult correct(const SequenceWorkItem& item);
+
     private:
         
         ErrorCorrectResult kmerCorrection(const SequenceWorkItem& item);

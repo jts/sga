@@ -230,6 +230,8 @@ void parseCorrectOptions(int argc, char** argv)
             case 'a': arg >> algo_str; break;
             case 'd': arg >> opt::sampleRate; break;
             case 'c': arg >> opt::conflictCutoff; break;
+            case 'k': arg >> opt::kmerLength; break;
+            case 'x': arg >> opt::kmerThreshold; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case 'b': arg >> opt::branchCutoff; break;
@@ -279,7 +281,7 @@ void parseCorrectOptions(int argc, char** argv)
         die = true;
     }
 
-    // Determine the correctiona algorithm to use
+    // Determine the correction algorithm to use
     if(!algo_str.empty())
     {
         if(algo_str == "hybrid")
