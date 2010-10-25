@@ -46,6 +46,8 @@ static const char *CONNECT_USAGE_MESSAGE =
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them aligned (default: exact matches only)\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads (default: 45)\n"
+"      -m, --max-distance=LEN           maximum expected distance between the PE reads (start to end). This option specifies\n"
+"                                       how long the search should proceed for. Default: 250\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -o, --outfile=FILE               write the connected reads to FILE\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
@@ -63,9 +65,12 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
+    static int maxDistance = 250;
+
     static std::string prefix;
     static std::string readsFile;
     static std::string outFile;
+    static std::string unconnectedFile = "unconnected.fa";
 
     static double errorRate = 0.0f;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
@@ -73,7 +78,7 @@ namespace opt
     static int seedStride = 0;
 }
 
-static const char* shortopts = "p:m:e:t:l:s:o:v";
+static const char* shortopts = "p:m:e:t:l:s:o:d:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS };
 
@@ -81,6 +86,7 @@ static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
     { "threads",     required_argument, NULL, 't' },
     { "min-overlap", required_argument, NULL, 'm' },
+    { "max-distance",required_argument, NULL, 'd' },
     { "outfile",     required_argument, NULL, 'o' },
     { "prefix",      required_argument, NULL, 'p' },
     { "error-rate",  required_argument, NULL, 'e' },
@@ -106,13 +112,14 @@ int connectMain(int argc, char** argv)
                                                          opt::seedStride, true);
     
     std::ostream* pWriter = createWriter(opt::outFile);
+    std::ostream* pUnconnectedWriter = createWriter(opt::unconnectedFile);
 
-    ConnectPostProcess postProcessor(pWriter);
+    ConnectPostProcess postProcessor(pWriter, pUnconnectedWriter);
 
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        ConnectProcess processor(pOverlapper, opt::minOverlap);
+        ConnectProcess processor(pOverlapper, opt::minOverlap, opt::maxDistance);
         SequenceProcessFramework::processSequencesSerial<SequenceWorkItemPair,
                                                          ConnectResult, 
                                                          ConnectProcess, 
@@ -124,7 +131,7 @@ int connectMain(int argc, char** argv)
         std::vector<ConnectProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ConnectProcess* pProcessor = new ConnectProcess(pOverlapper, opt::minOverlap);
+            ConnectProcess* pProcessor = new ConnectProcess(pOverlapper, opt::minOverlap, opt::maxDistance);
             processorVector.push_back(pProcessor);
         }
         
@@ -142,6 +149,7 @@ int connectMain(int argc, char** argv)
     delete pRBWT;
     delete pOverlapper;
     delete pWriter;
+    delete pUnconnectedWriter;
     delete pTimer;
 
     if(opt::numThreads > 1)
@@ -166,6 +174,7 @@ void parseConnectOptions(int argc, char** argv)
             case 'p': arg >> opt::prefix; break;
             case 'o': arg >> opt::outFile; break;
             case 'e': arg >> opt::errorRate; break;
+            case 'd': arg >> opt::maxDistance; break;
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
@@ -230,5 +239,6 @@ void parseConnectOptions(int argc, char** argv)
     if(opt::outFile.empty())
     {
         opt::outFile = opt::prefix + ".connect.fa";
+        opt::unconnectedFile = opt::prefix + ".single.fa";
     }
 }

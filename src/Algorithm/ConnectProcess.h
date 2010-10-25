@@ -29,7 +29,8 @@ class ConnectProcess
 {
     public:
         ConnectProcess(const OverlapAlgorithm* pOverlapper, 
-                       int minOverlap);
+                       int minOverlap,
+                       int maxDistance);
 
         ~ConnectProcess();
 
@@ -39,13 +40,14 @@ class ConnectProcess
 
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;
+        const int m_maxDistance;
 };
 
 // Write the results from the overlap step to an ASQG file
 class ConnectPostProcess
 {
     public:
-        ConnectPostProcess(std::ostream* pWriter);
+        ConnectPostProcess(std::ostream* pWriter, std::ostream* pUnconnectedWriter);
         ~ConnectPostProcess();
 
         void process(const SequenceWorkItemPair& workPair, const ConnectResult& result);
@@ -53,6 +55,8 @@ class ConnectPostProcess
     private:
 
         std::ostream* m_pWriter;
+        std::ostream* m_pUnconnectedWriter;
+
         int m_numPairsTotal;
         int m_numPairsResolved;
 };

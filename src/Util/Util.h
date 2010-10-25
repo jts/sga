@@ -60,7 +60,7 @@ struct SeqItem
 // SeqRecord is a id,sequence pair with an associated quality value
 struct SeqRecord
 {
-    SeqItem toSeqItem()
+    SeqItem toSeqItem() const
     {
         SeqItem r;
         r.id = id;
@@ -69,7 +69,7 @@ struct SeqRecord
     }
 
     // Write the sequence to the file handle. If the 
-    void write(std::ostream& out, const std::string& meta = "")
+    void write(std::ostream& out, const std::string& meta = "") const
     {
         // If there is a quality string write the record as fastq, otherwise fasta
         if(!qual.empty())
