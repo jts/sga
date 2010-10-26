@@ -20,4 +20,5 @@ libalgorithm_a_SOURCES = \
         OverlapTools.h OverlapTools.cpp \
 		DPAlignment.h DPAlignment.cpp \
         ConnectProcess.h ConnectProcess.cpp \
-        StringGraphGenerator.h StringGraphGenerator.cpp
+        StringGraphGenerator.h StringGraphGenerator.cpp \
+        StatsProcess.h StatsProcess.cpp

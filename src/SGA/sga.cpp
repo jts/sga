@@ -22,6 +22,7 @@
 #include "walk.h"
 #include "qc.h"
 #include "scaffold2fasta.h"
+#include "stats.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -49,6 +50,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           subgraph        extract a subgraph from a graph\n"
 "\n\nExperimental commands:\n"
 "           qc              detect and discard reads that could be problematic for the assembly\n"
+"           stats           print useful statistics about the read set\n"
 "           connect         resolve the complete sequence of a paired-end fragment\n"
 "           scaffold        generate ordered sets of contigs using distance estimates\n"
 "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
@@ -83,6 +85,8 @@ int main(int argc, char** argv)
             mergeMain(argc - 1, argv + 1);
         else if(command == "qc")
             qcMain(argc - 1, argv + 1);
+        else if(command == "stats")
+            statsMain(argc - 1, argv + 1);
         else if(command == "rmdup")
             rmdupMain(argc - 1, argv + 1);
         else if(command == "overlap")

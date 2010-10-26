@@ -39,5 +39,6 @@ sga_SOURCES = sga.cpp \
               connect.cpp connect.h \
               walk.cpp walk.h \
               qc.cpp qc.h \
+              stats.cpp stats.h \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 
