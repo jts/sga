@@ -113,6 +113,9 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
         // Convert the overlap block list into a multi-overlap 
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
 
+        if(m_printOverlaps)
+            mo.print();
+
         result.num_prefix_overlaps = 0;
         result.num_suffix_overlaps = 0;
         mo.countOverlaps(result.num_prefix_overlaps, result.num_suffix_overlaps);

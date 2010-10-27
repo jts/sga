@@ -256,16 +256,21 @@ void parseGmapHits(const StringVector& hitsFilenames)
 
             bool matched = false;
             bool multimatch = matchedReads.size() > 1;
+            
+            // Build the output record
+            GmapRecord record;
+            record.readID = id;
+            record.readSeq = sequence;
+            record.mappedID = "-";
+            record.isRC = false;
 
-            std::string outVertex = "-";
-            bool isRC = false;
             if(matchedReads.size() == 1)
             {
-                outVertex = matchedReads.front().id;
-                if(outVertex == id)
-                    isRC = false;
+                record.mappedID = matchedReads.front().id;
+                if(record.mappedID == id)
+                    record.isRC = false;
                 else
-                    isRC = matchedReads.front().isRC;
+                    record.isRC = matchedReads.front().isRC;
 
                 matched = true;
                 numMapped += 1;
@@ -273,11 +278,10 @@ void parseGmapHits(const StringVector& hitsFilenames)
             else if(matchedReads.size() > 1)
             {
                 multimatch = true;
-                outVertex = "MM";
+                record.mappedID = "MM";
             }
 
-            // Build the output record
-            *pWriter << id << "\t" << sequence << "\t" << outVertex << "\t" << isRC << "\n";
+            *pWriter << record << "\n";
         }
         delete pReader;
 
