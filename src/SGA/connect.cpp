@@ -30,6 +30,7 @@
 
 // Struct
 // Functions
+void markWalkVertices(SGWalk& walk, GraphColor color);
 
 //
 // Getopt
@@ -65,6 +66,9 @@ namespace opt
     static int numThreads = 1;
     static int maxDistance = 250;
     
+    static bool bWriteCovered = true;
+    static bool bWriteUnresolved = false;
+
     static std::string outFile;
     static std::string unconnectedFile = "unconnected.fa";
     static std::string asqgFile;
@@ -85,6 +89,59 @@ static const struct option longopts[] = {
     { NULL, 0, NULL, 0 }
 };
 
+// Visit every vertex in the graph and write out
+// the vertices that were covered by a path but not
+// resolved
+struct CoveredVertexVisitor
+{
+
+    CoveredVertexVisitor(std::ostream* pWriter) : m_pWriter(pWriter), resolved(0), internal(0), not_used(0) {}
+    ~CoveredVertexVisitor()
+    {
+        std::cout << "Resolved: " << resolved << "\n";
+        std::cout << "Internal: " << internal << "\n";
+        std::cout << "Not used: " << not_used << "\n";
+    }
+
+    // not used
+    void previsit(StringGraph*) {}
+    void postvisit(StringGraph*) {}
+
+    //
+    bool visit(StringGraph*, Vertex* pX)
+    {
+        if(pX->getColor() == GC_BLACK)
+        {
+            resolved += 1;
+        }
+
+        if(pX->getColor() == GC_WHITE)
+        {
+            not_used += 1;
+        }
+
+        if(pX->getColor() == GC_RED)
+        {
+            SeqRecord record;
+            record.id = pX->getID();
+            record.seq = pX->getSeq().toString();
+            record.write(*m_pWriter);
+            internal += 1;
+        }
+
+        return false;
+    }
+
+    int getNumWrote() const { return internal; }
+
+    //
+    std::ostream* m_pWriter;
+    int resolved;
+    int internal;
+    int not_used;
+
+};
+
 //
 // Main
 //
@@ -103,6 +160,8 @@ int connectMain(int argc, char** argv)
     
     int numPairsAttempted = 0;
     int numPairsResolved = 0;
+    int numUnresolvedWrote = 0;
+    int numCoveredWrote = 0;
 
     while(*pReader >> record1)
     {
@@ -130,6 +189,16 @@ int connectMain(int argc, char** argv)
         SGWalkVector walks;
         SGSearch::findWalks(pX, pY, walkDirection, opt::maxDistance, 10000, walks);
 
+        // Mark used vertices in the graph
+        // If the entire path was resolved by a single walk, mark black
+        // otherwise mark as red
+        GraphColor used_color = (walks.size() == 1) ? GC_BLACK : GC_RED;
+
+        for(size_t i = 0; i < walks.size(); i +=1 )
+        {
+            markWalkVertices(walks[i], used_color);
+        }
+
         if(walks.size() == 1)
         {
             SeqRecord resolved;
@@ -137,8 +206,11 @@ int connectMain(int argc, char** argv)
             resolved.seq = walks.front().getString(SGWT_START_TO_END);
             resolved.write(*pWriter);
             numPairsResolved += 1;
+            
+            // Mark all the vertices in this walk as resolved
+            markWalkVertices(walks.front(), GC_BLACK);
         }
-        else
+        else if(opt::bWriteUnresolved)
         {
             // Write the unconnected reads
             SeqRecord unresolved1;
@@ -151,11 +223,21 @@ int connectMain(int argc, char** argv)
 
             unresolved1.write(*pWriter);
             unresolved2.write(*pWriter);
+
+            numUnresolvedWrote += 2;
         }
         numPairsAttempted += 1;
 
         if(numPairsAttempted % 50000 == 0)
             printf("[sga connect] Processed %d pairs\n", numPairsAttempted);
+    }
+
+    //
+    if(opt::bWriteCovered)
+    {
+        CoveredVertexVisitor cvv(pWriter);
+        pGraph->visit(cvv);
+        numCoveredWrote += cvv.getNumWrote();
     }
 
     double proc_time_secs = pTimer->getElapsedWallTime();
@@ -164,12 +246,27 @@ int connectMain(int argc, char** argv)
             (double)numPairsResolved / numPairsAttempted,
             proc_time_secs,
             numPairsAttempted / proc_time_secs);
+    
+    printf("Wrote %d unconnected pairs\n", numUnresolvedWrote);
+    printf("Wrote %d reads that were covered by a path but not full resolved\n", numCoveredWrote);
 
     delete pTimer;
     delete pGraph;
     delete pReader;
     delete pWriter;
     return 0;
+}
+
+// Mark all the vertices in the walk as color 
+// unless they are already black (we never change from black->red)
+void markWalkVertices(SGWalk& walk, GraphColor color)
+{
+    VertexPtrVec verts = walk.getVertices();
+    for(size_t i = 0; i < verts.size(); ++i)
+    {
+        if(verts[i]->getColor() != GC_BLACK)
+            verts[i]->setColor(color);
+    }
 }
 
 // 

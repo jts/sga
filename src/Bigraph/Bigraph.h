@@ -35,6 +35,7 @@ typedef bool(*VertexVisitFunction)(Bigraph*, Vertex*);
 typedef EdgePtrVec Path; // alias
 typedef std::vector<Path> PathVector;
 typedef std::vector<VertexID> VertexIDVec;
+typedef std::vector<Vertex*> VertexPtrVec;
 
 class Bigraph
 {

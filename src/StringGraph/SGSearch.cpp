@@ -11,7 +11,7 @@
 #include <queue>
 
 //
-SGWalk::SGWalk(const Vertex* pStartVertex, bool bIndexWalk) : m_pStartVertex(pStartVertex), m_extensionDistance(0)
+SGWalk::SGWalk(Vertex* pStartVertex, bool bIndexWalk) : m_pStartVertex(pStartVertex), m_extensionDistance(0)
 {
     if(bIndexWalk)
         m_pWalkIndex = new WalkIndex;
@@ -75,6 +75,12 @@ void SGWalk::addEdge(Edge* pEdge)
 void SGWalk::popLast()
 {
     m_edges.pop_back();
+}
+
+// 
+Vertex* SGWalk::getStartVertex() const
+{
+    return m_pStartVertex;
 }
 
 //
@@ -204,6 +210,16 @@ Edge* SGWalk::getEdge(size_t idx) const
     return m_edges[idx];
 }
 
+//
+VertexPtrVec SGWalk::getVertices() const
+{
+    VertexPtrVec out;
+    out.push_back(m_pStartVertex);
+    for(EdgePtrVec::const_iterator iter = m_edges.begin(); iter != m_edges.end(); ++iter)
+        out.push_back((*iter)->getEnd());
+    return out;
+}
+
 // 
 void SGWalk::print() const
 {
@@ -220,7 +236,7 @@ void SGWalk::print() const
 }   
 
 // Find all the walks between pX and pY that are within maxDistance
-void SGSearch::findWalks(const Vertex* pX, const Vertex* pY, EdgeDir initialDir,
+void SGSearch::findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
                          int maxDistance, size_t maxQueue, SGWalkVector& outWalks)
 {
     // Create the initial path nodes
@@ -270,7 +286,7 @@ void SGSearch::findWalks(const Vertex* pX, const Vertex* pY, EdgeDir initialDir,
 
 // Return a set of walks that all start from pX and join together at some later vertex
 // If no such walk exists, an empty set is returned
-void SGSearch::findCollapsedWalks(const Vertex* pX, EdgeDir initialDir, 
+void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir, 
                                   int maxDistance, size_t maxQueue, 
                                   SGWalkVector& outWalks)
 {
@@ -416,7 +432,7 @@ int SGSearch::countSpanningCoverage(Edge* pXY, size_t maxQueue)
 }
 
 //
-void SGSearch::initializeWalkQueue(const Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue)
+void SGSearch::initializeWalkQueue(Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue)
 {
     EdgePtrVec edges = pX->getEdges(initialDir);
     for(size_t i = 0; i < edges.size(); ++i)

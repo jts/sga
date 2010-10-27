@@ -25,7 +25,7 @@ class SGWalk
 {
     public:
         
-        SGWalk(const Vertex* pStartVertex, bool bIndexWalk = false);
+        SGWalk(Vertex* pStartVertex, bool bIndexWalk = false);
         SGWalk(const SGWalk& other);
 
         ~SGWalk();
@@ -36,6 +36,8 @@ class SGWalk
         void addEdge(Edge* pEdge);
         void popLast();
 
+        VertexPtrVec getVertices() const;
+        Vertex* getStartVertex() const;
         Edge* getLastEdge() const;
         Edge* getEdge(size_t idx) const;
         size_t getNumEdges() const;
@@ -60,7 +62,7 @@ class SGWalk
 
     private:
         
-        const Vertex* m_pStartVertex;
+        Vertex* m_pStartVertex;
         EdgePtrVec m_edges;
         
         typedef std::set<VertexID> WalkIndex;
@@ -81,10 +83,10 @@ typedef std::deque<SGWalk> WalkQueue;
 namespace SGSearch
 {
     //
-    void findWalks(const Vertex* pX, const Vertex* pY, EdgeDir initialDir,
+    void findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
                    int maxDistance, size_t maxQueue, SGWalkVector& outWalks);
 
-    void findCollapsedWalks(const Vertex* pX, EdgeDir initialDir, 
+    void findCollapsedWalks(Vertex* pX, EdgeDir initialDir, 
                             int maxDistance, size_t maxQueue, 
                             SGWalkVector& outWalks);
 
@@ -93,7 +95,7 @@ namespace SGSearch
     int countSpanningCoverage(Edge* pXY, size_t maxQueue);
 
     //
-    void initializeWalkQueue(const Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue);
+    void initializeWalkQueue(Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue);
     bool extendWalk(const Vertex* pX, EdgeDir dir, SGWalk& currWalk, WalkQueue& queue);
 };
 
