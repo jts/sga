@@ -20,6 +20,7 @@
 #include "scaffold.h"
 #include "connect.h"
 #include "walk.h"
+#include "gmap.h"
 #include "qc.h"
 #include "scaffold2fasta.h"
 #include "stats.h"
@@ -97,6 +98,8 @@ int main(int argc, char** argv)
             assembleMain(argc - 1, argv + 1);
         else if(command == "connect")
             connectMain(argc - 1, argv + 1);
+        else if(command == "gmap")
+            gmapMain(argc - 1, argv + 1);
         else if(command == "subgraph")
             subgraphMain(argc - 1, argv + 1);
         else if(command == "walk")

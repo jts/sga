@@ -170,19 +170,15 @@ void OverlapAlgorithm::writeResultASQG(std::ostream& writer, const SeqRecord& re
 // Write overlap blocks out to a file
 void OverlapAlgorithm::writeOverlapBlocks(std::ostream& writer, size_t readIdx, bool isSubstring, const OverlapBlockList* pList) const
 {
-    // Write the hits to the file
-    if(!pList->empty())
+    // Write the header info
+    size_t numBlocks = pList->size();
+    writer << readIdx << " " << isSubstring << " " << numBlocks << " ";
+    //std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
+    for(OverlapBlockList::const_iterator iter = pList->begin(); iter != pList->end(); ++iter)
     {
-        // Write the header info
-        size_t numBlocks = pList->size();
-        writer << readIdx << " " << isSubstring << " " << numBlocks << " ";
-        //std::cout << "<Wrote> idx: " << count << " count: " << numBlocks << "\n";
-        for(OverlapBlockList::const_iterator iter = pList->begin(); iter != pList->end(); ++iter)
-        {
-            writer << *iter << " ";
-        }
-        writer << "\n";
+        writer << *iter << " ";
     }
+    writer << "\n";
 }
 
 // Calculate the ranges in pBWT that contain a prefix of at least minOverlap basepairs that

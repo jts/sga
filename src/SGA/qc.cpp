@@ -51,7 +51,7 @@ static const char *QC_USAGE_MESSAGE =
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      -k, --kmer-size=N                The length of the kmer to use. (default: 27)\n"
-"      -x, --kmer-threshold=N           Attempt to correct kmers that are seen less than N times. (default: 3)\n"
+"      -x, --kmer-threshold=N           Require at least N kmer coverage for each kmer in a read. (default: 3)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =

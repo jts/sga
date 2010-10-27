@@ -40,5 +40,6 @@ sga_SOURCES = sga.cpp \
               walk.cpp walk.h \
               qc.cpp qc.h \
               stats.cpp stats.h \
+              gmap.h gmap.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

@@ -267,6 +267,9 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
         }
 
         delete pReader;
+
+        // delete the hits file
+        unlink(iter->c_str());
     }
 
     // Delete allocated data

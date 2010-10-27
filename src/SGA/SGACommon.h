@@ -15,6 +15,7 @@
 #define OVR_EXT ".ovr"
 #define HITS_EXT ".hits"
 #define RMDUPHITS_EXT ".rmhits"
+#define GMAPHITS_EXT ".gmhits"
 #define CTN_EXT ".ctn"
 #define ASQG_EXT ".asqg"
 #define SA_EXT ".sa"

@@ -4,12 +4,13 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// rmdup - remove duplicated reads from the data set
+// gmap - Map sequences to the vertices of a graph
 //
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include "Util.h"
-#include "rmdup.h"
+#include "gmap.h"
 #include "overlap.h"
 #include "Timer.h"
 #include "SGACommon.h"
@@ -18,30 +19,30 @@
 #include "RmdupProcess.h"
 #include "BWTDiskConstruction.h"
 
-// functions
-size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& readsFile, 
+//
+size_t computeGmapHitsSerial(const std::string& prefix, const std::string& readsFile, 
                               const OverlapAlgorithm* pOverlapper, StringVector& filenameVec);
- 
-size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
-                                const OverlapAlgorithm* pOverlapper, StringVector& filenameVec);
 
+size_t computeGmapHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
+                               const OverlapAlgorithm* pOverlapper, StringVector& filenameVec);
 //
 // Getopt
 //
-#define SUBPROGRAM "rmdup"
-static const char *RMDUP_VERSION_MESSAGE =
+#define SUBPROGRAM "gmap"
+static const char *GMAP_VERSION_MESSAGE =
 SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Written by Jared Simpson.\n"
 "\n"
 "Copyright 2010 Wellcome Trust Sanger Institute\n";
 
-static const char *RMDUP_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READFILE\n"
-"Remove duplicate reads from the data set.\n"
+static const char *GMAP_USAGE_MESSAGE =
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... TARGETS QUERYS\n"
+"Map the reads in QUERYS to the reads in TARGETS. TARGETS must be indexed\n"
+"Used to place reads that were rmdup'd onto a graph.\n"
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"      -o, --out=FILE                   write the output to FILE (default: READFILE.rmdup.fa)\n"
+"      -o, --out=FILE                   write the output to FILE (default: READFILE.gmap)\n"
 "      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences identical (default: exact matches required)\n"
 "      -t, --threads=N                  use N threads (default: 1)\n"
@@ -58,10 +59,9 @@ namespace opt
     static std::string prefix;
     static std::string outFile;
     static std::string readsFile;
+    static std::string targetsFile;
     static unsigned int numThreads;
     static double errorRate;
-    static bool bReindex = true;
-    static int gapArrayStorage = 4;
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
 }
 
@@ -84,11 +84,11 @@ static const struct option longopts[] = {
 //
 // Main
 //
-int rmdupMain(int argc, char** argv)
+int gmapMain(int argc, char** argv)
 {
-    Timer* pTimer = new Timer("sga rmdup");
-    parseRmdupOptions(argc, argv);
-    rmdup();
+    Timer* pTimer = new Timer("sga gmap");
+    parseGmapOptions(argc, argv);
+    gmap();
     delete pTimer;
 
     if(opt::numThreads > 1)
@@ -96,7 +96,7 @@ int rmdupMain(int argc, char** argv)
     return 0;
 }
 
-void rmdup()
+void gmap()
 {
     StringVector hitsFilenames;
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
@@ -109,12 +109,12 @@ void rmdup()
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
-        count = computeRmdupHitsSerial(opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
+        count = computeGmapHitsSerial(opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
     }
     else
     {
         printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        count = computeRmdupHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
+        count = computeGmapHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
     }
 
     delete pOverlapper;
@@ -122,24 +122,15 @@ void rmdup()
     delete pRBWT;
     delete pTimer;
 
-    std::string out_prefix = stripFilename(opt::outFile);
-    std::string dupsFile = parseDupHits(hitsFilenames, out_prefix);
-
-    // Rebuild the indices without the duplicated sequences
-    if(opt::bReindex)
-    {
-        std::cout << "Rebuilding indices without duplicated reads\n";
-        removeReadsFromIndices(opt::prefix, dupsFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
-        removeReadsFromIndices(opt::prefix, dupsFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
-    }
+    parseGmapHits(hitsFilenames);
 }
 
 // Compute the hits for each read in the input file without threading
 // Return the number of reads processed
-size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& readsFile, 
+size_t computeGmapHitsSerial(const std::string& prefix, const std::string& readsFile, 
                               const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
-    std::string filename = prefix + RMDUPHITS_EXT + GZIP_EXT;
+    std::string filename = prefix + GMAPHITS_EXT + GZIP_EXT;
     filenameVec.push_back(filename);
 
     RmdupProcess processor(filename, pOverlapper);
@@ -158,7 +149,7 @@ size_t computeRmdupHitsSerial(const std::string& prefix, const std::string& read
 // pass this to the SequenceProcessFragmework which wraps the processes
 // in threads and distributes the reads to each thread.
 // The number of reads processsed is returned
-size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
+size_t computeGmapHitsParallel(int numThreads, const std::string& prefix, const std::string& readsFile, 
                                 const OverlapAlgorithm* pOverlapper, StringVector& filenameVec)
 {
     std::string filename = prefix + RMDUPHITS_EXT + GZIP_EXT;
@@ -167,7 +158,7 @@ size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const
     for(int i = 0; i < numThreads; ++i)
     {
         std::stringstream ss;
-        ss << prefix << "-thread" << i << RMDUPHITS_EXT << GZIP_EXT;
+        ss << prefix << "-thread" << i << GMAPHITS_EXT << GZIP_EXT;
         std::string outfile = ss.str();
         filenameVec.push_back(outfile);
         RmdupProcess* pProcessor = new RmdupProcess(outfile, pOverlapper);
@@ -187,7 +178,7 @@ size_t computeRmdupHitsParallel(int numThreads, const std::string& prefix, const
     return numProcessed;
 }
 
-std::string parseDupHits(const StringVector& hitsFilenames, const std::string& out_prefix)
+void parseGmapHits(const StringVector& hitsFilenames)
 {
     // Load the suffix array index and the reverse suffix array index
     // Note these are not the full suffix arrays
@@ -195,148 +186,104 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
     SuffixArray* pRevSAI = new SuffixArray(opt::prefix + RSAI_EXT);
 
     // Load the read table and output the initial vertex set, consisting of all the reads
-    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings());
+    ReadInfoTable* pRIT = new ReadInfoTable(opt::targetsFile, pFwdSAI->getNumStrings());
 
-    std::string outFile = out_prefix + ".fa";
-    std::string dupFile = out_prefix + ".dups.fa";
-    std::ostream* pWriter = createWriter(outFile);
-    std::ostream* pDupWriter = createWriter(dupFile);
-
-    size_t substringRemoved = 0;
-    size_t identicalRemoved = 0;
-    size_t kept = 0;
-    size_t buffer_size = SequenceProcessFramework::BUFFER_SIZE;
-
-    // The reads must be output in their original ordering.
-    // The hits are in the blocks of buffer_size items. We read
-    // buffer_size items from the first hits file, then buffer_size
-    // from the second and so on until all the hits have been processed.
+    std::ostream* pWriter = createWriter(opt::outFile);
+    int numRead = 0;
+    int numMapped = 0;
     size_t num_files = hitsFilenames.size();
-    std::vector<std::istream*> reader_vec(num_files, 0);
 
     for(size_t i = 0; i < num_files; ++i)
     {
         std::cout << "Opening " << hitsFilenames[i] << "\n";
-        reader_vec[i] = createReader(hitsFilenames[i]);
-    }
+        std::istream* pReader = createReader(hitsFilenames[i]);
+        std::string line;
 
-    bool done = false;
-    size_t currReaderIdx = 0;
-    size_t numRead = 0;
-    size_t numReadersDone = 0;
-    std::string line;
-
-    while(!done)
-    {
-        // Parse a line from the current file
-        bool valid = getline(*reader_vec[currReaderIdx], line);
-        ++numRead;
-        // Deal with switching the active reader and the end of files
-        if(!valid || numRead == buffer_size)
+        while(getline(*pReader, line))
         {
-            // Switch the reader
-            currReaderIdx = (currReaderIdx + 1) % num_files;
-            numRead = 0;
-
-            // Break once all the readers are invalid
-            if(!valid)
-            {
-                ++numReadersDone;
-                if(numReadersDone == num_files)
-                {
-                    done = true;
-                    break;
-                }
-            }
-        }
-
-        // Parse the data
-        if(valid)
-        {
+           ++numRead;
+            // Parse the hit
             std::string id;
             std::string sequence;
-            std::string hitsStr;
-            size_t readIdx;
-            bool isSubstring;
 
             std::stringstream parser(line);
             parser >> id;
             parser >> sequence;
+
+            // Parse the overlap blocks into the list of IDs that this read matches
+            std::string hitsStr;
             getline(parser, hitsStr);
 
-            OverlapVector ov;
-            OverlapCommon::parseHitsString(hitsStr, pRIT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
-            
-            bool isContained = false;
-            if(isSubstring)
+            StringVector matchedIDs;
+            size_t readIdx;
+            size_t numBlocks;
+            int isSubstring;
+            std::istringstream convertor(hitsStr);
+            convertor >> readIdx >> isSubstring >> numBlocks;
+
+            // Convert the blocks to IDs
+            for(size_t i = 0; i < numBlocks; ++i)
             {
-                ++substringRemoved;
-                isContained = true;
-            }
-            else
-            {
-                for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
+                // Read the block
+                OverlapBlock record;
+                convertor >> record;
+
+                // Iterate through the range and write the overlaps
+                for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
                 {
-                    if(iter->isContainment() && iter->getContainedIdx() == 0)
-                    {
-                        // This read is contained by some other read
-                        ++identicalRemoved;
-                        isContained = true;
-                        break;
-                    }
+                    const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
+                    int64_t saIdx = j;
+
+                    // The index of the second read is given as the position in the SuffixArray index
+                    const ReadInfo& targetInfo = pRIT->getReadInfo(pCurrSAI->get(saIdx).getID());
+                    matchedIDs.push_back(targetInfo.id);
                 }
             }
 
-            SeqItem item = {id, sequence};
-            if(isContained)
-            {
-                // The read's index in the sequence data base
-                // is needed when removing it from the FM-index.
-                // In the output fasta, we set the reads ID to be the index
-                // and record its old id in the fasta header.
-                std::stringstream newID;
-                newID << item.id << ",seqrank=" << readIdx;
-                item.id = newID.str();
+            // If the read is a palindrome it can match itself twice, remove duplicate IDs here
+            std::sort(matchedIDs.begin(), matchedIDs.end());
+            StringVector::iterator uniIter = std::unique(matchedIDs.begin(), matchedIDs.end());
+            matchedIDs.resize(uniIter - matchedIDs.begin());
+            
+            bool matched = false;
+            bool multimatch = matchedIDs.size() > 1;
 
-                // Write some metadata with the fasta record
-                std::stringstream meta;
-                meta << id << " NumOverlaps: " << ov.size();
-                item.write(*pDupWriter, meta.str());
-            }
-            else
+            std::string outVertex = "-";
+            if(matchedIDs.size() == 1)
             {
-                ++kept;
-                // Write the read
-                item.write(*pWriter);
+                outVertex = matchedIDs.front();
+                matched = true;
+                numMapped += 1;
             }
+            else if(matchedIDs.size() > 1)
+            {
+                multimatch = true;
+                outVertex = "MM";
+            }
+
+            // Build the output record
+            *pWriter << id << "\t" << sequence << "\t" << outVertex << "\n";
         }
-    }
+        delete pReader;
 
-    for(size_t i = 0; i < num_files; ++i)
-    {
-        delete reader_vec[i];
+        // Delete the hits file
         unlink(hitsFilenames[i].c_str());
     }
-
     
-    printf("[%s] Removed %zu substring reads\n", PROGRAM_IDENT, substringRemoved);
-    printf("[%s] Removed %zu identical reads\n", PROGRAM_IDENT, identicalRemoved);
-    printf("[%s] Kept %zu reads\n", PROGRAM_IDENT, kept);
+    std::cout << "Read: " << numRead << "\n";
+    std::cout << "Mapped: " << numMapped << "\n";
 
     // Delete allocated data
     delete pFwdSAI;
     delete pRevSAI;
     delete pRIT;
     delete pWriter;
-    delete pDupWriter;
-
-    return dupFile;
 }
 
 // 
 // Handle command line arguments
 //
-void parseRmdupOptions(int argc, char** argv)
+void parseGmapOptions(int argc, char** argv)
 {
     // Set defaults
     bool die = false;
@@ -352,21 +299,21 @@ void parseRmdupOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
-                std::cout << RMDUP_USAGE_MESSAGE;
+                std::cout << GMAP_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
             case OPT_VERSION:
-                std::cout << RMDUP_VERSION_MESSAGE;
+                std::cout << GMAP_VERSION_MESSAGE;
                 exit(EXIT_SUCCESS);
                 
         }
     }
 
-    if (argc - optind < 1) 
+    if (argc - optind < 2) 
     {
         std::cerr << SUBPROGRAM ": missing arguments\n";
         die = true;
     } 
-    else if (argc - optind > 1) 
+    else if (argc - optind > 2) 
     {
         std::cerr << SUBPROGRAM ": too many arguments\n";
         die = true;
@@ -379,16 +326,17 @@ void parseRmdupOptions(int argc, char** argv)
     }
 
     // Parse the input filenames
+    opt::targetsFile = argv[optind++];
     opt::readsFile = argv[optind++];
 
     if(opt::prefix.empty())
     {
-        opt::prefix = stripFilename(opt::readsFile);
+        opt::prefix = stripFilename(opt::targetsFile);
     }
 
     if(opt::outFile.empty())
     {
-        opt::outFile = stripFilename(opt::readsFile) + ".rmdup.fa";
+        opt::outFile = stripFilename(opt::readsFile) + ".gmap.gz";
     }
 }
 
