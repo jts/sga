@@ -19,6 +19,14 @@
 #include "RmdupProcess.h"
 #include "BWTDiskConstruction.h"
 
+struct GmapData
+{
+    std::string id;
+    bool isRC;
+};
+
+typedef std::vector<GmapData> GmapVector;
+
 //
 size_t computeGmapHitsSerial(const std::string& prefix, const std::string& readsFile, 
                               const OverlapAlgorithm* pOverlapper, StringVector& filenameVec);
@@ -214,7 +222,7 @@ void parseGmapHits(const StringVector& hitsFilenames)
             std::string hitsStr;
             getline(parser, hitsStr);
 
-            StringVector matchedIDs;
+            GmapVector matchedReads;
             size_t readIdx;
             size_t numBlocks;
             int isSubstring;
@@ -236,33 +244,40 @@ void parseGmapHits(const StringVector& hitsFilenames)
 
                     // The index of the second read is given as the position in the SuffixArray index
                     const ReadInfo& targetInfo = pRIT->getReadInfo(pCurrSAI->get(saIdx).getID());
-                    matchedIDs.push_back(targetInfo.id);
+
+                    // Avoid self-matches to the opposite strand for palindromes
+                    GmapData data = {targetInfo.id, record.flags.isReverseComplement()};
+                    if(data.id == id && data.isRC == true)
+                        continue;
+
+                    matchedReads.push_back(data);
                 }
             }
 
-            // If the read is a palindrome it can match itself twice, remove duplicate IDs here
-            std::sort(matchedIDs.begin(), matchedIDs.end());
-            StringVector::iterator uniIter = std::unique(matchedIDs.begin(), matchedIDs.end());
-            matchedIDs.resize(uniIter - matchedIDs.begin());
-            
             bool matched = false;
-            bool multimatch = matchedIDs.size() > 1;
+            bool multimatch = matchedReads.size() > 1;
 
             std::string outVertex = "-";
-            if(matchedIDs.size() == 1)
+            bool isRC = false;
+            if(matchedReads.size() == 1)
             {
-                outVertex = matchedIDs.front();
+                outVertex = matchedReads.front().id;
+                if(outVertex == id)
+                    isRC = false;
+                else
+                    isRC = matchedReads.front().isRC;
+
                 matched = true;
                 numMapped += 1;
             }
-            else if(matchedIDs.size() > 1)
+            else if(matchedReads.size() > 1)
             {
                 multimatch = true;
                 outVertex = "MM";
             }
 
             // Build the output record
-            *pWriter << id << "\t" << sequence << "\t" << outVertex << "\n";
+            *pWriter << id << "\t" << sequence << "\t" << outVertex << "\t" << isRC << "\n";
         }
         delete pReader;
 
