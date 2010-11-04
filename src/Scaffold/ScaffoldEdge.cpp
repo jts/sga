@@ -20,6 +20,13 @@ void ScaffoldEdge::setTwin(ScaffoldEdge* pTwin)
 }
 
 //
+void ScaffoldEdge::setLink(ScaffoldLink link)
+{
+    m_link = link;
+}
+
+//
+//
 VertexID ScaffoldEdge::getStartID() const
 {
     assert(m_pTwin != NULL);

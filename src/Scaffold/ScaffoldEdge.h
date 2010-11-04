@@ -23,6 +23,7 @@ class ScaffoldEdge
 
         //
         void setTwin(ScaffoldEdge* pEdge);
+        void setLink(ScaffoldLink link);
 
         //
         VertexID getStartID() const;
