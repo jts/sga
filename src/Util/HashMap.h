@@ -16,10 +16,13 @@
 #if HAVE_UNORDERED_MAP
 # include <unordered_map>
 # define HashMap std::unordered_map
+typedef std::hash<std::string> StringHasher;
 #elif HAVE_TR1_UNORDERED_MAP
 #include <tr1/unordered_map>
 #define HashMap std::tr1::unordered_map
+typedef std::tr1::hash<std::string> StringHasher;
 #elif HAVE_EXT_HASH_MAP
+#define USING_EXT_HASH_MAP 1
 # undef __DEPRECATED
 #include <ext/hash_map>
 #define HashMap __gnu_cxx::hash_map
@@ -27,20 +30,17 @@
 # error No hash map implementation found
 #endif
 
-// Define a string hasher if the unordered map was not found
-#if HAVE_UNORDERED_MAP || HAVE_TR1_UNORDERED_MAP
-#elif HAVE_EXT_HASH_MAP
-namespace __gnu_cxx                                                                              
-{                                                                                             
-  template<> struct hash< std::string >                                                       
-  {                                                                                           
-    size_t operator()( const std::string& x ) const                                           
-    {                                                                                         
-      return hash< const char* >()( x.c_str() );                                              
-    }                                                                                         
-  };                                                                                          
-}
-#endif
+# if USING_EXT_HASH_MAP
+# include <cstddef>
+# include <string>
+struct StringHasher
+{
+    size_t operator()( const std::string& x) const
+    {
+        return __gnu_cxx::hash<const char*>()( x.c_str());
+    }
+};
+#endif 
 
 // Ensure the sparse hash is available
 #if HAVE_GOOGLE_SPARSE_HASH_MAP

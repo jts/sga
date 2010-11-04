@@ -16,7 +16,7 @@
 #include "ScaffoldVertex.h"
 #include "HashMap.h"
 
-typedef SparseHashMap<VertexID, ScaffoldVertex*> ScaffoldVertexMap;
+typedef SparseHashMap<VertexID, ScaffoldVertex*, StringHasher> ScaffoldVertexMap;
 
 class ScaffoldGraph
 {
