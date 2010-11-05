@@ -185,8 +185,14 @@ void assemble()
     //std::cout << "Writing graph file\n";
     //pGraph->writeASQG("afterTR.asqg.gz");
 
+    /*
+    std::cout << "Performing initial simplification\n";
+    pGraph->simplify();
+    */
+
     std::cout << "Pre-remodelling graph stats\n";
     pGraph->visit(statsVisit);
+
 
     if(opt::numTrimRounds > 0)
     {
@@ -194,6 +200,8 @@ void assemble()
         int numTrims = opt::numTrimRounds;
         while(numTrims-- > 0)
            pGraph->visit(trimVisit);
+        std::cout << "After trimming stats\n";
+        pGraph->visit(statsVisit);
     }
 
     if(opt::resolveSmallRepeatLen >= 0)
