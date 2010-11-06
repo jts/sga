@@ -254,56 +254,6 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     return result;
 }
 
-//
-MultiOverlap ErrorCorrectProcess::blockListToMultiOverlap(const SeqRecord& record, OverlapBlockList& blockList)
-{
-    std::string read_idx = record.id;
-    std::string read_seq = record.seq.toString();
-    MultiOverlap out(read_idx, read_seq);
-
-    for(OverlapBlockList::iterator iter = blockList.begin(); iter != blockList.end(); ++iter)
-    {
-        std::string overlap_string = iter->getOverlapString(read_seq);
-
-        // Compute the endpoints of the overlap
-        int s1 = read_seq.length() - iter->overlapLen;
-        int e1 = s1 + iter->overlapLen - 1;
-        SeqCoord sc1(s1, e1, read_seq.length());
-
-        int s2 = 0; // The start of the second hit must be zero by definition of a prefix/suffix match
-        int e2 = s2 + iter->overlapLen - 1;
-        SeqCoord sc2(s2, e2, overlap_string.length());
-
-        // The coordinates are always with respect to the read, so flip them if
-        // we aligned to/from the reverse of the read
-        if(iter->flags.isQueryRev())
-            sc1.flip();
-        if(iter->flags.isTargetRev())
-            sc2.flip();
-
-        bool isRC = false; // since we transformed the original sequence, they are never RC
-        if(sc1.isContained())
-            continue; // skip containments
-
-        // Add an overlap for each member of the block
-        for(int64_t i = iter->ranges.interval[0].lower; i <= iter->ranges.interval[0].upper; ++i)
-        {
-            Overlap o(read_idx, sc1, makeIdxString(i), sc2, isRC, -1);
-            out.add(overlap_string, o);
-        }
-    }
-    return out;
-}
-
-// make an id string from a read index
-std::string ErrorCorrectProcess::makeIdxString(int64_t idx)
-{
-    std::stringstream ss;
-    ss << idx;
-    return ss.str();
-}
-
-
 // Attempt to correct the base at position idx in readSequence. Returns true if a correction was made
 // The correction is made only if the count of the corrected kmer is at least minCount
 bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence)

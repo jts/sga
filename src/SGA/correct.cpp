@@ -327,13 +327,18 @@ void parseCorrectOptions(int argc, char** argv)
         opt::prefix = stripFilename(opt::readsFile);
     }
 
+    std::string out_prefix = stripFilename(opt::readsFile);
     if(opt::outFile.empty())
     {
-        opt::outFile = opt::prefix + ".ec.fa";
+        opt::outFile = out_prefix + ".ec.fa";
     }
 
     if(bDiscardReads)
-        opt::discardFile = opt::prefix + ".discard.fa";
+    {
+        opt::discardFile = out_prefix + ".discard.fa";
+    }
     else
+    {
         opt::discardFile.clear();
+    }
 }

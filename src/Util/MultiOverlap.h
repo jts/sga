@@ -53,6 +53,14 @@ class MultiOverlap
         bool isConflicted(size_t cutoff) const;
         std::string simpleConsensus() const;
 
+        // Count the number of bases that are potentially incorrect
+        // A base is considered to be incorrect if it is not the majority in the column
+        // and it has been seen less than cutoff times
+        int countPotentialIncorrect(size_t cutoff) const;
+
+        // Count the number of bases in the read that are covered by an overlap
+        int countBasesCovered() const;
+
         // Partition the multioverlap into groups
         int getPartition(size_t idx) const;
         void setPartition(size_t idx, int p);
@@ -65,6 +73,7 @@ class MultiOverlap
 
         // Count the number of prefix and suffix overlaps
         void countOverlaps(size_t& prefix_count, size_t& suffix_count) const;
+        double getMeanDepth() const;
 
         // Calculate the amount of the sequence that is covered
         // by both prefix and suffix overlaps. For instance:

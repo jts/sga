@@ -283,12 +283,15 @@ bool OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
     // Create and extend the initial seeds
     int actual_seed_length = m_seedLength;
     int actual_seed_stride = m_seedStride;
+
     if(actual_seed_length == 0)
     {
         // Calculate a seed length and stride that will guarantee all overlaps
         // with error rate m_errorRate will be found
         calculateSeedParameters(w, minOverlap, actual_seed_length, actual_seed_stride);
     }
+
+    assert(actual_seed_stride != 0);
 
     createSearchSeeds(w, pBWT, pRevBWT, actual_seed_length, actual_seed_stride, pCurrVector);
     extendSeedsExactRight(w, pBWT, pRevBWT, ED_RIGHT, pCurrVector, pNextVector);

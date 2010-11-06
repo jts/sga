@@ -69,11 +69,6 @@ class ErrorCorrectProcess
 
         bool attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence);
 
-        MultiOverlap blockListToMultiOverlap(const SeqRecord& record, 
-                                             OverlapBlockList& blockList);
-
-        std::string makeIdxString(int64_t idx);
-
         OverlapBlockList m_blockList;
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;

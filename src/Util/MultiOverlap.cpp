@@ -76,6 +76,37 @@ std::string MultiOverlap::simpleConsensus() const
     return out;
 }
 
+//
+int MultiOverlap::countPotentialIncorrect(size_t cutoff) const
+{
+    int count = 0;
+    for(size_t i = 0; i < m_rootSeq.size(); ++i)
+    {
+        Pileup p = getPileup(i);
+        AlphaCount ac = p.getAlphaCount();
+        char maxBase;
+        BaseCount maxCount;
+        ac.getMax(maxBase, maxCount);
+        BaseCount rootCount = ac.get(m_rootSeq[i]);
+        if(maxBase != m_rootSeq[i] && rootCount < cutoff)
+            ++count;
+    }
+    return count;
+}
+
+//
+int MultiOverlap::countBasesCovered() const
+{
+    int count = 0;
+    for(size_t i = 0; i < m_rootSeq.size(); ++i)
+    {
+        Pileup p = getPileup(i);
+        if(p.getDepth() > 1)
+            ++count;
+    }
+    return count;
+}
+
 // Determine if this multi-overlap has a conflicted position,
 // which is a position in the multioverlap where the second-most 
 // prevalent base has a frequency greater than cutoff
@@ -261,6 +292,18 @@ void MultiOverlap::countOverlaps(size_t& prefix_count, size_t& suffix_count) con
                 ++suffix_count;
         }
     }
+}
+
+//
+double MultiOverlap::getMeanDepth() const
+{
+    double depth = 0.0f;
+    for(size_t i = 0; i < m_rootSeq.size(); ++i)
+    {
+        Pileup p = getPileup(i);
+        depth += p.getDepth();
+    }
+    return depth / m_rootSeq.size();
 }
 
 //

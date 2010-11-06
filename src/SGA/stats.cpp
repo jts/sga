@@ -62,6 +62,7 @@ namespace opt
     static std::string readsFile;
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
     static int kmerLength = 27;
+    static int minOverlap = 45;
     static size_t numReads = -1;
 }
 
@@ -89,18 +90,15 @@ int statsMain(int argc, char** argv)
     parseStatsOptions(argc, argv);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
-
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     SeqReader reader(opt::readsFile);
-
-    pBWT->printInfo();
     
     StatsPostProcess postProcessor;
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        StatsProcess processor(pBWT, pRBWT, opt::kmerLength);
+        StatsProcess processor(pBWT, pRBWT, opt::kmerLength, opt::minOverlap);
 
         SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
                                                          StatsResult, 
@@ -113,7 +111,7 @@ int statsMain(int argc, char** argv)
         std::vector<StatsProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            StatsProcess* pProcessor = new StatsProcess(pBWT, pRBWT, opt::kmerLength);
+            StatsProcess* pProcessor = new StatsProcess(pBWT, pRBWT, opt::kmerLength, opt::minOverlap);
             processorVector.push_back(pProcessor);
         }
         

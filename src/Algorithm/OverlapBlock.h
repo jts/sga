@@ -17,6 +17,7 @@
 #include "BWT.h"
 #include "SearchHistory.h"
 #include "GraphCommon.h"
+#include "MultiOverlap.h"
 
 // Flags indicating how a given read was aligned to the FM-index
 // Used for internal bookkeeping
@@ -177,5 +178,11 @@ OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B);
 void partitionBlockList(int readLen, OverlapBlockList* pCompleteList, 
                         OverlapBlockList* pOverlapList, 
                         OverlapBlockList* pContainList);
+
+// Convert an overlap block list into a multiple overlap
+MultiOverlap blockListToMultiOverlap(const SeqRecord& record, OverlapBlockList& blockList);
+
+// 
+std::string makeIdxString(int64_t idx);
 
 #endif
