@@ -12,18 +12,6 @@
 #include <math.h>
 #include <iostream>
 
-//
-void Pileup::add(char b)
-{
-    m_data.push_back(PUElem(b, log(DEFAULT_PROB)));
-}
-
-//
-void Pileup::add(char b, double lp)
-{
-    m_data.push_back(PUElem(b, lp));
-}
-
 // Calculate the consensus base at this position
 // using a simple model where all bases are treated equally
 char Pileup::calculateSimpleConsensus() const

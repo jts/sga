@@ -166,9 +166,18 @@ std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
     std::vector<AlphaCount> acVec;
     for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
-        Pileup p = getPileup(i);
-        AlphaCount ac = p.getAlphaCount();
+        AlphaCount ac = getAlphaCount(i);
         acVec.push_back(ac);
+    }
+
+    // Sort the alphacounts by frequency
+    StringVector sortedVec;
+    sortedVec.resize(acVec.size());
+    for(size_t i = 0; i < acVec.size(); ++i)
+    {
+        char sorted[ALPHABET_SIZE];
+        acVec[i].getSorted(sorted, ALPHABET_SIZE);
+        sortedVec[i] = sorted;
     }
 
     // Filter out overlaps that do not match the reference
@@ -181,8 +190,7 @@ std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
         for(size_t i = 0; i < acVec.size(); ++i)
         {
             char rootBase = m_rootSeq[i];
-            char sorted[ALPHABET_SIZE];
-            acVec[i].getSorted(sorted, ALPHABET_SIZE);
+            std::string& sorted = sortedVec[i];
             int second = acVec[i].get(sorted[1]);
 
             // If the second-most prevelent base is above the conflict cutoff,
@@ -383,12 +391,34 @@ char MultiOverlap::getMODBase(const MOData& mod, int idx) const
         return '\0';
 }
 
+// Get an AlphaCount representing the nucleotides
+// observed at the given column
+AlphaCount MultiOverlap::getAlphaCount(int idx) const
+{
+    AlphaCount ac;
+
+    ac.increment(m_rootSeq[idx]);
+    for(size_t i = 0; i < m_overlaps.size(); ++i)
+    {
+        const MOData& curr = m_overlaps[i];
+        // translate idx into the frame of the current sequence
+        int trans_idx = idx - curr.offset;
+        if(trans_idx >= 0 && size_t(trans_idx) < curr.seq.size())
+        {
+            ac.increment(curr.seq[trans_idx]);
+        }
+    }
+    return ac;
+}
+
+
 // Get the "stack" of bases that aligns to
 // a single position of the root seq, including
 // the root base
 Pileup MultiOverlap::getPileup(int idx) const
 {
-    Pileup p;
+    size_t max_depth = m_overlaps.size() + 1;
+    Pileup p(max_depth);
     p.add(m_rootSeq[idx]);
 
     for(size_t i = 0; i < m_overlaps.size(); ++i)

@@ -14,6 +14,7 @@
 #include "DNADouble.h"
 
 #define DEFAULT_PROB 0.01
+#define DEFAULT_LOG_PROB -4.605170186f
 
 struct PUElem
 {
@@ -39,8 +40,8 @@ class Pileup
         DNADouble calculateSimpleAlphaProb() const;
         DNADouble calculateLikelihoodNoQuality(double p_error) const;
 
-        void add(char b);
-        void add(char b, double lp);
+        inline void add(char b) { m_data.push_back(PUElem(b, DEFAULT_LOG_PROB)); }
+        inline void add(char b, double lp) { m_data.push_back(PUElem(b, lp)); }
 
         char getBase(size_t idx) const;
         char getCount(char base) const;
