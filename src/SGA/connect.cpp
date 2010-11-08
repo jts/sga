@@ -55,6 +55,7 @@ static const char *CONNECT_USAGE_MESSAGE =
 "      -m, --max-distance=LEN           maximum expected distance between the PE reads (start to end). This option specifies\n"
 "                                       how long the search should proceed for. Default: 250\n"
 "      -o, --outfile=FILE               write the connected reads to FILE\n"
+"          --connected-only             only write the connected read pairs, not the unresolved vertices in the graph\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -69,6 +70,9 @@ namespace opt
     static bool bWriteCovered = true;
     static bool bWriteUnresolved = false;
 
+    // In hetSVMode, we will output up to two paths between the pairs
+    static bool hetSVMode = false;
+
     static std::string outFile;
     static std::string unconnectedFile = "unconnected.fa";
     static std::string asqgFile;
@@ -77,15 +81,17 @@ namespace opt
 
 static const char* shortopts = "p:m:e:t:l:s:o:d:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_HETSV, OPT_CONNECTED_ONLY };
 
 static const struct option longopts[] = {
-    { "verbose",     no_argument,       NULL, 'v' },
-    { "threads",     required_argument, NULL, 't' },
-    { "max-distance",required_argument, NULL, 'd' },
-    { "outfile",     required_argument, NULL, 'o' },
-    { "help",        no_argument,       NULL, OPT_HELP },
-    { "version",     no_argument,       NULL, OPT_VERSION },
+    { "verbose",         no_argument,       NULL, 'v' },
+    { "threads",         required_argument, NULL, 't' },
+    { "max-distance",    required_argument, NULL, 'd' },
+    { "outfile",         required_argument, NULL, 'o' },
+    { "connected-only",  no_argument,       NULL, OPT_CONNECTED_ONLY },
+    { "het-sv",          no_argument,       NULL, OPT_HETSV },
+    { "help",            no_argument,       NULL, OPT_HELP },
+    { "version",         no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
 };
 
@@ -148,10 +154,11 @@ struct CoveredVertexVisitor
 int connectMain(int argc, char** argv)
 {
     parseConnectOptions(argc, argv);
-    Timer* pTimer = new Timer(PROGRAM_IDENT);
 
     // Read the graph and compute walks
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, false);
+
+    Timer* pTimer = new Timer(PROGRAM_IDENT);    
     std::istream* pReader = createReader(opt::gmapFile);
     std::ostream* pWriter = createWriter(opt::outFile);
 
@@ -162,6 +169,10 @@ int connectMain(int argc, char** argv)
     int numPairsResolved = 0;
     int numUnresolvedWrote = 0;
     int numCoveredWrote = 0;
+
+
+    // In heterozygous SV mode, write up to 2 paths
+    size_t maxPaths = (opt::hetSVMode ? 2 : 1);
 
     while(*pReader >> record1)
     {
@@ -190,25 +201,35 @@ int connectMain(int argc, char** argv)
         SGSearch::findWalks(pX, pY, walkDirection, opt::maxDistance, 10000, walks);
 
         // Mark used vertices in the graph
-        // If the entire path was resolved by a single walk, mark black
+        // If the entire path was resolved, mark black
         // otherwise mark as red
-        GraphColor used_color = (walks.size() == 1) ? GC_BLACK : GC_RED;
+        GraphColor used_color = (walks.size() <= maxPaths) ? GC_BLACK : GC_RED;
 
         for(size_t i = 0; i < walks.size(); i +=1 )
         {
             markWalkVertices(walks[i], used_color);
         }
 
-        if(walks.size() == 1)
+        if(walks.size() <= maxPaths)
         {
-            SeqRecord resolved;
-            resolved.id = getPairBasename(record1.readID);
-            resolved.seq = walks.front().getString(SGWT_START_TO_END);
-            resolved.write(*pWriter);
-            numPairsResolved += 1;
+            for(size_t i = 0; i < walks.size(); ++i)
+            {
+                std::stringstream idSS;
+                idSS << getPairBasename(record1.readID);
+                if(opt::hetSVMode)
+                {
+                    idSS << "-walk:" << i;
+                }
+
+                SeqRecord resolved;
+                resolved.id = idSS.str();
+                resolved.seq = walks[i].getString(SGWT_START_TO_END);
+                resolved.write(*pWriter);
             
-            // Mark all the vertices in this walk as resolved
-            markWalkVertices(walks.front(), GC_BLACK);
+                // Mark all the vertices in this walk as resolved
+                markWalkVertices(walks[i], GC_BLACK);
+            }
+            numPairsResolved += 1;
         }
         else if(opt::bWriteUnresolved)
         {
@@ -286,6 +307,11 @@ void parseConnectOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_CONNECTED_ONLY: 
+                opt::bWriteCovered = false; 
+                opt::bWriteUnresolved = false; 
+                break;
+            case OPT_HETSV: opt::hetSVMode = true; break;
             case OPT_HELP:
                 std::cout << CONNECT_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
