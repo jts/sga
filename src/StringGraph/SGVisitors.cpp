@@ -823,9 +823,9 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 
             (void)pStart;
             (void)pEnd;
-            /*
             if(bubble_found)
             {
+                /*
                 SGWalkVector walkVector;
                 SGSearch::findWalks(pStart, pEnd, dir, 1000, 20, walkVector);
                 
@@ -845,10 +845,9 @@ bool SGBubbleVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
                     std::cout << "Bubble " << pStart->getID() << " to " << pEnd->getID() << " is a "
                               << type << "(d: " << diff << ")\n";
                 }
-
+                */
                 ++num_bubbles;
             }
-            */
         }
     }
     return bubble_found;
