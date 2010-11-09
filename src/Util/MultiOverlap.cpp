@@ -172,12 +172,12 @@ std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
 
     // Sort the alphacounts by frequency
     StringVector sortedVec;
-    sortedVec.resize(acVec.size());
+    sortedVec.reserve(acVec.size());
     for(size_t i = 0; i < acVec.size(); ++i)
     {
         char sorted[ALPHABET_SIZE];
         acVec[i].getSorted(sorted, ALPHABET_SIZE);
-        sortedVec[i] = sorted;
+        sortedVec.push_back(std::string(sorted, ALPHABET_SIZE));
     }
 
     // Filter out overlaps that do not match the reference
