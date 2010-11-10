@@ -36,10 +36,10 @@ if test "$with_hoard" -a -d "$with_hoard"; then
     enable_hoard=1
 fi
 
-AC_SUBST(LDFLAGS, "$hoard_ldflags $LDFLAGS")
 
 # Set compiler flags.
 AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
+AC_SUBST(LDFLAGS, "$hoard_ldflags $LDFLAGS")
 
 if test "$enable_hoard"; then
     AC_SEARCH_LIBS([hoardmalloc], [hoard])
