@@ -28,8 +28,22 @@ AC_CHECK_HEADERS([ \
 # Check for libraries
 AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
 
+# Check for the hoard memory allocator 
+AC_ARG_WITH(hoard, AS_HELP_STRING([--with-hoard=PATH],
+	[specify directory containing the hoard library]))
+if test "$with_hoard" -a -d "$with_hoard"; then
+	hoard_ldflags="-Wl,-rpath,$with_hoard -L$with_hoard"
+    enable_hoard=1
+fi
+
+AC_SUBST(LDFLAGS, "$hoard_ldflags $LDFLAGS")
+
 # Set compiler flags.
 AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
+
+if test "$enable_hoard"; then
+    AC_SEARCH_LIBS([hoardmalloc], [hoard])
+fi
 
 AC_CONFIG_FILES([Makefile
 		Thirdparty/Makefile
