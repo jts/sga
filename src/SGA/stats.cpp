@@ -49,6 +49,7 @@ static const char *STATS_USAGE_MESSAGE =
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      -k, --kmer-size=N                The length of the kmer to use. (default: 27)\n"
 "      -n, --num-reads=N                Only use N reads to compute the statistics\n"
+"      --run-lengths                    Print the run length distribution of the BWT\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -64,11 +65,12 @@ namespace opt
     static int kmerLength = 27;
     static int minOverlap = 45;
     static size_t numReads = -1;
+    static bool bPrintRunLengths = false;
 }
 
 static const char* shortopts = "p:d:t:o:k:n:v";
 
-enum { OPT_HELP = 1, OPT_VERSION};
+enum { OPT_HELP = 1, OPT_VERSION, OPT_RUNLENGTHS};
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -77,6 +79,7 @@ static const struct option longopts[] = {
     { "sample-rate",   required_argument, NULL, 'd' },
     { "kmer-size",     required_argument, NULL, 'k' },
     { "num-reads",     required_argument, NULL, 'n' },
+    { "run-lengths",   no_argument,       NULL, OPT_RUNLENGTHS },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -92,6 +95,13 @@ int statsMain(int argc, char** argv)
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
+
+    if(opt::bPrintRunLengths)
+    {
+        pBWT->printInfo();
+        pBWT->printRunLengths();
+    }
+
     SeqReader reader(opt::readsFile);
     
     StatsPostProcess postProcessor;
@@ -155,6 +165,7 @@ void parseStatsOptions(int argc, char** argv)
             case 'n': arg >> opt::numReads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_RUNLENGTHS: opt::bPrintRunLengths = true; break;
             case OPT_HELP:
                 std::cout << STATS_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

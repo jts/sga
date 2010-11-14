@@ -28,49 +28,6 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), m_n
     delete pReader;
 }
 
-#if 0
-RLBWT::RLBWT(const SuffixArray* pSA, const ReadTable* pRT)
-{
-    size_t n = pSA->getSize();
-    m_numStrings = pSA->getNumStrings();
-    m_numSymbols = n;
-
-    RLUnit currRun;
-    // Set up the bwt string and suffix array from the cycled strings
-    for(size_t i = 0; i < n; ++i)
-    {
-        SAElem saElem = pSA->get(i);
-        const SeqItem& si = pRT->getRead(saElem.getID());
-
-        // Get the position of the start of the suffix
-        uint64_t f_pos = saElem.getPos();
-        uint64_t l_pos = (f_pos == 0) ? si.seq.length() : f_pos - 1;
-        char b = (l_pos == si.seq.length()) ? '$' : si.seq.get(l_pos);
-
-        // Either add the character to the current run or start a new run
-        if(currRun.isInitialized())
-        {
-            if(currRun.getChar() == b && !currRun.isFull())
-            {
-                currRun.incrementCount();
-            }
-            else
-            {
-                // Write out the old run and start a new one
-                m_rlString.push_back(currRun);
-                currRun = RLUnit(b);
-            }        
-        }
-        else
-        {
-            // Start a new run
-            currRun = RLUnit(b);
-        }
-    }
-
-    initializeFMIndex(DEFAULT_SAMPLE_RATE);    
-}
-#endif 
 //
 void RLBWT::append(char b)
 {
@@ -193,3 +150,27 @@ void RLBWT::printInfo() const
     printf("Memory -- Markers: %zu Str: %zu Misc: %zu Total: %zu (%lf MB)\n", m_size, bwStr_size, other_size, total_size, total_mb);
     printf("N: %zu Bytes per symbol: %lf\n", m_numSymbols, (double)total_size / m_numSymbols);
 }
+
+// Print the run length distribution of the BWT
+void RLBWT::printRunLengths() const
+{
+    typedef std::map<size_t, size_t> DistMap;
+    DistMap rlDist;
+
+    size_t numRuns = getNumRuns();
+    for(size_t i = 0; i < numRuns; ++i)
+    {
+        const RLUnit& unit = m_rlString[i];
+        size_t length = unit.getCount();
+        rlDist[length]++;
+    }
+    
+    printf("Run length distrubtion\n");
+    printf("rl\tcount\tfrac\n");
+    for(DistMap::iterator iter = rlDist.begin(); iter != rlDist.end(); ++iter)
+    {
+        printf("%zu\t%zu\t%lf\n", iter->first, iter->second, double(iter->second) / numRuns);
+    }
+    printf("Total runs: %zu\n", numRuns);
+}
+

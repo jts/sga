@@ -67,6 +67,7 @@ class SBWT
         // Print the size of the BWT
         void printInfo() const;
         void print(const ReadTable* pRT, const SuffixArray* pSA) const;
+        void printRunLengths() const { std::cout << "Using SimpleBWT - No run lengths\n"; }
         void validate() const;
 
         // IO

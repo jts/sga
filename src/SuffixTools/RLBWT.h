@@ -374,6 +374,7 @@ class RLBWT
         // Print the size of the BWT
         void printInfo() const;
         void print() const;
+        void printRunLengths() const;
 
         // IO
         friend class BWTReaderBinary;
