@@ -216,10 +216,13 @@ int connectMain(int argc, char** argv)
             {
                 std::stringstream idSS;
                 idSS << getPairBasename(record1.readID);
+                size_t numReads = walks[i].getNumVertices();
                 if(opt::hetSVMode)
                 {
                     idSS << "-walk:" << i;
                 }
+
+                idSS << " numReads:" << numReads;
 
                 SeqRecord resolved;
                 resolved.id = idSS.str();

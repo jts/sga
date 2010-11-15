@@ -40,6 +40,7 @@ class SGWalk
         Vertex* getStartVertex() const;
         Edge* getLastEdge() const;
         Edge* getEdge(size_t idx) const;
+        size_t getNumVertices() const;
         size_t getNumEdges() const;
 
         // Returns true if the walk contains the specified vertex

@@ -84,6 +84,12 @@ Vertex* SGWalk::getStartVertex() const
 }
 
 //
+size_t SGWalk::getNumVertices() const
+{
+    return getNumEdges() + 1;
+}
+
+//
 size_t SGWalk::getNumEdges() const
 {
     return m_edges.size();
