@@ -12,10 +12,15 @@ SGA requires:
     -google sparse hash library (http://code.google.com/p/google-sparsehash/)
     -zlib (http://www.zlib.net/)
 
-If these libraries are installed, to compile SGA first run configure then make:
+If you cloned the repository from github, run autogen.sh from the src directory 
+to generate the configure file:
+
+./autogen.sh
+
+Then run configure and make:
 
 ./configure
-./make
+make
 
 The path to the sparse hash library can be specified as follows:
 
