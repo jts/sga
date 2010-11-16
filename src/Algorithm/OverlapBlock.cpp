@@ -35,9 +35,9 @@ const BWT* OverlapBlock::getExtensionBWT(const BWT* pBWT, const BWT* pRevBWT) co
 }
 
 // 
-AlphaCount OverlapBlock::getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBWT) const
+AlphaCount64 OverlapBlock::getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBWT) const
 {
-    AlphaCount out = BWTAlgorithms::getExtCount(ranges.interval[1], getExtensionBWT(pBWT, pRevBWT));
+    AlphaCount64 out = BWTAlgorithms::getExtCount(ranges.interval[1], getExtensionBWT(pBWT, pRevBWT));
     if(flags.isQueryComp())
         out.complement();
     return out;

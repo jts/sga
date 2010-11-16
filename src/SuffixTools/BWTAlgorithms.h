@@ -44,9 +44,9 @@ inline void updateInterval(BWTInterval& interval, char b, const BWT* pBWT)
 // In this version the AlphaCounts for the upper and lower intervals
 // have been calculated
 inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT,
-                        AlphaCount& l, AlphaCount& u)
+                        AlphaCount64& l, AlphaCount64& u)
 {
-    AlphaCount diff = u - l;
+    AlphaCount64 diff = u - l;
 
     pair.interval[0].lower = pair.interval[0].lower + diff.getLessThan(b);
     pair.interval[0].upper = pair.interval[0].lower + diff.get(b) - 1;
@@ -63,8 +63,8 @@ inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT,
 inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 {
     // Update the left index using the difference between the AlphaCounts in the reverse table
-    AlphaCount l = pRevBWT->getFullOcc(pair.interval[1].lower - 1);
-    AlphaCount u = pRevBWT->getFullOcc(pair.interval[1].upper);
+    AlphaCount64 l = pRevBWT->getFullOcc(pair.interval[1].lower - 1);
+    AlphaCount64 u = pRevBWT->getFullOcc(pair.interval[1].upper);
     updateBothR(pair, b, pRevBWT, l, u);
 }
 
@@ -72,9 +72,9 @@ inline void updateBothR(BWTIntervalPair& pair, char b, const BWT* pRevBWT)
 // In this version the AlphaCounts for the upper and lower intervals
 // have been calculated.
 inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT, 
-                        AlphaCount& l, AlphaCount& u)
+                        AlphaCount64& l, AlphaCount64& u)
 {
-    AlphaCount diff = u - l;
+    AlphaCount64 diff = u - l;
     // Update the left index using the difference between the AlphaCounts in the reverse table
     pair.interval[1].lower = pair.interval[1].lower + diff.getLessThan(b);
     pair.interval[1].upper = pair.interval[1].lower + diff.get(b) - 1;
@@ -91,8 +91,8 @@ inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT,
 inline void updateBothL(BWTIntervalPair& pair, char b, const BWT* pBWT)
 {
     // Update the left index using the difference between the AlphaCounts in the reverse table
-    AlphaCount l = pBWT->getFullOcc(pair.interval[0].lower - 1);
-    AlphaCount u = pBWT->getFullOcc(pair.interval[0].upper);
+    AlphaCount64 l = pBWT->getFullOcc(pair.interval[0].lower - 1);
+    AlphaCount64 u = pBWT->getFullOcc(pair.interval[0].upper);
     updateBothL(pair, b, pBWT, l, u);
 }
 
@@ -112,7 +112,7 @@ inline void initIntervalPair(BWTIntervalPair& pair, char b, const BWT* pBWT, con
 }
 
 // Return the counts of the bases between the lower and upper interval in pBWT
-inline AlphaCount getExtCount(const BWTInterval& interval, const BWT* pBWT)
+inline AlphaCount64 getExtCount(const BWTInterval& interval, const BWT* pBWT)
 {
     return pBWT->getOccDiff(interval.lower - 1, interval.upper);
 }
@@ -120,7 +120,7 @@ inline AlphaCount getExtCount(const BWTInterval& interval, const BWT* pBWT)
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
 // appears in the FM-index for all i s.t. length(w[i, l]) >= minOverlap.
-AlphaCount calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT);
+AlphaCount64 calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT);
 
 };
 

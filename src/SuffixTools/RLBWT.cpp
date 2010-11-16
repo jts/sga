@@ -73,7 +73,7 @@ void RLBWT::initializeFMIndex()
     size_t curr_marker_index = 1;
     size_t next_marker = m_sampleRate;
     size_t running_total = 0;
-    AlphaCount ac;
+    AlphaCount64 ac;
     for(size_t i = 0; i < m_rlString.size(); ++i)
     {
         // Update the count and advance the running total
@@ -142,13 +142,14 @@ void RLBWT::printInfo() const
     size_t other_size = sizeof(*this);
     size_t total_size = m_size + bwStr_size + other_size;
 
-    double total_mb = ((double)total_size / (double)(1024 * 1024));
+    double mb = (double)(1024 * 1024);
+    double total_mb = total_size / mb;
     
     printf("\nRLBWT info:\n");
     printf("Sample rate: %zu\n", m_sampleRate);
     printf("Contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());
-    printf("Memory -- Markers: %zu Str: %zu Misc: %zu Total: %zu (%lf MB)\n", m_size, bwStr_size, other_size, total_size, total_mb);
-    printf("N: %zu Bytes per symbol: %lf\n", m_numSymbols, (double)total_size / m_numSymbols);
+    printf("Memory -- Markers: %zu (%.1lf MB) Str: %zu (%.1lf MB) Misc: %zu Total: %zu (%lf MB)\n", m_size, m_size / mb, bwStr_size, bwStr_size / mb, other_size, total_size, total_mb);
+    printf("N: %zu Bytes per symbol: %lf\n\n", m_numSymbols, (double)total_size / m_numSymbols);
 }
 
 // Print the run length distribution of the BWT

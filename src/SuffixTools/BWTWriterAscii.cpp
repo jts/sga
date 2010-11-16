@@ -82,7 +82,7 @@ void BWTWriterAscii::finalize()
     m_stage = IOS_PC;
 }
 //
-void BWTWriterAscii::writePred(const AlphaCount& pc)
+void BWTWriterAscii::writePred(const AlphaCount64& pc)
 {
     assert(m_stage == IOS_PC);
     *m_pWriter << pc << "\n";

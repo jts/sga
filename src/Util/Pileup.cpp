@@ -17,7 +17,7 @@
 char Pileup::calculateSimpleConsensus() const
 {
     assert(!m_data.empty());
-    AlphaCount ac;
+    AlphaCount64 ac;
     for(size_t i = 0; i < m_data.size(); ++i)
     {
         ac.increment(m_data[i].base);
@@ -27,9 +27,9 @@ char Pileup::calculateSimpleConsensus() const
 
 // Returns the number of times each base appears in the 
 // pileup string
-AlphaCount Pileup::getAlphaCount() const
+AlphaCount64 Pileup::getAlphaCount() const
 {
-    AlphaCount ac;
+    AlphaCount64 ac;
     for(size_t i = 0; i < m_data.size(); ++i)
     {
         ac.increment(m_data[i].base);
@@ -114,7 +114,7 @@ DNADouble Pileup::calculateLikelihoodNoQuality(double p_error) const
 //
 char Pileup::getCount(char base) const
 {
-    AlphaCount ac;
+    AlphaCount64 ac;
     for(size_t i = 0; i < m_data.size(); ++i)
     {
         ac.increment(m_data[i].base);

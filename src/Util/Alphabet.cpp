@@ -95,17 +95,6 @@ std::string IUPAC::getPossibleSymbols(char c)
     }
 }
 
-//
-std::ostream& operator<<(std::ostream& out, const AlphaCount& ac)
-{
-    std::copy(ac.m_counts, ac.m_counts+ALPHABET_SIZE, std::ostream_iterator<BaseCount>(out, " "));
-    return out;
-}
-
-std::istream& operator>>(std::istream& in, AlphaCount& ac)
-{
-    for(size_t i = 0; i < ALPHABET_SIZE; ++i)
-        in >> ac.m_counts[i];
-    return in;
-}
-
+// AlphaCount
+template<> const size_t AlphaCount8::maxValue = std::numeric_limits<uint8_t>::max();
+template<> const size_t AlphaCount64::maxValue = std::numeric_limits<uint64_t>::max();

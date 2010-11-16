@@ -108,7 +108,7 @@ struct OverlapBlock
     // Return the spectrum of extensions given by the interval in ranges
     // The counts are given in the canonical frame, which means that
     // if the query string was reversed, we flip the counts
-    AlphaCount getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBWT) const;
+    AlphaCount64 getCanonicalExtCount(const BWT* pBWT, const BWT* pRevBWT) const;
 
     // Return the index of the interval corresponding to the frame of 
     // reference for the original read

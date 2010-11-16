@@ -46,10 +46,10 @@ class SBWT
         inline BaseCount getOcc(char b, size_t idx) const { return m_occurrence.get(m_bwStr, b, idx); }
 
         // Return the number of times each symbol in the alphabet appears in bwt[0, idx]
-        inline AlphaCount getFullOcc(size_t idx) const { return m_occurrence.get(m_bwStr, idx); }
+        inline AlphaCount64 getFullOcc(size_t idx) const { return m_occurrence.get(m_bwStr, idx); }
 
         // Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
-        inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
+        inline AlphaCount64 getOccDiff(size_t idx0, size_t idx1) const { return m_occurrence.getDiff(m_bwStr, idx0, idx1); }
 
         inline size_t getNumStrings() const { return m_numStrings; } 
         inline size_t getBWLen() const { return m_bwStr.length(); }
@@ -88,7 +88,7 @@ class SBWT
         Occurrence m_occurrence;
 
         // The C(a) array
-        AlphaCount m_predCount;
+        AlphaCount64 m_predCount;
         
         // The bw string
         BWTString m_bwStr;

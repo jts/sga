@@ -20,7 +20,7 @@ void Occurrence::initialize(const BWTString& bwStr, int sampleRate)
     int num_samples = (l % m_sampleRate == 0) ? (l / m_sampleRate) : (l / m_sampleRate + 1);
     m_values.resize(num_samples);
     
-    AlphaCount sum;
+    AlphaCount64 sum;
     for(size_t i = 0; i < l; ++i)
     {
         char currB = bwStr.get(i);
@@ -58,19 +58,19 @@ void Occurrence::set(char a, size_t i, BaseCount s)
 //
 size_t Occurrence::getByteSize() const
 {
-    return m_values.size() * sizeof(AlphaCount);
+    return m_values.size() * sizeof(AlphaCount64);
 }
 
 // Validate that the sampled occurrence array is correct
 void Occurrence::validate(const BWTString& bwStr) const
 {
     size_t l = bwStr.length();
-    AlphaCount sum;
+    AlphaCount64 sum;
     for(size_t i = 0; i < l; ++i)
     {
         char currB = bwStr.get(i);
         sum.increment(currB);
-        AlphaCount calculated = get(bwStr, i);
+        AlphaCount64 calculated = get(bwStr, i);
         for(int i = 0; i < ALPHABET_SIZE; ++i)
             assert(calculated.get(ALPHABET[i]) == sum.get(ALPHABET[i]));
     }

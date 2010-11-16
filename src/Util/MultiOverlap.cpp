@@ -62,7 +62,7 @@ std::string MultiOverlap::simpleConsensus() const
     for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
         Pileup p = getPileup(i);
-        AlphaCount ac = p.getAlphaCount();
+        AlphaCount64 ac = p.getAlphaCount();
         char maxBase;
         BaseCount maxCount;
         ac.getMax(maxBase, maxCount);
@@ -83,7 +83,7 @@ int MultiOverlap::countPotentialIncorrect(size_t cutoff) const
     for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
         Pileup p = getPileup(i);
-        AlphaCount ac = p.getAlphaCount();
+        AlphaCount64 ac = p.getAlphaCount();
         char maxBase;
         BaseCount maxCount;
         ac.getMax(maxBase, maxCount);
@@ -115,7 +115,7 @@ bool MultiOverlap::isConflicted(size_t cutoff) const
     for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
         Pileup p = getPileup(i);
-        AlphaCount ac = p.getAlphaCount();
+        AlphaCount64 ac = p.getAlphaCount();
 
         char order[5];
         ac.getSorted(order, 5);
@@ -163,10 +163,10 @@ size_t MultiOverlap::getNumBases() const
 std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
 {
     // Calculate the frequency vector for each base of the read
-    std::vector<AlphaCount> acVec;
+    std::vector<AlphaCount64> acVec;
     for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
-        AlphaCount ac = getAlphaCount(i);
+        AlphaCount64 ac = getAlphaCount(i);
         acVec.push_back(ac);
     }
 
@@ -391,11 +391,11 @@ char MultiOverlap::getMODBase(const MOData& mod, int idx) const
         return '\0';
 }
 
-// Get an AlphaCount representing the nucleotides
+// Get an AlphaCount64 representing the nucleotides
 // observed at the given column
-AlphaCount MultiOverlap::getAlphaCount(int idx) const
+AlphaCount64 MultiOverlap::getAlphaCount(int idx) const
 {
-    AlphaCount ac;
+    AlphaCount64 ac;
 
     ac.increment(m_rootSeq[idx]);
     for(size_t i = 0; i < m_overlaps.size(); ++i)

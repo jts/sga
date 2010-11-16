@@ -59,7 +59,7 @@ void SBWT::initializeFMIndex(int sampleRate)
     // Calculate the C(a) array
     
     // Calculate the total number of occurances of each character in the BW str
-    AlphaCount tmp;
+    AlphaCount64 tmp;
     for(size_t i = 0; i < m_bwStr.length(); ++i)
     {
         tmp.increment(m_bwStr.get(i));

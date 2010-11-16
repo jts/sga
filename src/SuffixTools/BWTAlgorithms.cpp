@@ -69,14 +69,14 @@ size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWT* 
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
 // appears in the FM-index for all i s.t. length(w[i, l]) == overlapLen.
-AlphaCount BWTAlgorithms::calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT)
+AlphaCount64 BWTAlgorithms::calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT)
 {
     // The algorithm is as follows:
     // We perform a backward search on the FM-index of w.
     // For each signficant suffix (length w[i,l] >= minOverlap)
     // we determine the proper prefixes that match w[i,l]. For each proper prefix matching, 
     // we compute the number of extensions of A,C,G,T for those prefix.
-    AlphaCount ext_counts;
+    AlphaCount64 ext_counts;
     BWTIntervalPair ranges;
     size_t l = w.length();
     int start = l - 1;
@@ -97,7 +97,7 @@ AlphaCount BWTAlgorithms::calculateExactExtensions(const unsigned int overlapLen
             {
                 assert(ranges.interval[1].lower > 0);
                 // The count for each extension is the difference between rank(B, upper) and rank(B, lower - 1)
-                AlphaCount ac = pRevBWT->getOccDiff(ranges.interval[1].lower - 1, ranges.interval[1].upper);
+                AlphaCount64 ac = pRevBWT->getOccDiff(ranges.interval[1].lower - 1, ranges.interval[1].upper);
                 ext_counts += ac;
             }
         }

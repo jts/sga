@@ -33,7 +33,7 @@ class BWTWriterAscii : public IBWTWriter
 
         void write(const SBWT* pBWT);
         void writeBWStr(const BWTString& str); 
-        void writePred(const AlphaCount& pc);
+        void writePred(const AlphaCount64& pc);
         void writeOccurrence(const Occurrence& icc);
 
     private:

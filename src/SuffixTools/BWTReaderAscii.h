@@ -30,7 +30,7 @@ class BWTReaderAscii : public IBWTReader
         void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
         void readBWStr(BWTString& out_str);
         char readBWChar();
-        void readPred(AlphaCount& out_pc);
+        void readPred(AlphaCount64& out_pc);
         void readOccurrence(Occurrence& out_icc);
 
     private:

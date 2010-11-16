@@ -120,7 +120,7 @@ struct RLMarker
     }
 
     // The number of times each symbol has been seen up to this marker
-    AlphaCount counts; 
+    AlphaCount64 counts; 
 
     // The index in the RLVector of the run that starts after
     // this marker. That is, if C = getActualPosition(), then
@@ -235,7 +235,7 @@ class RLBWT
         }
 
         // Return the number of times each symbol in the alphabet appears in bwt[0, idx]
-        inline AlphaCount getFullOcc(size_t idx) const 
+        inline AlphaCount64 getFullOcc(size_t idx) const 
         { 
             // The counts in the marker are not inclusive (unlike the Occurrence class)
             // so we increment the index by 1.
@@ -245,7 +245,7 @@ class RLBWT
             size_t current_position = marker.getActualPosition();
             bool forwards = current_position < idx;
 
-            AlphaCount running_count = marker.counts;
+            AlphaCount64 running_count = marker.counts;
             size_t symbol_index = marker.unitIndex; 
 
             if(forwards)
@@ -257,7 +257,7 @@ class RLBWT
 
         // Adds to the count of symbol b in the range [targetPosition, currentPosition)
         // Precondition: currentPosition <= targetPosition
-        inline void accumulateBackwards(AlphaCount& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
+        inline void accumulateBackwards(AlphaCount64& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
         {
             // Search backwards (towards 0) until idx is found
             while(currentPosition != targetPosition)
@@ -281,7 +281,7 @@ class RLBWT
 
         // Adds to the count of symbol b in the range [currentPosition, targetPosition)
         // Precondition: currentPosition <= targetPosition
-        inline void accumulateForwards(AlphaCount& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
+        inline void accumulateForwards(AlphaCount64& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
         {
             // Search backwards (towards 0) until idx is found
             while(currentPosition != targetPosition)
@@ -352,7 +352,7 @@ class RLBWT
         }
 
         // Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
-        inline AlphaCount getOccDiff(size_t idx0, size_t idx1) const 
+        inline AlphaCount64 getOccDiff(size_t idx0, size_t idx1) const 
         { 
             return getFullOcc(idx1) - getFullOcc(idx0); 
         }
@@ -391,7 +391,7 @@ class RLBWT
         RLBWT() {}
 
         // The C(a) array
-        AlphaCount m_predCount;
+        AlphaCount64 m_predCount;
         
         // The run-length encoded string
         RLVector m_rlString;

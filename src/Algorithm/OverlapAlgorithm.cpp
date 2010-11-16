@@ -234,8 +234,8 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
     
     // Case 1 is indicated by the existance of a non-$ left or right hand extension
     // In this case we return no alignments for the string
-    AlphaCount left_ext = BWTAlgorithms::getExtCount(ranges.interval[0], pBWT);
-    AlphaCount right_ext = BWTAlgorithms::getExtCount(ranges.interval[1], pRevBWT);
+    AlphaCount64 left_ext = BWTAlgorithms::getExtCount(ranges.interval[0], pBWT);
+    AlphaCount64 right_ext = BWTAlgorithms::getExtCount(ranges.interval[1], pRevBWT);
     if(left_ext.hasDNAChar() || right_ext.hasDNAChar())
     {
         result.isSubstring = true;
@@ -344,8 +344,8 @@ bool OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
                 // this read must be a substring of another read
                 if(align.left_index == 0)
                 {
-                    AlphaCount left_ext = BWTAlgorithms::getExtCount(align.ranges.interval[0], pBWT);
-                    AlphaCount right_ext = BWTAlgorithms::getExtCount(align.ranges.interval[1], pRevBWT);
+                    AlphaCount64 left_ext = BWTAlgorithms::getExtCount(align.ranges.interval[0], pBWT);
+                    AlphaCount64 right_ext = BWTAlgorithms::getExtCount(align.ranges.interval[1], pRevBWT);
                     if(left_ext.hasDNAChar() || right_ext.hasDNAChar())
                         result.isSubstring = true;
                 }
@@ -565,8 +565,8 @@ void OverlapAlgorithm::extendSeedInexactRight(SearchSeed& seed, const std::strin
     {
         // Calculating the AlphaCounts is the heavy part of the computation so we cache
         // the value outside the loop, it is the same for all bases
-        AlphaCount lower = pRevBWT->getFullOcc(seed.ranges.interval[1].lower - 1);
-        AlphaCount upper = pRevBWT->getFullOcc(seed.ranges.interval[1].upper);
+        AlphaCount64 lower = pRevBWT->getFullOcc(seed.ranges.interval[1].lower - 1);
+        AlphaCount64 upper = pRevBWT->getFullOcc(seed.ranges.interval[1].upper);
         for(int i = 0; i < 4; ++i)
         {
             char b = ALPHABET[i];    
@@ -608,8 +608,8 @@ void OverlapAlgorithm::extendSeedInexactLeft(SearchSeed& seed, const std::string
         {
             // Calculating the AlphaCounts is the heavy part of the computation so we cache
             // the value outside the loop, it is the same for all bases
-            AlphaCount lower = pBWT->getFullOcc(seed.ranges.interval[0].lower - 1);
-            AlphaCount upper = pBWT->getFullOcc(seed.ranges.interval[0].upper);
+            AlphaCount64 lower = pBWT->getFullOcc(seed.ranges.interval[0].lower - 1);
+            AlphaCount64 upper = pBWT->getFullOcc(seed.ranges.interval[0].upper);
             for(int i = 0; i < 4; ++i)
             {
                 char b = ALPHABET[i];
@@ -697,7 +697,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT
     
     // Count the extensions in the top level (longest) blocks first
     int topLen = obList.front().overlapLen;
-    AlphaCount ext_count;
+    AlphaCount64 ext_count;
     OBLIter iter = obList.begin();
     while(iter != obList.end() && iter->overlapLen == topLen)
     {
@@ -723,7 +723,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT
         while(tlbIter != obList.end() && tlbIter->overlapLen == topLen)
         {
             // Ensure the tlb is actually terminal and not a substring block
-            AlphaCount test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
+            AlphaCount64 test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
             assert(test_count.get('$') > 0);
             pOBFinal->push_back(OverlapBlock(*tlbIter));
             ++tlbIter;
@@ -874,7 +874,7 @@ void OverlapAlgorithm::extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevB
         ++next;
 
         // Check if block is terminal
-        AlphaCount ext_count = iter->getCanonicalExtCount(pBWT, pRevBWT);
+        AlphaCount64 ext_count = iter->getCanonicalExtCount(pBWT, pRevBWT);
         if(ext_count.get('$') > 0)
         {
             // Only consider this block to be terminal irreducible if it has at least one extension

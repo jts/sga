@@ -99,7 +99,7 @@ class MultiOverlap
 
     private:
 
-        AlphaCount getAlphaCount(int idx) const;
+        AlphaCount64 getAlphaCount(int idx) const;
         Pileup getPileup(int idx) const;
         Pileup getPileup(int idx, int numElems) const;
         Pileup getSingletonPileup(int base_idx, int ovr_idx) const;

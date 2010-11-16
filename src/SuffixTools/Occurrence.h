@@ -32,7 +32,7 @@ class Occurrence
         void initialize(const BWTString& bwStr, int sampleRate);
 
         //
-        inline const AlphaCount get(const BWTString& bwStr, size_t idx) const
+        inline const AlphaCount64 get(const BWTString& bwStr, size_t idx) const
         {
             // Quick path
             if((MOD_POWER_2(idx,m_sampleRate)) == 0)
@@ -44,7 +44,7 @@ class Occurrence
             size_t lower_start = lower_idx << m_shift;
             size_t upper_start = upper_idx << m_shift;
 
-            AlphaCount sum;
+            AlphaCount64 sum;
 
             // Choose the closest index or force the choice to lower_idx is the upper_idx is invalid
             if((idx - lower_start < upper_start - idx) || upper_idx == m_values.size())
@@ -62,7 +62,7 @@ class Occurrence
         }
 
         // Get the alphacount difference between idx1 and idx0
-        inline AlphaCount getDiff(const BWTString& bwStr, size_t idx0, size_t idx1) const
+        inline AlphaCount64 getDiff(const BWTString& bwStr, size_t idx0, size_t idx1) const
         {
             return get(bwStr, idx1) - get(bwStr, idx0);
         }
@@ -121,7 +121,7 @@ class Occurrence
 
         int m_shift;
         int m_sampleRate;
-        std::vector<AlphaCount> m_values;
+        std::vector<AlphaCount64> m_values;
 };
 
 

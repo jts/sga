@@ -117,7 +117,7 @@ char BWTReaderAscii::readBWChar()
 }
 
 //
-void BWTReaderAscii::readPred(AlphaCount& out_pc)
+void BWTReaderAscii::readPred(AlphaCount64& out_pc)
 {
     assert(m_stage == IOS_PC);
     *m_pReader >> out_pc;

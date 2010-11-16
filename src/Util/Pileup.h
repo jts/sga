@@ -36,7 +36,7 @@ class Pileup
         Pileup(size_t n) { m_data.reserve(n); }
 
         char calculateSimpleConsensus() const;
-        AlphaCount getAlphaCount() const;
+        AlphaCount64 getAlphaCount() const;
         DNADouble calculateSimpleAlphaProb() const;
         DNADouble calculateLikelihoodNoQuality(double p_error) const;
 

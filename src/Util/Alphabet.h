@@ -12,7 +12,7 @@
 #define ALPHABET_H
 
 //#define USE_SSE 1
-
+//#define ALPHACOUNT_VALIDATE 1
 #include <utility>
 #include <stdint.h>
 #include <limits>
@@ -24,6 +24,7 @@
 #endif
 
 #include <iostream>
+#include <iterator>
 #include <algorithm>
 #include "Util.h"
 
@@ -126,17 +127,18 @@ namespace IUPAC
 //
 // A simple class holding the count for each base of a DNA string (plus the terminator)
 // Note that this uses RANK_ALPHABET
+template<typename Storage>
 class AlphaCount
 {
     public:
         //
         inline AlphaCount()
         {
-            memset(m_counts, 0, ALPHABET_SIZE * sizeof(BaseCount));
+            memset(m_counts, 0, ALPHABET_SIZE * sizeof(Storage));
         }
 
         //
-        inline void set(char b, BaseCount v)
+        inline void set(char b, Storage v)
         {
             m_counts[getBaseRank(b)] = v;
         }
@@ -144,29 +146,41 @@ class AlphaCount
         // 
         inline void increment(char b)
         {
-            m_counts[getBaseRank(b)]++;
+            int br = getBaseRank(b);
+#ifdef ALPHACOUNT_VALIDATE
+            assert(m_counts[br] != maxValue);
+#endif
+            m_counts[br]++;
         }
 
         //
-        inline void add(char b, BaseCount v)
+        inline void add(char b, Storage v)
         {
-            m_counts[getBaseRank(b)] += v;
+            int br = getBaseRank(b);
+#ifdef ALPHACOUNT_VALIDATE
+            assert(m_counts[br] + v <= maxValue);
+#endif
+            m_counts[br] += v;
         }
 
         //
-        inline void subtract(char b, BaseCount v)
+        inline void subtract(char b, Storage v)
         {
-            m_counts[getBaseRank(b)] -= v;
+            int br = getBaseRank(b);
+#ifdef ALPHACOUNT_VALIDATE
+            assert(m_counts[br] > v);
+#endif            
+            m_counts[br] -= v;
         }
 
         // 
-        inline BaseCount get(char b) const
+        inline Storage get(char b) const
         {
             return m_counts[getBaseRank(b)];
         }
 
         //
-        inline BaseCount getByIdx(const int i) const
+        inline Storage getByIdx(const int i) const
         {
             return m_counts[i];
         }
@@ -181,7 +195,7 @@ class AlphaCount
         // into the AlphaCount for the complemented sequence
         inline void complement()
         {
-            BaseCount tmp;
+            Storage tmp;
 
             // A,T
             tmp = m_counts[4];
@@ -195,9 +209,9 @@ class AlphaCount
         }
 
         // Return the sum of the basecounts for characters lexo. lower than b
-        inline BaseCount getLessThan(char b) const
+        inline size_t getLessThan(char b) const
         {
-            BaseCount out = 0;
+            size_t out = 0;
             int stop = getBaseRank(b);
             for(int i = 0; i < stop; ++i)
                 out += m_counts[i];
@@ -241,24 +255,24 @@ class AlphaCount
         inline char getMaxBase() const
         {
             char base;
-            BaseCount val;
+            Storage val;
             getMax(base, val);
             return base;
         }
 
         //
-        inline BaseCount getMaxCount() const
+        inline Storage getMaxCount() const
         {
             char base;
-            BaseCount val;
+            Storage val;
             getMax(base, val);
             return val;
         }
 
         //
-        inline void getMax(char& base, BaseCount& val) const
+        inline void getMax(char& base, Storage& val) const
         {
-            BaseCount max = 0;
+            Storage max = 0;
             int maxIdx = 0;
             for(int i = 0; i < ALPHABET_SIZE; ++i)
             {
@@ -273,9 +287,9 @@ class AlphaCount
         }
 
         //
-        inline BaseCount getSum() const
+        inline size_t getSum() const
         {
-            BaseCount sum = m_counts[0];
+            size_t sum = m_counts[0];
             sum += m_counts[1];
             sum += m_counts[2];
             sum += m_counts[3];
@@ -314,54 +328,38 @@ class AlphaCount
         }
 
         // Operators
-        friend std::ostream& operator<<(std::ostream& out, const AlphaCount& ac);
-        friend std::istream& operator>>(std::istream& in, AlphaCount& ac);
+        friend std::ostream& operator<<(std::ostream& out, const AlphaCount<Storage>& ac)
+        {
+            std::copy(ac.m_counts, ac.m_counts+ALPHABET_SIZE, std::ostream_iterator<Storage>(out, " "));
+            return out;
+        }
+
+        friend std::istream& operator>>(std::istream& in, AlphaCount<Storage>& ac)
+        {
+            for(size_t i = 0; i < ALPHABET_SIZE; ++i)
+                in >> ac.m_counts[i];
+            return in;
+        }
         
-        inline friend AlphaCount operator+(const AlphaCount& left, const AlphaCount& right)
+        inline friend AlphaCount operator+(const AlphaCount<Storage>& left, const AlphaCount<Storage>& right)
         {
             AlphaCount out;
-
-#if USE_SSE    
-            __m128i a = _mm_loadu_si128( (__m128i *) &left.m_counts[0]);
-            __m128i b = _mm_loadu_si128( (__m128i *) &right.m_counts[0]);
-            __m128i c = _mm_add_epi64(a, b);
-            _mm_store_si128( (__m128i *) &out.m_counts[0], c);
-
-            a = _mm_loadu_si128( (__m128i *) &left.m_counts[2]);
-            b = _mm_loadu_si128( (__m128i *) &right.m_counts[2]);
-            c = _mm_add_epi64(a, b);
-            _mm_store_si128( (__m128i *) &out.m_counts[2], c);
-            out.m_counts[4] = left.m_counts[4] + right.m_counts[4];
-#else
             out.m_counts[0] = left.m_counts[0] + right.m_counts[0];
             out.m_counts[1] = left.m_counts[1] + right.m_counts[1];
             out.m_counts[2] = left.m_counts[2] + right.m_counts[2];
             out.m_counts[3] = left.m_counts[3] + right.m_counts[3];
             out.m_counts[4] = left.m_counts[4] + right.m_counts[4];
-#endif
             return out;
         }
 
         inline AlphaCount& operator+=(const AlphaCount& other)
         {
 
-#if USE_SSE
-            __m128i a = _mm_loadu_si128( (__m128i *) &m_counts[0]);
-            __m128i b = _mm_loadu_si128( (__m128i *) &other.m_counts[0]);
-            __m128i c = _mm_add_epi64(a, b);
-            _mm_store_si128( (__m128i *) &m_counts[0], c);
-
-            a = _mm_loadu_si128( (__m128i *) &m_counts[2]);
-            b = _mm_loadu_si128( (__m128i *) &other.m_counts[2]);
-            c = _mm_add_epi64(a, b);
-            _mm_store_si128( (__m128i *) &m_counts[2], c);
-#else
             m_counts[0] += other.m_counts[0];
             m_counts[1] += other.m_counts[1];
             m_counts[2] += other.m_counts[2];
             m_counts[3] += other.m_counts[3];
             m_counts[4] += other.m_counts[4];
-#endif
             return *this;
         }
 
@@ -371,24 +369,11 @@ class AlphaCount
         friend AlphaCount operator-(const AlphaCount& left, const AlphaCount& right)
         {
             AlphaCount out;
-#if USE_SSE
-            __m128i a = _mm_loadu_si128( (__m128i *) &left.m_counts[0]);
-            __m128i b = _mm_loadu_si128( (__m128i *) &right.m_counts[0]);
-            __m128i c = _mm_sub_epi64(a, b);
-            _mm_store_si128( (__m128i *) &out.m_counts[0], c);
-
-            a = _mm_loadu_si128( (__m128i *) &left.m_counts[2]);
-            b = _mm_loadu_si128( (__m128i *) &right.m_counts[2]);
-            c = _mm_sub_epi64(a, b);
-            _mm_store_si128( (__m128i *) &out.m_counts[2], c);
-            out.m_counts[4] = left.m_counts[4] - right.m_counts[4];
-#else
             out.m_counts[0] = left.m_counts[0] - right.m_counts[0];
             out.m_counts[1] = left.m_counts[1] - right.m_counts[1];
             out.m_counts[2] = left.m_counts[2] - right.m_counts[2];
             out.m_counts[3] = left.m_counts[3] - right.m_counts[3];
             out.m_counts[4] = left.m_counts[4] - right.m_counts[4];
-#endif
             return out;
         }
 
@@ -406,7 +391,8 @@ class AlphaCount
                 
 
     private:
-        BaseCount m_counts[ALPHABET_SIZE];
+        Storage m_counts[ALPHABET_SIZE];
+        const static size_t maxValue;
 
         struct AlphaCountCompareDesc
         {
@@ -419,5 +405,9 @@ class AlphaCount
         };
 
 };
+
+// Typedef commonly used AlphaCounts
+typedef AlphaCount<uint64_t> AlphaCount64;
+typedef AlphaCount<uint8_t> AlphaCount8;
 
 #endif
