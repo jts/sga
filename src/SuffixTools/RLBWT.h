@@ -243,28 +243,29 @@ class RLBWT
         }        
 
         // Get the interpolated marker with position closest to position
-        inline LargeMarker getNearestMarker(size_t position) const
+        inline LargeMarker getNearestMarker(size_t position) const __attribute__((always_inline))
+
         {
             size_t nearest_small_idx = getNearestMarkerIdx(position, m_smallSampleRate, m_smallShiftValue);
             return getInterpolatedMarker(nearest_small_idx);
         }
 
         // Get the greatest interpolated marker whose position is less than or equal to position
-        inline LargeMarker getLowerMarker(size_t position) const
+        inline LargeMarker getLowerMarker(size_t position) const __attribute__((always_inline))
         {
             size_t target_small_idx = position >> m_smallShiftValue;
             return getInterpolatedMarker(target_small_idx);
         }
 
         // Get the lowest interpolated marker whose position is strictly greater than position
-        inline LargeMarker getUpperMarker(size_t position) const
+        inline LargeMarker getUpperMarker(size_t position) const __attribute__((always_inline))
         {
             size_t target_small_idx = (position >> m_smallShiftValue) + 1;
             return getInterpolatedMarker(target_small_idx);
         }
 
         // Return a LargeMarker with values that are interpolated by adding/subtracting all the SmallMarkers up to target_small_idx
-        inline LargeMarker getInterpolatedMarker(size_t target_small_idx) const
+        inline LargeMarker getInterpolatedMarker(size_t target_small_idx) const __attribute__((always_inline))
         {
             // Calculate the position of the LargeMarker closest to the target SmallMarker
             size_t target_position = target_small_idx << m_smallShiftValue;
@@ -299,8 +300,6 @@ class RLBWT
                     // Add the small marker counts into the large marker
                     alphacount_add(accumulated.counts, small_marker.counts);
                     accumulated.unitIndex += small_marker.unitCount;
-
-                    //printf("InterpolateFLoopEnd -- pos: %zu csi: %zu cp: %zu tp: %zu d: %d\n", position, current_small_idx, current_position, target_position, (int)target_position - (int)current_position);
                 }
             }
             else
@@ -312,7 +311,6 @@ class RLBWT
                     const SmallMarker& small_marker = m_smallMarkers[current_small_idx];
                     alphacount_subtract(accumulated.counts, small_marker.counts);
                     accumulated.unitIndex -= small_marker.unitCount;
-                    //printf("InterpolateBLoopEnd -- pos: %zu csi: %zu cp: %zu tp: %zu d: %d\n", position, current_small_idx, current_position, target_position, (int)target_position - (int)current_position);
                     current_small_idx -= 1;
                 }
             }
