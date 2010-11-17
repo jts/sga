@@ -22,7 +22,7 @@
 // Parse a BWT from a file
 RLBWT::RLBWT(const std::string& filename, int /*sampleRate*/) : m_numStrings(0), 
                                                             m_numSymbols(0), 
-                                                            m_largeSampleRate(2048),//DEFAULT_SAMPLE_RATE_LARGE),
+                                                            m_largeSampleRate(DEFAULT_SAMPLE_RATE_LARGE),
                                                             m_smallSampleRate(DEFAULT_SAMPLE_RATE_SMALL)
 {
     IBWTReader* pReader = BWTReader::createReader(filename);
@@ -230,6 +230,8 @@ void RLBWT::printInfo() const
     double total_mb = total_size / mb;
     
     printf("\nRLBWT info:\n");
+    printf("size of small: %zu\n", sizeof(SmallMarker));
+    printf("size of large: %zu\n", sizeof(LargeMarker));
     printf("Large Sample rate: %zu\n", m_largeSampleRate);
     printf("Small Sample rate: %zu\n", m_smallSampleRate);
     printf("Contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());

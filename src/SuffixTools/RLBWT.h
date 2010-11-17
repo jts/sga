@@ -183,7 +183,7 @@ struct SmallMarker
     AlphaCount8 counts; 
 
     // The number of RL units in this block
-    size_t unitCount;
+    uint8_t unitCount;
 };
 typedef std::vector<SmallMarker> SmallMarkerVector;
 
@@ -509,7 +509,7 @@ class RLBWT
         friend class BWTWriterAscii;
 
         // Default sample rates for the large (64-bit) and small (8-bit) occurrence markers
-        static const int DEFAULT_SAMPLE_RATE_LARGE = 2048;
+        static const int DEFAULT_SAMPLE_RATE_LARGE = 1024;
         static const int DEFAULT_SAMPLE_RATE_SMALL = 128;
         static const int DEFAULT_SAMPLE_RATE = 128;
 
