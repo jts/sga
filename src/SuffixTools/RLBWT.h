@@ -243,29 +243,28 @@ class RLBWT
         }        
 
         // Get the interpolated marker with position closest to position
-        inline LargeMarker getNearestMarker(size_t position) const __attribute__((always_inline))
-
+        inline LargeMarker getNearestMarker(size_t position) const
         {
             size_t nearest_small_idx = getNearestMarkerIdx(position, m_smallSampleRate, m_smallShiftValue);
             return getInterpolatedMarker(nearest_small_idx);
         }
 
         // Get the greatest interpolated marker whose position is less than or equal to position
-        inline LargeMarker getLowerMarker(size_t position) const __attribute__((always_inline))
+        inline LargeMarker getLowerMarker(size_t position) const
         {
             size_t target_small_idx = position >> m_smallShiftValue;
             return getInterpolatedMarker(target_small_idx);
         }
 
         // Get the lowest interpolated marker whose position is strictly greater than position
-        inline LargeMarker getUpperMarker(size_t position) const __attribute__((always_inline))
+        inline LargeMarker getUpperMarker(size_t position) const
         {
             size_t target_small_idx = (position >> m_smallShiftValue) + 1;
             return getInterpolatedMarker(target_small_idx);
         }
 
         // Return a LargeMarker with values that are interpolated by adding/subtracting all the SmallMarkers up to target_small_idx
-        inline LargeMarker getInterpolatedMarker(size_t target_small_idx) const __attribute__((always_inline))
+        inline LargeMarker getInterpolatedMarker(size_t target_small_idx) const
         {
             // Calculate the position of the LargeMarker closest to the target SmallMarker
             size_t target_position = target_small_idx << m_smallShiftValue;
