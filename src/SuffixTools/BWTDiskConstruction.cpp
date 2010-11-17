@@ -21,7 +21,7 @@
 
 // Definitions and structures
 static const bool USE_GZ = false;
-static const int BWT_SAMPLE_RATE = 1024;
+static const int BWT_SAMPLE_RATE = 128;//1024;
 
 struct MergeItem
 {

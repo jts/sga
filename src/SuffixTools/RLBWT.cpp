@@ -20,7 +20,11 @@
 #define PRED(c) m_predCount.get((c))
 
 // Parse a BWT from a file
-RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), m_numSymbols(0), m_sampleRate(sampleRate)
+RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), 
+                                                            m_numSymbols(0), 
+                                                            m_sampleRate(sampleRate), 
+                                                            m_largeSampleRate(DEFAULT_SAMPLE_RATE_LARGE),
+                                                            m_smallSampleRate(DEFAULT_SAMPLE_RATE_SMALL)
 {
     IBWTReader* pReader = BWTReader::createReader(filename);
     pReader->read(this);
@@ -55,25 +59,45 @@ void RLBWT::append(char b)
 void RLBWT::initializeFMIndex()
 {
     m_shiftValue = Occurrence::calculateShiftValue(m_sampleRate);
+    m_smallShiftValue = Occurrence::calculateShiftValue(m_smallSampleRate);
+    m_largeShiftValue = Occurrence::calculateShiftValue(m_largeSampleRate);
 
     // initialize the marker vector, we place a marker at the beginning (with no accumulated counts), every m_sampleRate
     // bases and one at the very end (with the total counts)
-    size_t num_samples = (m_numSymbols % m_sampleRate == 0) ? (m_numSymbols / m_sampleRate) + 1 : (m_numSymbols / m_sampleRate) + 2;
-    m_markers.resize(num_samples);
+    size_t num_old_markers = getNumRequiredMarkers(m_numSymbols, m_sampleRate);
+    m_oldMarkers.resize(num_old_markers);
+
+    size_t num_large_markers = getNumRequiredMarkers(m_numSymbols, m_largeSampleRate);
+    size_t num_small_markers = getNumRequiredMarkers(m_numSymbols, m_smallSampleRate);
+    m_largeMarkers.resize(num_large_markers);
+    m_smallMarkers.resize(num_small_markers);
 
     // Fill in the marker values
     // We wish to place markers every sampleRate symbols however since a run may
     // not end exactly on sampleRate boundaries, we place the markers AFTER
     // the run crossing the boundary ends
 
-    // Place a blank first marker at the start of the data
-    RLMarker& marker = m_markers[0];
-    marker.unitIndex = 0;
+    // Place a blank markers at the start of the data
+    m_oldMarkers[0].unitIndex;
+    m_largeMarkers[0].unitIndex = 0;
+    m_smallMarkers[0].unitCount = 0;
 
-    size_t curr_marker_index = 1;
-    size_t next_marker = m_sampleRate;
+    // State variables for the number of markers placed,
+    // the next marker to place, etc
+    size_t curr_old_marker_index = 1;
+    size_t curr_large_marker_index = 1;
+    size_t curr_small_marker_index = 1;
+
+    size_t next_old_marker = m_sampleRate;
+    size_t next_small_marker = m_smallSampleRate;
+    size_t next_large_marker = m_largeSampleRate;
+
+    AlphaCount64 prev_small_marker_ac;
+    size_t prev_small_marker_unit_index = 0;
+
     size_t running_total = 0;
-    AlphaCount64 ac;
+    AlphaCount64 running_ac;
+
     for(size_t i = 0; i < m_rlString.size(); ++i)
     {
         // Update the count and advance the running total
@@ -81,42 +105,154 @@ void RLBWT::initializeFMIndex()
 
         char symbol = unit.getChar();
         uint8_t run_len = unit.getCount();
-        ac.add(symbol, run_len);
-
+        running_ac.add(symbol, run_len);
         running_total += run_len;
 
-        // If this is the last symbol, place the final marker(s)
-        bool place_last_marker = (i == m_rlString.size() - 1) && curr_marker_index < num_samples;
-        while(running_total >= next_marker || place_last_marker)
+        size_t curr_unit_index = i + 1;
+        bool last_symbol = i == m_rlString.size() - 1;
+
+        // Check whether to place a new small marker
+        {
+        bool place_last_small_marker = last_symbol && curr_small_marker_index < num_small_markers;
+        while(running_total >= next_small_marker || place_last_small_marker)
         {
             // Place markers
-            size_t expected_marker_pos = curr_marker_index * m_sampleRate;
+            size_t expected_marker_pos = curr_small_marker_index * m_smallSampleRate;
 
             // Sanity checks
             // The marker position should always be less than the running total unless 
             // the number of symbols is smaller than the sample rate
-            assert(expected_marker_pos <= running_total || place_last_marker);
-            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_marker);
-            assert(curr_marker_index < num_samples);
-            assert(ac.getSum() == running_total);
+            assert(expected_marker_pos <= running_total || place_last_small_marker);
+            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_small_marker);
+            assert(curr_small_marker_index < num_small_markers);
+            assert(running_ac.getSum() == running_total);
+    
+            // Calculate the number of rl units that are contained in this block
+            if(curr_unit_index - prev_small_marker_unit_index > std::numeric_limits<uint8_t>::max())
+            {
+                std::cerr << "Error: Number of units in occurrence array block " << curr_small_marker_index 
+                          << " exceeds the maximum value.\n";
+                exit(EXIT_FAILURE);
 
-            RLMarker& marker = m_markers[curr_marker_index];
+            }
+
+            // Set the 8bit AlphaCounts to the count of symbols within the block
+            AlphaCount8 smallAC;
+            for(size_t j = 0; j < ALPHABET_SIZE; ++j)
+            {
+                size_t v = running_ac.getByIdx(j) - prev_small_marker_ac.getByIdx(j);
+                if(v > AlphaCount8::getMaxValue())
+                {
+                    std::cerr << "Error: Number of symbols in occurrence array block " << curr_small_marker_index 
+                              << " exceeds the maximum value (" << v << " > " << AlphaCount8::getMaxValue() << "\n";
+                    exit(EXIT_FAILURE);
+                }
+                smallAC.setByIdx(j, v);
+            }
+            
+            SmallMarker& small_marker = m_smallMarkers[curr_small_marker_index];
+            small_marker.unitCount = curr_unit_index - prev_small_marker_unit_index;
+            small_marker.counts = smallAC;
+
+            // Update state variables
+            next_small_marker += m_smallSampleRate;
+            curr_small_marker_index += 1;
+            prev_small_marker_ac = running_ac;
+            prev_small_marker_unit_index = curr_unit_index;
+            place_last_small_marker = last_symbol && curr_small_marker_index < num_small_markers;
+        }
+        }
+
+        // Check whether to place a new large marker
+        {
+        bool place_last_large_marker = last_symbol && curr_large_marker_index < num_large_markers;
+        while(running_total >= next_large_marker || place_last_large_marker)
+        {
+            // Place markers
+            size_t expected_marker_pos = curr_large_marker_index * m_largeSampleRate;
+
+            // Sanity checks
+            // The marker position should always be less than the running total unless 
+            // the number of symbols is smaller than the sample rate
+            assert(expected_marker_pos <= running_total || place_last_large_marker);
+            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_large_marker);
+            assert(curr_large_marker_index < num_large_markers);
+            assert(running_ac.getSum() == running_total);
+
+            LargeMarker& marker = m_largeMarkers[curr_large_marker_index];
             marker.unitIndex = i + 1;
-            marker.counts = ac;
-            next_marker += m_sampleRate;
-            ++curr_marker_index;
-            place_last_marker = (i == m_rlString.size() - 1) && curr_marker_index < num_samples;
+            marker.counts = running_ac;
+            next_large_marker += m_largeSampleRate;
+            curr_large_marker_index += 1;
+            place_last_large_marker = last_symbol && curr_large_marker_index < num_large_markers;
         }        
+        }
+        // If this is the last symbol, place the final marker(s)
+        bool place_last_old_marker = last_symbol && curr_old_marker_index < num_old_markers;
+        while(running_total >= next_old_marker || place_last_old_marker)
+        {
+            // Place markers
+            size_t expected_marker_pos = curr_old_marker_index * m_sampleRate;
+
+            // Sanity checks
+            // The marker position should always be less than the running total unless 
+            // the number of symbols is smaller than the sample rate
+            assert(expected_marker_pos <= running_total || place_last_old_marker);
+            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_old_marker);
+            assert(curr_old_marker_index < num_old_markers);
+            assert(running_ac.getSum() == running_total);
+
+            LargeMarker& marker = m_oldMarkers[curr_old_marker_index];
+            marker.unitIndex = i + 1;
+            marker.counts = running_ac;
+            next_old_marker += m_sampleRate;
+            ++curr_old_marker_index;
+            place_last_old_marker = last_symbol && curr_old_marker_index < num_old_markers;
+        }
     }
 
-    assert(curr_marker_index == num_samples);
+    assert(curr_old_marker_index == num_old_markers);
+    assert(curr_small_marker_index == num_small_markers);
+    assert(curr_large_marker_index == num_large_markers);
 
     // Initialize C(a)
     m_predCount.set('$', 0);
-    m_predCount.set('A', ac.get('$')); 
-    m_predCount.set('C', m_predCount.get('A') + ac.get('A'));
-    m_predCount.set('G', m_predCount.get('C') + ac.get('C'));
-    m_predCount.set('T', m_predCount.get('G') + ac.get('G'));    
+    m_predCount.set('A', running_ac.get('$')); 
+    m_predCount.set('C', m_predCount.get('A') + running_ac.get('A'));
+    m_predCount.set('G', m_predCount.get('C') + running_ac.get('C'));
+    m_predCount.set('T', m_predCount.get('G') + running_ac.get('G'));
+    
+    // Check the new marker placement for all positions
+    printf("Testing new markers for %zu symbols \n", m_numSymbols);
+    for(size_t i = 0; i < m_numSymbols; ++i)
+    {
+        LargeMarker oldLower = getLowerOldMarker(i);
+        LargeMarker newLower = getLowerInterpolatedMarker(i);
+        assert(oldLower == newLower);
+
+        LargeMarker oldUpper = getUpperOldMarker(i);
+        LargeMarker newUpper = getUpperInterpolatedMarker(i);
+        assert(oldUpper == newUpper);
+
+        LargeMarker oldNearest = getNearestOldMarker(i);
+        LargeMarker newNearest = getNearestInterpolatedMarker(i);
+        
+        assert(oldNearest == newNearest);
+
+        char ob = getCharOld(i);
+        char nb = getChar(i);
+        assert(ob == nb);
+    }
+    printf("done test\n");
+}
+
+// get the number of markers required to cover the n symbols at sample rate of d
+size_t RLBWT::getNumRequiredMarkers(size_t n, size_t d) const
+{
+    // we place a marker at the beginning (with no accumulated counts), every m_sampleRate
+    // bases and one at the very end (with the total counts)
+    size_t num_markers = (n % d == 0) ? (n / d) + 1 : (n / d) + 2;
+    return num_markers;
 }
 
 // Print the BWT
@@ -137,7 +273,11 @@ void RLBWT::print() const
 // Print information about the BWT
 void RLBWT::printInfo() const
 {
-    size_t m_size = m_markers.capacity() * sizeof(RLMarker);
+    size_t m_size = m_oldMarkers.capacity() * sizeof(LargeMarker);
+    size_t small_m_size = m_smallMarkers.capacity() * sizeof(SmallMarker);
+    size_t large_m_size = m_largeMarkers.capacity() * sizeof(LargeMarker);
+    size_t total_marker_size = small_m_size + large_m_size;
+
     size_t bwStr_size = m_rlString.capacity() * sizeof(RLUnit);
     size_t other_size = sizeof(*this);
     size_t total_size = m_size + bwStr_size + other_size;
@@ -149,6 +289,9 @@ void RLBWT::printInfo() const
     printf("Sample rate: %zu\n", m_sampleRate);
     printf("Contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());
     printf("Memory -- Markers: %zu (%.1lf MB) Str: %zu (%.1lf MB) Misc: %zu Total: %zu (%lf MB)\n", m_size, m_size / mb, bwStr_size, bwStr_size / mb, other_size, total_size, total_mb);
+    printf("Memory -- Small Markers: %zu (%.1lf MB) Large Markers: %zu (%.1lf MB) Marker Total: %zu (%lf MB)\n", small_m_size, small_m_size / mb, 
+                                                                                                                 large_m_size, large_m_size / mb, 
+                                                                                                                 total_marker_size, total_marker_size / mb);
     printf("N: %zu Bytes per symbol: %lf\n\n", m_numSymbols, (double)total_size / m_numSymbols);
 }
 

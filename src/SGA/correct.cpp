@@ -132,7 +132,6 @@ static const struct option longopts[] = {
 int correctMain(int argc, char** argv)
 {
     parseCorrectOptions(argc, argv);
-    Timer* pTimer = new Timer(PROGRAM_IDENT);
 
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
@@ -141,6 +140,7 @@ int correctMain(int argc, char** argv)
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false, opt::branchCutoff);
     
+    Timer* pTimer = new Timer(PROGRAM_IDENT);
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
 

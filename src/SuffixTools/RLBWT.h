@@ -104,13 +104,15 @@ struct RLUnit
 };
 typedef std::vector<RLUnit> RLVector;
 
-// RLMarker - To allow random access to the 
+// LargeMarker - To allow random access to the 
 // BWT symbols and implement the occurrence array
-// we keep a vector of markers every D symbols.
+// we keep a vector of symbol counts every D1 symbols.
+// These counts are the absolute number of times each
+// symbol has been seen up to that point.
 // 
-struct RLMarker
+struct LargeMarker
 {
-    RLMarker() : unitIndex(0) {}
+    LargeMarker() : unitIndex(0) {}
 
     // Calculate the actual position in the uncompressed BWT of this marker
     // This is the number of symbols preceding this marker
@@ -119,16 +121,71 @@ struct RLMarker
         return counts.getSum();
     }
 
+    void print() const
+    {
+        std::cout << "Large marker actual pos: " << getActualPosition() << "\n";
+        std::cout << "Marker unit index: " << unitIndex << "\n";
+        std::cout << "Marker counts: ";
+        for(int i = 0; i < ALPHABET_SIZE; ++i)
+        {
+            std::cout << (int)counts.getByIdx(i) << " ";
+        }
+        std::cout << "\n";
+    }    
+
+    // Returns true if the data in the markers is identical
+    bool operator==(const LargeMarker& rhs)
+    {
+        for(size_t i = 0; i < ALPHABET_SIZE; ++i)
+        {
+            if(counts.getByIdx(i) != rhs.counts.getByIdx(i))
+                return false;
+        }
+        return unitIndex == rhs.unitIndex;
+    }
+
     // The number of times each symbol has been seen up to this marker
     AlphaCount64 counts; 
 
     // The index in the RLVector of the run that starts after
     // this marker. That is, if C = getActualPosition(), then
-    // the run containing the B[C] is unitIndex. This is not necessary
+    // the run containing the B[C] is at unitIndex. This is not necessary
     // a valid index if there is a marker after the last symbol in the BWT
     size_t unitIndex;
 };
-typedef std::vector<RLMarker> MarkerVector;
+typedef std::vector<LargeMarker> LargeMarkerVector;
+
+// SmallMarker - Small markers contain the counts
+// within an individual block of the BWT. In other words
+// the small marker contains the count for the last D2 symbols
+// 
+struct SmallMarker
+{
+    SmallMarker() : unitCount(0) {}
+
+    // Calculate the actual position in the uncompressed BWT of this marker
+    // This is the number of symbols preceding this marker
+    inline size_t getCountSum() const
+    {
+        return counts.getSum();
+    }
+
+    void print() const
+    {
+        for(int i = 0; i < ALPHABET_SIZE; ++i)
+        {
+            std::cout << (int)counts.getByIdx(i) << " ";
+        }
+        std::cout << "\n";
+    }
+
+    // The number of times each symbol has been seen up to this marker
+    AlphaCount8 counts; 
+
+    // The number of RL units in this block
+    size_t unitCount;
+};
+typedef std::vector<SmallMarker> SmallMarkerVector;
 
 //
 // RLBWT
@@ -146,10 +203,10 @@ class RLBWT
         // Append a symbol to the bw string
         void append(char b);
 
-        inline char getChar(size_t idx) const
+        inline char getCharOld(size_t idx) const
         {
             // Calculate the Marker who's position is not less than idx
-            const RLMarker& nearest = getUpperMarker(idx);
+            const LargeMarker& nearest = getUpperMarker(idx);
             size_t current_position = nearest.getActualPosition();
             assert(current_position >= idx);
 
@@ -168,46 +225,179 @@ class RLBWT
             assert(current_position <= idx && current_position + unit.getCount() >= idx);
             return unit.getChar();
         }
-    
+
+        inline char getChar(size_t idx) const
+        {
+            // Calculate the Marker who's position is not less than idx
+            const LargeMarker& upper = getUpperInterpolatedMarker(idx);
+            size_t current_position = upper.getActualPosition();
+            assert(current_position >= idx);
+
+            size_t symbol_index = upper.unitIndex; 
+
+            // Search backwards (towards 0) until idx is found
+            while(current_position > idx)
+            {
+                assert(symbol_index != 0);
+                symbol_index -= 1;
+                current_position -= m_rlString[symbol_index].getCount();
+            }
+
+            // symbol_index is now the index of the run containing the idx symbol
+            const RLUnit& unit = m_rlString[symbol_index];
+            assert(current_position <= idx && current_position + unit.getCount() >= idx);
+            return unit.getChar();
+        }
+
+
+        inline const LargeMarker getNearestMarker(size_t idx) const
+        {
+            return getNearestOldMarker(idx);
+        }
+
+        inline const LargeMarker getLowerMarker(size_t idx) const
+        {
+            return getLowerOldMarker(idx);
+        }
+
+        inline const LargeMarker getUpperMarker(size_t idx) const
+        {
+            return getUpperOldMarker(idx);
+        }
+                
         // Get the first marker with a position that is guaranteed to be 
         // no greater than idx
-        inline const RLMarker& getUpperMarker(size_t idx) const
+        inline const LargeMarker& getUpperOldMarker(size_t idx) const
         {
-            //printf("UPPER idx: %zu shifted: %zu nm: %zu\n", idx, idx >> m_shiftValue, m_markers.size());
+            //printf("UPPER idx: %zu shifted: %zu nm: %zu\n", idx, idx >> m_shiftValue, m_oldMarkers.size());
             idx >>= m_shiftValue;
             ++idx;
 #ifdef RLBWT_VALIDATE
-            assert(idx < m_markers.size());
+            assert(idx < m_oldMarkers.size());
 #endif
-            return m_markers[idx];
+            return m_oldMarkers[idx];
         }
 
         // Get the the marker who's position is estimated to be at idx
         // but it may be slightly more
-        inline const RLMarker& getLowerMarker(size_t idx) const
+        inline const LargeMarker& getLowerOldMarker(size_t idx) const
         {
-            //printf("LOWER idx: %zu shifted: %zu nm: %zu\n", idx, idx >> m_shiftValue, m_markers.size());
+            //printf("LOWER idx: %zu shifted: %zu nm: %zu\n", idx, idx >> m_shiftValue, m_oldMarkers.size());
             idx >>= m_shiftValue;
 #ifdef RLBWT_VALIDATE
-            assert(idx < m_markers.size());
+            assert(idx < m_oldMarkers.size());
 #endif
-            return m_markers[idx];
+            return m_oldMarkers[idx];
         }
 
         // Get the nearest marker to idx.
-        inline const RLMarker& getNearestMarker(size_t idx) const
+        inline const LargeMarker& getNearestOldMarker(size_t idx) const
         {
             size_t offset = MOD_POWER_2(idx, m_sampleRate); // equivalent to idx % m_sampleRate
             if(offset < (m_sampleRate >> 1))
             {
                 // Choose lower marker
-                return getLowerMarker(idx);    
+                return getLowerOldMarker(idx);    
             }
             else
             {
                 // Choose upper marker
-                return getUpperMarker(idx);
+                return getUpperOldMarker(idx);
             }
+        }
+
+        // Get the index of the marker nearest to position in the bwt
+        inline size_t getNearestMarkerIdx(size_t position, size_t sampleRate, size_t shiftValue) const
+        {
+            size_t offset = MOD_POWER_2(position, sampleRate); // equivalent to position % sampleRate
+            size_t baseIdx = position >> shiftValue;
+
+            if(offset < (sampleRate >> 1))
+            {
+                return baseIdx;
+            }
+            else
+            {
+                return baseIdx + 1;
+            }
+        }        
+
+        // Get the interpolated marker with position closest to position
+        inline LargeMarker getNearestInterpolatedMarker(size_t position) const
+        {
+            size_t nearest_small_idx = getNearestMarkerIdx(position, m_smallSampleRate, m_smallShiftValue);
+            return getInterpolatedMarker(nearest_small_idx);
+        }
+
+        // Get the greatest interpolated marker whose position is less than or equal to position
+        inline LargeMarker getLowerInterpolatedMarker(size_t position) const
+        {
+            size_t target_small_idx = position >> m_smallShiftValue;
+            return getInterpolatedMarker(target_small_idx);
+        }
+
+        // Get the lowest interpolated marker whose position is strictly greater than position
+        inline LargeMarker getUpperInterpolatedMarker(size_t position) const
+        {
+            size_t target_small_idx = (position >> m_smallShiftValue) + 1;
+            return getInterpolatedMarker(target_small_idx);
+        }
+
+        // Return a LargeMarker with values are interpolated up to the SmallMarker at target_small_idx
+        inline LargeMarker getInterpolatedMarker(size_t target_small_idx) const
+        {
+            // Calculate the position of the LargeMarker closest to the target SmallMarker
+            size_t target_position = target_small_idx << m_smallShiftValue;
+            size_t curr_large_idx = getNearestMarkerIdx(target_position, m_largeSampleRate, m_largeShiftValue);
+            size_t current_position = curr_large_idx << m_largeShiftValue;
+
+            //int d = target_position - current_position;
+            //printf("Interpolate -- pos: %zu tsi: %zu li %zu cp: %zu tp: %zu d: %d\n", position, target_small_idx, curr_large_idx, current_position, target_position, d);
+            
+            LargeMarker accumulated = m_largeMarkers[curr_large_idx];
+
+            size_t current_small_idx = current_position >> m_smallShiftValue;
+
+            // Each small block contains the count of symbols in the last sampleRate bases
+            // When we count forward we skip the first block as it's count is included
+            // in the LargeMarker at the same position. When counting backwards we include
+            // the small marker at the same position of the LargeMarker which is why
+            // the loop variable is incremented/decremented in different places in the loops below.
+            if(current_position < target_position)
+            {
+                // Accumulate small blocks forward
+                while(current_position < target_position)
+                {
+                    // Invariant: The accumulated count includes the small block ending
+                    // at current_small_idx.
+                    
+                    // Add the counts in the next block 
+                    current_small_idx += 1;
+                    current_position += m_smallSampleRate;
+
+                    const SmallMarker& small_marker = m_smallMarkers[current_small_idx];
+                    // Add the small marker counts into the large marker
+                    alphacount_add(accumulated.counts, small_marker.counts);
+                    accumulated.unitIndex += small_marker.unitCount;
+
+                    //printf("InterpolateFLoopEnd -- pos: %zu csi: %zu cp: %zu tp: %zu d: %d\n", position, current_small_idx, current_position, target_position, (int)target_position - (int)current_position);
+                }
+            }
+            else
+            {
+                // Accumulate small blocks backwards
+                while(current_position > target_position)
+                {
+                    current_position -= m_smallSampleRate;
+                    const SmallMarker& small_marker = m_smallMarkers[current_small_idx];
+                    alphacount_subtract(accumulated.counts, small_marker.counts);
+                    accumulated.unitIndex -= small_marker.unitCount;
+                    //printf("InterpolateBLoopEnd -- pos: %zu csi: %zu cp: %zu tp: %zu d: %d\n", position, current_small_idx, current_position, target_position, (int)target_position - (int)current_position);
+                    current_small_idx -= 1;
+                }
+            }
+            assert(current_position == target_position);
+            return accumulated;
         }
 
         inline BaseCount getPC(char b) const { return m_predCount.get(b); }
@@ -219,7 +409,7 @@ class RLBWT
             // so we increment the index by 1.
             ++idx;
 
-            const RLMarker& marker = getNearestMarker(idx);
+            const LargeMarker& marker = getNearestMarker(idx);
             size_t current_position = marker.getActualPosition();
             bool forwards = current_position < idx;
             //printf("cp: %zu idx: %zu f: %d dist: %d\n", current_position, idx, forwards, (int)idx - (int)current_position);
@@ -241,7 +431,7 @@ class RLBWT
             // so we increment the index by 1.
             ++idx;
 
-            const RLMarker& marker = getNearestMarker(idx);
+            const LargeMarker& marker = getNearestMarker(idx);
             size_t current_position = marker.getActualPosition();
             bool forwards = current_position < idx;
 
@@ -382,6 +572,9 @@ class RLBWT
         friend class BWTReaderAscii;
         friend class BWTWriterAscii;
 
+        // Default sample rates for the large (64-bit) and small (8-bit) occurrence markers
+        static const int DEFAULT_SAMPLE_RATE_LARGE = 2048;
+        static const int DEFAULT_SAMPLE_RATE_SMALL = 128;
         static const int DEFAULT_SAMPLE_RATE = 128;
 
     private:
@@ -389,6 +582,9 @@ class RLBWT
 
         // Default constructor is not allowed
         RLBWT() {}
+        
+        // Calculate the number of markers to place
+        size_t getNumRequiredMarkers(size_t n, size_t d) const;
 
         // The C(a) array
         AlphaCount64 m_predCount;
@@ -397,7 +593,9 @@ class RLBWT
         RLVector m_rlString;
 
         // The marker vector
-        MarkerVector m_markers;
+        LargeMarkerVector m_oldMarkers;
+        LargeMarkerVector m_largeMarkers;
+        SmallMarkerVector m_smallMarkers;
 
         // The number of strings in the collection
         size_t m_numStrings;
@@ -407,9 +605,13 @@ class RLBWT
 
         // The sample rate used for the markers
         size_t m_sampleRate;
+        size_t m_largeSampleRate;
+        size_t m_smallSampleRate;
 
         // The amount to shift values by to divide by m_sampleRate
         int m_shiftValue;
+        int m_smallShiftValue;
+        int m_largeShiftValue;
 
 };
 #endif
