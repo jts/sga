@@ -272,9 +272,6 @@ class RLBWT
             size_t curr_large_idx = getNearestMarkerIdx(target_position, m_largeSampleRate, m_largeShiftValue);
             size_t current_position = curr_large_idx << m_largeShiftValue;
 
-            //int d = target_position - current_position;
-            //printf("Interpolate -- pos: %zu tsi: %zu li %zu cp: %zu tp: %zu d: %d\n", position, target_small_idx, curr_large_idx, current_position, target_position, d);
-            
             LargeMarker accumulated = m_largeMarkers[curr_large_idx];
 
             size_t current_small_idx = current_position >> m_smallShiftValue;
