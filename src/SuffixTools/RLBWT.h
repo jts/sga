@@ -203,29 +203,6 @@ class RLBWT
         // Append a symbol to the bw string
         void append(char b);
 
-        inline char getCharOld(size_t idx) const
-        {
-            // Calculate the Marker who's position is not less than idx
-            const LargeMarker& nearest = getUpperMarker(idx);
-            size_t current_position = nearest.getActualPosition();
-            assert(current_position >= idx);
-
-            size_t symbol_index = nearest.unitIndex; 
-
-            // Search backwards (towards 0) until idx is found
-            while(current_position > idx)
-            {
-                assert(symbol_index != 0);
-                symbol_index -= 1;
-                current_position -= m_rlString[symbol_index].getCount();
-            }
-
-            // symbol_index is now the index of the run containing the idx symbol
-            const RLUnit& unit = m_rlString[symbol_index];
-            assert(current_position <= idx && current_position + unit.getCount() >= idx);
-            return unit.getChar();
-        }
-
         inline char getChar(size_t idx) const
         {
             // Calculate the Marker who's position is not less than idx
@@ -252,60 +229,19 @@ class RLBWT
 
         inline const LargeMarker getNearestMarker(size_t idx) const
         {
-            return getNearestOldMarker(idx);
+            return getNearestInterpolatedMarker(idx);
         }
 
         inline const LargeMarker getLowerMarker(size_t idx) const
         {
-            return getLowerOldMarker(idx);
+            return getLowerInterpolatedMarker(idx);
         }
 
         inline const LargeMarker getUpperMarker(size_t idx) const
         {
-            return getUpperOldMarker(idx);
+            return getUpperInterpolatedMarker(idx);
         }
                 
-        // Get the first marker with a position that is guaranteed to be 
-        // no greater than idx
-        inline const LargeMarker& getUpperOldMarker(size_t idx) const
-        {
-            //printf("UPPER idx: %zu shifted: %zu nm: %zu\n", idx, idx >> m_shiftValue, m_oldMarkers.size());
-            idx >>= m_shiftValue;
-            ++idx;
-#ifdef RLBWT_VALIDATE
-            assert(idx < m_oldMarkers.size());
-#endif
-            return m_oldMarkers[idx];
-        }
-
-        // Get the the marker who's position is estimated to be at idx
-        // but it may be slightly more
-        inline const LargeMarker& getLowerOldMarker(size_t idx) const
-        {
-            //printf("LOWER idx: %zu shifted: %zu nm: %zu\n", idx, idx >> m_shiftValue, m_oldMarkers.size());
-            idx >>= m_shiftValue;
-#ifdef RLBWT_VALIDATE
-            assert(idx < m_oldMarkers.size());
-#endif
-            return m_oldMarkers[idx];
-        }
-
-        // Get the nearest marker to idx.
-        inline const LargeMarker& getNearestOldMarker(size_t idx) const
-        {
-            size_t offset = MOD_POWER_2(idx, m_sampleRate); // equivalent to idx % m_sampleRate
-            if(offset < (m_sampleRate >> 1))
-            {
-                // Choose lower marker
-                return getLowerOldMarker(idx);    
-            }
-            else
-            {
-                // Choose upper marker
-                return getUpperOldMarker(idx);
-            }
-        }
-
         // Get the index of the marker nearest to position in the bwt
         inline size_t getNearestMarkerIdx(size_t position, size_t sampleRate, size_t shiftValue) const
         {
@@ -343,7 +279,7 @@ class RLBWT
             return getInterpolatedMarker(target_small_idx);
         }
 
-        // Return a LargeMarker with values are interpolated up to the SmallMarker at target_small_idx
+        // Return a LargeMarker with values that are interpolated by adding/subtracting all the SmallMarkers up to target_small_idx
         inline LargeMarker getInterpolatedMarker(size_t target_small_idx) const
         {
             // Calculate the position of the LargeMarker closest to the target SmallMarker
@@ -593,7 +529,6 @@ class RLBWT
         RLVector m_rlString;
 
         // The marker vector
-        LargeMarkerVector m_oldMarkers;
         LargeMarkerVector m_largeMarkers;
         SmallMarkerVector m_smallMarkers;
 
@@ -604,12 +539,10 @@ class RLBWT
         size_t m_numSymbols;
 
         // The sample rate used for the markers
-        size_t m_sampleRate;
         size_t m_largeSampleRate;
         size_t m_smallSampleRate;
 
         // The amount to shift values by to divide by m_sampleRate
-        int m_shiftValue;
         int m_smallShiftValue;
         int m_largeShiftValue;
 
