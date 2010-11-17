@@ -138,7 +138,7 @@ void RLBWT::initializeFMIndex()
                 if(v > AlphaCount8::getMaxValue())
                 {
                     std::cerr << "Error: Number of symbols in occurrence array block " << curr_small_marker_index 
-                              << " exceeds the maximum value (" << v << " > " << AlphaCount8::getMaxValue() << "\n";
+                              << " exceeds the maximum value (" << v << " > " << AlphaCount8::getMaxValue() << ")\n";
                     exit(EXIT_FAILURE);
                 }
                 smallAC.setByIdx(j, v);
@@ -230,8 +230,6 @@ void RLBWT::printInfo() const
     double total_mb = total_size / mb;
     
     printf("\nRLBWT info:\n");
-    printf("size of small: %zu\n", sizeof(SmallMarker));
-    printf("size of large: %zu\n", sizeof(LargeMarker));
     printf("Large Sample rate: %zu\n", m_largeSampleRate);
     printf("Small Sample rate: %zu\n", m_smallSampleRate);
     printf("Contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());

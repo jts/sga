@@ -206,7 +206,7 @@ class RLBWT
         inline char getChar(size_t idx) const
         {
             // Calculate the Marker who's position is not less than idx
-            const LargeMarker& upper = getUpperInterpolatedMarker(idx);
+            const LargeMarker& upper = getUpperMarker(idx);
             size_t current_position = upper.getActualPosition();
             assert(current_position >= idx);
 
@@ -226,22 +226,6 @@ class RLBWT
             return unit.getChar();
         }
 
-
-        inline const LargeMarker getNearestMarker(size_t idx) const
-        {
-            return getNearestInterpolatedMarker(idx);
-        }
-
-        inline const LargeMarker getLowerMarker(size_t idx) const
-        {
-            return getLowerInterpolatedMarker(idx);
-        }
-
-        inline const LargeMarker getUpperMarker(size_t idx) const
-        {
-            return getUpperInterpolatedMarker(idx);
-        }
-                
         // Get the index of the marker nearest to position in the bwt
         inline size_t getNearestMarkerIdx(size_t position, size_t sampleRate, size_t shiftValue) const
         {
@@ -259,21 +243,21 @@ class RLBWT
         }        
 
         // Get the interpolated marker with position closest to position
-        inline LargeMarker getNearestInterpolatedMarker(size_t position) const
+        inline LargeMarker getNearestMarker(size_t position) const
         {
             size_t nearest_small_idx = getNearestMarkerIdx(position, m_smallSampleRate, m_smallShiftValue);
             return getInterpolatedMarker(nearest_small_idx);
         }
 
         // Get the greatest interpolated marker whose position is less than or equal to position
-        inline LargeMarker getLowerInterpolatedMarker(size_t position) const
+        inline LargeMarker getLowerMarker(size_t position) const
         {
             size_t target_small_idx = position >> m_smallShiftValue;
             return getInterpolatedMarker(target_small_idx);
         }
 
         // Get the lowest interpolated marker whose position is strictly greater than position
-        inline LargeMarker getUpperInterpolatedMarker(size_t position) const
+        inline LargeMarker getUpperMarker(size_t position) const
         {
             size_t target_small_idx = (position >> m_smallShiftValue) + 1;
             return getInterpolatedMarker(target_small_idx);
