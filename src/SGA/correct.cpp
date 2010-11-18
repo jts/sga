@@ -84,7 +84,7 @@ namespace opt
     static std::string outFile;
     static std::string discardFile;
     static std::string metricsFile;
-    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
     
     static double errorRate = 0.04;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;

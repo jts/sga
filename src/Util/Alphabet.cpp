@@ -97,4 +97,5 @@ std::string IUPAC::getPossibleSymbols(char c)
 
 // AlphaCount
 template<> const size_t AlphaCount8::maxValue = std::numeric_limits<uint8_t>::max();
+template<> const size_t AlphaCount16::maxValue = std::numeric_limits<uint16_t>::max();
 template<> const size_t AlphaCount64::maxValue = std::numeric_limits<uint64_t>::max();

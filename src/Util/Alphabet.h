@@ -379,6 +379,8 @@ class AlphaCount
         // Specialization for add/subtracing a small AlphaCount to/from a large alphacount
         inline friend void alphacount_add(AlphaCount<uint64_t>& lhs, const AlphaCount<uint8_t>& rhs);
         inline friend void alphacount_subtract(AlphaCount<uint64_t>& lhs, const AlphaCount<uint8_t>& rhs);
+        inline friend void alphacount_add16(AlphaCount<uint64_t>& lhs, const AlphaCount<uint16_t>& rhs);
+        inline friend void alphacount_subtract16(AlphaCount<uint64_t>& lhs, const AlphaCount<uint16_t>& rhs);
 
         // As the counts are unsigned integers, each value in left
         // must be larger or equal to value in right. The calling function
@@ -425,7 +427,29 @@ class AlphaCount
 
 // Typedef commonly used AlphaCounts
 typedef AlphaCount<uint64_t> AlphaCount64;
+typedef AlphaCount<uint16_t> AlphaCount16;
 typedef AlphaCount<uint8_t> AlphaCount8;
+
+//
+inline void alphacount_add16(AlphaCount64& lhs, const AlphaCount16& rhs)
+{
+    lhs.m_counts[0] += rhs.m_counts[0];
+    lhs.m_counts[1] += rhs.m_counts[1];
+    lhs.m_counts[2] += rhs.m_counts[2];
+    lhs.m_counts[3] += rhs.m_counts[3];
+    lhs.m_counts[4] += rhs.m_counts[4];
+}
+
+inline void alphacount_subtract16(AlphaCount64& lhs, const AlphaCount16& rhs)
+{
+    // This function should only be used when lhs is larger the rhs
+    // the calling function must guarentee this
+    lhs.m_counts[0] -= rhs.m_counts[0];
+    lhs.m_counts[1] -= rhs.m_counts[1];
+    lhs.m_counts[2] -= rhs.m_counts[2];
+    lhs.m_counts[3] -= rhs.m_counts[3];
+    lhs.m_counts[4] -= rhs.m_counts[4];
+}
 
 //
 inline void alphacount_add(AlphaCount64& lhs, const AlphaCount8& rhs)

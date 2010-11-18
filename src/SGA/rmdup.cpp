@@ -62,7 +62,7 @@ namespace opt
     static double errorRate;
     static bool bReindex = true;
     static int gapArrayStorage = 4;
-    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
 }
 
 static const char* shortopts = "p:o:e:t:d:v";

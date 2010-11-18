@@ -65,7 +65,7 @@ namespace opt
     static std::string readsFile;
     static std::string outFile;
     static std::string discardFile;
-    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
     
     static int kmerLength = 27;
     static int kmerThreshold = 3;

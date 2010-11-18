@@ -20,10 +20,10 @@
 #define PRED(c) m_predCount.get((c))
 
 // Parse a BWT from a file
-RLBWT::RLBWT(const std::string& filename, int /*sampleRate*/) : m_numStrings(0), 
+RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0), 
                                                             m_numSymbols(0), 
                                                             m_largeSampleRate(DEFAULT_SAMPLE_RATE_LARGE),
-                                                            m_smallSampleRate(DEFAULT_SAMPLE_RATE_SMALL)
+                                                            m_smallSampleRate(sampleRate)
 {
     IBWTReader* pReader = BWTReader::createReader(filename);
     pReader->read(this);
@@ -87,9 +87,8 @@ void RLBWT::initializeFMIndex()
     size_t next_small_marker = m_smallSampleRate;
     size_t next_large_marker = m_largeSampleRate;
 
-    AlphaCount64 prev_small_marker_ac;
     size_t prev_small_marker_unit_index = 0;
-
+    size_t prev_large_marker_index = 0;
     size_t running_total = 0;
     AlphaCount64 running_ac;
 
@@ -105,6 +104,29 @@ void RLBWT::initializeFMIndex()
 
         size_t curr_unit_index = i + 1;
         bool last_symbol = i == m_rlString.size() - 1;
+
+        // Check whether to place a new large marker
+        bool place_last_large_marker = last_symbol && curr_large_marker_index < num_large_markers;
+        while(running_total >= next_large_marker || place_last_large_marker)
+        {
+            size_t expected_marker_pos = curr_large_marker_index * m_largeSampleRate;
+
+            // Sanity checks
+            // The marker position should always be less than the running total unless 
+            // the number of symbols is smaller than the sample rate
+            assert(expected_marker_pos <= running_total || place_last_large_marker);
+            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_large_marker);
+            assert(curr_large_marker_index < num_large_markers);
+            assert(running_ac.getSum() == running_total);
+
+            LargeMarker& marker = m_largeMarkers[curr_large_marker_index];
+            marker.unitIndex = i + 1;
+            marker.counts = running_ac;
+            next_large_marker += m_largeSampleRate;
+            prev_large_marker_index = curr_large_marker_index;
+            curr_large_marker_index += 1;
+            place_last_large_marker = last_symbol && curr_large_marker_index < num_large_markers;
+        }    
 
         // Check whether to place a new small marker
         bool place_last_small_marker = last_symbol && curr_small_marker_index < num_small_markers;
@@ -122,7 +144,7 @@ void RLBWT::initializeFMIndex()
             assert(running_ac.getSum() == running_total);
     
             // Calculate the number of rl units that are contained in this block
-            if(curr_unit_index - prev_small_marker_unit_index > std::numeric_limits<uint8_t>::max())
+            if(curr_unit_index - prev_small_marker_unit_index > std::numeric_limits<uint16_t>::max())
             {
                 std::cerr << "Error: Number of units in occurrence array block " << curr_small_marker_index 
                           << " exceeds the maximum value.\n";
@@ -131,53 +153,30 @@ void RLBWT::initializeFMIndex()
             }
 
             // Set the 8bit AlphaCounts to the count of symbols within the block
-            AlphaCount8 smallAC;
+            AlphaCount16 smallAC;
+            LargeMarker& prev_large_marker = m_largeMarkers[prev_large_marker_index];
             for(size_t j = 0; j < ALPHABET_SIZE; ++j)
             {
-                size_t v = running_ac.getByIdx(j) - prev_small_marker_ac.getByIdx(j);
-                if(v > AlphaCount8::getMaxValue())
+                size_t v = running_ac.getByIdx(j) - prev_large_marker.counts.getByIdx(j);
+                if(v > smallAC.getMaxValue())
                 {
                     std::cerr << "Error: Number of symbols in occurrence array block " << curr_small_marker_index 
-                              << " exceeds the maximum value (" << v << " > " << AlphaCount8::getMaxValue() << ")\n";
+                              << " exceeds the maximum value (" << v << " > " << smallAC.getMaxValue() << ")\n";
                     exit(EXIT_FAILURE);
                 }
                 smallAC.setByIdx(j, v);
             }
             
             SmallMarker& small_marker = m_smallMarkers[curr_small_marker_index];
-            small_marker.unitCount = curr_unit_index - prev_small_marker_unit_index;
+            small_marker.unitCount = curr_unit_index - prev_large_marker.unitIndex;
             small_marker.counts = smallAC;
 
             // Update state variables
             next_small_marker += m_smallSampleRate;
             curr_small_marker_index += 1;
-            prev_small_marker_ac = running_ac;
             prev_small_marker_unit_index = curr_unit_index;
             place_last_small_marker = last_symbol && curr_small_marker_index < num_small_markers;
-        }
-
-        // Check whether to place a new large marker
-        bool place_last_large_marker = last_symbol && curr_large_marker_index < num_large_markers;
-        while(running_total >= next_large_marker || place_last_large_marker)
-        {
-            // Place markers
-            size_t expected_marker_pos = curr_large_marker_index * m_largeSampleRate;
-
-            // Sanity checks
-            // The marker position should always be less than the running total unless 
-            // the number of symbols is smaller than the sample rate
-            assert(expected_marker_pos <= running_total || place_last_large_marker);
-            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_large_marker);
-            assert(curr_large_marker_index < num_large_markers);
-            assert(running_ac.getSum() == running_total);
-
-            LargeMarker& marker = m_largeMarkers[curr_large_marker_index];
-            marker.unitIndex = i + 1;
-            marker.counts = running_ac;
-            next_large_marker += m_largeSampleRate;
-            curr_large_marker_index += 1;
-            place_last_large_marker = last_symbol && curr_large_marker_index < num_large_markers;
-        }        
+        }    
     }
 
     assert(curr_small_marker_index == num_small_markers);

@@ -70,7 +70,7 @@ namespace opt
     static std::string targetsFile;
     static unsigned int numThreads;
     static double errorRate;
-    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
 }
 
 static const char* shortopts = "p:o:e:t:d:v";

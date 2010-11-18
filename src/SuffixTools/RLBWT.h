@@ -180,10 +180,10 @@ struct SmallMarker
     }
 
     // The number of times each symbol has been seen up to this marker
-    AlphaCount8 counts; 
+    AlphaCount16 counts; 
 
     // The number of RL units in this block
-    uint8_t unitCount;
+    uint16_t unitCount;
 };
 typedef std::vector<SmallMarker> SmallMarkerVector;
 
@@ -195,7 +195,7 @@ class RLBWT
     public:
     
         // Constructors
-        RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE);
+        RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE_SMALL);
 
         //    
         void initializeFMIndex();
@@ -263,55 +263,20 @@ class RLBWT
             return getInterpolatedMarker(target_small_idx);
         }
 
-        // Return a LargeMarker with values that are interpolated by adding/subtracting all the SmallMarkers up to target_small_idx
+        // Return a LargeMarker with values that are interpolated by adding
+        // the relative count nearest to the requested position to the last
+        // LargeMarker
         inline LargeMarker getInterpolatedMarker(size_t target_small_idx) const
         {
             // Calculate the position of the LargeMarker closest to the target SmallMarker
             size_t target_position = target_small_idx << m_smallShiftValue;
-            size_t curr_large_idx = getNearestMarkerIdx(target_position, m_largeSampleRate, m_largeShiftValue);
-            size_t current_position = curr_large_idx << m_largeShiftValue;
+            size_t curr_large_idx = target_position >> m_largeShiftValue;
 
-            LargeMarker accumulated = m_largeMarkers[curr_large_idx];
-
-            size_t current_small_idx = current_position >> m_smallShiftValue;
-
-            // Each small block contains the count of symbols in the last sampleRate bases
-            // When we count forward we skip the first block as it's count is included
-            // in the LargeMarker at the same position. When counting backwards we include
-            // the small marker at the same position of the LargeMarker which is why
-            // the loop variable is incremented/decremented in different places in the loops below.
-            if(current_position < target_position)
-            {
-                // Accumulate small blocks forward
-                while(current_position < target_position)
-                {
-                    // Invariant: The accumulated count includes the small block ending
-                    // at current_small_idx.
-                    
-                    // Add the counts in the next block 
-                    current_small_idx += 1;
-                    current_position += m_smallSampleRate;
-
-                    const SmallMarker& small_marker = m_smallMarkers[current_small_idx];
-                    // Add the small marker counts into the large marker
-                    alphacount_add(accumulated.counts, small_marker.counts);
-                    accumulated.unitIndex += small_marker.unitCount;
-                }
-            }
-            else
-            {
-                // Accumulate small blocks backwards
-                while(current_position > target_position)
-                {
-                    current_position -= m_smallSampleRate;
-                    const SmallMarker& small_marker = m_smallMarkers[current_small_idx];
-                    alphacount_subtract(accumulated.counts, small_marker.counts);
-                    accumulated.unitIndex -= small_marker.unitCount;
-                    current_small_idx -= 1;
-                }
-            }
-            assert(current_position == target_position);
-            return accumulated;
+            LargeMarker absoluteMarker = m_largeMarkers[curr_large_idx];
+            const SmallMarker& relative = m_smallMarkers[target_small_idx];
+            alphacount_add16(absoluteMarker.counts, relative.counts);
+            absoluteMarker.unitIndex += relative.unitCount;
+            return absoluteMarker;
         }
 
         inline BaseCount getPC(char b) const { return m_predCount.get(b); }
@@ -487,9 +452,8 @@ class RLBWT
         friend class BWTWriterAscii;
 
         // Default sample rates for the large (64-bit) and small (8-bit) occurrence markers
-        static const int DEFAULT_SAMPLE_RATE_LARGE = 1024;
+        static const int DEFAULT_SAMPLE_RATE_LARGE = 8192;
         static const int DEFAULT_SAMPLE_RATE_SMALL = 128;
-        static const int DEFAULT_SAMPLE_RATE = 128;
 
     private:
 

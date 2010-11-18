@@ -61,7 +61,7 @@ namespace opt
     static int numThreads = 1;
     static std::string prefix;
     static std::string readsFile;
-    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
     static int kmerLength = 27;
     static int minOverlap = 45;
     static size_t numReads = -1;

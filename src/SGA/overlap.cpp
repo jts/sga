@@ -91,7 +91,7 @@ namespace opt
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
     static int seedStride = 0;
-    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE;
+    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
     static bool bIrreducibleOnly = true;
 }
 
