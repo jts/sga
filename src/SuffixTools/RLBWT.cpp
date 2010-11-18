@@ -88,7 +88,6 @@ void RLBWT::initializeFMIndex()
     size_t next_large_marker = m_largeSampleRate;
 
     size_t prev_small_marker_unit_index = 0;
-    size_t prev_large_marker_index = 0;
     size_t running_total = 0;
     AlphaCount64 running_ac;
 
@@ -122,8 +121,8 @@ void RLBWT::initializeFMIndex()
             LargeMarker& marker = m_largeMarkers[curr_large_marker_index];
             marker.unitIndex = i + 1;
             marker.counts = running_ac;
+
             next_large_marker += m_largeSampleRate;
-            prev_large_marker_index = curr_large_marker_index;
             curr_large_marker_index += 1;
             place_last_large_marker = last_symbol && curr_large_marker_index < num_large_markers;
         }    
@@ -152,9 +151,15 @@ void RLBWT::initializeFMIndex()
 
             }
 
-            // Set the 8bit AlphaCounts to the count of symbols within the block
+            // Calculate the large marker to set the relative count from
+            // This is generally the most previously placed large block except it might 
+            // be the second-previous in the case that we placed the last large marker.
+            size_t large_marker_index = expected_marker_pos >> m_largeShiftValue;
+            assert(large_marker_index < curr_large_marker_index); // ensure the last has ben placed
+            LargeMarker& prev_large_marker = m_largeMarkers[large_marker_index];
+
+            // Set the 8bit AlphaCounts as the sum since the last large (superblock) marker
             AlphaCount16 smallAC;
-            LargeMarker& prev_large_marker = m_largeMarkers[prev_large_marker_index];
             for(size_t j = 0; j < ALPHABET_SIZE; ++j)
             {
                 size_t v = running_ac.getByIdx(j) - prev_large_marker.counts.getByIdx(j);
@@ -167,6 +172,7 @@ void RLBWT::initializeFMIndex()
                 smallAC.setByIdx(j, v);
             }
             
+            // Set the small marker
             SmallMarker& small_marker = m_smallMarkers[curr_small_marker_index];
             small_marker.unitCount = curr_unit_index - prev_large_marker.unitIndex;
             small_marker.counts = smallAC;
