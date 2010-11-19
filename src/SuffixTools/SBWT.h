@@ -76,7 +76,8 @@ class SBWT
         friend class BWTReaderAscii;
         friend class BWTWriterAscii;
 
-        static const int DEFAULT_SAMPLE_RATE = 64;
+        static const int DEFAULT_SAMPLE_RATE = 128;
+        static const int DEFAULT_SAMPLE_RATE_SMALL = DEFAULT_SAMPLE_RATE;
 
     private:
 

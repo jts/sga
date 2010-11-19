@@ -27,6 +27,8 @@ class BWTReaderBinary : public IBWTReader
 
         //
         virtual void read(RLBWT* pRLBWT);
+        virtual void read(SBWT* pSBWT);
+
         virtual void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
         virtual char readBWChar();
         virtual void readRuns(RLVector& out, size_t numRuns);

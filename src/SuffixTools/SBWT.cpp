@@ -9,6 +9,7 @@
 #include "SBWT.h"
 #include "Timer.h"
 #include "BWTReaderAscii.h"
+#include "BWTReaderBinary.h"
 #include "BWTWriterAscii.h"
 #include <istream>
 #include <queue>
@@ -21,7 +22,7 @@
 // Parse a BWT from a file
 SBWT::SBWT(const std::string& filename, int sampleRate)
 {
-    BWTReaderAscii reader(filename);
+    BWTReaderBinary reader(filename);
     reader.read(this);
     initializeFMIndex(sampleRate);
 }
@@ -136,5 +137,5 @@ void SBWT::printInfo() const
     printf("Sample rate: %zu\n", m_occurrence.getSampleRate());
     printf("Memory -- OCC: %zu C: %zu Str: %zu Misc: %zu TOTAL: %zu (%lf MB)\n",
             o_size, p_size, bwStr_size, offset_size, total_size, total_mb);
-    printf("N: %zu Bytes per suffix: %lf\n", m_bwStr.length(), (double)total_size / m_bwStr.length());
+    printf("N: %zu Bytes per symbol: %lf\n", m_bwStr.length(), (double)total_size / m_bwStr.length());
 }

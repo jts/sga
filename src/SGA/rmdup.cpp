@@ -121,7 +121,7 @@ void rmdup()
     delete pBWT; 
     delete pRBWT;
     delete pTimer;
-
+    
     std::string out_prefix = stripFilename(opt::outFile);
     std::string dupsFile = parseDupHits(hitsFilenames, out_prefix);
 

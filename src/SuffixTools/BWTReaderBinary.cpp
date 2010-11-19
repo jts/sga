@@ -35,6 +35,22 @@ void BWTReaderBinary::read(RLBWT* pRLBWT)
     //pRLBWT->print();
 }
 
+void BWTReaderBinary::read(SBWT* pSBWT)
+{
+    BWFlag flag;
+    size_t numSymbols;
+    readHeader(pSBWT->m_numStrings, numSymbols, flag);
+    size_t numRead = 0;
+    pSBWT->m_bwStr.resize(numSymbols);
+    while(numRead < numSymbols)
+    {
+        char b = readBWChar();
+        pSBWT->m_bwStr.set(numRead++, b);
+    }
+
+    assert(m_numRunsOnDisk > 0);
+}
+
 //
 void BWTReaderBinary::readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag)
 {
