@@ -9,6 +9,7 @@
 #include "BWTReaderBinary.h"
 #include "SBWT.h"
 #include "RLBWT.h"
+#include "Timer.h"
 
 //
 BWTReaderBinary::BWTReaderBinary(const std::string& filename) : m_stage(IOS_NONE), m_numRunsOnDisk(0), m_numRunsRead(0)
@@ -25,6 +26,7 @@ BWTReaderBinary::~BWTReaderBinary()
 
 void BWTReaderBinary::read(RLBWT* pRLBWT)
 {
+    Timer readTimer("reader", false);
     BWFlag flag;
     readHeader(pRLBWT->m_numStrings, pRLBWT->m_numSymbols, flag);
 
@@ -33,6 +35,7 @@ void BWTReaderBinary::read(RLBWT* pRLBWT)
 
     //pRLBWT->printInfo();
     //pRLBWT->print();
+    printf("Done reading BWT (%3.2lfs)\n", readTimer.getElapsedWallTime());
 }
 
 void BWTReaderBinary::read(SBWT* pSBWT)
@@ -81,7 +84,17 @@ void BWTReaderBinary::readRuns(RLVector& out, size_t numRuns)
 {
     out.resize(numRuns);
     m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
-    m_numRunsRead = numRuns;
+    m_numRunsRead = numRuns;    
+
+    /*
+    while(m_numRunsRead < numRuns)
+    {
+        RLUnit unit;
+        m_pReader->read(reinterpret_cast<char*>(&unit), sizeof(RLUnit));
+        out.push_back(unit);
+        ++m_numRunsRead;
+    }
+    */
 }
 
 // Read a single base from the BWStr
