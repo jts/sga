@@ -34,4 +34,5 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
                            HitData.h \
                            SparseGapArray.h \
 						   FMMarkers.h \
-						   RLUnit.h
+						   RLUnit.h \
+						   HuffUnit.h
