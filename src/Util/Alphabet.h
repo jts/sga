@@ -157,7 +157,17 @@ class AlphaCount
 #ifdef ALPHACOUNT_VALIDATE
             assert(m_counts[br] != maxValue);
 #endif
-            m_counts[br]++;
+            ++m_counts[br];
+        }
+
+        // 
+        inline void decrement(char b)
+        {
+            int br = getBaseRank(b);
+#ifdef ALPHACOUNT_VALIDATE
+            assert(m_counts[br] != 0);
+#endif
+            --m_counts[br];
         }
 
         //

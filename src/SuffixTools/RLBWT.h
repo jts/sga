@@ -18,9 +18,12 @@
 #include "EncodedString.h"
 #include "FMMarkers.h"
 #include "RLUnit.h"
+#include "HuffUnit.h"
 
 // Defines
 #define RLBWT_VALIDATE 1
+
+typedef std::vector<uint16_t> RLData;
 
 //
 // RLBWT

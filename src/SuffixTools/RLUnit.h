@@ -14,7 +14,7 @@
 #define RL_SYMBOL_MASK 0xE0 //11100000
 #define RL_FULL_COUNT 31
 #define RL_SYMBOL_SHIFT 5
-#define RLE_VALIDATE
+#define RLE_VALIDATE 1
 
 // A unit of the RLBWT is a pair of a symbol and its count
 // The high 3 bits encodes the symbol to store

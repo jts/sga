@@ -23,6 +23,7 @@
 #include "SequenceProcessFramework.h"
 #include "StatsProcess.h"
 #include "BWTDiskConstruction.h"
+#include "HuffUnit.h"
 
 // Functions
 
