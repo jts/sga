@@ -249,20 +249,49 @@ void RLBWT::printRunLengths() const
     typedef std::map<size_t, size_t> DistMap;
     DistMap rlDist;
 
+    char prevSym = '\0';
+    size_t prevRunLen = 0;
+    size_t currLen = 0;
+    size_t adjacentSingletons = 0;
     size_t numRuns = getNumRuns();
+    size_t totalRuns = 0;
     for(size_t i = 0; i < numRuns; ++i)
     {
         const RLUnit& unit = m_rlString[i];
         size_t length = unit.getCount();
-        rlDist[length]++;
+        if(unit.getChar() == prevSym)
+        {
+            currLen += unit.getCount();
+        }
+        else
+        {
+            if(prevSym != '\0')
+            {
+                rlDist[currLen]++;
+                totalRuns++;
+            }
+            currLen = length;
+            prevSym = unit.getChar();
+        }
+
+        if(length == 1 && prevRunLen == 1)
+        {
+            adjacentSingletons += 1;
+            prevRunLen = 0;
+        }
+        prevRunLen = length;
     }
     
     printf("Run length distrubtion\n");
     printf("rl\tcount\tfrac\n");
+    double cumulative_mb = 0.0f;
     for(DistMap::iterator iter = rlDist.begin(); iter != rlDist.end(); ++iter)
     {
-        printf("%zu\t%zu\t%lf\n", iter->first, iter->second, double(iter->second) / numRuns);
+        cumulative_mb += ((double)iter->second / (1024 * 1024));
+        printf("%zu\t%zu\t%lf\t%lf\n", iter->first, iter->second, double(iter->second) / totalRuns, cumulative_mb);
     }
-    printf("Total runs: %zu\n", numRuns);
+    printf("Total runs: %zu\n", totalRuns);
+    printf("Number of adjacent singleton runs: %zu\n", adjacentSingletons);
+    printf("Minimal runs: %zu\n", totalRuns - adjacentSingletons / 2);
 }
 
