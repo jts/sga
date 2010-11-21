@@ -114,7 +114,7 @@ void RLBWT::initializeFMIndex()
             // The marker position should always be less than the running total unless 
             // the number of symbols is smaller than the sample rate
             assert(expected_marker_pos <= running_total || place_last_large_marker);
-            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_large_marker);
+            assert((running_total - expected_marker_pos) <= RL_FULL_COUNT || place_last_large_marker);
             assert(curr_large_marker_index < num_large_markers);
             assert(running_ac.getSum() == running_total);
 
@@ -138,7 +138,7 @@ void RLBWT::initializeFMIndex()
             // The marker position should always be less than the running total unless 
             // the number of symbols is smaller than the sample rate
             assert(expected_marker_pos <= running_total || place_last_small_marker);
-            assert((running_total - expected_marker_pos) <= FULL_COUNT || place_last_small_marker);
+            assert((running_total - expected_marker_pos) <= RL_FULL_COUNT || place_last_small_marker);
             assert(curr_small_marker_index < num_small_markers);
             assert(running_ac.getSum() == running_total);
     

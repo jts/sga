@@ -12,7 +12,7 @@
 //
 #define RL_COUNT_MASK 0x1F  //00011111
 #define RL_SYMBOL_MASK 0xE0 //11100000
-#define FULL_COUNT 31
+#define RL_FULL_COUNT 31
 #define RL_SYMBOL_SHIFT 5
 #define RLE_VALIDATE
 
@@ -30,7 +30,7 @@ struct RLUnit
     // Returns true if the count cannot be incremented
     inline bool isFull() const
     {
-        return (data & RL_COUNT_MASK) == FULL_COUNT;
+        return (data & RL_COUNT_MASK) == RL_FULL_COUNT;
     }
 
     inline bool isEmpty() const
