@@ -267,7 +267,10 @@ void RLBWT::printRunLengths() const
         {
             if(prevSym != '\0')
             {
-                rlDist[currLen]++;
+                if(currLen >= 200)
+                    rlDist[200]++;
+                else
+                    rlDist[currLen]++;
                 totalRuns++;
             }
             currLen = length;
