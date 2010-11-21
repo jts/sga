@@ -9,6 +9,7 @@
 #ifndef RLBWT_H
 #define RLBWT_H
 
+#include <deque>
 #include "STCommon.h"
 #include "Occurrence.h"
 #include "SuffixArray.h"
