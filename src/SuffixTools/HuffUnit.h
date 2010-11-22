@@ -4,8 +4,7 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// HuffUnit - A huffman-encoded unit of the
-//
+// HuffUnit - A huffman-encoded unit of the BWT
 //
 #ifndef HUFFUNIT_H
 #define HUFFUNIT_H
