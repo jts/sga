@@ -11,7 +11,7 @@
 #include <assert.h>
 #include <iostream>
 
-void Huffman::buildHuffman(AlphaCount64& counts, HuffmanEncodeMap& outEncoder, HuffmanDecodeVector& outDecoder)
+void Huffman::buildHuffman(AlphaCount64& counts, HuffmanEncodeMap& outEncoder, HuffmanDecodeVector& outDecoder, size_t& minBits)
 {
     std::string sortString = counts.getSortString();
 
@@ -31,6 +31,9 @@ void Huffman::buildHuffman(AlphaCount64& counts, HuffmanEncodeMap& outEncoder, H
     uint8_t standard4[] = {0, 1, 2, 3, 15};
     uint8_t bits4[] = {2, 2, 2, 2, 4};
 
+    //uint8_t standard4[] = {0, 2, 6, 7, 15};
+    //uint8_t bits4[] = {1, 2, 3, 3, 4};
+
     uint8_t standard3[] = {0, 1, 3, 15, 15};
     uint8_t bits3[] = {1, 2, 2, 4, 4};
     
@@ -44,21 +47,25 @@ void Huffman::buildHuffman(AlphaCount64& counts, HuffmanEncodeMap& outEncoder, H
     {
         pCodes = standard5;
         pBits = bits5;
+        minBits = 4;
     }
     else if(nonzero == 4)
     {
         pCodes = standard4;
         pBits = bits4;
+        minBits = 2;
     }
     else if(nonzero == 3)
     {
         pCodes = standard3;
         pBits = bits3;
+        minBits = 2;
     }
     else
     {
         pCodes = standard2;
         pBits = bits2;
+        minBits = 1;
     }
 
     size_t numBitsNeeded = 0;
