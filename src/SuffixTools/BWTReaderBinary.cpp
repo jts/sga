@@ -82,19 +82,111 @@ void BWTReaderBinary::readHeader(size_t& num_strings, size_t& num_symbols, BWFla
 
 void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
 {
-    out.resize(numRuns);
-    m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
-    m_numRunsRead = numRuns;    
+    //out.resize(numRuns);
+    //m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
+    (void)numRuns;   
+    bool done = false;
+    size_t maxSyms = 5;
+    size_t minRun = 3;
+    
+    size_t currRunLen = 0;
+    bool isRun = true;
 
-    /*
-    while(m_numRunsRead < numRuns)
+    size_t numSymbolsWrote = 0;
+    size_t numRLWrote = 0;
+    size_t numHuffWrote = 0;
+
+    typedef std::deque<char> CharDeque;
+    CharDeque symbolBuffer;
+
+    while(!done)
     {
-        RLUnit unit;
-        m_pReader->read(reinterpret_cast<char*>(&unit), sizeof(RLUnit));
-        out.push_back(unit);
-        ++m_numRunsRead;
+        // Read characters into the buffer until we either have a run of the same symbols longer than 3
+        // or we reach 5 symbols of mixed type
+        char b = readBWChar();
+        if(b == '\n')
+        {
+            done = true;
+        }
+        else
+        {
+            symbolBuffer.push_back(b);
+        }
+    
+        // Update run length flag
+        if(isRun && (symbolBuffer.back() == symbolBuffer.front()))
+        {
+            currRunLen += 1;
+        }
+        else
+        {
+            isRun = false;
+        }
+
+        // Write out a run if the current run is full or a run longer than
+        // the minimum length just ended
+        if(currRunLen == RL_FULL_COUNT || (!isRun && currRunLen >= minRun))
+        {
+            // Write out the run at the start of the buffer
+            char r = symbolBuffer.front();
+            RLUnit currUnit(r);
+            symbolBuffer.pop_front();
+            while(!symbolBuffer.empty() && symbolBuffer.front() == r)
+            {
+                currUnit.incrementCount();
+                symbolBuffer.pop_front();
+            }
+
+            out.push_back(currUnit.data);
+            numSymbolsWrote += currUnit.getCount();
+            numRLWrote += 1;
+
+            // Set the current run length
+            if(symbolBuffer.empty())
+            {
+                currRunLen = 0;
+                isRun = true;
+            }
+            else
+            {
+                assert(symbolBuffer.size() == 1);
+                currRunLen = 1;
+                isRun = true;
+            }
+        }
+        else if(!isRun && symbolBuffer.size() == maxSyms)
+        {
+            // If we are not in a run and enough characters are present in the string
+            // write out a huff unit
+            size_t n = symbolBuffer.size();
+            HuffUnit currUnit;
+            for(size_t i = 0; i < n; ++i)
+            {
+                char r = symbolBuffer.front();
+                currUnit.setChar(r, i);
+                symbolBuffer.pop_front();
+                numSymbolsWrote += 1;
+            }
+
+            // Push to the stream
+            char* bytes = (char*)&currUnit.data;
+            out.push_back(bytes[0]);
+            out.push_back(bytes[1]);
+            assert(symbolBuffer.empty());
+            numHuffWrote += 1;
+
+            currRunLen = 1;
+            isRun = true;
+        }
     }
-    */
+
+    std::cout << "Wrote " << numSymbolsWrote << " symbols\n";
+    std::cout << "Wrote " << numRLWrote << " runs\n";
+    std::cout << "Wrote " << numHuffWrote << " huff\n";
+    size_t bytes = numRLWrote + 2*numHuffWrote;
+    std::cout << "Total: " << bytes << " bytes\n";
+    std::cout << (double)numSymbolsWrote / bytes << " symbols/byte\n";
+    exit(1);
 }
 
 // Read a single base from the BWStr
