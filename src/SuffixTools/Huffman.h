@@ -33,6 +33,6 @@ typedef std::vector<HuffmanDecodePair> HuffmanDecodeVector;
 
 namespace Huffman
 {
-void buildHuffman(AlphaCount64& ac, HuffmanEncodeMap& outEncoder, HuffmanDecodeVector& outDecoder);
+void buildHuffman(AlphaCount64& ac, HuffmanEncodeMap& outEncoder, HuffmanDecodeVector& outDecoder, size_t& minBits);
 };
 #endif

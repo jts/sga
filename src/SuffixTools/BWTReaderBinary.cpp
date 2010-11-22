@@ -131,9 +131,10 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
         }
 
         // Get a sorting of the characters
+        size_t minHuffBits;
         HuffmanEncodeMap encoder;
         HuffmanDecodeVector decoder;
-        Huffman::buildHuffman(ac, encoder,decoder);
+        Huffman::buildHuffman(ac, encoder,decoder, minHuffBits);
 
         // Encode the current characters in the buffer
         bool encodeDone = false;
@@ -178,12 +179,12 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
             {
                 // Encode using Huffman
                 uint8_t data = 0;
-                size_t totalBits = 8;
-                size_t totalBytes = totalBits / 8;
+                size_t totalBytes = sizeof(data);
+                size_t totalBits  = totalBytes * 8;
                 size_t targetBit = 0;
                 size_t numBitsRemaining = totalBits;
                 size_t numSymbolsTaken = 0;
-                while(numSymbolsTaken < symbolBuffer.size() && numBitsRemaining >= 4)
+                while(numSymbolsTaken < symbolBuffer.size() && numBitsRemaining >= minHuffBits)
                 {
                     char r = symbolBuffer[numSymbolsTaken];
                     assert(encoder.find(r) != encoder.end());
@@ -201,7 +202,7 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
                 }
 
                 // Ensure an entire unit was encoded
-                if(numBitsRemaining < 4)
+                if(numBitsRemaining < minHuffBits)
                 {
                     // Push to the stream
                     char* bytes = (char*)&data;
