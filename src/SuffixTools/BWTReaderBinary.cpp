@@ -6,6 +6,7 @@
 //
 // RLBWTReaderBinary - Read a run length encoded BWT file from disk
 //
+#include <algorithm>
 #include "BWTReaderBinary.h"
 #include "SBWT.h"
 #include "RLBWT.h"
@@ -85,13 +86,10 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
     //out.resize(numRuns);
     //m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
     (void)numRuns;   
-    bool done = false;
+    bool readDone = false;
     size_t maxSyms = 5;
     size_t minRun = 3;
     
-    size_t currRunLen = 0;
-    bool isRun = true;
-
     size_t numSymbolsWrote = 0;
     size_t numRLWrote = 0;
     size_t numHuffWrote = 0;
@@ -99,84 +97,97 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
     typedef std::deque<char> CharDeque;
     CharDeque symbolBuffer;
 
-    while(!done)
+    // Read at least 256 symbols from the stream as long as symbols remain to be read
+    // We stop the read once 256 symbols are parsed and we are not in the middle of a run
+    // Then we encode the string in a set of units and write them out
+    size_t minBufferSize = 256;
+    while(!readDone)
     {
-        // Read characters into the buffer until we either have a run of the same symbols longer than 3
-        // or we reach 5 symbols of mixed type
-        char b = readBWChar();
-        if(b == '\n')
+        // Read symbols into the buffer
+        bool inRun = true;
+        while(symbolBuffer.size() < minBufferSize || inRun)
         {
-            done = true;
-        }
-        else
-        {
-            symbolBuffer.push_back(b);
-        }
-    
-        // Update run length flag
-        if(isRun && (symbolBuffer.back() == symbolBuffer.front()))
-        {
-            currRunLen += 1;
-        }
-        else
-        {
-            isRun = false;
-        }
-
-        // Write out a run if the current run is full or a run longer than
-        // the minimum length just ended
-        if(currRunLen == RL_FULL_COUNT || (!isRun && currRunLen >= minRun))
-        {
-            // Write out the run at the start of the buffer
-            char r = symbolBuffer.front();
-            RLUnit currUnit(r);
-            symbolBuffer.pop_front();
-            while(!symbolBuffer.empty() && symbolBuffer.front() == r)
+            char b = readBWChar();
+            if(b == '\n')
             {
-                currUnit.incrementCount();
-                symbolBuffer.pop_front();
+                readDone = true;
+                break;
             }
 
-            out.push_back(currUnit.data);
-            numSymbolsWrote += currUnit.getCount();
-            numRLWrote += 1;
+            // If this symbol is the same as the current end symbol, set the flag
+            // that it is a run so we continue to read
+            if(symbolBuffer.empty() || symbolBuffer.back() == b)
+                inRun = true;
+            else
+                inRun = false;
+            symbolBuffer.push_back(b);
+        }
 
-            // Set the current run length
-            if(symbolBuffer.empty())
+        // Encode the current characters in the buffer
+        bool encodeDone = false;
+        while(!encodeDone)
+        {
+            if(symbolBuffer.size() < maxSyms)
             {
-                currRunLen = 0;
-                isRun = true;
+                encodeDone = true;
+                break;
+            }
+
+            // Count the length of the run at the front
+            assert(!symbolBuffer.empty());
+            char first = symbolBuffer.front();
+            size_t currRunLength = 1;
+            for(size_t i = 1; i < symbolBuffer.size(); ++i)
+            {
+                if(symbolBuffer[i] == first)
+                    currRunLength += 1;
+                else
+                    break;
+            }
+
+            if(currRunLength >= minRun)
+            {
+                // Encode using RLE
+                RLUnit currUnit(first);
+                symbolBuffer.pop_front();
+                size_t lenToEncode = std::min((size_t)RL_FULL_COUNT, currRunLength) - 1;
+                for(size_t i = 0; i < lenToEncode; ++i)
+                {
+                    currUnit.incrementCount();
+                    symbolBuffer.pop_front();
+                }
+
+                // Write out the unit
+                out.push_back(currUnit.data);
+                numSymbolsWrote += currUnit.getCount();
+                numRLWrote += 1;
             }
             else
             {
-                assert(symbolBuffer.size() == 1);
-                currRunLen = 1;
-                isRun = true;
-            }
-        }
-        else if(!isRun && symbolBuffer.size() == maxSyms)
-        {
-            // If we are not in a run and enough characters are present in the string
-            // write out a huff unit
-            size_t n = symbolBuffer.size();
-            HuffUnit currUnit;
-            for(size_t i = 0; i < n; ++i)
-            {
-                char r = symbolBuffer.front();
-                currUnit.setChar(r, i);
-                symbolBuffer.pop_front();
-                numSymbolsWrote += 1;
-            }
+                // Encode using Huffman
+                size_t n = std::min(symbolBuffer.size(), maxSyms);
+                if(n < maxSyms)
+                {
+                    // stop encoding if there aren't enough symbols to fill up
+                    encodeDone = true;
+                    break;
+                }
 
-            // Push to the stream
-            char* bytes = (char*)&currUnit.data;
-            out.push_back(bytes[0]);
-            out.push_back(bytes[1]);
-            assert(symbolBuffer.empty());
-            numHuffWrote += 1;
+                HuffUnit currUnit;
+                for(size_t i = 0; i < n; ++i)
+                {
+                    char r = symbolBuffer.front();
+                    currUnit.setChar(r, i);
+                    symbolBuffer.pop_front();
+                    numSymbolsWrote += 1;
+                }
 
-            currRunLen = 1;
-            isRun = true;
+                // Push to the stream
+                char* bytes = (char*)&currUnit.data;
+                out.push_back(bytes[0]);
+                out.push_back(bytes[1]);
+                numHuffWrote += 1;
+            }
         }
     }
 
