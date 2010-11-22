@@ -34,6 +34,7 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0),
 //
 void RLBWT::append(char b)
 {
+    assert(false && "deprecated");
     bool increment = false;
     if(!m_rlString.empty())
     {
@@ -69,7 +70,7 @@ void RLBWT::initializeFMIndex()
     size_t num_small_markers = getNumRequiredMarkers(m_numSymbols, m_smallSampleRate);
     m_largeMarkers.resize(num_large_markers);
     m_smallMarkers.resize(num_small_markers);
-
+    return;
     // Fill in the marker values
     // We wish to place markers every sampleRate symbols however since a run may
     // not end exactly on sampleRate boundaries, we place the markers AFTER
@@ -237,7 +238,7 @@ void RLBWT::printInfo() const
     printf("\nRLBWT info:\n");
     printf("Large Sample rate: %zu\n", m_largeSampleRate);
     printf("Small Sample rate: %zu\n", m_smallSampleRate);
-    printf("Contains %zu symbols in %zu runs (%1.4lf symbols per run)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());
+    printf("Contains %zu symbols in %zu bytes (%1.4lf symbols per bytes)\n", m_numSymbols, m_rlString.size(), (double)m_numSymbols / m_rlString.size());
     printf("Marker Memory -- Small Markers: %zu (%.1lf MB) Large Markers: %zu (%.1lf MB)\n", small_m_size, small_m_size / mb, large_m_size, large_m_size / mb);
     printf("Total Memory -- Markers: %zu (%.1lf MB) Str: %zu (%.1lf MB) Misc: %zu Total: %zu (%lf MB)\n", total_marker_size, total_marker_size / mb, bwStr_size, bwStr_size / mb, other_size, total_size, total_mb);
     printf("N: %zu Bytes per symbol: %lf\n\n", m_numSymbols, (double)total_size / m_numSymbols);

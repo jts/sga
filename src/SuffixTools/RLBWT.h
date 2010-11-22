@@ -44,6 +44,7 @@ class RLBWT
 
         inline char getChar(size_t idx) const
         {
+            assert(false);
             // Calculate the Marker who's position is not less than idx
             const LargeMarker& upper = getUpperMarker(idx);
             size_t current_position = upper.getActualPosition();
@@ -177,7 +178,8 @@ class RLBWT
 #endif
                 --currentUnitIndex;
 
-                const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                //const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                const HuffUnit* pCurrUnit = (HuffUnit*)&m_rlString[currentUnitIndex];
                 currentPosition -= pCurrUnit->subtractAlphaCount(running_count, diff);
             }
         }
@@ -193,7 +195,8 @@ class RLBWT
 #ifdef RLBWT_VALIDATE
                 assert(currentUnitIndex != m_rlString.size());
 #endif
-                const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                //const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                const HuffUnit* pCurrUnit = (HuffUnit*)&m_rlString[currentUnitIndex];
                 currentPosition += pCurrUnit->addAlphaCount(running_count, diff);
                 ++currentUnitIndex;
             }
@@ -211,7 +214,8 @@ class RLBWT
                 assert(currentUnitIndex != 0);
 #endif
                 --currentUnitIndex;
-                const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                //const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                const HuffUnit* pCurrUnit = (HuffUnit*)&m_rlString[currentUnitIndex];
                 currentPosition -= pCurrUnit->subtractCount(b, running_count, diff);
             }
         }
@@ -227,7 +231,8 @@ class RLBWT
 #ifdef RLBWT_VALIDATE
                 assert(currentUnitIndex != m_rlString.size());
 #endif
-                const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                //const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                const HuffUnit* pCurrUnit = (HuffUnit*)&m_rlString[currentUnitIndex];
                 currentPosition += pCurrUnit->addCount(b, running_count, diff);
                 ++currentUnitIndex;
             }
