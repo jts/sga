@@ -37,10 +37,10 @@ void RLBWT::append(char b)
     bool increment = false;
     if(!m_rlString.empty())
     {
-        RLUnit& lastUnit = m_rlString.back();
-        if(lastUnit.getChar() == b && !lastUnit.isFull())
+        RLUnit* pLastUnit = (RLUnit*)&m_rlString.back();
+        if(pLastUnit->getChar() == b && !pLastUnit->isFull())
         {
-            lastUnit.incrementCount();
+            pLastUnit->incrementCount();
             increment = true;
         }
     }
@@ -49,7 +49,7 @@ void RLBWT::append(char b)
     {
         // Must add a new unit to the string
         RLUnit unit(b);
-        m_rlString.push_back(unit);
+        m_rlString.push_back(unit.data);
     }
     ++m_numSymbols;
 }
@@ -94,10 +94,10 @@ void RLBWT::initializeFMIndex()
     for(size_t i = 0; i < m_rlString.size(); ++i)
     {
         // Update the count and advance the running total
-        RLUnit& unit = m_rlString[i];
+        const RLUnit* pUnit = (RLUnit*)&m_rlString[i];
 
-        char symbol = unit.getChar();
-        uint8_t run_len = unit.getCount();
+        char symbol = pUnit->getChar();
+        uint8_t run_len = pUnit->getCount();
         running_ac.add(symbol, run_len);
         running_total += run_len;
 

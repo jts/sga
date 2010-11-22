@@ -80,7 +80,7 @@ void BWTReaderBinary::readHeader(size_t& num_strings, size_t& num_symbols, BWFla
     m_stage = IOS_BWSTR;    
 }
 
-void BWTReaderBinary::readRuns(RLVector& out, size_t numRuns)
+void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
 {
     out.resize(numRuns);
     m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
