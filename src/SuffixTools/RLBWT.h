@@ -24,7 +24,7 @@
 // Defines
 #define RLBWT_VALIDATE 1
 
-typedef std::vector<uint16_t> RLData;
+typedef std::vector<uint8_t> RLRawData;
 
 //
 // RLBWT
@@ -56,13 +56,14 @@ class RLBWT
             {
                 assert(symbol_index != 0);
                 symbol_index -= 1;
-                current_position -= m_rlString[symbol_index].getCount();
+                const RLUnit* pUnit = (RLUnit*) &m_rlString[symbol_index];
+                current_position -= pUnit->getCount();
             }
 
             // symbol_index is now the index of the run containing the idx symbol
-            const RLUnit& unit = m_rlString[symbol_index];
-            assert(current_position <= idx && current_position + unit.getCount() >= idx);
-            return unit.getChar();
+            RLUnit* pUnit = (RLUnit*) &m_rlString[symbol_index];
+            assert(current_position <= idx && current_position + pUnit->getCount() >= idx);
+            return pUnit->getChar();
         }
 
         // Get the index of the marker nearest to position in the bwt
@@ -176,8 +177,8 @@ class RLBWT
 #endif
                 --currentUnitIndex;
 
-                const RLUnit& curr_unit = m_rlString[currentUnitIndex];
-                currentPosition -= curr_unit.subtractAlphaCount(running_count, diff);
+                const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                currentPosition -= pCurrUnit->subtractAlphaCount(running_count, diff);
             }
         }
 
@@ -192,8 +193,8 @@ class RLBWT
 #ifdef RLBWT_VALIDATE
                 assert(currentUnitIndex != m_rlString.size());
 #endif
-                const RLUnit& curr_unit = m_rlString[currentUnitIndex];
-                currentPosition += curr_unit.addAlphaCount(running_count, diff);
+                const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                currentPosition += pCurrUnit->addAlphaCount(running_count, diff);
                 ++currentUnitIndex;
             }
         }
@@ -210,8 +211,8 @@ class RLBWT
                 assert(currentUnitIndex != 0);
 #endif
                 --currentUnitIndex;
-                const RLUnit& curr_unit = m_rlString[currentUnitIndex];
-                currentPosition -= curr_unit.subtractCount(b, running_count, diff);
+                const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                currentPosition -= pCurrUnit->subtractCount(b, running_count, diff);
             }
         }
 
@@ -226,8 +227,8 @@ class RLBWT
 #ifdef RLBWT_VALIDATE
                 assert(currentUnitIndex != m_rlString.size());
 #endif
-                const RLUnit& curr_unit = m_rlString[currentUnitIndex];
-                currentPosition += curr_unit.addCount(b, running_count, diff);
+                const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
+                currentPosition += pCurrUnit->addCount(b, running_count, diff);
                 ++currentUnitIndex;
             }
         }
@@ -280,7 +281,7 @@ class RLBWT
         AlphaCount64 m_predCount;
         
         // The run-length encoded string
-        RLVector m_rlString;
+        RLRawData m_rlString;
 
         // The marker vector
         LargeMarkerVector m_largeMarkers;
