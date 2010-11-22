@@ -320,6 +320,14 @@ class AlphaCount
             return sum;
         }
 
+        // Get a string representing the sorted order of the symbols, including the $
+        inline std::string getSortString()
+        {
+            std::string tmp = "ACGT$";
+            std::sort(tmp.begin(), tmp.end(), AlphaCountCompareDesc(this));
+            return tmp;
+        }
+
         // Sort the DNA bases into count order and
         // write them to pOut. This does not include the '$' symbol
         inline void getSorted(char* pOut, size_t len)

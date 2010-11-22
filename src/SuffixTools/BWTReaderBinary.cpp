@@ -11,6 +11,7 @@
 #include "SBWT.h"
 #include "RLBWT.h"
 #include "Timer.h"
+#include "Huffman.h"
 
 //
 BWTReaderBinary::BWTReaderBinary(const std::string& filename) : m_stage(IOS_NONE), m_numRunsOnDisk(0), m_numRunsRead(0)
@@ -87,7 +88,6 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
     //m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
     (void)numRuns;   
     bool readDone = false;
-    size_t maxSyms = 5;
     size_t minRun = 3;
     
     size_t numSymbolsWrote = 0;
@@ -123,11 +123,23 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
             symbolBuffer.push_back(b);
         }
 
+        // Count symbols in the buffer
+        AlphaCount64 ac;
+        for(size_t i = 0; i < symbolBuffer.size(); ++i)
+        {
+            ac.increment(symbolBuffer[i]);
+        }
+
+        // Get a sorting of the characters
+        HuffmanEncodeMap encoder;
+        HuffmanDecodeVector decoder;
+        Huffman::buildHuffman(ac, encoder,decoder);
+
         // Encode the current characters in the buffer
         bool encodeDone = false;
         while(!encodeDone)
         {
-            if(symbolBuffer.size() < maxSyms)
+            if(symbolBuffer.empty())
             {
                 encodeDone = true;
                 break;
@@ -165,28 +177,46 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
             else
             {
                 // Encode using Huffman
-                size_t n = std::min(symbolBuffer.size(), maxSyms);
-                if(n < maxSyms)
+                uint8_t data = 0;
+                size_t totalBits = 8;
+                size_t totalBytes = totalBits / 8;
+                size_t targetBit = 0;
+                size_t numBitsRemaining = totalBits;
+                size_t numSymbolsTaken = 0;
+                while(numSymbolsTaken < symbolBuffer.size() && numBitsRemaining >= 4)
                 {
-                    // stop encoding if there aren't enough symbols to fill up
+                    char r = symbolBuffer[numSymbolsTaken];
+                    assert(encoder.find(r) != encoder.end());
+                    HuffmanEncodePair pair = encoder[r];
+                    size_t code = pair.code;
+                    size_t codeBits = pair.bits;
+
+                    size_t currBit = totalBits - codeBits;
+                    size_t shift = currBit - targetBit;
+                    code <<= shift;
+                    data |= code;
+                    targetBit += codeBits;
+                    numBitsRemaining -= codeBits;
+                    numSymbolsTaken += 1;
+                }
+
+                // Ensure an entire unit was encoded
+                if(numBitsRemaining < 4)
+                {
+                    // Push to the stream
+                    char* bytes = (char*)&data;
+                    for(size_t i = 0; i < totalBytes; ++i)
+                        out.push_back(bytes[i]);
+
+                    for(size_t i = 0; i < numSymbolsTaken; ++i)
+                        symbolBuffer.pop_front();
+                    numSymbolsWrote += numSymbolsTaken;
+                    numHuffWrote += totalBytes;
+                }
+                else
+                {
                     encodeDone = true;
-                    break;
                 }
-
-                HuffUnit currUnit;
-                for(size_t i = 0; i < n; ++i)
-                {
-                    char r = symbolBuffer.front();
-                    currUnit.setChar(r, i);
-                    symbolBuffer.pop_front();
-                    numSymbolsWrote += 1;
-                }
-
-                // Push to the stream
-                char* bytes = (char*)&currUnit.data;
-                out.push_back(bytes[0]);
-                out.push_back(bytes[1]);
-                numHuffWrote += 1;
             }
         }
     }
@@ -194,7 +224,7 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
     std::cout << "Wrote " << numSymbolsWrote << " symbols\n";
     std::cout << "Wrote " << numRLWrote << " runs\n";
     std::cout << "Wrote " << numHuffWrote << " huff\n";
-    size_t bytes = numRLWrote + 2*numHuffWrote;
+    size_t bytes = out.size();
     std::cout << "Total: " << bytes << " bytes\n";
     std::cout << (double)numSymbolsWrote / bytes << " symbols/byte\n";
     exit(1);
