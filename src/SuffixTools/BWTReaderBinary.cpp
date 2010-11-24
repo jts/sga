@@ -105,8 +105,7 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
     typedef std::deque<char> CharDeque;
     CharDeque symbolBuffer;
     
-    HuffmanRunLengthEncoder runEncoder;
-    Huffman::buildRLHuffmanTree(runEncoder);
+    HuffmanTreeCodec<int> rlEncoder = Huffman::buildRLHuffmanTree();
 
     // Read at least 256 symbols from the stream as long as symbols remain to be read
     // We stop the read once 256 symbols are parsed and we are not in the middle of a run
@@ -135,10 +134,19 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
         }
 
         // Count symbols in the buffer
+        typedef std::map<char, int> CharIntMap;
         AlphaCount64 ac;
+        CharIntMap symbolCounts;
+        char prevChar = '\0';
         for(size_t i = 0; i < symbolBuffer.size(); ++i)
         {
-            ac.increment(symbolBuffer[i]);
+            // skip runs to get an accurate count for the huffman
+            if(symbolBuffer[i] != prevChar)
+            {
+                symbolCounts[symbolBuffer[i]]++;
+                ac.increment(symbolBuffer[i]);
+            }
+            prevChar = symbolBuffer[i];
         }
 
         // Get a sorting of the characters
@@ -146,6 +154,7 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
         HuffmanSymbolDecoder symbolDecoder;
 
         Huffman::buildSymbolHuffman(ac, symbolEncoder, symbolDecoder);
+        HuffmanTreeCodec<char> symbolHuffTree(symbolCounts);
 
         // Encode the current characters in the buffer
         bool encodeDone = false;
@@ -169,20 +178,20 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
                     break;
             }
 
-            size_t encodingRunLength = Huffman::getEncodingLength(runEncoder, currRunLength);
+            size_t encodingRunLength = rlEncoder.getGreatestLowerBound(currRunLength);
             assert(encodingRunLength <= currRunLength);
 
-            HuffmanEncodePair symPair = symbolEncoder[first];
-            assert(runEncoder.find(encodingRunLength) != runEncoder.end());
-            HuffmanEncodePair runPair = runEncoder[encodingRunLength];
+            //EncodePair symPair = symbolEncoder[first];
+            EncodePair symPair = symbolHuffTree.encode(first);
+            EncodePair rlePair = rlEncoder.encode(encodingRunLength);
             totalBitsUsed += symPair.bits;
-            totalBitsUsed += runPair.bits;
+            totalBitsUsed += rlePair.bits;
             
             symbolBitsUsed += symPair.bits;
-            rlBitsUsed += runPair.bits;
+            rlBitsUsed += rlePair.bits;
             numSymbolsWrote += encodingRunLength;
             numSymbolsEncoded += 1;
-            runBits[encodingRunLength] += runPair.bits;
+            runBits[encodingRunLength] += rlePair.bits;
             symbolBits[first] += symPair.bits;
 
             // Remove the symbols encoded from the buffer
