@@ -88,14 +88,25 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
     //m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
     (void)numRuns;   
     bool readDone = false;
-    size_t minRun = 3;
+    //size_t minRun = 3;
     
     size_t numSymbolsWrote = 0;
     size_t numRLWrote = 0;
     size_t numHuffWrote = 0;
 
+    size_t numSymbolsEncoded = 0;
+    size_t totalBitsUsed = 0;
+    size_t symbolBitsUsed = 0;
+    size_t rlBitsUsed = 0;
+    
+    std::map<int, int> runBits;
+    std::map<char, int> symbolBits;
+
     typedef std::deque<char> CharDeque;
     CharDeque symbolBuffer;
+    
+    HuffmanRunLengthEncoder runEncoder;
+    Huffman::buildRLHuffmanTree(runEncoder);
 
     // Read at least 256 symbols from the stream as long as symbols remain to be read
     // We stop the read once 256 symbols are parsed and we are not in the middle of a run
@@ -131,9 +142,10 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
         }
 
         // Get a sorting of the characters
-        HuffmanEncodeMap encoder;
-        HuffmanDecodeVector decoder;
-        Huffman::buildHuffman(ac, encoder,decoder);
+        HuffmanSymbolEncoder symbolEncoder;
+        HuffmanSymbolDecoder symbolDecoder;
+
+        Huffman::buildSymbolHuffman(ac, symbolEncoder, symbolDecoder);
 
         // Encode the current characters in the buffer
         bool encodeDone = false;
@@ -157,76 +169,89 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
                     break;
             }
 
-            if(currRunLength >= minRun)
-            {
-                // Encode using RLE
-                RLUnit currUnit(first);
-                symbolBuffer.pop_front();
-                size_t lenToEncode = std::min((size_t)RL_FULL_COUNT, currRunLength) - 1;
-                for(size_t i = 0; i < lenToEncode; ++i)
-                {
-                    currUnit.incrementCount();
-                    symbolBuffer.pop_front();
-                }
+            size_t encodingRunLength = Huffman::getEncodingLength(runEncoder, currRunLength);
+            assert(encodingRunLength <= currRunLength);
 
-                // Write out the unit
-                out.push_back(currUnit.data);
-                numSymbolsWrote += currUnit.getCount();
-                numRLWrote += 1;
+            HuffmanEncodePair symPair = symbolEncoder[first];
+            assert(runEncoder.find(encodingRunLength) != runEncoder.end());
+            HuffmanEncodePair runPair = runEncoder[encodingRunLength];
+            totalBitsUsed += symPair.bits;
+            totalBitsUsed += runPair.bits;
+            
+            symbolBitsUsed += symPair.bits;
+            rlBitsUsed += runPair.bits;
+            numSymbolsWrote += encodingRunLength;
+            numSymbolsEncoded += 1;
+            runBits[encodingRunLength] += runPair.bits;
+            symbolBits[first] += symPair.bits;
+
+            // Remove the symbols encoded from the buffer
+            for(size_t i = 0; i < encodingRunLength; ++i)
+                symbolBuffer.pop_front();
+
+            /*
+            // Encode using Huffman
+            uint8_t data = 0;
+            size_t totalBits = 8;
+            size_t totalBytes = totalBits / 8;
+            size_t targetBit = 0;
+            size_t numBitsRemaining = totalBits;
+            size_t numSymbolsTaken = 0;
+            while(numSymbolsTaken < symbolBuffer.size() && numBitsRemaining >= 4)
+            {
+                char r = symbolBuffer[numSymbolsTaken];
+                assert(encoder.find(r) != encoder.end());
+                HuffmanEncodePair pair = encoder[r];
+                size_t code = pair.code;
+                size_t codeBits = pair.bits;
+
+                size_t currBit = totalBits - codeBits;
+                size_t shift = currBit - targetBit;
+                code <<= shift;
+                data |= code;
+                targetBit += codeBits;
+                numBitsRemaining -= codeBits;
+                numSymbolsTaken += 1;
+            }
+
+            // Ensure an entire unit was encoded
+            if(numBitsRemaining < 4)
+            {
+                // Push to the stream
+                char* bytes = (char*)&data;
+                for(size_t i = 0; i < totalBytes; ++i)
+                    out.push_back(bytes[i]);
+
+                for(size_t i = 0; i < numSymbolsTaken; ++i)
+                    symbolBuffer.pop_front();
+                numSymbolsWrote += numSymbolsTaken;
+                numHuffWrote += totalBytes;
             }
             else
             {
-                // Encode using Huffman
-                uint8_t data = 0;
-                size_t totalBits = 8;
-                size_t totalBytes = totalBits / 8;
-                size_t targetBit = 0;
-                size_t numBitsRemaining = totalBits;
-                size_t numSymbolsTaken = 0;
-                while(numSymbolsTaken < symbolBuffer.size() && numBitsRemaining >= 4)
-                {
-                    char r = symbolBuffer[numSymbolsTaken];
-                    assert(encoder.find(r) != encoder.end());
-                    HuffmanEncodePair pair = encoder[r];
-                    size_t code = pair.code;
-                    size_t codeBits = pair.bits;
-
-                    size_t currBit = totalBits - codeBits;
-                    size_t shift = currBit - targetBit;
-                    code <<= shift;
-                    data |= code;
-                    targetBit += codeBits;
-                    numBitsRemaining -= codeBits;
-                    numSymbolsTaken += 1;
-                }
-
-                // Ensure an entire unit was encoded
-                if(numBitsRemaining < 4)
-                {
-                    // Push to the stream
-                    char* bytes = (char*)&data;
-                    for(size_t i = 0; i < totalBytes; ++i)
-                        out.push_back(bytes[i]);
-
-                    for(size_t i = 0; i < numSymbolsTaken; ++i)
-                        symbolBuffer.pop_front();
-                    numSymbolsWrote += numSymbolsTaken;
-                    numHuffWrote += totalBytes;
-                }
-                else
-                {
-                    encodeDone = true;
-                }
+                encodeDone = true;
             }
+            */
         }
     }
 
+    for(std::map<int,int>::iterator iter = runBits.begin(); iter != runBits.end(); ++iter)
+    {
+        std::cout << iter->first << "\t" << iter->second / 8 << "\n";
+    }
     std::cout << "Wrote " << numSymbolsWrote << " symbols\n";
     std::cout << "Wrote " << numRLWrote << " runs\n";
     std::cout << "Wrote " << numHuffWrote << " huff\n";
-    size_t bytes = out.size();
+    //size_t bytes = out.size();
+    (void)out;
+    size_t bytes = totalBitsUsed / 8;
     std::cout << "Total: " << bytes << " bytes\n";
+    std::cout << "BITS: " << totalBitsUsed << "\n";
+    std::cout << "SYMBITS: " << symbolBitsUsed << " for " << numSymbolsEncoded << " (" << (double)symbolBitsUsed / numSymbolsEncoded << ")\n";
+    std::cout << "RLEBITS: " << rlBitsUsed << " for " << numSymbolsEncoded << " (" << (double)rlBitsUsed / numSymbolsEncoded << ")\n";
     std::cout << (double)numSymbolsWrote / bytes << " symbols/byte\n";
+
+
     exit(1);
 }
 
