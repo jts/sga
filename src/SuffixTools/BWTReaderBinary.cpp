@@ -238,7 +238,51 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
             }
             else
             {
+<<<<<<< HEAD
                 encodeDone = true;
+=======
+                // Encode using Huffman
+                uint8_t data = 0;
+                size_t totalBytes = sizeof(data);
+                size_t totalBits  = totalBytes * 8;
+                size_t targetBit = 0;
+                size_t numBitsRemaining = totalBits;
+                size_t numSymbolsTaken = 0;
+                while(numSymbolsTaken < symbolBuffer.size() && numBitsRemaining >= minHuffBits)
+                {
+                    char r = symbolBuffer[numSymbolsTaken];
+                    assert(encoder.find(r) != encoder.end());
+                    HuffmanEncodePair pair = encoder[r];
+                    size_t code = pair.code;
+                    size_t codeBits = pair.bits;
+
+                    size_t currBit = totalBits - codeBits;
+                    size_t shift = currBit - targetBit;
+                    code <<= shift;
+                    data |= code;
+                    targetBit += codeBits;
+                    numBitsRemaining -= codeBits;
+                    numSymbolsTaken += 1;
+                }
+
+                // Ensure an entire unit was encoded
+                if(numBitsRemaining < minHuffBits)
+                {
+                    // Push to the stream
+                    char* bytes = (char*)&data;
+                    for(size_t i = 0; i < totalBytes; ++i)
+                        out.push_back(bytes[i]);
+
+                    for(size_t i = 0; i < numSymbolsTaken; ++i)
+                        symbolBuffer.pop_front();
+                    numSymbolsWrote += numSymbolsTaken;
+                    numHuffWrote += totalBytes;
+                }
+                else
+                {
+                    encodeDone = true;
+                }
+>>>>>>> d3f6b2033441bbc3cc1999863476b828fc72d342
             }
             */
         }

@@ -33,6 +33,9 @@ void Huffman::buildSymbolHuffman(AlphaCount64& counts, HuffmanSymbolEncoder& out
     uint8_t standard4[] = {0, 1, 2, 3, 15};
     uint8_t bits4[] = {2, 2, 2, 2, 4};
 
+    //uint8_t standard4[] = {0, 2, 6, 7, 15};
+    //uint8_t bits4[] = {1, 2, 3, 3, 4};
+
     uint8_t standard3[] = {0, 1, 3, 15, 15};
     uint8_t bits3[] = {1, 2, 2, 4, 4};
     
