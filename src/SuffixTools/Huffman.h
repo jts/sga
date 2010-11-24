@@ -15,51 +15,16 @@
 #include <vector>
 #include <string>
 #include "Alphabet.h"
+#include "HuffmanTreeCodec.h"
 
-struct HuffmanEncodePair
-{
-    uint8_t code;
-    uint8_t bits;
-};
-
-struct HuffmanDecodePair
-{
-    char base;
-    uint8_t bits;
-};
-
-typedef std::map<char, HuffmanEncodePair> HuffmanSymbolEncoder;
-typedef std::vector<HuffmanDecodePair> HuffmanSymbolDecoder;
-typedef std::map<int, HuffmanEncodePair> HuffmanRunLengthEncoder;
-
-// Huffman Tree
-template<typename T>
-struct HuffmanNode
-{
-    HuffmanNode(T sym, double f) : pParent(NULL), pLeftChild(NULL), pRightChild(NULL), symbol(sym), frequency(f) {}
-    bool isLeaf() const { return pLeftChild == NULL && pRightChild == NULL; }
-    HuffmanNode* pParent;
-    HuffmanNode* pLeftChild;
-    HuffmanNode* pRightChild;
-    T symbol;
-    double frequency;
-};
-
-// Returns true if pLHS has a greater frequency than pRHS
-template<typename T>
-struct HuffmanNodePriority
-{
-    bool operator()(HuffmanNode<T>* pLHS, HuffmanNode<T>* pRHS) const
-    {
-        return (pLHS->frequency > pRHS->frequency);
-    }
-};
+typedef std::map<char, EncodePair> HuffmanSymbolEncoder;
+typedef std::vector<DecodePair> HuffmanSymbolDecoder;
+typedef std::map<int, EncodePair> HuffmanRunLengthEncoder;
 
 namespace Huffman
 {
-void buildRLHuffmanTree(HuffmanRunLengthEncoder& outEncoder);
-void visitHuffmanTree(HuffmanNode<int>* pNode, std::string code, HuffmanRunLengthEncoder& outEncoder);
-int getEncodingLength(HuffmanRunLengthEncoder& outEncoder, int inLength);
+
+HuffmanTreeCodec<int> buildRLHuffmanTree();
 void buildSymbolHuffman(AlphaCount64& ac, HuffmanSymbolEncoder& outEncoder, HuffmanSymbolDecoder& outDecoder);
 void buildRunLengthHuffman(HuffmanRunLengthEncoder& outEncoder);
 
