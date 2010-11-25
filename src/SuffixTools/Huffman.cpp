@@ -12,7 +12,7 @@
 #include <iostream>
 #include <queue>
 
-void Huffman::buildSymbolHuffman(AlphaCount64& counts, HuffmanSymbolEncoder& outEncoder, HuffmanSymbolDecoder& outDecoder)
+void Huffman::buildSymbolHuffman(AlphaCount64& counts, HuffmanSymbolEncoder& outEncoder)
 {
     std::string sortString = counts.getSortString();
 
@@ -83,7 +83,6 @@ void Huffman::buildSymbolHuffman(AlphaCount64& counts, HuffmanSymbolEncoder& out
 
     //size_t n = blockStr.size();
     //std::cout << "Bits needed for block of len " << blockStr.size() << " " << counts << " = " << numBitsNeeded << " " << (double)numBitsNeeded / n << "\n";
-    (void)outDecoder;
 }
 
 void Huffman::buildRunLengthHuffman(HuffmanRunLengthEncoder& outEncoder)
@@ -125,7 +124,7 @@ HuffmanTreeCodec<int> Huffman::buildRLHuffmanTree()
     input.insert(std::make_pair(14,1022598));
     input.insert(std::make_pair(15,756765));
     input.insert(std::make_pair(16,559331));
-    input.insert(std::make_pair(17,428257));
+    /*input.insert(std::make_pair(17,428257));
     input.insert(std::make_pair(18,345921));
     input.insert(std::make_pair(19,297472));
     input.insert(std::make_pair(20,268562));
@@ -140,6 +139,7 @@ HuffmanTreeCodec<int> Huffman::buildRLHuffmanTree()
     input.insert(std::make_pair(29,80767));
     input.insert(std::make_pair(30,69259));
     input.insert(std::make_pair(31,60695));
+    */
     input.insert(std::make_pair(32,52863));
     /*
     input.insert(std::make_pair(33,46801));

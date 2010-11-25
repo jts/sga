@@ -18,14 +18,13 @@
 #include "HuffmanTreeCodec.h"
 
 typedef std::map<char, EncodePair> HuffmanSymbolEncoder;
-typedef std::vector<DecodePair> HuffmanSymbolDecoder;
 typedef std::map<int, EncodePair> HuffmanRunLengthEncoder;
 
 namespace Huffman
 {
 
 HuffmanTreeCodec<int> buildRLHuffmanTree();
-void buildSymbolHuffman(AlphaCount64& ac, HuffmanSymbolEncoder& outEncoder, HuffmanSymbolDecoder& outDecoder);
+void buildSymbolHuffman(AlphaCount64& ac, HuffmanSymbolEncoder& outEncoder);
 void buildRunLengthHuffman(HuffmanRunLengthEncoder& outEncoder);
 
 };

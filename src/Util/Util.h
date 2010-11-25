@@ -98,6 +98,8 @@ std::string stripFilename(const std::string& filename);
 std::string stripExtension(const std::string& filename);
 std::string stripDirectories(const std::string& filename);
 std::string getFileExtension(const std::string& filename);
+std::string int2Binary(int v, int numBits = 0);
+
 bool isGzip(const std::string& filename);
 
 // Write out a fasta record
