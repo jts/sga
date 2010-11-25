@@ -143,6 +143,34 @@ std::string getFileExtension(const std::string& filename)
         return filename.substr(suffixPos + 1);
 }
 
+// slow function to convert an integer to a binary string
+std::string int2Binary(int v, int numBits)
+{
+    std::string tmp;
+    int bits = sizeof(int) * 8;
+    for(int i = bits - 1; i >= 0; --i)
+    {
+        // test if the i-th bit is set
+        int mask = 1 << i;
+        char b = (v & mask) ? '1' : '0';
+        tmp.append(1, b);
+    }
+
+    size_t pos = 0;
+    if(numBits == 0)
+    {
+        // Truncate leading zeros
+        size_t pos = tmp.find_first_of('1');
+        if(pos == std::string::npos)
+            pos = tmp.size() - 1;
+    }
+    else
+    {
+        pos = tmp.size() - numBits;
+    }
+    return tmp.substr(pos);
+}
+
 // Write out a fasta record
 void writeFastaRecord(std::ostream* pWriter, const std::string& id, const std::string& seq, size_t maxLineLength)
 {
