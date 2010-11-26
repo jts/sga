@@ -121,7 +121,6 @@ void assemble()
     SGContainRemoveVisitor containVisit;
     SGErrorCorrectVisitor errorCorrectVisit;
     SGValidateStructureVisitor validationVisit;
-    SGPairedPathResolveVisitor peResolveVisit;
 
     if(!opt::debugFile.empty())
     {
