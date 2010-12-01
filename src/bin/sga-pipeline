@@ -244,13 +244,14 @@ def rmdupPEPipeline(inputFile):
     return splitOutput
 
 # correction pipeline
-def correctionPipeline(inputFile):
+def correctionPipeline(inputFile, indexFile):
     global projectExtension
     global arguments
 
     # Input/Output names
     fileBasename = getBasename(inputFile)
-    indexOutput = [fileBasename + ".bwt", fileBasename + ".rbwt", fileBasename + ".sai", fileBasename + ".rsai"]
+    indexBasename = getBasename(indexFile)
+    indexOutput = [indexBasename + ".bwt", indexBasename + ".rbwt", indexBasename + ".sai", indexBasename + ".rsai"]
     correctInput = [inputFile, indexOutput]
     correctOutput = fileBasename + ".ec" + projectExtension
 
@@ -262,6 +263,7 @@ def correctionPipeline(inputFile):
     @follows(correctPipelineIndex)
     @files(correctInput, correctOutput, arguments["correct"])
     def correctPipelineCorrect(input, output, args):
+        args = args + " -p " + indexBasename
         sga_correct(input[0], output, args)
     
     # Run the pipeline
@@ -531,6 +533,7 @@ if not skipPreprocess or len(rawInputFiles) > 1:
 else:
     input = rawInputFiles[0]
 
+topFile = input # Unmodified, preprocesed data
 correctedFile = None
 cleanedFile = None
 
@@ -542,7 +545,7 @@ for task in commandList:
     elif task == "rmdup-pe":
         input = rmdupPEPipeline(input)
     elif task == "correct":
-        input = correctionPipeline(input)
+        input = correctionPipeline(topFile, input)
         correctedFile = input
     elif task == 'cleaning':
         if correctedFile is None:
