@@ -13,6 +13,7 @@
 #include "Timer.h"
 #include "Huffman.h"
 #include "StreamEncoding.h"
+#include "HuffmanForest.h"
 
 //
 BWTReaderBinary::BWTReaderBinary(const std::string& filename) : m_stage(IOS_NONE), m_numRunsOnDisk(0), m_numRunsRead(0)
@@ -34,7 +35,7 @@ void BWTReaderBinary::read(RLBWT* pRLBWT)
     readHeader(pRLBWT->m_numStrings, pRLBWT->m_numSymbols, flag);
 
     assert(m_numRunsOnDisk > 0);
-    readRuns(pRLBWT->m_rlString, m_numRunsOnDisk);
+    readRuns(pRLBWT, pRLBWT->m_rlString, m_numRunsOnDisk);
 
     //pRLBWT->printInfo();
     //pRLBWT->print();
@@ -83,36 +84,38 @@ void BWTReaderBinary::readHeader(size_t& num_strings, size_t& num_symbols, BWFla
     m_stage = IOS_BWSTR;    
 }
 
-void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
+void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
 {
     //out.resize(numRuns);
     //m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
     (void)numRuns;   
     bool readDone = false;
-    //size_t minRun = 3;
     
+    size_t sampleRateLarge = RLBWT::DEFAULT_SAMPLE_RATE_LARGE;
+    size_t sampleRateSmall = RLBWT::DEFAULT_SAMPLE_RATE_SMALL;
+
     size_t numSymbolsWrote = 0;
     size_t numBytesUsed = 0;
     size_t numSymbolsEncoded = 0;
-    
-    std::map<int, int> runBits;
-    std::map<char, int> symbolBits;
+    AlphaCount64 runningAC;
 
     typedef std::map<char, int> CharIntMap;
     CharIntMap symbolCounts;
     CharDeque symbolBuffer;
     
+    std::ofstream debugFile("actualbwt.txt");
+
     HuffmanTreeCodec<int> rlEncoder = Huffman::buildRLHuffmanTree();
     std::cout << "Huffman RL encoder needs at most " << rlEncoder.getMaxBits() << " bits\n";
 
     // Read symbols from the stream into the buffer as long as symbols remain to be read
     // We do not want to break up runs so the buffer size might be slightly larger than the target
-    size_t minBufferSize = 128;
+    size_t minBufferSize = sampleRateSmall;
     while(!readDone)
     {
         // Read symbols into the buffer
         bool inRun = true;
-        while(symbolBuffer.size() < minBufferSize || inRun)
+        while(symbolBuffer.size() < minBufferSize)
         {
             char b = readBWChar();
             if(b == '\n')
@@ -130,6 +133,55 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
             symbolBuffer.push_back(b);
         }
         
+        if(symbolBuffer.empty() && readDone)
+            break;
+
+        //
+        // Write markers at the beginning of this data segment
+        //
+
+        // Large marker is placed if its been sampleRateLarge symbols since the last one
+        size_t startingUnitIndex = pBWT->m_rlString.size();
+        while((numSymbolsWrote / sampleRateLarge) + 1 > pBWT->m_largeMarkers.size())
+        {
+            // Place a new large marker with the accumulated counts up to this point
+            LargeMarker marker;
+            marker.unitIndex = startingUnitIndex;
+            marker.counts = runningAC;
+            pBWT->m_largeMarkers.push_back(marker);
+            //std::cout << "Placed large marker at " << numSymbolsWrote << " idx: " << startingUnitIndex << " MI: " << numSymbolsWrote / sampleRateLarge << "\n";
+        }
+
+        // SmallMarkers are placed every segment. 
+        // Calculate the large marker that this small marker is relative to
+        size_t smallMarkerPosition = pBWT->m_smallMarkers.size() * sampleRateSmall;
+        size_t largeMarkerIdx = smallMarkerPosition / sampleRateLarge;
+        assert(largeMarkerIdx < pBWT->m_largeMarkers.size());
+        LargeMarker& prevLargeMarker = pBWT->m_largeMarkers[largeMarkerIdx];
+
+        //std::cout << "Placing small marker " << pBWT->m_smallMarkers.size() << " relative to LI: " << largeMarkerIdx << "\n";
+        //std::cout << "Small marker pos: " << smallMarkerPosition << " largeMarkerPos: " << prevLargeMarker.getActualPosition() << "\n";
+        AlphaCount16 smallAC;
+        for(size_t j = 0; j < ALPHABET_SIZE; ++j)
+        {
+            size_t v = runningAC.getByIdx(j) - prevLargeMarker.counts.getByIdx(j);
+            if(v > smallAC.getMaxValue())
+            {
+                std::cerr << "Error: Number of symbols exceeds the maximum value (" << v << " > " << smallAC.getMaxValue() << ")\n";
+                std::cerr << "RunningAC: " << runningAC << "\n";
+                std::cerr << "PrevAC: " << prevLargeMarker.counts << "\n";
+                std::cerr << "SmallAC:" << smallAC << "\n";
+                exit(EXIT_FAILURE);
+            }
+            smallAC.setByIdx(j, v);
+        }
+        
+        // Set the small marker
+        SmallMarker smallMarker;
+        smallMarker.unitCount = startingUnitIndex - prevLargeMarker.unitIndex;
+        smallMarker.counts = smallAC;        
+        pBWT->m_smallMarkers.push_back(smallMarker);
+
         // Count symbols in the buffer
         symbolCounts.clear();
         char prevChar = '\0';
@@ -141,21 +193,37 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
                 symbolCounts[symbolBuffer[i]]++;
             }
             prevChar = symbolBuffer[i];
+            runningAC.increment(symbolBuffer[i]);
+            debugFile << symbolBuffer[i];
         }
+        debugFile << "\n";
 
         // Construct the huffman tree for the symbols based on the counts
-        HuffmanTreeCodec<char> symbolEncoder(symbolCounts);
-        EncodedArray encodedBytes;
+        size_t encoderIdx = 0;
+        const HuffmanTreeCodec<char>& symbolEncoder = HuffmanForest::Instance().getEncoder(encoderIdx);
 
+        // Set the encoder index in the last small marker
+        pBWT->m_smallMarkers.back().encoderIdx = encoderIdx;
+
+        // Perform the actual encoding
+        EncodedArray encodedBytes;
         size_t symbolsEncoded = StreamEncode::encodeStream(symbolBuffer, symbolEncoder, rlEncoder, encodedBytes);
         assert(symbolsEncoded == symbolBuffer.size());
 
+        // Copy the encoded bytes
+        for(size_t i = 0; i < encodedBytes.size(); ++i)
+        {
+            pBWT->m_rlString.push_back(encodedBytes[i]);
+        }
+        numSymbolsWrote += symbolsEncoded;
+        numBytesUsed += encodedBytes.size();
+        numSymbolsEncoded += symbolsEncoded;
         
-        std::string testOut;
-        StreamEncode::decodeStream(symbolEncoder, rlEncoder, encodedBytes, symbolsEncoded, testOut);
         /*
+        std::string testOut;
+        StreamEncode::decodeStream(symbolEncoder, rlEncoder, &encodedBytes[0], symbolsEncoded, testOut);
+        
         // Validate the decoding
-
         bool failedValidate = false;
         if(testOut.size() != symbolBuffer.size())
         {
@@ -186,16 +254,8 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
         }
         */
         symbolBuffer.clear();
-
-        numSymbolsWrote += symbolsEncoded;
-        numBytesUsed += encodedBytes.size();
-        numSymbolsEncoded += symbolsEncoded;
     }
 
-    for(std::map<int,int>::iterator iter = runBits.begin(); iter != runBits.end(); ++iter)
-    {
-        std::cout << iter->first << "\t" << iter->second / 8 << "\n";
-    }
     (void)out;
     std::cout << "Wrote " << numSymbolsWrote << " symbols\n";
     //size_t bytes = out.size();
@@ -211,7 +271,11 @@ void BWTReaderBinary::readRuns(RLRawData& out, size_t numRuns)
     
 //    std::cout << "SYMBITS: " << symbolBitsUsed << " for " << numSymbolsEncoded << " (" << (double)symbolBitsUsed / numSymbolsEncoded << ")\n";
 //    std::cout << "RLEBITS: " << rlBitsUsed << " for " << numSymbolsEncoded << " (" << (double)rlBitsUsed / numSymbolsEncoded << ")\n";
-
+    pBWT->initializeFMIndex(runningAC);
+    Timer decodeTimer("decoding");
+    std::cout << "Starting decode\n";
+    pBWT->decodeToFile("decoded.txt");
+    debugFile.close();
     exit(1);
 }
 

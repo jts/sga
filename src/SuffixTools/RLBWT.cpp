@@ -11,6 +11,8 @@
 #include "BWTReader.h"
 #include "BWTWriter.h"
 #include "BWTReader.h"
+#include "HuffmanForest.h"
+#include "StreamEncoding.h"
 #include <istream>
 #include <queue>
 #include <inttypes.h>
@@ -27,7 +29,7 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0),
 {
     IBWTReader* pReader = BWTReader::createReader(filename);
     pReader->read(this);
-    initializeFMIndex();
+    //initializeFMIndex();
     delete pReader;
 }
 
@@ -56,11 +58,12 @@ void RLBWT::append(char b)
 }
 
 // Fill in the FM-index data structures
-void RLBWT::initializeFMIndex()
+void RLBWT::initializeFMIndex(AlphaCount64& running_ac)
 {
     m_smallShiftValue = Occurrence::calculateShiftValue(m_smallSampleRate);
     m_largeShiftValue = Occurrence::calculateShiftValue(m_largeSampleRate);
 
+    /*
     // initialize the marker vectors,
     // LargeMarkers are placed every 2048 bases (by default) containing the absolute count
     // of symbols seen up to that point. SmallMarkers are placed every 128 bases with the
@@ -188,7 +191,7 @@ void RLBWT::initializeFMIndex()
 
     assert(curr_small_marker_index == num_small_markers);
     assert(curr_large_marker_index == num_large_markers);
-
+    */
     // Initialize C(a)
     m_predCount.set('$', 0);
     m_predCount.set('A', running_ac.get('$')); 
@@ -297,5 +300,46 @@ void RLBWT::printRunLengths() const
     printf("Total runs: %zu\n", totalRuns);
     printf("Number of adjacent singleton runs: %zu\n", adjacentSingletons);
     printf("Minimal runs: %zu\n", totalRuns - adjacentSingletons / 2);
+}
+
+void RLBWT::decodeToFile(const std::string& filename)
+{
+    HuffmanTreeCodec<int> rlEncoder = Huffman::buildRLHuffmanTree();
+
+    std::ofstream outFile(filename.c_str());
+    size_t numSymbolsDecoded = 0;
+
+    // Iterate over the small markers, decoding each segment that the marker represents
+    for(size_t i = 0; i < m_smallMarkers.size(); ++i)
+    {
+        SmallMarker& smallMarker = m_smallMarkers[i];
+        size_t decodeIdx = smallMarker.encoderIdx;
+        LargeMarker currLargeMarker = getInterpolatedMarker(i);
+
+        // Calculate the number of symbols to decode in the block
+        size_t numToDecode = 0;
+        if(i == (m_smallMarkers.size() - 1))
+        {
+             // last marker, decode the remainder of the string
+             numToDecode = m_numSymbols - numSymbolsDecoded;
+        }
+        else
+        {
+            LargeMarker nextLargeMarker = getInterpolatedMarker(i+1);
+            //std::cout << "NP: " << nextLargeMarker.getActualPosition() << " CP: " << currLargeMarker.getActualPosition() << "\n";
+            numToDecode = nextLargeMarker.getActualPosition() - currLargeMarker.getActualPosition();
+        }
+
+        std::string outStr;
+        const HuffmanTreeCodec<char>& symDecoder = HuffmanForest::Instance().getDecoder(decodeIdx);
+        size_t startingUnitIndex = currLargeMarker.unitIndex;
+        //std::cout << "Decoding " << numToDecode << " symbols from unit " << startingUnitIndex << "\n";
+        size_t numDecoded = StreamEncode::decodeStream(symDecoder, rlEncoder, &m_rlString[startingUnitIndex], numToDecode, outStr);
+        assert(numDecoded >= numToDecode);
+        
+        numSymbolsDecoded += numDecoded;
+        outFile << outStr << "\n";
+    }
+    assert(numSymbolsDecoded == m_numSymbols);
 }
 

@@ -31,7 +31,7 @@ class BWTReaderBinary : public IBWTReader
 
         virtual void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
         virtual char readBWChar();
-        virtual void readRuns(RLRawData& out, size_t numRuns);
+        virtual void readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns);
 
     private:
         std::istream* m_pReader;

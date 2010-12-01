@@ -23,7 +23,7 @@ typedef std::vector<uint8_t> EncodedArray;
 namespace StreamEncode
 {
     //
-    void printEncoding(const EncodedArray& output)
+    inline void printEncoding(const EncodedArray& output)
     {
         std::cout << "Encoding: ";
         for(size_t i = 0; i < output.size(); ++i)
@@ -87,11 +87,10 @@ namespace StreamEncode
 
     // Read maxBits from the array starting at currBits and write the value to outCode
     // Returns the number of bits read
-    inline size_t _readCode(size_t currBit, size_t maxBits, const EncodedArray& input, int& outCode)
+    inline size_t _readCode(size_t currBit, size_t maxBits, const unsigned char* pInput, int& outCode)
     {
 
 #ifdef DEBUG_ENCODING
-        printEncoding(input);
         std::cout << "Reading " << maxBits << " from array starting at " << currBit << "\n";
 #endif        
         outCode = 0;
@@ -121,7 +120,7 @@ namespace StreamEncode
             std::cout << "Shift mask " << int2Binary(mask, 8) << "\n";
 #endif           
             // Read the value
-            int tmpCode = (input[byte] & mask) >> (BITS_PER_BYTE - bitIdx - bitsToRead);
+            int tmpCode = (pInput[byte] & mask) >> (BITS_PER_BYTE - bitIdx - bitsToRead);
 
 #ifdef DEBUG_ENCODING
             std::cout << "TmpC " << int2Binary(tmpCode, 8) << "\n";
@@ -140,7 +139,7 @@ namespace StreamEncode
     }
     
     // Encode a stream of characters
-    inline size_t encodeStream(const CharDeque& input, HuffmanTreeCodec<char>& symbolEncoder, HuffmanTreeCodec<int> & runEncoder, EncodedArray& output)
+    inline size_t encodeStream(const CharDeque& input, const HuffmanTreeCodec<char>& symbolEncoder, HuffmanTreeCodec<int> & runEncoder, EncodedArray& output)
     {
         // Require the encoder to emit at most 8-bit codes
         assert(symbolEncoder.getMaxBits() <= BITS_PER_BYTE);
@@ -199,7 +198,7 @@ namespace StreamEncode
     }
 
     // Decode an array
-    inline size_t decodeStream(HuffmanTreeCodec<char>& symbolEncoder, HuffmanTreeCodec<int> & runEncoder, const EncodedArray& input, size_t numSymbols, std::string& debugOut)
+    inline size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, std::string& decoded)
     {
         // Require the encoder to emit at most 8-bit codes
         assert(symbolEncoder.getMaxBits() <= BITS_PER_BYTE);
@@ -214,13 +213,13 @@ namespace StreamEncode
         {
             // Read a symbol then a run
             int code = 0;
-            _readCode(numBitsDecoded, symbolReadLen, input, code);
+            _readCode(numBitsDecoded, symbolReadLen, pInput, code);
 
             // Parse the code
             HuffmanTreeCodec<char>::DecodePair sdp = symbolEncoder.decode(code);
             numBitsDecoded += sdp.bits;
 
-            _readCode(numBitsDecoded, runReadLen, input, code);
+            _readCode(numBitsDecoded, runReadLen, pInput, code);
             HuffmanTreeCodec<int>::DecodePair rdp = runEncoder.decode(code);
             numBitsDecoded += rdp.bits;
             numSymbolsDecoded += rdp.symbol;
@@ -228,7 +227,7 @@ namespace StreamEncode
 #ifdef DEBUG_VALIDATE
             std::cout << "Decoded pair: " << sdp.symbol << "," << rdp.symbol << "\n";
 #endif
-            debugOut.append(rdp.symbol, sdp.symbol);
+            decoded.append(rdp.symbol, sdp.symbol);
         }
         return numSymbols;
     }

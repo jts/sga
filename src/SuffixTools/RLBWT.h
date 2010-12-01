@@ -37,7 +37,7 @@ class RLBWT
         RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE_SMALL);
 
         //    
-        void initializeFMIndex();
+        void initializeFMIndex(AlphaCount64& running_ac);
 
         // Append a symbol to the bw string
         void append(char b);
@@ -81,8 +81,8 @@ class RLBWT
             {
                 return baseIdx + 1;
             }
-        }        
-
+        }   
+        
         // Get the interpolated marker with position closest to position
         inline LargeMarker getNearestMarker(size_t position) const
         {
@@ -112,7 +112,7 @@ class RLBWT
             // Calculate the position of the LargeMarker closest to the target SmallMarker
             size_t target_position = target_small_idx << m_smallShiftValue;
             size_t curr_large_idx = target_position >> m_largeShiftValue;
-
+            
             LargeMarker absoluteMarker = m_largeMarkers[curr_large_idx];
             const SmallMarker& relative = m_smallMarkers[target_small_idx];
             alphacount_add16(absoluteMarker.counts, relative.counts);
@@ -262,6 +262,8 @@ class RLBWT
         void printInfo() const;
         void print() const;
         void printRunLengths() const;
+        
+        void decodeToFile(const std::string& file);
 
         // IO
         friend class BWTReaderBinary;
