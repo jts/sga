@@ -20,6 +20,9 @@
 #include "FMMarkers.h"
 #include "RLUnit.h"
 #include "HuffUnit.h"
+#include "Huffman.h"
+#include "StreamEncoding.h"
+#include "HuffmanForest.h"
 
 // Defines
 #define RLBWT_VALIDATE 1
@@ -45,78 +48,31 @@ class RLBWT
         inline char getChar(size_t idx) const
         {
             assert(false);
-            // Calculate the Marker who's position is not less than idx
-            const LargeMarker& upper = getUpperMarker(idx);
-            size_t current_position = upper.getActualPosition();
-            assert(current_position >= idx);
-
-            size_t symbol_index = upper.unitIndex; 
-
-            // Search backwards (towards 0) until idx is found
-            while(current_position > idx)
-            {
-                assert(symbol_index != 0);
-                symbol_index -= 1;
-                const RLUnit* pUnit = (RLUnit*) &m_rlString[symbol_index];
-                current_position -= pUnit->getCount();
-            }
-
-            // symbol_index is now the index of the run containing the idx symbol
-            RLUnit* pUnit = (RLUnit*) &m_rlString[symbol_index];
-            assert(current_position <= idx && current_position + pUnit->getCount() >= idx);
-            return pUnit->getChar();
-        }
-
-        // Get the index of the marker nearest to position in the bwt
-        inline size_t getNearestMarkerIdx(size_t position, size_t sampleRate, size_t shiftValue) const
-        {
-            size_t offset = MOD_POWER_2(position, sampleRate); // equivalent to position % sampleRate
-            size_t baseIdx = position >> shiftValue;
-
-            if(offset < (sampleRate >> 1))
-            {
-                return baseIdx;
-            }
-            else
-            {
-                return baseIdx + 1;
-            }
-        }   
-        
-        // Get the interpolated marker with position closest to position
-        inline LargeMarker getNearestMarker(size_t position) const
-        {
-            size_t nearest_small_idx = getNearestMarkerIdx(position, m_smallSampleRate, m_smallShiftValue);
-            return getInterpolatedMarker(nearest_small_idx);
+            (void)idx;
+            return '\0';
         }
 
         // Get the greatest interpolated marker whose position is less than or equal to position
-        inline LargeMarker getLowerMarker(size_t position) const
+        inline LargeMarker getLowerMarker(size_t position, size_t& encoderIdx) const
         {
             size_t target_small_idx = position >> m_smallShiftValue;
-            return getInterpolatedMarker(target_small_idx);
-        }
-
-        // Get the lowest interpolated marker whose position is strictly greater than position
-        inline LargeMarker getUpperMarker(size_t position) const
-        {
-            size_t target_small_idx = (position >> m_smallShiftValue) + 1;
-            return getInterpolatedMarker(target_small_idx);
+            return getInterpolatedMarker(target_small_idx, encoderIdx);
         }
 
         // Return a LargeMarker with values that are interpolated by adding
         // the relative count nearest to the requested position to the last
         // LargeMarker
-        inline LargeMarker getInterpolatedMarker(size_t target_small_idx) const
+        inline LargeMarker getInterpolatedMarker(size_t target_small_idx, size_t& encoderIdx) const
         {
-            // Calculate the position of the LargeMarker closest to the target SmallMarker
+            // Calculate the position of the LargeMarker that the SmallMarker is relative to
             size_t target_position = target_small_idx << m_smallShiftValue;
             size_t curr_large_idx = target_position >> m_largeShiftValue;
-            
             LargeMarker absoluteMarker = m_largeMarkers[curr_large_idx];
+            assert(target_small_idx < m_smallMarkers.size());
             const SmallMarker& relative = m_smallMarkers[target_small_idx];
             alphacount_add16(absoluteMarker.counts, relative.counts);
             absoluteMarker.unitIndex += relative.unitCount;
+            encoderIdx = relative.encoderIdx;
             return absoluteMarker;
         }
 
@@ -129,18 +85,14 @@ class RLBWT
             // so we increment the index by 1.
             ++idx;
 
-            const LargeMarker& marker = getNearestMarker(idx);
+            size_t encoderIdx = 0;
+            const LargeMarker marker = getLowerMarker(idx, encoderIdx);
             size_t current_position = marker.getActualPosition();
-            bool forwards = current_position < idx;
-            //printf("cp: %zu idx: %zu f: %d dist: %d\n", current_position, idx, forwards, (int)idx - (int)current_position);
-
+            size_t numToCount = idx - current_position;
+            assert(numToCount < m_smallSampleRate);
             size_t running_count = marker.counts.get(b);
-            size_t symbol_index = marker.unitIndex; 
-
-            if(forwards)
-                accumulateForwards(b, running_count, symbol_index, current_position, idx);
-            else
-                accumulateBackwards(b, running_count, symbol_index, current_position, idx);
+            size_t symbol_index = marker.unitIndex;
+            StreamEncode::countDecoded(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, b, running_count);
             return running_count;
         }
 
@@ -151,17 +103,18 @@ class RLBWT
             // so we increment the index by 1.
             ++idx;
 
-            const LargeMarker& marker = getNearestMarker(idx);
+            size_t encoderIdx = 0;
+            const LargeMarker marker = getLowerMarker(idx, encoderIdx);
             size_t current_position = marker.getActualPosition();
-            bool forwards = current_position < idx;
-
             AlphaCount64 running_count = marker.counts;
-            size_t symbol_index = marker.unitIndex; 
+            size_t numToCount = idx - current_position;
 
-            if(forwards)
-                accumulateForwards(running_count, symbol_index, current_position, idx);
-            else
-                accumulateBackwards(running_count, symbol_index, current_position, idx);
+            //std::cout << "NTC: " << numToCount << "\n";
+            //std::cout << "CP: " << current_position << "\n";
+            //std::cout << "IC: "<< running_count << "\n";
+            assert(numToCount < m_smallSampleRate);
+            size_t symbol_index = marker.unitIndex;
+            StreamEncode::countDecoded(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, running_count);
             return running_count;
         }
 
@@ -287,6 +240,9 @@ class RLBWT
         // The C(a) array
         AlphaCount64 m_predCount;
         
+        // RL huffman tree
+        HuffmanTreeCodec<int> m_rlHuffman;
+
         // The run-length encoded string
         RLRawData m_rlString;
 

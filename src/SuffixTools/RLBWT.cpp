@@ -27,8 +27,10 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0),
                                                             m_largeSampleRate(DEFAULT_SAMPLE_RATE_LARGE),
                                                             m_smallSampleRate(sampleRate)
 {
+    m_rlHuffman = Huffman::buildRLHuffmanTree();
     IBWTReader* pReader = BWTReader::createReader(filename);
     pReader->read(this);
+
     //initializeFMIndex();
     delete pReader;
 }
@@ -231,7 +233,7 @@ void RLBWT::printInfo() const
     size_t large_m_size = m_largeMarkers.capacity() * sizeof(LargeMarker);
     size_t total_marker_size = small_m_size + large_m_size;
 
-    size_t bwStr_size = m_rlString.capacity() * sizeof(RLUnit);
+    size_t bwStr_size = m_rlString.size();
     size_t other_size = sizeof(*this);
     size_t total_size = total_marker_size + bwStr_size + other_size;
 
@@ -308,13 +310,13 @@ void RLBWT::decodeToFile(const std::string& filename)
 
     std::ofstream outFile(filename.c_str());
     size_t numSymbolsDecoded = 0;
+    AlphaCount64 runningAC;
 
     // Iterate over the small markers, decoding each segment that the marker represents
     for(size_t i = 0; i < m_smallMarkers.size(); ++i)
     {
-        SmallMarker& smallMarker = m_smallMarkers[i];
-        size_t decodeIdx = smallMarker.encoderIdx;
-        LargeMarker currLargeMarker = getInterpolatedMarker(i);
+        size_t decodeIdx = 0;
+        LargeMarker currLargeMarker = getInterpolatedMarker(i, decodeIdx);
 
         // Calculate the number of symbols to decode in the block
         size_t numToDecode = 0;
@@ -325,7 +327,8 @@ void RLBWT::decodeToFile(const std::string& filename)
         }
         else
         {
-            LargeMarker nextLargeMarker = getInterpolatedMarker(i+1);
+            size_t nlmDecode = 0;
+            LargeMarker nextLargeMarker = getInterpolatedMarker(i+1, nlmDecode);
             //std::cout << "NP: " << nextLargeMarker.getActualPosition() << " CP: " << currLargeMarker.getActualPosition() << "\n";
             numToDecode = nextLargeMarker.getActualPosition() - currLargeMarker.getActualPosition();
         }
@@ -337,8 +340,21 @@ void RLBWT::decodeToFile(const std::string& filename)
         size_t numDecoded = StreamEncode::decodeStream(symDecoder, rlEncoder, &m_rlString[startingUnitIndex], numToDecode, outStr);
         assert(numDecoded >= numToDecode);
         
+        for(size_t j = 0; j < outStr.size(); ++j)
+        {
+            runningAC.increment(outStr[j]);
+            size_t true_pos = numSymbolsDecoded + j;
+            AlphaCount64 calcAC = getFullOcc(true_pos);
+            if(calcAC != runningAC)
+            {
+                std::cout << "Fail for idx: " << true_pos << "\n";
+                std::cout << "CalcAC: " << calcAC << "\n";
+                std::cout << "RunnAC: " << runningAC << "\n";
+                exit(1);
+            }
+        }
         numSymbolsDecoded += numDecoded;
-        outFile << outStr << "\n";
+        //outFile << outStr << "\n";
     }
     assert(numSymbolsDecoded == m_numSymbols);
 }

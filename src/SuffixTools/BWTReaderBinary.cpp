@@ -103,8 +103,6 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
     CharIntMap symbolCounts;
     CharDeque symbolBuffer;
     
-    std::ofstream debugFile("actualbwt.txt");
-
     HuffmanTreeCodec<int> rlEncoder = Huffman::buildRLHuffmanTree();
     std::cout << "Huffman RL encoder needs at most " << rlEncoder.getMaxBits() << " bits\n";
 
@@ -133,8 +131,8 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
             symbolBuffer.push_back(b);
         }
         
-        if(symbolBuffer.empty() && readDone)
-            break;
+        //if(symbolBuffer.empty() && readDone)
+        //    break;
 
         //
         // Write markers at the beginning of this data segment
@@ -194,9 +192,7 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
             }
             prevChar = symbolBuffer[i];
             runningAC.increment(symbolBuffer[i]);
-            debugFile << symbolBuffer[i];
         }
-        debugFile << "\n";
 
         // Construct the huffman tree for the symbols based on the counts
         size_t encoderIdx = 0;
@@ -255,7 +251,8 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
         */
         symbolBuffer.clear();
     }
-
+    pBWT->initializeFMIndex(runningAC);
+    //pBWT->decodeToFile("test.txt");
     (void)out;
     std::cout << "Wrote " << numSymbolsWrote << " symbols\n";
     //size_t bytes = out.size();
@@ -268,15 +265,10 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
     std::cout << "Total: " << bytes << " bytes\n";
     std::cout << bitsPerSym << " bits/sym\n"; 
     std::cout << symPerByte << " sym/byte\n"; 
-    
+    std::cout << "RLStrLen: " << pBWT->m_rlString.size() << "\n";
 //    std::cout << "SYMBITS: " << symbolBitsUsed << " for " << numSymbolsEncoded << " (" << (double)symbolBitsUsed / numSymbolsEncoded << ")\n";
 //    std::cout << "RLEBITS: " << rlBitsUsed << " for " << numSymbolsEncoded << " (" << (double)rlBitsUsed / numSymbolsEncoded << ")\n";
     pBWT->initializeFMIndex(runningAC);
-    Timer decodeTimer("decoding");
-    std::cout << "Starting decode\n";
-    pBWT->decodeToFile("decoded.txt");
-    debugFile.close();
-    exit(1);
 }
 
 // Read a single base from the BWStr

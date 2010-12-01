@@ -83,6 +83,12 @@ class HuffmanTreeCodec
 
     
 
+        //
+        HuffmanTreeCodec()
+        {
+
+        }
+
         // Construct the tree using a map of symbol counts
         HuffmanTreeCodec(const CountMap& input)
         {
