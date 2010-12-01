@@ -197,7 +197,7 @@ namespace StreamEncode
         return input.size();
     }
 
-    // Decode an array
+    // Decode an array into a string
     inline size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, std::string& decoded)
     {
         // Require the encoder to emit at most 8-bit codes
@@ -231,7 +231,76 @@ namespace StreamEncode
         }
         return numSymbols;
     }
-    
+
+    // Decode from the array pInput up to numSymbols. Add the counts of symbols to counts
+    inline size_t countDecoded(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, AlphaCount64& counts)
+    {
+        // Require the encoder to emit at most 8-bit codes
+        assert(symbolEncoder.getMaxBits() <= BITS_PER_BYTE);
+        assert(runEncoder.getMaxBits() <= BITS_PER_BYTE);
+        
+        size_t symbolReadLen = symbolEncoder.getMaxBits();
+        size_t runReadLen = runEncoder.getMaxBits();
+
+        size_t numBitsDecoded = 0;
+        size_t numSymbolsDecoded = 0;
+        while(numSymbolsDecoded < numSymbols)
+        {
+            // Read a symbol then a run
+            int code = 0;
+            _readCode(numBitsDecoded, symbolReadLen, pInput, code);
+
+            // Parse the code
+            HuffmanTreeCodec<char>::DecodePair sdp = symbolEncoder.decode(code);
+            numBitsDecoded += sdp.bits;
+
+            _readCode(numBitsDecoded, runReadLen, pInput, code);
+            HuffmanTreeCodec<int>::DecodePair rdp = runEncoder.decode(code);
+            numBitsDecoded += rdp.bits;
+            
+            // Cap the run length to add at the number of symbols left to process
+            size_t addLength = std::min(rdp.symbol, (int)numSymbols - (int)numSymbolsDecoded);
+            numSymbolsDecoded += addLength;
+            counts.add(sdp.symbol, addLength);
+        }
+        return numSymbolsDecoded;
+    }
+
+        // Decode from the array pInput up to numSymbols. Add the counts of symbols to counts
+    inline size_t countDecoded(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, char b, size_t& count)
+    {
+        // Require the encoder to emit at most 8-bit codes
+        assert(symbolEncoder.getMaxBits() <= BITS_PER_BYTE);
+        assert(runEncoder.getMaxBits() <= BITS_PER_BYTE);
+        
+        size_t symbolReadLen = symbolEncoder.getMaxBits();
+        size_t runReadLen = runEncoder.getMaxBits();
+
+        size_t numBitsDecoded = 0;
+        size_t numSymbolsDecoded = 0;
+        while(numSymbolsDecoded < numSymbols)
+        {
+            // Read a symbol then a run
+            int code = 0;
+            _readCode(numBitsDecoded, symbolReadLen, pInput, code);
+
+            // Parse the code
+            HuffmanTreeCodec<char>::DecodePair sdp = symbolEncoder.decode(code);
+            numBitsDecoded += sdp.bits;
+
+            _readCode(numBitsDecoded, runReadLen, pInput, code);
+            HuffmanTreeCodec<int>::DecodePair rdp = runEncoder.decode(code);
+            numBitsDecoded += rdp.bits;
+            
+            // Cap the run length to add at the number of symbols left to process
+            size_t addLength = std::min(rdp.symbol, (int)numSymbols - (int)numSymbolsDecoded);
+            numSymbolsDecoded += addLength;
+
+            if(sdp.symbol == b)
+                count += addLength;
+        }
+        return numSymbolsDecoded;
+    }
 };
 
 #endif
