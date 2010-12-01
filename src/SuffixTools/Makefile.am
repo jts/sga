@@ -37,4 +37,5 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
 						   RLUnit.h \
 						   HuffUnit.h \
                            HuffmanTreeCodec.h \
-						   Huffman.h Huffman.cpp
+						   Huffman.h Huffman.cpp \
+						   HuffmanForest.h HuffmanForest.cpp

@@ -90,6 +90,9 @@ struct SmallMarker
 
     // The number of RL units in this block
     uint16_t unitCount;
+
+    // The index of the huffman tree used to encode the data
+    uint8_t encoderIdx;
 };
 typedef std::vector<SmallMarker> SmallMarkerVector;
 
