@@ -27,7 +27,8 @@
 // Defines
 #define RLBWT_VALIDATE 1
 
-typedef std::vector<uint8_t> RLRawData;
+typedef uint64_t RLData;
+typedef std::vector<RLData> RLDataVector;
 
 //
 // RLBWT
@@ -92,7 +93,7 @@ class RLBWT
             assert(numToCount < m_smallSampleRate);
             size_t running_count = marker.counts.get(b);
             size_t symbol_index = marker.unitIndex;
-            StreamEncode::countDecoded(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, b, running_count);
+            StreamEncode2::countDecoded(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, b, running_count);
             return running_count;
         }
 
@@ -114,7 +115,7 @@ class RLBWT
             //std::cout << "IC: "<< running_count << "\n";
             assert(numToCount < m_smallSampleRate);
             size_t symbol_index = marker.unitIndex;
-            StreamEncode::countDecoded(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, running_count);
+            StreamEncode2::countDecoded(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, running_count);
             return running_count;
         }
 
@@ -244,7 +245,7 @@ class RLBWT
         HuffmanTreeCodec<int> m_rlHuffman;
 
         // The run-length encoded string
-        RLRawData m_rlString;
+        RLDataVector m_rlString;
 
         // The marker vector
         LargeMarkerVector m_largeMarkers;

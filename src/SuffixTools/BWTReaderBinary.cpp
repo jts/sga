@@ -84,7 +84,7 @@ void BWTReaderBinary::readHeader(size_t& num_strings, size_t& num_symbols, BWFla
     m_stage = IOS_BWSTR;    
 }
 
-void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
+void BWTReaderBinary::readRuns(RLBWT* pBWT, RLDataVector& out, size_t numRuns)
 {
     //out.resize(numRuns);
     //m_pReader->read(reinterpret_cast<char*>(&out[0]), numRuns*sizeof(RLUnit));
@@ -202,22 +202,21 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
         pBWT->m_smallMarkers.back().encoderIdx = encoderIdx;
 
         // Perform the actual encoding
-        EncodedArray encodedBytes;
-        size_t symbolsEncoded = StreamEncode::encodeStream(symbolBuffer, symbolEncoder, rlEncoder, encodedBytes);
+        EVVector encodedData;
+        size_t symbolsEncoded = StreamEncode2::encodeStream(symbolBuffer, symbolEncoder, rlEncoder, encodedData);
         assert(symbolsEncoded == symbolBuffer.size());
 
         // Copy the encoded bytes
-        for(size_t i = 0; i < encodedBytes.size(); ++i)
+        for(size_t i = 0; i < encodedData.size(); ++i)
         {
-            pBWT->m_rlString.push_back(encodedBytes[i]);
+            pBWT->m_rlString.push_back(encodedData[i]);
         }
         numSymbolsWrote += symbolsEncoded;
-        numBytesUsed += encodedBytes.size();
+        numBytesUsed += encodedData.size() * sizeof(RLData);
         numSymbolsEncoded += symbolsEncoded;
         
-        /*
         std::string testOut;
-        StreamEncode::decodeStream(symbolEncoder, rlEncoder, &encodedBytes[0], symbolsEncoded, testOut);
+        StreamEncode2::decodeStream(symbolEncoder, rlEncoder, &encodedData[0], symbolsEncoded, testOut);
         
         // Validate the decoding
         bool failedValidate = false;
@@ -248,7 +247,6 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
             std::cout << "\nDecoded: " << testOut << "\n";
             assert(false);
         }
-        */
         symbolBuffer.clear();
     }
     pBWT->initializeFMIndex(runningAC);

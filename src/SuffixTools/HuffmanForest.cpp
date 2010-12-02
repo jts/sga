@@ -18,8 +18,15 @@ HuffmanForest::HuffmanForest()
     countMap['G'] = 1;
     countMap['T'] = 1;
     countMap['$'] = 1;
+    countMap['\0'] = 1;
 
     HuffmanTreeCodec<char> defaultTree(countMap);
+    defaultTree.hackCode('A', 0);
+    defaultTree.hackCode('C', 1);
+    defaultTree.hackCode('G', 2);
+    defaultTree.hackCode('T', 3);
+    defaultTree.hackCode('$', 4);
+    defaultTree.hackCode('\0', 7);
     m_trees.push_back(defaultTree);
 }
 

@@ -233,7 +233,7 @@ void RLBWT::printInfo() const
     size_t large_m_size = m_largeMarkers.capacity() * sizeof(LargeMarker);
     size_t total_marker_size = small_m_size + large_m_size;
 
-    size_t bwStr_size = m_rlString.size();
+    size_t bwStr_size = m_rlString.size() * sizeof(RLData);
     size_t other_size = sizeof(*this);
     size_t total_size = total_marker_size + bwStr_size + other_size;
 
@@ -337,7 +337,7 @@ void RLBWT::decodeToFile(const std::string& filename)
         const HuffmanTreeCodec<char>& symDecoder = HuffmanForest::Instance().getDecoder(decodeIdx);
         size_t startingUnitIndex = currLargeMarker.unitIndex;
         //std::cout << "Decoding " << numToDecode << " symbols from unit " << startingUnitIndex << "\n";
-        size_t numDecoded = StreamEncode::decodeStream(symDecoder, rlEncoder, &m_rlString[startingUnitIndex], numToDecode, outStr);
+        size_t numDecoded = StreamEncode2::decodeStream(symDecoder, rlEncoder, &m_rlString[startingUnitIndex], numToDecode, outStr);
         assert(numDecoded >= numToDecode);
         
         for(size_t j = 0; j < outStr.size(); ++j)

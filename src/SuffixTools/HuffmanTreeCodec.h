@@ -152,15 +152,24 @@ class HuffmanTreeCodec
             return iter->second;
         }
 
-        DecodePair decode(size_t code) const
+        const DecodePair& decode(size_t code) const
         {
             assert(code < m_decoder.size());
             return m_decoder[code];
         }
 
+        void hackCode(T sym, int code)
+        {
+            m_encoder[sym].code = code;
+            m_encoder[sym].bits = 3;
+
+            m_decoder[code].symbol = sym;
+            m_decoder[code].bits = 3;
+        }
+
         size_t getMinBits() const { return m_minSymbolBits; }
         size_t getMaxBits() const { return m_maxSymbolBits; }
-
+        size_t getMaxCode() const { return m_decoder.size(); }
         // Returns the greatest symbol in the set of encoding values
         // whose value is no greater than val
         T getGreatestLowerBound(T val) const

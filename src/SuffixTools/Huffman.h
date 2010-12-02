@@ -14,6 +14,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <inttypes.h>
 #include "Alphabet.h"
 #include "HuffmanTreeCodec.h"
 
