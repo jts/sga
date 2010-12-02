@@ -125,14 +125,24 @@ def sga_overlap(input, output, args):
     cmd = "%s overlap %s -o %s %s" % (sga_bin, args, output, input)
     runCmd(cmd)
 
+def sga_qc(input, output, args):
+    global sga_bin
+    cmd = "%s qc %s -o %s %s" % (sga_bin, args, output, input)
+    runCmd(cmd)
+
 def sga_assemble(input, output, args):
     global sga_bin
     cmd = "%s assemble %s -o %s %s" % (sga_bin, args, output, input)
     runCmd(cmd)
 
-def sga_connect(input, output, args):
+def sga_gmap(ecInput, cleanedInput, output, args):
     global sga_bin
-    cmd = "%s connect %s -o %s %s" % (sga_bin, args, output, input)
+    cmd = "%s gmap %s -o %s %s %s" % (sga_bin, args, output, cleanedInput, ecInput)
+    runCmd(cmd)
+
+def sga_connect(asqgInput, gmapInput, output, args):
+    global sga_bin
+    cmd = "%s connect %s -o %s %s %s" % (sga_bin, args, output, asqgInput, gmapInput)
     runCmd(cmd)
 
 def sga_joinpairs(input, output):
@@ -234,13 +244,14 @@ def rmdupPEPipeline(inputFile):
     return splitOutput
 
 # correction pipeline
-def correctionPipeline(inputFile):
+def correctionPipeline(inputFile, indexFile):
     global projectExtension
     global arguments
 
     # Input/Output names
     fileBasename = getBasename(inputFile)
-    indexOutput = [fileBasename + ".bwt", fileBasename + ".rbwt", fileBasename + ".sai", fileBasename + ".rsai"]
+    indexBasename = getBasename(indexFile)
+    indexOutput = [indexBasename + ".bwt", indexBasename + ".rbwt", indexBasename + ".sai", indexBasename + ".rsai"]
     correctInput = [inputFile, indexOutput]
     correctOutput = fileBasename + ".ec" + projectExtension
 
@@ -252,33 +263,87 @@ def correctionPipeline(inputFile):
     @follows(correctPipelineIndex)
     @files(correctInput, correctOutput, arguments["correct"])
     def correctPipelineCorrect(input, output, args):
+        args = args + " -p " + indexBasename
         sga_correct(input[0], output, args)
     
     # Run the pipeline
     pipeline_run([correctPipelineCorrect], verbose=0)
     return correctOutput
 
-# pe connection pipeline
-def connectPipeline(inputFile):
+# qc pipeline
+def cleaningPipeline(inputFile):
     global projectExtension
     global arguments
 
     # Input/Output names
     fileBasename = getBasename(inputFile)
     indexOutput = [fileBasename + ".bwt", fileBasename + ".rbwt", fileBasename + ".sai", fileBasename + ".rsai"]
-    connectInput = [inputFile, indexOutput]
-    connectOutput = fileBasename + ".connect" + projectExtension
+
+    qcInput = [inputFile, indexOutput]
+    qcOutput = fileBasename + ".qc" + projectExtension
+
+    rmdupInput = [qcOutput]
+    rmdupOutput = fileBasename + ".qc.rmdup" + projectExtension
 
     # Task definitions
     @files(inputFile, indexOutput, arguments["index"])
+    def cleaningPipelineIndex(input, output, args):
+        sga_index(input, args)
+ 
+    @follows(cleaningPipelineIndex)
+    @files(qcInput, qcOutput, arguments["qc"])
+    def cleaningPipelineQC(input, output, args):
+        sga_qc(input[0], output, args)
+    
+    @follows(cleaningPipelineQC)
+    @files(rmdupInput, rmdupOutput, arguments["rmdup"])
+    def cleaningPipelineRmdup(input, output, args):
+        sga_rmdup(input[0], output, args)
+
+    # Run the pipeline
+    pipeline_run([cleaningPipelineRmdup], verbose=0)
+    return rmdupOutput
+
+
+# pe connection pipeline
+def connectPipeline(ecFile, cleanedFile):
+    global projectExtension
+    global arguments
+
+    # Input/Output names
+    ecBasename = getBasename(ecFile)
+    cleanedBasename = getBasename(cleanedFile)
+    indexOutput = [cleanedBasename + ".bwt", cleanedBasename + ".rbwt", cleanedBasename + ".sai", cleanedBasename + ".rsai"]
+
+    gmapInput = [ecFile, cleanedFile]
+    gmapOutput = ecBasename + ".gmap" + projectExtension
+
+    overlapInput = cleanedFile
+    overlapOutput = cleanedBasename + ".asqg.gz"
+
+    connectInput = [overlapOutput, gmapOutput]
+    connectOutput = ecBasename + ".connect" + projectExtension
+
+    # Task definitions
+    @files(cleanedFile, indexOutput, arguments["index"])
     def connectPipelineIndex(input, output, args):
         sga_index(input, args)
  
     @follows(connectPipelineIndex)
+    @files(gmapInput, gmapOutput, arguments["gmap"])
+    def connectPipelineGmap(input, output, args):
+        sga_gmap(input[0], input[1], output, args)
+ 
+    @follows(connectPipelineGmap)
+    @files(overlapInput, overlapOutput, arguments["overlap"])
+    def connectPipelineOverlap(input, output, args):
+        sga_overlap(input, output, args)
+    
+    @follows(connectPipelineOverlap)
     @files(connectInput, connectOutput, arguments["connect"])
     def connectPipelineConnect(input, output, args):
-        sga_connect(input[0], output, args)
-    
+        sga_connect(input[0], input[1], output, args)
+
     # Run the pipeline
     pipeline_run([connectPipelineConnect], verbose=0)
     return connectOutput
@@ -332,7 +397,7 @@ paired = False
 silent = False
 skipPreprocess = False
 loggingStr = "file"
-taskString = "rmdup-se,correct,assemble"
+taskString = "rmdup-se,correct,cleaning,assemble"
 arguments = dict()
 
 try:
@@ -434,10 +499,10 @@ if paired and arguments["preprocess"].find("--pe-mode 1") == -1:
     arguments["preprocess"] = arguments["preprocess"] + " --pe-mode 1"
 
 if "index" not in arguments:
-    arguments["index"] = "-t %d" % (num_threads)
+    arguments["index"] = "-t %d -d 2000000 " % (num_threads)
 
 if "rmdup" not in arguments:
-    arguments["rmdup"] = "-e 0.02 -t %d" % (num_threads)
+    arguments["rmdup"] = "-e 0.0 -t %d" % (num_threads)
 
 if "overlap" not in arguments:
     arguments["overlap"] = "-m %d -t %d" % (min_overlap, num_threads)
@@ -446,10 +511,16 @@ if "assemble" not in arguments:
     arguments["assemble"] = "--exact -x 10 -b 10 -r 20"
 
 if "correct" not in arguments:
-    arguments["correct"] = "-m %d -e %f -l 16 -t %d" % (min_overlap, error_rate, num_threads)
+    arguments["correct"] = "-m %d -e %f -l 16 -r 5 -t %d" % (min_overlap, error_rate, num_threads)
+
+if "qc" not in arguments:
+    arguments["qc"] = "-x 2 -t %d" % (num_threads)
 
 if "connect" not in arguments:
     arguments["connect"] = "-m %d -e 0.0 -t %d" % (min_overlap, num_threads)
+
+if "gmap" not in arguments:
+    arguments["gmap"] = "-t %d" % (num_threads)
 
 #
 # Perform the run
@@ -462,6 +533,10 @@ if not skipPreprocess or len(rawInputFiles) > 1:
 else:
     input = rawInputFiles[0]
 
+topFile = input # Unmodified, preprocesed data
+correctedFile = None
+cleanedFile = None
+
 # Run the remaining requested commands
 for task in commandList:
     task = task.strip()
@@ -470,9 +545,18 @@ for task in commandList:
     elif task == "rmdup-pe":
         input = rmdupPEPipeline(input)
     elif task == "correct":
-        input = correctionPipeline(input)
+        input = correctionPipeline(topFile, input)
+        correctedFile = input
+    elif task == 'cleaning':
+        if correctedFile is None:
+            print 'Error: correct task must be run before connect'
+            sys.exit(1)
+        input = cleaningPipeline(correctedFile)
+        cleanedFile = input
     elif task == "connect":
-        input = connectPipeline(input)    
+        if cleanedFile is None:
+            print 'Error: cleaning task must be run before connect'
+        connectPipeline(correctedFile, cleanedFile)
     elif task == "assemble":
         input = assemblePipeline(input)
     else:
