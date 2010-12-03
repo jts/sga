@@ -336,8 +336,8 @@ void RLBWT::decodeToFile(const std::string& filename)
         std::string outStr;
         const HuffmanTreeCodec<char>& symDecoder = HuffmanForest::Instance().getDecoder(decodeIdx);
         size_t startingUnitIndex = currLargeMarker.unitIndex;
-        //std::cout << "Decoding " << numToDecode << " symbols from unit " << startingUnitIndex << "\n";
-        size_t numDecoded = StreamEncode::decodeStream(symDecoder, rlEncoder, &m_rlString[startingUnitIndex], numToDecode, outStr);
+        StreamEncode::StringDecode sd(outStr);
+        size_t numDecoded = StreamEncode::decodeStream(symDecoder, rlEncoder, &m_rlString[startingUnitIndex], numToDecode, sd);
         assert(numDecoded >= numToDecode);
         
         for(size_t j = 0; j < outStr.size(); ++j)
