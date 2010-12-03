@@ -47,7 +47,7 @@ class HuffmanTreeCodec
         struct DecodePair
         {
             T symbol;
-            uint8_t bits;
+            uint16_t bits;
         };
 
         //
@@ -152,7 +152,7 @@ class HuffmanTreeCodec
             return iter->second;
         }
 
-        const DecodePair& decode(size_t code) const
+        inline const DecodePair& decode(uint16_t code) const
         {
             assert(code < m_decoder.size());
             return m_decoder[code];
@@ -172,6 +172,21 @@ class HuffmanTreeCodec
             T lower = iter->first;
             assert(lower <= val);
             return lower;
+        }
+
+        void hackCode(T sym, uint16_t code, uint16_t bits)
+        {
+            m_encoder[sym].code = code;
+            m_encoder[sym].bits = bits;
+
+            if(code >= m_decoder.size())
+                m_decoder.resize(code + 1);
+
+            m_decoder[code].bits = bits;
+            m_decoder[code].symbol = sym;
+
+            m_minSymbolBits = bits;
+            m_maxSymbolBits = bits;
         }
 
     private:

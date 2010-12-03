@@ -105,6 +105,7 @@ void Huffman::buildRunLengthHuffman(HuffmanRunLengthEncoder& outEncoder)
 HuffmanTreeCodec<int> Huffman::buildRLHuffmanTree()
 {
     // Hardcoded counts 
+#if 0
     typedef std::map<int, int> IntIntMap;
     IntIntMap input;
 
@@ -176,4 +177,11 @@ HuffmanTreeCodec<int> Huffman::buildRLHuffmanTree()
     */
     input.insert(std::make_pair(64,78833));
     return HuffmanTreeCodec<int>(input);
+#endif
+    HuffmanTreeCodec<int> defaultTree;
+    for(int i = 0; i <= 31; ++i)
+    {
+        defaultTree.hackCode(i, i, 5);
+    }
+    return defaultTree;
 }

@@ -14,7 +14,6 @@
 
 //#define DEBUG_ENCODING 1
 #define BITS_PER_BYTE 8
-#define DECODE_UNIT_BITS 16
 
 typedef std::pair<char, int> RLEPair;
 typedef std::vector<RLEPair> RLEPairVector;
@@ -123,27 +122,14 @@ namespace StreamEncode
 
     // Read maxBits from the array starting at currBits and write the value to outCode
     // Returns the number of bits read
-    inline size_t _readCode(const size_t currBit, const size_t maxBits, const uint16_t input, int& outCode)
+    inline void _readCode(const uint16_t currBit, const uint16_t baseShift, const uint16_t mask, const uint16_t input, uint16_t& outCode)
     {
 #ifdef DEBUG_ENCODING
         printEncoding(input);
         std::cout << "Reading " << maxBits << " from array starting at " << currBit << "\n";
-#endif
-        outCode = 0;
-
-        uint16_t mask = ((1 << maxBits) - 1);
-        int shiftVal = DECODE_UNIT_BITS - currBit - maxBits;
-
-#ifdef DEBUG_ENCODING
         std::cout << "Mask " << int2Binary(mask, maxBits) << "\n";
 #endif      
-        mask <<= shiftVal;
-
-#ifdef DEBUG_ENCODING
-        std::cout << "ShiftMask " << int2Binary(mask, maxBits) << "\n";
-#endif 
-        outCode = (input & mask) >> shiftVal;
-        return maxBits;
+        outCode = (input >> (baseShift - currBit)) & mask;
     }
     
     // Encode a stream of characters
@@ -206,62 +192,78 @@ namespace StreamEncode
     }
 
     // Decode a stream into the provided functor
+
+#define DECODE_UNIT uint64_t
+#define DECODE_UNIT_BYTES sizeof(DECODE_UNIT)
+#define DECODE_UNIT_BITS DECODE_UNIT_BYTES * 8
     template<typename Functor>
-    inline size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, Functor& functor)
+    size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, Functor& functor) __attribute__((noinline));
+    
+    template<typename Functor>
+    size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, Functor& functor)
     {
         // Require the encoder to emit at most 8-bit codes
         assert(symbolEncoder.getMaxBits() <= BITS_PER_BYTE);
         assert(runEncoder.getMaxBits() <= BITS_PER_BYTE);
         
-        size_t symbolReadLen = symbolEncoder.getMaxBits();
-        size_t runReadLen = runEncoder.getMaxBits();
+        DECODE_UNIT symbolReadLen = symbolEncoder.getMaxBits();
+        DECODE_UNIT runReadLen = runEncoder.getMaxBits();
 
-        size_t numBitsDecoded = 0;
+        DECODE_UNIT numBitsDecoded = 0;
         size_t numSymbolsDecoded = 0;
         
         // Prime the decode unit by reading 16 bits from the stream
-        uint16_t decodeUnit = pInput[0] << BITS_PER_BYTE;
-        decodeUnit |= pInput[1];
-        size_t nextByte = 2;
+        size_t nextByte = 0;
+        DECODE_UNIT decodeUnit = pInput[nextByte++];
+        for(size_t i = nextByte; i < DECODE_UNIT_BYTES; ++i)
+        {
+            decodeUnit <<= BITS_PER_BYTE;
+            decodeUnit |= pInput[nextByte++];
+        }
+        
+        DECODE_UNIT symMask = (1 << symbolReadLen) - 1;
+        DECODE_UNIT symBaseShift = DECODE_UNIT_BITS - symbolReadLen;
+        DECODE_UNIT rlMask = (1 << runReadLen) - 1;
+        DECODE_UNIT rlBaseShift = DECODE_UNIT_BITS - runReadLen;
 
-        while(numSymbolsDecoded < numSymbols)
+        while(1)//numSymbolsDecoded < numSymbols)
         {
             // Read a symbol then a run
-            int code = 0;
-            _readCode(numBitsDecoded, symbolReadLen, decodeUnit, code);
-
+            DECODE_UNIT code = 0;
+            code = (decodeUnit >> (symBaseShift - numBitsDecoded)) & symMask;
+            char sym = ALPHABET[code];
             // Parse the code
-            HuffmanTreeCodec<char>::DecodePair sdp = symbolEncoder.decode(code);
-            numBitsDecoded += sdp.bits;
+            //const HuffmanTreeCodec<char>::DecodePair& sdp = symbolEncoder.decode(code);
+            numBitsDecoded += 3;//sdp.bits;
 
-            // Update the decode unit
-            if(numBitsDecoded > BITS_PER_BYTE)
+            code = (decodeUnit >> (rlBaseShift - numBitsDecoded)) & rlMask;
+//            _readCode(numBitsDecoded, rlBaseShift, rlMask, decodeUnit, code);
+            //const HuffmanTreeCodec<int>::DecodePair& rdp = runEncoder.decode(code);
+            numBitsDecoded += 5; //rdp.bits;
+
+            //(void)sdp;
+            //(void)rdp;
+
+            size_t diff = numSymbols - numSymbolsDecoded;
+            if(code < diff)
             {
-                decodeUnit <<= BITS_PER_BYTE;
-                decodeUnit |= pInput[nextByte++];
-                numBitsDecoded -= BITS_PER_BYTE;
+                functor(sym, code);
+                numSymbolsDecoded += code;
+            }
+            else
+            {
+                functor(sym, diff);
+                return numSymbolsDecoded + diff;
             }
 
-            (void)runReadLen;
-            _readCode(numBitsDecoded, runReadLen, decodeUnit, code);
-            HuffmanTreeCodec<int>::DecodePair rdp = runEncoder.decode(code);
-            numBitsDecoded += rdp.bits;
-
             // Update the decode unit
-            if(numBitsDecoded > BITS_PER_BYTE)
+            if(DECODE_UNIT_BITS - numBitsDecoded < 2*BITS_PER_BYTE)
             {
-                decodeUnit <<= BITS_PER_BYTE;
-                decodeUnit |= pInput[nextByte++];
-                numBitsDecoded -= BITS_PER_BYTE;
+                for(size_t i = 2; i < DECODE_UNIT_BYTES; ++i)
+                    decodeUnit = (decodeUnit << BITS_PER_BYTE) | pInput[nextByte++];
+                numBitsDecoded -= (BITS_PER_BYTE * (DECODE_UNIT_BYTES - 2));
             }
 
-            size_t addLength = std::min(rdp.symbol, (int)numSymbols - (int)numSymbolsDecoded);
-            numSymbolsDecoded += addLength;
-
-#ifdef DEBUG_VALIDATE
-            std::cout << "Decoded pair: " << sdp.symbol << "," << rdp.symbol << "\n";
-#endif
-            functor(sdp.symbol, addLength);
         }
         return numSymbols;
     }
