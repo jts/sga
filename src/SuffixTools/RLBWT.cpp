@@ -30,6 +30,7 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0),
     m_rlHuffman = Huffman::buildRLHuffmanTree();
     IBWTReader* pReader = BWTReader::createReader(filename);
     pReader->read(this);
+    m_numCounted = 0;
 
     //initializeFMIndex();
     delete pReader;

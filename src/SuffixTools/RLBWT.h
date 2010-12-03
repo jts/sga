@@ -38,7 +38,7 @@ class RLBWT
     
         // Constructors
         RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE_SMALL);
-
+        ~RLBWT() { std::cout << "total counted: " << m_numCounted << "\n"; }
         //    
         void initializeFMIndex(AlphaCount64& running_ac);
 
@@ -115,6 +115,7 @@ class RLBWT
             //std::cout << "IC: "<< running_count << "\n";
             assert(numToCount < m_smallSampleRate);
             size_t symbol_index = marker.unitIndex;
+            m_numCounted += numToCount;
             StreamEncode::AlphaCountDecode acd(running_count);
             StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, acd);
             return running_count;
@@ -257,6 +258,7 @@ class RLBWT
 
         // The total length of the bw string
         size_t m_numSymbols;
+        mutable size_t m_numCounted;
 
         // The sample rate used for the markers
         size_t m_largeSampleRate;

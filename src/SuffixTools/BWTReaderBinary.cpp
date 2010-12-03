@@ -215,6 +215,7 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
         numBytesUsed += encodedBytes.size();
         numSymbolsEncoded += symbolsEncoded;
         
+        /*
         std::string testOut;
         StreamEncode::StringDecode stringDecoder(testOut);
         StreamEncode::decodeStream(symbolEncoder, rlEncoder, &encodedBytes[0], symbolsEncoded, stringDecoder);
@@ -248,6 +249,7 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
             std::cout << "\nDecoded: " << testOut << "\n";
             assert(false);
         }
+        */
         symbolBuffer.clear();
     }
     pBWT->initializeFMIndex(runningAC);
