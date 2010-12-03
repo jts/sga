@@ -14,6 +14,7 @@
 
 //#define DEBUG_ENCODING 1
 #define BITS_PER_BYTE 8
+#define DECODE_UNIT_BITS 16
 
 typedef std::pair<char, int> RLEPair;
 typedef std::vector<RLEPair> RLEPairVector;
@@ -122,54 +123,26 @@ namespace StreamEncode
 
     // Read maxBits from the array starting at currBits and write the value to outCode
     // Returns the number of bits read
-    inline size_t _readCode(size_t currBit, size_t maxBits, const unsigned char* pInput, int& outCode)
+    inline size_t _readCode(const size_t currBit, const size_t maxBits, const uint16_t input, int& outCode)
     {
-
 #ifdef DEBUG_ENCODING
+        printEncoding(input);
         std::cout << "Reading " << maxBits << " from array starting at " << currBit << "\n";
-#endif        
-        outCode = 0;
-        int bitsRemaining = maxBits;
-        while(bitsRemaining > 0)
-        {
-            int byte = currBit / BITS_PER_BYTE;
-            int bitIdx = MOD_POWER_2(currBit, BITS_PER_BYTE);
-            int bitsToRead = std::min((BITS_PER_BYTE - bitIdx), bitsRemaining);
-
-            //
-            int mask = ((1 << bitsToRead) - 1);
-            int currPos = (BITS_PER_BYTE - bitsToRead);
-
-#ifdef DEBUG_ENCODING
-            std::cout << "Mask " << int2Binary(mask, bitsToRead) << "\n";
-            std::cout << "CurrPos: " << currPos << "\n";
-            std::cout << "BitIdx: " << bitIdx << "\n";
-#endif  
-            // Shift the mask into place
-            if(currPos < bitIdx)
-                mask >>= (bitIdx - currPos);
-            else if(currPos > bitIdx)
-                mask <<= (currPos - bitIdx);
-
-#ifdef DEBUG_ENCODING
-            std::cout << "Shift mask " << int2Binary(mask, 8) << "\n";
-#endif           
-            // Read the value
-            int tmpCode = (pInput[byte] & mask) >> (BITS_PER_BYTE - bitIdx - bitsToRead);
-
-#ifdef DEBUG_ENCODING
-            std::cout << "TmpC " << int2Binary(tmpCode, 8) << "\n";
 #endif
-            // Add the value into the outCode
-            outCode <<= bitsToRead;
-            outCode |= tmpCode;
+        outCode = 0;
 
-            currBit += bitsToRead;
-            bitsRemaining -= bitsToRead;
-        }
+        uint16_t mask = ((1 << maxBits) - 1);
+        int shiftVal = DECODE_UNIT_BITS - currBit - maxBits;
+
 #ifdef DEBUG_ENCODING
-        std::cout << "out: " << int2Binary(outCode, maxBits) << "\n";
-#endif        
+        std::cout << "Mask " << int2Binary(mask, maxBits) << "\n";
+#endif      
+        mask <<= shiftVal;
+
+#ifdef DEBUG_ENCODING
+        std::cout << "ShiftMask " << int2Binary(mask, maxBits) << "\n";
+#endif 
+        outCode = (input & mask) >> shiftVal;
         return maxBits;
     }
     
@@ -193,7 +166,7 @@ namespace StreamEncode
                     ++idx;
 
             // A run of length idx has ended
-            size_t encodingLength = 1;//runEncoder.getGreatestLowerBound(idx);
+            size_t encodingLength = runEncoder.getGreatestLowerBound(idx);
             RLEPair pair(currChar, encodingLength);
             rlePairVector.push_back(pair);
 
@@ -245,21 +218,43 @@ namespace StreamEncode
 
         size_t numBitsDecoded = 0;
         size_t numSymbolsDecoded = 0;
+        
+        // Prime the decode unit by reading 16 bits from the stream
+        uint16_t decodeUnit = pInput[0] << BITS_PER_BYTE;
+        decodeUnit |= pInput[1];
+        size_t nextByte = 2;
+
         while(numSymbolsDecoded < numSymbols)
         {
             // Read a symbol then a run
             int code = 0;
-            _readCode(numBitsDecoded, symbolReadLen, pInput, code);
+            _readCode(numBitsDecoded, symbolReadLen, decodeUnit, code);
 
             // Parse the code
             HuffmanTreeCodec<char>::DecodePair sdp = symbolEncoder.decode(code);
             numBitsDecoded += sdp.bits;
 
-            (void)runReadLen;
-            _readCode(numBitsDecoded, runReadLen, pInput, code);
-            HuffmanTreeCodec<int>::DecodePair rdp = runEncoder.decode(code);
+            // Update the decode unit
+            if(numBitsDecoded > BITS_PER_BYTE)
+            {
+                decodeUnit <<= BITS_PER_BYTE;
+                decodeUnit |= pInput[nextByte++];
+                numBitsDecoded -= BITS_PER_BYTE;
+            }
 
+            (void)runReadLen;
+            _readCode(numBitsDecoded, runReadLen, decodeUnit, code);
+            HuffmanTreeCodec<int>::DecodePair rdp = runEncoder.decode(code);
             numBitsDecoded += rdp.bits;
+
+            // Update the decode unit
+            if(numBitsDecoded > BITS_PER_BYTE)
+            {
+                decodeUnit <<= BITS_PER_BYTE;
+                decodeUnit |= pInput[nextByte++];
+                numBitsDecoded -= BITS_PER_BYTE;
+            }
+
             size_t addLength = std::min(rdp.symbol, (int)numSymbols - (int)numSymbolsDecoded);
             numSymbolsDecoded += addLength;
 
