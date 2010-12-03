@@ -92,7 +92,8 @@ class RLBWT
             assert(numToCount < m_smallSampleRate);
             size_t running_count = marker.counts.get(b);
             size_t symbol_index = marker.unitIndex;
-            StreamEncode::countDecoded(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, b, running_count);
+            StreamEncode::BaseCountDecode bcd(b, running_count);
+            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, bcd);
             return running_count;
         }
 
@@ -114,7 +115,8 @@ class RLBWT
             //std::cout << "IC: "<< running_count << "\n";
             assert(numToCount < m_smallSampleRate);
             size_t symbol_index = marker.unitIndex;
-            StreamEncode::countDecoded(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, running_count);
+            StreamEncode::AlphaCountDecode acd(running_count);
+            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlHuffman, &m_rlString[symbol_index], numToCount, acd);
             return running_count;
         }
 

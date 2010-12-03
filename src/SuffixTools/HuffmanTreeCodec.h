@@ -152,7 +152,7 @@ class HuffmanTreeCodec
             return iter->second;
         }
 
-        DecodePair decode(size_t code) const
+        const DecodePair& decode(size_t code) const
         {
             assert(code < m_decoder.size());
             return m_decoder[code];
