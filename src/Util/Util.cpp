@@ -144,14 +144,15 @@ std::string getFileExtension(const std::string& filename)
 }
 
 // slow function to convert an integer to a binary string
-std::string int2Binary(int v, int numBits)
+std::string int2Binary(size_t v, int numBits)
 {
     std::string tmp;
-    int bits = sizeof(int) * 8;
+    int bits = sizeof(v) * 8;
     for(int i = bits - 1; i >= 0; --i)
     {
         // test if the i-th bit is set
-        int mask = 1 << i;
+        size_t mask = 1;
+        mask <<= i;
         char b = (v & mask) ? '1' : '0';
         tmp.append(1, b);
     }
