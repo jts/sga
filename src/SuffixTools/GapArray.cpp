@@ -26,6 +26,7 @@ void SimpleGapArray::resize(size_t n)
 void SimpleGapArray::increment(size_t i)
 {
     static size_t max_gap_count = std::numeric_limits<GAP_TYPE>::max();
+    (void)max_gap_count;
     assert(i < m_data.size());    
     assert(m_data[i] < max_gap_count);
     ++m_data[i];

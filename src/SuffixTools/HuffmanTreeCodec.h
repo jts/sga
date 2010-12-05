@@ -86,7 +86,7 @@ class HuffmanTreeCodec
     
 
         //
-        HuffmanTreeCodec()
+        HuffmanTreeCodec() : m_minSymbolBits(std::numeric_limits<size_t>::max()), m_maxSymbolBits(0)
         {
 
         }
@@ -187,28 +187,25 @@ class HuffmanTreeCodec
             return lower;
         }
 
+        // Return the number of bits required to encode the symbol set
+        size_t getRequiredBits(const CountMap& countMap) const
+        {
+            size_t bits = 0;
+            for(typename CountMap::const_iterator iter = countMap.begin(); iter != countMap.end(); ++iter)
+            {
+                bits += (encode(iter->first).bits * iter->second);
+            }
+            return bits;
+        }
+
         // Explicitly set the code for a particular symbol
-        // Used for debugging
-        void hackCode(T sym, uint16_t code, uint16_t bits)
+        void explicitCode(T sym, uint16_t code, uint16_t bits)
         {
             m_encoder[sym].code = code;
             m_encoder[sym].bits = bits;
 
-            if(code >= m_decoder.size())
-            {
-                m_decoder.resize(code + 1);
-                m_bitsTable.resize(code + 1);
-                m_symbolTable.resize(code + 1);
-            }
-
-            m_decoder[code].bits = bits;
-            m_decoder[code].symbol = sym;
-
-            m_bitsTable[code] = bits;
-            m_symbolTable[code] = sym;
-
-            m_minSymbolBits = bits;
-            m_maxSymbolBits = bits;
+            // rebuild decode tables
+            buildDecodeTable();
         }
 
         std::vector<BITS_TYPE> m_bitsTable;
@@ -245,11 +242,19 @@ class HuffmanTreeCodec
             assert(!m_encoder.empty());
 
             // Construct Huffman Triplets representing the symbol encodings
+            m_minSymbolBits = std::numeric_limits<size_t>::max();
+            m_maxSymbolBits = 0;
             TripletVector tripletVector;
             for(typename EncodeTable::iterator iter = m_encoder.begin(); iter != m_encoder.end(); ++iter)
             {
                 HuffmanTriplet triplet = {iter->first, iter->second.code, iter->second.bits};
                 tripletVector.push_back(triplet);
+
+                if(iter->second.bits < m_minSymbolBits)
+                    m_minSymbolBits = iter->second.bits;
+
+                if(iter->second.bits > m_maxSymbolBits)
+                    m_maxSymbolBits = iter->second.bits;
             }
 
             // Sort triplets by code
@@ -258,6 +263,11 @@ class HuffmanTreeCodec
             //size_t max = tripletVector.back().code;
             size_t maxBits = m_maxSymbolBits;
             size_t maxCode = (1 << maxBits) - 1;
+
+            m_decoder.clear();
+            m_symbolTable.clear();
+            m_bitsTable.clear();
+            
             m_decoder.reserve(maxCode);
             m_symbolTable.reserve(maxCode);
             m_bitsTable.reserve(maxCode);

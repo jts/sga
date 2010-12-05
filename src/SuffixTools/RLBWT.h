@@ -23,6 +23,7 @@
 #include "Huffman.h"
 #include "StreamEncoding.h"
 #include "HuffmanForest.h"
+#include "PackedTableDecoder.h"
 
 // Defines
 #define RLBWT_VALIDATE 1
@@ -243,7 +244,7 @@ class RLBWT
         
         // RL huffman tree
         HuffmanTreeCodec<int> m_rlHuffman;
-        PackedDecodeTable m_rlDecodeTable;
+        RLPackedTableDecoder m_rlDecodeTable;
 
         // The run-length encoded string
         RLRawData m_rlString;

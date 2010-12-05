@@ -196,7 +196,7 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
 
         // Construct the huffman tree for the symbols based on the counts
         size_t encoderIdx = 0;
-        const HuffmanTreeCodec<char>& symbolEncoder = HuffmanForest::Instance().getEncoder(encoderIdx);
+        const HuffmanTreeCodec<char>& symbolEncoder = HuffmanForest::Instance().getBestEncoder(symbolCounts, encoderIdx);
 
         // Set the encoder index in the last small marker
         pBWT->m_smallMarkers.back().encoderIdx = encoderIdx;

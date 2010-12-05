@@ -11,21 +11,38 @@
 //
 HuffmanForest::HuffmanForest()
 {
-    // Construct the default trees
-    std::map<char, int> countMap;
-    countMap['A'] = 1;
-    countMap['C'] = 1;
-    countMap['G'] = 1;
-    countMap['T'] = 1;
-    countMap['$'] = 1;
+    // Construct the possible huffman codes over a 5-symbol alphabet
+    // 0, 10, 110, 1110, 1111
 
-    HuffmanTreeCodec<char> defaultTree(countMap);
-    defaultTree.hackCode('A', 0, 3);
-    defaultTree.hackCode('C', 1, 3);
-    defaultTree.hackCode('G', 2, 3);
-    defaultTree.hackCode('T', 3, 3);
-    defaultTree.hackCode('$', 4, 3);
-    m_trees.push_back(defaultTree);
+    typedef std::vector<std::pair<int, int> > CodeVector;
+    CodeVector fiveSymCode;
+    
+    fiveSymCode.push_back(std::make_pair(0, 1));
+    fiveSymCode.push_back(std::make_pair(2, 2));
+    fiveSymCode.push_back(std::make_pair(6, 3));
+    fiveSymCode.push_back(std::make_pair(14, 4));
+    fiveSymCode.push_back(std::make_pair(15, 4));
+    
+    /*
+    fiveSymCode.push_back(std::make_pair(0, 3));
+    fiveSymCode.push_back(std::make_pair(1, 3));
+    fiveSymCode.push_back(std::make_pair(2, 3));
+    fiveSymCode.push_back(std::make_pair(3, 3));
+    fiveSymCode.push_back(std::make_pair(4, 3));
+    */
+
+    // For every permutation of ACGT$, construct a huffman tree
+    std::string symbols = "$ACGT";
+
+    while(std::next_permutation(symbols.begin(), symbols.end()))
+    {
+        HuffmanTreeCodec<char> currTree;
+        
+        // Explicitly set the huffman tree codes
+        for(size_t i = 0; i < symbols.size(); ++i)
+            currTree.explicitCode(symbols[i], fiveSymCode[i].first, fiveSymCode[i].second);
+        m_trees.push_back(currTree);
+    }
 }
 
 //
@@ -35,8 +52,19 @@ HuffmanForest::~HuffmanForest()
 }
 
 //
-HuffmanTreeCodec<char>& HuffmanForest::getEncoder(size_t& outIdx)
+HuffmanTreeCodec<char>& HuffmanForest::getBestEncoder(const std::map<char, int>& symbolCounts, size_t& outIdx)
 {
-    outIdx = 0;
-    return m_trees.back();
+    size_t minBits = std::numeric_limits<size_t>::max();
+    size_t minIdx = 0;
+    for(size_t i = 0; i < m_trees.size(); ++i)
+    {
+        size_t requiredBits = m_trees[i].getRequiredBits(symbolCounts);
+        if(requiredBits < minBits)
+        {
+            minBits = requiredBits;
+            minIdx = i;
+        }
+    }
+    outIdx = minIdx;
+    return m_trees[outIdx];
 }

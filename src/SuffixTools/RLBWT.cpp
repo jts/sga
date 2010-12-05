@@ -231,8 +231,8 @@ void RLBWT::print() const
 // Print information about the BWT
 void RLBWT::printInfo() const
 {
-    size_t small_m_size = m_smallMarkers.capacity() * sizeof(SmallMarker);
-    size_t large_m_size = m_largeMarkers.capacity() * sizeof(LargeMarker);
+    size_t small_m_size = m_smallMarkers.size() * sizeof(SmallMarker);
+    size_t large_m_size = m_largeMarkers.size() * sizeof(LargeMarker);
     size_t total_marker_size = small_m_size + large_m_size;
 
     size_t bwStr_size = m_rlString.size();

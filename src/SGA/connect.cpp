@@ -178,7 +178,8 @@ int connectMain(int argc, char** argv)
     {
         bool good = *pReader >> record2;
         assert(good);
-    
+        (void)good;
+
         if(!record1.isMapped() || !record2.isMapped())
             continue;
 
