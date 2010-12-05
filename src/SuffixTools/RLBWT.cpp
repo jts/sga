@@ -336,7 +336,7 @@ void RLBWT::decodeToFile(const std::string& filename)
         }
 
         std::string outStr;
-        const HuffmanTreeCodec<char>& symDecoder = HuffmanForest::Instance().getDecoder(decodeIdx);
+        const CharPackedTableDecoder& symDecoder = HuffmanForest::Instance().getDecoder(decodeIdx);
         size_t startingUnitIndex = currLargeMarker.unitIndex;
         StreamEncode::StringDecode sd(outStr);
         size_t numDecoded = StreamEncode::decodeStream(symDecoder, m_rlDecodeTable, &m_rlString[startingUnitIndex], numToDecode, sd);

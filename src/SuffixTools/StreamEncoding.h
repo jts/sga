@@ -28,9 +28,9 @@ namespace StreamEncode
     struct AlphaCountDecode
     {
         AlphaCountDecode(AlphaCount64& target) : m_target(target) {}
-        inline void operator()(char b, int rl)
+        inline void operator()(int rank, int rl)
         {
-            m_target.add(b, rl);
+            m_target.addByIdx(rank, rl);
         }
         AlphaCount64& m_target;
     };
@@ -38,9 +38,9 @@ namespace StreamEncode
     struct StringDecode
     {
         StringDecode(std::string& target) : m_target(target) {}
-        inline void operator()(char b, int rl)
+        inline void operator()(int rank, int rl)
         {
-            m_target.append(rl, b);
+            m_target.append(rl, BWT_ALPHABET::getChar(rank));
         }
         std::string& m_target;
     };
@@ -49,9 +49,9 @@ namespace StreamEncode
     {
         BaseCountDecode(char targetBase, size_t& targetCount) : m_targetBase(targetBase), 
                                                                     m_targetCount(targetCount) {}
-        inline void operator()(char b, int rl)
+        inline void operator()(int rank, int rl)
         {
-            if(b == m_targetBase)
+            if(BWT_ALPHABET::getChar(rank) == m_targetBase)
                 m_targetCount += rl;
         }
         char m_targetBase;
@@ -198,10 +198,10 @@ namespace StreamEncode
 #define DECODE_UNIT_BYTES sizeof(DECODE_UNIT)
 #define DECODE_UNIT_BITS DECODE_UNIT_BYTES * 8
     template<typename Functor>
-    inline size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const RLPackedTableDecoder& rlDecoder, 
+    inline size_t decodeStream(const CharPackedTableDecoder& symbolDecoder, const RLPackedTableDecoder& rlDecoder, 
                                const unsigned char* pInput, size_t numSymbols, Functor& functor)
     {
-        DECODE_UNIT symbolReadLen = symbolEncoder.getMaxBits();
+        DECODE_UNIT symbolReadLen = symbolDecoder.getCodeReadLength();
         DECODE_UNIT runReadLen = rlDecoder.getCodeReadLength();
 
         DECODE_UNIT numBitsDecoded = 0;
@@ -227,24 +227,25 @@ namespace StreamEncode
             code = (decodeUnit >> (symBaseShift - numBitsDecoded)) & symMask;
             // Parse the code
             //const HuffmanTreeCodec<char>::DecodePair& sdp = symbolEncoder.decode(code);
-            char sym = symbolEncoder.decodeSymbol(code);
-            numBitsDecoded += symbolEncoder.decodeBits(code);//sdp.bits;
+            int symRank;
+            int bits;
+            int rl;
+            symbolDecoder.unpack(code, symRank, bits);
+            numBitsDecoded += bits;
 
             code = (decodeUnit >> (rlBaseShift - numBitsDecoded)) & rlMask;
-            int rl;
-            int bits;
             rlDecoder.unpack(code, rl, bits);
             numBitsDecoded += bits;
 
             int diff = numSymbols - numSymbolsDecoded;
             if(rl < diff)
             {
-                functor(sym, rl);
+                functor(symRank, rl);
                 numSymbolsDecoded += rl;
             }
             else
             {
-                functor(sym, diff);
+                functor(symRank, diff);
                 return numSymbolsDecoded + diff;
             }
 

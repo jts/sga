@@ -14,6 +14,7 @@
 #define HUFFMAN_FOREST_H
 
 #include "Huffman.h"
+#include "PackedTableDecoder.h"
 
 class HuffmanForest
 {
@@ -30,9 +31,9 @@ class HuffmanForest
         // the huffman tree used
         HuffmanTreeCodec<char>& getBestEncoder(const std::map<char, int>& symbolCounts, size_t& outIdx);
 
-        inline HuffmanTreeCodec<char>& getDecoder(int idx)
+        inline const CharPackedTableDecoder& getDecoder(int idx)
         {
-            return m_trees[idx];
+            return m_decoders[idx];
         }
 
     private:
@@ -41,7 +42,7 @@ class HuffmanForest
 
         //
         std::vector<HuffmanTreeCodec<char> > m_trees;
-
+        std::vector<CharPackedTableDecoder> m_decoders;
 };
 
 #endif
