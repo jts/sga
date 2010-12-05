@@ -246,7 +246,6 @@ class HuffmanTreeCodec
         void buildDecodeTable()
         {
             assert(!m_encoder.empty());
-
             // Construct Huffman Triplets representing the symbol encodings
             m_minSymbolBits = std::numeric_limits<size_t>::max();
             m_maxSymbolBits = 0;
@@ -277,7 +276,6 @@ class HuffmanTreeCodec
             m_decoder.reserve(maxCode);
             m_symbolTable.reserve(maxCode);
             m_bitsTable.reserve(maxCode);
-
             for(size_t i = 0; i <= maxCode; ++i)
             {
                 size_t idx = findPrefixIdx(i, maxBits, tripletVector);
@@ -309,7 +307,7 @@ class HuffmanTreeCodec
         size_t findPrefixIdx(size_t y, size_t m, TripletVector& vec)
         {
             size_t i = 0;
-            while(i <= vec.size())
+            while(i < vec.size())
             {
                 if(isPrefix(vec[i].code, y, vec[i].bits, m))
                     return i;
@@ -324,14 +322,7 @@ class HuffmanTreeCodec
             // shift x until it is the same number of bits as m
             x <<= (m - n);
             // Construct a mask where the first n bits out of m are set
-            size_t mask = 0;
-
-            // Set the low n bits
-            for(size_t i = 0; i < n; ++i)
-            {
-                mask <<= 1;
-                mask += 1;
-            }
+            size_t mask = (1 << n) - 1;
 
             // Shift into place
             mask <<= (m - n);
