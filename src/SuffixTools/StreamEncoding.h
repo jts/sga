@@ -197,36 +197,32 @@ namespace StreamEncode
 #define DECODE_UNIT_BYTES sizeof(DECODE_UNIT)
 #define DECODE_UNIT_BITS DECODE_UNIT_BYTES * 8
     template<typename Functor>
-    size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, Functor& functor) __attribute__((noinline));
-    
-    template<typename Functor>
-    size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const HuffmanTreeCodec<int>& runEncoder, const unsigned char* pInput, size_t numSymbols, Functor& functor)
+    inline size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const PackedDecodeTable& rlDecoder, const unsigned char* pInput, size_t numSymbols, Functor& functor)
     {
-        // Require the encoder to emit at most 8-bit codes
+        // Require the encoder emitted at most 8-bit codes
         assert(symbolEncoder.getMaxBits() <= BITS_PER_BYTE);
-        assert(runEncoder.getMaxBits() <= BITS_PER_BYTE);
+//        assert(runEncoder.getMaxBits() <= BITS_PER_BYTE);
         
         DECODE_UNIT symbolReadLen = symbolEncoder.getMaxBits();
-        DECODE_UNIT runReadLen = runEncoder.getMaxBits();
+        DECODE_UNIT runReadLen = rlDecoder.getCodeReadLength();
 
         DECODE_UNIT numBitsDecoded = 0;
         size_t numSymbolsDecoded = 0;
         
         // Prime the decode unit by reading 16 bits from the stream
-        size_t nextByte = 0;
-        DECODE_UNIT decodeUnit = pInput[nextByte++];
-        for(size_t i = nextByte; i < DECODE_UNIT_BYTES; ++i)
+        DECODE_UNIT decodeUnit = *pInput++;
+        for(size_t i = 0; i < DECODE_UNIT_BYTES - 1; ++i)
         {
             decodeUnit <<= BITS_PER_BYTE;
-            decodeUnit |= pInput[nextByte++];
+            decodeUnit |= *pInput++;
         }
-        
+
         DECODE_UNIT symMask = (1 << symbolReadLen) - 1;
         DECODE_UNIT symBaseShift = DECODE_UNIT_BITS - symbolReadLen;
         DECODE_UNIT rlMask = (1 << runReadLen) - 1;
         DECODE_UNIT rlBaseShift = DECODE_UNIT_BITS - runReadLen;
 
-        while(1)//numSymbolsDecoded < numSymbols)
+        while(1)
         {
             // Read a symbol then a run
             DECODE_UNIT code = 0;
@@ -237,18 +233,16 @@ namespace StreamEncode
             numBitsDecoded += 3;//sdp.bits;
 
             code = (decodeUnit >> (rlBaseShift - numBitsDecoded)) & rlMask;
-//            _readCode(numBitsDecoded, rlBaseShift, rlMask, decodeUnit, code);
-            //const HuffmanTreeCodec<int>::DecodePair& rdp = runEncoder.decode(code);
-            numBitsDecoded += 5; //rdp.bits;
+            int rl;
+            int bits;
+            rlDecoder.unpack(code, rl, bits);
+            numBitsDecoded += bits;
 
-            //(void)sdp;
-            //(void)rdp;
-
-            size_t diff = numSymbols - numSymbolsDecoded;
-            if(code < diff)
+            int diff = numSymbols - numSymbolsDecoded;
+            if(rl < diff)
             {
-                functor(sym, code);
-                numSymbolsDecoded += code;
+                functor(sym, rl);
+                numSymbolsDecoded += rl;
             }
             else
             {
@@ -260,13 +254,13 @@ namespace StreamEncode
             if(DECODE_UNIT_BITS - numBitsDecoded < 2*BITS_PER_BYTE)
             {
                 for(size_t i = 2; i < DECODE_UNIT_BYTES; ++i)
-                    decodeUnit = (decodeUnit << BITS_PER_BYTE) | pInput[nextByte++];
+                    decodeUnit = (decodeUnit << BITS_PER_BYTE) | *pInput++;
                 numBitsDecoded -= (BITS_PER_BYTE * (DECODE_UNIT_BYTES - 2));
             }
 
         }
         return numSymbols;
-    }
+    }    
 };
 
 #endif
