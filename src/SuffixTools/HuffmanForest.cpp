@@ -82,8 +82,6 @@ HuffmanForest::HuffmanForest()
             }
         }
     }
-
-    std::cout << "Huffman family has " << m_decoders.size() << " trees\n";
 }
 
 //
