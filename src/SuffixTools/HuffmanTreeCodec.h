@@ -188,12 +188,18 @@ class HuffmanTreeCodec
         }
 
         // Return the number of bits required to encode the symbol set
+        // Returns the maximum size_t value if this set cannot be encoded
         size_t getRequiredBits(const CountMap& countMap) const
         {
             size_t bits = 0;
             for(typename CountMap::const_iterator iter = countMap.begin(); iter != countMap.end(); ++iter)
             {
-                bits += (encode(iter->first).bits * iter->second);
+                if(m_encoder.find(iter->first) != m_encoder.end())
+                    bits += (encode(iter->first).bits * iter->second);
+                else
+                {
+                    return std::numeric_limits<size_t>::max(); // This char set cannot be encoded with this tree
+                }
             }
             return bits;
         }

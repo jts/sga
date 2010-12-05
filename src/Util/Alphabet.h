@@ -181,6 +181,15 @@ class AlphaCount
         }
 
         //
+        inline void addByIdx(int idx, Storage v)
+        {
+#ifdef ALPHACOUNT_VALIDATE
+            assert(m_counts[idx] + v <= maxValue);
+#endif
+            m_counts[idx] += v;
+        }
+
+        //
         inline void subtract(char b, Storage v)
         {
             int br = getBaseRank(b);
