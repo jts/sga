@@ -28,7 +28,7 @@ class HuffmanForest
 
         // Get an encoder for the data. outIdx is set to the index of 
         // the huffman tree used
-        HuffmanTreeCodec<char>& getEncoder(size_t& outIdx);
+        HuffmanTreeCodec<char>& getBestEncoder(const std::map<char, int>& symbolCounts, size_t& outIdx);
 
         inline HuffmanTreeCodec<char>& getDecoder(int idx)
         {

@@ -11,6 +11,7 @@
 #define STREAMENCODING_H
 
 #include "Huffman.h"
+#include "PackedTableDecoder.h"
 
 //#define DEBUG_ENCODING 1
 #define BITS_PER_BYTE 8
@@ -197,12 +198,9 @@ namespace StreamEncode
 #define DECODE_UNIT_BYTES sizeof(DECODE_UNIT)
 #define DECODE_UNIT_BITS DECODE_UNIT_BYTES * 8
     template<typename Functor>
-    inline size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const PackedDecodeTable& rlDecoder, const unsigned char* pInput, size_t numSymbols, Functor& functor)
+    inline size_t decodeStream(const HuffmanTreeCodec<char>& symbolEncoder, const RLPackedTableDecoder& rlDecoder, 
+                               const unsigned char* pInput, size_t numSymbols, Functor& functor)
     {
-        // Require the encoder emitted at most 8-bit codes
-        assert(symbolEncoder.getMaxBits() <= BITS_PER_BYTE);
-//        assert(runEncoder.getMaxBits() <= BITS_PER_BYTE);
-        
         DECODE_UNIT symbolReadLen = symbolEncoder.getMaxBits();
         DECODE_UNIT runReadLen = rlDecoder.getCodeReadLength();
 
@@ -227,10 +225,10 @@ namespace StreamEncode
             // Read a symbol then a run
             DECODE_UNIT code = 0;
             code = (decodeUnit >> (symBaseShift - numBitsDecoded)) & symMask;
-            char sym = ALPHABET[code];
             // Parse the code
             //const HuffmanTreeCodec<char>::DecodePair& sdp = symbolEncoder.decode(code);
-            numBitsDecoded += 3;//sdp.bits;
+            char sym = symbolEncoder.decodeSymbol(code);
+            numBitsDecoded += symbolEncoder.decodeBits(code);//sdp.bits;
 
             code = (decodeUnit >> (rlBaseShift - numBitsDecoded)) & rlMask;
             int rl;

@@ -109,6 +109,7 @@ class DPAlignment
                     return (a == b) ? 0 : 1; 
                 default:
                     assert(false);
+                    return 0;
             }
         }
 
@@ -123,6 +124,7 @@ class DPAlignment
                     return 1;
                 default:
                     assert(false);
+                    return 0;
             }
         }
 
@@ -137,6 +139,7 @@ class DPAlignment
                     return min3(a,b,c);
                 default:
                     assert(false);
+                    return 0;
             }
         }
 

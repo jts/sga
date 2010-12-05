@@ -89,27 +89,9 @@ void Huffman::buildSymbolHuffman(AlphaCount64& counts, HuffmanSymbolEncoder& out
     //std::cout << "Bits needed for block of len " << blockStr.size() << " " << counts << " = " << numBitsNeeded << " " << (double)numBitsNeeded / n << "\n";
 }
 
-void Huffman::buildRunLengthHuffman(HuffmanRunLengthEncoder& outEncoder)
-{
-    //uint8_t rl[] =  {1, 2, 4,  8,  16, 32, 64};
-    //uint8_t standard[] = {0, 2, 6, 14, 30, -1, -1};
-    //uint8_t bits[] =     {1, 2, 3, 4, 5, 6, 6};
-    
-    uint8_t rl[] = {1, 2, 4, 8, 16, 32, 64};
-    uint8_t standard[] = {0, 2, 6, 14, 30, -1, -1};
-    uint8_t bits[] =     {1, 2, 3, 4, 5, 5, 6};
-
-    for(size_t i = 0; i < 7; ++i)
-    {
-        EncodePair ep = {standard[i], bits[i]};
-        outEncoder.insert(std::make_pair(rl[i], ep));
-    }
-}
-
 HuffmanTreeCodec<int> Huffman::buildRLHuffmanTree()
 {
     // Hardcoded counts 
-#if 0
     typedef std::map<int, int> IntIntMap;
     IntIntMap input;
 
@@ -181,11 +163,13 @@ HuffmanTreeCodec<int> Huffman::buildRLHuffmanTree()
     */
     input.insert(std::make_pair(64,78833));
     return HuffmanTreeCodec<int>(input);
-#endif
+    
+    /*
     HuffmanTreeCodec<int> defaultTree;
     for(int i = 0; i <= 31; ++i)
     {
         defaultTree.hackCode(i, i, 5);
     }
     return defaultTree;
+    */
 }

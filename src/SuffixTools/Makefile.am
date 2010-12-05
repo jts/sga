@@ -38,4 +38,5 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
 						   HuffUnit.h \
                            HuffmanTreeCodec.h \
 						   Huffman.h Huffman.cpp \
+						   PackedTableDecoder.h \
 						   HuffmanForest.h HuffmanForest.cpp
