@@ -28,9 +28,10 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0),
                                                             m_smallSampleRate(sampleRate)
 {
     m_rlHuffman = Huffman::buildRLHuffmanTree();
+    m_rlDecodeTable.initialize(m_rlHuffman);
+
     IBWTReader* pReader = BWTReader::createReader(filename);
     pReader->read(this);
-    m_numCounted = 0;
 
     //initializeFMIndex();
     delete pReader;
@@ -338,7 +339,7 @@ void RLBWT::decodeToFile(const std::string& filename)
         const HuffmanTreeCodec<char>& symDecoder = HuffmanForest::Instance().getDecoder(decodeIdx);
         size_t startingUnitIndex = currLargeMarker.unitIndex;
         StreamEncode::StringDecode sd(outStr);
-        size_t numDecoded = StreamEncode::decodeStream(symDecoder, rlEncoder, &m_rlString[startingUnitIndex], numToDecode, sd);
+        size_t numDecoded = StreamEncode::decodeStream(symDecoder, m_rlDecodeTable, &m_rlString[startingUnitIndex], numToDecode, sd);
         assert(numDecoded >= numToDecode);
         
         for(size_t j = 0; j < outStr.size(); ++j)

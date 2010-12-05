@@ -21,6 +21,8 @@ struct EncodePair
     size_t bits;
 };
 
+#define BITS_TYPE uint16_t
+
 // Huffman Tree Implementation
 template<typename T>
 class HuffmanTreeCodec
@@ -158,8 +160,19 @@ class HuffmanTreeCodec
             return m_decoder[code];
         }
 
+        inline BITS_TYPE decodeBits(uint16_t code) const
+        {
+            return m_bitsTable[code];
+        }
+
+        inline const T decodeSymbol(uint16_t code) const
+        {
+            return m_symbolTable[code];
+        }
+
         size_t getMinBits() const { return m_minSymbolBits; }
         size_t getMaxBits() const { return m_maxSymbolBits; }
+        size_t getMaxCode() const { assert(!m_decoder.empty()); return m_decoder.size() - 1; }
 
         // Returns the greatest symbol in the set of encoding values
         // whose value is no greater than val
@@ -174,20 +187,32 @@ class HuffmanTreeCodec
             return lower;
         }
 
+        // Explicitly set the code for a particular symbol
+        // Used for debugging
         void hackCode(T sym, uint16_t code, uint16_t bits)
         {
             m_encoder[sym].code = code;
             m_encoder[sym].bits = bits;
 
             if(code >= m_decoder.size())
+            {
                 m_decoder.resize(code + 1);
+                m_bitsTable.resize(code + 1);
+                m_symbolTable.resize(code + 1);
+            }
 
             m_decoder[code].bits = bits;
             m_decoder[code].symbol = sym;
 
+            m_bitsTable[code] = bits;
+            m_symbolTable[code] = sym;
+
             m_minSymbolBits = bits;
             m_maxSymbolBits = bits;
         }
+
+        std::vector<BITS_TYPE> m_bitsTable;
+        std::vector<T> m_symbolTable;
 
     private:
 
@@ -234,22 +259,31 @@ class HuffmanTreeCodec
             size_t maxBits = m_maxSymbolBits;
             size_t maxCode = (1 << maxBits) - 1;
             m_decoder.reserve(maxCode);
+            m_symbolTable.reserve(maxCode);
+            m_bitsTable.reserve(maxCode);
 
             for(size_t i = 0; i <= maxCode; ++i)
             {
                 size_t idx = findPrefixIdx(i, maxBits, tripletVector);
-                DecodePair dp;
+                BITS_TYPE bits;
+                T symbol;
                 if(idx != tripletVector.size())
                 {
-                    dp.symbol = tripletVector[idx].symbol;
-                    dp.bits = tripletVector[idx].bits;
+                    symbol = tripletVector[idx].symbol;
+                    bits = tripletVector[idx].bits;
                 }
                 else
                 {
-                    dp.bits = 0; // signal the code isnt used
+                    bits = 0; // signal the code isnt used
                 }
-                //std::cout << "DT: " << int2Binary(i, 8) << " " << (int)dp.symbol << " " << (int)dp.bits << "\n";
+
+                DecodePair dp;
+                dp.symbol = symbol;
+                dp.bits = bits;
+
                 m_decoder.push_back(dp);
+                m_symbolTable.push_back(symbol);
+                m_bitsTable.push_back(bits);
             }
         }
 
