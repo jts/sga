@@ -27,7 +27,7 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0),
                                                             m_largeSampleRate(DEFAULT_SAMPLE_RATE_LARGE),
                                                             m_smallSampleRate(sampleRate)
 {
-    m_rlHuffman = Huffman::buildRLHuffmanTree();
+    m_rlHuffman = HuffmanUtil::buildRLHuffmanTree();
     m_rlDecodeTable.initialize(m_rlHuffman);
 
     IBWTReader* pReader = BWTReader::createReader(filename);
@@ -308,8 +308,6 @@ void RLBWT::printRunLengths() const
 
 void RLBWT::decodeToFile(const std::string& filename)
 {
-    HuffmanTreeCodec<int> rlEncoder = Huffman::buildRLHuffmanTree();
-
     std::ofstream outFile(filename.c_str());
     size_t numSymbolsDecoded = 0;
     AlphaCount64 runningAC;

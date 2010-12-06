@@ -4,12 +4,11 @@
 // Released under the GPL 
 //-----------------------------------------------
 //
-// Huffman - Simple huffman encoder/decoder for small alphabet
+// HuffmanUtil - Utility functions for huffman encoding
 //
-#ifndef HUFFMAN_H
-#define HUFFMAN_H
+#ifndef HUFFMANUTIL_H
+#define HUFFMANUTIL_H
 
-#define MAX_BITS 4
 #include <inttypes.h>
 #include <map>
 #include <vector>
@@ -17,16 +16,11 @@
 #include "Alphabet.h"
 #include "HuffmanTreeCodec.h"
 
-typedef std::map<char, EncodePair> HuffmanSymbolEncoder;
-typedef std::map<int, EncodePair> HuffmanRunLengthEncoder;
-
-
-namespace Huffman
+namespace HuffmanUtil
 {
 
 HuffmanTreeCodec<int> buildRLHuffmanTree();
-void buildSymbolHuffman(AlphaCount64& ac, HuffmanSymbolEncoder& outEncoder);
-void buildRunLengthHuffman(HuffmanRunLengthEncoder& outEncoder);
+
 };
 
 #endif

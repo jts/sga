@@ -13,7 +13,7 @@
 #ifndef HUFFMAN_FOREST_H
 #define HUFFMAN_FOREST_H
 
-#include "Huffman.h"
+#include "HuffmanUtil.h"
 #include "PackedTableDecoder.h"
 
 class HuffmanForest
