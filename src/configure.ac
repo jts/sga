@@ -53,6 +53,7 @@ AC_CONFIG_FILES([Makefile
 		Algorithm/Makefile
 		StringGraph/Makefile
 		Concurrency/Makefile
+        Compression/Makefile
 		SuffixTools/Makefile
         Scaffold/Makefile
 		SGA/Makefile])

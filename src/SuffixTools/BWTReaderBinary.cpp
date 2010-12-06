@@ -11,7 +11,7 @@
 #include "SBWT.h"
 #include "RLBWT.h"
 #include "Timer.h"
-#include "Huffman.h"
+#include "HuffmanUtil.h"
 #include "StreamEncoding.h"
 #include "HuffmanForest.h"
 
@@ -103,7 +103,7 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
     CharIntMap symbolCounts;
     CharDeque symbolBuffer;
     
-    HuffmanTreeCodec<int> rlEncoder = Huffman::buildRLHuffmanTree();
+    HuffmanTreeCodec<int> rlEncoder = HuffmanUtil::buildRLHuffmanTree();
     std::cout << "Huffman RL encoder needs at most " << rlEncoder.getMaxBits() << " bits\n";
 
     // Read symbols from the stream into the buffer as long as symbols remain to be read

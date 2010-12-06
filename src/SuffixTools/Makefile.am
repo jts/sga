@@ -4,7 +4,8 @@ libsuffixtools_a_CPPFLAGS = \
 	-I$(top_srcdir)/Util \
 	-I$(top_srcdir)/Thirdparty \
 	-I$(top_srcdir)/Bigraph \
-	-I$(top_srcdir)/Concurrency
+	-I$(top_srcdir)/Concurrency \
+    -I$(top_srcdir)/Compression
 
 libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
                            STGlobals.h \
@@ -34,9 +35,4 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
                            HitData.h \
                            SparseGapArray.h \
 						   FMMarkers.h \
-						   RLUnit.h \
-						   HuffUnit.h \
-                           HuffmanTreeCodec.h \
-						   Huffman.h Huffman.cpp \
-						   PackedTableDecoder.h \
-						   HuffmanForest.h HuffmanForest.cpp
+						   RLUnit.h 

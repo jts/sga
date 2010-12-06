@@ -5,7 +5,8 @@ libconcurrency_a_CPPFLAGS = \
 	-I$(top_srcdir)/Util \
 	-I$(top_srcdir)/SuffixTools \
 	-I$(top_srcdir)/Thirdparty \
-	-I$(top_srcdir)/Algorithm
+	-I$(top_srcdir)/Algorithm \
+	-I$(top_srcdir)/Compression
 
 libconcurrency_a_SOURCES = \
         OverlapProcess.h OverlapProcess.cpp \

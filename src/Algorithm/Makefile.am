@@ -7,7 +7,9 @@ libalgorithm_a_CPPFLAGS = \
 	-I$(top_srcdir)/SQG \
 	-I$(top_srcdir)/SuffixTools \
 	-I$(top_srcdir)/Thirdparty \
-    -I$(top_srcdir)/Concurrency
+    -I$(top_srcdir)/Concurrency \
+    -I$(top_srcdir)/Compression
+
 
 libalgorithm_a_SOURCES = \
         OverlapAlgorithm.h OverlapAlgorithm.cpp \

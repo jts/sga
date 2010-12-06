@@ -10,7 +10,7 @@
 #ifndef STREAMENCODING_H
 #define STREAMENCODING_H
 
-#include "Huffman.h"
+#include "HuffmanUtil.h"
 #include "PackedTableDecoder.h"
 
 //#define DEBUG_ENCODING 1

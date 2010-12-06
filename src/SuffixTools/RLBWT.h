@@ -19,8 +19,7 @@
 #include "EncodedString.h"
 #include "FMMarkers.h"
 #include "RLUnit.h"
-#include "HuffUnit.h"
-#include "Huffman.h"
+#include "HuffmanUtil.h"
 #include "StreamEncoding.h"
 #include "HuffmanForest.h"
 #include "PackedTableDecoder.h"
@@ -110,87 +109,11 @@ class RLBWT
             AlphaCount64 running_count = marker.counts;
             size_t numToCount = idx - current_position;
 
-            //std::cout << "NTC: " << numToCount << "\n";
-            //std::cout << "CP: " << current_position << "\n";
-            //std::cout << "IC: "<< running_count << "\n";
             assert(numToCount < m_smallSampleRate);
             size_t symbol_index = marker.unitIndex;
             StreamEncode::AlphaCountDecode acd(running_count);
             StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], numToCount, acd);
             return running_count;
-        }
-
-        // Adds to the count of symbol b in the range [targetPosition, currentPosition)
-        // Precondition: currentPosition <= targetPosition
-        inline void accumulateBackwards(AlphaCount64& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
-        {
-            // Search backwards (towards 0) until idx is found
-            while(currentPosition != targetPosition)
-            {
-                size_t diff = currentPosition - targetPosition;
-#ifdef RLBWT_VALIDATE                
-                assert(currentUnitIndex != 0);
-#endif
-                --currentUnitIndex;
-
-                //const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
-                const HuffUnit* pCurrUnit = (HuffUnit*)&m_rlString[currentUnitIndex];
-                currentPosition -= pCurrUnit->subtractAlphaCount(running_count, diff);
-            }
-        }
-
-        // Adds to the count of symbol b in the range [currentPosition, targetPosition)
-        // Precondition: currentPosition <= targetPosition
-        inline void accumulateForwards(AlphaCount64& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
-        {
-            // Search backwards (towards 0) until idx is found
-            while(currentPosition != targetPosition)
-            {
-                size_t diff = targetPosition - currentPosition;
-#ifdef RLBWT_VALIDATE
-                assert(currentUnitIndex != m_rlString.size());
-#endif
-                //const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
-                const HuffUnit* pCurrUnit = (HuffUnit*)&m_rlString[currentUnitIndex];
-                currentPosition += pCurrUnit->addAlphaCount(running_count, diff);
-                ++currentUnitIndex;
-            }
-        }
-
-        // Adds to the count of symbol b in the range [targetPosition, currentPosition)
-        // Precondition: currentPosition <= targetPosition
-        inline void accumulateBackwards(char b, size_t& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
-        {
-            // Search backwards (towards 0) until idx is found
-            while(currentPosition != targetPosition)
-            {
-                size_t diff = currentPosition - targetPosition;
-#ifdef RLBWT_VALIDATE                
-                assert(currentUnitIndex != 0);
-#endif
-                --currentUnitIndex;
-                //const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
-                const HuffUnit* pCurrUnit = (HuffUnit*)&m_rlString[currentUnitIndex];
-                currentPosition -= pCurrUnit->subtractCount(b, running_count, diff);
-            }
-        }
-
-        // Adds to the count of symbol b in the range [currentPosition, targetPosition)
-        // Precondition: currentPosition <= targetPosition
-        inline void accumulateForwards(char b, size_t& running_count, size_t currentUnitIndex, size_t currentPosition, const size_t targetPosition) const
-        {
-            // Search backwards (towards 0) until idx is found
-            while(currentPosition != targetPosition)
-            {
-                size_t diff = targetPosition - currentPosition;
-#ifdef RLBWT_VALIDATE
-                assert(currentUnitIndex != m_rlString.size());
-#endif
-                //const RLUnit* pCurrUnit = (RLUnit*)&m_rlString[currentUnitIndex];
-                const HuffUnit* pCurrUnit = (HuffUnit*)&m_rlString[currentUnitIndex];
-                currentPosition += pCurrUnit->addCount(b, running_count, diff);
-                ++currentUnitIndex;
-            }
         }
 
         // Return the number of times each symbol in the alphabet appears ins bwt[idx0, idx1]
