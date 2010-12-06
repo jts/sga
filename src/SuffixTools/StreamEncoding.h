@@ -220,6 +220,9 @@ namespace StreamEncode
         DECODE_UNIT rlMask = (1 << runReadLen) - 1;
         DECODE_UNIT rlBaseShift = DECODE_UNIT_BITS - runReadLen;
 
+        const std::vector<PACKED_DECODE_TYPE>* pDecodeChar = symbolDecoder.getTable();
+        const std::vector<PACKED_DECODE_TYPE>* pDecodeRL = rlDecoder.getTable();
+
         while(1)
         {
             // Read a symbol then a run
@@ -227,15 +230,14 @@ namespace StreamEncode
             code = (decodeUnit >> (symBaseShift - numBitsDecoded)) & symMask;
             // Parse the code
             //const HuffmanTreeCodec<char>::DecodePair& sdp = symbolEncoder.decode(code);
-            int symRank;
-            int bits;
-            int rl;
-            symbolDecoder.unpack(code, symRank, bits);
-            numBitsDecoded += bits;
+            PACKED_DECODE_TYPE packedCode = (*pDecodeChar)[code];
+            int symRank = UNPACK_SYMBOL(packedCode);
+            numBitsDecoded += UNPACK_BITS(packedCode);
 
             code = (decodeUnit >> (rlBaseShift - numBitsDecoded)) & rlMask;
-            rlDecoder.unpack(code, rl, bits);
-            numBitsDecoded += bits;
+            packedCode = (*pDecodeRL)[code];
+            int rl = UNPACK_SYMBOL(packedCode);
+            numBitsDecoded += UNPACK_BITS(packedCode);
 
             int diff = numSymbols - numSymbolsDecoded;
             if(rl < diff)

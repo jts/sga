@@ -10,9 +10,12 @@
 #ifndef PACKEDTABLEDECODER_H
 #define PACKEDTABLEDECODER_H
 
-#define BITS_MASK 255
+#define PACKED_BITS_MASK 255
 #define PACKED_DECODE_SHIFT 8
 #define PACKED_DECODE_TYPE int
+
+#define UNPACK_SYMBOL(in) (in) >> PACKED_DECODE_SHIFT
+#define UNPACK_BITS(in) (in) & PACKED_BITS_MASK
 
 class RLPackedTableDecoder
 {
@@ -35,16 +38,16 @@ class RLPackedTableDecoder
             return m_readLen;
         }
 
+        // Pack a value into the table
         inline PACKED_DECODE_TYPE pack(PACKED_DECODE_TYPE symbol, PACKED_DECODE_TYPE bits)
         {
             return (symbol << PACKED_DECODE_SHIFT) | bits;
         }
 
-        inline void unpack(int code, PACKED_DECODE_TYPE& symOut, PACKED_DECODE_TYPE& bitsOut) const
+        // Return a pointer to the table
+        inline const std::vector<PACKED_DECODE_TYPE>* getTable() const
         {
-            PACKED_DECODE_TYPE in = m_decodeTable[code];
-            bitsOut = in & BITS_MASK;
-            symOut = in >> PACKED_DECODE_SHIFT;
+            return &m_decodeTable;
         }
 
         std::vector<PACKED_DECODE_TYPE> m_decodeTable;
@@ -73,18 +76,16 @@ class CharPackedTableDecoder
             return m_readLen;
         }
 
+        //
         inline PACKED_DECODE_TYPE pack(int symbol, PACKED_DECODE_TYPE bits)
         {
             return (BWT_ALPHABET::getRank(symbol) << PACKED_DECODE_SHIFT) | bits;
         }
 
-        // Unpack the symbol and coding bits.
-        // This returns the symbols rank in the bwt alphabet, not the actual symbol
-        inline void unpack(int code, int& rankOut, PACKED_DECODE_TYPE& bitsOut) const
+        // Return a pointer to the table
+        inline const std::vector<PACKED_DECODE_TYPE>* getTable() const
         {
-            PACKED_DECODE_TYPE in = m_decodeTable[code];
-            bitsOut = in & BITS_MASK;
-            rankOut = in >> PACKED_DECODE_SHIFT;
+            return &m_decodeTable;
         }
 
         std::vector<PACKED_DECODE_TYPE> m_decodeTable;
