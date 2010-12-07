@@ -36,7 +36,9 @@ class BWTWriterBinary : public IBWTWriter
 
         std::ostream* m_pWriter;
         size_t m_numRuns;
-        std::streampos m_runFileOffset;
+        std::streampos m_headerFileOffset;
+        std::streampos m_largeMarkerOffset;
+        std::streampos m_smallMarkerOffset;
         RLUnit m_currRun;
         BWIOStage m_stage;
         BWTCompressor m_compressor;

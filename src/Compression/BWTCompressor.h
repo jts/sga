@@ -35,6 +35,8 @@ class BWTCompressor
         void writeMarkers();
 
         size_t getNumBytesWrote() const;
+        size_t getNumSymbolsWrote() const;
+
         const LargeMarkerVector& getLargeMarkerVector() const;
         const SmallMarkerVector& getSmallMarkerVector() const;
         AlphaCount64 getRunningCount() const;

@@ -48,9 +48,19 @@ class RLBWT
 
         inline char getChar(size_t idx) const
         {
-            assert(false);
-            (void)idx;
-            return '\0';
+            // Decompress stream up to the (idx + 1) character and return the last decompressed symbol
+            size_t encoderIdx = 0;
+            const LargeMarker marker = getLowerMarker(idx, encoderIdx);
+            size_t current_position = marker.getActualPosition();
+            size_t numToCount = idx - current_position + 1;
+            //assert(numToCount < m_smallSampleRate);
+            size_t symbol_index = marker.unitIndex;
+            size_t numBitsRead = 0;
+
+            char outBase;
+            StreamEncode::SingleBaseDecode sbd(outBase);
+            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, sbd);
+            return outBase;
         }
 
         // Get the greatest interpolated marker whose position is less than or equal to position
@@ -94,7 +104,8 @@ class RLBWT
             size_t running_count = marker.counts.get(b);
             size_t symbol_index = marker.unitIndex;
             StreamEncode::BaseCountDecode bcd(b, running_count);
-            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], numToCount, bcd);
+            size_t numBitsRead = 0;
+            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, bcd);
             return running_count;
         }
 
@@ -114,7 +125,8 @@ class RLBWT
             assert(numToCount < m_smallSampleRate);
             size_t symbol_index = marker.unitIndex;
             StreamEncode::AlphaCountDecode acd(running_count);
-            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], numToCount, acd);
+            size_t numBitsRead = 0;
+            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, acd);
             return running_count;
         }
 

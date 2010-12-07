@@ -30,7 +30,7 @@ enum BWFlag
     BWF_HASFMI
 };
 
-const uint16_t RLBWT_FILE_MAGIC = 0xCACA;
+const uint16_t RLBWT_FILE_MAGIC = 0xDADA;
 const uint16_t BWT_FILE_MAGIC = 0xEFEF;
 
 class RLBWT;

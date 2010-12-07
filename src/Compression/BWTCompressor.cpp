@@ -94,7 +94,6 @@ void BWTCompressor::flush(std::ostream* pWriter)
 
     m_unitsWrote += encodedBytes.size();
     m_symbolsWrote += symbolsEncoded;
-    (void)pWriter;
 
     // Clear the buffer
     m_symbolBuffer.clear();
@@ -157,6 +156,12 @@ AlphaCount64 BWTCompressor::getRunningCount() const
 size_t BWTCompressor::getNumBytesWrote() const
 {
     return m_unitsWrote;
+}
+
+//
+size_t BWTCompressor::getNumSymbolsWrote() const
+{
+    return m_symbolsWrote;
 }
 
 //
