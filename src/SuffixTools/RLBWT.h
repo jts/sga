@@ -172,7 +172,7 @@ class RLBWT
         // The run-length encoded string
         RLRawData m_rlString;
 
-        // The marker vector
+        // The marker vectors
         LargeMarkerVector m_largeMarkers;
         SmallMarkerVector m_smallMarkers;
 

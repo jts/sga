@@ -16,6 +16,7 @@
 #include "BWTReaderBinary.h"
 #include "EncodedString.h"
 #include "RLBWT.h"
+#include "BWTCompressor.h"
 
 class SBWT;
 class RLBWT;
@@ -40,6 +41,7 @@ class BWTWriterBinary : public IBWTWriter
         std::streampos m_runFileOffset;
         RLUnit m_currRun;
         BWIOStage m_stage;
+        BWTCompressor m_compressor;
 };
 
 #endif

@@ -202,7 +202,7 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
         pBWT->m_smallMarkers.back().encoderIdx = encoderIdx;
 
         // Perform the actual encoding
-        EncodedArray encodedBytes;
+        ByteVector encodedBytes;
         size_t symbolsEncoded = StreamEncode::encodeStream(symbolBuffer, symbolEncoder, rlEncoder, encodedBytes);
         assert(symbolsEncoded == symbolBuffer.size());
 
