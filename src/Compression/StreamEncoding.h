@@ -45,6 +45,17 @@ namespace StreamEncode
         }
         std::string& m_target;
     };
+
+    struct CharDequeDecode
+    {
+        CharDequeDecode(CharDeque& target) : m_target(target) {}
+        inline void operator()(int rank, int rl)
+        {
+            for(int i = 0; i < rl; ++i)
+                m_target.push_back(BWT_ALPHABET::getChar(rank));
+        }
+        CharDeque& m_target;
+    };
     
     struct BaseCountDecode
     {
@@ -58,6 +69,17 @@ namespace StreamEncode
         char m_targetBase;
         size_t& m_targetCount;
     };   
+
+    // Decoder which returns the last base added. This is used to extract a particular character from the stream
+    struct SingleBaseDecode
+    {
+        SingleBaseDecode(char& base) : m_base(base) {}
+        inline void operator()(int rank, int /*rl*/)
+        {
+            m_base = BWT_ALPHABET::getChar(rank);
+        }
+        char& m_base;
+    };
 
     //
     inline void printEncoding(const ByteVector& output)
@@ -198,14 +220,17 @@ namespace StreamEncode
 #define DECODE_UNIT uint64_t
 #define DECODE_UNIT_BYTES sizeof(DECODE_UNIT)
 #define DECODE_UNIT_BITS DECODE_UNIT_BYTES * 8
+    // Decompress the data starting at pInput. The read cannot exceed the endpoint given by pEnd. Returns
+    // the total number of symbols decoded. The out parameters numBitsDecoded is also set.
     template<typename Functor>
     inline size_t decodeStream(const CharPackedTableDecoder& symbolDecoder, const RLPackedTableDecoder& rlDecoder, 
-                               const unsigned char* pInput, size_t numSymbols, Functor& functor)
+                               const unsigned char* pInput, const unsigned char* pEnd, size_t numSymbols, DECODE_UNIT& numBitsDecoded, Functor& functor)
     {
         DECODE_UNIT symbolReadLen = symbolDecoder.getCodeReadLength();
         DECODE_UNIT runReadLen = rlDecoder.getCodeReadLength();
 
-        DECODE_UNIT numBitsDecoded = 0;
+        DECODE_UNIT numBitsBuffered = 0;
+        numBitsDecoded = 0;
         size_t numSymbolsDecoded = 0;
         
         // Prime the decode unit by reading 16 bits from the stream
@@ -215,12 +240,14 @@ namespace StreamEncode
             decodeUnit <<= BITS_PER_BYTE;
             decodeUnit |= *pInput++;
         }
-
+        numBitsBuffered = BITS_PER_BYTE * DECODE_UNIT_BYTES;
+      
+        
         DECODE_UNIT symMask = (1 << symbolReadLen) - 1;
-        DECODE_UNIT symBaseShift = DECODE_UNIT_BITS - symbolReadLen;
+        //DECODE_UNIT symBaseShift = DECODE_UNIT_BITS - symbolReadLen;
         DECODE_UNIT rlMask = (1 << runReadLen) - 1;
-        DECODE_UNIT rlBaseShift = DECODE_UNIT_BITS - runReadLen;
-
+        //DECODE_UNIT rlBaseShift = DECODE_UNIT_BITS - runReadLen;
+        
         const std::vector<PACKED_DECODE_TYPE>* pDecodeChar = symbolDecoder.getTable();
         const std::vector<PACKED_DECODE_TYPE>* pDecodeRL = rlDecoder.getTable();
 
@@ -228,14 +255,14 @@ namespace StreamEncode
         {
             // Read a symbol then a run
             DECODE_UNIT code = 0;
-            code = (decodeUnit >> (symBaseShift - numBitsDecoded)) & symMask;
+            code = (decodeUnit >> (numBitsBuffered - numBitsDecoded - symbolReadLen) & symMask);
             // Parse the code
             //const HuffmanTreeCodec<char>::DecodePair& sdp = symbolEncoder.decode(code);
             PACKED_DECODE_TYPE packedCode = (*pDecodeChar)[code];
             int symRank = UNPACK_SYMBOL(packedCode);
             numBitsDecoded += UNPACK_BITS(packedCode);
 
-            code = (decodeUnit >> (rlBaseShift - numBitsDecoded)) & rlMask;
+            code = (decodeUnit >> (numBitsBuffered - numBitsDecoded - runReadLen) & rlMask);
             packedCode = (*pDecodeRL)[code];
             int rl = UNPACK_SYMBOL(packedCode);
             numBitsDecoded += UNPACK_BITS(packedCode);
@@ -253,11 +280,12 @@ namespace StreamEncode
             }
 
             // Update the decode unit
-            if(DECODE_UNIT_BITS - numBitsDecoded < 2*BITS_PER_BYTE)
+            if(numBitsBuffered - numBitsDecoded < 2*BITS_PER_BYTE)
             {
                 for(size_t i = 2; i < DECODE_UNIT_BYTES; ++i)
-                    decodeUnit = (decodeUnit << BITS_PER_BYTE) | *pInput++;
-                numBitsDecoded -= (BITS_PER_BYTE * (DECODE_UNIT_BYTES - 2));
+                    decodeUnit = (decodeUnit << BITS_PER_BYTE) | (pInput <= pEnd ? *pInput++ : 0);
+                numBitsBuffered += (BITS_PER_BYTE * (DECODE_UNIT_BYTES - 2));
+                //numBitsDecoded -= (BITS_PER_BYTE * (DECODE_UNIT_BYTES - 2));
             }
 
         }

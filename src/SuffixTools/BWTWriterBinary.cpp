@@ -11,7 +11,7 @@
 #include "RLBWT.h"
 
 //
-BWTWriterBinary::BWTWriterBinary(const std::string& filename) : m_numRuns(0), m_runFileOffset(0), m_stage(IOS_NONE)
+BWTWriterBinary::BWTWriterBinary(const std::string& filename) : m_numRuns(0), m_headerFileOffset(0), m_stage(IOS_NONE)
 {
     m_pWriter = createWriter(filename, std::ios::out | std::ios::binary);
     m_stage = IOS_HEADER;
@@ -40,12 +40,15 @@ void BWTWriterBinary::writeHeader(const size_t& num_strings, const size_t& num_s
     m_pWriter->write(reinterpret_cast<const char*>(&largeSampleRate), sizeof(largeSampleRate));
     m_pWriter->write(reinterpret_cast<const char*>(&smallSampleRate), sizeof(smallSampleRate));
 
-    // Here we do not know the number of bytes that are going to be written to the file
-    // for the compressed bwt string so we save the offset in the file and write a dummy value. 
-    //After the bwt string has been written, we return here and fill in the correct value
-    m_runFileOffset = m_pWriter->tellp();
+    // Here we do not know the number of units or the number of markers that are going to be written to the file.
+    // We save the offset of this position in the file so we can return later to write in these values.
+    m_headerFileOffset = m_pWriter->tellp();
 
+    // Write placeholders for the number of units in the bwt string
+    // and the position in the file of the small and large marker segments
     size_t tmpUnits = 0;
+    m_pWriter->write(reinterpret_cast<const char*>(&tmpUnits), sizeof(tmpUnits));
+    m_pWriter->write(reinterpret_cast<const char*>(&tmpUnits), sizeof(tmpUnits));
     m_pWriter->write(reinterpret_cast<const char*>(&tmpUnits), sizeof(tmpUnits));
 
     assert(flag == BWF_NOFMI);
@@ -66,18 +69,11 @@ void BWTWriterBinary::finalize()
 {
     m_compressor.flush(m_pWriter);
 
-    size_t numStringBytes = m_compressor.getNumBytesWrote();
-    size_t savedPos = m_pWriter->tellp();
-    m_pWriter->seekp(m_runFileOffset);
-    m_pWriter->write(reinterpret_cast<const char*>(&numStringBytes), sizeof(numStringBytes));
-    
-    // Return to the end of the file
-    m_pWriter->seekp(savedPos);
-
     // Write out the large and small markers
     const LargeMarkerVector& largeMarkers = m_compressor.getLargeMarkerVector();
     size_t numLargeMarkers = largeMarkers.size();
 
+    size_t largeMarkersStart = m_pWriter->tellp();
     m_pWriter->write(reinterpret_cast<const char*>(&numLargeMarkers), sizeof(numLargeMarkers));
     for(size_t i =  0; i < numLargeMarkers; ++i)
         m_pWriter->write(reinterpret_cast<const char*>(&largeMarkers[i]), sizeof(LargeMarker));
@@ -85,6 +81,7 @@ void BWTWriterBinary::finalize()
     const SmallMarkerVector& smallMarkers = m_compressor.getSmallMarkerVector();
     size_t numSmallMarkers = smallMarkers.size();
 
+    size_t smallMarkersStart = m_pWriter->tellp();
     m_pWriter->write(reinterpret_cast<const char*>(&numSmallMarkers), sizeof(numSmallMarkers));
     for(size_t i =  0; i < numSmallMarkers; ++i)
         m_pWriter->write(reinterpret_cast<const char*>(&smallMarkers[i]), sizeof(SmallMarker));
@@ -99,6 +96,17 @@ void BWTWriterBinary::finalize()
     predCount.set('G', predCount.get('C') + finalCounts.get('C'));
     predCount.set('T', predCount.get('G') + finalCounts.get('G'));
     m_pWriter->write(reinterpret_cast<const char*>(&predCount), sizeof(predCount));
+
+    // Return to the header of the file and overwrite the placeholders with the real values
+    size_t numStringBytes = m_compressor.getNumBytesWrote();
+    size_t savedPos = m_pWriter->tellp();
+    m_pWriter->seekp(m_headerFileOffset);
+    m_pWriter->write(reinterpret_cast<const char*>(&numStringBytes), sizeof(numStringBytes));
+    m_pWriter->write(reinterpret_cast<const char*>(&largeMarkersStart), sizeof(largeMarkersStart));
+    m_pWriter->write(reinterpret_cast<const char*>(&smallMarkersStart), sizeof(smallMarkersStart));
+    
+    // Return to the end of the file
+    m_pWriter->seekp(savedPos);
 
     m_stage = IOS_DONE;
 }

@@ -475,6 +475,7 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
             }
         }
     }
+
     assert(num_bwt_wrote == total_symbols);
     assert(num_sai_wrote == total_strings);
     
