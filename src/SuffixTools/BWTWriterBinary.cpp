@@ -27,14 +27,16 @@ BWTWriterBinary::~BWTWriterBinary()
 //
 void BWTWriterBinary::writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag)
 {
+    m_compressor.initialize(RLBWT::DEFAULT_SAMPLE_RATE_LARGE, RLBWT::DEFAULT_SAMPLE_RATE_SMALL, num_symbols);
+
     assert(m_stage == IOS_HEADER);
     m_pWriter->write(reinterpret_cast<const char*>(&RLBWT_FILE_MAGIC), sizeof(RLBWT_FILE_MAGIC));
     m_pWriter->write(reinterpret_cast<const char*>(&num_strings), sizeof(num_strings));
     m_pWriter->write(reinterpret_cast<const char*>(&num_symbols), sizeof(num_symbols));
 
-    // Here we do not know the number of runs that are going to be written to the file
-    // so we save the offset in the file and write a dummy value. After the bwt string
-    // has been written, we return here and fill in the correct value
+    // Here we do not know the number of bytes that are going to be written to the file
+    // for the compressed bwt string so we save the offset in the file and write a dummy value. 
+    //After the bwt string has been written, we return here and fill in the correct value
     m_runFileOffset = m_pWriter->tellp();
     m_numRuns = 0;
     m_pWriter->write(reinterpret_cast<const char*>(&m_numRuns), sizeof(m_numRuns));
@@ -49,25 +51,7 @@ void BWTWriterBinary::writeHeader(const size_t& num_strings, const size_t& num_s
 // If the char is '\n' we are finished
 void BWTWriterBinary::writeBWChar(char b)
 {
-    if(m_currRun.isInitialized())
-    {
-        if(m_currRun.getChar() == b && !m_currRun.isFull())
-        {
-            m_currRun.incrementCount();
-        }
-        else
-        {
-            // Write out the old run and start a new one
-            assert(m_currRun.isInitialized());
-            writeRun(m_currRun);
-            m_currRun = RLUnit(b);
-        }        
-    }
-    else
-    {
-        // Start a new run
-        m_currRun = RLUnit(b);
-    }
+    m_compressor.writeSymbol(b, m_pWriter);
 }
 
 //
@@ -81,12 +65,29 @@ void BWTWriterBinary::writeRun(RLUnit& unit)
 // write the final run to the stream and fill in the number of runs
 void BWTWriterBinary::finalize()
 {
-    assert(m_currRun.isInitialized());
-    writeRun(m_currRun);
-
+    m_compressor.flush(m_pWriter);
+    size_t numStringBytes = m_compressor.getNumBytesWrote();
     m_pWriter->seekp(m_runFileOffset);
-    m_pWriter->write(reinterpret_cast<const char*>(&m_numRuns), sizeof(m_numRuns));
+    m_pWriter->write(reinterpret_cast<const char*>(&numStringBytes), sizeof(numStringBytes));
+    
+    // Return to the end of the file
     m_pWriter->seekp(std::ios_base::end);
+
+    // Write out the large and small markers
+    const LargeMarkerVector& largeMarkers = m_compressor.getLargeMarkerVector();
+    size_t numLargeMarkers = largeMarkers.size();
+
+    m_pWriter->write(reinterpret_cast<const char*>(&numLargeMarkers), sizeof(numLargeMarkers));
+    for(size_t i =  0; i < numLargeMarkers; ++i)
+        m_pWriter->write(reinterpret_cast<const char*>(&largeMarkers[i]), sizeof(LargeMarker));
+
+    const SmallMarkerVector& smallMarkers = m_compressor.getSmallMarkerVector();
+    size_t numSmallMarkers = smallMarkers.size();
+
+    m_pWriter->write(reinterpret_cast<const char*>(&numSmallMarkers), sizeof(numSmallMarkers));
+    for(size_t i =  0; i < numSmallMarkers; ++i)
+        m_pWriter->write(reinterpret_cast<const char*>(&smallMarkers[i]), sizeof(SmallMarker));
+
     m_stage = IOS_DONE;
 }
 

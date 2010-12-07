@@ -10,6 +10,7 @@
 #ifndef STREAMENCODING_H
 #define STREAMENCODING_H
 
+#include "Occurrence.h"
 #include "HuffmanUtil.h"
 #include "PackedTableDecoder.h"
 
@@ -19,7 +20,7 @@
 typedef std::pair<char, int> RLEPair;
 typedef std::vector<RLEPair> RLEPairVector;
 typedef std::deque<char> CharDeque;
-typedef std::vector<uint8_t> EncodedArray;
+typedef std::vector<uint8_t> ByteVector;
 
 namespace StreamEncode
 {
@@ -59,7 +60,7 @@ namespace StreamEncode
     };   
 
     //
-    inline void printEncoding(const EncodedArray& output)
+    inline void printEncoding(const ByteVector& output)
     {
         std::cout << "Encoding: ";
         for(size_t i = 0; i < output.size(); ++i)
@@ -70,7 +71,7 @@ namespace StreamEncode
     }
 
     // Write the code into the output stream starting at currBit
-    inline size_t _writeCode(EncodePair& ep, size_t currBit, EncodedArray& output)
+    inline size_t _writeCode(EncodePair& ep, size_t currBit, ByteVector& output)
     {
 #ifdef DEBUG_ENCODING
         printEncoding(output);
@@ -134,7 +135,7 @@ namespace StreamEncode
     }
     
     // Encode a stream of characters
-    inline size_t encodeStream(const CharDeque& input, const HuffmanTreeCodec<char>& symbolEncoder, HuffmanTreeCodec<int> & runEncoder, EncodedArray& output)
+    inline size_t encodeStream(const CharDeque& input, const HuffmanTreeCodec<char>& symbolEncoder, HuffmanTreeCodec<int> & runEncoder, ByteVector& output)
     {
         // Require the encoder to emit at most 8-bit codes
         assert(symbolEncoder.getMaxBits() <= BITS_PER_BYTE);
