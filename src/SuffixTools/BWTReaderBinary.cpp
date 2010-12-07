@@ -15,7 +15,6 @@
 #include "StreamEncoding.h"
 #include "HuffmanForest.h"
 
-static std::string hackname;
 //
 BWTReaderBinary::BWTReaderBinary(const std::string& filename) : m_stage(IOS_NONE), m_numUnitsOnDisk(0), m_numUnitsRead(0)
 {
@@ -23,7 +22,6 @@ BWTReaderBinary::BWTReaderBinary(const std::string& filename) : m_stage(IOS_NONE
     m_stage = IOS_HEADER;
     HuffmanTreeCodec<int> huffTree = HuffmanUtil::buildRLHuffmanTree();
     m_rlDecodeTable.initialize(huffTree);
-    hackname = filename;
 
     // streaming mode state variables
     m_numUnitsRead = 0;
@@ -59,7 +57,6 @@ void BWTReaderBinary::read(RLBWT* pRLBWT)
     //pRLBWT->print();
 
     printf("Done reading BWT (%3.2lfs)\n", readTimer.getElapsedWallTime());
-    pRLBWT->decodeToFile(hackname + ".decode");
 }
 
 void BWTReaderBinary::read(SBWT* /*pSBWT*/)
