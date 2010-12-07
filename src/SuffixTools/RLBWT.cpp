@@ -61,6 +61,15 @@ void RLBWT::append(char b)
     ++m_numSymbols;
 }
 
+void RLBWT::setSampleRates(size_t largeSampleRate, size_t smallSampleRate)
+{
+    m_smallSampleRate = smallSampleRate;
+    m_largeSampleRate = largeSampleRate;
+
+    m_smallShiftValue = Occurrence::calculateShiftValue(m_smallSampleRate);
+    m_largeShiftValue = Occurrence::calculateShiftValue(m_largeSampleRate);
+}
+
 // Fill in the FM-index data structures
 void RLBWT::initializeFMIndex(AlphaCount64& running_ac)
 {

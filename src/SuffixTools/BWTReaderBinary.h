@@ -31,14 +31,20 @@ class BWTReaderBinary : public IBWTReader
 
         virtual void readHeader(size_t& num_strings, size_t& num_symbols, BWFlag& flag);
         virtual char readBWChar();
-        virtual void readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns);
 
     private:
+    
+        void readCompressedData(RLBWT* pBWT, size_t numUnits);
+        void readMarkers(RLBWT* pBWT);
+        void readPredCounts(RLBWT* pBWT);
+
         std::istream* m_pReader;
         BWIOStage m_stage;
         RLUnit m_currRun;
-        size_t m_numRunsOnDisk;
-        size_t m_numRunsRead;
+        size_t m_numUnitsOnDisk;
+        size_t m_numUnitsRead;
+        size_t m_smallSampleRate;
+        size_t m_largeSampleRate;
 };
 
 #endif

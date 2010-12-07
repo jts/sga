@@ -38,7 +38,9 @@ class RLBWT
     
         // Constructors
         RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE_SMALL);
+
         //    
+        void setSampleRates(size_t largeSampleRate, size_t smallSampleRate);
         void initializeFMIndex(AlphaCount64& running_ac);
 
         // Append a symbol to the bw string

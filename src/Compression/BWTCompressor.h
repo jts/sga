@@ -37,6 +37,7 @@ class BWTCompressor
         size_t getNumBytesWrote() const;
         const LargeMarkerVector& getLargeMarkerVector() const;
         const SmallMarkerVector& getSmallMarkerVector() const;
+        AlphaCount64 getRunningCount() const;
         
     private:
 
