@@ -89,6 +89,9 @@ void BWTCompressor::flush(std::ostream* pWriter)
     assert(symbolsEncoded == m_symbolBuffer.size());
 
     // Write the bytes out to the stream
+    for(size_t i = 0; i < encodedBytes.size(); ++i)
+        pWriter->write(reinterpret_cast<const char*>(&encodedBytes[i]), sizeof(uint8_t));
+
     m_unitsWrote += encodedBytes.size();
     m_symbolsWrote += symbolsEncoded;
     (void)pWriter;
@@ -143,6 +146,11 @@ SmallMarker& BWTCompressor::appendMarkers()
     smallMarker.counts = smallAC;        
     m_smallMarkers.push_back(smallMarker);
     return m_smallMarkers.back();
+}
+
+AlphaCount64 BWTCompressor::getRunningCount() const
+{
+    return m_runningAC;
 }
 
 // 

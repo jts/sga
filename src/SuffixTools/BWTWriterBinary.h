@@ -34,8 +34,6 @@ class BWTWriterBinary : public IBWTWriter
 
     private:
 
-        void writeRun(RLUnit& unit);
-
         std::ostream* m_pWriter;
         size_t m_numRuns;
         std::streampos m_runFileOffset;

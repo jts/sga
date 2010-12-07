@@ -16,7 +16,7 @@
 #include "HuffmanForest.h"
 
 //
-BWTReaderBinary::BWTReaderBinary(const std::string& filename) : m_stage(IOS_NONE), m_numRunsOnDisk(0), m_numRunsRead(0)
+BWTReaderBinary::BWTReaderBinary(const std::string& filename) : m_stage(IOS_NONE), m_numUnitsOnDisk(0), m_numUnitsRead(0)
 {
     m_pReader = createReader(filename, std::ios::binary);
     m_stage = IOS_HEADER;
@@ -32,21 +32,35 @@ void BWTReaderBinary::read(RLBWT* pRLBWT)
 {
     Timer readTimer("reader", false);
     BWFlag flag;
+
     readHeader(pRLBWT->m_numStrings, pRLBWT->m_numSymbols, flag);
 
-    assert(m_numRunsOnDisk > 0);
-    readRuns(pRLBWT, pRLBWT->m_rlString, m_numRunsOnDisk);
+    pRLBWT->setSampleRates(m_largeSampleRate, m_smallSampleRate);
+
+    // Read the compressed data and markers from disk
+    assert(m_numUnitsOnDisk > 0);
+    readCompressedData(pRLBWT, m_numUnitsOnDisk);
+    readMarkers(pRLBWT);
+    readPredCounts(pRLBWT);
 
     //pRLBWT->printInfo();
     //pRLBWT->print();
+
     printf("Done reading BWT (%3.2lfs)\n", readTimer.getElapsedWallTime());
+    pRLBWT->decodeToFile("testdecode.txt");
 }
 
-void BWTReaderBinary::read(SBWT* pSBWT)
+void BWTReaderBinary::read(SBWT* /*pSBWT*/)
 {
+    // deprecated
+    assert(false);
+#if 0
     BWFlag flag;
     size_t numSymbols;
-    readHeader(pSBWT->m_numStrings, numSymbols, flag);
+    size_t largeSampleRate = 0;
+    size_t smallSampleRate = 0;
+
+    readHeader(pSBWT->m_numStrings, numSymbols, largeSampleRate, smallSampleRate, flag);
     size_t numRead = 0;
     pSBWT->m_bwStr.resize(numSymbols);
     while(numRead < numSymbols)
@@ -56,6 +70,7 @@ void BWTReaderBinary::read(SBWT* pSBWT)
     }
 
     assert(m_numRunsOnDisk > 0);
+#endif
 }
 
 //
@@ -73,17 +88,49 @@ void BWTReaderBinary::readHeader(size_t& num_strings, size_t& num_symbols, BWFla
 
     m_pReader->read(reinterpret_cast<char*>(&num_strings), sizeof(num_strings));
     m_pReader->read(reinterpret_cast<char*>(&num_symbols), sizeof(num_symbols));
-    m_pReader->read(reinterpret_cast<char*>(&m_numRunsOnDisk), sizeof(m_numRunsOnDisk));
+    m_pReader->read(reinterpret_cast<char*>(&m_largeSampleRate), sizeof(m_largeSampleRate));
+    m_pReader->read(reinterpret_cast<char*>(&m_smallSampleRate), sizeof(m_smallSampleRate));
+    m_pReader->read(reinterpret_cast<char*>(&m_numUnitsOnDisk), sizeof(m_numUnitsOnDisk));
     m_pReader->read(reinterpret_cast<char*>(&flag), sizeof(flag));
     
-    //std::cout << "Read magic: " << magic_number << "\n";
-    //std::cout << "strings:" << num_strings << "\n";
-    //std::cout << "symbols: " << num_symbols << "\n";
-    //std::cout << "runs: " << m_numRunsOnDisk << "\n";
+    std::cout << "Read magic: " << magic_number << "\n";
+    std::cout << "strings:" << num_strings << "\n";
+    std::cout << "symbols: " << num_symbols << "\n";
+    std::cout << "units: " << m_numUnitsOnDisk << "\n";
+    std::cout << "large sample rate: " << m_largeSampleRate << "\n";
+    std::cout << "small sample rate: " << m_smallSampleRate << "\n";
     
     m_stage = IOS_BWSTR;    
 }
 
+void BWTReaderBinary::readCompressedData(RLBWT* pBWT, size_t numUnits)
+{
+    pBWT->m_rlString.resize(numUnits);
+    m_pReader->read(reinterpret_cast<char*>(&pBWT->m_rlString[0]), numUnits*sizeof(uint8_t));
+}
+
+void BWTReaderBinary::readMarkers(RLBWT* pBWT)
+{
+    // Read large markers
+    size_t numLargeMarkers;
+    m_pReader->read(reinterpret_cast<char*>(&numLargeMarkers), sizeof(numLargeMarkers));
+    pBWT->m_largeMarkers.resize(numLargeMarkers);
+    m_pReader->read(reinterpret_cast<char*>(&pBWT->m_largeMarkers[0]), sizeof(LargeMarker) * numLargeMarkers);
+
+    size_t numSmallMarkers;
+    m_pReader->read(reinterpret_cast<char*>(&numSmallMarkers), sizeof(numSmallMarkers));
+    pBWT->m_smallMarkers.resize(numSmallMarkers);
+    m_pReader->read(reinterpret_cast<char*>(&pBWT->m_smallMarkers[0]), sizeof(SmallMarker) * numSmallMarkers);
+}
+
+void BWTReaderBinary::readPredCounts(RLBWT* pBWT)
+{
+    // Read an alphacount from the stream
+    m_pReader->read(reinterpret_cast<char*>(&pBWT->m_predCount), sizeof(pBWT->m_predCount));
+}
+
+
+#if 0
 void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
 {
     //out.resize(numRuns);
@@ -271,6 +318,7 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
 //    std::cout << "RLEBITS: " << rlBitsUsed << " for " << numSymbolsEncoded << " (" << (double)rlBitsUsed / numSymbolsEncoded << ")\n";
     pBWT->initializeFMIndex(runningAC);
 }
+#endif
 
 // Read a single base from the BWStr
 // The BWT is stored as runs on disk, so this class keeps
@@ -279,6 +327,8 @@ void BWTReaderBinary::readRuns(RLBWT* pBWT, RLRawData& out, size_t numRuns)
 // a newline character to signal the end of the BWT
 char BWTReaderBinary::readBWChar()
 {
+    assert(false);
+#if 0
     assert(m_stage == IOS_BWSTR);
 
     if(m_currRun.isEmpty())
@@ -295,4 +345,6 @@ char BWTReaderBinary::readBWChar()
     // Decrement the current run and emit its symbol
     m_currRun.decrementCount();
     return m_currRun.getChar();
+#endif
+    return '\0';
 }
