@@ -59,6 +59,10 @@ void BWTCompressor::flush(std::ostream* pWriter)
 {
     assert(m_symbolBuffer.size() <= m_smallSampleRate);
 
+    // early exit if we do not have any data to write out
+    if(m_symbolBuffer.empty())
+        return;
+
     // Add any new markers that are necessary
     SmallMarker& smallMarker = appendMarkers();
 
