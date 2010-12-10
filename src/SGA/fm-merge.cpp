@@ -24,6 +24,7 @@
 #include "SequenceProcessFramework.h"
 #include "OverlapProcess.h"
 #include "ReadInfoTable.h"
+#include "FMMergeProcess.h"
 
 //
 // Getopt
@@ -89,15 +90,41 @@ int FMMergeMain(int argc, char** argv)
     Timer* pTimer = new Timer(PROGRAM_IDENT);
     pBWT->printInfo();
 
-    //size_t count;
+    std::ostream* pWriter = createWriter(opt::outFile);
+
+    FMMergePostProcess postProcessor(pWriter);
+
     if(opt::numThreads <= 1)
     {
-        printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
+        printf("[%s] starting serial-mode read merging\n", PROGRAM_IDENT);
+        FMMergeProcess processor(pOverlapper, opt::minOverlap);
+        SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
+                                                         FMMergeResult, 
+                                                         FMMergeProcess, 
+                                                         FMMergePostProcess>(opt::readsFile, &processor, &postProcessor);
         //count = computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
     else
     {
-        printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+        printf("[%s] starting parallel-mode read merging computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+        
+        std::vector<FMMergeProcess*> processorVector;
+        for(int i = 0; i < opt::numThreads; ++i)
+        {
+            FMMergeProcess* pProcessor = new FMMergeProcess(pOverlapper, opt::minOverlap);
+            processorVector.push_back(pProcessor);
+        }
+
+        SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
+                                                         FMMergeResult, 
+                                                         FMMergeProcess, 
+                                                         FMMergePostProcess>(opt::readsFile, processorVector, &postProcessor);
+        
+        for(size_t i = 0; i < processorVector.size(); ++i)
+        {
+            delete processorVector[i];
+            processorVector[i] = NULL;
+        }
         //count = computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
 
@@ -105,6 +132,7 @@ int FMMergeMain(int argc, char** argv)
     delete pOverlapper;
     delete pBWT; 
     delete pRBWT;
+    delete pWriter;
 
     // Cleanup
     delete pTimer;
