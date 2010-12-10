@@ -6,9 +6,10 @@
 //
 // BitChar - Fixed-size bitset of 8 bits
 //
-
 #ifndef BITCHAR_H
 #define BITCHAR_H
+
+#include <iostream>
 
 struct BitChar
 {

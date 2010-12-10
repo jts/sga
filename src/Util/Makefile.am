@@ -24,6 +24,7 @@ libutil_a_SOURCES = \
 		SeqDAVG.h SeqDAVG.cpp \
 		Quality.h Quality.cpp \
 		PrimerScreen.h PrimerScreen.cpp \
+		BitVector.h BitVector.cpp \
         Timer.h \
         EncodedString.h \
         DNACodec.h \

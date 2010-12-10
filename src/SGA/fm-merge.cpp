@@ -90,14 +90,18 @@ int FMMergeMain(int argc, char** argv)
     Timer* pTimer = new Timer(PROGRAM_IDENT);
     pBWT->printInfo();
 
-    std::ostream* pWriter = createWriter(opt::outFile);
+    // Construct a bitvector indicating what reads have been used
+    // All the processes read from this vector and only the post processor
+    // writes to it.
+    BitVector markedReads(pBWT->getNumStrings());
 
-    FMMergePostProcess postProcessor(pWriter);
+    std::ostream* pWriter = createWriter(opt::outFile);
+    FMMergePostProcess postProcessor(pWriter, &markedReads);
 
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode read merging\n", PROGRAM_IDENT);
-        FMMergeProcess processor(pOverlapper, opt::minOverlap);
+        FMMergeProcess processor(pOverlapper, opt::minOverlap, &markedReads);
         SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
                                                          FMMergeResult, 
                                                          FMMergeProcess, 
@@ -111,7 +115,7 @@ int FMMergeMain(int argc, char** argv)
         std::vector<FMMergeProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            FMMergeProcess* pProcessor = new FMMergeProcess(pOverlapper, opt::minOverlap);
+            FMMergeProcess* pProcessor = new FMMergeProcess(pOverlapper, opt::minOverlap, &markedReads);
             processorVector.push_back(pProcessor);
         }
 
@@ -127,6 +131,17 @@ int FMMergeMain(int argc, char** argv)
         }
         //count = computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
+
+    // Check that every bit was set in the bit vector
+    size_t numSet = 0;
+    size_t numTotal = pBWT->getNumStrings();
+    for(size_t i = 0; i < numTotal; ++i)
+    {
+        if(markedReads.test(i))
+            ++numSet;
+    }
+
+    std::cout << "Set " << numSet << " bits out of " << numTotal << "\n";
 
     // Get the number of strings in the BWT, this is used to pre-allocated the read table
     delete pOverlapper;
