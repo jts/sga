@@ -22,6 +22,7 @@
 #include "walk.h"
 #include "gmap.h"
 #include "qc.h"
+#include "fm-merge.h"
 #include "scaffold2fasta.h"
 #include "stats.h"
 
@@ -45,6 +46,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           merge           merge multiple BWT/FM-index files into a single index\n"
 "           rmdup           remove duplicated or identical reads from the data set\n"
 "           correct         correct sequencing errors in a set of reads\n"
+"           fm-merge        merge unambiguously overlapped sequences using the FM-index\n"
 "           overlap         compute overlaps between reads\n"
 "           assemble        generate contigs from an assembly graph\n"
 "           oview           view overlap alignments\n"
@@ -90,6 +92,8 @@ int main(int argc, char** argv)
             statsMain(argc - 1, argv + 1);
         else if(command == "rmdup")
             rmdupMain(argc - 1, argv + 1);
+        else if(command == "fm-merge")
+            FMMergeMain(argc - 1, argv + 1);
         else if(command == "overlap")
             overlapMain(argc - 1, argv + 1);
         else if(command == "correct")
