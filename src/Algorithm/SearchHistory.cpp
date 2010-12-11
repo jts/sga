@@ -195,13 +195,13 @@ int SearchHistoryVector::countDifferences(const SearchHistoryVector& a, const Se
 }
 
 // Transform the original string using the history 
-std::string SearchHistoryVector::transform(const std::string& original, bool queryReversed)
+std::string SearchHistoryVector::transform(const std::string& original, bool queryReversed) const
 {
     std::string transformed = original;
     int l = transformed.size();
     for(size_t i = 0; i < m_history.size(); ++i)
     {
-        SearchHistoryItem& item = m_history[i];
+        const SearchHistoryItem& item = m_history[i];
 
         // Transform the position onto the read - if the queryReversed flag
         // is set, the numbering starts from the left at one

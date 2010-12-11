@@ -13,12 +13,29 @@
 #include "OverlapAlgorithm.h"
 #include "SequenceProcessFramework.h"
 #include "BitVector.h"
+#include "Bigraph.h"
+#include "SGUtil.h"
 
 struct FMMergeResult
 {
-    int numReads;
-    BWTInterval usedReads;
+    std::vector<BWTInterval> usedIntervals;
+    std::vector<std::string> usedSequences; // for debug
 };
+
+// A merge candidate is a read that is a unique extension
+// from an existing read. If it has a single edge
+// in the direction pointing back to the existing read
+// it can be merged with that read. if it has multiple
+// edges back to the read it cannot and will be marked as
+// invalid.
+// 
+struct FMMergeCandidate
+{
+    Vertex* pVertex;
+    Edge* pEdge; // Edge from the existing vertex to pVertex
+    BWTInterval interval; // interval containing this candidate
+};
+typedef std::queue<FMMergeCandidate> FMMergeQueue;
 
 // Compute the overlap blocks for reads
 class FMMergeProcess
@@ -32,6 +49,12 @@ class FMMergeProcess
         FMMergeResult process(const SequenceWorkItem& item);
     
     private:
+
+        void addCandidates(StringGraph* pGraph, const Vertex* pX, const Edge* pEdgeToX, const OverlapBlockList* pBlockList, FMMergeQueue& candidateQueue);
+        bool checkCandidate(const FMMergeCandidate& candidate, const OverlapBlockList* pBlockList) const;
+
+        std::string makeVertexID(BWTInterval interval);
+
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;
         const BitVector* m_pMarkedReads;

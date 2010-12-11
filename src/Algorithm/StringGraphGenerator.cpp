@@ -127,7 +127,7 @@ void StringGraphGenerator::updateGraphAndQueue(GraphFrontier& currNode, Frontier
         if(iter->getEdgeDir() != currNode.dir)
             continue;
 
-        std::string vertexID = overlapBlockToCanonicalID(*iter);
+        std::string vertexID = iter->toCanonicalID();
         if(vertexID == pX->getID())
             continue; // skip self-edges
 
@@ -194,7 +194,7 @@ Vertex* StringGraphGenerator::addTerminalVertex(const SeqRecord& record)
     assert(matchIter != endBlockList.end());
     
     // Construct the canonical ID from the matching interval
-    std::string endID = overlapBlockToCanonicalID(*matchIter);
+    std::string endID = matchIter->toCanonicalID();
 
     Vertex* pVertex = m_pGraph->getVertex(endID);
     if(pVertex == NULL)
@@ -219,14 +219,5 @@ void StringGraphGenerator::resetContainmentFlags(Vertex* pVertex)
         if(pEdge->getOverlap().isContainment())
             pEdge->getEnd()->setContained(true);
     }
-}
-
-//
-std::string StringGraphGenerator::overlapBlockToCanonicalID(OverlapBlock& block)
-{
-    std::stringstream ss;
-    int ci = block.getCanonicalIntervalIndex();
-    ss << "IDX-" << block.ranges.interval[ci].lower;
-    return ss.str();
 }
 

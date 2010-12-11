@@ -10,7 +10,6 @@ libconcurrency_a_CPPFLAGS = \
 libconcurrency_a_SOURCES = \
         OverlapProcess.h OverlapProcess.cpp \
         RmdupProcess.h RmdupProcess.cpp \
-        FMMergeProcess.h FMMergeProcess.cpp \
         SequenceProcessFramework.h \
         SequenceWorkItem.h \
         ThreadWorker.h \
