@@ -174,6 +174,9 @@ typedef OverlapBlockList::iterator OBLIter;
 
 // Global Functions
 
+
+void printBlockList(const OverlapBlockList* pList);
+
 // Ensure all the overlap blocks in the list are distinct
 void removeSubMaximalBlocks(OverlapBlockList* pList);
 

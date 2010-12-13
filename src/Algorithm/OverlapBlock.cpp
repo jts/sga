@@ -145,9 +145,9 @@ std::string OverlapBlock::toCanonicalID() const
 
 
 //
-void printList(OverlapBlockList* pList)
+void printBlockList(const OverlapBlockList* pList)
 {
-    for(OverlapBlockList::iterator i = pList->begin(); i != pList->end(); ++i)
+    for(OverlapBlockList::const_iterator i = pList->begin(); i != pList->end(); ++i)
     {
         std::cout << "Block: " << *i << "\n";
     }

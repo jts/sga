@@ -125,35 +125,61 @@ OverlapResult OverlapAlgorithm::overlapReadExact(const SeqRecord& read, int minO
     OverlapBlockList obWorkingList;
     std::string seq = read.seq.toString();
 
+    // We store the various overlap blocks using a number of lists, one for the containments
+    // in the forward and reverse index and one for each set of overlap blocks
+    OverlapBlockList oblFwdContain;
+    OverlapBlockList oblRevContain;
+    
+    OverlapBlockList oblSuffixFwd;
+    OverlapBlockList oblSuffixRev;
+    OverlapBlockList oblPrefixFwd;
+    OverlapBlockList oblPrefixRev;
+
     // Match the suffix of seq to prefixes
-    findOverlapBlocksExact(seq, m_pBWT, m_pRevBWT, sufPreAF, minOverlap, &obWorkingList, pOBOut, result);
-    findOverlapBlocksExact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, minOverlap, &obWorkingList, pOBOut, result);
+    findOverlapBlocksExact(seq, m_pBWT, m_pRevBWT, sufPreAF, minOverlap, &oblSuffixFwd, &oblFwdContain, result);
+    findOverlapBlocksExact(complement(seq), m_pRevBWT, m_pBWT, prePreAF, minOverlap, &oblSuffixRev, &oblRevContain, result);
 
-    //    
-    if(m_bIrreducible)
-    {
-        computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
-        obWorkingList.clear();
-    }
-    else
-    {
-        pOBOut->splice(pOBOut->end(), obWorkingList);
-        assert(obWorkingList.empty());
-    }
     // Match the prefix of seq to suffixes
-    findOverlapBlocksExact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, minOverlap, &obWorkingList, pOBOut, result);
-    findOverlapBlocksExact(reverse(seq), m_pRevBWT, m_pBWT, preSufAF, minOverlap, &obWorkingList, pOBOut, result);
+    findOverlapBlocksExact(reverseComplement(seq), m_pBWT, m_pRevBWT, sufSufAF, minOverlap, &oblPrefixFwd, &oblFwdContain, result);
+    findOverlapBlocksExact(reverse(seq), m_pRevBWT, m_pBWT, preSufAF, minOverlap, &oblPrefixRev, &oblRevContain, result);
 
-    //
+    // Remove submaximal blocks for each block list including fully contained blocks
+    // Copy the containment blocks into the prefix/suffix lists
+    oblSuffixFwd.insert(oblSuffixFwd.end(), oblFwdContain.begin(), oblFwdContain.end());
+    oblPrefixFwd.insert(oblPrefixFwd.end(), oblFwdContain.begin(), oblFwdContain.end());
+    oblSuffixRev.insert(oblSuffixRev.end(), oblRevContain.begin(), oblRevContain.end());
+    oblPrefixRev.insert(oblPrefixRev.end(), oblRevContain.begin(), oblRevContain.end());
+    
+    // Perform the submaximal filter
+    removeSubMaximalBlocks(&oblSuffixFwd);
+    removeSubMaximalBlocks(&oblPrefixFwd);
+    removeSubMaximalBlocks(&oblSuffixRev);
+    removeSubMaximalBlocks(&oblPrefixRev);
+
+    // Remove the contain blocks from the suffix/prefix lists
+    removeContainmentBlocks(seq.length(), &oblSuffixFwd);
+    removeContainmentBlocks(seq.length(), &oblPrefixFwd);
+    removeContainmentBlocks(seq.length(), &oblSuffixRev);
+    removeContainmentBlocks(seq.length(), &oblPrefixRev);
+
+    // Join the suffix and prefix lists
+    oblSuffixFwd.splice(oblSuffixFwd.end(), oblSuffixRev);
+    oblPrefixFwd.splice(oblPrefixFwd.end(), oblPrefixRev);
+
+    // Move the containments to the output list
+    pOBOut->splice(pOBOut->end(), oblFwdContain);
+    pOBOut->splice(pOBOut->end(), oblRevContain);
+
+    // Filter out transitive overlap blocks if requested
     if(m_bIrreducible)
     {
-        computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &obWorkingList, pOBOut);
-        obWorkingList.clear();
+        computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &oblSuffixFwd, pOBOut);
+        computeIrreducibleBlocks(m_pBWT, m_pRevBWT, &oblPrefixFwd, pOBOut);
     }
     else
     {
-        pOBOut->splice(pOBOut->end(), obWorkingList);
-        assert(obWorkingList.empty());
+        pOBOut->splice(pOBOut->end(), oblSuffixFwd);
+        pOBOut->splice(pOBOut->end(), oblPrefixFwd);
     }
 
     return result;
@@ -188,9 +214,6 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
                                               OverlapBlockList* pOverlapList, OverlapBlockList* pContainList, 
                                               OverlapResult& result) const
 {
-    // All overlaps are added to this list and then sub-maximal overlaps are removed
-    OverlapBlockList workingList;
-
     // The algorithm is as follows:
     // We perform a backwards search using the FM-index for the string w.
     // As we perform the search we collect the intervals 
@@ -217,7 +240,7 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
             if(probe.interval[1].isValid())
             {
                 assert(probe.interval[1].lower > 0);
-                workingList.push_back(OverlapBlock(probe, overlapLen, 0, af));
+                pOverlapList->push_back(OverlapBlock(probe, overlapLen, 0, af));
             }
         }
     }
@@ -244,20 +267,22 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
     {
         BWTAlgorithms::updateBothL(ranges, '$', pBWT);
         if(ranges.isValid())
-            workingList.push_back(OverlapBlock(ranges, w.length(), 0, af));
+        {
+            // terminate the contained block and add it to the contained list
+            BWTAlgorithms::updateBothR(ranges, '$', pRevBWT);
+            assert(ranges.isValid());
+            pContainList->push_back(OverlapBlock(ranges, w.length(), 0, af));
+        }
     }
 
-    // Remove sub-maximal OverlapBlocks and move the remainder to the output list
-    removeSubMaximalBlocks(&workingList);
-
-    OverlapBlockList containedWorkingList;
-    partitionBlockList(w.length(), &workingList, pOverlapList, &containedWorkingList);
+    //OverlapBlockList containedWorkingList;
+    //partitionBlockList(w.length(), &workingList, pOverlapList, &containedWorkingList);
     
     // Terminate the contained blocks
-    terminateContainedBlocks(containedWorkingList);
+    //terminateContainedBlocks(containedWorkingList);
     
     // Move the contained blocks to the final contained list
-    pContainList->splice(pContainList->end(), containedWorkingList);
+    //pContainList->splice(pContainList->end(), containedWorkingList);
 
     return;
 }
