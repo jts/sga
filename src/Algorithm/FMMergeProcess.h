@@ -18,8 +18,9 @@
 
 struct FMMergeResult
 {
+    std::string mergedSequence;
     std::vector<BWTInterval> usedIntervals;
-    std::vector<std::string> usedSequences; // for debug
+    bool isMerged;
 };
 
 // A merge candidate is a read that is a unique extension
@@ -65,9 +66,15 @@ class FMMergePostProcess
 {
     public:
         FMMergePostProcess(std::ostream* pWriter, BitVector* pMarkedReads);
+        ~FMMergePostProcess();
+        
         void process(const SequenceWorkItem& item, const FMMergeResult& result);
 
     private:
+        size_t m_numMerged;
+        size_t m_numTotal;
+        size_t m_totalLength;
+
         std::ostream* m_pWriter;
         BitVector* m_pMarkedReads;
 };

@@ -13,7 +13,6 @@
 BitVector::BitVector(size_t n)
 {
     size_t num_bytes = (n % 8 == 0) ? n / 8 : (n / 8) + 1;
-    std::cout << "allocating " << num_bytes << "\n";
     m_data.resize(num_bytes);
 }
 

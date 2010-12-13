@@ -8,6 +8,7 @@
 //
 #include "FMMergeProcess.h"
 #include "SGAlgorithms.h"
+#include "SGVisitors.h"
 
 //
 FMMergeProcess::FMMergeProcess(const OverlapAlgorithm* pOverlapper, int minOverlap, const BitVector* pMarkedReads) : 
@@ -51,6 +52,7 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
     }
 
     FMMergeResult result;
+    //std::cout << "Processing read " << item.read.id << "\n";
 
     if(!used)
     {
@@ -63,7 +65,6 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
 
         // Add the root vertex to the result structure
         result.usedIntervals.push_back(readInterval);
-        result.usedSequences.push_back(readString);
 
         // Enqueue the read for overlap detection in both directions
         FMMergeQueue queue;
@@ -93,14 +94,13 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
 
             OverlapBlockList candidateBlockList;
             m_pOverlapper->overlapRead(record, m_minOverlap, &candidateBlockList);
-            removeContainmentBlocks(pVertex->getSeqLen(), &candidateBlockList);
+            removeContainmentBlocks(currCandidate.pVertex->getSeqLen(), &candidateBlockList);
 
             bool validMergeNode = checkCandidate(currCandidate, &candidateBlockList);
             if(validMergeNode)
             {
                 addCandidates(pGraph, currCandidate.pVertex, currCandidate.pEdge, &candidateBlockList, queue);
                 result.usedIntervals.push_back(currCandidate.interval);
-                result.usedSequences.push_back(currCandidate.pVertex->getSeq().toString());
             }
             else
             {
@@ -109,8 +109,28 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
             }
         }
         
+        // The graph has now been constructed. Remove all the nodes that are marked invalid for merging
         pGraph->sweepVertices(GC_RED);
+
+        WARN_ONCE("Removing duplicate edge - consider doing this in the overlap step");
+        SGDuplicateVisitor dupVisit(true);
+        pGraph->visit(dupVisit);
+        
+        // Merge nodes
+        pGraph->simplify();
+
+        // ensure only 1 vertex remains after simplification
+        assert(pGraph->getNumVertices() == 1);
+
+        Vertex* pX = pGraph->getFirstVertex();
+        assert(pX != NULL);
+        result.mergedSequence = pX->getSeq().toString();
+        result.isMerged = true;
         delete pGraph;
+    }
+    else
+    {
+        result.isMerged = false;
     }
 
     return result;
@@ -153,9 +173,6 @@ void FMMergeProcess::addCandidates(StringGraph* pGraph, const Vertex* pX, const 
             ++numAnti;
     }
 
-    std::cout << "Num AS: " << numAnti << "\n";
-    std::cout << "Num S: " << numSense << "\n";
-
     // For each edge block, if it is unique for the direction add the vertex it describes as a candidate
     for(OverlapBlockList::const_iterator iter = pBlockList->begin(); iter != pBlockList->end(); ++iter)
     {
@@ -171,33 +188,53 @@ void FMMergeProcess::addCandidates(StringGraph* pGraph, const Vertex* pX, const 
             std::string vertexID = iter->toCanonicalID();
             assert(vertexID != pX->getID());
             std::string vertexSeq = iter->getFullString(pX->getSeq().toString());
-            Overlap o = iter->toOverlap(pX->getID(), vertexID, pX->getSeqLen(), vertexSeq.length());
+            Overlap ovrXY = iter->toOverlap(pX->getID(), vertexID, pX->getSeqLen(), vertexSeq.length());
 
-            // Ensure this vertex does not exist in the graph
+            // The vertex may already exist in the graph if the graph contains a loop
             Vertex* pY = pGraph->getVertex(vertexID);
-            assert(pY == NULL);
 
             // Generate the new vertex
-            pY = new(pGraph->getVertexAllocator()) Vertex(vertexID, vertexSeq);
-            pGraph->addVertex(pY);
+            if(pY == NULL)
+            {
+                pY = new(pGraph->getVertexAllocator()) Vertex(vertexID, vertexSeq);
+                pGraph->addVertex(pY);
+            }
 
-            // Construct the found edge and add it to the graph
-            Edge* pXY = SGAlgorithms::createEdgesFromOverlap(pGraph, o, false);
+            // Construct a description of the edge based on the overlap
+            EdgeDesc ed = SGAlgorithms::overlapToEdgeDesc(pY, ovrXY);
 
-            // Add the new vertex as a candidate
-            FMMergeCandidate candidate;
-            candidate.pVertex = pY;
-            candidate.pEdge = pXY;
-            candidate.interval = iter->getCanonicalInterval();
-            candidateQueue.push(candidate);
+            // If an edge with the same description as XY exists for X do not add a new edge or candidate
+            if(!pX->hasEdge(ed))
+            {
+                // Construct the found edge and add it to the graph
+                Edge* pXY = SGAlgorithms::createEdgesFromOverlap(pGraph, ovrXY, false);
+
+                // Add the new vertex as a candidate
+                FMMergeCandidate candidate;
+                candidate.pVertex = pY;
+                candidate.pEdge = pXY;
+                candidate.interval = iter->getCanonicalInterval();
+                candidateQueue.push(candidate);
+            }
         }
     }
 }
 
 //
-FMMergePostProcess::FMMergePostProcess(std::ostream* pWriter, BitVector* pMarkedReads) : m_pWriter(pWriter), m_pMarkedReads(pMarkedReads)
+FMMergePostProcess::FMMergePostProcess(std::ostream* pWriter, BitVector* pMarkedReads) : m_numMerged(0), 
+                                                                                          m_numTotal(0), 
+                                                                                          m_totalLength(0), 
+                                                                                          m_pWriter(pWriter), 
+                                                                                          m_pMarkedReads(pMarkedReads)
 {
 
+}
+
+//
+FMMergePostProcess::~FMMergePostProcess()
+{
+    printf("[sga fm-merge] Merged %zu reads into %zu sequences\n", m_numTotal, m_numMerged);
+    printf("[sga fm-merge] Mean merged size: %lf\n", (double)m_totalLength / m_numMerged);
 }
 
 //
@@ -206,15 +243,27 @@ void FMMergePostProcess::process(const SequenceWorkItem& item, const FMMergeResu
     (void)item;
     (void)result;
 
-    std::cout << "Assembled strings:\n";
-    std::copy(result.usedSequences.begin(), result.usedSequences.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
+    m_numTotal += 1;
 
-    // Set a bit mask for the indicated values
-    for(std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();
-           iter != result.usedIntervals.end(); ++iter)
+    WARN_ONCE("check for collisions");
+    if(result.isMerged)
     {
-        for(int64_t i = iter->lower; i <= iter->upper; ++i)
-            m_pMarkedReads->set(i, true);
-    }
+        // Write out the merged sequence
+        std::stringstream nameSS;
+        nameSS << "merged-" << m_numMerged++;
+        SeqRecord record;
+        record.id = nameSS.str();
+        record.seq = result.mergedSequence;
+        record.write(*m_pWriter);
 
+        m_totalLength += result.mergedSequence.size();
+
+        // Set a bit mask for the indicated values
+        for(std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();
+               iter != result.usedIntervals.end(); ++iter)
+        {
+            for(int64_t i = iter->lower; i <= iter->upper; ++i)
+                m_pMarkedReads->set(i, true);
+        }
+    }
 }

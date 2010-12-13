@@ -251,11 +251,9 @@ void Bigraph::simplify()
 // Simplify the graph by compacting edges in the given direction
 void Bigraph::simplify(EdgeDir dir)
 {
-    Timer* pTimer = new Timer("Bigraph::simplify");
     bool graph_changed = true;
     while(graph_changed)
     {
-        int proc_count = 0;
         graph_changed = false;
         VertexPtrMapIter iter = m_vertices.begin(); 
         while(iter != m_vertices.end())
@@ -278,15 +276,9 @@ void Bigraph::simplify(EdgeDir dir)
                 }
             }
 
-            if(proc_count++ % 200000 == 0)
-            {
-                //printf("processed_count\t%d\tsimplify_time\t%lf\n", proc_count, pTimer->getElapsedWallTime());
-                pTimer->reset();
-            }
             ++iter;
         }
     } 
-    delete pTimer;
 }
 
 //
@@ -479,6 +471,15 @@ Path Bigraph::reversePath(const Path& path)
 }
 
 //
+Vertex* Bigraph::getFirstVertex() const
+{
+    if(m_vertices.empty())
+        return NULL;
+    else
+        return m_vertices.begin()->second;
+}
+
+//
 // Visit each vertex and call the function pointer
 // The function returns TRUE if it modifies the graph
 //
@@ -609,6 +610,14 @@ void Bigraph::stats() const
     }
 
     std::cout << "Graph has " << numVerts << " vertices and " << numEdges << " edges\n";
+}
+
+//
+//
+//
+size_t Bigraph::getNumVertices() const
+{
+    return m_vertices.size();
 }
 
 //
