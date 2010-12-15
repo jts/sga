@@ -22,12 +22,14 @@
 // using the disk storage algorithm
 void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
                   const std::string& bwt_extension, const std::string& sai_extension,
-                  bool doReverse, int numThreads, int numReadsPerBatch, int storageLevel);
+                  bool doReverse, int numThreads, int numReadsPerBatch, int storageLevel,
+                  int smallSampleRate);
 
 // Merge the indices for the readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
                              const std::string& outPrefix, const std::string& bwt_extension, 
-                             const std::string& sai_extension, bool doReverse, int numThreads, int storageLevel);
+                             const std::string& sai_extension, bool doReverse, int numThreads, 
+                             int storageLevel, int smallSampleRate);
 
 // Compute new indices from allReadsFile without the reads in readsToRemove
 void removeReadsFromIndices(const std::string& allReadsFile, const std::string& readsToRemove,

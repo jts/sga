@@ -49,7 +49,7 @@ class SuffixArray
         void write(const std::string& filename);
 
         // Write the BWT directly to disk
-        void writeBWT(const std::string& filename, const ReadTable* pRT);
+        void writeBWT(const std::string& filename, const ReadTable* pRT, int smallSampleRate);
 
         // Output the suffix array index
         // The suffix array index are the full-length suffixes (the entire string)

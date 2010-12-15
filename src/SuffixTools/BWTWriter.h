@@ -32,7 +32,7 @@ class IBWTWriter
 
 namespace BWTWriter
 {
-    IBWTWriter* createWriter(const std::string& filename);
+    IBWTWriter* createWriter(const std::string& filename, int smallSampleRate);
 }
 
 #endif

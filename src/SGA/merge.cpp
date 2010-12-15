@@ -37,6 +37,9 @@ static const char *MERGE_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "  -t, --threads=NUM                    use NUM threads to merge the indices (default: 1)\n"
 "  -p, --prefix=PREFIX                  write final index to files starting with PREFIX (the default is to concatenate the input filenames)\n"
+"  -s, --sample-rate=NUM                use NUM as the small marker sample rate when building the FM-index\n"
+"                                       this must be a power of 2, a large value requires less memory at the cost of higher running time\n"
+"                                       for subsequent fm-index operations (default: 128)\n"
 "  -r, --remove                         remove the original BWT, SAI and reads files after the merge\n"
 "  -g, --gap-array=N                    use N bits of storage for each element of the gap array. Acceptable values are 4,8,16 or 32. Lower\n"
 "                                       values can substantially reduce the amount of memory required at the cost of less predictable memory usage.\n"
@@ -50,11 +53,12 @@ namespace opt
     static unsigned int verbose;
     static std::string prefix;
     static int numThreads = 1;
+    static int smallSampleRate = RLBWT::DEFAULT_SAMPLE_RATE_SMALL;
     static bool bRemove;
     static int gapArrayStorage = 8;
 }
 
-static const char* shortopts = "p:m:t:g:vr";
+static const char* shortopts = "p:m:t:g:s:vr";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -64,6 +68,7 @@ static const struct option longopts[] = {
     { "remove",      no_argument,       NULL, 'r' },
     { "threads",     required_argument, NULL, 't' },
     { "gap-array",   required_argument, NULL, 'g' },
+    { "sample-rate", required_argument, NULL, 's' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -92,8 +97,8 @@ int mergeMain(int argc, char** argv)
     }
 
     // Merge the forward and reverse indices
-    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
-    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
+    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage, opt::smallSampleRate);
+    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage, opt::smallSampleRate);
 
     // Merge the read files
     mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
@@ -138,6 +143,7 @@ void parseMergeOptions(int argc, char** argv)
             case 'p': arg >> opt::prefix; break;
             case 'r': opt::bRemove = true; break;
             case '?': die = true; break;
+            case 's': arg >> opt::smallSampleRate; break;
             case 't': arg >> opt::numThreads; break;
             case 'g': arg >> opt::gapArrayStorage; break;
             case 'v': opt::verbose++; break;
@@ -162,6 +168,13 @@ void parseMergeOptions(int argc, char** argv)
         std::cerr << SUBPROGRAM ": invalid number of threads: " << opt::numThreads << "\n";
         die = true;
     }    
+
+    if(!IS_POWER_OF_2(opt::smallSampleRate))
+    {
+        std::cerr << SUBPROGRAM ": error the small sample rate must be a power of 2\n";
+        std::cerr << SUBPROGRAM ": got " << opt::smallSampleRate << "\n";
+        die = true;
+    }
 
     if (argc - optind < 1) 
     {

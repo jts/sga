@@ -11,7 +11,12 @@
 #include "RLBWT.h"
 
 //
-BWTWriterBinary::BWTWriterBinary(const std::string& filename) : m_filename(filename), m_numRuns(0), m_headerFileOffset(0), m_stage(IOS_NONE)
+BWTWriterBinary::BWTWriterBinary(const std::string& filename, 
+                                 int smallSampleRate) : m_smallSampleRate(smallSampleRate),
+                                                          m_filename(filename), 
+                                                          m_numRuns(0), 
+                                                          m_headerFileOffset(0), 
+                                                          m_stage(IOS_NONE)
 {
     m_pWriter = createWriter(m_filename, std::ios::out | std::ios::binary);
     m_stage = IOS_HEADER;
@@ -28,8 +33,7 @@ BWTWriterBinary::~BWTWriterBinary()
 void BWTWriterBinary::writeHeader(const size_t& num_strings, const size_t& num_symbols, const BWFlag& flag)
 {
     size_t largeSampleRate = RLBWT::DEFAULT_SAMPLE_RATE_LARGE;
-    size_t smallSampleRate = RLBWT::DEFAULT_SAMPLE_RATE_SMALL;
-    m_compressor.initialize(m_filename, largeSampleRate, smallSampleRate, num_symbols);
+    m_compressor.initialize(m_filename, largeSampleRate, m_smallSampleRate, num_symbols);
 
     assert(m_stage == IOS_HEADER);
     m_pWriter->write(reinterpret_cast<const char*>(&RLBWT_FILE_MAGIC), sizeof(RLBWT_FILE_MAGIC));
@@ -38,7 +42,7 @@ void BWTWriterBinary::writeHeader(const size_t& num_strings, const size_t& num_s
 
     // Write the sample rates
     m_pWriter->write(reinterpret_cast<const char*>(&largeSampleRate), sizeof(largeSampleRate));
-    m_pWriter->write(reinterpret_cast<const char*>(&smallSampleRate), sizeof(smallSampleRate));
+    m_pWriter->write(reinterpret_cast<const char*>(&m_smallSampleRate), sizeof(m_smallSampleRate));
 
     // Here we do not know the number of units or the number of markers that are going to be written to the file.
     // We save the offset of this position in the file so we can return later to write in these values.

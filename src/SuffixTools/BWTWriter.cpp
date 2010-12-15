@@ -32,7 +32,7 @@ void IBWTWriter::write(const SuffixArray* pSA, const ReadTable* pRT)
 }
 
 //
-IBWTWriter* BWTWriter::createWriter(const std::string& filename)
+IBWTWriter* BWTWriter::createWriter(const std::string& filename, int smallSampleRate)
 {
-    return new BWTWriterBinary(filename);
+    return new BWTWriterBinary(filename, smallSampleRate);
 }
