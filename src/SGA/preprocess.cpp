@@ -42,6 +42,7 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "      -p, --pe-mode=INT                0 - do not treat reads as paired (default)\n"
 "                                       1 - reads are paired with the first read in READS1 and the second\n"
 "                                       read in READS2. The paired reads will be interleaved in the output file\n"
+"                                       2 - reads are paired and the records are interleaved within a single file.\n"
 "      -q, --quality-trim=INT           perform Heng Li's BWA quality trim algorithm. \n"
 "                                       Reads are trimmed according to the formula:\n"
 "                                       argmax_x{\\sum_{i=x+1}^l(INT-q_i)} if q_l<INT\n"
@@ -115,6 +116,7 @@ static int64_t s_numReadsKept = 0;
 static int64_t s_numBasesRead = 0;
 static int64_t s_numBasesKept = 0;
 static int64_t s_numReadsPrimer = 0;
+static int64_t s_numInvalidPE = 0;
 
 //
 // Main
@@ -182,9 +184,9 @@ int preprocessMain(int argc, char** argv)
     }
     else
     {
-        assert(opt::peMode == 1);
+        assert(opt::peMode == 1 || opt::peMode == 2);
         int numFiles = argc - optind;
-        if(numFiles % 2 == 1)
+        if(opt::peMode == 1 && numFiles % 2 == 1)
         {
             std::cerr << "Error: An even number of files must be given for pe-mode 1\n";
             exit(EXIT_FAILURE);
@@ -192,16 +194,33 @@ int preprocessMain(int argc, char** argv)
 
         while(optind < argc)
         {
-            std::string filename1 = argv[optind++];
-            std::string filename2 = argv[optind++];
-            
-            SeqReader reader1(filename1, SRF_NO_VALIDATION);
-            SeqReader reader2(filename2, SRF_NO_VALIDATION);
+            SeqReader* pReader1;
+            SeqReader* pReader2;
 
-            std::cerr << "Processing pe files " << filename1 << ", " << filename2 << "\n";
+            if(opt::peMode == 1)
+            {
+                // Read from separate files
+                std::string filename1 = argv[optind++];
+                std::string filename2 = argv[optind++];
+            
+                pReader1 = new SeqReader(filename1, SRF_NO_VALIDATION);
+                pReader2 = new SeqReader(filename2, SRF_NO_VALIDATION);
+
+                std::cerr << "Processing pe files " << filename1 << ", " << filename2 << "\n";
+
+            }
+            else
+            {
+                // Read from a single file
+                std::string filename = argv[optind++];
+                pReader1 = new SeqReader(filename, SRF_NO_VALIDATION);
+                pReader2 = pReader1;
+                std::cerr << "Processing interleaved pe file " << filename << "\n";
+            }
+
             SeqRecord record1;
             SeqRecord record2;
-            while(reader1.get(record1) && reader2.get(record2))
+            while(pReader1->get(record1) && pReader2->get(record2))
             {
                 // Ensure the read names are sensible
                 std::string expectedID2 = getPairID(record1.id);
@@ -210,6 +229,9 @@ int preprocessMain(int argc, char** argv)
                 if(expectedID1 != record1.id || expectedID2 != record2.id)
                 {
                     std::cerr << "Warning: Pair IDs do not match (expected format /1,/2 or /A,/B)\n";
+                    std::cerr << "Read1 ID: " << record1.id << "\n";
+                    std::cerr << "Read2 ID: " << record2.id << "\n";
+                    s_numInvalidPE += 2;
                 }
 
                 bool passed1 = processRead(record1);
@@ -224,7 +246,18 @@ int preprocessMain(int argc, char** argv)
                     s_numBasesKept += record2.seq.length();
                 }
             }
+
+            if(pReader2 != pReader1)
+            {
+                // only delete reader2 if it is a distinct pointer
+                delete pReader2;
+                pReader2 = NULL;
+            }
+            delete pReader1;
+            pReader1 = NULL;
+
         }
+
     }
 
     if(pWriter != &std::cout)
@@ -236,6 +269,7 @@ int preprocessMain(int argc, char** argv)
     std::cerr << "Reads failed primer screen:\t" << s_numReadsPrimer << " (" << (double)s_numReadsPrimer / (double)s_numReadsRead << ")\n";
     std::cerr << "Bases parsed:\t" << s_numBasesRead << "\n";
     std::cerr << "Bases kept:\t" << s_numBasesKept << " (" << (double)s_numBasesKept / (double)s_numBasesRead << ")\n"; 
+    std::cerr << "Number of incorrectly paired reads that were discarded: " << s_numInvalidPE << "\n"; 
     delete pTimer;
     return 0;
 }
@@ -466,9 +500,9 @@ void parsePreprocessOptions(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    if(opt::peMode > 1)
+    if(opt::peMode > 2)
     {
-        std::cerr << SUBPROGRAM ": error pe-mode must be 0 or 1 (found: " << opt::peMode << ")\n";
+        std::cerr << SUBPROGRAM ": error pe-mode must be 0,1 or 2 (found: " << opt::peMode << ")\n";
         exit(EXIT_FAILURE);
     }
 
