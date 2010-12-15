@@ -207,7 +207,8 @@ std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
                 //  the read at this position)
                 // b) the root read base is one of the two most frequent bases 
                 //  (to filter out sequencing errors at this position in the root).
-                if(b != '\0' && (rootBase == sorted[0] || rootBase == sorted[1]))
+                int rootCount = acVec[i].get(rootBase);
+                if(b != '\0' && rootCount > conflictCutoff)
                 {
                     if(b == rootBase)
                         ++numMatch;
