@@ -28,11 +28,13 @@ class BWTCompressor
         BWTCompressor();
         ~BWTCompressor();
 
-        void initialize(size_t largeSampleRate, size_t smallSampleRate, size_t numSymbols);
+        void initialize(const std::string& filename, size_t largeSampleRate, 
+                        size_t smallSampleRate, size_t numSymbols);
 
         void writeSymbol(char symbol, std::ostream* pWriter);
         void flush(std::ostream* pWriter);
-        void writeMarkers();
+        void writeLargeMarkers(std::ostream* pWriter);
+        void writeSmallMarkers(std::ostream* pWriter);
 
         size_t getNumBytesWrote() const;
         size_t getNumSymbolsWrote() const;
@@ -43,9 +45,9 @@ class BWTCompressor
         
     private:
 
-        // Append markers to the stream and return
-        // the last small marker
-        SmallMarker& appendMarkers();
+        void buildMarkers();
+        void binaryFileCopy(std::istream* pReader, std::ostream* pWriter, 
+                            size_t numBytes, size_t unitSize);
 
         size_t m_largeSampleRate;
         size_t m_smallSampleRate;
@@ -60,8 +62,20 @@ class BWTCompressor
         //
         HuffmanTreeCodec<int> m_rlEncoder;
 
-        LargeMarkerVector m_largeMarkers;
-        SmallMarkerVector m_smallMarkers;
+        // The Large/Small markers are written to temporary
+        // files then copied to the bwt file
+        std::string m_tempLargeFilename;
+        std::string m_tempSmallFilename;
+
+        std::ostream* m_pTempLargeMarkerWriter;
+        std::ostream* m_pTempSmallMarkerWriter;
+
+        // The last large/small marker that were written out
+        SmallMarker m_prevSmallMarker;
+        LargeMarker m_prevLargeMarker;
+
+        size_t m_numSmallMarkersWrote;
+        size_t m_numLargeMarkersWrote;
 };
 
 #endif

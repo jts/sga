@@ -35,6 +35,7 @@ class BWTWriterBinary : public IBWTWriter
     private:
 
         std::ostream* m_pWriter;
+        std::string m_filename;
         size_t m_numRuns;
         std::streampos m_headerFileOffset;
         std::streampos m_largeMarkerOffset;

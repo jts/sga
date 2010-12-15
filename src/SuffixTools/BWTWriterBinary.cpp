@@ -11,9 +11,9 @@
 #include "RLBWT.h"
 
 //
-BWTWriterBinary::BWTWriterBinary(const std::string& filename) : m_numRuns(0), m_headerFileOffset(0), m_stage(IOS_NONE)
+BWTWriterBinary::BWTWriterBinary(const std::string& filename) : m_filename(filename), m_numRuns(0), m_headerFileOffset(0), m_stage(IOS_NONE)
 {
-    m_pWriter = createWriter(filename, std::ios::out | std::ios::binary);
+    m_pWriter = createWriter(m_filename, std::ios::out | std::ios::binary);
     m_stage = IOS_HEADER;
 }
 
@@ -29,7 +29,7 @@ void BWTWriterBinary::writeHeader(const size_t& num_strings, const size_t& num_s
 {
     size_t largeSampleRate = RLBWT::DEFAULT_SAMPLE_RATE_LARGE;
     size_t smallSampleRate = RLBWT::DEFAULT_SAMPLE_RATE_SMALL;
-    m_compressor.initialize(largeSampleRate, smallSampleRate, num_symbols);
+    m_compressor.initialize(m_filename, largeSampleRate, smallSampleRate, num_symbols);
 
     assert(m_stage == IOS_HEADER);
     m_pWriter->write(reinterpret_cast<const char*>(&RLBWT_FILE_MAGIC), sizeof(RLBWT_FILE_MAGIC));
@@ -70,21 +70,11 @@ void BWTWriterBinary::finalize()
     m_compressor.flush(m_pWriter);
 
     // Write out the large and small markers
-    const LargeMarkerVector& largeMarkers = m_compressor.getLargeMarkerVector();
-    size_t numLargeMarkers = largeMarkers.size();
-
     size_t largeMarkersStart = m_pWriter->tellp();
-    m_pWriter->write(reinterpret_cast<const char*>(&numLargeMarkers), sizeof(numLargeMarkers));
-    for(size_t i =  0; i < numLargeMarkers; ++i)
-        m_pWriter->write(reinterpret_cast<const char*>(&largeMarkers[i]), sizeof(LargeMarker));
-
-    const SmallMarkerVector& smallMarkers = m_compressor.getSmallMarkerVector();
-    size_t numSmallMarkers = smallMarkers.size();
+    m_compressor.writeLargeMarkers(m_pWriter);
 
     size_t smallMarkersStart = m_pWriter->tellp();
-    m_pWriter->write(reinterpret_cast<const char*>(&numSmallMarkers), sizeof(numSmallMarkers));
-    for(size_t i =  0; i < numSmallMarkers; ++i)
-        m_pWriter->write(reinterpret_cast<const char*>(&smallMarkers[i]), sizeof(SmallMarker));
+    m_compressor.writeSmallMarkers(m_pWriter);
 
     // Write out the Pred array
     AlphaCount64 finalCounts = m_compressor.getRunningCount();
