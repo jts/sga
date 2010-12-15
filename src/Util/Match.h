@@ -104,6 +104,7 @@ struct Overlap
     size_t getContainedIdx() const;
     std::string getContainedID() const;
 
+    //
     int getOverlapLength(size_t idx) const;
 
     friend std::ostream& operator<<(std::ostream& out, const Overlap& o);

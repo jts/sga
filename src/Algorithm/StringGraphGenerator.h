@@ -51,9 +51,6 @@ class StringGraphGenerator
         
         Vertex* addTerminalVertex(const SeqRecord& record);
         void resetContainmentFlags(Vertex* pVertex);
-
-        //
-        std::string overlapBlockToCanonicalID(OverlapBlock& block);
         
         // Data
         const OverlapAlgorithm* m_pOverlapper;

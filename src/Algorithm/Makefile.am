@@ -21,4 +21,5 @@ libalgorithm_a_SOURCES = \
 		DPAlignment.h DPAlignment.cpp \
         ConnectProcess.h ConnectProcess.cpp \
         StringGraphGenerator.h StringGraphGenerator.cpp \
+        FMMergeProcess.h FMMergeProcess.cpp \
         StatsProcess.h StatsProcess.cpp

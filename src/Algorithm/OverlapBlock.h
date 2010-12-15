@@ -92,14 +92,14 @@ struct OverlapBlock
     // Returns the string that corresponds to this overlap block.
     // This is constructed by transforming the original string using the back
     // history while correcting for the reverse-complement searches
-    std::string getOverlapString(const std::string& original);
+    std::string getOverlapString(const std::string& original) const;
 
     // Get the full string that is indicated by this overlap
     // The overlap cannot be a containment and it must have a 
     // forward extension history. The returned string is the string
     // of the actual read that forms the overlap with original. In other words
     // it might not be the same strand as the original read.
-    std::string getFullString(const std::string& original);
+    std::string getFullString(const std::string& original) const;
 
     // Return a pointer to the BWT that should be used to extend the block
     // this is the opposite BWT that was used in the backwards search
@@ -114,11 +114,18 @@ struct OverlapBlock
     // reference for the original read
     int getCanonicalIntervalIndex() const;
 
+    // Return the canonical interval.
+    BWTInterval getCanonicalInterval() const;
+
     // Return the direction of the edge that this overlap block describes
     EdgeDir getEdgeDir() const;
 
     // Construct an overlap record from this overlap block
     Overlap toOverlap(const std::string queryID, const std::string targetID, int queryLen, int targetLen) const;
+
+    // Construct an ID string describing this overlap block
+    std::string toCanonicalID() const;
+
 
     // Comparison operator, compare by lower coordinate of 0 
     friend bool operator<(const OverlapBlock& a, const OverlapBlock& b)
@@ -167,6 +174,9 @@ typedef OverlapBlockList::iterator OBLIter;
 
 // Global Functions
 
+
+void printBlockList(const OverlapBlockList* pList);
+
 // Ensure all the overlap blocks in the list are distinct
 void removeSubMaximalBlocks(OverlapBlockList* pList);
 
@@ -178,6 +188,9 @@ OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B);
 void partitionBlockList(int readLen, OverlapBlockList* pCompleteList, 
                         OverlapBlockList* pOverlapList, 
                         OverlapBlockList* pContainList);
+
+// Remove containment blocks from the list
+void removeContainmentBlocks(int readLen, OverlapBlockList* pList);
 
 // Convert an overlap block list into a multiple overlap
 MultiOverlap blockListToMultiOverlap(const SeqRecord& record, OverlapBlockList& blockList);

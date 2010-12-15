@@ -106,10 +106,16 @@ class Bigraph
         // Reverse a path
         static Path reversePath(const Path& path);
 
+        // Returns an iterator to the first vertex in the graph.
+        // If the graph is empty, a null pointer is returned
+        Vertex* getFirstVertex() const;
+
         // Print simple summary statistics to stdout
         void stats() const;
         void printMemSize() const;
-        
+
+        size_t getNumVertices() const;
+
         // Visit each vertex in the graph and perform the visit function
         bool visit(VertexVisitFunction f);
 

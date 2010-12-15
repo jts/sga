@@ -52,9 +52,15 @@ int OverlapBlock::getCanonicalIntervalIndex() const
         return 1;
 }
 
+//
+BWTInterval OverlapBlock::getCanonicalInterval() const
+{
+    return ranges.interval[getCanonicalIntervalIndex()];
+}
+
 // Get the string corresponding to the overlap block. This is the string found
 // during the backwards search
-std::string OverlapBlock::getOverlapString(const std::string& original)
+std::string OverlapBlock::getOverlapString(const std::string& original) const
 {
     std::string transformed = backHistory.transform(original, flags.isQueryRev());
     // If the query was reversed, we take the first overlapLen (the search
@@ -66,7 +72,7 @@ std::string OverlapBlock::getOverlapString(const std::string& original)
 }
 
 // Get the full string corresponding to this overlapblock using the forward history
-std::string OverlapBlock::getFullString(const std::string& original)
+std::string OverlapBlock::getFullString(const std::string& original) const
 {
     std::string str = getOverlapString(original);
     std::string history = forwardHistory.getBaseString();
@@ -129,9 +135,19 @@ Overlap OverlapBlock::toOverlap(const std::string queryID, const std::string tar
 }
 
 //
-void printList(OverlapBlockList* pList)
+std::string OverlapBlock::toCanonicalID() const
 {
-    for(OverlapBlockList::iterator i = pList->begin(); i != pList->end(); ++i)
+    std::stringstream ss;
+    int ci = getCanonicalIntervalIndex();
+    ss << "IDX-" << ranges.interval[ci].lower;
+    return ss.str();
+}
+
+
+//
+void printBlockList(const OverlapBlockList* pList)
+{
+    for(OverlapBlockList::const_iterator i = pList->begin(); i != pList->end(); ++i)
     {
         std::cout << "Block: " << *i << "\n";
     }
@@ -321,6 +337,19 @@ void partitionBlockList(int readLen, OverlapBlockList* pCompleteList,
         else
             pOverlapList->splice(pOverlapList->end(), *pCompleteList, iter++);
     }
+}
+
+// Filter out full-length (containment) overlaps from the block list
+void removeContainmentBlocks(int readLen, OverlapBlockList* pList)
+{
+    OverlapBlockList::iterator iter = pList->begin();
+    while(iter != pList->end())
+    {
+        if(iter->overlapLen == readLen)
+            iter = pList->erase(iter);
+        else
+            ++iter;
+    }    
 }
 
 // 
