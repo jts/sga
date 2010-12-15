@@ -44,13 +44,14 @@ typedef std::vector<MergeItem> MergeVector;
 int64_t merge(SeqReader* pReader, 
               const MergeItem& item1, const MergeItem& item2, 
               const std::string& bwt_outname, const std::string& sai_outname,
-              bool doReverse, int numThreads, int storageLevel);
+              bool doReverse, int numThreads, int storageLevel, int smallSampleRate);
 
 
 //
 void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
                       const MergeItem& internalItem, const std::string& bwt_outname,
-                      const std::string& sai_outname, const GapArray* pGapArray);
+                      const std::string& sai_outname, const GapArray* pGapArray,
+                      int smallSampleRate);
 
 void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
                        const std::string& bwt_outname, const std::string& sai_outname, 
@@ -72,7 +73,8 @@ std::string makeFilename(const std::string& prefix, const std::string& extension
 // to create the final BWT
 void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
                   const std::string& bwt_extension, const std::string& sai_extension,
-                  bool doReverse, int numThreads, int numReadsPerBatch, int storageLevel)
+                  bool doReverse, int numThreads, int numReadsPerBatch, int storageLevel,
+                  int smallSampleRate)
 {
     size_t MAX_READS_PER_GROUP = numReadsPerBatch;
 
@@ -110,7 +112,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 
             // Write the BWT to disk                
             std::string bwt_temp_filename = makeTempName(out_prefix, groupID, bwt_extension);
-            pSA->writeBWT(bwt_temp_filename, pCurrRT);
+            pSA->writeBWT(bwt_temp_filename, pCurrRT, smallSampleRate);
 
             std::string sai_temp_filename = makeTempName(out_prefix, groupID, sai_extension);
             pSA->writeIndex(sai_temp_filename);
@@ -154,7 +156,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
                 // Perform the actual merge
                 int64_t curr_idx = merge(pReader, item1, item2, 
                                          bwt_merged_name, sai_merged_name, 
-                                         doReverse, numThreads, storageLevel);
+                                         doReverse, numThreads, storageLevel, smallSampleRate);
 
                 // pReader now points to the end of item1's block of 
                 // reads. Skip item2's reads
@@ -211,7 +213,8 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 // Merge the indices for the two independent sets of reads in readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 
                              const std::string& outPrefix, const std::string& bwt_extension, 
-                             const std::string& sai_extension, bool doReverse, int numThreads, int storageLevel)
+                             const std::string& sai_extension, bool doReverse, int numThreads, 
+                             int storageLevel, int smallSampleRate)
 {
     MergeItem item1;
     std::string prefix1 = stripFilename(readsFile1);
@@ -237,7 +240,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     std::string sai_merged_name = makeFilename(outPrefix, sai_extension);
 
     // Perform the actual merge
-    merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse, numThreads, storageLevel);
+    merge(pReader, item1, item2, bwt_merged_name, sai_merged_name, doReverse, numThreads, storageLevel, smallSampleRate);
     delete pReader;
 }
 
@@ -358,7 +361,8 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
 int64_t merge(SeqReader* pReader,
               const MergeItem& item1, const MergeItem& item2,
               const std::string& bwt_outname, const std::string& sai_outname,
-              bool doReverse, int numThreads, int storageLevel)
+              bool doReverse, int numThreads, int storageLevel, 
+              int smallSampleRate)
 {
     std::cout << "Merge1: " << item1 << "\n";
     std::cout << "Merge2: " << item2 << "\n";
@@ -388,7 +392,7 @@ int64_t merge(SeqReader* pReader,
     assert(item1.end_index == -1 || (curr_idx == item1.end_index + 1 && curr_idx == item2.start_index));
 
     // Write the merged BWT/SAI to disk
-    writeMergedIndex(pBWTInternal, item1, item2, bwt_outname, sai_outname, pGapArray);
+    writeMergedIndex(pBWTInternal, item1, item2, bwt_outname, sai_outname, pGapArray, smallSampleRate);
 
     delete pBWTInternal;
     delete pGapArray;
@@ -398,9 +402,10 @@ int64_t merge(SeqReader* pReader,
 // Merge the internal and external BWTs and the SAIs
 void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
                       const MergeItem& internalItem, const std::string& bwt_outname,
-                      const std::string& sai_outname, const GapArray* pGapArray)
+                      const std::string& sai_outname, const GapArray* pGapArray,
+                      int smallSampleRate)
 {
-    IBWTWriter* pBWTWriter = BWTWriter::createWriter(bwt_outname);
+    IBWTWriter* pBWTWriter = BWTWriter::createWriter(bwt_outname, smallSampleRate);
     IBWTReader* pBWTExtReader = BWTReader::createReader(externalItem.bwt_filename);
     
     SAWriter saiWriter(sai_outname);
@@ -499,7 +504,7 @@ void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
                        size_t num_strings_remove, size_t num_symbols_remove,
                        const GapArray* pGapArray)
 {
-    IBWTWriter* pBWTWriter = BWTWriter::createWriter(bwt_outname);
+    IBWTWriter* pBWTWriter = BWTWriter::createWriter(bwt_outname, pBWTInternal->getSmallSampleRate());
     
     SAWriter* pSAIWriter = new SAWriter(sai_outname);
     SAReader* pSAIReader = new SAReader(sai_inname);

@@ -38,6 +38,9 @@ static const char *INDEX_USAGE_MESSAGE =
 "  -d, --disk=NUM                       use disk-based BWT construction algorithm. The suffix array/BWT will be constructed\n"
 "                                       for batchs of NUM reads at a time. To construct the suffix array of 200 megabases of sequence\n"
 "                                       requires ~2GB of memory, set this parameter accordingly.\n"
+"  -s, --sample-rate=NUM                use NUM as the small marker sample rate when building the FM-index\n"
+"                                       this must be a power of 2, a large value requires less memory at the cost of higher running time\n"
+"                                       for subsequent fm-index operations (default: 128)\n"
 "  -t, --threads=NUM                    use NUM threads to construct the index (default: 1)\n"
 "  -c, --check                          validate that the suffix array/bwt is correct\n"
 "  -p, --prefix=PREFIX                  write index to file using PREFIX instead of prefix of READSFILE\n"
@@ -53,6 +56,7 @@ namespace opt
     static unsigned int verbose;
     static std::string readsFile;
     static std::string prefix;
+    static int smallSampleRate = RLBWT::DEFAULT_SAMPLE_RATE_SMALL;
     static int numReadsPerBatch = 2000000;
     static int numThreads = 1;
     static bool bDiskAlgo = false;
@@ -60,7 +64,7 @@ namespace opt
     static int gapArrayStorage = 8;
 }
 
-static const char* shortopts = "p:m:t:d:g:cv";
+static const char* shortopts = "p:m:t:d:g:s:cv";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -71,6 +75,7 @@ static const struct option longopts[] = {
     { "threads",     required_argument, NULL, 't' },
     { "disk",        required_argument, NULL, 'd' },
     { "gap-array",   required_argument, NULL, 'g' },
+    { "sample-rate", required_argument, NULL, 's' },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -111,8 +116,8 @@ void indexInMemory()
 void indexOnDisk()
 {
     std::cout << "Building index for " << opt::readsFile << " on disk\n";
-    buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
-    buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
+    buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage, opt::smallSampleRate);
+    buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage, opt::smallSampleRate);
 }
 
 //
@@ -128,7 +133,7 @@ void buildIndexForTable(std::string prefix, const ReadTable* pRT, bool isReverse
     }
 
     std::string bwt_filename = prefix + (!isReverse ? BWT_EXT : RBWT_EXT);
-    pSA->writeBWT(bwt_filename, pRT);
+    pSA->writeBWT(bwt_filename, pRT, opt::smallSampleRate);
 
     std::string sufidx_filename = prefix + (!isReverse ? SAI_EXT : RSAI_EXT);
     pSA->writeIndex(sufidx_filename);
@@ -154,6 +159,7 @@ void parseIndexOptions(int argc, char** argv)
             case 'd': opt::bDiskAlgo = true; arg >> opt::numReadsPerBatch; break;
             case 't': arg >> opt::numThreads; break;
             case 'g': arg >> opt::gapArrayStorage; break;
+            case 's': arg >> opt::smallSampleRate; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
                 std::cout << INDEX_USAGE_MESSAGE;
@@ -179,6 +185,13 @@ void parseIndexOptions(int argc, char** argv)
        opt::gapArrayStorage != 16 && opt::gapArrayStorage != 32)
     {
         std::cerr << SUBPROGRAM ": invalid argument, --gap-array,-g must be one of 4,8,16,32 (found: " << opt::gapArrayStorage << ")\n";
+        die = true;
+    }
+
+    if(!IS_POWER_OF_2(opt::smallSampleRate))
+    {
+        std::cerr << SUBPROGRAM ": error the small sample rate must be a power of 2\n";
+        std::cerr << SUBPROGRAM ": got " << opt::smallSampleRate << "\n";
         die = true;
     }
 

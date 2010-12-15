@@ -176,10 +176,10 @@ void SuffixArray::write(const std::string& filename)
 }
 
 // write the suffix array to a file
-void SuffixArray::writeBWT(const std::string& filename, const ReadTable* pRT)
+void SuffixArray::writeBWT(const std::string& filename, const ReadTable* pRT, int smallSampleRate)
 {
     //RLBWTWriter writer(filename);
-    IBWTWriter* pWriter = BWTWriter::createWriter(filename);
+    IBWTWriter* pWriter = BWTWriter::createWriter(filename, smallSampleRate);
     pWriter->write(this, pRT);
     delete pWriter;
 }

@@ -139,7 +139,7 @@ class RLBWT
         inline size_t getNumStrings() const { return m_numStrings; } 
         inline size_t getBWLen() const { return m_numSymbols; }
         inline size_t getNumRuns() const { return m_rlString.size(); }
-
+        inline size_t getSmallSampleRate() const { return m_smallSampleRate; }
         // Return the first letter of the suffix starting at idx
         inline char getF(size_t idx) const
         {
@@ -164,7 +164,7 @@ class RLBWT
         friend class BWTWriterAscii;
 
         // Default sample rates for the large (64-bit) and small (8-bit) occurrence markers
-        static const int DEFAULT_SAMPLE_RATE_LARGE = 8192;
+        static const int DEFAULT_SAMPLE_RATE_LARGE = 16384;
         static const int DEFAULT_SAMPLE_RATE_SMALL = 128;
 
     private:

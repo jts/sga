@@ -24,7 +24,7 @@ class RLBWT;
 class BWTWriterBinary : public IBWTWriter
 {
     public:
-        BWTWriterBinary(const std::string& filename);
+        BWTWriterBinary(const std::string& filename, int smallSampleRate);
         virtual ~BWTWriterBinary();
 
         // Write an RLBWT file directly from a suffix array and read table
@@ -35,6 +35,7 @@ class BWTWriterBinary : public IBWTWriter
     private:
 
         std::ostream* m_pWriter;
+        size_t m_smallSampleRate;
         std::string m_filename;
         size_t m_numRuns;
         std::streampos m_headerFileOffset;
