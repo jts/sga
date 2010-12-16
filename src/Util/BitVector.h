@@ -16,9 +16,11 @@ class BitVector
 {
     public:
     
+        BitVector();
         BitVector(size_t n);
         ~BitVector();
 
+        void resize(size_t n);
         void set(size_t i, bool v);
         bool test(size_t i) const;
 

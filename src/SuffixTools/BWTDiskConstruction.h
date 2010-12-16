@@ -32,7 +32,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
 // Compute new indices from allReadsFile without the reads in readsToRemove
 void removeReadsFromIndices(const std::string& allReadsFile, const std::string& readsToRemove,
                              const std::string& outPrefix, const std::string& bwt_extension, 
-                             const std::string& sai_extension, bool doReverse, int numThreads, int storageLevel);
+                             const std::string& sai_extension, bool doReverse, int numThreads);
 
 //
 void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2, const std::string& outPrefix);

@@ -23,6 +23,7 @@
 
 #include "HashMap.h"
 #include "GapArray.h"
+#include "BitVector.h"
 
 // Template base storage for the sparse gap array
 template<class IntType>
@@ -144,6 +145,56 @@ class SparseBaseStorage4
         size_t m_numElems;
 };
 
+// specialized 1-bit per value base storage for the sparse gap array
+// used for removing entries from an fm-index when the count
+// will not exceed 1.
+class SparseBaseStorage1
+{
+    public:
+
+        SparseBaseStorage1() : m_numElems(0) {}
+
+        //
+        void resize(size_t n)
+        {
+            m_numElems = n;
+            m_bitVector.resize(n);
+        }
+
+        //
+        inline void set(size_t i, uint8_t c)
+        {
+            assert(i < m_numElems);
+            assert(c <= getMax());
+
+            m_bitVector.set(i, true);
+        }
+
+        //
+        inline uint8_t get(size_t i) const
+        {
+            assert(i < m_numElems);
+            return m_bitVector.test(i) ? 1 : 0;
+        }
+
+        inline static size_t getMax()
+        {
+            return 1;
+        }
+
+        //
+        size_t size() const
+        {
+            return m_numElems;
+        }
+
+    private:
+        
+        //
+        BitVector m_bitVector;
+        size_t m_numElems;
+};
+
 template<class BaseStorage, class OverflowStorage>
 class SparseGapArray : public GapArray
 {
@@ -167,6 +218,11 @@ class SparseGapArray : public GapArray
             size_t count = m_baseStorage.get(i);
             if(count == getBaseMax())
             {
+                // Check if the overflow map has a value for this index already
+                // if not, enter one
+                if(m_overflow.count(i) == 0)
+                    initOverflow(i, count);
+
                 // Increment overflow
                 incrementOverflow(i);
             }
@@ -177,11 +233,6 @@ class SparseGapArray : public GapArray
                 // add it to the overlow map
                 ++count;
                 m_baseStorage.set(i, count);
-
-                if(count == getBaseMax())
-                {
-                    initOverflow(i, count);
-                }
             }
         }
 
@@ -206,8 +257,14 @@ class SparseGapArray : public GapArray
             if(count == getBaseMax())
             {
                 typename OverflowHash::const_iterator iter = m_overflow.find(i);
-                assert(iter != m_overflow.end());
-                return iter->second;
+
+                // If there is no entry in the overflow table yet
+                // the count is exactly the maximum value representable
+                // in the base storage
+                if(iter == m_overflow.end())
+                    return count;
+                else
+                    return iter->second;
             }
             else
             {
@@ -234,6 +291,7 @@ class SparseGapArray : public GapArray
         BaseStorage m_baseStorage;
 };
 
+typedef SparseGapArray<SparseBaseStorage1, size_t> SparseGapArray1;
 typedef SparseGapArray<SparseBaseStorage4, size_t> SparseGapArray4;
 typedef SparseGapArray<SparseBaseStorage<uint8_t>, size_t> SparseGapArray8;
 typedef SparseGapArray<SparseBaseStorage<uint16_t>, size_t> SparseGapArray16;

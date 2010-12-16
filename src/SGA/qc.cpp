@@ -69,7 +69,6 @@ namespace opt
     
     static int kmerLength = 27;
     static int kmerThreshold = 3;
-    static int gapArrayStorage = 4;
 }
 
 static const char* shortopts = "p:d:t:o:k:x:v";
@@ -144,8 +143,8 @@ int qcMain(int argc, char** argv)
 
     // Rebuild the FM-index without the discarded reads
     std::string out_prefix = stripFilename(opt::outFile);
-    removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
-    removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
+    removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
+    removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
 
     delete pBWT;
     delete pRBWT;

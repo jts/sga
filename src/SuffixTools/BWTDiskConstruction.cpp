@@ -244,7 +244,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
 // Construct new indices without the reads in readsToRemove
 void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string& readsToRemove,
                              const std::string& outPrefix, const std::string& bwt_extension, 
-                             const std::string& sai_extension, bool doReverse, int numThreads, int storageLevel)
+                             const std::string& sai_extension, bool doReverse, int numThreads)
 {
     std::string bwt_filename = makeFilename(allReadsPrefix, bwt_extension);
     std::string sai_filename = makeFilename(allReadsPrefix, sai_extension);
@@ -259,7 +259,8 @@ void removeReadsFromIndices(const std::string& allReadsPrefix, const std::string
     // Compute the gap array
     BWT* pBWT = new BWT(bwt_filename, BWT_SAMPLE_RATE);
 
-    GapArray* pGapArray = createGapArray(storageLevel);
+    // Boolean gap array
+    GapArray* pGapArray = createGapArray(1);
 
     size_t num_strings_remove;
     size_t num_symbols_remove;

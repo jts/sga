@@ -48,6 +48,8 @@ GapArray* createGapArray(int storage)
 {
     switch(storage)
     {
+        case 1:
+            return new SparseGapArray1;
         case 4:
             return new SparseGapArray4;
         case 8:

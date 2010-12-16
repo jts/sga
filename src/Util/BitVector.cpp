@@ -10,16 +10,28 @@
 #include <assert.h>
 
 //
+BitVector::BitVector()
+{
+
+}
+
+//
 BitVector::BitVector(size_t n)
 {
-    size_t num_bytes = (n % 8 == 0) ? n / 8 : (n / 8) + 1;
-    m_data.resize(num_bytes);
+    resize(n);
 }
 
 //
 BitVector::~BitVector()
 {
 
+}
+
+//
+void BitVector::resize(size_t n)
+{
+    size_t num_bytes = (n % 8 == 0) ? n / 8 : (n / 8) + 1;
+    m_data.resize(num_bytes);
 }
 
 // Set bit at position i to value v
