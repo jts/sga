@@ -9,4 +9,5 @@ libcompression_a_SOURCES = HuffmanTreeCodec.h \
 						   PackedTableDecoder.h \
                            StreamEncoding.h \
 						   HuffmanForest.h HuffmanForest.cpp \
-                           BWTCompressor.h BWTCompressor.cpp
+                           BWTCompressor.h BWTCompressor.cpp \
+                           RLE.h

@@ -228,13 +228,12 @@ void BWTReaderBinary::fillCompressedBuffer()
 }
 
 // Decompress the current buffer using the smallMarker
-void BWTReaderBinary::_decompressBuffer(const SmallMarker& smallMarker)
+void BWTReaderBinary::_decompressBuffer(const SmallMarker& /*smallMarker*/)
 {
     size_t numSymbolsToDecompress = std::min(m_numSymbolsTotal - m_decompressedTotal, m_smallSampleRate);
     StreamEncode::CharDequeDecode cdd(m_decompressedBuffer);
     size_t numBitsRead = 0;
-    size_t numSymbols = StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(smallMarker.encoderIdx), 
-                                                   m_rlDecodeTable, &m_compressedBuffer[0], (&m_compressedBuffer.back()) + 1, 
+    size_t numSymbols = StreamEncode::decodeStream(&m_compressedBuffer[0], (&m_compressedBuffer.back()) + 1, 
                                                    numSymbolsToDecompress, numBitsRead, cdd);
 
     assert(numSymbols == numSymbolsToDecompress);

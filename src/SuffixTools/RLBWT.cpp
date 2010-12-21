@@ -32,7 +32,7 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0),
 
     IBWTReader* pReader = BWTReader::createReader(filename);
     pReader->read(this);
-
+//    decodeToFile("test.bwt");
     //initializeFMIndex();
     delete pReader;
 }
@@ -200,11 +200,10 @@ void RLBWT::decodeToFile(const std::string& filename)
         }
 
         std::string outStr;
-        const CharPackedTableDecoder& symDecoder = HuffmanForest::Instance().getDecoder(decodeIdx);
         size_t startingUnitIndex = currLargeMarker.unitIndex;
         StreamEncode::StringDecode sd(outStr);
         size_t numBitsRead = 0;
-        size_t numDecoded = StreamEncode::decodeStream(symDecoder, m_rlDecodeTable, &m_rlString[startingUnitIndex], &m_rlString.back(), numToDecode, numBitsRead, sd);
+        size_t numDecoded = StreamEncode::decodeStream(&m_rlString[startingUnitIndex], &m_rlString.back(), numToDecode, numBitsRead, sd);
         assert(numDecoded >= numToDecode);
         
         for(size_t j = 0; j < outStr.size(); ++j)

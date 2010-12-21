@@ -13,6 +13,7 @@
 #include "Occurrence.h"
 #include "HuffmanUtil.h"
 #include "PackedTableDecoder.h"
+#include "RLE.h"
 
 //#define DEBUG_ENCODING 1
 #define BITS_PER_BYTE 8
@@ -93,18 +94,16 @@ namespace StreamEncode
     }
 
     // Write the code into the output stream starting at currBit
-    inline size_t _writeCode(EncodePair& ep, size_t currBit, ByteVector& output)
+    inline size_t _writeCode(int code, int bits, size_t currBit, ByteVector& output)
     {
 #ifdef DEBUG_ENCODING
         printEncoding(output);
-        std::cout << "Writing the code " << int2Binary(ep.code, ep.bits) << " at bit " << currBit << "\n";
+        std::cout << "Writing the code " << int2Binary(code, bits) << " at bit " << currBit << "\n";
 #endif
 
-        size_t code = ep.code;
-        int codeBits = ep.bits;
-        int bitsRemaining = codeBits;
+        int bitsRemaining = bits;
         int bitOffset = 0;
-
+        //std::cout << "WRITE CODE: " << int2Binary(code, bits) << "\n";
         while(bitsRemaining > 0)
         {
             // Calculate position to start the write
@@ -113,15 +112,15 @@ namespace StreamEncode
             int bitsToWrite = std::min((BITS_PER_BYTE - bitIdx), bitsRemaining);
 
             // Calculate the shift values and masks to apply
-            int currPos = (BITS_PER_BYTE - codeBits + bitOffset);
+            int currPos = (BITS_PER_BYTE - bits + bitOffset);
             
             // Mask off the bits we want
-            int mask = ((1 << bitsToWrite) - 1) << (codeBits - (bitsToWrite + bitOffset));
+            int mask = ((1 << bitsToWrite) - 1) << (bits - (bitsToWrite + bitOffset));
             int inCode = code & mask;
 
 #ifdef DEBUG_ENCODING
-            std::cout << "Mask: " << int2Binary(mask, codeBits) << "\n";
-            std::cout << "Masked: " << int2Binary(inCode,codeBits) << "\n";
+            std::cout << "Mask: " << int2Binary(mask, bits) << "\n";
+            std::cout << "Masked: " << int2Binary(inCode, bits) << "\n";
 #endif
 
             // Shift the code into position
@@ -133,7 +132,6 @@ namespace StreamEncode
 #ifdef DEBUG_ENCODING
             std::cout << "Shifted: " << int2Binary(inCode,8) << "\n";
 #endif
-
             // set the value with an OR
             output[byte] |= inCode;
 
@@ -141,7 +139,7 @@ namespace StreamEncode
             bitOffset += bitsToWrite;
             currBit += bitsToWrite;
         }
-        return codeBits;
+        return bits;
     }
 
     // Read maxBits from the array starting at currBits and write the value to outCode
@@ -156,6 +154,9 @@ namespace StreamEncode
         outCode = (input >> (baseShift - currBit)) & mask;
     }
     
+    template<typename Functor>
+    size_t decodeStream(const unsigned char* pInput, const unsigned char* /*pEnd*/, size_t numSymbols, size_t& numBitsDecoded, Functor& functor);
+
     // Encode a stream of characters
     inline size_t encodeStream(const CharDeque& input, const HuffmanTreeCodec<char>& symbolEncoder, HuffmanTreeCodec<int> & runEncoder, ByteVector& output)
     {
@@ -176,12 +177,11 @@ namespace StreamEncode
                     ++idx;
 
             // A run of length idx has ended
-            size_t encodingLength = runEncoder.getGreatestLowerBound(idx);
-            RLEPair pair(currChar, encodingLength);
+            RLEPair pair(currChar, idx);
             rlePairVector.push_back(pair);
 
             // Extract idx characters from the stream
-            for(size_t i = 0; i < encodingLength; ++i)
+            for(size_t i = 0; i < idx; ++i)
                 stream.pop_front();
         }
 
@@ -189,8 +189,9 @@ namespace StreamEncode
         size_t numBits = 0;
         for(RLEPairVector::const_iterator iter = rlePairVector.begin(); iter != rlePairVector.end(); ++iter)
         {
-            numBits += symbolEncoder.encode(iter->first).bits;
-            numBits += runEncoder.encode(iter->second).bits;
+            numBits += 3;
+            if(iter->second > 1)
+                numBits += RLE::getEncodedLength(iter->second);
         }
         size_t numBytes = (numBits % BITS_PER_BYTE == 0) ? numBits / BITS_PER_BYTE : (numBits / BITS_PER_BYTE) + 1;
         
@@ -206,88 +207,108 @@ namespace StreamEncode
 #ifdef DEBUG_ENCODING
             std::cout << "Encoding pair: " << iter->first << "," << iter->second << "\n";
 #endif
-            EncodePair symEP = symbolEncoder.encode(iter->first);
-            currBit += _writeCode(symEP, currBit, output);
-            EncodePair rlEP = runEncoder.encode(iter->second);
-            currBit += _writeCode(rlEP, currBit, output);
+            currBit += _writeCode(BWT_ALPHABET::getRank(iter->first), 3, currBit, output);
+
+            // Only encode the run if its length is greater than 1
+            int rl = iter->second;
+            if(rl > 1)
+            {
+                // Intialize the run length encoder
+                RLE::initEncoding(rl);
+
+                // Emit run codes until the entire run has been encoded
+                int code = RLE::nextCode(rl);
+                assert(code != 0);
+                do
+                {
+                    currBit += _writeCode(code, RLE_SYMBOL_LEN, currBit, output);
+                    code = RLE::nextCode(rl);
+                } while(code != 0);
+            }
         }
 
+        std::string out;
+        StringDecode sd(out);
+        size_t nbd = 0;
+        decodeStream(&(*output.begin()), &(*output.end()), input.size(), nbd, sd);
+
+        std::string in(input.begin(), input.end());
+//        std::cout << "IN:  " << in << "\n";
+//        std::cout << "OUT: " << out << "\n";
+        assert(in == out);
         return input.size();
     }
 
     // Decode a stream into the provided functor
 
-#define DECODE_UNIT uint64_t
+#define DECODE_UNIT uint32_t
 #define DECODE_UNIT_BYTES sizeof(DECODE_UNIT)
 #define DECODE_UNIT_BITS DECODE_UNIT_BYTES * 8
+#define DECODE_READ_LENGTH 3
+#define DECODE_MASK 7
     // Decompress the data starting at pInput. The read cannot exceed the endpoint given by pEnd. Returns
     // the total number of symbols decoded. The out parameters numBitsDecoded is also set.
     template<typename Functor>
-    inline size_t decodeStream(const CharPackedTableDecoder& symbolDecoder, const RLPackedTableDecoder& rlDecoder, 
-                               const unsigned char* pInput, const unsigned char* pEnd, size_t numSymbols, DECODE_UNIT& numBitsDecoded, Functor& functor)
+    inline size_t decodeStream(const unsigned char* pInput, const unsigned char* /*pEnd*/, size_t numSymbols, size_t& numBitsDecoded, Functor& functor)
     {
-        DECODE_UNIT symbolReadLen = symbolDecoder.getCodeReadLength();
-        DECODE_UNIT runReadLen = rlDecoder.getCodeReadLength();
-
-        DECODE_UNIT numBitsBuffered = 0;
-        numBitsDecoded = 0;
         size_t numSymbolsDecoded = 0;
-        
+        (void)numBitsDecoded;
         // Prime the decode unit by reading 16 bits from the stream
-        DECODE_UNIT decodeUnit = *pInput++;
-        for(size_t i = 0; i < DECODE_UNIT_BYTES - 1; ++i)
+        DECODE_UNIT decodeUnit = pInput[0] << 24 | pInput[1] << 16 | pInput[2] << 8 | pInput[3];
+        pInput += 4;
+        DECODE_UNIT numBitsAvailable = 32;
+        DECODE_UNIT code;
+
+        // prime the read with the first symbol
+        int currSym = (decodeUnit >> (numBitsAvailable - DECODE_READ_LENGTH)) & DECODE_MASK;
+        numBitsAvailable -= DECODE_READ_LENGTH;
+        int currRL = 0;
+        int currRunIdx = 0;
+        int target = numSymbols - numSymbolsDecoded;
+        while(target > 0)
         {
-            decodeUnit <<= BITS_PER_BYTE;
-            decodeUnit |= *pInput++;
-        }
-        numBitsBuffered = BITS_PER_BYTE * DECODE_UNIT_BYTES;
-      
-        
-        DECODE_UNIT symMask = (1 << symbolReadLen) - 1;
-        //DECODE_UNIT symBaseShift = DECODE_UNIT_BITS - symbolReadLen;
-        DECODE_UNIT rlMask = (1 << runReadLen) - 1;
-        //DECODE_UNIT rlBaseShift = DECODE_UNIT_BITS - runReadLen;
-        
-        const std::vector<PACKED_DECODE_TYPE>* pDecodeChar = symbolDecoder.getTable();
-        const std::vector<PACKED_DECODE_TYPE>* pDecodeRL = rlDecoder.getTable();
-
-        while(1)
-        {
-            // Read a symbol then a run
-            DECODE_UNIT code = 0;
-            code = (decodeUnit >> (numBitsBuffered - numBitsDecoded - symbolReadLen) & symMask);
-            // Parse the code
-            //const HuffmanTreeCodec<char>::DecodePair& sdp = symbolEncoder.decode(code);
-            PACKED_DECODE_TYPE packedCode = (*pDecodeChar)[code];
-            int symRank = UNPACK_SYMBOL(packedCode);
-            numBitsDecoded += UNPACK_BITS(packedCode);
-
-            code = (decodeUnit >> (numBitsBuffered - numBitsDecoded - runReadLen) & rlMask);
-            packedCode = (*pDecodeRL)[code];
-            int rl = UNPACK_SYMBOL(packedCode);
-            numBitsDecoded += UNPACK_BITS(packedCode);
-
-            int diff = numSymbols - numSymbolsDecoded;
-            if(rl < diff)
+            // Read in more bits if necessary
+            if(numBitsAvailable < 8)
             {
-                functor(symRank, rl);
-                numSymbolsDecoded += rl;
+                decodeUnit <<= 8;
+                decodeUnit |= *pInput++;
+                numBitsAvailable += 8;
+            }
+
+            code = (decodeUnit >> (numBitsAvailable - DECODE_READ_LENGTH) & DECODE_MASK);
+            numBitsAvailable -= DECODE_READ_LENGTH;
+
+            // Parse the code. If it was a symbol literal, add the current
+            // run (if any) to the decoder. Otherwise, add the run symbol
+            // to the current run. If the current run length matches
+            // the target number of symbols to decode, stop the decoding
+            if(code < RUN_A)
+            {
+                // If no run was encoded, the run length is 1
+                currRL = currRunIdx == 0 ? 1 : currRL;
+                functor(currSym, currRL);
+                numSymbolsDecoded += currRL;
+                target = numSymbols - numSymbolsDecoded;
+
+                currSym = code;
+                currRunIdx = 0;
+                currRL = 0;
             }
             else
             {
-                functor(symRank, diff);
-                return numSymbolsDecoded + diff;
-            }
+                // Add the run code into the run length without branching
+                // this calculates 2 ^ (currRunIdx) for RUN_A
+                // and 2 ^ (currRunIdx + 1) for RUN_B
+                currRL += (1 << (currRunIdx + (code - RUN_A)));
+                ++currRunIdx;
 
-            // Update the decode unit
-            if(numBitsBuffered - numBitsDecoded < 2*BITS_PER_BYTE)
-            {
-                for(size_t i = 2; i < DECODE_UNIT_BYTES; ++i)
-                    decodeUnit = (decodeUnit << BITS_PER_BYTE) | (pInput <= pEnd ? *pInput++ : 0);
-                numBitsBuffered += (BITS_PER_BYTE * (DECODE_UNIT_BYTES - 2));
-                //numBitsDecoded -= (BITS_PER_BYTE * (DECODE_UNIT_BYTES - 2));
+                // If the target is reached, stop decoding
+                if(currRL >= target)
+                {
+                    functor(currSym, target);
+                    target = 0;
+                }
             }
-
         }
         return numSymbols;
     }    

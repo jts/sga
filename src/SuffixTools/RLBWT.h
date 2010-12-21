@@ -57,9 +57,9 @@ class RLBWT
             size_t symbol_index = marker.unitIndex;
             size_t numBitsRead = 0;
 
-            char outBase;
+            char outBase = '\0';
             StreamEncode::SingleBaseDecode sbd(outBase);
-            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, sbd);
+            StreamEncode::decodeStream(&m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, sbd);
             return outBase;
         }
 
@@ -67,6 +67,8 @@ class RLBWT
         inline LargeMarker getLowerMarker(size_t position, size_t& encoderIdx) const
         {
             size_t target_small_idx = position >> m_smallShiftValue;
+            if(target_small_idx >= m_smallMarkers.size())
+                std::cout << "Pos: " << position << " targetsmall: " << target_small_idx << "\n";
             return getInterpolatedMarker(target_small_idx, encoderIdx);
         }
 
@@ -105,7 +107,7 @@ class RLBWT
             size_t symbol_index = marker.unitIndex;
             StreamEncode::BaseCountDecode bcd(b, running_count);
             size_t numBitsRead = 0;
-            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, bcd);
+            StreamEncode::decodeStream(&m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, bcd);
             return running_count;
         }
 
@@ -126,7 +128,7 @@ class RLBWT
             size_t symbol_index = marker.unitIndex;
             StreamEncode::AlphaCountDecode acd(running_count);
             size_t numBitsRead = 0;
-            StreamEncode::decodeStream(HuffmanForest::Instance().getDecoder(encoderIdx), m_rlDecodeTable, &m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, acd);
+            StreamEncode::decodeStream(&m_rlString[symbol_index], &m_rlString.back(), numToCount, numBitsRead, acd);
             return running_count;
         }
 
