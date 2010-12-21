@@ -156,6 +156,9 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
 ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& workItem)
 {
     ErrorCorrectResult result;
+    typedef std::map<std::string, int> KmerCountMap;
+    KmerCountMap kmerCache;
+
     SeqRecord currRead = workItem.read;
     std::string readSequence = workItem.read.seq.toString();
 
@@ -170,7 +173,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     bool allSolid = false;
     bool done = false;
     int rounds = 0;
-    int maxAttempts = 2;
+    int maxAttempts = 4;
 
     while(!done && nk > 0)
     {
@@ -183,7 +186,22 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
         for(int i = 0; i < nk; ++i)
         {
             std::string kmer = readSequence.substr(i, m_kmerLength);
-            int count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT(), m_pOverlapper->getRBWT());
+
+            // First check if this kmer is in the cache
+            // If its not, find its count from the fm-index and cache it
+            int count = 0;
+            KmerCountMap::iterator iter = kmerCache.find(kmer);
+
+            if(iter != kmerCache.end())
+            {
+                count = iter->second;
+            }
+            else
+            {
+                count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT(), m_pOverlapper->getRBWT());
+                kmerCache.insert(std::make_pair(kmer, count));
+            }
+
             countVector[i] = count;
 
             if(count > m_kmerThreshold)
