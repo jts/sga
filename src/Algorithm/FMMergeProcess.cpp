@@ -120,7 +120,13 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
         pGraph->simplify();
 
         // ensure only 1 vertex remains after simplification
-        assert(pGraph->getNumVertices() == 1);
+        if(pGraph->getNumVertices() != 1)
+        {
+            std::cout << "Graph has too many vertices after simplify!\n";
+            std::cout << "Base read: " << item.read.id << "\n";
+            pGraph->writeASQG("failgraph.asqg.gz");
+            assert(false);
+        }
 
         Vertex* pX = pGraph->getFirstVertex();
         assert(pX != NULL);

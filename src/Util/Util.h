@@ -21,6 +21,7 @@
 #include <iostream>
 #include "DNAString.h"
 #include "gzstream.h"
+#include "Quality.h"
 
 #define CAF_SEP ':'
 #define FUNCTION_TIMER Timer functionTimer(__PRETTY_FUNCTION__);
@@ -82,6 +83,25 @@ struct SeqRecord
         else
         {
             toSeqItem().write(out, meta);
+        }
+    }
+
+    bool hasQuality() const
+    {
+        return !qual.empty();
+    }
+
+    // Get the phred score for base i. If there are no quality string, returns DEFAULT_QUAL_SCORE
+    int getPhredScore(size_t i) const
+    {
+        if(!qual.empty())
+        {
+            assert(i < qual.size());
+            return Quality::char2phred(qual[i]);
+        }
+        else
+        {
+            return DEFAULT_QUAL_SCORE;
         }
     }
 

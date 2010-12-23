@@ -14,6 +14,9 @@
 #include <math.h>
 #include <assert.h>
 #include <string>
+#include <iostream>
+
+static const int DEFAULT_QUAL_SCORE = 15;
 
 typedef std::vector<double> DoubleVector;
 namespace Quality

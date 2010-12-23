@@ -175,6 +175,26 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     int rounds = 0;
     int maxAttempts = 4;
 
+    const static int highQPhred = 20;
+    const static int lowQThreshold = 3;
+    const static int highQThreshold = 2;
+
+    // For each kmer, calculate the minimum phred score seen in the bases
+    // of the kmer
+    std::vector<int> minPhredVector(nk, 0);
+    for(int i = 0; i < nk; ++i)
+    {
+        int end = i + m_kmerLength - 1;
+        int minPhred = std::numeric_limits<int>::max();
+        for(int j = i; j <= end; ++j)
+        {
+            int ps = workItem.read.getPhredScore(j);
+            if(ps < minPhred)
+                minPhred = ps;
+        }
+        minPhredVector[i] = minPhred;
+    }
+
     while(!done && nk > 0)
     {
         // Compute the kmer counts across the read
@@ -202,14 +222,17 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
                 kmerCache.insert(std::make_pair(kmer, count));
             }
 
+            // Get the phred score for the last base of the kmer
+            int phred = minPhredVector[i];
             countVector[i] = count;
+//            std::cout << i << "\t" << phred << "\t" << count << "\n";
 
-            if(count > m_kmerThreshold)
+            // Determine whether the base is solid or not based on phred scores
+            int threshold = (phred >= highQPhred) ? highQThreshold : lowQThreshold;
+            if(count >= threshold)
             {
                 for(int j = i; j < i + m_kmerLength; ++j)
-                {
                     solidVector[j] = 1;
-                }
             }
         }
 
@@ -238,14 +261,16 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             if(solidVector[i] != 1)
             {
                 // Attempt to correct the base using the leftmost covering kmer
+                int phred = workItem.read.getPhredScore(i);
+                int threshold = (phred >= highQPhred) ? highQThreshold : lowQThreshold;
                 int left_k_idx = (i + 1 >= m_kmerLength ? i + 1 - m_kmerLength : 0);
-                corrected = attemptKmerCorrection(i, left_k_idx, std::max(countVector[left_k_idx], m_kmerThreshold), readSequence);
+                corrected = attemptKmerCorrection(i, left_k_idx, std::max(countVector[left_k_idx], threshold), readSequence);
                 if(corrected)
                     break;
 
                 // base was not corrected, try using the rightmost covering kmer
                 size_t right_k_idx = std::min(i, n - m_kmerLength);
-                corrected = attemptKmerCorrection(i, right_k_idx, std::max(countVector[right_k_idx], m_kmerThreshold), readSequence);
+                corrected = attemptKmerCorrection(i, right_k_idx, std::max(countVector[right_k_idx], threshold), readSequence);
                 if(corrected)
                     break;
             }
