@@ -115,7 +115,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
 
         if(m_printOverlaps)
-            mo.print();
+            mo.printMasked();
 
         result.num_prefix_overlaps = 0;
         result.num_suffix_overlaps = 0;
