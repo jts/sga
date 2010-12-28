@@ -357,7 +357,8 @@ MultiOverlap blockListToMultiOverlap(const SeqRecord& record, OverlapBlockList& 
 {
     std::string read_idx = record.id;
     std::string read_seq = record.seq.toString();
-    MultiOverlap out(read_idx, read_seq);
+    std::string qual = record.qual;
+    MultiOverlap out(read_idx, read_seq, qual);
 
     for(OverlapBlockList::iterator iter = blockList.begin(); iter != blockList.end(); ++iter)
     {

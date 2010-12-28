@@ -41,7 +41,9 @@ class MultiOverlap
 
     public:
 
-        MultiOverlap(const std::string& rootID, const std::string& rootSeq);
+        MultiOverlap(const std::string& rootID, 
+                     const std::string& rootSeq, 
+                     const std::string rootQual = "");
         
         void add(const std::string& seq, const Overlap& ovr);
         void add(const MOData& mod);
@@ -117,6 +119,7 @@ class MultiOverlap
 
         std::string m_rootID;
         std::string m_rootSeq;
+        std::string m_rootQual;
 
         MODVector m_overlaps;
 };

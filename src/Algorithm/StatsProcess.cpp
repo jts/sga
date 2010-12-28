@@ -82,6 +82,7 @@ StatsPostProcess::~StatsPostProcess()
 {
     std::cout << "\n*** Stats: \n";
     
+    /*
     int max = 200;
     int maxCount = 0;
     printf("Kmer coverage histogram\n");
@@ -94,6 +95,7 @@ StatsPostProcess::~StatsPostProcess()
             maxCount += iter->second;
     }
     printf(">%d\t%d\n", max, maxCount);
+    */
 
     printf("%d out of %d bases are potentially incorrect (%lf)\n", m_basesWrong, m_basesCounted, (double)m_basesWrong/m_basesCounted);
     printf("%d reads out of %d are perfect (%lf)\n", m_numPerfect, m_numReads, (double)m_numPerfect/m_numReads);

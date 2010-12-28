@@ -9,10 +9,15 @@
 //
 #include <algorithm>
 #include <iostream>
+#include "CorrectionThresholds.h"
 #include "MultiOverlap.h"
 #include "Alphabet.h"
 
-MultiOverlap::MultiOverlap(const std::string& rootID, const std::string& rootSeq) : m_rootID(rootID), m_rootSeq(rootSeq)
+MultiOverlap::MultiOverlap(const std::string& rootID, 
+                           const std::string& rootSeq,
+                           const std::string rootQual) : m_rootID(rootID), 
+                                                         m_rootSeq(rootSeq),
+                                                         m_rootQual(rootQual)
 {
     
 }
@@ -160,7 +165,7 @@ size_t MultiOverlap::getNumBases() const
 // root read at a conflicted position are filtered out. The remaining set of reads match the root read
 // at all the conflicted positions and the consensus is called from this set. Bases that are not conflicted
 // are called from the entire set of overlaps.
-std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
+std::string MultiOverlap::consensusConflict(double /*p_error*/, int conflictCutoff)
 {
     // Calculate the frequency vector for each base of the read
     std::vector<AlphaCount64> acVec;
@@ -236,23 +241,80 @@ std::string MultiOverlap::consensusConflict(double p_error, int conflictCutoff)
             m_overlaps[j].partitionID = 0;
     }
 
-    // Perform the consensus calculation with the remaining reads
-    std::string consensus = calculateConsensusFromPartition(p_error);
+    // Calculate the consensus sequence using all the reads
+    // in partition 1
 
-    // For the bases that aren't conflicted, just set the bases to be the most frequent base
-    // using all the reads
-    for(size_t i = 0; i < acVec.size(); ++i)
+    std::string consensus;
+    std::vector<int> supportVector;
+
+    for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
-        char sorted[ALPHABET_SIZE];
-        acVec[i].getSorted(sorted, ALPHABET_SIZE);
-        int second = acVec[i].get(sorted[1]);
-        bool isConflict = second > conflictCutoff;
-        if(!isConflict)
+        Pileup p0;
+        Pileup p1;
+        getPartitionedPileup(i, p0, p1);
+        AlphaCount64 ac = p0.getAlphaCount();
+        
+        size_t minSupport = CorrectionThresholds::minSupportLowQuality;
+        if(!m_rootQual.empty())
         {
-            consensus[i] = sorted[0];
+            int phredScore = Quality::char2phred(m_rootQual[i]);
+            if(phredScore >= CorrectionThresholds::highQualityCutoff)
+            {
+                minSupport = CorrectionThresholds::minSupportHighQuality;
+            }
+            else
+            {
+                minSupport = CorrectionThresholds::minSupportLowQuality;
+            }
+        }
+
+        size_t callSupport = ac.get(m_rootSeq[i]);
+        if(callSupport >= minSupport)
+        {
+            // This base does not require correction
+            consensus.push_back(m_rootSeq[i]);
+        }
+        else
+        {
+            // Attempt to correct the base with the most frequent base
+            // in the partitioned pileup if it has been seen more often
+            // than the root base
+            char sorted[ALPHABET_SIZE];
+            ac.getSorted(sorted, ALPHABET_SIZE);
+            size_t bestSupport = ac.get(sorted[0]);
+            bool corrected = false;
+            if(bestSupport > callSupport)
+            {
+                consensus.push_back(sorted[0]);
+                callSupport = bestSupport;
+                corrected = true;
+            }
+            else
+            {
+                // A correction could not be made with the 
+                // partitioned pileup, try to use the full pileup
+                // if this base is not conflicted
+                acVec[i].getSorted(sorted, ALPHABET_SIZE);
+                int second = acVec[i].get(sorted[1]);
+                bool isConflict = second > conflictCutoff;
+                if(!isConflict)
+                {
+                    bestSupport = acVec[i].get(sorted[0]);
+                    if(bestSupport > callSupport)
+                    {
+                        consensus.push_back(sorted[0]);
+                        corrected = true;
+                    }
+                }
+            }
+
+            if(!corrected)
+            {
+                consensus.push_back(m_rootSeq[i]);
+            }
         }
     }
-    
+
     return consensus;
 }
 
@@ -366,14 +428,17 @@ std::string MultiOverlap::calculateConsensusFromPartition(double p_error)
         double max;
         ap.getMax(best_c, max);
 
+        //printf("%zu best: %c curr: %c max: %lf curr_l: %lf\n", i, best_c, curr_c, max, ap.get(curr_c));
         // Require the called value to be substantially better than the
         // current base
         if(best_c == curr_c || (best_c != curr_c && max - ap.get(curr_c) < epsilon))
         {
+            //std::cout << "using current\n";
             out.push_back(curr_c);
         }
         else
         {
+            //std::cout << "corrected\n";
             out.push_back(best_c);
         }
     }
