@@ -29,8 +29,6 @@ FMMergeProcess::~FMMergeProcess()
 //
 FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
 {
-    (void)item;
-
     // Calculate the intervals in the forward FM-index for this read
     const BWT* pBWT = m_pOverlapper->getBWT();
 
@@ -48,7 +46,11 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
     bool used = false;
     for(int64_t i = readInterval.lower; i <= readInterval.upper; ++i)
     {
-        used = m_pMarkedReads->test(i) || used;
+        if(m_pMarkedReads->test(i))
+        {
+            used = true;
+            break;
+        }
     }
 
     FMMergeResult result;
@@ -119,18 +121,9 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
         // Merge nodes
         pGraph->simplify();
 
-        // ensure only 1 vertex remains after simplification
-        if(pGraph->getNumVertices() != 1)
-        {
-            std::cout << "Graph has too many vertices after simplify!\n";
-            std::cout << "Base read: " << item.read.id << "\n";
-            pGraph->writeASQG("failgraph.asqg.gz");
-            assert(false);
-        }
-
-        Vertex* pX = pGraph->getFirstVertex();
-        assert(pX != NULL);
-        result.mergedSequence = pX->getSeq().toString();
+        // If there was a cycle in the graph, it is possible that more than 1 vertex 
+        // remains in the graph. Copy the vertex sequences into the result object.
+        pGraph->getVertexSequences(result.mergedSequences);
         result.isMerged = true;
         delete pGraph;
     }
@@ -240,6 +233,7 @@ FMMergePostProcess::FMMergePostProcess(std::ostream* pWriter, BitVector* pMarked
 FMMergePostProcess::~FMMergePostProcess()
 {
     printf("[sga fm-merge] Merged %zu reads into %zu sequences\n", m_numTotal, m_numMerged);
+    printf("[sga fm-merge] Reduction factor: %lf\n", (double)m_numTotal / m_numMerged);
     printf("[sga fm-merge] Mean merged size: %lf\n", (double)m_totalLength / m_numMerged);
 }
 
@@ -254,15 +248,19 @@ void FMMergePostProcess::process(const SequenceWorkItem& item, const FMMergeResu
     WARN_ONCE("check for collisions");
     if(result.isMerged)
     {
-        // Write out the merged sequence
-        std::stringstream nameSS;
-        nameSS << "merged-" << m_numMerged++;
-        SeqRecord record;
-        record.id = nameSS.str();
-        record.seq = result.mergedSequence;
-        record.write(*m_pWriter);
+        // Write out the merged sequences
+        for(std::vector<std::string>::const_iterator iter = result.mergedSequences.begin();
+                iter != result.mergedSequences.end(); ++iter)
+        {
+            std::stringstream nameSS;
+            nameSS << "merged-" << m_numMerged++;
+            SeqRecord record;
+            record.id = nameSS.str();
+            record.seq = *iter;
+            record.write(*m_pWriter);
 
-        m_totalLength += result.mergedSequence.size();
+            m_totalLength += iter->size();
+        }
 
         // Set a bit mask for the indicated values
         for(std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();

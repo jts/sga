@@ -480,6 +480,16 @@ Vertex* Bigraph::getFirstVertex() const
 }
 
 //
+// Append vertex sequences to the vector
+void Bigraph::getVertexSequences(std::vector<std::string>& outSequences) const
+{
+    VertexPtrMapConstIter iter = m_vertices.begin();
+    for(; iter != m_vertices.end(); ++iter)
+        outSequences.push_back(iter->second->getSeq().toString());
+}
+
+
+//
 // Visit each vertex and call the function pointer
 // The function returns TRUE if it modifies the graph
 //

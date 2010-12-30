@@ -141,8 +141,6 @@ int FMMergeMain(int argc, char** argv)
             ++numSet;
     }
 
-    std::cout << "Set " << numSet << " bits out of " << numTotal << "\n";
-
     // Get the number of strings in the BWT, this is used to pre-allocated the read table
     delete pOverlapper;
     delete pBWT; 

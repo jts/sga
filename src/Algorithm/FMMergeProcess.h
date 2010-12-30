@@ -18,7 +18,7 @@
 
 struct FMMergeResult
 {
-    std::string mergedSequence;
+    std::vector<std::string> mergedSequences;
     std::vector<BWTInterval> usedIntervals;
     bool isMerged;
 };

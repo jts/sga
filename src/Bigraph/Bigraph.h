@@ -119,6 +119,9 @@ class Bigraph
         // Visit each vertex in the graph and perform the visit function
         bool visit(VertexVisitFunction f);
 
+        // Append each vertex sequence to the vector of strings
+        void getVertexSequences(std::vector<std::string>& outSequences) const;
+
         // Visit each vertex in the graph and call the visit functor object
         template<typename VF>
         bool visit(VF& vf)
