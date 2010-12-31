@@ -148,17 +148,18 @@ struct SGEdgeStatsVisitor
     int maxOverlap;
 };
 
-// Detect whether vertices are dead ends and mark them for removal
+// Detects and removes small "tip" vertices from the graph
+// when they are less than minLength in size
 struct SGTrimVisitor
 {
-    SGTrimVisitor() {}
+    SGTrimVisitor(size_t minLength) : m_minLength(minLength) {}
     void previsit(StringGraph* pGraph);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*);
 
+    size_t m_minLength;
     int num_island;
     int num_terminal;
-    int num_contig;
 };
 
 // Detect and remove duplicate edges

@@ -40,6 +40,7 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -b, --bubble=N                   perform N bubble removal steps (default: 3)\n"
 //"      -s, --smooth                     perform variation smoothing algorithm\n"
 "      -x, --cut-terminal=N             cut off terminal branches in N rounds (default: 10)\n"
+"      -l, --min-branch-length=LEN      remove terminal branches only if they are less than LEN bases in length (default: 150)\n"
 "      -c, --coverage=N                 remove edges that have junction-sequence coverage less than N. This is used\n"
 "                                       to detect and remove chimeric reads (default: not performed)\n"
 "      -r,--resolve-small=LEN           resolve small repeats using spanning overlaps when the difference between the shortest\n"
@@ -53,12 +54,13 @@ namespace opt
     static std::string asqgFile;
     static std::string outFile;
     static std::string debugFile;
-    static std::string asqgOutfile;
+    static std::string asqgOutfile = "final-graph.asqg.gz";
     static unsigned int minOverlap;
     static bool bEdgeStats = false;
     static bool bSmoothGraph = false;
     static int resolveSmallRepeatLen = -1;
     static int numTrimRounds = 10;
+    static size_t trimLengthThreshold = 150;
     static int numBubbleRounds = 3;
     static int coverageCutoff = 0;
     static bool bValidate;
@@ -70,21 +72,22 @@ static const char* shortopts = "p:o:m:d:b:a:c:r:x:sv";
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT };
 
 static const struct option longopts[] = {
-    { "verbose",        no_argument,       NULL, 'v' },
-    { "out",            required_argument, NULL, 'o' },
-    { "min-overlap",    required_argument, NULL, 'm' },
-    { "debug-file",     required_argument, NULL, 'd' },
-    { "bubble",         required_argument, NULL, 'b' },
-    { "cut-terminal",   required_argument, NULL, 'x' },
-    { "asqg-outfile",   required_argument, NULL, 'a' },
-    { "resolve-small",  required_argument, NULL, 'r' },    
-    { "coverage",       required_argument, NULL, 'c' },    
-    { "smooth",         no_argument,       NULL, 's' },    
-    { "edge-stats",     no_argument,       NULL, OPT_EDGESTATS },
-    { "exact",          no_argument,       NULL, OPT_EXACT },
-    { "help",           no_argument,       NULL, OPT_HELP },
-    { "version",        no_argument,       NULL, OPT_VERSION },
-    { "validate",       no_argument,       NULL, OPT_VALIDATE},
+    { "verbose",           no_argument,       NULL, 'v' },
+    { "out",               required_argument, NULL, 'o' },
+    { "min-overlap",       required_argument, NULL, 'm' },
+    { "debug-file",        required_argument, NULL, 'd' },
+    { "bubble",            required_argument, NULL, 'b' },
+    { "cut-terminal",      required_argument, NULL, 'x' },
+    { "min-branch-length", required_argument, NULL, 'l' },
+    { "asqg-outfile",      required_argument, NULL, 'a' },
+    { "resolve-small",     required_argument, NULL, 'r' },    
+    { "coverage",          required_argument, NULL, 'c' },    
+    { "smooth",            no_argument,       NULL, 's' },    
+    { "edge-stats",        no_argument,       NULL, OPT_EDGESTATS },
+    { "exact",             no_argument,       NULL, OPT_EXACT },
+    { "help",              no_argument,       NULL, OPT_HELP },
+    { "version",           no_argument,       NULL, OPT_VERSION },
+    { "validate",          no_argument,       NULL, OPT_VALIDATE},
     { NULL, 0, NULL, 0 }
 };
 
@@ -114,41 +117,13 @@ void assemble()
     SGGraphStatsVisitor statsVisit;
     SGRemodelVisitor remodelVisit;
     SGEdgeStatsVisitor edgeStatsVisit;
-    SGTrimVisitor trimVisit;
+    SGTrimVisitor trimVisit(opt::trimLengthThreshold);
     SGBubbleVisitor bubbleVisit;
     SGBubbleEdgeVisitor bubbleEdgeVisit;
 
     SGContainRemoveVisitor containVisit;
     SGErrorCorrectVisitor errorCorrectVisit;
     SGValidateStructureVisitor validationVisit;
-
-    if(!opt::debugFile.empty())
-    {
-        // Pre-assembly graph stats
-        std::cout << "Initial graph stats\n";
-        pGraph->visit(statsVisit);
-
-        SGDebugGraphCompareVisitor* pDebugGraphVisit = new SGDebugGraphCompareVisitor(opt::debugFile);
-        
-        /*
-        pGraph->visit(*pDebugGraphVisit);
-        while(pGraph->visit(realignVisitor))
-            pGraph->visit(*pDebugGraphVisit);
-        SGOverlapWriterVisitor overlapWriter("final-overlaps.ovr");
-        pGraph->visit(overlapWriter);
-        */
-        //pDebugGraphVisit->m_showMissing = true;
-        pGraph->visit(*pDebugGraphVisit);
-        pGraph->visit(statsVisit);
-        delete pDebugGraphVisit;
-        //return;
-    }
-
-    if(opt::bEdgeStats)
-    {
-        std::cout << "Computing edge stats\n";
-        pGraph->visit(edgeStatsVisit);
-    }
 
     // Pre-assembly graph stats
     std::cout << "Initial graph stats\n";
@@ -157,42 +132,30 @@ void assemble()
     // Remove containments from the graph
     std::cout << "Removing contained vertices\n";
     while(pGraph->hasContainment())
-    {
         pGraph->visit(containVisit);
-    }
 
     // Pre-assembly graph stats
-    std::cout << "Post-contain graph stats\n";
+    std::cout << "Post-contain removal graph stats\n";
     pGraph->visit(statsVisit);    
 
-    if(pGraph->hasTransitive() || true)
-    {
-        // Remove transitive edges from the graph
-        std::cout << "Removing transitive edges\n";
-        pGraph->visit(trVisit);
-    }
+    // Remove any extraneous transitive edges that may remain in the graph
+    std::cout << "Removing transitive edges\n";
+    pGraph->visit(trVisit);
 
-    // Resolve PE paths
-    //pGraph->visit(peResolveVisit);
-
+    // Compact together unbranched chains of vertices
+    pGraph->simplify();
+    
     if(opt::bValidate)
     {
         std::cout << "Validating graph structure\n";
         pGraph->visit(validationVisit);
     }
 
-    //std::cout << "Writing graph file\n";
-    //pGraph->writeASQG("afterTR.asqg.gz");
-
-    /*
-    std::cout << "Performing initial simplification\n";
-    pGraph->simplify();
-    */
-
+    //
     std::cout << "Pre-remodelling graph stats\n";
     pGraph->visit(statsVisit);
 
-
+    // Remove dead-end branches from the graph
     if(opt::numTrimRounds > 0)
     {
         std::cout << "Trimming bad vertices\n"; 
@@ -203,6 +166,7 @@ void assemble()
         pGraph->visit(statsVisit);
     }
 
+    // Resolve small repeats
     if(opt::resolveSmallRepeatLen >= 0)
     {
         SGSmallRepeatResolveVisitor smallRepeatVisit(opt::resolveSmallRepeatLen);
@@ -214,6 +178,7 @@ void assemble()
         pGraph->visit(statsVisit);
     }
 
+    //
     if(opt::bSmoothGraph)
     {
         std::cout << "\nPerforming variation smoothing\n";
@@ -225,6 +190,7 @@ void assemble()
         //pGraph->simplify();
     }
     
+    //
     if(opt::coverageCutoff > 0)
     {
         std::cout << "Coverage visit\n";
@@ -235,27 +201,10 @@ void assemble()
         pGraph->visit(trimVisit);
     }
 
-    //pGraph->writeASQG("postmod.asqg.gz");
-    
-/*
-    if(opt::numBubbleRounds > 0)
-    {
-        std::cout << "Removing bubble edges\n";
-        while(pGraph->visit(bubbleEdgeVisit)) {}
-        pGraph->visit(trimVisit);
-    }
-*/
-    // Simplify the graph by compacting edges
-    std::cout << "Pre-simplify graph stats\n";
-    pGraph->visit(statsVisit);
-
-    /*
-    SGBreakWriteVisitor breakWriter("breaks.txt");
-    pGraph->visit(breakWriter);
-    pGraph->writeASQG("postmod.asqg.gz");
-    */
+    // Peform another round of simplification
     pGraph->simplify();
     
+    // Remove bubbles from the graph to smooth variation
     if(opt::numBubbleRounds > 0)
     {
         std::cout << "\nPerforming bubble removal\n";
@@ -269,23 +218,15 @@ void assemble()
     std::cout << "\nFinal graph stats\n";
     pGraph->visit(statsVisit);
 
-#ifdef VALIDATE
-    VALIDATION_WARNING("SGA/assemble")
-    pGraph->validate();
-#endif
-
     // Rename the vertices to have contig IDs instead of read IDs
     pGraph->renameVertices("contig-");
 
     // Write the results
-    //pGraph->writeDot("final.dot");
-    pGraph->writeASQG("final-graph.asqg.gz");
     SGFastaVisitor av(opt::outFile);
     pGraph->visit(av);
-    if(!opt::asqgOutfile.empty())
-    {
-        pGraph->writeASQG(opt::asqgOutfile);
-    }
+
+    pGraph->writeASQG(opt::asqgOutfile);
+
     delete pGraph;
 }
 
@@ -309,6 +250,7 @@ void parseAssembleOptions(int argc, char** argv)
             case 'd': arg >> opt::debugFile; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case 'l': arg >> opt::trimLengthThreshold; break;
             case 'b': arg >> opt::numBubbleRounds; break;
             case 's': opt::bSmoothGraph = true; break;
             case 'x': arg >> opt::numTrimRounds; break;

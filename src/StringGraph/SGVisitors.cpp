@@ -559,40 +559,42 @@ void SGTrimVisitor::previsit(StringGraph* pGraph)
 {
     num_island = 0;
     num_terminal = 0;
-    num_contig = 0;
     pGraph->setColors(GC_WHITE);
 }
 
 // Mark any nodes that either dont have edges or edges in only one direction for removal
 bool SGTrimVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 {
-    bool noext[2] = {0,0};
-
-    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    if(pVertex->countEdges() == 0)
     {
-        EdgeDir dir = EDGE_DIRECTIONS[idx];
-        if(pVertex->countEdges(dir) == 0)
+        // Is an island, remove if the sequence length is less than the threshold
+        if(pVertex->getSeqLen() < m_minLength)
         {
-            //std::cout << "Found terminal: " << pVertex->getID() << "\n";
             pVertex->setColor(GC_BLACK);
-            noext[idx] = 1;
+            ++num_island;
         }
     }
-
-    if(noext[0] && noext[1])
-        num_island++;
-    else if(noext[0] || noext[1])
-        num_terminal++;
     else
-        num_contig++;
-    return noext[0] || noext[1];
+    {
+        // Check if this node is a dead-end
+        for(size_t idx = 0; idx < ED_COUNT; idx++)
+        {
+            EdgeDir dir = EDGE_DIRECTIONS[idx];
+            if(pVertex->countEdges(dir) == 0 && pVertex->getSeqLen() < m_minLength)
+            {
+                pVertex->setColor(GC_BLACK);
+                ++num_terminal;
+            }
+        }
+    }
+    return false;
 }
 
 // Remove all the marked edges
 void SGTrimVisitor::postvisit(StringGraph* pGraph)
 {
     pGraph->sweepVertices(GC_BLACK);
-    printf("island: %d terminal: %d contig: %d\n", num_island, num_terminal, num_contig);
+    printf("StringGraphTrim: Removed %d island and %d dead-end short vertices\n", num_island, num_terminal);
 }
 
 //
