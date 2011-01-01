@@ -127,8 +127,6 @@ void buildIndexForTable(std::string prefix, const ReadTable* pRT, bool isReverse
         pSA->validate(pRT);
     }
 
-    pSA->print(pRT);
-
     std::string bwt_filename = prefix + (!isReverse ? BWT_EXT : RBWT_EXT);
     pSA->writeBWT(bwt_filename, pRT);
 
