@@ -304,14 +304,11 @@ OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B, co
         //
         // If the index has duplicates, it is possible that a given source reverse position
         // will map to multiple forward positions. To handle this case, we record the used
-        // forward positions std::map so we can lookup the next lowest index that is available.
+        // forward positions in a std::map so we can lookup the next lowest index that is available.
         //
-        // A better algorithm (that doesn't required so many interval calculations probably exists
-        // but this case is very rare so simplicity wins here. Profiling on a yeast data
-        // set indicates that the cost of this function is negliable.
+        // A better algorithm (that doesn't required so many interval calculations) probably exists
+        // but this case is very rare so simplicity wins here.
         //
-
-        // Construct the list of positions to trace from the lower block to the higher
 
 #ifdef DEBUG_RESOLVE
         std::cout << "LOWER -- capped: " << pLower->ranges << "\n";
@@ -322,6 +319,7 @@ OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B, co
 
         std::map<int64_t, int64_t> usedMap;
 
+        // Remap every reverse position to a forward position
         TracingIntervalList tracingList;
         int64_t j = pLower->ranges.interval[1].lower;
         while(j <= pLower->ranges.interval[1].upper)
@@ -380,14 +378,8 @@ OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B, co
         TracingIntervalList::iterator tracingIter = tracingList.begin();
         while(tracingIter != tracingList.end())
         {
-            // Cap the updateRange intervals on the left with the '$' symbol.
-            // This sets up the proper mapping from forward to reverse interval
-            // we can then filter the intervals vs pHigher's. 
-            // If the capped interval[0] intersects pHigher's interval, it is discarded.
-            // Otherwise the position starting at sourcePosReverse needs to be retained
-            // we generate the retained coordinates as the newly capped interval[0] and sourcePosReverse.
-            // It is possible that these coordinate sets do not have the same size so we need to coalese
-            // all the retained intervals by performing union calculations when they overlap.
+            // Check if the forward position intersects the higher block, if so this block
+            // is redundant and can be removed.
             if(!Interval::isIntersecting(tracingIter->foundPosForward, tracingIter->foundPosForward,
                                          pHigher->ranges.interval[0].lower, pHigher->ranges.interval[0].upper))
             {
