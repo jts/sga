@@ -28,7 +28,7 @@ struct Interval
         s3 = std::max(s1, s2);
         e3 = std::min(e1, e2);
     }
-    
+
     // Precondition: s1 >= e1 and s2 >= e2 
     // Return true if the coordinates intersect
     template<class T>
@@ -40,7 +40,6 @@ struct Interval
         else
             return true;
     }
-    
 
     // functions
     friend std::ostream& operator<<(std::ostream& out, const Interval& i);

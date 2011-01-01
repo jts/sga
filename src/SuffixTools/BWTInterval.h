@@ -80,6 +80,18 @@ struct BWTIntervalPair
                BWTInterval::equal(a.interval[1], b.interval[1]);
     }
 
+    // Sort an itnerval pair by interval[0]'s lower coordinate
+    static bool sortFirstLower(const BWTIntervalPair& a, const BWTIntervalPair& b)
+    {
+        return a.interval[0].lower < b.interval[0].lower;
+    }
+
+    // Sort an itnerval pair by interval[1]'s lower coordinate
+    static bool sortSecondLower(const BWTIntervalPair& a, const BWTIntervalPair& b)
+    {
+        return a.interval[1].lower < b.interval[1].lower;
+    }    
+
     // I/O
     friend std::ostream& operator<<(std::ostream& out, const BWTIntervalPair& a)
     {

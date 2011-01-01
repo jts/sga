@@ -79,14 +79,21 @@ struct OverlapBlock
 {
     OverlapBlock() {}
     
-    OverlapBlock(BWTIntervalPair r, int ol, 
-                 int nd, const AlignFlags& af)  : ranges(r), 
-                                                  overlapLen(ol), 
-                                                  numDiff(nd),
-                                                  flags(af), isEliminated(false) {}
+    OverlapBlock(BWTIntervalPair r, 
+                 BWTIntervalPair rawI,
+                 int ol, 
+                 int nd, 
+                 const AlignFlags& af)  : ranges(r), 
+                                          rawRanges(rawI),
+                                          overlapLen(ol), 
+                                          numDiff(nd),
+                                          flags(af), isEliminated(false) {}
 
-    OverlapBlock(BWTIntervalPair r, int ol, 
-                 int nd, const AlignFlags& af, 
+    OverlapBlock(BWTIntervalPair r,
+                 BWTIntervalPair rawI,
+                 int ol, 
+                 int nd, 
+                 const AlignFlags& af,
                  const SearchHistoryVector& backHist);
 
     // Returns the string that corresponds to this overlap block.
@@ -146,20 +153,31 @@ struct OverlapBlock
     // I/O
     friend std::ostream& operator<<(std::ostream& out, const OverlapBlock& obl)
     {
-        out << obl.ranges << " " << obl.overlapLen << " " << obl.numDiff << " " << obl.flags;
+        out << obl.ranges << " " << obl.rawRanges << " " << obl.overlapLen << " " << obl.numDiff << " " << obl.flags;
         return out;
     }
 
     friend std::istream& operator>>(std::istream& in, OverlapBlock& obl)
     {
-        in >> obl.ranges >> obl.overlapLen >> obl.numDiff >> obl.flags;
+        in >> obl.ranges >> obl.rawRanges >> obl.overlapLen >> obl.numDiff >> obl.flags;
         return in;
     }
 
     // Data
+
+    // The ranges member holds the suffix array interval of the overlapping 
+    // string + the terminating $ symbol. This allows us to either find the extension
+    // of the overlap (using the reverse interval) or lookup the index of the read.
     BWTIntervalPair ranges;
+
+    // The raw interval of the overlap, not capped with '$' symbols is required
+    // to recompute the forward/reverse intervals if two overlap blocks intersect.
+    // This can happen when two reads/sequences have multiple possible overlaps
+    BWTIntervalPair rawRanges;
+
     int overlapLen;
     int numDiff;
+
     AlignFlags flags;
     bool isEliminated;
 
@@ -178,15 +196,15 @@ typedef OverlapBlockList::iterator OBLIter;
 void printBlockList(const OverlapBlockList* pList);
 
 // Ensure all the overlap blocks in the list are distinct
-void removeSubMaximalBlocks(OverlapBlockList* pList);
+void removeSubMaximalBlocks(OverlapBlockList* pList, const BWT* pBWT, const BWT* pRevBWT);
 
 // Given the overlapping blocks A and B, construct a list of blocks where the index ranges do not intersect
-OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B);
+OverlapBlockList resolveOverlap(const OverlapBlock& A, const OverlapBlock& B, const BWT* pBWT, const BWT* pRevBWT);
 
 // Partition the overlap block list into two lists, 
 // one for the containment overlaps and one for the proper overlaps
 void partitionBlockList(int readLen, OverlapBlockList* pCompleteList, 
-                        OverlapBlockList* pOverlapList, 
+                        OverlapBlockList* pOverlapList,
                         OverlapBlockList* pContainList);
 
 // Remove containment blocks from the list

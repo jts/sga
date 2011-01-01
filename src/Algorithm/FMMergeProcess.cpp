@@ -77,6 +77,7 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
         record.seq = pVertex->getSeq().toString();
         OverlapBlockList blockList;
         m_pOverlapper->overlapRead(record, m_minOverlap, &blockList);
+
         removeContainmentBlocks(pVertex->getSeqLen(), &blockList);
 
         // Construct the initial list of candidates from the block list

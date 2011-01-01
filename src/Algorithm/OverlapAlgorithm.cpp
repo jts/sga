@@ -118,7 +118,6 @@ OverlapResult OverlapAlgorithm::alignReadDuplicate(const SeqRecord& read, Overla
 OverlapResult OverlapAlgorithm::overlapReadExact(const SeqRecord& read, int minOverlap, OverlapBlockList* pOBOut) const
 {
     OverlapResult result;
-
     // The complete set of overlap blocks are collected in obWorkingList
     // The filtered set (containing only irreducible overlaps) are placed into pOBOut
     // by calculateIrreducibleHits
@@ -151,10 +150,10 @@ OverlapResult OverlapAlgorithm::overlapReadExact(const SeqRecord& read, int minO
     oblPrefixRev.insert(oblPrefixRev.end(), oblRevContain.begin(), oblRevContain.end());
     
     // Perform the submaximal filter
-    removeSubMaximalBlocks(&oblSuffixFwd);
-    removeSubMaximalBlocks(&oblPrefixFwd);
-    removeSubMaximalBlocks(&oblSuffixRev);
-    removeSubMaximalBlocks(&oblPrefixRev);
+    removeSubMaximalBlocks(&oblSuffixFwd, m_pBWT, m_pRevBWT);
+    removeSubMaximalBlocks(&oblPrefixFwd, m_pBWT, m_pRevBWT);
+    removeSubMaximalBlocks(&oblSuffixRev, m_pRevBWT, m_pBWT);
+    removeSubMaximalBlocks(&oblPrefixRev, m_pRevBWT, m_pBWT);
 
     // Remove the contain blocks from the suffix/prefix lists
     removeContainmentBlocks(seq.length(), &oblSuffixFwd);
@@ -240,7 +239,7 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
             if(probe.interval[1].isValid())
             {
                 assert(probe.interval[1].lower > 0);
-                pOverlapList->push_back(OverlapBlock(probe, overlapLen, 0, af));
+                pOverlapList->push_back(OverlapBlock(probe, ranges, overlapLen, 0, af));
             }
         }
     }
@@ -265,13 +264,14 @@ void OverlapAlgorithm::findOverlapBlocksExact(const std::string& w, const BWT* p
     }
     else
     {
-        BWTAlgorithms::updateBothL(ranges, '$', pBWT);
-        if(ranges.isValid())
+        BWTIntervalPair probe = ranges;
+        BWTAlgorithms::updateBothL(probe, '$', pBWT);
+        if(probe.isValid())
         {
             // terminate the contained block and add it to the contained list
-            BWTAlgorithms::updateBothR(ranges, '$', pRevBWT);
-            assert(ranges.isValid());
-            pContainList->push_back(OverlapBlock(ranges, w.length(), 0, af));
+            BWTAlgorithms::updateBothR(probe, '$', pRevBWT);
+            assert(probe.isValid());
+            pContainList->push_back(OverlapBlock(probe, ranges, w.length(), 0, af));
         }
     }
 
@@ -359,7 +359,7 @@ bool OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
                     if(probe.interval[1].isValid())
                     {
                         assert(probe.interval[1].lower > 0);
-                        OverlapBlock nBlock(probe, overlapLen, align.z, af, align.historyLink->getHistoryVector());
+                        OverlapBlock nBlock(probe, align.ranges, overlapLen, align.z, af, align.historyLink->getHistoryVector());
                         workingList.push_back(nBlock);
                     }
                 }
@@ -405,7 +405,7 @@ bool OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
         // parse the working list to remove any submaximal overlap blocks
         // these blocks correspond to reads that have multiple valid overlaps. 
         // we only keep the longest
-        removeSubMaximalBlocks(&workingList);
+        removeSubMaximalBlocks(&workingList, pBWT, pRevBWT);
 
         OverlapBlockList containedWorkingList;
         partitionBlockList(len, &workingList, pOverlapList, &containedWorkingList);

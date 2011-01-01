@@ -154,7 +154,13 @@ void SuffixArray::print(const ReadTable* pRT) const
     {
         SAElem id1 = m_data[i];
         std::string suffix = !id1.isEmpty() ? getSuffix(i, pRT) : "";
-        std::cout << i << "\t" << id1 << "\t" << suffix << "\n";
+        int pos = id1.getPos();
+        char b;
+        if(pos == 0)
+            b = '$';
+        else
+            b =  pRT->getRead(id1.getID()).seq.get(pos - 1);
+        std::cout << i << "\t" << id1 << "\t" << b << "\t" << suffix << "\n";
     }
 }
 

@@ -51,9 +51,18 @@ class FMMergeProcess
     
     private:
 
-        void addCandidates(StringGraph* pGraph, const Vertex* pX, const Edge* pEdgeToX, const OverlapBlockList* pBlockList, FMMergeQueue& candidateQueue);
-        bool checkCandidate(const FMMergeCandidate& candidate, const OverlapBlockList* pBlockList) const;
+        // Add the edges of X as candidates to the graph
+        void addCandidates(StringGraph* pGraph, 
+                           const Vertex* pX, 
+                           const Edge* pEdgeToX, 
+                           const OverlapBlockList* pBlockList, 
+                           FMMergeQueue& candidateQueue);
 
+        // Check whether the candidate can be merged into the current graph
+        bool checkCandidate(const FMMergeCandidate& candidate, 
+                            const OverlapBlockList* pBlockList) const;
+
+        //
         std::string makeVertexID(BWTInterval interval);
 
         const OverlapAlgorithm* m_pOverlapper;
