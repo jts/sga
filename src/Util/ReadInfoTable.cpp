@@ -14,69 +14,91 @@
 #include "SeqReader.h"
 
 // Read the sequences from a file
-ReadInfoTable::ReadInfoTable(std::string filename, size_t num_expected)
+ReadInfoTable::ReadInfoTable(std::string filename, 
+                             size_t num_expected, 
+                             ReadInfoOption option) : m_numericIDs(false)
 {
+    // Do not store actual ids, use a numeric id equal to the table index
+    if(option == RIO_NUMERICID)
+        m_numericIDs = true;
+
     if(num_expected > 0)
     {
-        m_table.reserve(num_expected);
+        m_lengths.reserve(num_expected);
+        if(!m_numericIDs)
+            m_ids.reserve(num_expected);
     }
 
     SeqReader reader(filename);
     SeqRecord sr;
+
+    // Load the lengths and ids
     while(reader.get(sr))
-        addReadInfo(ReadInfo(sr.id, sr.seq.length()));
+    {
+        m_lengths.push_back(sr.seq.length());
+        if(!m_numericIDs)
+        {
+            m_ids.push_back(sr.id);
+        }
+    }
 }
 
 // 
 ReadInfoTable::~ReadInfoTable()
 {
-}
 
-//
-void ReadInfoTable::addReadInfo(const ReadInfo& r)
-{
-    m_table.push_back(r);
 }
 
 //
 size_t ReadInfoTable::getReadLength(size_t idx) const
 {
-    assert(idx < m_table.size());
-    return m_table[idx].length;
+    assert(idx < m_lengths.size());
+    return m_lengths[idx];
 }
 
 //
 std::string ReadInfoTable::getReadID(size_t idx) const
 {
-    assert(idx < m_table.size());
-    return m_table[idx].id;
+    if(!m_numericIDs)
+    {
+        assert(idx < m_ids.size());
+        return m_ids[idx];
+    }
+    else
+    {
+        // Build an identified from the idx
+        std::stringstream idss;
+        idss << idx;
+        return idss.str();
+    }
 }
 
 //
-const ReadInfo& ReadInfoTable::getReadInfo(size_t idx) const
+const ReadInfo ReadInfoTable::getReadInfo(size_t idx) const
 {
-    assert(idx < m_table.size());
-    return m_table[idx];
+    ReadInfo ri(getReadID(idx), getReadLength(idx));
+    return ri;
 }
 
 //
 size_t ReadInfoTable::getCount() const
 {
-    return m_table.size();
+    return m_lengths.size();
 }
 
 // 
 size_t ReadInfoTable::countSumLengths() const
 {
     size_t sum = 0;
-    for(size_t i = 0; i < m_table.size(); ++i)
-        sum += m_table[i].length;
+    for(size_t i = 0; i < m_lengths.size(); ++i)
+        sum += m_lengths[i];
     return sum;
 }
 
 //
 void ReadInfoTable::clear()
 {
-    m_table.clear();
+    m_lengths.clear();
+    m_ids.clear();
 }
 

@@ -46,7 +46,7 @@ static const char *RMDUP_USAGE_MESSAGE =
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences identical (default: exact matches required)\n"
 "      -t, --threads=N                  use N threads (default: 1)\n"
 "      -d, --sample-rate=N              sample the symbol counts every N symbols in the FM-index. Higher values use significantly\n"
-"                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 256)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -61,7 +61,7 @@ namespace opt
     static unsigned int numThreads;
     static double errorRate;
     static bool bReindex = true;
-    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
+    static int sampleRate = 256;
 }
 
 static const char* shortopts = "p:o:e:t:d:v";
@@ -193,8 +193,13 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
     SuffixArray* pFwdSAI = new SuffixArray(opt::prefix + SAI_EXT);
     SuffixArray* pRevSAI = new SuffixArray(opt::prefix + RSAI_EXT);
 
-    // Load the read table and output the initial vertex set, consisting of all the reads
-    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings());
+    // Load the read table to look up the lengths of the reads and their ids.
+    // When rmduping a set of reads, the ReadInfoTable can actually be larger than the
+    // BWT if the names of the reads are very long. Previously, when two reads
+    // are duplicated, the read with the lexographically lower read name was chosen
+    // to be kept. To save memory here, we break ties using the index in the ReadInfoTable
+    // instead. This allows us to avoid loading the read names.
+    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings(), RIO_NUMERICID);
 
     std::string outFile = out_prefix + ".fa";
     std::string dupFile = out_prefix + ".dups.fa";
