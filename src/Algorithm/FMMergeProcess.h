@@ -43,7 +43,7 @@ class FMMergeProcess
 {
     public:
         FMMergeProcess(const OverlapAlgorithm* pOverlapper, 
-                       int minOverlap, const BitVector* pMarkedReads);
+                       int minOverlap, BitVector* pMarkedReads);
 
         ~FMMergeProcess();
 
@@ -67,7 +67,7 @@ class FMMergeProcess
 
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;
-        const BitVector* m_pMarkedReads;
+        BitVector* m_pMarkedReads;
 };
 
 // Write the results from the overlap step to an ASQG file

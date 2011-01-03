@@ -4,7 +4,8 @@
 // Released under the GPL license
 //-----------------------------------------------
 //
-// BitVector - Vector of bits 
+// BitVector - Vector of bits. The structure
+// can be locked by a mutex to guarentee atomic access.
 //
 #ifndef BITVECTOR_H
 #define BITVECTOR_H
@@ -20,13 +21,23 @@ class BitVector
         BitVector(size_t n);
         ~BitVector();
 
+        // Functions to acquire/release the mutex
+        // The client code is responsible for acquiring
+        // the lock before calling set(). Reading a bit with 
+        // test() is ok however.
+        void lock();
+        void unlock();
+
         void resize(size_t n);
         void set(size_t i, bool v);
         bool test(size_t i) const;
 
     private:
-        std::vector<BitChar> m_data;
 
+        void initializeMutex();
+
+        std::vector<BitChar> m_data;
+        pthread_mutex_t m_mutex;
 };
 
 #endif

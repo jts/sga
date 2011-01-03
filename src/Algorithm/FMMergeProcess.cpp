@@ -11,7 +11,7 @@
 #include "SGVisitors.h"
 
 //
-FMMergeProcess::FMMergeProcess(const OverlapAlgorithm* pOverlapper, int minOverlap, const BitVector* pMarkedReads) : 
+FMMergeProcess::FMMergeProcess(const OverlapAlgorithm* pOverlapper, int minOverlap, BitVector* pMarkedReads) : 
                                      m_pOverlapper(pOverlapper), 
                                      m_minOverlap(minOverlap), 
                                      m_pMarkedReads(pMarkedReads)
@@ -133,6 +133,57 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
         result.isMerged = false;
     }
 
+    if(result.isMerged)
+    {
+        // If some work was performed, update the bitvector so other threads do not try to merge the same set of reads
+        // This uses a lock on the bitvector to ensure it is atomic. If some other thread has merged this set (and updated
+        // the bitvector), we discard all the merged data
+        m_pMarkedReads->lock();
+
+        // Check the mark bits for each sequence to be merged
+        int bitsSet = 0;
+        int bitsUnset = 0;
+        for(std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();
+               iter != result.usedIntervals.end(); ++iter)
+        {
+            for(int64_t i = iter->lower; i <= iter->upper; ++i)
+            {
+                if(m_pMarkedReads->test(i))
+                    ++bitsSet;
+                else
+                    ++bitsUnset;
+            }
+        }
+
+        // Either all the bits should be set or not set
+        assert(bitsSet == 0 || bitsUnset == 0);
+        (void)bitsUnset;
+
+        if(bitsSet == 0)
+        {
+            // All the reads have not been marked so we can safely merged
+            // the sequences. Update the bit vector so no other thread
+            // will output these reads
+            for(std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();
+                   iter != result.usedIntervals.end(); ++iter)
+            {
+                for(int64_t i = iter->lower; i <= iter->upper; ++i)
+                    m_pMarkedReads->set(i, true);
+            }
+        }
+        else
+        {
+            // Some other thread merged all these reads already, discard the intermediate
+            // data and set the result to false
+            result.mergedSequences.clear();
+            result.usedIntervals.clear();
+            result.isMerged = false;
+        }
+
+        // Release the mutex on the vector
+        m_pMarkedReads->unlock();
+    }
+
     return result;
 }
 
@@ -242,11 +293,8 @@ FMMergePostProcess::~FMMergePostProcess()
 void FMMergePostProcess::process(const SequenceWorkItem& item, const FMMergeResult& result)
 {
     (void)item;
-    (void)result;
-
     m_numTotal += 1;
 
-    WARN_ONCE("check for collisions");
     if(result.isMerged)
     {
         // Write out the merged sequences
@@ -261,14 +309,6 @@ void FMMergePostProcess::process(const SequenceWorkItem& item, const FMMergeResu
             record.write(*m_pWriter);
 
             m_totalLength += iter->size();
-        }
-
-        // Set a bit mask for the indicated values
-        for(std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();
-               iter != result.usedIntervals.end(); ++iter)
-        {
-            for(int64_t i = iter->lower; i <= iter->upper; ++i)
-                m_pMarkedReads->set(i, true);
         }
     }
 }
