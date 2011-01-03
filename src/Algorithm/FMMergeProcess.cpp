@@ -115,7 +115,6 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
         // The graph has now been constructed. Remove all the nodes that are marked invalid for merging
         pGraph->sweepVertices(GC_RED);
 
-        WARN_ONCE("Removing duplicate edge - consider doing this in the overlap step");
         SGDuplicateVisitor dupVisit(true);
         pGraph->visit(dupVisit);
         
