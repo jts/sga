@@ -207,8 +207,8 @@ void assemble()
     if(opt::numBubbleRounds > 0)
     {
         std::cout << "\nPerforming variation smoothing\n";
-        int numSmooth = 10;
-        SGSmoothingVisitor smoothingVisit;
+        SGSmoothingVisitor smoothingVisit("variants.fa");
+        int numSmooth = opt::numBubbleRounds;
         while(numSmooth-- > 0)
             pGraph->visit(smoothingVisit);
         pGraph->simplify();

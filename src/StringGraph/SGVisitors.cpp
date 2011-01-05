@@ -1041,6 +1041,14 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
             SGWalk& selectedWalk = variantWalks[selectedIdx];
             assert(selectedWalk.isIndexed());
 
+            // Write the selected path to the variants file as variant 0
+            int variantIdx = 0;
+            std::string selectedSequence = selectedWalk.getString(SGWT_START_TO_END);
+            std::stringstream ss;
+            ss << "variant-" << m_numRemovedTotal << "/" << variantIdx++;
+            writeFastaRecord(&m_outFile, ss.str(), selectedSequence);
+
+
             // The vertex set for each walk is not necessarily disjoint,
             // the selected walk may contain vertices that are part
             // of other paths. We handle this be initially marking all
@@ -1062,12 +1070,20 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                         currEdge->getEnd()->setColor(GC_RED);
                     }
                 }
+
+                // Write the variant to a file
+                std::string variantSequence = currWalk.getString(SGWT_START_TO_END);
+                std::stringstream variantID;
+                std::stringstream ss;
+                ss << "variant-" << m_numRemovedTotal << "/" << variantIdx++;
+                writeFastaRecord(&m_outFile, ss.str(), variantSequence);
             }
 
             if(variantWalks.size() == 2)
                 m_simpleBubblesRemoved += 1;
             else
                 m_complexBubblesRemoved += 1;
+            ++m_numRemovedTotal;
         }
     }
     return found;

@@ -208,14 +208,15 @@ struct SGBubbleEdgeVisitor
 // Smooth out variation in the graph
 struct SGSmoothingVisitor
 {
-    SGSmoothingVisitor() {}
+    SGSmoothingVisitor(std::string filename) : m_numRemovedTotal(0), m_outFile(filename.c_str()) {}
     void previsit(StringGraph* pGraph);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*);
 
     int m_simpleBubblesRemoved;
     int m_complexBubblesRemoved;
-
+    int m_numRemovedTotal;
+    std::ofstream m_outFile;
 };
 
 // Remove vertices/edges that have low coverage
