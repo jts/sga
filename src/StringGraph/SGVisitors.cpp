@@ -992,6 +992,8 @@ void SGBubbleEdgeVisitor::postvisit(StringGraph* pGraph)
 void SGSmoothingVisitor::previsit(StringGraph* pGraph)
 {
     pGraph->setColors(GC_WHITE);
+    m_simpleBubblesRemoved = 0;
+    m_complexBubblesRemoved = 0;
 }
 
 //
@@ -1016,38 +1018,56 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         }
 
         //std::cout << "Smoothing " << pVertex->getID() << "\n";
-        SGWalkVector collapsedWalks;
-        SGSearch::findCollapsedWalks(pVertex, dir, 1000, 20, collapsedWalks);
-        if(collapsedWalks.size() > 0)
+
+        SGWalkVector variantWalks;
+        SGSearch::findVariantWalks(pVertex, dir, 10000, 20, variantWalks);
+        if(variantWalks.size() > 0)
         {
             found = true;
             size_t selectedIdx = -1;
             size_t selectedLength = 0;
 
             // Select the walk with the longest length
-            for(size_t i = 0; i < collapsedWalks.size(); ++i)
+            for(size_t i = 0; i < variantWalks.size(); ++i)
             {
-                if(collapsedWalks[i].getNumEdges() > selectedLength)
+                if(variantWalks[i].getNumEdges() > selectedLength)
                 {
                     selectedIdx = i;
-                    selectedLength = collapsedWalks[i].getNumEdges();
+                    selectedLength = variantWalks[i].getNumEdges();
                 }
-                //collapsedWalks[i].print();
+                //variantWalks[i].print();
             }
             assert(selectedIdx != (size_t)-1);
+            SGWalk& selectedWalk = variantWalks[selectedIdx];
+            assert(selectedWalk.isIndexed());
 
-            // Mark all the nodes in the non-selected walks for deletion
-            for(size_t i = 0; i < collapsedWalks.size(); ++i)
+            // The vertex set for each walk is not necessarily disjoint,
+            // the selected walk may contain vertices that are part
+            // of other paths. We handle this be initially marking all
+            // vertices of the 
+            for(size_t i = 0; i < variantWalks.size(); ++i)
             {
                 if(i == selectedIdx)
                     continue;
-                SGWalk& currWalk = collapsedWalks[i];
+
+                SGWalk& currWalk = variantWalks[i];
                 for(size_t j = 0; j < currWalk.getNumEdges() - 1; ++j)
                 {
                     Edge* currEdge = currWalk.getEdge(j);
-                    currEdge->getEnd()->setColor(GC_RED);
+                    
+                    // If the vertex is also on the selected path, do not mark it
+                    Vertex* currVertex = currEdge->getEnd();
+                    if(!selectedWalk.containsVertex(currVertex->getID()))
+                    {
+                        currEdge->getEnd()->setColor(GC_RED);
+                    }
                 }
             }
+
+            if(variantWalks.size() == 2)
+                m_simpleBubblesRemoved += 1;
+            else
+                m_complexBubblesRemoved += 1;
         }
     }
     return found;
@@ -1058,6 +1078,8 @@ void SGSmoothingVisitor::postvisit(StringGraph* pGraph)
 {
     pGraph->sweepVertices(GC_RED);
     assert(pGraph->checkColors(GC_WHITE));
+
+    printf("VariationSmoother: Removed %d simple and %d complex bubbles\n", m_simpleBubblesRemoved, m_complexBubblesRemoved);
 }
 
 

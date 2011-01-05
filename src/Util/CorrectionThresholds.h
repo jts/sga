@@ -14,8 +14,8 @@ namespace CorrectionThresholds
 {
     // The number of reads that needs to support
     // a base call given a low or high quality value
-    const static int minSupportLowQuality = 3;
-    const static int minSupportHighQuality = 2;
+    const static int minSupportLowQuality = 4;
+    const static int minSupportHighQuality = 3;
 
     // The threshold for a determining whether
     // a quality score is low or high

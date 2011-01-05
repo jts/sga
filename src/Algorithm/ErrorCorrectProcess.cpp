@@ -144,10 +144,11 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
     if(m_printOverlaps)
     {
         std::string corrected_seq = result.correctSequence.toString();
-        std::cout << "OS: " << originalRead << "\n";
-        std::cout << "CS: " << corrected_seq << "\n";
-        std::cout << "DS: " << getDiffString(originalRead, corrected_seq) << "\n";
-        std::cout << "QS: " << currRead.qual << "\n";
+        std::cout << "OS:     " << originalRead << "\n";
+        std::cout << "CS:     " << corrected_seq << "\n";
+        std::cout << "DS:     " << getDiffString(originalRead, corrected_seq) << "\n";
+        std::cout << "QS:     " << currRead.qual << "\n";
+	std::cout << "\n";
     }
     
     return result;

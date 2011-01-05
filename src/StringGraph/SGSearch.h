@@ -35,6 +35,8 @@ class SGWalk
 
         void addEdge(Edge* pEdge);
         void popLast();
+        void setFinished(bool b);
+        bool isFinished() const;
 
         VertexPtrVec getVertices() const;
         Vertex* getStartVertex() const;
@@ -45,6 +47,7 @@ class SGWalk
 
         // Returns true if the walk contains the specified vertex
         // If the walk is not indexed, this will assert
+        bool isIndexed() const;
         bool containsVertex(const VertexID& id) const;
 
         // Truncate the walk after the first instance of id
@@ -52,6 +55,7 @@ class SGWalk
 
         //
         std::string getString(SGWalkType type) const;
+        std::string pathSignature() const;
 
         // distance calculations
         int getExtensionDistance() const;
@@ -60,6 +64,7 @@ class SGWalk
         int getEndToStartDistance() const;
 
         void print() const;
+        void printSimple() const;
 
     private:
         
@@ -76,7 +81,9 @@ class SGWalk
         // z              ----------
         // distance     ************
         int m_extensionDistance;
+        bool m_extensionFinished;
 };
+
 typedef std::vector<SGWalk> SGWalkVector;
 typedef std::deque<SGWalk> WalkQueue;
 
@@ -86,6 +93,12 @@ namespace SGSearch
     //
     void findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
                    int maxDistance, size_t maxQueue, SGWalkVector& outWalks);
+
+    void findVariantWalks(Vertex* pX, 
+                          EdgeDir initialDir, 
+                          int maxDistance,
+                          size_t maxWalks, 
+                          SGWalkVector& outWalks);
 
     void findCollapsedWalks(Vertex* pX, EdgeDir initialDir, 
                             int maxDistance, size_t maxQueue, 
@@ -98,6 +111,9 @@ namespace SGSearch
     //
     void initializeWalkQueue(Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue);
     bool extendWalk(const Vertex* pX, EdgeDir dir, SGWalk& currWalk, WalkQueue& queue);
+
+    // Returns true if all the endpoints of the edges in epv are in vertexSet
+    bool checkEndpointsInSet(EdgePtrVec& epv, std::set<Vertex*>& vertexSet);
 };
 
 #endif

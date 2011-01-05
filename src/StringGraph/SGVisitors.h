@@ -212,6 +212,10 @@ struct SGSmoothingVisitor
     void previsit(StringGraph* pGraph);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
     void postvisit(StringGraph*);
+
+    int m_simpleBubblesRemoved;
+    int m_complexBubblesRemoved;
+
 };
 
 // Remove vertices/edges that have low coverage

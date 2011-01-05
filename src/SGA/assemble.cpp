@@ -179,18 +179,6 @@ void assemble()
     }
 
     //
-    if(opt::bSmoothGraph)
-    {
-        std::cout << "\nPerforming variation smoothing\n";
-        int numSmooth = 4;
-        SGSmoothingVisitor smoothingVisit;
-        while(numSmooth-- > 0)
-            pGraph->visit(smoothingVisit);
-        //pGraph->visit(trimVisit);
-        //pGraph->simplify();
-    }
-    
-    //
     if(opt::coverageCutoff > 0)
     {
         std::cout << "Coverage visit\n";
@@ -205,6 +193,7 @@ void assemble()
     pGraph->simplify();
     
     // Remove bubbles from the graph to smooth variation
+    /*
     if(opt::numBubbleRounds > 0)
     {
         std::cout << "\nPerforming bubble removal\n";
@@ -214,12 +203,25 @@ void assemble()
             pGraph->visit(bubbleVisit);
         pGraph->simplify();
     }
+    */
+    if(opt::numBubbleRounds > 0)
+    {
+        std::cout << "\nPerforming variation smoothing\n";
+        int numSmooth = 10;
+        SGSmoothingVisitor smoothingVisit;
+        while(numSmooth-- > 0)
+            pGraph->visit(smoothingVisit);
+        pGraph->simplify();
+        pGraph->visit(trimVisit);
+    }
     
+    pGraph->renameVertices("contig-");
+
     std::cout << "\nFinal graph stats\n";
     pGraph->visit(statsVisit);
 
     // Rename the vertices to have contig IDs instead of read IDs
-    pGraph->renameVertices("contig-");
+    //pGraph->renameVertices("contig-");
 
     // Write the results
     SGFastaVisitor av(opt::outFile);
