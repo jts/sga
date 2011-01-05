@@ -141,13 +141,14 @@ int qcMain(int argc, char** argv)
     delete pWriter;
     delete pDiscardWriter;
 
+    delete pBWT;
+    delete pRBWT;
+
     // Rebuild the FM-index without the discarded reads
     std::string out_prefix = stripFilename(opt::outFile);
     removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
     removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
 
-    delete pBWT;
-    delete pRBWT;
     delete pTimer;
 
     if(opt::numThreads > 1)
