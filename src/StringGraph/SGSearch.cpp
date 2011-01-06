@@ -361,7 +361,6 @@ void SGSearch::findVariantWalks(Vertex* pX,
     // Check that each vertex in the internal nodes only has
     // edges to the vertices in the set
 
-    WARN_ONCE("check root vertex");
     bool cleanlyRemovable = true;
 
     // Ensure that all the vertices linked to the start vertex
