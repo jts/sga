@@ -587,6 +587,15 @@ bool SGTrimVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
             }
         }
     }
+
+    /*
+    if(isTrimmed)
+    {
+        std::stringstream ss;
+        ss << pVertex->getID() << "-trimmed";
+        writeFastaRecord(&m_tmpFile, ss.str(), pVertex->getSeq().toString());
+    }
+    */
     return false;
 }
 

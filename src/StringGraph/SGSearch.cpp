@@ -339,9 +339,11 @@ void SGSearch::findVariantWalks(Vertex* pX,
 {
     findCollapsedWalks(pX, initialDir, maxDistance, maxWalks, outWalks);
 
-    if(outWalks.empty())
+    if(outWalks.size() <= 1)
+    {
+        outWalks.clear();
         return;
-    assert(outWalks.size() > 1);
+    }
 
     // Validate that any of the returned walks can be removed cleanly.
     // This means that for all the internal vertices on each walk (between
@@ -453,11 +455,11 @@ void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir,
                 for(size_t i = 0; i < queue.size(); ++i)
                 {
                     // Truncate the path at the common vertex
+
                     queue[i].truncate(iLastID);
                     SGWalk* pWalk = &queue[i];
                     nonRedundant.insert(std::make_pair(queue[i].pathSignature(), pWalk));
                 }
-
                 // Write out the paths
                 for(std::map<std::string, SGWalk*>::iterator iter = nonRedundant.begin();
                     iter != nonRedundant.end(); ++iter)
