@@ -15,6 +15,45 @@ AC_PROG_RANLIB
 AC_LANG([C++])
 AC_CHECK_HEADER([zlib.h])
 
+# Check for libraries
+AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
+
+# Check for the bamtools library path
+AC_ARG_WITH(bamtools, AS_HELP_STRING([--with-bamtools=PATH],
+	[specify directory containing the bamtools library (http://github.com/pezmaster31/bamtools)]))
+
+if test "$with_bamtools" -a -d "$with_bamtools"; then
+    bamtools_ldflags="-Wl,-rpath,$with_bamtools/lib -L$with_bamtools/lib -lbamtools"
+    bamtools_include="-I$with_bamtools/include"
+fi
+
+# Check for the hoard memory allocator 
+AC_ARG_WITH(hoard, AS_HELP_STRING([--with-hoard=PATH],
+	[specify directory containing the hoard memory allocator library]))
+if test "$with_hoard" -a -d "$with_hoard"; then
+	hoard_ldflags="-Wl,-rpath,$with_hoard -L$with_hoard"
+    enable_hoard=1
+fi
+
+# Check for the google sparse hash
+AC_ARG_WITH(sparsehash, AS_HELP_STRING([--with-sparsehash=PATH],
+	[specify directory containing the google sparsehash headers http://code.google.com/p/google-sparsehash/)]))
+
+if test "$with_sparsehash" -a -d "$with_sparsehash"; then
+    sparsehash_include="-I$with_sparsehash/include"
+fi
+
+# Set compiler flags.
+AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra")
+AC_SUBST(CXXFLAGS, "-O3")
+AC_SUBST(CPPFLAGS, "$CPPFLAGS $sparsehash_include $bamtools_include")
+AC_SUBST(LDFLAGS, "$hoard_ldflags $bamtools_ldflags $LDFLAGS")
+
+#
+if test "$enable_hoard"; then
+    AC_SEARCH_LIBS([hoardmalloc], [hoard])
+fi
+
 # Ensure the sparse hash is available
 AC_CHECK_HEADERS([google/sparse_hash_set],,[AC_MSG_ERROR([google sparse hash library is required: http://code.google.com/p/google-sparsehash/])])
 
@@ -25,25 +64,8 @@ AC_CHECK_HEADERS([ \
 	unordered_set tr1/unordered_set ext/hash_set \
 ])
 
-# Check for libraries
-AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
-
-# Check for the hoard memory allocator 
-AC_ARG_WITH(hoard, AS_HELP_STRING([--with-hoard=PATH],
-	[specify directory containing the hoard library]))
-if test "$with_hoard" -a -d "$with_hoard"; then
-	hoard_ldflags="-Wl,-rpath,$with_hoard -L$with_hoard"
-    enable_hoard=1
-fi
-
-
-# Set compiler flags.
-AC_SUBST(AM_CXXFLAGS, '-Wall -Wextra -Werror')
-AC_SUBST(LDFLAGS, "$hoard_ldflags $LDFLAGS")
-
-if test "$enable_hoard"; then
-    AC_SEARCH_LIBS([hoardmalloc], [hoard])
-fi
+# Make sure the bamtools headers can be found
+AC_CHECK_HEADERS([api/BamReader.h],,[AC_MSG_ERROR([The bamtools library must be installed (http://github.com/pezmaster31/bamtools). You can specify its path with the --with-bamtools=PATH option])])
 
 AC_CONFIG_FILES([Makefile
 		Thirdparty/Makefile

@@ -27,6 +27,7 @@
 #include "SGUtil.h"
 #include "gmap.h"
 #include "SGSearch.h"
+#include "api/BamReader.h"
 
 // Struct
 // Functions
@@ -43,11 +44,10 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2010 Wellcome Trust Sanger Institute\n";
 
 static const char *CONNECT_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... ASQGFILE GMAPFILE\n"
-"Resolve the complete sequence of a paired end fragment by finding a walk through the graph connecting the ends\n"
-"The read adjacency information is given in ASQGFILE, which is the direct output from the sga-overlap step.\n"
-"It should not contain duplicate reads. The GMAPFILE specifies the vertices to walk between, read pairs\n"
-"are assumed to be on consecutive lines.\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... ASQGFILE BAMFILE\n"
+"Resolve the complete sequence of a paired end fragment by finding a walk through the graph connecting the ends.\n"
+"The graph is read from the ASQGFILE. The reads alignments (to the contigs that make up the graph graph) are\n"
+"read from the BAMFILE.\n"
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
@@ -76,7 +76,7 @@ namespace opt
     static std::string outFile;
     static std::string unconnectedFile = "unconnected.fa";
     static std::string asqgFile;
-    static std::string gmapFile;
+    static std::string bamFile;
 }
 
 static const char* shortopts = "p:m:e:t:l:s:o:d:v";
@@ -159,11 +159,13 @@ int connectMain(int argc, char** argv)
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, false);
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);    
-    std::istream* pReader = createReader(opt::gmapFile);
-    std::ostream* pWriter = createWriter(opt::outFile);
 
-    GmapRecord record1;
-    GmapRecord record2;
+    // Open the bam file for reading
+    BamTools::BamReader* pBamReader = new BamTools::BamReader;
+    pBamReader->Open(opt::bamFile);
+
+    std::ostream* pWriter = createWriter(opt::outFile);
+    std::cout << "NUM REFS: " << pBamReader->GetReferenceCount() << "\n";
     
     int numPairsAttempted = 0;
     int numPairsResolved = 0;
@@ -174,31 +176,81 @@ int connectMain(int argc, char** argv)
     // In heterozygous SV mode, write up to 2 paths
     size_t maxPaths = (opt::hetSVMode ? 2 : 1);
 
-    while(*pReader >> record1)
+    BamTools::BamAlignment record1;
+    BamTools::BamAlignment record2;
+    bool done = false;
+
+    const BamTools::RefVector& referenceVector = pBamReader->GetReferenceData();
+    assert(false && "sga-connect refactor in progress");
+    while(!done)
     {
-        bool good = *pReader >> record2;
-        assert(good);
+        // Read a pair from the bam file
+        bool good = true;
+
+        // Read record 1. Skip secondary alignments of the previous pair
+        do
+        {
+            if(!pBamReader->GetNextAlignment(record1))
+            {
+                done = true;
+                break;
+            }
+        } while(!record1.IsPrimaryAlignment());
+
+        // Stop if no alignment could be parsed from the stream
+        if(done)
+            break;
+
+        // Read record 2. Skip any 
+        do
+        {
+            if(!pBamReader->GetNextAlignment(record2))
+            {
+                done = true;
+                break;
+            }
+        } while(!record2.IsPrimaryAlignment());
+
+        // If this read failed, there is a mismatch between the pairing
+        if(done)
+        {
+            std::cout << "Could not read pair for read: " << record1.Name << "\n";
+        }
     
-        if(!record1.isMapped() || !record2.isMapped())
+        if(!record1.IsMapped() || !record2.IsMapped())
             continue;
 
         // Ensure the pairing is correct
-        assert(getPairID(record1.readID) == record2.readID);
+        assert(record1.Name == record2.Name);
+        
+        std::cout << "Record1: " << record1.Name << " r: " << record1.RefID << " p: " << record1.Position << " ae: " << record1.GetEndPosition() << " rc: " << record1.IsReverseStrand() << "\n";    
+        std::cout << "Record2: " << record2.Name << " r: " << record2.RefID << " p: " << record2.Position << " ae: " << record2.GetEndPosition() << " rc: " << record2.IsReverseStrand() << "\n";    
 
+        std::string vertexID1 = referenceVector[record1.RefID].RefName;
+        std::string vertexID2 = referenceVector[record2.RefID].RefName;
+
+        std::cout << "Finding path from " << vertexID1 << " to " << vertexID2 << "\n";
+    
         // Get the vertices for this pair using the mapped IDs
-        Vertex* pX = pGraph->getVertex(record1.mappedID);
-        Vertex* pY = pGraph->getVertex(record2.mappedID);
+        Vertex* pX = pGraph->getVertex(vertexID1);
+        Vertex* pY = pGraph->getVertex(vertexID2);
 
         // Skip the pair if either vertex is not found
         if(pX == NULL || pY == NULL)
             continue;
 
-        EdgeDir walkDirection = ED_SENSE;
-        if(record1.isRC)
-            walkDirection = !walkDirection;
+        EdgeDir walkDirectionXOut = ED_SENSE;
+        EdgeDir walkDirectionYIn = ED_SENSE;
+
+        // Flip walk directions if the alignment is to the reverse strand
+        if(record1.IsReverseStrand())
+            walkDirectionXOut = !walkDirectionXOut;
+        
+        if(record2.IsReverseStrand())
+            walkDirectionYIn = !walkDirectionYIn;
 
         SGWalkVector walks;
-        SGSearch::findWalks(pX, pY, walkDirection, opt::maxDistance, 10000, walks);
+        SGSearch::findWalks(pX, pY, walkDirectionXOut, opt::maxDistance, 10000, walks);
 
         // Mark used vertices in the graph
         // If the entire path was resolved, mark black
@@ -215,7 +267,7 @@ int connectMain(int argc, char** argv)
             for(size_t i = 0; i < walks.size(); ++i)
             {
                 std::stringstream idSS;
-                idSS << getPairBasename(record1.readID);
+                idSS << getPairBasename(record1.Name);
                 size_t numReads = walks[i].getNumVertices();
                 if(opt::hetSVMode)
                 {
@@ -238,12 +290,12 @@ int connectMain(int argc, char** argv)
         {
             // Write the unconnected reads
             SeqRecord unresolved1;
-            unresolved1.id = record1.readID;
-            unresolved1.seq = record1.readSeq;
+            unresolved1.id = record1.Name;
+            unresolved1.seq = record1.QueryBases;
             
             SeqRecord unresolved2;
-            unresolved2.id = record2.readID;
-            unresolved2.seq = record2.readSeq;
+            unresolved2.id = record2.Name;
+            unresolved2.seq = record2.QueryBases;
 
             unresolved1.write(*pWriter);
             unresolved2.write(*pWriter);
@@ -276,8 +328,8 @@ int connectMain(int argc, char** argv)
 
     delete pTimer;
     delete pGraph;
-    delete pReader;
     delete pWriter;
+    delete pBamReader;
     return 0;
 }
 
@@ -349,11 +401,11 @@ void parseConnectOptions(int argc, char** argv)
 
     // Parse the input filenames
     opt::asqgFile = argv[optind++];
-    opt::gmapFile = argv[optind++];
+    opt::bamFile = argv[optind++];
 
     if(opt::outFile.empty())
     {
-        std::string prefix = stripFilename(opt::gmapFile);
+        std::string prefix = stripFilename(opt::bamFile);
         opt::outFile = prefix + ".connect.fa";
         opt::unconnectedFile = prefix + ".single.fa";
     }

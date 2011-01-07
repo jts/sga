@@ -8,23 +8,38 @@ http://bioinformatics.oxfordjournals.org/cgi/content/abstract/26/12/i367
 
 *** Compiling SGA
 
-SGA requires:
+SGA dependencies:
     -google sparse hash library (http://code.google.com/p/google-sparsehash/)
+    -the bamtools library (https://github.com/pezmaster31/bamtools)
     -zlib (http://www.zlib.net/)
+    -(optional) the hoard memory allocator (http://www.hoard.org/)
 
 If you cloned the repository from github, run autogen.sh from the src directory 
 to generate the configure file:
 
 ./autogen.sh
 
-Then run configure and make:
+If bamtools and the sparsehash have been installed in standard locations (like /usr/local) you
+can run configure without any parameters then run make:
 
 ./configure
 make
 
-The path to the sparse hash library can be specified as follows:
+If bamtools or the sparsehash are installed elsewhere, you can specify their locations as follows:
 
-./configure CPPFLAGS=-I/home/jsimpson/include
+./configure --with-sparsehash=/home/jsimpson/ --with-bamtools=/home/jsimpson/software/bamtools
+
+These directories should be the root of the install (in other words, the directories have
+include/ and lib/ as subdirectories contained the header files and libraries, respectively).
+
+The program uses pthread to parallelize most steps of the assembly. The use of a concurrent
+memory allocator like hoard can drastically improve running time. If you would like to enable
+use of the hoard memory allocator, specify the path to hoard as follows:
+can be specified as above:
+
+./configure --with-hoard=/home/jsimpson/hoard
+
+*** Installing sga
 
 Running make install will install sga into /usr/local/bin/ by default. To specify the install
 location use the --prefix option to configure:
