@@ -166,6 +166,27 @@ class EncodedString
             return out;
         }
 
+        //
+        std::string substr(size_t start) const
+        {
+            assert(start < m_len);
+            std::string out(m_len - start, 'A');
+            for(size_t i = start; i < m_len; ++i)
+                out[i - start] = s_codec.get(m_data, i);
+            return out;
+        }
+
+        //
+        std::string substr(size_t start, size_t len) const
+        {
+            assert(start < m_len);
+            assert(start + len <= m_len);
+            std::string out(len, 'C');
+            for(size_t i = 0; i < len; ++i)
+                out[i] = s_codec.get(m_data, i + start);
+            return out;
+        }
+
         // 
         friend bool operator==(const EncodedString& a, const EncodedString& b)
         {

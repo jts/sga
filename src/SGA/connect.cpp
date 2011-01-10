@@ -372,8 +372,32 @@ int connectMain(int argc, char** argv)
                 if(correctOrientation && correctSize)
                 {
                     // All checks passed, output the fragment
-                    std::string pathString = walks[i].getString(SGWT_START_TO_END);
-                    std::string fragment = pathString.substr(pe.interval.start, pe.length());
+                    //std::string pathString = walks[i].getString(SGWT_START_TO_END);
+                    //std::string fragment2 = pathString.substr(pe.interval.start, pe.length());
+
+                    int fromX = walkDirectionXOut == ED_SENSE ? record1.Position : record1.GetEndPosition();
+                    int toY = walkDirectionYIn == ED_SENSE ? record2.Position : record2.GetEndPosition();
+                    
+                    //std::cout << "fromX: " << fromX << "\n";
+                    ///std::cout << "toY: " << toY << "\n";
+
+                    std::string fragment = walks[i].getFragmentString(pX, 
+                                                                      pY, 
+                                                                      fromX,
+                                                                      toY,
+                                                                      walkDirectionXOut,
+                                                                      walkDirectionYIn);
+                    
+                    /*
+                    std::cout << "X: " << pX->getID() << " Y: " << pY->getID() << "\n";
+                    std::cout << "Fragsize  " << fragment.size() << "\n";
+                    std::cout << "Fragptp  " << pointToPoint.size() << "\n";
+
+                    std::cout << "Fragment: " << fragment << "\n";
+                    std::cout << "PTP:      " << pointToPoint << "\n";
+                    */
+                    
+                    //assert(fragment == fragment2);
                     if(opt::hetSVMode)
                     {
                         idSS << "-walk:" << i;
