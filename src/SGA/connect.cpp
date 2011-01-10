@@ -29,6 +29,8 @@
 #include "SGSearch.h"
 #include "api/BamReader.h"
 
+//#define DEBUG_CONNECT 1
+
 // Struct
 // Functions
 void markWalkVertices(SGWalk& walk, GraphColor color);
@@ -65,7 +67,9 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
-    static int maxDistance = 250;
+
+    static int minDistance = 150;
+    static int maxDistance = 400;
     
     static bool bWriteCovered = true;
     static bool bWriteUnresolved = false;
@@ -181,12 +185,9 @@ int connectMain(int argc, char** argv)
     bool done = false;
 
     const BamTools::RefVector& referenceVector = pBamReader->GetReferenceData();
-    assert(false && "sga-connect refactor in progress");
     while(!done)
     {
-        // Read a pair from the bam file
-        bool good = true;
-
+        // Read a pair from the BAM
         // Read record 1. Skip secondary alignments of the previous pair
         do
         {
@@ -223,14 +224,9 @@ int connectMain(int argc, char** argv)
         // Ensure the pairing is correct
         assert(record1.Name == record2.Name);
         
-        std::cout << "Record1: " << record1.Name << " r: " << record1.RefID << " p: " << record1.Position << " ae: " << record1.GetEndPosition() << " rc: " << record1.IsReverseStrand() << "\n";    
-        std::cout << "Record2: " << record2.Name << " r: " << record2.RefID << " p: " << record2.Position << " ae: " << record2.GetEndPosition() << " rc: " << record2.IsReverseStrand() << "\n";    
-
         std::string vertexID1 = referenceVector[record1.RefID].RefName;
         std::string vertexID2 = referenceVector[record2.RefID].RefName;
 
-        std::cout << "Finding path from " << vertexID1 << " to " << vertexID2 << "\n";
-    
         // Get the vertices for this pair using the mapped IDs
         Vertex* pX = pGraph->getVertex(vertexID1);
         Vertex* pY = pGraph->getVertex(vertexID2);
@@ -238,6 +234,10 @@ int connectMain(int argc, char** argv)
         // Skip the pair if either vertex is not found
         if(pX == NULL || pY == NULL)
             continue;
+
+#ifdef DEBUG_CONNECT
+        std::cout << "Finding path from " << vertexID1 << " to " << vertexID2 << "\n";
+#endif
 
         EdgeDir walkDirectionXOut = ED_SENSE;
         EdgeDir walkDirectionYIn = ED_SENSE;
@@ -249,8 +249,30 @@ int connectMain(int argc, char** argv)
         if(record2.IsReverseStrand())
             walkDirectionYIn = !walkDirectionYIn;
 
+        // Calculate the coordinates of the sequenced part of the contigs
+        // that these reads lie on
+        SeqCoord sc1(0,0, pX->getSeqLen());
+        sc1.interval.start = record1.Position;
+        sc1.interval.end = record1.GetEndPosition();
+
+        SeqCoord sc2(0,0, pY->getSeqLen());
+        sc2.interval.start = record2.Position;
+        sc2.interval.end = record2.GetEndPosition();
+
+        int skipX = 0;
+        if(!record1.IsReverseStrand())
+            skipX = record1.Position;
+        else
+            skipX = pX->getSeqLen() - record1.GetEndPosition() - 1;
+
+        int skipY = 0;
+        if(!record2.IsReverseStrand())
+            skipY = record2.Position;
+        else
+            skipY = pY->getSeqLen() - record2.GetEndPosition() - 1;
+
         SGWalkVector walks;
-        SGSearch::findWalks(pX, pY, walkDirectionXOut, opt::maxDistance, 10000, walks);
+        SGSearch::findWalks(pX, pY, walkDirectionXOut, opt::maxDistance, 1000, walks);
 
         // Mark used vertices in the graph
         // If the entire path was resolved, mark black
@@ -269,20 +291,104 @@ int connectMain(int argc, char** argv)
                 std::stringstream idSS;
                 idSS << getPairBasename(record1.Name);
                 size_t numReads = walks[i].getNumVertices();
-                if(opt::hetSVMode)
+
+                // Calculate the alignment positions of the reads on the merged path string
+                // First, if the two contigs are not from the same strand flip the coordinate
+                // of the second read
+                bool needFlip = !walks[i].areEndpointsFromSameStrand();
+                if(needFlip)
+                    sc2.flip();
+
+                // Next, translate the position of the right-most coordinate
+                // (wrt to the path string) by the added length
+                if(pX != pY)
                 {
-                    idSS << "-walk:" << i;
+                    // We need to translate one of the two coordinates
+                    // If the extension was antisense, s1 is translated
+                    // otherwise s2 is.
+                    int overlap_distance = walks[i].getEndToStartDistance();
+                    if(walkDirectionXOut == ED_ANTISENSE)
+                    {
+                        int translate = pY->getSeqLen() + overlap_distance;
+                        sc1.interval.start += translate;
+                        sc1.interval.end += translate;
+                    }
+                    else
+                    {
+                        int translate = pX->getSeqLen() + overlap_distance;
+                        sc2.interval.start += translate;
+                        sc2.interval.end += translate;
+                    }
                 }
 
-                idSS << " numReads:" << numReads;
 
-                SeqRecord resolved;
-                resolved.id = idSS.str();
-                resolved.seq = walks[i].getString(SGWT_START_TO_END);
-                resolved.write(*pWriter);
-            
-                // Mark all the vertices in this walk as resolved
-                markWalkVertices(walks[i], GC_BLACK);
+                // Update the length of the coordinates
+                int totalLength = walks[i].getStartToEndDistance();
+                sc1.seqlen = totalLength;
+                sc2.seqlen = totalLength;
+
+                assert(sc1.isValid());
+                assert(sc2.isValid());
+
+                // Validate that the path is as expected
+                // This has 2 conditions:
+                // 1) The inferred fragment is orientated correctly
+                // 2) The fragment size is within the expected range
+                bool correctOrientation = false;
+                if(walkDirectionXOut == ED_SENSE)
+                {
+                    if(sc1.interval.start <= sc2.interval.start)
+                        correctOrientation = true;
+                }
+                else
+                {
+                    if(sc1.interval.start >= sc2.interval.start)
+                        correctOrientation = true;
+                }
+
+#ifdef DEBUG_CONNECT
+                std::cout << "FINAL SC1: " << sc1 << "\n";
+                std::cout << "FINAL SC2: " << sc2 << "\n";
+                std::cout << "OrientationCheck: " << correctOrientation << "\n";
+#endif
+
+                // Calculate the seqcoord on the path string representing the paired end fragment
+                SeqCoord pe(0,0, totalLength);
+                pe.interval.start = std::min(sc1.interval.start, sc2.interval.start);
+                pe.interval.end = std::max(sc1.interval.end, sc2.interval.end);
+                int fragSize = pe.length();
+                bool correctSize = false;
+                if(fragSize >= opt::minDistance && fragSize <= opt::maxDistance)
+                    correctSize = true;
+
+                int expectedLength = totalLength - (skipX + skipY);
+
+#ifdef DEBUG_CONNECT
+                std::cout << "FRAGSIZE: " << fragSize << "\n";
+                std::cout << "EXPECTED: " << expectedLength << "\n";
+                std::cout << "SIZE CHECK: " << correctSize << "\n";
+#endif
+                
+                if(correctOrientation && correctSize)
+                {
+                    // All checks passed, output the fragment
+                    std::string pathString = walks[i].getString(SGWT_START_TO_END);
+                    std::string fragment = pathString.substr(pe.interval.start, pe.length());
+                    if(opt::hetSVMode)
+                    {
+                        idSS << "-walk:" << i;
+                    }
+
+                    idSS << " numVertices:" << numReads;
+
+                    SeqRecord resolved;
+                    resolved.id = idSS.str();
+                    resolved.seq = fragment;
+                    resolved.write(*pWriter);
+                
+                    // Mark all the vertices in this walk as resolved
+                    markWalkVertices(walks[i], GC_BLACK);
+                }
             }
             numPairsResolved += 1;
         }
@@ -324,7 +430,7 @@ int connectMain(int argc, char** argv)
             numPairsAttempted / proc_time_secs);
     
     printf("Wrote %d unconnected pairs\n", numUnresolvedWrote);
-    printf("Wrote %d reads that were covered by a path but not full resolved\n", numCoveredWrote);
+    printf("Wrote %d vertices that were covered by a path but not full resolved\n", numCoveredWrote);
 
     delete pTimer;
     delete pGraph;
