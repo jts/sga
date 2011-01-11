@@ -69,7 +69,7 @@ namespace opt
     static int numThreads = 1;
 
     static int minDistance = 150;
-    static int maxDistance = 400;
+    static int maxDistance = 500;
     
     static bool bWriteCovered = true;
     static bool bWriteUnresolved = false;
@@ -175,7 +175,12 @@ int connectMain(int argc, char** argv)
     int numPairsResolved = 0;
     int numUnresolvedWrote = 0;
     int numCoveredWrote = 0;
-
+    int numFailedNoPath = 0;
+    int numFailedMultiPaths = 0;
+    int numFailedUnaligned = 0;
+    int numPathsRejectLow = 0;
+    int numPathsRejectHigh = 0;
+    int numPathsRejectOrientation = 0;    
 
     // In heterozygous SV mode, write up to 2 paths
     size_t maxPaths = (opt::hetSVMode ? 2 : 1);
@@ -219,7 +224,10 @@ int connectMain(int argc, char** argv)
         }
     
         if(!record1.IsMapped() || !record2.IsMapped())
+        {
+            numFailedUnaligned += 1;
             continue;
+        }
 
         // Ensure the pairing is correct
         assert(record1.Name == record2.Name);
@@ -231,9 +239,8 @@ int connectMain(int argc, char** argv)
         Vertex* pX = pGraph->getVertex(vertexID1);
         Vertex* pY = pGraph->getVertex(vertexID2);
 
-        // Skip the pair if either vertex is not found
-        if(pX == NULL || pY == NULL)
-            continue;
+        // Ensure that the vertices are found
+        assert(pX != NULL && pY != NULL);
 
 #ifdef DEBUG_CONNECT
         std::cout << "Finding path from " << vertexID1 << " to " << vertexID2 << "\n";
@@ -272,7 +279,7 @@ int connectMain(int argc, char** argv)
             skipY = pY->getSeqLen() - record2.GetEndPosition() - 1;
 
         SGWalkVector walks;
-        SGSearch::findWalks(pX, pY, walkDirectionXOut, opt::maxDistance, 1000, walks);
+        SGSearch::findWalks(pX, pY, walkDirectionXOut, opt::maxDistance*2, 100, walks);
 
         // Mark used vertices in the graph
         // If the entire path was resolved, mark black
@@ -280,11 +287,9 @@ int connectMain(int argc, char** argv)
         GraphColor used_color = (walks.size() <= maxPaths) ? GC_BLACK : GC_RED;
 
         for(size_t i = 0; i < walks.size(); i +=1 )
-        {
             markWalkVertices(walks[i], used_color);
-        }
 
-        if(walks.size() <= maxPaths)
+        if(!walks.empty() && walks.size() <= maxPaths)
         {
             for(size_t i = 0; i < walks.size(); ++i)
             {
@@ -339,11 +344,15 @@ int connectMain(int argc, char** argv)
                 {
                     if(sc1.interval.start <= sc2.interval.start)
                         correctOrientation = true;
+                    else
+                        numPathsRejectOrientation += 1;
                 }
                 else
                 {
                     if(sc1.interval.start >= sc2.interval.start)
                         correctOrientation = true;
+                    else
+                        numPathsRejectOrientation += 1;
                 }
 
 #ifdef DEBUG_CONNECT
@@ -357,9 +366,19 @@ int connectMain(int argc, char** argv)
                 pe.interval.start = std::min(sc1.interval.start, sc2.interval.start);
                 pe.interval.end = std::max(sc1.interval.end, sc2.interval.end);
                 int fragSize = pe.length();
-                bool correctSize = false;
-                if(fragSize >= opt::minDistance && fragSize <= opt::maxDistance)
-                    correctSize = true;
+                bool correctSize = true;
+
+                if(fragSize < opt::minDistance)
+                {
+                    correctSize = false;
+                    numPathsRejectLow += 1;
+                }
+
+                if(fragSize > opt::maxDistance)
+                {
+                    correctSize = false;
+                    numPathsRejectHigh += 1;
+                }
 
                 int expectedLength = totalLength - (skipX + skipY);
 
@@ -409,28 +428,36 @@ int connectMain(int argc, char** argv)
                     resolved.id = idSS.str();
                     resolved.seq = fragment;
                     resolved.write(*pWriter);
-                
+                    
                     // Mark all the vertices in this walk as resolved
                     markWalkVertices(walks[i], GC_BLACK);
+                    numPairsResolved += 1;
                 }
             }
-            numPairsResolved += 1;
         }
-        else if(opt::bWriteUnresolved)
+        else
         {
-            // Write the unconnected reads
-            SeqRecord unresolved1;
-            unresolved1.id = record1.Name;
-            unresolved1.seq = record1.QueryBases;
+            if(walks.empty())
+                numFailedNoPath += 1;
+            else if(walks.size() > maxPaths)
+                numFailedMultiPaths += 1;
             
-            SeqRecord unresolved2;
-            unresolved2.id = record2.Name;
-            unresolved2.seq = record2.QueryBases;
+            if(opt::bWriteUnresolved)
+            {
+                // Write the unconnected reads
+                SeqRecord unresolved1;
+                unresolved1.id = record1.Name;
+                unresolved1.seq = record1.QueryBases;
+                
+                SeqRecord unresolved2;
+                unresolved2.id = record2.Name;
+                unresolved2.seq = record2.QueryBases;
 
-            unresolved1.write(*pWriter);
-            unresolved2.write(*pWriter);
+                unresolved1.write(*pWriter);
+                unresolved2.write(*pWriter);
 
-            numUnresolvedWrote += 2;
+                numUnresolvedWrote += 2;
+            }
         }
         numPairsAttempted += 1;
 
@@ -452,7 +479,14 @@ int connectMain(int argc, char** argv)
             (double)numPairsResolved / numPairsAttempted,
             proc_time_secs,
             numPairsAttempted / proc_time_secs);
-    
+
+    printf("Num failed due to no valid path: %d\n", numFailedNoPath);
+    printf("Num failed due to multiple valid paths: %d\n", numFailedMultiPaths);
+    printf("Num failed due to part of the pair not aligning to the graph: %d\n", numFailedUnaligned);
+    printf("Num paths rejected because they are shorter than the minimum distance: %d\n", numPathsRejectLow);
+    printf("Num paths rejected because they are longer than the maximum distance: %d\n", numPathsRejectHigh);
+    printf("Num paths rejected because they are do not have the correct orientation: %d\n", numPathsRejectOrientation);
+
     printf("Wrote %d unconnected pairs\n", numUnresolvedWrote);
     printf("Wrote %d vertices that were covered by a path but not full resolved\n", numCoveredWrote);
 
