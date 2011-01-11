@@ -31,9 +31,11 @@
 
 //#define DEBUG_CONNECT 1
 
-// Struct
+// Structs
+
 // Functions
 void markWalkVertices(SGWalk& walk, GraphColor color);
+void writeWalk(const std::string& name, int walkIdx, const std::string& fragment, std::ostream* pWriter);
 
 //
 // Getopt
@@ -105,7 +107,7 @@ static const struct option longopts[] = {
 struct CoveredVertexVisitor
 {
 
-    CoveredVertexVisitor(std::ostream* pWriter) : m_pWriter(pWriter), resolved(0), internal(0), not_used(0) {}
+    CoveredVertexVisitor(std::ostream* pWriter) : m_pWriter(pWriter), m_notUsedWriter("notused.fa"), resolved(0), internal(0), not_used(0) {}
     ~CoveredVertexVisitor()
     {
         std::cout << "Resolved: " << resolved << "\n";
@@ -128,6 +130,10 @@ struct CoveredVertexVisitor
         if(pX->getColor() == GC_WHITE)
         {
             not_used += 1;
+            SeqRecord record;
+            record.id = pX->getID();
+            record.seq = pX->getSeq().toString();
+            record.write(m_notUsedWriter);
         }
 
         if(pX->getColor() == GC_RED)
@@ -146,6 +152,7 @@ struct CoveredVertexVisitor
 
     //
     std::ostream* m_pWriter;
+    std::ofstream m_notUsedWriter;
     int resolved;
     int internal;
     int not_used;
@@ -239,6 +246,7 @@ int connectMain(int argc, char** argv)
         Vertex* pX = pGraph->getVertex(vertexID1);
         Vertex* pY = pGraph->getVertex(vertexID2);
 
+
         // Ensure that the vertices are found
         assert(pX != NULL && pY != NULL);
 
@@ -256,30 +264,11 @@ int connectMain(int argc, char** argv)
         if(record2.IsReverseStrand())
             walkDirectionYIn = !walkDirectionYIn;
 
-        // Calculate the coordinates of the sequenced part of the contigs
-        // that these reads lie on
-        SeqCoord sc1(0,0, pX->getSeqLen());
-        sc1.interval.start = record1.Position;
-        sc1.interval.end = record1.GetEndPosition();
-
-        SeqCoord sc2(0,0, pY->getSeqLen());
-        sc2.interval.start = record2.Position;
-        sc2.interval.end = record2.GetEndPosition();
-
-        int skipX = 0;
-        if(!record1.IsReverseStrand())
-            skipX = record1.Position;
-        else
-            skipX = pX->getSeqLen() - record1.GetEndPosition() - 1;
-
-        int skipY = 0;
-        if(!record2.IsReverseStrand())
-            skipY = record2.Position;
-        else
-            skipY = pY->getSeqLen() - record2.GetEndPosition() - 1;
+        int fromX = walkDirectionXOut == ED_SENSE ? record1.Position : record1.GetEndPosition();
+        int toY = walkDirectionYIn == ED_SENSE ? record2.Position : record2.GetEndPosition();
 
         SGWalkVector walks;
-        SGSearch::findWalks(pX, pY, walkDirectionXOut, opt::maxDistance*2, 100, walks);
+        SGSearch::findWalks(pX, pY, walkDirectionXOut, opt::maxDistance, 1000, walks);
 
         // Mark used vertices in the graph
         // If the entire path was resolved, mark black
@@ -293,80 +282,23 @@ int connectMain(int argc, char** argv)
         {
             for(size_t i = 0; i < walks.size(); ++i)
             {
-                std::stringstream idSS;
-                idSS << getPairBasename(record1.Name);
-                size_t numReads = walks[i].getNumVertices();
-
-                // Calculate the alignment positions of the reads on the merged path string
-                // First, if the two contigs are not from the same strand flip the coordinate
-                // of the second read
-                bool needFlip = !walks[i].areEndpointsFromSameStrand();
-                if(needFlip)
-                    sc2.flip();
-
-                // Next, translate the position of the right-most coordinate
-                // (wrt to the path string) by the added length
-                if(pX != pY)
-                {
-                    // We need to translate one of the two coordinates
-                    // If the extension was antisense, s1 is translated
-                    // otherwise s2 is.
-                    int overlap_distance = walks[i].getEndToStartDistance();
-                    if(walkDirectionXOut == ED_ANTISENSE)
-                    {
-                        int translate = pY->getSeqLen() + overlap_distance;
-                        sc1.interval.start += translate;
-                        sc1.interval.end += translate;
-                    }
-                    else
-                    {
-                        int translate = pX->getSeqLen() + overlap_distance;
-                        sc2.interval.start += translate;
-                        sc2.interval.end += translate;
-                    }
-                }
-
-
-                // Update the length of the coordinates
-                int totalLength = walks[i].getStartToEndDistance();
-                sc1.seqlen = totalLength;
-                sc2.seqlen = totalLength;
-
-                assert(sc1.isValid());
-                assert(sc2.isValid());
-
                 // Validate that the path is as expected
                 // This has 2 conditions:
                 // 1) The inferred fragment is orientated correctly
                 // 2) The fragment size is within the expected range
-                bool correctOrientation = false;
-                if(walkDirectionXOut == ED_SENSE)
-                {
-                    if(sc1.interval.start <= sc2.interval.start)
-                        correctOrientation = true;
-                    else
-                        numPathsRejectOrientation += 1;
-                }
-                else
-                {
-                    if(sc1.interval.start >= sc2.interval.start)
-                        correctOrientation = true;
-                    else
-                        numPathsRejectOrientation += 1;
-                }
+                bool correctOrientation = true;
+                WARN_ONCE("check orientation of result");
 
-#ifdef DEBUG_CONNECT
-                std::cout << "FINAL SC1: " << sc1 << "\n";
-                std::cout << "FINAL SC2: " << sc2 << "\n";
-                std::cout << "OrientationCheck: " << correctOrientation << "\n";
-#endif
+                std::string fragment = walks[i].getFragmentString(pX, 
+                                                                  pY, 
+                                                                  fromX,
+                                                                  toY,
+                                                                  walkDirectionXOut,
+                                                                  walkDirectionYIn);
 
                 // Calculate the seqcoord on the path string representing the paired end fragment
-                SeqCoord pe(0,0, totalLength);
-                pe.interval.start = std::min(sc1.interval.start, sc2.interval.start);
-                pe.interval.end = std::max(sc1.interval.end, sc2.interval.end);
-                int fragSize = pe.length();
-                bool correctSize = true;
+                int fragSize = fragment.length();
+                bool correctSize = !fragment.empty();
 
                 if(fragSize < opt::minDistance)
                 {
@@ -380,54 +312,10 @@ int connectMain(int argc, char** argv)
                     numPathsRejectHigh += 1;
                 }
 
-                int expectedLength = totalLength - (skipX + skipY);
 
-#ifdef DEBUG_CONNECT
-                std::cout << "FRAGSIZE: " << fragSize << "\n";
-                std::cout << "EXPECTED: " << expectedLength << "\n";
-                std::cout << "SIZE CHECK: " << correctSize << "\n";
-#endif
-                
                 if(correctOrientation && correctSize)
-                {
-                    // All checks passed, output the fragment
-                    //std::string pathString = walks[i].getString(SGWT_START_TO_END);
-                    //std::string fragment2 = pathString.substr(pe.interval.start, pe.length());
-
-                    int fromX = walkDirectionXOut == ED_SENSE ? record1.Position : record1.GetEndPosition();
-                    int toY = walkDirectionYIn == ED_SENSE ? record2.Position : record2.GetEndPosition();
-                    
-                    //std::cout << "fromX: " << fromX << "\n";
-                    ///std::cout << "toY: " << toY << "\n";
-
-                    std::string fragment = walks[i].getFragmentString(pX, 
-                                                                      pY, 
-                                                                      fromX,
-                                                                      toY,
-                                                                      walkDirectionXOut,
-                                                                      walkDirectionYIn);
-                    
-                    /*
-                    std::cout << "X: " << pX->getID() << " Y: " << pY->getID() << "\n";
-                    std::cout << "Fragsize  " << fragment.size() << "\n";
-                    std::cout << "Fragptp  " << pointToPoint.size() << "\n";
-
-                    std::cout << "Fragment: " << fragment << "\n";
-                    std::cout << "PTP:      " << pointToPoint << "\n";
-                    */
-                    
-                    //assert(fragment == fragment2);
-                    if(opt::hetSVMode)
-                    {
-                        idSS << "-walk:" << i;
-                    }
-
-                    idSS << " numVertices:" << numReads;
-
-                    SeqRecord resolved;
-                    resolved.id = idSS.str();
-                    resolved.seq = fragment;
-                    resolved.write(*pWriter);
+                {                    
+                    writeWalk(getPairBasename(record1.Name), i, fragment, pWriter);
                     
                     // Mark all the vertices in this walk as resolved
                     markWalkVertices(walks[i], GC_BLACK);
@@ -438,10 +326,41 @@ int connectMain(int argc, char** argv)
         else
         {
             if(walks.empty())
+            {
+                /*
+                std::cout << "No walk found for pair: \n";
+                std::cout << record1.Name << " " << vertexID1 << " -> " << vertexID2 << "\n";
+                std::cout << "Map qual: " << record1.MapQuality << " " << record2.MapQuality << "\n";
+                int xa1 = 0;
+                int xa2 = 0;
+                record1.GetTag("X1", xa1);
+                record2.GetTag("X1", xa2);
+                std::cout << "Num sub1: " << xa1 << "\n";
+                std::cout << "Num sub2: " << xa2 << "\n";
+                std::cout << "Total alts: " << (xa1 + xa2) << "\n";
+                */
                 numFailedNoPath += 1;
+            }
             else if(walks.size() > maxPaths)
+            {
+                /*
+                std::cout << "Multiwalks:\n";
+                for(size_t i = 0; i < walks.size(); ++i)
+                {
+                    std::string fragment = walks[i].getFragmentString(pX, 
+                                                                      pY, 
+                                                                      fromX,
+                                                                      toY,
+                                                                      walkDirectionXOut,
+                                                                      walkDirectionYIn);
+
+                    std::cout << i << " " << walks[i].pathSignature() << " size: " << fragment.size() << "\n";
+                    std::cout << ">" << i << "\n" << fragment << "\n";
+                    
+                }
+                */
                 numFailedMultiPaths += 1;
-            
+            }
             if(opt::bWriteUnresolved)
             {
                 // Write the unconnected reads
@@ -495,6 +414,27 @@ int connectMain(int argc, char** argv)
     delete pWriter;
     delete pBamReader;
     return 0;
+}
+
+// Write the given walk out to the file
+void writeWalk(const std::string& name, int walkIdx, const std::string& fragment, std::ostream* pWriter)
+{
+    std::stringstream idSS;
+    idSS << name;
+
+    if(opt::hetSVMode)
+        idSS << "-walk:" << walkIdx;
+
+    SeqRecord resolved;
+    resolved.id = idSS.str();
+    resolved.seq = fragment;
+    resolved.write(*pWriter);
+}
+
+// Read all the alignments for 
+bool readPairAlignments()
+{
+    return false;
 }
 
 // Mark all the vertices in the walk as color 

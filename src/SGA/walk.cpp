@@ -83,6 +83,7 @@ void walk()
     Vertex* pY = pGraph->getVertex(opt::id2);
 
     SGWalkVector walkVector;
+
     SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000, walkVector);
     SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000, walkVector);
 
@@ -99,25 +100,6 @@ void walk()
         std::cout << str << "\n";
     }
 
-    /*
-    // Get the root vertex
-    Vertex* pRootVertex = pGraph->getVertex(opt::rootID);
-    if(pRootVertex == NULL)
-    {
-        std::cout << "Vertex " << opt::rootID << " not found in the graph.\n";
-    }
-    else
-    {
-        copyVertexToSubgraph(pSubgraph, pRootVertex);
-        pRootVertex->setColor(GC_BLACK);
-
-        // Recursively add neighbors
-        addNeighborsToSubgraph(pRootVertex, pSubgraph, opt::span);
-
-        // Write the subgraph
-        pSubgraph->writeASQG(opt::outFile);
-    }
-    */
     delete pGraph;
 }
 
