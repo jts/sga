@@ -28,7 +28,7 @@ namespace SGSearch
                           SGWalkVector& outWalks);
 
     void findCollapsedWalks(Vertex* pX, EdgeDir initialDir, 
-                            int maxDistance, size_t maxQueue, 
+                            int maxDistance, size_t maxNodes,
                             SGWalkVector& outWalks);
 
     // Count the number of vertices that span the sequence junction

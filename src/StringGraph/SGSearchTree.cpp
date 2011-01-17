@@ -78,7 +78,8 @@ SGSearchTree::SGSearchTree(Vertex* pStartVertex,
                            size_t nodeLimit) : m_pGoalVertex(pEndVertex),
                                             m_distanceLimit(distanceLimit),
                                             m_nodeLimit(nodeLimit),
-                                            m_searchAborted(false)
+                                            m_searchAborted(false),
+                                            m_bIndexWalks(false)
 {
     // Create the root node of the search tree
     m_pRootNode = new SGSearchNode(pStartVertex, searchDir, NULL, NULL);
@@ -97,10 +98,10 @@ SGSearchTree::~SGSearchTree()
     // deleted after all its children
     SGSearchNodePtrDeque completeLeafNodes;
     _makeFullLeafQueue(completeLeafNodes);
- 
+
     size_t totalDeleted = 0;
-    for(SGSearchNodePtrDeque::iterator iter = m_expandQueue.begin(); 
-                                       iter != m_expandQueue.end();
+    for(SGSearchNodePtrDeque::iterator iter = completeLeafNodes.begin(); 
+                                       iter != completeLeafNodes.end();
                                        ++iter)    
     {
         SGSearchNode* pCurr = *iter;
@@ -195,6 +196,10 @@ bool SGSearchTree::hasSearchConverged(Vertex*& pConvergedVertex)
                                        ++iter)
     {
         SGSearchNode* pNode = *iter;
+        // If this node has the same vertex as the root skip it
+        // We do not want to collapse at the root
+        if(pNode->getVertex() == m_pRootNode->getVertex())
+            continue;
 
         bool isInAllBranches = true;
         for(SGSearchNodePtrDeque::iterator leafIter = completeLeafNodes.begin();
@@ -251,7 +256,7 @@ void SGSearchTree::_buildWalksToLeaves(const SGSearchNodePtrDeque& queue, SGWalk
         addEdgesFromBranch(*iter, edgeVector);
 
         // Build the walk by adding the edges in reverse order
-        SGWalk w(m_pRootNode->getVertex(), false);
+        SGWalk w(m_pRootNode->getVertex(), m_bIndexWalks);
         for(EdgePtrVec::reverse_iterator r_iter = edgeVector.rbegin();
                                          r_iter != edgeVector.rend();
                                          ++r_iter)
@@ -268,7 +273,7 @@ bool SGSearchTree::searchBranchForVertex(SGSearchNode* pNode, Vertex* pX) const
 {
     if(pNode == NULL)
         return false;
-    if(pNode->getVertex() == pX)
+    if(pNode->getVertex() == pX && pNode != m_pRootNode)
         return true;
     return searchBranchForVertex(pNode->getParent(), pX);
 }

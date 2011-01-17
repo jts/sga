@@ -8,6 +8,7 @@
 // for searching a string graph
 //
 #include "SGSearch.h"
+#include "SGSearchTree.h"
 #include <queue>
 
 // Find all the walks between pX and pY that are within maxDistance
@@ -73,9 +74,9 @@ void SGSearch::findVariantWalks(Vertex* pX,
                                 size_t maxWalks, 
                                 SGWalkVector& outWalks)
 {
-    findCollapsedWalks(pX, initialDir, maxDistance, maxWalks, outWalks);
+    findCollapsedWalks(pX, initialDir, maxDistance, 500, outWalks);
 
-    if(outWalks.size() <= 1)
+    if(outWalks.size() <= 1 || outWalks.size() > maxWalks)
     {
         outWalks.clear();
         return;
@@ -148,100 +149,66 @@ bool SGSearch::checkEndpointsInSet(EdgePtrVec& epv, std::set<Vertex*>& vertexSet
 // Return a set of walks that all start from pX and join together at some later vertex
 // If no such walk exists, an empty set is returned
 void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir, 
-                                  int maxDistance, size_t maxQueue, 
+                                  int maxDistance, size_t maxNodes, 
                                   SGWalkVector& outWalks)
 {
-    // Create the initial path nodes
-    WalkQueue queue;
-    initializeWalkQueue(pX, initialDir, true, queue);
+    SGSearchTree searchTree(pX, NULL, initialDir, maxDistance, maxNodes);
+    searchTree.setIndexFlag(true); // we want indexed walks
 
-    //
-    while(queue.size() > 1)
+    // Iteravively perform the BFS using the search tree. After each step
+    // we check if the search has collapsed to a single vertex.
+    bool done = false;
+    while(!done)
     {
-        // Check the last element of each walk in the queue to see if all
-        // the walks share a common vertex
+        done = !searchTree.stepOnce();
+        if(searchTree.wasSearchAborted())
+            break;
 
-        bool allFinished = true;
-        int longestDistance = 0;
-
-        for(size_t i = 0; i < queue.size(); ++i)
+        Vertex* pCollapsedVertex;
+        bool isCollapsed = searchTree.hasSearchConverged(pCollapsedVertex);
+        if(isCollapsed)
         {
-            // Check if this path can no longer be extended
-            allFinished = allFinished && queue[i].isFinished();
-            int extensionDistance = queue[i].getExtensionDistance();
-            if(extensionDistance > longestDistance)
-                longestDistance = extensionDistance;
+            assert(pCollapsedVertex != NULL);
+            
+            // pCollapsedVertex is common between all walks.
+            // Check that the extension distance for any walk is no longer than maxDistance.
+            // If this is the case, we truncate all walks so they end at pCollapsedVertex and return 
+            // all the non-redundant walks in outWalks
+            
+            VertexID iLastID = pCollapsedVertex->getID();
+            
+            // initial walks
+            SGWalkVector walkVector;
+            searchTree.buildWalksToAllLeaves(walkVector);
 
-            VertexID iLastID = queue[i].getLastEdge()->getEndID();
-            bool isCommonVertex = true;
-            for(size_t j = 0; j < queue.size(); ++j)
+            // truncate and index the walks in a map
+            std::map<std::string, SGWalk*> nonRedundant;
+            for(size_t i = 0; i < walkVector.size(); ++i)
             {
-                if(j == i)
-                    continue;
-                if(!queue[j].containsVertex(iLastID))
+                if(walkVector[i].getExtensionDistance() > maxDistance)
                 {
-                    isCommonVertex = false;
-                    break;
+                    // walk is too long
+                    outWalks.clear();
+                    return;
                 }
+
+                walkVector[i].truncate(iLastID);
+                SGWalk* pWalk = &walkVector[i];
+                nonRedundant.insert(std::make_pair(walkVector[i].pathSignature(), pWalk));
             }
 
-            if(isCommonVertex)
+            // Output the final non-redundant walks and return
+            for(std::map<std::string, SGWalk*>::iterator iter = nonRedundant.begin();
+                iter != nonRedundant.end(); ++iter)
             {
-                // This vertex is common between all walks, return the found walks in outWalks
-                //std::cout << "Vertex " << iLastID << " is common to all walks\n";
-
-                // After truncation, redundant paths may exist if the common node had a branch.
-                // We remove the redundant paths by inserting the paths into a map based on their signature string
-                std::map<std::string, SGWalk*> nonRedundant;
-                for(size_t i = 0; i < queue.size(); ++i)
-                {
-                    // Truncate the path at the common vertex
-
-                    queue[i].truncate(iLastID);
-                    SGWalk* pWalk = &queue[i];
-                    nonRedundant.insert(std::make_pair(queue[i].pathSignature(), pWalk));
-                }
-                // Write out the paths
-                for(std::map<std::string, SGWalk*>::iterator iter = nonRedundant.begin();
-                    iter != nonRedundant.end(); ++iter)
-                {
-                    outWalks.push_back(*iter->second);
-                }
-                return;
+                outWalks.push_back(*iter->second);
             }
-
-
-            // check exit conditions
-            if(allFinished || longestDistance > maxDistance)
-            {
-                // no more extension can occur, return an empty set
-                outWalks.clear();
-                return;
-            }
-        }
-
-        if(queue.size() > maxQueue)
-        {
-            // Give up the search if there are too many possible paths to continue
-            outWalks.clear();
             return;
         }
-
-        // Extend each walk in the queue
-        // If the walk branches, the new branch is added to the incoming queue
-        // which is merged into the full queue after the extension round
-        WalkQueue incoming;
-        for(size_t i = 0; i < queue.size(); ++i)
-        {
-            SGWalk& currWalk = queue[i];
-            Edge* pWZ = currWalk.getLastEdge(); 
-            Vertex* pZ = pWZ->getEnd();
-            extendWalk(pZ, pWZ->getTransitiveDir(), currWalk, incoming);
-        }
-
-        // Copy any new branches into the queue
-        queue.insert(queue.end(), incoming.begin(), incoming.end());
     }
+
+    // no collapsed walk found, return empty set
+    outWalks.clear();
 }
 
 // Count the number of reads that span the junction described by edge XY

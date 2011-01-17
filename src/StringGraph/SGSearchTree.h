@@ -87,6 +87,9 @@ class SGSearchTree
         // Check whether the search was aborted or not
         bool wasSearchAborted() const { return m_searchAborted; }
 
+        // If the index flag is true, indexed SGWalks will be output
+        void setIndexFlag(bool b) { m_bIndexWalks = b; }
+
     private:
 
         // Search the branch from pNode to the root for pX.  
@@ -119,7 +122,7 @@ class SGSearchTree
 
         // Flag indicating the search was aborted
         bool m_searchAborted;
-
+        bool m_bIndexWalks;
 };
 
 #endif

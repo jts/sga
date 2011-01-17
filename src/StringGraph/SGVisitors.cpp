@@ -1026,10 +1026,13 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 return false;
         }
 
-        std::cout << "Smoothing " << pVertex->getID() << "\n";
+        //std::cout << "Smoothing " << pVertex->getID() << "\n";
+
+        const int MAX_WALKS = 10;
+        const int MAX_DISTANCE = 5000;
 
         SGWalkVector variantWalks;
-        SGSearch::findVariantWalks(pVertex, dir, 10000, 20, variantWalks);
+        SGSearch::findVariantWalks(pVertex, dir, MAX_DISTANCE, MAX_WALKS, variantWalks);
         if(variantWalks.size() > 0)
         {
             found = true;
@@ -1044,7 +1047,7 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                     selectedIdx = i;
                     selectedLength = variantWalks[i].getNumEdges();
                 }
-                variantWalks[i].print();
+                //variantWalks[i].print();
             }
             assert(selectedIdx != (size_t)-1);
             SGWalk& selectedWalk = variantWalks[selectedIdx];
