@@ -412,7 +412,7 @@ bool SGSearch::checkEndpointsInSet(EdgePtrVec& epv, std::set<Vertex*>& vertexSet
 // Return a set of walks that all start from pX and join together at some later vertex
 // If no such walk exists, an empty set is returned
 void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir, 
-                                  int /*maxDistance*/, size_t maxQueue, 
+                                  int maxDistance, size_t maxQueue, 
                                   SGWalkVector& outWalks)
 {
     // Create the initial path nodes
@@ -426,10 +426,15 @@ void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir,
         // the walks share a common vertex
 
         bool allFinished = true;
+        int longestDistance = 0;
+
         for(size_t i = 0; i < queue.size(); ++i)
         {
             // Check if this path can no longer be extended
             allFinished = allFinished && queue[i].isFinished();
+            int extensionDistance = queue[i].getExtensionDistance();
+            if(extensionDistance > longestDistance)
+                longestDistance = extensionDistance;
 
             VertexID iLastID = queue[i].getLastEdge()->getEndID();
             bool isCommonVertex = true;
@@ -469,7 +474,9 @@ void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir,
                 return;
             }
 
-            if(allFinished)
+
+            // check exit conditions
+            if(allFinished || longestDistance > maxDistance)
             {
                 // no more extension can occur, return an empty set
                 outWalks.clear();
@@ -499,8 +506,6 @@ void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir,
         // Copy any new branches into the queue
         queue.insert(queue.end(), incoming.begin(), incoming.end());
     }
-
-    (void)outWalks;
 }
 
 // Count the number of reads that span the junction described by edge XY
