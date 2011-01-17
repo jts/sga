@@ -15,5 +15,7 @@ libstringgraph_a_SOURCES = \
         SGVisitors.h SGVisitors.cpp \
         CompleteOverlapSet.h CompleteOverlapSet.cpp \
         RemovalAlgorithm.h RemovalAlgorithm.cpp \
-		SGSearch.h SGSearch.cpp
+		SGSearch.h SGSearch.cpp \
+		SGSearchTree.h SGSearchTree.cpp \
+		SGWalk.h SGWalk.cpp
 
