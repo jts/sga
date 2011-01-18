@@ -19,7 +19,7 @@ namespace SGSearch
 {
     //
     void findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
-                   int maxDistance, size_t maxQueue, SGWalkVector& outWalks);
+                   int maxDistance, size_t maxNodes, SGWalkVector& outWalks);
 
     void findVariantWalks(Vertex* pX, 
                           EdgeDir initialDir, 
@@ -34,10 +34,6 @@ namespace SGSearch
     // Count the number of vertices that span the sequence junction
     // described by edge XY. Returns -1 if the search was not completed
     int countSpanningCoverage(Edge* pXY, size_t maxQueue);
-
-    //
-    void initializeWalkQueue(Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue);
-    bool extendWalk(const Vertex* pX, EdgeDir dir, SGWalk& currWalk, WalkQueue& queue);
 
     // Returns true if all the endpoints of the edges in epv are in vertexSet
     bool checkEndpointsInSet(EdgePtrVec& epv, std::set<Vertex*>& vertexSet);

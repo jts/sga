@@ -83,8 +83,8 @@ void walk()
     Vertex* pY = pGraph->getVertex(opt::id2);
 
     SGWalkVector walkVector;
-    SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 20, walkVector);
-    SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 20, walkVector);
+    SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000, walkVector);
+    SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000, walkVector);
 
     for(size_t i = 0; i < walkVector.size(); ++i)
     {

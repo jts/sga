@@ -13,50 +13,20 @@
 
 // Find all the walks between pX and pY that are within maxDistance
 void SGSearch::findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
-                         int maxDistance, size_t maxQueue, SGWalkVector& outWalks)
+                         int maxDistance, size_t maxNodes, SGWalkVector& outWalks)
 {
-    // Create the initial path nodes
-    WalkQueue queue;
-    initializeWalkQueue(pX, initialDir, false, queue);
+    SGSearchTree searchTree(pX, pY, initialDir, maxDistance, maxNodes);
 
-    while(!queue.empty())
+    // Iteravively perform the BFS using the search tree.
+    while(searchTree.stepOnce()) { }
+
+    // If the search was aborted, do not return any walks
+    // because we do not know if there are more valid paths from pX
+    // to pY that we could not find because the search space was too large
+    if(!searchTree.wasSearchAborted())
     {
-        if(queue.size() > maxQueue)
-        {
-            // Give up the search if there are too many possible paths to continue
-            outWalks.clear();
-            return;
-        }
-
-        bool bPop = false;
-        
-        // Process the current walk
-        // This occurs in a lower scope so we can safely use a reference
-        // to the top element before popping it off without having the 
-        // reference hang around.
-        {
-            SGWalk& currWalk = queue.front();
-            Edge* pWZ = currWalk.getLastEdge(); 
-            Vertex* pZ = pWZ->getEnd();
-           
-            // Check if we have found pY or exceeded the distance
-            if(pZ == pY)
-            {
-                outWalks.push_back(currWalk);
-                bPop = true;
-            }
-            else if(currWalk.getExtensionDistance() > maxDistance)
-            {
-                bPop = true;
-            }
-            else
-            {
-                bPop = !extendWalk(pZ, pWZ->getTransitiveDir(), currWalk, queue);
-            }
-        }
-
-        if(bPop)
-            queue.pop_front();
+        // Extract all the paths to pY that were found
+        searchTree.buildWalksToGoal(outWalks);
     }
 }
 
@@ -219,109 +189,9 @@ void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir,
 // In this case Z spans the junction but W does not. 
 int SGSearch::countSpanningCoverage(Edge* pXY, size_t maxQueue)
 {
-    Vertex* pX = pXY->getStart();
-
-    SGWalk walk(pX, false);
-    walk.addEdge(pXY);
+    (void)pXY;
+    (void)maxQueue;
     
-    WalkQueue queue;
-    queue.push_back(walk);
-
-    // Create the initial queue
-    SGWalkVector outWalks;
-
-    //
-    while(queue.size() > 0)
-    {
-        if(queue.size() > maxQueue)
-        {
-            // Give up the search if there are too many possible paths to continue
-            return -1;
-        }
-
-        bool bPop = false;
-        {
-            SGWalk& currWalk = queue.front();
-            Edge* pWZ = currWalk.getLastEdge(); 
-            Vertex* pZ = pWZ->getEnd();
-
-            // Calculate the length of the overlap of pZ on pX. If it is <= 0
-            // pZ does not overlap pX and will be removed from the walk and the walk
-            // is not processed further
-            int extensionDistance = currWalk.getExtensionDistance();
-            int overlap = pZ->getSeqLen() - extensionDistance;
-            if(overlap <= 0)
-            {
-                //std::cout << "Too far: " << currWalk.getExtensionDistance() << "\n";
-                bPop = true;
-                currWalk.popLast();
-                outWalks.push_back(currWalk);
-            }
-            else
-            {
-                // Continue walk
-                bPop = !extendWalk(pZ, pWZ->getTransitiveDir(), currWalk, queue);
-            }
-        }
-
-        if(bPop)
-            queue.pop_front();
-    }
-
-    // The outwalks may have redundant sequences
-    // Make a set to calculate the coverage by unique vertices
-    std::set<VertexID> vertexSet;
-
-    for(size_t i = 0; i < outWalks.size(); ++i)
-    {
-        SGWalk& walk = outWalks[i];
-        for(size_t j = 0; j < walk.getNumEdges(); ++j)
-        {
-            vertexSet.insert(walk.getEdge(j)->getEndID());
-        }
-    }
-
-    return vertexSet.size();
-}
-
-//
-void SGSearch::initializeWalkQueue(Vertex* pX, EdgeDir initialDir, bool bIndexWalks, WalkQueue& queue)
-{
-    EdgePtrVec edges = pX->getEdges(initialDir);
-    for(size_t i = 0; i < edges.size(); ++i)
-    {
-        Edge* pEdge = edges[i];
-        assert(!pEdge->getOverlap().isContainment());
-
-        SGWalk walk(pX, bIndexWalks);
-        walk.addEdge(pEdge);
-        queue.push_back(walk);
-    }
-}
-
-// Extend the walk by addding the neighbors of the last vertex (pX) to the walk
-// Returns true if the branch was extended
-bool SGSearch::extendWalk(const Vertex* pX, EdgeDir dir, SGWalk& currWalk, WalkQueue& queue)
-{
-    EdgePtrVec edges = pX->getEdges(dir);
-
-    if(edges.empty())
-    {
-        currWalk.setFinished(true);
-        return false;
-    }
-
-    // If there are multiple extensions, create new branches and add them to the queue
-    for(size_t i = 1; i < edges.size(); ++i)
-    {
-        SGWalk branch = currWalk; 
-        Edge* pBranchEdge = edges[i];
-        branch.addEdge(pBranchEdge);
-        queue.push_back(branch);
-    }
-
-    // Extend the current walk with the first edge
-    Edge* pFirstEdge = edges[0];
-    currWalk.addEdge(pFirstEdge);
-    return true;
+    assert(false && "deprecated");
+    return 0;
 }
