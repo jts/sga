@@ -54,6 +54,12 @@ class SGWalk
 
         //
         std::string getString(SGWalkType type) const;
+        
+        // Get the substring of the full path string starting from position fromX
+        // to position toY on the first and last vertices, respectively
+        std::string getFragmentString(const Vertex* pX, const Vertex* pY,
+                                      int fromX, int toY, 
+                                      EdgeDir dirX, EdgeDir dirY) const;
         std::string pathSignature() const;
 
         // distance calculations

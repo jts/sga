@@ -189,6 +189,126 @@ std::string SGWalk::getString(SGWalkType type) const
     return out;
 }
 
+// Get the substring of the full path string starting from position fromX
+// to position toY on the first and last vertices, respectively.
+// dirX is the direction along contig X towards vertex Y, vis-versa for dirY
+std::string SGWalk::getFragmentString(const Vertex* pX, const Vertex* pY,
+                                      int fromX, int toY, 
+                                      EdgeDir dirX, EdgeDir dirY) const
+{
+    std::string out;
+
+    // Calculate the portion of X that we should include in the string
+    // If dirX is SENSE, we take the everything after position fromX
+    // otherwise we take everything up to and including fromX
+    SeqCoord xCoord(0,0,pX->getSeqLen());
+
+    if(dirX == ED_SENSE)
+    {
+        xCoord.interval.start = fromX;
+        xCoord.interval.end = pX->getSeqLen() - 1;
+    }
+    else
+    {
+        xCoord.interval.start = 0;
+        xCoord.interval.end = fromX;
+    }
+
+    // Handle the trivial case where pX == pY and the walk is found immediately
+    if(m_edges.empty() && pX == pY)
+    {
+        if(dirY == ED_SENSE)
+        {
+            xCoord.interval.start = toY;
+        }
+        else
+        {
+            xCoord.interval.end = toY;
+        }
+    }
+
+    if(!xCoord.isValid())
+        return "";
+
+    //
+    out.append(m_pStartVertex->getSeq().substr(xCoord.interval.start, xCoord.length()));
+
+    // Determine if the string should go to the end of the last vertex
+    // in the path
+    size_t stop = m_edges.size();
+
+    // The first edge is always in correct frame of reference 
+    // so the comp is EC_SAME. This variable tracks where the 
+    // string that is being added is different from the starting sequence
+    // and needs to be flipped
+    EdgeComp currComp = EC_SAME;
+
+    // If the walk direction is antisense, we reverse every component and then
+    // reverse the entire string to generate the final string
+    bool reverseAll = !m_edges.empty() && m_edges[0]->getDir() == ED_ANTISENSE;
+    if(reverseAll)
+        out = reverse(out);
+
+    for(size_t i = 0; i < stop; ++i)
+    {
+        Edge* pYZ = m_edges[i];
+        bool isLast = i == (stop - 1);
+
+        if(!isLast)
+        {
+            // Append the extension string without modification
+            std::string edge_str = pYZ->getLabel();
+            assert(edge_str.size() != 0);
+            if(currComp == EC_REVERSE)
+                edge_str = reverseComplement(edge_str);
+
+            if(reverseAll)
+                edge_str = reverse(edge_str);
+            out.append(edge_str);
+        }
+        else
+        {
+            // 
+            const Edge* pZY = pYZ->getTwin();
+            
+            // get the unmatched coordinates on pY
+            SeqCoord unmatched = pZY->getMatchCoord().complement();
+
+            // Now, we have to shrink the unmatched interval on Y to
+            // only incude up to toY
+            if(dirY == ED_SENSE)
+                unmatched.interval.start = toY;
+            else
+                unmatched.interval.end = toY;
+
+            if(!unmatched.isValid())
+                return "";
+
+            std::string seq = unmatched.getSubstring(pY->getStr());
+            if(pYZ->getComp() != currComp)
+                seq = reverseComplement(seq);
+            
+            if(reverseAll)
+                seq = reverse(seq);
+            out.append(seq);
+        }
+
+        // Calculate the next comp, between X and Z
+        EdgeComp ecYZ = pYZ->getComp();
+        EdgeComp ecXZ;
+        if(ecYZ == EC_SAME)
+            ecXZ = currComp;
+        else
+            ecXZ = !currComp;
+
+        currComp = ecXZ;
+    }
+
+    if(reverseAll)
+        out = reverse(out);
+    return out;
+}
+
 //
 int SGWalk::getExtensionDistance() const
 {

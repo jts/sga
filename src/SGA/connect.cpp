@@ -267,8 +267,13 @@ int connectMain(int argc, char** argv)
         int fromX = walkDirectionXOut == ED_SENSE ? record1.Position : record1.GetEndPosition();
         int toY = walkDirectionYIn == ED_SENSE ? record2.Position : record2.GetEndPosition();
 
+        // Calculate the amount of contig X that already covers the fragment
+        // Using this number, we calculate how far we should search
+        int coveredX = walkDirectionXOut == ED_SENSE ? pX->getSeqLen() - fromX : fromX;
+        int maxWalkDistance = opt::maxDistance - coveredX;
+
         SGWalkVector walks;
-        SGSearch::findWalks(pX, pY, walkDirectionXOut, opt::maxDistance, 1000, walks);
+        SGSearch::findWalks(pX, pY, walkDirectionXOut, maxWalkDistance, 10000, walks);
 
         // Mark used vertices in the graph
         // If the entire path was resolved, mark black
@@ -344,7 +349,6 @@ int connectMain(int argc, char** argv)
             else if(walks.size() > maxPaths)
             {
                 /*
-                std::cout << "Multiwalks:\n";
                 for(size_t i = 0; i < walks.size(); ++i)
                 {
                     std::string fragment = walks[i].getFragmentString(pX, 
@@ -354,11 +358,11 @@ int connectMain(int argc, char** argv)
                                                                       walkDirectionXOut,
                                                                       walkDirectionYIn);
 
-                    std::cout << i << " " << walks[i].pathSignature() << " size: " << fragment.size() << "\n";
-                    std::cout << ">" << i << "\n" << fragment << "\n";
-                    
+                    //std::cout << i << " " << walks[i].pathSignature() << " size: " << fragment.size() << "\n";
+                    //std::cout << ">" << i << "\n" << fragment << "\n";
                 }
                 */
+
                 numFailedMultiPaths += 1;
             }
             if(opt::bWriteUnresolved)
@@ -379,7 +383,7 @@ int connectMain(int argc, char** argv)
             }
         }
         numPairsAttempted += 1;
-
+        
         if(numPairsAttempted % 50000 == 0)
             printf("[sga connect] Processed %d pairs\n", numPairsAttempted);
     }
