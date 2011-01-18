@@ -34,7 +34,7 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"      -o, --out=FILE                   write the contigs to FILE (default: contigs.fa)\n"
+"      -o, --out-prefix=NAME            use NAME as the prefix of the output files (output files will be NAME-contigs.fa, etc)\n"
 "      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
 "      -b, --bubble=N                   perform N bubble removal steps (default: 3)\n"
@@ -45,16 +45,16 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "                                       to detect and remove chimeric reads (default: not performed)\n"
 "      -r,--resolve-small=LEN           resolve small repeats using spanning overlaps when the difference between the shortest\n"
 "                                       and longest overlap is greater than LEN (default: not performed)\n"
-"      -a, --asqg-outfile=FILE          write the final graph to FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
 {
     static unsigned int verbose;
     static std::string asqgFile;
-    static std::string outFile;
-    static std::string debugFile;
-    static std::string asqgOutfile = "final-graph.asqg.gz";
+    static std::string outContigsFile;
+    static std::string outVariantsFile;
+    static std::string outGraphFile;
+
     static unsigned int minOverlap;
     static bool bEdgeStats = false;
     static bool bSmoothGraph = false;
@@ -73,14 +73,13 @@ enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT };
 
 static const struct option longopts[] = {
     { "verbose",           no_argument,       NULL, 'v' },
-    { "out",               required_argument, NULL, 'o' },
+    { "out-prefix",        required_argument, NULL, 'o' },
     { "min-overlap",       required_argument, NULL, 'm' },
     { "debug-file",        required_argument, NULL, 'd' },
     { "bubble",            required_argument, NULL, 'b' },
     { "cut-terminal",      required_argument, NULL, 'x' },
     { "min-branch-length", required_argument, NULL, 'l' },
-    { "asqg-outfile",      required_argument, NULL, 'a' },
-    { "resolve-small",     required_argument, NULL, 'r' },    
+    { "resolve-small",     required_argument, NULL, 'r' },
     { "coverage",          required_argument, NULL, 'c' },    
     { "smooth",            no_argument,       NULL, 's' },    
     { "edge-stats",        no_argument,       NULL, OPT_EDGESTATS },
@@ -192,22 +191,10 @@ void assemble()
     // Peform another round of simplification
     pGraph->simplify();
     
-    // Remove bubbles from the graph to smooth variation
-    /*
-    if(opt::numBubbleRounds > 0)
-    {
-        std::cout << "\nPerforming bubble removal\n";
-        // Bubble removal
-        int numPops = opt::numBubbleRounds;
-        while(numPops-- > 0)
-            pGraph->visit(bubbleVisit);
-        pGraph->simplify();
-    }
-    */
     if(opt::numBubbleRounds > 0)
     {
         std::cout << "\nPerforming variation smoothing\n";
-        SGSmoothingVisitor smoothingVisit("variants.fa");
+        SGSmoothingVisitor smoothingVisit(opt::outVariantsFile);
         int numSmooth = opt::numBubbleRounds;
         while(numSmooth-- > 0)
             pGraph->visit(smoothingVisit);
@@ -224,10 +211,10 @@ void assemble()
     //pGraph->renameVertices("contig-");
 
     // Write the results
-    SGFastaVisitor av(opt::outFile);
+    SGFastaVisitor av(opt::outContigsFile);
     pGraph->visit(av);
 
-    pGraph->writeASQG(opt::asqgOutfile);
+    pGraph->writeASQG(opt::outGraphFile);
 
     delete pGraph;
 }
@@ -238,25 +225,22 @@ void assemble()
 void parseAssembleOptions(int argc, char** argv)
 {
     // Set defaults
-    opt::outFile = "contigs.fa";
     opt::minOverlap = 0;
-
+    std::string prefix = "default";
     bool die = false;
     for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
     {
         std::istringstream arg(optarg != NULL ? optarg : "");
         switch (c) 
         {
-            case 'o': arg >> opt::outFile; break;
+            case 'o': arg >> prefix; break;
             case 'm': arg >> opt::minOverlap; break;
-            case 'd': arg >> opt::debugFile; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case 'l': arg >> opt::trimLengthThreshold; break;
             case 'b': arg >> opt::numBubbleRounds; break;
             case 's': opt::bSmoothGraph = true; break;
             case 'x': arg >> opt::numTrimRounds; break;
-            case 'a': arg >> opt::asqgOutfile; break;
             case 'c': arg >> opt::coverageCutoff; break;
             case 'r': arg >> opt::resolveSmallRepeatLen; break;
             case OPT_EXACT: opt::bExact = true; break;
@@ -272,8 +256,13 @@ void parseAssembleOptions(int argc, char** argv)
         }
     }
 
+    // Build the output names
+    opt::outContigsFile = prefix + "-contigs.fa";
+    opt::outVariantsFile = prefix + "-variants.fa";
+    opt::outGraphFile = prefix + "-graph.asqg.gz";
+
     if (argc - optind < 1) 
-{
+    {
         std::cerr << SUBPROGRAM ": missing arguments\n";
         die = true;
     } 
