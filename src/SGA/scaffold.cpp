@@ -96,6 +96,7 @@ int scaffoldMain(int argc, char** argv)
     graph.visit(statsVisitor);
 
     // Create chains of vertices from the links
+    std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
     graph.writeDot("pregraph.dot");
     graph.deleteVertices(SVC_REPEAT);
     graph.writeDot("scaffold.dot");

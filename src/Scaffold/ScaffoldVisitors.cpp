@@ -70,6 +70,8 @@ ScaffoldAStatisticVisitor::ScaffoldAStatisticVisitor(double uniqueThreshold,
 //
 void ScaffoldAStatisticVisitor::previsit(ScaffoldGraph* /*pGraph*/)
 {
+    m_sumUnique = 0;
+    m_sumRepeat = 0;
     m_numUnique = 0;
     m_numRepeat = 0;
 }
@@ -84,12 +86,14 @@ bool ScaffoldAStatisticVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex*
         {
             pVertex->setClassification(SVC_UNIQUE);
             ++m_numUnique;
+            m_sumUnique += pVertex->getSeqLen();
         }
 
         if(pVertex->getAStatistic() < m_repeatThreshold)
         {
             pVertex->setClassification(SVC_REPEAT);
             ++m_numRepeat;
+            m_sumRepeat += pVertex->getSeqLen();
         }
     }
     return false;   
@@ -98,8 +102,8 @@ bool ScaffoldAStatisticVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex*
 //
 void ScaffoldAStatisticVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
 {
-    std::cerr << "A-statistic: classified " << m_numUnique << " components as unique\n";
-    std::cerr << "A-statistic: classified " << m_numRepeat << " components as repeat\n"; 
+    printf("A-statistic: classified %zu vertices as unique (%.2lf Mbp)\n", m_numUnique, (double)m_sumUnique / 1000000);
+    printf("A-statistic: classified %zu vertices as repeat (%.2lf Mbp)\n", m_numRepeat, (double)m_sumRepeat / 1000000);
 }
 
 //

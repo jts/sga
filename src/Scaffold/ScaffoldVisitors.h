@@ -53,6 +53,8 @@ class ScaffoldAStatisticVisitor
 
         size_t m_numUnique;
         size_t m_numRepeat;
+        size_t m_sumUnique;
+        size_t m_sumRepeat;
 };
 
 // Classify vertices as repetitive based on their set of edges
