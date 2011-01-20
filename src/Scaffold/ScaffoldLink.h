@@ -27,7 +27,11 @@ class ScaffoldLink
     public:
         ScaffoldLink() {}
         ScaffoldLink(const std::string& id, EdgeDir dir, EdgeComp comp, 
-                     int dist, double sd, int np, ScaffoldLinkType slt);
+                     int dist, double sd, int np, int sl, ScaffoldLinkType slt);
+
+        // Get the far endpoint of the link
+        // Defined to be distance + seqLen
+        int getEndpoint() const;
 
         EdgeDir getDir() const;
         EdgeComp getComp() const;
@@ -43,6 +47,7 @@ class ScaffoldLink
         int distance;
         double stdDev;
         int numPairs;
+        int seqLen; // length of the endpoint contig
         ScaffoldLinkType type;
         EdgeData edgeData; // dir/comp member
 };

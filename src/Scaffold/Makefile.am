@@ -13,4 +13,5 @@ libscaffold_a_SOURCES = ScaffoldVertex.h ScaffoldVertex.cpp \
                         ScaffoldGraph.h ScaffoldGraph.cpp \
                         ScaffoldVisitors.h ScaffoldVisitors.cpp \
                         ScaffoldLink.h ScaffoldLink.cpp \
-                        ScaffoldRecord.h ScaffoldRecord.cpp
+                        ScaffoldRecord.h ScaffoldRecord.cpp \
+						ScaffoldGroup.h ScaffoldGroup.cpp

@@ -57,12 +57,12 @@ class ScaffoldAStatisticVisitor
         size_t m_sumRepeat;
 };
 
-// Classify vertices as repetitive based on their set of edges
-class ScaffoldEdgeSetClassificationVisitor
+// Walk the graph validating that the links present are valid
+class ScaffoldLinkValidator
 {
     public:
         
-        ScaffoldEdgeSetClassificationVisitor(int maxOverlap, double threshold);
+        ScaffoldLinkValidator(int maxOverlap, double threshold);
         void previsit(ScaffoldGraph* /*pGraph*/);
         bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
         void postvisit(ScaffoldGraph* /*pGraph*/);

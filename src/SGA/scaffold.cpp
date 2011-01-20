@@ -90,16 +90,18 @@ int scaffoldMain(int argc, char** argv)
         graph.visit(astatVisitor);
     }
 
-    //ScaffoldEdgeSetClassificationVisitor edgeSetClassVisitor(maxOverlap, 0.2f);   
-    //graph.visit(edgeSetClassVisitor);
-
-    graph.visit(statsVisitor);
 
     // Create chains of vertices from the links
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
     graph.writeDot("pregraph.dot");
     graph.deleteVertices(SVC_REPEAT);
     graph.writeDot("scaffold.dot");
+
+    ScaffoldLinkValidator linkValidator(maxOverlap, 0.2f);   
+    graph.visit(linkValidator);
+    exit(1);
+    graph.visit(statsVisitor);
+
 
     ScaffoldChainVisitor chainVisitor(maxOverlap);
 

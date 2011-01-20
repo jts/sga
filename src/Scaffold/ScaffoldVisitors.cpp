@@ -9,6 +9,7 @@
 //
 #include "ScaffoldVisitors.h"
 #include "ScaffoldRecord.h"
+#include "ScaffoldGroup.h"
 #include <limits.h>
 
 //
@@ -107,45 +108,49 @@ void ScaffoldAStatisticVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
 }
 
 //
-ScaffoldEdgeSetClassificationVisitor::ScaffoldEdgeSetClassificationVisitor(int maxOverlap, 
-                                                                           double threshold) : m_maxOverlap(maxOverlap),
-                                                                                               m_threshold(threshold)
+ScaffoldLinkValidator::ScaffoldLinkValidator(int maxOverlap, 
+                                             double threshold) : m_maxOverlap(maxOverlap),
+                                                                 m_threshold(threshold)
 {
 
 }
 
 //
-void ScaffoldEdgeSetClassificationVisitor::previsit(ScaffoldGraph* /*pGraph*/)
+void ScaffoldLinkValidator::previsit(ScaffoldGraph* /*pGraph*/)
 {
     m_numUnique = 0;
     m_numRepeat = 0;
 }
 
 //
-bool ScaffoldEdgeSetClassificationVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex)
+bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex)
 {
     // Never re-classify repeats
     if(pVertex->getClassification() == SVC_REPEAT)
         return false;
 
-    assert(false && "Not implemented");
     for(size_t idx = 0; idx < ED_COUNT; idx++)
     {
         EdgeDir dir = EDGE_DIRECTIONS[idx];
         ScaffoldEdgePtrVector edgeVec = pVertex->getEdges(dir);
-        if(edgeVec.size() > 0)
+        if(edgeVec.size() > 1)
         {
-            // Process the edges in order of length
-            std::sort(edgeVec.begin(), edgeVec.end(), ScaffoldEdgePtrDistanceCompare);
+            ScaffoldGroup group(pVertex, m_maxOverlap);
+            for(size_t i = 0; i < edgeVec.size(); ++i)
+            {
+                group.addLink(edgeVec[i]->getLink());
+            }
+
+            group.computeBestOrdering();
         }
     }
     return false;   
 }
 
 //
-void ScaffoldEdgeSetClassificationVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
+void ScaffoldLinkValidator::postvisit(ScaffoldGraph* /*pGraph*/)
 {
-    std::cerr << "Edge set overlap: classified " << m_numRepeat << " components as repeat\n"; 
+    std::cerr << "Link validator done\n"; 
 }
 
 //
@@ -191,11 +196,14 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
                 continue;
             }
 
+
+            std::cout << "CV " << pVertex->getID() << "\t XY: " << *pXY << " XZ: " << *pXZ << "\n";
+
             // Check if the ordering of the contigs is ambiguous
             bool isAmbiguous = ScaffoldAlgorithms::areEdgesAmbiguous(pXY, pXZ);
             if(isAmbiguous)
             {
-                std::cerr << "Warning edges " << *pXY << " and " << *pXZ << 
+                std::cout << "\tEdges " << *pXY << " and " << *pXZ << 
                               " are ambiguously ordered\n";
             }
 
@@ -211,8 +219,7 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
             bool isConsistent = (dist > -1*m_maxOverlap);
             if(!isConsistent)
             {
-                std::cout << "\nInferred edge is not consistent with max overlap: " << dist << "\n";
-                std::cout << "\tInput: " << *pXY << " " << *pXZ << "\n";
+                std::cout << "\tEdge is not consistent with max overlap: " << dist << "\n";
             }
 
             // Check if an edge between Y->Z already exists
@@ -220,27 +227,26 @@ bool ScaffoldChainVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVer
             if(pCheckEdge == NULL)
             {
                 // Create the new edges
-                ScaffoldLink linkYZ(pZ->getID(), dir_yz, comp, dist, sd, 0, SLT_INFERRED);
-                ScaffoldLink linkZY(pY->getID(), dir_zy, comp, dist, sd, 0, SLT_INFERRED);
+                ScaffoldLink linkYZ(pZ->getID(), dir_yz, comp, dist, sd, 0, pZ->getSeqLen(), SLT_INFERRED);
+                ScaffoldLink linkZY(pY->getID(), dir_zy, comp, dist, sd, 0, pY->getSeqLen(), SLT_INFERRED);
                 ScaffoldEdge* pYZ = new ScaffoldEdge(pZ, linkYZ);
                 ScaffoldEdge* pZY = new ScaffoldEdge(pY, linkZY);
                 pYZ->setTwin(pZY);
                 pZY->setTwin(pYZ);
 
-                std::cout << "\nCreating edge: " << *pYZ << " " << *pZY << "\n";
-                std::cout << "\tFrom: " << *pXY << " " << *pXZ << "\n";
+                std::cout << "\tCreating edge: " << *pYZ << " " << *pZY << "\n";
                 pY->addEdge(pYZ);
                 pZ->addEdge(pZY);
             }
             else
             {
-                std::cout << "Edge already exists: " << *pCheckEdge << " inferred dist: " << dist << "\n";
+                std::cout << "\tEdge already exists: " << *pCheckEdge << " inferred dist: " << dist << "\n";
             }
 
             // Remove the edges pXZ and pZX
             ScaffoldEdge* pZX = pXZ->getTwin();
 
-            std::cout << "\t Deleting edge: " << *pXZ << "\n";
+            std::cout << "\tDeleting edge: " << *pXZ << "\n";
             pVertex->deleteEdge(pXZ); // deallocates
             pZ->deleteEdge(pZX); // deallocates
             

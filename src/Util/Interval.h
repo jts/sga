@@ -24,7 +24,7 @@ struct Interval
     template<class T>
     static void intersect(const T s1, const T e1, const T s2, const T e2, T& s3, T& e3)
     {
-        assert(s1 >= e1 && s2 >= e2);
+        assert(s1 <= e1 && s2 <= e2);
         s3 = std::max(s1, s2);
         e3 = std::min(e1, e2);
     }

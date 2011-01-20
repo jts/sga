@@ -10,12 +10,28 @@
 //
 #include "ScaffoldLink.h"
 
-ScaffoldLink::ScaffoldLink(const std::string& id, EdgeDir dir, EdgeComp comp, 
-                           int dist, double sd, int np, ScaffoldLinkType slt) : endpointID(id), distance(dist), stdDev(sd), 
-                                                                                numPairs(np), type(slt)
+ScaffoldLink::ScaffoldLink(const std::string& id, 
+                           EdgeDir dir, 
+                           EdgeComp comp, 
+                           int dist, 
+                           double sd, 
+                           int np, 
+                           int sl, 
+                           ScaffoldLinkType slt) : endpointID(id), 
+                                                   distance(dist), 
+                                                   stdDev(sd), 
+                                                   numPairs(np), 
+                                                   seqLen(sl),
+                                                   type(slt)
 {
     edgeData.setDir(dir);
     edgeData.setComp(comp);
+}
+
+int ScaffoldLink::getEndpoint() const
+{
+    assert(seqLen > 0);
+    return distance + seqLen;
 }
 
 //
