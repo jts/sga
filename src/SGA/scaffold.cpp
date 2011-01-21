@@ -29,7 +29,7 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "      -m, --min-length=N               only use contigs at least N bp in length to build scaffolds (default: no minimun).\n"
 "      -a, --astatistic-file=FILE       load Myers' A-statistic values from FILE. This is used to\n"
 "                                       determine unique and repetitive contigs with the -u/--unique-astat\n"
-"                                       and -r/--repeat-astat parameters\n"
+"                                       and -r/--repeat-astat parameters (required)\n"
 "      -u, --unique-astat=FLOAT         Contigs with an a-statitic value about FLOAT will be considered unique (default: 20.0)\n"
 "      -r, --repeat-astat=FLOAT         Contigs with an a-statistic below FLOAT will be considered repetitive (default: 5.0)\n"
 "                                       Contigs with an a-statistic between these thresholds will not be\n"
@@ -174,6 +174,12 @@ void parseScaffoldOptions(int argc, char** argv)
     if(opt::distanceEstFile.empty())
     {
         std::cerr << SUBPROGRAM ": a distance estimation file must be provided\n";
+        exit(1);
+    }
+
+    if(opt::astatFile.empty())
+    {
+        std::cerr << SUBPROGRAM ": an a-statistic file must be provided\n";
         exit(1);
     }
 

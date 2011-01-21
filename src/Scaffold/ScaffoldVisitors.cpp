@@ -138,10 +138,10 @@ bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
             ScaffoldGroup group(pVertex, m_maxOverlap);
             for(size_t i = 0; i < edgeVec.size(); ++i)
             {
-                group.addLink(edgeVec[i]->getLink());
+                group.addLink(edgeVec[i]->getLink(), edgeVec[i]->getEnd());
             }
 
-            group.computeBestOrdering();
+            group.resolveAmbiguity();
         }
     }
     return false;   

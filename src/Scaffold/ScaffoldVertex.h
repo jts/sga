@@ -35,6 +35,8 @@ class ScaffoldVertex
         size_t getNumEdges() const;
         size_t getSeqLen() const;
         double getAStatistic() const;
+        double getEstCopyNumber() const;
+
         bool isRepeat() const;
         VertexID getID() const;
         GraphColor getColor() const;
@@ -43,6 +45,7 @@ class ScaffoldVertex
 
         //
         void setAStatistic(double v);
+        void setEstCopyNumber(double v);
         void setClassification(ScaffoldVertexClassification classification);
         void setColor(GraphColor c);
 
@@ -67,6 +70,7 @@ class ScaffoldVertex
         VertexID m_id;
         size_t m_seqLen;
         double m_AStatistic;
+        double m_estCopyNumber;
         ScaffoldEdgePtrVector m_edges;
         ScaffoldVertexClassification m_classification;
         GraphColor m_color;

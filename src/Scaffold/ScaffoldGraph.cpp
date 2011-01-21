@@ -183,13 +183,21 @@ void ScaffoldGraph::loadAStatistic(const std::string& filename)
         assert(fields.size() == 6);
 
         VertexID id = fields[0];
-        std::stringstream parser(fields[5]);
+
+        std::stringstream cn_parser(fields[4]);
+        double cn;
+        cn_parser >> cn;
+
+        std::stringstream as_parser(fields[5]);
         double as;
-        parser >> as;
+        as_parser >> as;
 
         ScaffoldVertex* pVertex = getVertex(id);
         if(pVertex != NULL)
+        {
             pVertex->setAStatistic(as);
+            pVertex->setEstCopyNumber(cn);
+        }
     }
     delete pReader;
 }

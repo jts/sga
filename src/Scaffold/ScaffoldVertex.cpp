@@ -9,7 +9,12 @@
 #include "ScaffoldVertex.h"
 
 //
-ScaffoldVertex::ScaffoldVertex(VertexID id, size_t seqLen) : m_id(id), m_seqLen(seqLen), m_classification(SVC_UNKNOWN), m_color(GC_WHITE)
+ScaffoldVertex::ScaffoldVertex(VertexID id, size_t seqLen) : m_id(id), 
+                                                             m_seqLen(seqLen), 
+                                                             m_AStatistic(0.0f),
+                                                             m_estCopyNumber(-1.0f),
+                                                             m_classification(SVC_UNKNOWN), 
+                                                             m_color(GC_WHITE)
 {
 
 }
@@ -165,6 +170,12 @@ void ScaffoldVertex::setAStatistic(double v)
 }
 
 //
+void ScaffoldVertex::setEstCopyNumber(double v)
+{
+    m_estCopyNumber = v;
+}
+
+//
 void ScaffoldVertex::setClassification(ScaffoldVertexClassification classification)
 {
     m_classification = classification;
@@ -203,6 +214,12 @@ size_t ScaffoldVertex::getSeqLen() const
 double ScaffoldVertex::getAStatistic() const
 {
     return m_AStatistic;
+}
+
+//
+double ScaffoldVertex::getEstCopyNumber() const
+{
+    return m_estCopyNumber;
 }
 
 //
