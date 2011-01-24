@@ -137,7 +137,6 @@ void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir,
                                   SGWalkVector& outWalks)
 {
     SGSearchTree searchTree(pX, NULL, initialDir, maxDistance, maxNodes);
-    searchTree.setIndexFlag(true); // we want indexed walks
 
     // Iteravively perform the BFS using the search tree. After each step
     // we check if the search has collapsed to a single vertex.

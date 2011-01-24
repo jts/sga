@@ -12,6 +12,7 @@
 #include "config.h"
 #include "ScaffoldGraph.h"
 #include "ScaffoldVisitors.h"
+#include "ScaffoldSearch.h"
 
 #define SUBPROGRAM "scaffold"
 static const char *SCAFFOLD_VERSION_MESSAGE =
@@ -90,18 +91,20 @@ int scaffoldMain(int argc, char** argv)
         graph.visit(astatVisitor);
     }
 
-
     // Create chains of vertices from the links
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
     graph.writeDot("pregraph.dot");
     graph.deleteVertices(SVC_REPEAT);
     graph.writeDot("scaffold.dot");
 
+    ScaffoldWalkVector wv;
+    ScaffoldVertex* pX = graph.getVertex("contig-5270");
+    ScaffoldSearch::findVariantWalks(pX, ED_ANTISENSE, 1000, 10, wv);
+
     ScaffoldLinkValidator linkValidator(maxOverlap, 0.2f);   
     graph.visit(linkValidator);
     exit(1);
     graph.visit(statsVisitor);
-
 
     ScaffoldChainVisitor chainVisitor(maxOverlap);
 

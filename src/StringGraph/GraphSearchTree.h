@@ -39,7 +39,7 @@ class GraphSearchNode
         GraphSearchNode* getParent() const { return m_pParent; }
         VERTEX* getVertex() const { return m_pVertex; }
         int64_t getDistance() const { return m_distance; }
-        Edge* getEdgeFromParent() const { return m_pEdgeFromParent; }
+        EDGE* getEdgeFromParent() const { return m_pEdgeFromParent; }
         int getNumChildren() const { return m_numChildren; }
 
     private:
@@ -97,9 +97,6 @@ class GraphSearchTree
         // Check whether the search was aborted or not
         bool wasSearchAborted() const { return m_searchAborted; }
 
-        // If the index flag is true, indexed SGWalks will be output
-        void setIndexFlag(bool b) { m_bIndexWalks = b; }
-
     private:
 
         // Search the branch from pNode to the root for pX.  
@@ -107,7 +104,7 @@ class GraphSearchTree
 
         // Build the walks from the root to the leaves in the queue
         void _buildWalksToLeaves(const _SearchNodePtrDeque& queue, WALKVector& outWalks);
-        void addEdgesFromBranch(_SearchNode* pNode, EdgePtrVec& outEdges);
+        void addEdgesFromBranch(_SearchNode* pNode, WALK& outEdges);
 
         // Build a queue with all the leaves in it
         void _makeFullLeafQueue(_SearchNodePtrDeque& completeQueue) const;
@@ -132,7 +129,6 @@ class GraphSearchTree
 
         // Flag indicating the search was aborted
         bool m_searchAborted;
-        bool m_bIndexWalks;
 
         // Distance functor
         DISTANCE m_distanceFunc;
@@ -213,8 +209,7 @@ GraphSearchTree<VERTEX,EDGE,DISTANCE>::GraphSearchTree(VERTEX* pStartVertex,
                                                        size_t nodeLimit) : m_pGoalVertex(pEndVertex),
                                                                            m_distanceLimit(distanceLimit),
                                                                            m_nodeLimit(nodeLimit),
-                                                                           m_searchAborted(false),
-                                                                           m_bIndexWalks(false)
+                                                                           m_searchAborted(false)
 {
     // Create the root node of the search tree
     m_pRootNode = new GraphSearchNode<VERTEX, EDGE, DISTANCE>(pStartVertex, searchDir, NULL, NULL, 0);
@@ -415,7 +410,7 @@ bool GraphSearchTree<VERTEX,EDGE,DISTANCE>::searchBranchForVertex(_SearchNode* p
 
 //
 template<typename VERTEX, typename EDGE, typename DISTANCE>
-void GraphSearchTree<VERTEX,EDGE,DISTANCE>::addEdgesFromBranch(_SearchNode* pNode, EdgePtrVec& outEdges)
+void GraphSearchTree<VERTEX,EDGE,DISTANCE>::addEdgesFromBranch(_SearchNode* pNode, WALK& outEdges)
 {
     // Terminate the recursion at the root node and dont add an edge
     if(pNode->getParent() != NULL)
