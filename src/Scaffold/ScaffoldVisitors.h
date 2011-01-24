@@ -89,6 +89,17 @@ class ScaffoldChainVisitor
         int m_maxOverlap;
 };
 
+// Detect and remove polymorphmic vertices in the scaffold
+class ScaffoldPolymorphismVisitor
+{
+    public:
+        ScaffoldPolymorphismVisitor();
+        
+        void previsit(ScaffoldGraph* /*pGraph*/);
+        bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+        void postvisit(ScaffoldGraph* /*pGraph*/);
+};
+
 // Walk through the graph breaking up components whenever a vertex has more
 // than one edge in a particular direction
 class ScaffoldMultiEdgeRemoveVisitor

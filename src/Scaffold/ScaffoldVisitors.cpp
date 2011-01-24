@@ -281,6 +281,37 @@ bool ScaffoldMultiEdgeRemoveVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVe
 }
 
 //
+// ScaffoldPolymorphismVisitor
+//
+ScaffoldPolymorphismVisitor::ScaffoldPolymorphismVisitor()
+{
+
+}
+
+//
+void ScaffoldPolymorphismVisitor::previsit(ScaffoldGraph* /*pGraph*/)
+{
+    
+}
+
+//
+bool ScaffoldPolymorphismVisitor::visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex)
+{
+    (void)pGraph;
+    (void)pVertex;
+    return false;
+}
+
+//
+void ScaffoldPolymorphismVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
+{
+
+}
+
+
+
+
+//
 ScaffoldWriterVisitor::ScaffoldWriterVisitor(const std::string& filename)
 {
     m_pWriter = createWriter(filename);

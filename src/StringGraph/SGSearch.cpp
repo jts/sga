@@ -11,6 +11,8 @@
 #include "SGSearchTree.h"
 #include <queue>
 
+typedef GraphSearchTree<Vertex, Edge> SGSearchTree;
+
 // Find all the walks between pX and pY that are within maxDistance
 void SGSearch::findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
                          int maxDistance, size_t maxNodes, SGWalkVector& outWalks)
