@@ -41,6 +41,30 @@ SGWalk::SGWalk(const SGWalk& other)
         m_pWalkIndex = new WalkIndex(*other.m_pWalkIndex);
 }
 
+// Construct the walk structure from a vector of edges
+SGWalk::SGWalk(const EdgePtrVec& edgeVec, bool bIndexWalk) : m_extensionDistance(0), m_extensionFinished(false)
+
+{
+    assert(!edgeVec.empty());
+
+    if(bIndexWalk)
+        m_pWalkIndex = new WalkIndex;
+    else
+        m_pWalkIndex = NULL;
+
+    // The start vector is the start vertex of the first edge
+    Edge* first = edgeVec.front();
+    m_pStartVertex = first->getStart();
+
+    for(EdgePtrVec::const_iterator iter = edgeVec.begin();
+                                   iter != edgeVec.end();
+                                   ++iter)
+    {
+        addEdge(*iter);
+    }
+}
+
+
 //
 SGWalk& SGWalk::operator=(const SGWalk& other)
 {

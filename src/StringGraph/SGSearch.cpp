@@ -8,10 +8,20 @@
 // for searching a string graph
 //
 #include "SGSearch.h"
-#include "SGSearchTree.h"
+#include "GraphSearchTree.h"
 #include <queue>
 
-typedef GraphSearchTree<Vertex, Edge> SGSearchTree;
+// Returns the extension distance indicated
+// by the given edge
+struct SGDistanceFunction
+{
+    int operator()(const Edge* pEdge) const
+    {
+        return pEdge->getSeqLen();
+    }
+};
+
+typedef GraphSearchTree<Vertex, Edge, SGDistanceFunction> SGSearchTree;
 
 // Find all the walks between pX and pY that are within maxDistance
 void SGSearch::findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
@@ -27,8 +37,10 @@ void SGSearch::findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
     // to pY that we could not find because the search space was too large
     if(!searchTree.wasSearchAborted())
     {
-        // Extract all the paths to pY that were found
-        searchTree.buildWalksToGoal(outWalks);
+        // Extract the walks from the graph as a vector of edges
+        std::vector<EdgePtrVec> edgeWalks;
+        searchTree.buildWalksToGoal(edgeWalks);
+        convertEdgeVectorsToSGWalk(edgeWalks, false, outWalks); 
     }
 }
 
@@ -150,8 +162,11 @@ void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir,
             VertexID iLastID = pCollapsedVertex->getID();
             
             // initial walks
+            std::vector<EdgePtrVec> edgeWalks;
+            searchTree.buildWalksToAllLeaves(edgeWalks);
+
             SGWalkVector walkVector;
-            searchTree.buildWalksToAllLeaves(walkVector);
+            convertEdgeVectorsToSGWalk(edgeWalks, true, walkVector); 
 
             // truncate and index the walks in a map
             std::map<std::string, SGWalk*> nonRedundant;
@@ -196,4 +211,15 @@ int SGSearch::countSpanningCoverage(Edge* pXY, size_t maxQueue)
     
     assert(false && "deprecated");
     return 0;
+}
+
+void SGSearch::convertEdgeVectorsToSGWalk(const std::vector<EdgePtrVec>& edgeWalks, bool bIndexWalks, SGWalkVector& outWalks)
+{
+    // Convert the walks described by edges into SGWalks
+    for(std::vector<EdgePtrVec>::const_iterator iter = edgeWalks.begin();
+                                                iter != edgeWalks.end();
+                                                ++iter)
+    {
+        outWalks.push_back(SGWalk(*iter, bIndexWalks));
+    }
 }

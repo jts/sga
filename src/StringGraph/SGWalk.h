@@ -27,6 +27,7 @@ class SGWalk
         
         SGWalk(Vertex* pStartVertex, bool bIndexWalk = false);
         SGWalk(const SGWalk& other);
+        SGWalk(const EdgePtrVec& edgeVec, bool bIndexWalk = false);
 
         ~SGWalk();
 
