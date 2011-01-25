@@ -51,8 +51,6 @@ namespace SGSearch
                             int maxDistance, size_t maxNodes,
                             SGWalkVector& outWalks);
 
-    void convertEdgeVectorsToSGWalk(const std::vector<EdgePtrVec>& edgeWalks, bool bIndexWalks, SGWalkVector& outWalks);
-
     // Count the number of vertices that span the sequence junction
     // described by edge XY. Returns -1 if the search was not completed
     int countSpanningCoverage(Edge* pXY, size_t maxQueue);

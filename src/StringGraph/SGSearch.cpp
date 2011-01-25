@@ -215,14 +215,3 @@ int SGSearch::countSpanningCoverage(Edge* pXY, size_t maxQueue)
     assert(false && "deprecated");
     return 0;
 }
-
-void SGSearch::convertEdgeVectorsToSGWalk(const std::vector<EdgePtrVec>& edgeWalks, bool bIndexWalks, SGWalkVector& outWalks)
-{
-    // Convert the walks described by edges into SGWalks
-    for(std::vector<EdgePtrVec>::const_iterator iter = edgeWalks.begin();
-                                                iter != edgeWalks.end();
-                                                ++iter)
-    {
-        outWalks.push_back(SGWalk(*iter, bIndexWalks));
-    }
-}
