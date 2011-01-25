@@ -60,6 +60,7 @@ class GraphSearchTree
     // typedefs
     typedef GraphSearchNode<VERTEX,EDGE,DISTANCE> _SearchNode;
     typedef typename _SearchNode::GraphSearchNodePtrDeque _SearchNodePtrDeque;
+    typedef typename std::set<_SearchNode*> _SearchNodePtrSet;
     typedef std::vector<EDGE*> WALK; // list of edges defines a walk through the graph
     typedef std::vector<WALK> WALKVector; // vector of walks
 
@@ -84,11 +85,17 @@ class GraphSearchTree
         // is return in pConvergedVertex.
         bool hasSearchConverged(VERTEX*& pConvergedVertex);
 
+        // build walks to a given vertex
+        template<typename BUILDER>
+        void buildWalksContainingVertex(VERTEX* pTarget, BUILDER& walkBuilder);
+
         // Construct walks representing every path from the start node
-        void buildWalksToAllLeaves(WALKVector& outWalks);
+        template<typename BUILDER>
+        void buildWalksToAllLeaves(BUILDER& walkBuilder);
 
         // Construct walks representing every path from the start vertex to the goal vertex
-        void buildWalksToGoal(WALKVector& outWalks);
+        template<typename BUILDER>
+        void buildWalksToGoal(BUILDER& walkBuilder);
                 
         // Expand all nodes in the queue a single time
         // Returns false if the search has stopped
@@ -100,10 +107,13 @@ class GraphSearchTree
     private:
 
         // Search the branch from pNode to the root for pX.  
-        bool searchBranchForVertex(_SearchNode* pNode, VERTEX* pX) const;
+        bool searchBranchForVertex(_SearchNode* pNode, VERTEX* pX, _SearchNode*& pFoundNode) const;
 
         // Build the walks from the root to the leaves in the queue
-        void _buildWalksToLeaves(const _SearchNodePtrDeque& queue, WALKVector& outWalks);
+        template<typename BUILDER>
+        void _buildWalksToLeaves(const _SearchNodePtrDeque& queue, BUILDER& walkBuilder);
+
+        //
         void addEdgesFromBranch(_SearchNode* pNode, WALK& outEdges);
 
         // Build a queue with all the leaves in it
@@ -340,7 +350,8 @@ bool GraphSearchTree<VERTEX,EDGE,DISTANCE>::hasSearchConverged(VERTEX*& pConverg
                                                    ++leafIter)
         {
             // Search the current branch from this leaf node to the root
-            bool isInBranch = searchBranchForVertex(*leafIter, pNode->getVertex());
+            _SearchNode* pFoundNode = NULL;
+            bool isInBranch = searchBranchForVertex(*leafIter, pNode->getVertex(), pFoundNode);
             if(!isInBranch)
             {
                 isInAllBranches = false;
@@ -363,49 +374,94 @@ bool GraphSearchTree<VERTEX,EDGE,DISTANCE>::hasSearchConverged(VERTEX*& pConverg
 
 // Construct walks representing every path from the start node
 template<typename VERTEX, typename EDGE, typename DISTANCE>
-void GraphSearchTree<VERTEX,EDGE,DISTANCE>::buildWalksToAllLeaves(WALKVector& outWalks)
+template<typename BUILDER>
+void GraphSearchTree<VERTEX,EDGE,DISTANCE>::buildWalksToAllLeaves(BUILDER& walkBuilder)
 {
     // Construct a queue with all leaf nodes in it
     _SearchNodePtrDeque completeLeafNodes;
     _makeFullLeafQueue(completeLeafNodes);
 
-    _buildWalksToLeaves(completeLeafNodes, outWalks);
+    _buildWalksToLeaves(completeLeafNodes, walkBuilder);
 }
 
 // Construct walks representing every path from the start vertex to the goal vertex
 template<typename VERTEX, typename EDGE, typename DISTANCE>
-void GraphSearchTree<VERTEX,EDGE,DISTANCE>::buildWalksToGoal(WALKVector& outWalks)
+template<typename BUILDER>
+void GraphSearchTree<VERTEX,EDGE,DISTANCE>::buildWalksToGoal(BUILDER& walkBuilder)
 {
-    _buildWalksToLeaves(m_goalQueue, outWalks);
+    _buildWalksToLeaves(m_goalQueue, walkBuilder);
 }
 
-//
+// Build all the walks that contain pTarget.
 template<typename VERTEX, typename EDGE, typename DISTANCE>
-void GraphSearchTree<VERTEX,EDGE,DISTANCE>::_buildWalksToLeaves(const _SearchNodePtrDeque& queue, WALKVector& outWalks)
+template<typename BUILDER>
+void GraphSearchTree<VERTEX,EDGE,DISTANCE>::buildWalksContainingVertex(VERTEX* pTarget, BUILDER& walkBuilder)
+{
+    _SearchNodePtrDeque completeLeafNodes;
+    _makeFullLeafQueue(completeLeafNodes);
+
+    // Search upwards from each leaf until pTarget is found.
+    // When it is found, insert the pointer to the search node
+    // in the set
+    _SearchNodePtrSet leafSet;
+
+    // Find pTarget in each branch of the graph
+    for(typename _SearchNodePtrDeque::const_iterator iter = completeLeafNodes.begin();
+                                                     iter != completeLeafNodes.end();
+                                                     ++iter)
+    {
+        _SearchNode* pFoundNode = NULL;
+        searchBranchForVertex(*iter, pTarget, pFoundNode);
+        assert(pFoundNode != NULL);
+        leafSet.insert(pFoundNode);
+    }
+
+    // Construct all the walks to the found leaves
+    completeLeafNodes.clear();
+    completeLeafNodes.insert(completeLeafNodes.end(), leafSet.begin(), leafSet.end());
+    _buildWalksToLeaves(completeLeafNodes, walkBuilder);
+}
+
+// Main function for constructing a vector of walks from a set of leaves
+template<typename VERTEX, typename EDGE, typename DISTANCE>
+template<typename BUILDER>
+void GraphSearchTree<VERTEX,EDGE,DISTANCE>::_buildWalksToLeaves(const _SearchNodePtrDeque& queue, BUILDER& walkBuilder)
 {
     for(typename _SearchNodePtrDeque::const_iterator iter = queue.begin();
                                                      iter != queue.end();
                                                      ++iter)
     {
-        WALK currWalk;
 
         // Recursively travel the tree from the leaf to the root collecting the edges in the vector
+        WALK currWalk;
         addEdgesFromBranch(*iter, currWalk);
-        std::reverse(currWalk.begin(), currWalk.end());
-        outWalks.push_back(currWalk);
+
+        // Reverse the walk and write it to the output structure
+        walkBuilder.startNewWalk(m_pRootNode->getVertex());
+        for(typename WALK::reverse_iterator iter = currWalk.rbegin(); iter != currWalk.rend(); ++iter)
+            walkBuilder.addEdge(*iter);
+        walkBuilder.finishCurrentWalk();
     }
 }
 
 // Return true if the vertex pX is found somewhere in the branch 
-// from pNode to the root
+// from pNode to the root. If it is found, pFoundNode is set
+// to the furtherest instance of pX from the root.
 template<typename VERTEX, typename EDGE, typename DISTANCE>
-bool GraphSearchTree<VERTEX,EDGE,DISTANCE>::searchBranchForVertex(_SearchNode* pNode, VERTEX* pX) const
+bool GraphSearchTree<VERTEX,EDGE,DISTANCE>::searchBranchForVertex(_SearchNode* pNode, VERTEX* pX, _SearchNode*& pFoundNode) const
 {
     if(pNode == NULL)
+    {
+        pFoundNode = NULL;
         return false;
+    }
+
     if(pNode->getVertex() == pX && pNode != m_pRootNode)
+    {
+        pFoundNode = pNode;
         return true;
-    return searchBranchForVertex(pNode->getParent(), pX);
+    }
+    return searchBranchForVertex(pNode->getParent(), pX, pFoundNode);
 }
 
 //

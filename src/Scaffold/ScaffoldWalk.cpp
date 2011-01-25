@@ -8,9 +8,13 @@
 //
 #include "ScaffoldWalk.h"
 
-ScaffoldWalk::ScaffoldWalk(const ScaffoldEdgePtrVector& edges)
+ScaffoldWalk::ScaffoldWalk(ScaffoldVertex* /*pStartVertex*/)
 {
-    m_edges = edges;
+}
+
+void ScaffoldWalk::addEdge(ScaffoldEdge* pEdge)
+{
+    m_edges.push_back(pEdge);
 }
 
 void ScaffoldWalk::print() const

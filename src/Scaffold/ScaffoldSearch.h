@@ -12,8 +12,26 @@
 #include "GraphSearchTree.h"
 #include "ScaffoldWalk.h"
 
-typedef std::vector<ScaffoldEdgePtrVector> SEPVVector;
+//
+struct ScaffoldWalkBuilder
+{
+    public:
+        ScaffoldWalkBuilder(ScaffoldWalkVector& outWalks);
+        ~ScaffoldWalkBuilder();
 
+        // These three functions must be provided by the builder object
+        // the generic graph code calls these to describe the walks through
+        // the graph
+        void startNewWalk(ScaffoldVertex* pStartVertex);
+        void addEdge(ScaffoldEdge* pEdge);
+        void finishCurrentWalk();
+
+    private:
+        ScaffoldWalkVector m_outWalks;
+        ScaffoldWalk* m_pCurrWalk;
+};
+
+//
 namespace ScaffoldSearch
 {
     void findVariantWalks(ScaffoldVertex* pX, 
@@ -22,9 +40,6 @@ namespace ScaffoldSearch
                           size_t maxWalks, 
                           ScaffoldWalkVector& outWalks);
 
-    void convertEdgeVectorsToScaffoldWalk(const SEPVVector& edgeWalks, 
-                                          ScaffoldWalkVector& outWalks);
-    
 };
 
 #endif

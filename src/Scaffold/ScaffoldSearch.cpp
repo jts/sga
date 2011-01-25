@@ -9,6 +9,7 @@
 #include "ScaffoldSearch.h"
 #include "ScaffoldVertex.h"
 
+//
 struct ScaffoldDistanceFunction
 {
     int operator()(const ScaffoldEdge* pEdge) const
@@ -16,6 +17,42 @@ struct ScaffoldDistanceFunction
         return pEdge->getDistance();
     }
 };
+
+//
+ScaffoldWalkBuilder::ScaffoldWalkBuilder(ScaffoldWalkVector& outWalks) : m_outWalks(outWalks), m_pCurrWalk(NULL)
+{
+    
+}
+
+//
+ScaffoldWalkBuilder::~ScaffoldWalkBuilder()
+{
+    // The pointer to the current walk should be NULL
+    // or else finishCurrentWalk() was not called for the last
+    // walk and the graph search algorithm has a bug
+    assert(m_pCurrWalk == NULL);
+}
+
+//
+void ScaffoldWalkBuilder::startNewWalk(ScaffoldVertex* pStartVertex)
+{
+    m_pCurrWalk = new ScaffoldWalk(pStartVertex);
+}
+
+//
+void ScaffoldWalkBuilder::addEdge(ScaffoldEdge* pEdge)
+{
+    m_pCurrWalk->addEdge(pEdge);
+}
+
+//
+void ScaffoldWalkBuilder::finishCurrentWalk()
+{
+    m_outWalks.push_back(*m_pCurrWalk);
+    delete m_pCurrWalk;
+    m_pCurrWalk = NULL;
+}
+
 typedef GraphSearchTree<ScaffoldVertex, ScaffoldEdge, ScaffoldDistanceFunction> ScaffoldSearchTree;
 
 void ScaffoldSearch::findVariantWalks(ScaffoldVertex* pX, 
@@ -41,36 +78,12 @@ void ScaffoldSearch::findVariantWalks(ScaffoldVertex* pX,
         if(isCollapsed)
         {
             assert(pCollapsedVertex != NULL);
-            // pCollapsedVertex is common between all walks.
-            // Check that the extension distance for any walk is no longer than maxDistance.
-            // If this is the case, we truncate all walks so they end at pCollapsedVertex and return 
-            // all the non-redundant walks in outWalks
-            
-            VertexID iLastID = pCollapsedVertex->getID();
-            std::cout << "Walk collapsed at " << iLastID << "\n";
-
-            // initial walks
-            SEPVVector edgeWalks;
-            searchTree.buildWalksToAllLeaves(edgeWalks);
-
-            ScaffoldWalkVector walkVector;
-            convertEdgeVectorsToScaffoldWalk(edgeWalks, walkVector); 
+            ScaffoldWalkBuilder builder(outWalks);
+            searchTree.buildWalksContainingVertex(pCollapsedVertex, builder);
             return;           
         }
     }
 
     // no collapsed walk found, return empty set
     outWalks.clear();
-}
-
-void ScaffoldSearch::convertEdgeVectorsToScaffoldWalk(const SEPVVector& edgeWalks, 
-                                                ScaffoldWalkVector& outWalks)
-{
-    // Convert the walks described by edges into SGWalks
-    for(SEPVVector::const_iterator iter = edgeWalks.begin();
-                                              iter != edgeWalks.end();
-                                              ++iter)
-    {
-        outWalks.push_back(ScaffoldWalk(*iter));
-    }
 }

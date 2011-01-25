@@ -21,6 +21,41 @@ struct SGDistanceFunction
     }
 };
 
+//
+SGWalkBuilder::SGWalkBuilder(SGWalkVector& outWalks, bool bIndexWalk) : m_outWalks(outWalks), m_pCurrWalk(NULL), m_bIndexWalk(bIndexWalk)
+{
+    
+}
+
+//
+SGWalkBuilder::~SGWalkBuilder()
+{
+    // The pointer to the current walk should be NULL
+    // or else finishCurrentWalk() was not called for the last
+    // walk and the graph search algorithm has a bug
+    assert(m_pCurrWalk == NULL);
+}
+
+//
+void SGWalkBuilder::startNewWalk(Vertex* pStartVertex)
+{
+    m_pCurrWalk = new SGWalk(pStartVertex, m_bIndexWalk);
+}
+
+//
+void SGWalkBuilder::addEdge(Edge* pEdge)
+{
+    m_pCurrWalk->addEdge(pEdge);
+}
+
+//
+void SGWalkBuilder::finishCurrentWalk()
+{
+    m_outWalks.push_back(*m_pCurrWalk);
+    delete m_pCurrWalk;
+    m_pCurrWalk = NULL;
+}
+
 typedef GraphSearchTree<Vertex, Edge, SGDistanceFunction> SGSearchTree;
 
 // Find all the walks between pX and pY that are within maxDistance
@@ -38,9 +73,8 @@ void SGSearch::findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
     if(!searchTree.wasSearchAborted())
     {
         // Extract the walks from the graph as a vector of edges
-        std::vector<EdgePtrVec> edgeWalks;
-        searchTree.buildWalksToGoal(edgeWalks);
-        convertEdgeVectorsToSGWalk(edgeWalks, false, outWalks); 
+        SGWalkBuilder builder(outWalks, false);
+        searchTree.buildWalksToGoal(builder);
     }
 }
 
@@ -157,38 +191,8 @@ void SGSearch::findCollapsedWalks(Vertex* pX, EdgeDir initialDir,
             // Check that the extension distance for any walk is no longer than maxDistance.
             // If this is the case, we truncate all walks so they end at pCollapsedVertex and return 
             // all the non-redundant walks in outWalks
-            
-            VertexID iLastID = pCollapsedVertex->getID();
-            
-            // initial walks
-            std::vector<EdgePtrVec> edgeWalks;
-            searchTree.buildWalksToAllLeaves(edgeWalks);
-
-            SGWalkVector walkVector;
-            convertEdgeVectorsToSGWalk(edgeWalks, true, walkVector); 
-
-            // truncate and index the walks in a map
-            std::map<std::string, SGWalk*> nonRedundant;
-            for(size_t i = 0; i < walkVector.size(); ++i)
-            {
-                if(walkVector[i].getExtensionDistance() > maxDistance)
-                {
-                    // walk is too long
-                    outWalks.clear();
-                    return;
-                }
-
-                walkVector[i].truncate(iLastID);
-                SGWalk* pWalk = &walkVector[i];
-                nonRedundant.insert(std::make_pair(walkVector[i].pathSignature(), pWalk));
-            }
-
-            // Output the final non-redundant walks and return
-            for(std::map<std::string, SGWalk*>::iterator iter = nonRedundant.begin();
-                iter != nonRedundant.end(); ++iter)
-            {
-                outWalks.push_back(*iter->second);
-            }
+            SGWalkBuilder builder(outWalks, true);
+            searchTree.buildWalksContainingVertex(pCollapsedVertex, builder);
             return;
         }
     }

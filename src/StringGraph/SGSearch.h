@@ -14,6 +14,26 @@
 #include "SGWalk.h"
 #include <deque>
 
+struct SGWalkBuilder
+{
+    public:
+        SGWalkBuilder(SGWalkVector& outWalks, bool bIndexWalk);
+        ~SGWalkBuilder();
+
+        // These three functions must be provided by the builder object
+        // the generic graph code calls these to describe the walks through
+        // the graph
+        void startNewWalk(Vertex* pStartVertex);
+        void addEdge(Edge* pEdge);
+        void finishCurrentWalk();
+
+    private:
+        SGWalkVector& m_outWalks;
+        SGWalk* m_pCurrWalk;
+        bool m_bIndexWalk;
+
+};
+
 // String Graph searching algorithms
 namespace SGSearch
 {

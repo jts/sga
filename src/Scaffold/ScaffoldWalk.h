@@ -18,7 +18,8 @@ typedef std::vector<ScaffoldEdge*> ScaffoldEdgePtrVector;
 class ScaffoldWalk
 {
     public:
-        ScaffoldWalk(const ScaffoldEdgePtrVector& edges);
+        ScaffoldWalk(ScaffoldVertex* pStartVertex);
+        void addEdge(ScaffoldEdge* pEdge);
 
         void print() const;
 
