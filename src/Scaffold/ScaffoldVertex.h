@@ -16,6 +16,7 @@ enum ScaffoldVertexClassification
 {
     SVC_UNIQUE,
     SVC_REPEAT,
+    SVC_POLYMORPHIC,
     SVC_UNKNOWN
 };
 

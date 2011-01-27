@@ -23,11 +23,15 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 
 static const char *SCAFFOLD_USAGE_MESSAGE =
 "Usage: " SUBPROGRAM " [OPTION] ... CONTIGSFILE DISTANCE-EST\n"
-"Construct scaffolds from CONTIGSFILE using distance estimates in DISTANCE-EST\n"
+"Construct scaffolds from CONTIGSFILE using distance estimates. \n"
+"The distance estimates are read from the --pe and --matepair parameters\n"
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+"          --pe=FILE                    load links derived from paired-end (short insert) libraries from FILE\n"
+"          --mate-pair=FILE             load links derived from mate-pair (long insert) libraries from FILE\n"
 "      -m, --min-length=N               only use contigs at least N bp in length to build scaffolds (default: no minimun).\n"
+"      -g, --asqg-file=FILE             optionally load the sequence graph from FILE\n"
 "      -a, --astatistic-file=FILE       load Myers' A-statistic values from FILE. This is used to\n"
 "                                       determine unique and repetitive contigs with the -u/--unique-astat\n"
 "                                       and -r/--repeat-astat parameters (required)\n"
@@ -42,27 +46,32 @@ namespace opt
 {
     static unsigned int verbose;
     static std::string contigsFile;
-    static std::string distanceEstFile;
+    static std::string peDistanceEstFile;
+    static std::string mateDistanceEstFile;
     static std::string astatFile;
     static std::string outFile;
+    static std::string asqgFile;
     static double uniqueAstatThreshold = 20.0f;
     static double repeatAstatThreshold = 5.0f;
     static int minContigLength = 0;
 }
 
-static const char* shortopts = "vm:a:u:r:o:";
+static const char* shortopts = "vm:a:u:r:o:g:";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PE, OPT_MATEPAIR };
 
 static const struct option longopts[] = {
-    { "verbose",        no_argument,       NULL, 'v' },
+    { "verbose",         no_argument,       NULL, 'v' },
     { "min-length",      required_argument, NULL, 'm' },
-    { "astatistic-file",required_argument, NULL, 'a' },
-    { "unique-astat",   required_argument, NULL, 'u' },
-    { "repeat-astat",   required_argument, NULL, 'r' },
-    { "outfile",        required_argument, NULL, 'o' },
-    { "help",           no_argument,       NULL, OPT_HELP },
-    { "version",        no_argument,       NULL, OPT_VERSION },
+    { "asgq-file",       required_argument, NULL, 'g' }, 
+    { "astatistic-file", required_argument, NULL, 'a' },
+    { "unique-astat",    required_argument, NULL, 'u' },
+    { "repeat-astat",    required_argument, NULL, 'r' },
+    { "outfile",         required_argument, NULL, 'o' },
+    { "pe",              required_argument, NULL, OPT_PE },
+    { "mate-pair",       required_argument, NULL, OPT_MATEPAIR },
+    { "help",            no_argument,       NULL, OPT_HELP },
+    { "version",         no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
 };
 
@@ -73,7 +82,6 @@ void parseScaffoldOptions(int argc, char** argv);
 int scaffoldMain(int argc, char** argv)
 {
     parseScaffoldOptions(argc, argv);
-    std::cout << "Building scaffolds from " << opt::contigsFile << " using " << opt::distanceEstFile << "\n";
 
     int maxOverlap = 100;
 
@@ -81,28 +89,44 @@ int scaffoldMain(int argc, char** argv)
     ScaffoldGraph graph;
     
     graph.loadVertices(opt::contigsFile, opt::minContigLength);
-    graph.loadDistanceEstimateEdges(opt::distanceEstFile);
 
-    if(!opt::astatFile.empty())
-    {
-        graph.loadAStatistic(opt::astatFile);
-        ScaffoldAStatisticVisitor astatVisitor(opt::uniqueAstatThreshold, 
-                                               opt::repeatAstatThreshold);
-        graph.visit(astatVisitor);
-    }
+    if(!opt::peDistanceEstFile.empty())
+        graph.loadDistanceEstimateEdges(opt::peDistanceEstFile, false);
+    
+    if(!opt::mateDistanceEstFile.empty())
+        graph.loadDistanceEstimateEdges(opt::mateDistanceEstFile, true);
 
-    // Create chains of vertices from the links
+    assert(!opt::astatFile.empty());
+    
+    // Load the a-stat data and mark vertices as unique and repeat
+    graph.loadAStatistic(opt::astatFile);
+    ScaffoldAStatisticVisitor astatVisitor(opt::uniqueAstatThreshold, 
+                                           opt::repeatAstatThreshold);
+    graph.visit(astatVisitor);
+
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
     graph.writeDot("pregraph.dot");
     graph.deleteVertices(SVC_REPEAT);
     graph.writeDot("scaffold.dot");
+    
+    // Remove polymorphic nodes from the graph
+    ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
+    while(graph.visit(polyVisitor)) {}
 
-    ScaffoldWalkVector wv;
-    ScaffoldVertex* pX = graph.getVertex("contig-5270");
-    ScaffoldSearch::findVariantWalks(pX, ED_ANTISENSE, 1000, 10, wv);
+    graph.writeDot("nopoly-scaffold.dot");
 
+    if(!opt::asqgFile.empty())
+    {
+        StringGraph* pStringGraph = SGUtil::loadASQG(opt::asqgFile, 0, false);
+        ScaffoldDistanceRefinementVisitor refineVisitor(pStringGraph);
+        graph.visit(refineVisitor);
+        delete pStringGraph;
+    }
+
+    // Validate links
     ScaffoldLinkValidator linkValidator(maxOverlap, 0.2f);   
     graph.visit(linkValidator);
+
     exit(1);
     graph.visit(statsVisitor);
 
@@ -135,9 +159,16 @@ void parseScaffoldOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case 'm': arg >> opt::minContigLength; break;
             case 'a': arg >> opt::astatFile; break;
+            case 'g': arg >> opt::asqgFile; break;
             case 'u': arg >> opt::uniqueAstatThreshold; break;
             case 'r': arg >> opt::repeatAstatThreshold; break;
             case 'o': arg >> opt::outFile; break;
+            case OPT_PE: 
+                arg >> opt::peDistanceEstFile; 
+                break;
+            case OPT_MATEPAIR: 
+                arg >> opt::mateDistanceEstFile; 
+                break;
             case OPT_HELP:
                 std::cout << SCAFFOLD_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
@@ -147,12 +178,12 @@ void parseScaffoldOptions(int argc, char** argv)
         }
     }
 
-    if (argc - optind < 2) 
+    if (argc - optind < 1) 
     {
         std::cerr << SUBPROGRAM ": missing arguments\n";
         die = true;
     } 
-    else if (argc - optind > 3) 
+    else if (argc - optind > 2) 
     {
         std::cerr << SUBPROGRAM ": too many arguments\n";
         die = true;
@@ -166,7 +197,6 @@ void parseScaffoldOptions(int argc, char** argv)
 
     // 
     opt::contigsFile = argv[optind++];
-    opt::distanceEstFile = argv[optind++];
 
     if(opt::contigsFile.empty())
     {
@@ -174,9 +204,9 @@ void parseScaffoldOptions(int argc, char** argv)
         exit(1);
     }
 
-    if(opt::distanceEstFile.empty())
+    if(opt::peDistanceEstFile.empty() && opt::mateDistanceEstFile.empty())
     {
-        std::cerr << SUBPROGRAM ": a distance estimation file must be provided\n";
+        std::cerr << SUBPROGRAM ": a distance estimation file must be provided using the --pe and/or --mate-pair options\n";
         exit(1);
     }
 

@@ -33,6 +33,7 @@ class ScaffoldGroup
         void addLink(const ScaffoldLink& link, ScaffoldVertex* pVertex);
 
         void resolveAmbiguity();
+        bool markPolymorphic(double p_cutoff, double cn_cutoff);
 
         // Is the ordering between linkA and linkB ambiguous?
         // Returns true if the probabilty that the most likely

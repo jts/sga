@@ -10,6 +10,7 @@
 #include "ScaffoldVisitors.h"
 #include "ScaffoldRecord.h"
 #include "ScaffoldGroup.h"
+#include "SGSearch.h"
 #include <limits.h>
 
 //
@@ -281,9 +282,10 @@ bool ScaffoldMultiEdgeRemoveVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVe
 }
 
 //
-// ScaffoldPolymorphismVisitor
+// ScaffoldPolymorphismVisitor - Detect and remove polymorpism in the scaffold
+// graph
 //
-ScaffoldPolymorphismVisitor::ScaffoldPolymorphismVisitor()
+ScaffoldPolymorphismVisitor::ScaffoldPolymorphismVisitor(int maxOverlap) : m_maxOverlap(maxOverlap)
 {
 
 }
@@ -291,7 +293,7 @@ ScaffoldPolymorphismVisitor::ScaffoldPolymorphismVisitor()
 //
 void ScaffoldPolymorphismVisitor::previsit(ScaffoldGraph* /*pGraph*/)
 {
-    
+    m_numMarked = 0;
 }
 
 //
@@ -299,17 +301,115 @@ bool ScaffoldPolymorphismVisitor::visit(ScaffoldGraph* pGraph, ScaffoldVertex* p
 {
     (void)pGraph;
     (void)pVertex;
+    if(pVertex->getClassification() == SVC_REPEAT)
+        return false;
+
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        ScaffoldEdgePtrVector edgeVec = pVertex->getEdges(dir);
+        if(edgeVec.size() > 1)
+        {
+            ScaffoldGroup group(pVertex, m_maxOverlap);
+
+            for(size_t i = 0; i < edgeVec.size(); ++i)
+            {
+                group.addLink(edgeVec[i]->getLink(), edgeVec[i]->getEnd());
+            }
+
+            // Check if any links to this scaffold are polymorphic
+            // This is done be seeing if there are a pair of primary links
+            // that have an ambiguous ordering (the probability they are 
+            // incorrectly ordered by the distance estimates is greater than
+            // p_cutoff). If they are ambiguous and the sum of their 
+            // estimated copy number is less than cn_cutoff, we mark
+            // the lower-covered node as polymorphic.
+            double p_cutoff = 0.01;
+            double cn_cutoff = 1.5f;
+            bool nodeMarked = group.markPolymorphic(p_cutoff, cn_cutoff);
+            if(nodeMarked)
+                m_numMarked++;
+            return nodeMarked;
+        }
+    }    
     return false;
 }
 
 //
-void ScaffoldPolymorphismVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
+void ScaffoldPolymorphismVisitor::postvisit(ScaffoldGraph* pGraph)
+{
+    printf("Marked %d nodes as polymorphic\n", m_numMarked);
+    pGraph->deleteVertices(SVC_POLYMORPHIC);
+}
+
+//
+// ScaffoldDistanceRefinementVisitor - refine distance estimates using a string graph
+// of contig connectivity.
+//
+ScaffoldDistanceRefinementVisitor::ScaffoldDistanceRefinementVisitor(const StringGraph* pStringGraph) : m_pStringGraph(pStringGraph)
 {
 
 }
 
+//
+void ScaffoldDistanceRefinementVisitor::previsit(ScaffoldGraph* /*pGraph*/)
+{
+}
 
+//
+bool ScaffoldDistanceRefinementVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex)
+{
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        ScaffoldEdgePtrVector edgeVec = pVertex->getEdges(dir);
 
+        for(size_t i = 0; i < edgeVec.size(); ++i)
+        {
+            Vertex* pX = m_pStringGraph->getVertex(edgeVec[i]->getStartID());
+            Vertex* pY = m_pStringGraph->getVertex(edgeVec[i]->getEndID());
+            assert(pX != NULL && pY != NULL);
+
+            SGWalkVector walks;
+            SGSearch::findWalks(pX, pY, edgeVec[i]->getDir(), edgeVec[i]->getDistance() + pY->getSeqLen() + 1000, 100000, walks); 
+
+            // Select the walk closest to the distance estimate
+            if(walks.size() > 0)
+            {
+                int closest = std::numeric_limits<int>::max();
+                int est = edgeVec[i]->getDistance();
+
+                size_t idx = -1;
+                for(size_t j = 0; j < walks.size(); ++j)
+                {
+                    int diff = abs(walks[j].getEndToStartDistance() - est);
+                    if(diff < closest)
+                    {
+                        closest = diff;
+                        idx = j;
+                    }
+                }
+
+                printf("%s -> %s\t%d\t%d\t%s\n", pX->getID().c_str(), 
+                                                 pY->getID().c_str(), 
+                                                 edgeVec[i]->getDistance(), 
+                                                 walks[idx].getEndToStartDistance(),
+                                                 walks[idx].pathSignature().c_str());
+            }
+            else
+            {
+                printf("%s -> %s\t%d\tN/A\n", pX->getID().c_str(), pY->getID().c_str(), edgeVec[i]->getDistance());
+            }
+
+        }
+    }    
+    return false;
+}
+
+//
+void ScaffoldDistanceRefinementVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
+{
+}
 
 //
 ScaffoldWriterVisitor::ScaffoldWriterVisitor(const std::string& filename)

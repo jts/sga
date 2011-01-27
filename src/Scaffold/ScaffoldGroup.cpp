@@ -48,6 +48,39 @@ void ScaffoldGroup::resolveAmbiguity()
     }
 }
 
+// 
+bool ScaffoldGroup::markPolymorphic(double p_cutoff, double cn_cutoff)
+{
+    std::cout << "Checking " << m_pRootVertex->getID() << " for polymorphic links\n";
+    LinkVectorIterator i = m_links.begin();
+    for(; i != m_links.end(); ++i)
+    {
+        LinkVectorIterator j = i + 1;
+        for(; j != m_links.end(); ++j)
+        {
+            bool isAmbiguous = areLinksAmbiguous(i->link, j->link, p_cutoff);
+            if(isAmbiguous)
+            {
+                double sum = i->pEndpoint->getEstCopyNumber() + j->pEndpoint->getEstCopyNumber();
+                std::cout << "\tLinks " << i->link << " and " << j->link << " are ambiguous\n";
+                std::cout << "\tECN I: "<< i->pEndpoint->getEstCopyNumber() << " ECN J: " << j->pEndpoint->getEstCopyNumber() << "\n";
+                std::cout << "\tsum: " << sum << "\n";
+                if(sum < cn_cutoff)
+                {
+                    if(i->pEndpoint->getEstCopyNumber() < j->pEndpoint->getEstCopyNumber())
+                        i->pEndpoint->setClassification(SVC_POLYMORPHIC);
+                    else
+                        j->pEndpoint->setClassification(SVC_POLYMORPHIC);
+                    return true;
+                }
+            }
+        }
+    }
+    
+    // No nodes marked as polymorphic
+    return false;
+}
+
 //
 bool ScaffoldGroup::areLinksAmbiguous(const ScaffoldLink& linkA,
                                       const ScaffoldLink& linkB,

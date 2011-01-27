@@ -87,3 +87,38 @@ void ScaffoldSearch::findVariantWalks(ScaffoldVertex* pX,
     // no collapsed walk found, return empty set
     outWalks.clear();
 }
+
+void ScaffoldSearch::findPrimaryWalks(ScaffoldVertex* pX,
+                                      ScaffoldVertex* pY,
+                                      EdgeDir initialDir,
+                                      int maxDistance,
+                                      size_t maxNodes, 
+                                      ScaffoldWalkVector& outWalks)
+{
+    ScaffoldSearchTree searchTree(pX, pY, initialDir, maxDistance, maxNodes);
+
+    // Iteravively perform the BFS using the search tree.
+    while(searchTree.stepOnce()) { }
+
+    // If the search was aborted, do not return any walks
+    // because we do not know if there are more valid paths from pX
+    // to pY that we could not find because the search space was too large
+    if(!searchTree.wasSearchAborted())
+    {
+        // Extract the walks from the graph as a vector of edges
+        ScaffoldWalkBuilder builder(outWalks);
+        searchTree.buildWalksToGoal(builder);
+    }
+    else
+    {
+        std::cout << "search was aborted\n";
+    }
+    
+    std::cout << "Found " << outWalks.size() << " walks between " << pX->getID() << " " << pY->getID() << "\n";
+    for(size_t i = 0; i < outWalks.size(); ++i)
+    {
+        std::cout << "walk " << i  << ": ";
+        outWalks[i].print();
+    }
+    exit(1);
+}

@@ -27,7 +27,7 @@ struct ScaffoldWalkBuilder
         void finishCurrentWalk();
 
     private:
-        ScaffoldWalkVector m_outWalks;
+        ScaffoldWalkVector& m_outWalks;
         ScaffoldWalk* m_pCurrWalk;
 };
 
@@ -39,6 +39,17 @@ namespace ScaffoldSearch
                           int maxDistance,
                           size_t maxWalks, 
                           ScaffoldWalkVector& outWalks);
+
+
+    // Returns walks from pX to pY that exclusively
+    // travel along primary links
+    void findPrimaryWalks(ScaffoldVertex* pX,
+                          ScaffoldVertex* pY,
+                          EdgeDir intialDir,
+                          int maxDistance,
+                          size_t maxNodes, 
+                          ScaffoldWalkVector& outWalks);
+
 
 };
 

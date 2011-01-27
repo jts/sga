@@ -97,7 +97,7 @@ void ScaffoldGraph::loadVertices(const std::string& filename, int minLength)
 }
 
 // 
-void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
+void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename, bool isMatePair)
 {
     std::istream* pReader = createReader(filename);
     std::string line;
@@ -148,10 +148,17 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename)
                 if(pEdge != NULL)
                 {
                     // An edge to this vertex already exists
-                    if(pEdge->getLink().stdDev < stdDev)
+                    // If the current estimate is mate-pair link, never overwrite
+                    // the current estimate
+                    if(!isMatePair && pEdge->getLink().stdDev < stdDev)
                     {
                         pEdge->setLink(link1);
                         pEdge->getTwin()->setLink(link2);
+                    }
+                    else
+                    {
+                        if(pEdge->getDistance() != link1.distance)
+                            std::cout << "Skipping suspect mate-pair link: " << link1 << " curr: " << pEdge->getLink() << "\n";
                     }
                 }
                 else

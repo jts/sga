@@ -11,6 +11,7 @@
 #define SCAFFOLDVISITORS_H
 
 #include "ScaffoldGraph.h"
+#include "SGUtil.h"
 
 //
 namespace ScaffoldAlgorithms
@@ -93,11 +94,29 @@ class ScaffoldChainVisitor
 class ScaffoldPolymorphismVisitor
 {
     public:
-        ScaffoldPolymorphismVisitor();
+        ScaffoldPolymorphismVisitor(int maxOverlap);
         
         void previsit(ScaffoldGraph* /*pGraph*/);
         bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
         void postvisit(ScaffoldGraph* /*pGraph*/);
+
+    private:
+        int m_maxOverlap;
+        int m_numMarked;        
+};
+
+class ScaffoldDistanceRefinementVisitor
+{
+    public:
+        ScaffoldDistanceRefinementVisitor(const StringGraph* pStringGraph);
+        
+        void previsit(ScaffoldGraph* /*pGraph*/);
+        bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+        void postvisit(ScaffoldGraph* /*pGraph*/);
+
+    private:
+        const StringGraph* m_pStringGraph;
+
 };
 
 // Walk through the graph breaking up components whenever a vertex has more
