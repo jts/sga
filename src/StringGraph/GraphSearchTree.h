@@ -205,7 +205,6 @@ int GraphSearchNode<VERTEX,EDGE,DISTANCE>::createChildren(GraphSearchNodePtrDequ
     {
         EdgeDir childExpandDir = !edges[i]->getTwin()->getDir();
         GraphSearchNode* pNode = new GraphSearchNode(edges[i]->getEnd(), childExpandDir, this, edges[i], distanceFunc(edges[i]));
-        std::cout << "Creating node to " << edges[i]->getEndID() << "\n";
         outDeque.push_back(pNode);
         m_numChildren += 1;
     }

@@ -117,6 +117,17 @@ class ScaffoldPolymorphismVisitor
         int m_numMarked;        
 };
 
+// Compute a layout of the contigs linked to each vertex
+class ScaffoldLayoutVisitor
+{
+    public:
+        ScaffoldLayoutVisitor();
+        
+        void previsit(ScaffoldGraph* /*pGraph*/);
+        bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+        void postvisit(ScaffoldGraph* /*pGraph*/);    
+};
+
 class ScaffoldDistanceRefinementVisitor
 {
     public:

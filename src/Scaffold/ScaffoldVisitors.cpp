@@ -297,7 +297,7 @@ void ScaffoldTransitiveReductionVisitor::previsit(ScaffoldGraph* pGraph)
 }
 
 //
-bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex)
+bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex)
 {
     // Never try to make chains from a repeat
     if(pVertex->getClassification() == SVC_REPEAT)
@@ -364,7 +364,7 @@ bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* pGraph, ScaffoldVe
         std::cout << "keeping link: " << lowestIdxInVec << " " << edgeVec[lowestIdxInVec]->getLink() << "\n";
 
         // Mark the links that should not be deleted
-        for(int i = 0; i < edgeVec.size(); ++i)
+        for(int i = 0; i < (int)edgeVec.size(); ++i)
         {
             if(i != lowestIdxInVec)
             {
@@ -443,6 +443,101 @@ void ScaffoldPolymorphismVisitor::postvisit(ScaffoldGraph* pGraph)
     printf("Marked %d nodes as polymorphic\n", m_numMarked);
     pGraph->deleteVertices(SVC_POLYMORPHIC);
 }
+
+ScaffoldLayoutVisitor::ScaffoldLayoutVisitor()
+{
+
+}
+  
+//      
+void ScaffoldLayoutVisitor::previsit(ScaffoldGraph* pGraph)
+{
+    pGraph->setEdgeColors(GC_WHITE);
+}
+
+//
+bool ScaffoldLayoutVisitor::visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex)
+{
+    // Never re-classify repeats
+    if(pVertex->getClassification() == SVC_REPEAT)
+        return false;
+
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        ScaffoldEdgePtrVector edgeVec = pVertex->getEdges(dir);
+        if(edgeVec.size() <= 1)
+            continue;
+
+        ScaffoldGroup group(pVertex, 100);
+        for(size_t i = 0; i < edgeVec.size(); ++i)
+            group.addLink(edgeVec[i]->getLink(), edgeVec[i]->getEnd());
+
+        group.computeBestOrdering();
+        int longestOverlap = group.calculateLongestOverlap();
+
+        if(longestOverlap > 150)
+        {
+            std::cout << "cannot scaffold from " << pVertex->getID() << " OL: " << longestOverlap << "\n";
+            continue;
+        }
+
+        // Calculate the ordered set of links that would make up this scaffold
+        std::cout << "Computing layout for " << pVertex->getID() << "\n";
+        LinkVector linearLinks;
+        group.getLinearLinks(linearLinks);
+
+
+        std::cout << "Linearized links:\n";
+
+        // Iterate through the linearized links and see if they are sane
+        bool allResolved = true;
+        ScaffoldVertex* pCurrStartVertex = pVertex;
+        for(size_t i = 0; i < linearLinks.size(); ++i)
+        {
+            std::cout << "\t" << linearLinks[i] << "\n";
+
+            // Does a real link exist between the two vertices that are predicted to be linked?
+            ScaffoldEdge* pRealEdge = pCurrStartVertex->findEdgeTo(linearLinks[i].endpointID, linearLinks[i].getDir(), linearLinks[i].getComp());
+            if(pRealEdge != NULL)
+            {
+                std::cout << "\t\tresolved:" << pRealEdge->getLink() << "\n";
+            }
+            else
+            {
+                pCurrStartVertex->setClassification(SVC_REPEAT);
+                allResolved = false;
+                std::cout << "\t\tnotfound\n";
+            }
+
+            ScaffoldVertex* pCurrEndVertex = pGraph->getVertex(linearLinks[i].endpointID);
+            assert(pCurrEndVertex != NULL);
+            pCurrStartVertex = pCurrEndVertex;
+        }
+
+        if(allResolved)
+        {
+            // Removed all the edges for current vertex except for the first
+            std::string firstID = linearLinks[0].endpointID;
+            for(size_t i = 0; i < edgeVec.size(); ++i)
+            {
+                if(edgeVec[i]->getEndID() == firstID)
+                {
+                    edgeVec[i]->setColor(GC_BLACK);
+                    edgeVec[i]->getTwin()->setColor(GC_BLACK);
+                }
+            }
+        }
+    }
+    return false;
+}
+
+//
+void ScaffoldLayoutVisitor::postvisit(ScaffoldGraph* pGraph)
+{
+    pGraph->deleteEdgesByColor(GC_BLACK);
+}
+
 
 //
 // ScaffoldDistanceRefinementVisitor - refine distance estimates using a string graph

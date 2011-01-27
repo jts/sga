@@ -115,17 +115,19 @@ int scaffoldMain(int argc, char** argv)
 
     graph.writeDot("nopoly-scaffold.dot");
 
+    // Compute the layout of the scaffolds
+    ScaffoldLayoutVisitor layoutVisitor;
+    graph.visit(layoutVisitor);
+    graph.writeDot("afterLayout.dot");
+    graph.visit(layoutVisitor);
+
+    /*
     // remove transitive edges from the graph
     ScaffoldTransitiveReductionVisitor trVisit;
     graph.visit(trVisit);
 
-    //graph.writeDot("aftertr-scaffold.dot");
-
-    ScaffoldWalkVector wv;
-    //ScaffoldSearch::findPrimaryWalks(graph.getVertex("contig-10904"), graph.getVertex("contig-19208"), ED_ANTISENSE, 100000, 1000, wv);
-    ScaffoldSearch::findVariantWalks(graph.getVertex("contig-10904"), ED_ANTISENSE, 100000, 1000, wv);
-    ScaffoldSearch::printWalks(wv);
-
+    graph.writeDot("aftertr-scaffold.dot");
+    */
     exit(1);
     if(!opt::asqgFile.empty())
     {
@@ -138,7 +140,6 @@ int scaffoldMain(int argc, char** argv)
     // Validate links
     ScaffoldLinkValidator linkValidator(maxOverlap, 0.2f);   
     graph.visit(linkValidator);
-
     exit(1);
     graph.visit(statsVisitor);
 

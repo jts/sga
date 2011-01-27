@@ -13,7 +13,8 @@
 //
 ScaffoldGroup::ScaffoldGroup(const ScaffoldVertex* pRootVertex, 
                              int maxOverlap) : m_pRootVertex(pRootVertex),
-                                               m_maxOverlap(maxOverlap)
+                                               m_maxOverlap(maxOverlap),
+                                               m_isOrdered(false)
 {
 
 }
@@ -30,10 +31,10 @@ void ScaffoldGroup::resolveAmbiguity()
 {
     double ambiguity_p = 0.01f;
     std::cout << "Checking " << m_pRootVertex->getID() << " for ambiguous links\n";
-    LinkVectorIterator i = m_links.begin();
+    LinkVectorPairIterator i = m_links.begin();
     for(; i != m_links.end(); ++i)
     {
-        LinkVectorIterator j = i + 1;
+        LinkVectorPairIterator j = i + 1;
         for(; j != m_links.end(); ++j)
         {
             bool isAmbiguous = areLinksAmbiguous(i->link, j->link, ambiguity_p);
@@ -52,10 +53,10 @@ void ScaffoldGroup::resolveAmbiguity()
 bool ScaffoldGroup::markPolymorphic(double p_cutoff, double cn_cutoff)
 {
     std::cout << "Checking " << m_pRootVertex->getID() << " for polymorphic links\n";
-    LinkVectorIterator i = m_links.begin();
+    LinkVectorPairIterator i = m_links.begin();
     for(; i != m_links.end(); ++i)
     {
-        LinkVectorIterator j = i + 1;
+        LinkVectorPairIterator j = i + 1;
         for(; j != m_links.end(); ++j)
         {
             bool isAmbiguous = areLinksAmbiguous(i->link, j->link, p_cutoff);
@@ -104,14 +105,14 @@ bool ScaffoldGroup::areLinksAmbiguous(const ScaffoldLink& linkA,
 int ScaffoldGroup::calculateLongestOverlap()
 {
     int longestOverlap = 0;
-    LinkVectorIterator i = m_links.begin();
+    LinkVectorPairIterator i = m_links.begin();
     for(; i != m_links.end(); ++i)
     {
         // Compute interval for this link using closed coordionates [start, end]
         Interval interval_i(i->link.distance, i->link.getEndpoint() - 1);
         std::cout << "II: " << i->link.endpointID << " " << interval_i << "\n";
 
-        LinkVectorIterator j = i + 1;
+        LinkVectorPairIterator j = i + 1;
         for(; j != m_links.end(); ++j)
         {
             Interval interval_j(j->link.distance, j->link.getEndpoint() - 1);
@@ -137,7 +138,7 @@ int ScaffoldGroup::calculateLongestOverlap()
 void ScaffoldGroup::computeBestOrdering()
 {
     std::cout << "Compute ordering for" << m_pRootVertex->getID() << "\n";
-    for(LinkVectorIterator iter = m_links.begin();
+    for(LinkVectorPairIterator iter = m_links.begin();
                                             iter != m_links.end();
                                             ++iter)
     {
@@ -152,7 +153,7 @@ void ScaffoldGroup::computeBestOrdering()
     // is removed from the unplaced list. This continues
     // until all contigs have been placed in the putative scaffold.
     LinkList unplacedLinks(m_links.begin(), m_links.end());
-    LinkVector placedLinks;
+    LinkPairVector placedLinks;
 
     int totalScore = 0;
     while(!unplacedLinks.empty())
@@ -182,7 +183,7 @@ void ScaffoldGroup::computeBestOrdering()
 
     std::cout << "Total ordering score: " << totalScore << "\n";
     std::cout << "Ordering: \n";
-    for(LinkVectorIterator iter = placedLinks.begin(); iter != placedLinks.end(); ++iter)
+    for(LinkVectorPairIterator iter = placedLinks.begin(); iter != placedLinks.end(); ++iter)
     {
         std::cout << "\tlink: " << iter->link << "\n";
     }
@@ -190,7 +191,47 @@ void ScaffoldGroup::computeBestOrdering()
     m_links = placedLinks;
 
     std::cout << "Longest overlap: " << calculateLongestOverlap() << "\n";
+
+    m_isOrdered = true;
 }
+
+// Construct a set of links between successive elements of the
+// ordered group
+void ScaffoldGroup::getLinearLinks(LinkVector& outLinks)
+{
+    assert(m_isOrdered);
+
+    if(m_links.empty())
+        return;
+
+
+    // The first link is added without modification
+    LinkPairVector::const_iterator iter = m_links.begin();
+    ScaffoldLink previousLink = iter->link;
+    outLinks.push_back(previousLink);
+    ++iter;
+    for(; iter != m_links.end(); ++iter)
+    {
+        // Infer the distance and orientation of the current contig in the scaffold
+        // with the previous
+        const ScaffoldLink& currentLink = iter->link;
+        EdgeComp orientation = previousLink.getComp() == currentLink.getComp() ? EC_SAME : EC_REVERSE;
+
+        EdgeDir dir;
+        if(previousLink.getComp() == EC_SAME)
+            dir = previousLink.getDir();
+        else
+            dir = !previousLink.getDir();
+
+        int distance = currentLink.distance - previousLink.getEndpoint();
+        double sd = sqrt(pow(currentLink.stdDev, 2.0) + pow(previousLink.stdDev, 2.0));
+        ScaffoldLink inferred(currentLink.endpointID, dir, orientation, distance, sd, 0, currentLink.seqLen, SLT_INFERRED);
+        outLinks.push_back(inferred);
+        previousLink = currentLink;
+    }
+
+}
+
 
 // Calculate the score of placing the given link before
 // all the other links in the unplaced list

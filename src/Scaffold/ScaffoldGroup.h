@@ -22,8 +22,9 @@ struct LinkVertexPair
 
 typedef std::list<LinkVertexPair> LinkList;
 typedef LinkList::iterator LinkListIterator;
-typedef std::vector<LinkVertexPair> LinkVector;
-typedef LinkVector::iterator LinkVectorIterator;
+typedef std::vector<ScaffoldLink> LinkVector;
+typedef std::vector<LinkVertexPair> LinkPairVector;
+typedef LinkPairVector::iterator LinkVectorPairIterator;
 
 class ScaffoldGroup
 {
@@ -49,6 +50,10 @@ class ScaffoldGroup
         double calculateProbACloserThanB(const ScaffoldLink& linkA,
                                          const ScaffoldLink& linkB);
 
+        
+        // Construct a set of links between successive elements
+        // of the ordered scaffold
+        void getLinearLinks(LinkVector& outLinks);
 
     private:
 
@@ -56,7 +61,9 @@ class ScaffoldGroup
 
         const ScaffoldVertex* m_pRootVertex;
         int m_maxOverlap;
-        LinkVector m_links;
+        LinkPairVector m_links;
+
+        bool m_isOrdered;
 
 };
 
