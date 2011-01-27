@@ -115,6 +115,18 @@ int scaffoldMain(int argc, char** argv)
 
     graph.writeDot("nopoly-scaffold.dot");
 
+    // remove transitive edges from the graph
+    ScaffoldTransitiveReductionVisitor trVisit;
+    graph.visit(trVisit);
+
+    //graph.writeDot("aftertr-scaffold.dot");
+
+    ScaffoldWalkVector wv;
+    //ScaffoldSearch::findPrimaryWalks(graph.getVertex("contig-10904"), graph.getVertex("contig-19208"), ED_ANTISENSE, 100000, 1000, wv);
+    ScaffoldSearch::findVariantWalks(graph.getVertex("contig-10904"), ED_ANTISENSE, 100000, 1000, wv);
+    ScaffoldSearch::printWalks(wv);
+
+    exit(1);
     if(!opt::asqgFile.empty())
     {
         StringGraph* pStringGraph = SGUtil::loadASQG(opt::asqgFile, 0, false);

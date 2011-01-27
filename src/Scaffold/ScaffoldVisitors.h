@@ -90,6 +90,18 @@ class ScaffoldChainVisitor
         int m_maxOverlap;
 };
 
+// Remove transitive edges from the graph
+class ScaffoldTransitiveReductionVisitor
+{
+    public:
+        ScaffoldTransitiveReductionVisitor();
+
+        void previsit(ScaffoldGraph* /*pGraph*/);
+        bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+        void postvisit(ScaffoldGraph* /*pGraph*/);
+
+};
+
 // Detect and remove polymorphmic vertices in the scaffold
 class ScaffoldPolymorphismVisitor
 {

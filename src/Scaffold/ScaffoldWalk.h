@@ -21,9 +21,14 @@ class ScaffoldWalk
         ScaffoldWalk(ScaffoldVertex* pStartVertex);
         void addEdge(ScaffoldEdge* pEdge);
 
+        // Find the index of the first instance of pvertex in the walk
+        // if pvertex is not found, returns -1
+        int findVertex(ScaffoldVertex* pVertex) const;
+
         void print() const;
 
     private:
+        ScaffoldVertex* m_pStartVertex;
         ScaffoldEdgePtrVector m_edges;
 
 };

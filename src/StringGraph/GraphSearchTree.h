@@ -119,6 +119,9 @@ class GraphSearchTree
         // Build a queue with all the leaves in it
         void _makeFullLeafQueue(_SearchNodePtrDeque& completeQueue) const;
 
+        // print the branch sequence
+        void printBranch(_SearchNode* pNode) const;
+
         // We keep the pointers to the search nodes
         // in one of three queues. 
         // The goal queue contains the nodes representing the vertex we are searching for.
@@ -202,6 +205,7 @@ int GraphSearchNode<VERTEX,EDGE,DISTANCE>::createChildren(GraphSearchNodePtrDequ
     {
         EdgeDir childExpandDir = !edges[i]->getTwin()->getDir();
         GraphSearchNode* pNode = new GraphSearchNode(edges[i]->getEnd(), childExpandDir, this, edges[i], distanceFunc(edges[i]));
+        std::cout << "Creating node to " << edges[i]->getEndID() << "\n";
         outDeque.push_back(pNode);
         m_numChildren += 1;
     }
@@ -485,5 +489,15 @@ void GraphSearchTree<VERTEX,EDGE,DISTANCE>::_makeFullLeafQueue(_SearchNodePtrDeq
     completeQueue.insert(completeQueue.end(), m_doneQueue.begin(), m_doneQueue.end());
 }
 
+//
+template<typename VERTEX, typename EDGE, typename DISTANCE>
+void GraphSearchTree<VERTEX,EDGE,DISTANCE>::printBranch(_SearchNode* pNode) const
+{
+    if(pNode != NULL)
+    {
+        std::cout << pNode->getVertex()->getID() << ",";
+        printBranch(pNode->getParent());
+    }
+}
 
 #endif

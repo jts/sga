@@ -8,13 +8,31 @@
 //
 #include "ScaffoldWalk.h"
 
-ScaffoldWalk::ScaffoldWalk(ScaffoldVertex* /*pStartVertex*/)
+ScaffoldWalk::ScaffoldWalk(ScaffoldVertex* pStartVertex) : m_pStartVertex(pStartVertex)
 {
 }
 
 void ScaffoldWalk::addEdge(ScaffoldEdge* pEdge)
 {
     m_edges.push_back(pEdge);
+}
+
+//
+int ScaffoldWalk::findVertex(ScaffoldVertex* pVertex) const
+{
+    if(pVertex == m_pStartVertex)
+        return 0;
+
+    int idx = 1;
+    for(ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin();
+                                              iter != m_edges.end();
+                                              ++iter)
+    {
+        if(pVertex == (*iter)->getEnd())
+            return idx;
+        ++idx;
+    }
+    return -1;
 }
 
 void ScaffoldWalk::print() const

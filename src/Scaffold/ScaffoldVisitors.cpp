@@ -11,6 +11,7 @@
 #include "ScaffoldRecord.h"
 #include "ScaffoldGroup.h"
 #include "SGSearch.h"
+#include "ScaffoldSearch.h"
 #include <limits.h>
 
 //
@@ -279,6 +280,107 @@ bool ScaffoldMultiEdgeRemoveVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVe
         }
     }
     return false;
+}
+
+// 
+// ScaffoldTransitiveReductionVisitor - Remove transitive edges from the graph
+//
+ScaffoldTransitiveReductionVisitor::ScaffoldTransitiveReductionVisitor()
+{
+
+}
+
+//
+void ScaffoldTransitiveReductionVisitor::previsit(ScaffoldGraph* pGraph)
+{
+    pGraph->setEdgeColors(GC_WHITE);
+}
+
+//
+bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex)
+{
+    // Never try to make chains from a repeat
+    if(pVertex->getClassification() == SVC_REPEAT)
+        return false;
+
+    bool changed_graph = false;
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        ScaffoldEdgePtrVector edgeVec = pVertex->getEdges(dir);
+        if(edgeVec.size() <= 1)
+            continue;
+
+        // Try to make a transitive set out of these edges
+        // Search the graph for a variation walk that contains a common
+        // endpoint for all links
+        ScaffoldWalkVector walkVector;
+        ScaffoldSearch::findVariantWalks(pVertex, dir, 10000, 100, walkVector);
+
+        // Search the walks to see if one contains all the links.
+        int walkIdx = -1;
+        int lowestIdxInWalk = std::numeric_limits<int>::max();
+        int lowestIdxInVec = -1;
+        for(size_t i = 0; i < walkVector.size(); ++i)
+        {
+            bool allContained = true;
+            lowestIdxInWalk = std::numeric_limits<int>::max();
+            lowestIdxInVec = -1;
+
+            for(size_t j = 0; j < edgeVec.size(); ++j)
+            {
+                int idxInWalk = walkVector[i].findVertex(edgeVec[j]->getEnd());
+
+                if(idxInWalk == -1)
+                {
+                    // vertex not found
+                    allContained = false;
+                    break;
+                }
+
+                if(idxInWalk < lowestIdxInWalk)
+                {
+                    lowestIdxInWalk = idxInWalk;
+                    lowestIdxInVec = j;
+                }
+            }
+
+            if(allContained)
+            {
+                walkIdx = i;
+                break;
+            }
+        }
+
+        if(walkIdx == -1)
+        {
+            // no path found
+            continue;
+        }
+
+        // Keep the first link in the walk and discard all others
+        std::cout << "Walk " << walkIdx << " contains all links ";
+        walkVector[walkIdx].print();
+        std::cout << "keeping link: " << lowestIdxInVec << " " << edgeVec[lowestIdxInVec]->getLink() << "\n";
+
+        // Mark the links that should not be deleted
+        for(int i = 0; i < edgeVec.size(); ++i)
+        {
+            if(i != lowestIdxInVec)
+            {
+                edgeVec[i]->setColor(GC_BLACK);
+                edgeVec[i]->getTwin()->setColor(GC_BLACK);
+                changed_graph = true;
+            }
+        }
+    }
+    return changed_graph;
+}
+
+//
+void ScaffoldTransitiveReductionVisitor::postvisit(ScaffoldGraph* pGraph)
+{
+    pGraph->deleteEdgesByColor(GC_BLACK);
 }
 
 //

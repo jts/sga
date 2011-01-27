@@ -49,6 +49,7 @@ class ScaffoldVertex
         void setEstCopyNumber(double v);
         void setClassification(ScaffoldVertexClassification classification);
         void setColor(GraphColor c);
+        void setEdgeColors(GraphColor c);
 
         //
         void deleteEdge(ScaffoldEdge* pEdge);
@@ -56,6 +57,7 @@ class ScaffoldVertex
         void deleteEdges();
         void deleteEdgesAndTwins(EdgeDir dir);
         void deleteEdgesAndTwins();
+        void deleteEdgesAndTwinsByColor(GraphColor c);
 
         ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldLinkType type) const;
         ScaffoldEdge* findEdgeTo(VertexID id, EdgeDir dir, EdgeComp comp) const;

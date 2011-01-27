@@ -24,10 +24,12 @@ class ScaffoldEdge
         //
         void setTwin(ScaffoldEdge* pEdge);
         void setLink(ScaffoldLink link);
+        void setColor(GraphColor c);
 
         //
         VertexID getStartID() const;
         VertexID getEndID() const;
+        ScaffoldVertex* getStart() const;
         ScaffoldVertex* getEnd() const;
         ScaffoldEdge* getTwin() const;
         const ScaffoldLink& getLink() const;
@@ -39,7 +41,8 @@ class ScaffoldEdge
         int getDistance() const;
         double getStdDev() const;
         char getTypeCode() const;
-        
+        GraphColor getColor() const;
+
         //
         std::string makeLinkString() const;
 
@@ -50,6 +53,7 @@ class ScaffoldEdge
         ScaffoldVertex* m_pEnd;
         ScaffoldEdge* m_pTwin;
         ScaffoldLink m_link; // distance, direction information
+        GraphColor m_color;
 };
 
 bool ScaffoldEdgePtrDistanceCompare(ScaffoldEdge* pXY, ScaffoldEdge* pXZ);

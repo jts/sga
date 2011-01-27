@@ -63,7 +63,6 @@ void ScaffoldSearch::findVariantWalks(ScaffoldVertex* pX,
 {
     (void)maxWalks;
     ScaffoldSearchTree searchTree(pX, NULL, initialDir, maxDistance, 10000);
-
     // Iteravively perform the BFS using the search tree. After each step
     // we check if the search has collapsed to a single vertex.
     bool done = false;
@@ -83,6 +82,8 @@ void ScaffoldSearch::findVariantWalks(ScaffoldVertex* pX,
             return;           
         }
     }
+
+
 
     // no collapsed walk found, return empty set
     outWalks.clear();
@@ -109,16 +110,15 @@ void ScaffoldSearch::findPrimaryWalks(ScaffoldVertex* pX,
         ScaffoldWalkBuilder builder(outWalks);
         searchTree.buildWalksToGoal(builder);
     }
-    else
-    {
-        std::cout << "search was aborted\n";
-    }
     
-    std::cout << "Found " << outWalks.size() << " walks between " << pX->getID() << " " << pY->getID() << "\n";
-    for(size_t i = 0; i < outWalks.size(); ++i)
+}
+
+//
+void ScaffoldSearch::printWalks(const ScaffoldWalkVector& walkVector)
+{
+    for(size_t i = 0; i < walkVector.size(); ++i)
     {
-        std::cout << "walk " << i  << ": ";
-        outWalks[i].print();
+        std::cout << "walk " << i << " ";
+        walkVector[i].print();
     }
-    exit(1);
 }

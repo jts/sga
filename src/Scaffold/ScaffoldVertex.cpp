@@ -163,6 +163,36 @@ void ScaffoldVertex::deleteEdgeAndTwin(ScaffoldEdge* pEdge)
     deleteEdge(pEdge);
 }
 
+// Remove edges (and their twins) from the vertex with the given color
+void ScaffoldVertex::deleteEdgesAndTwinsByColor(GraphColor c)
+{
+    ScaffoldEdgePtrVector delVec;
+    ScaffoldEdgePtrVector::iterator iter = m_edges.begin();
+    while(iter != m_edges.end())
+    {
+        if((*iter)->getColor() == c)
+            delVec.push_back(*iter);
+        ++iter;
+    }
+
+    iter = delVec.begin();
+    for(; iter != delVec.end(); ++iter)
+    {
+        deleteEdgeAndTwin(*iter);
+    }
+}
+
+// Set all the edges of the vertex to color c
+void ScaffoldVertex::setEdgeColors(GraphColor c)
+{
+    ScaffoldEdgePtrVector::iterator iter = m_edges.begin();
+    while(iter != m_edges.end())
+    {
+        (*iter)->setColor(c);
+        ++iter;
+    }
+}
+
 //
 void ScaffoldVertex::setAStatistic(double v)
 {

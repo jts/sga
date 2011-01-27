@@ -70,12 +70,36 @@ void ScaffoldGraph::deleteVertices(ScaffoldVertexClassification classification)
 }
 
 //
+void ScaffoldGraph::deleteEdgesByColor(GraphColor c)
+{
+    ScaffoldVertexMap::iterator iter = m_vertices.begin(); 
+    while(iter != m_vertices.end())
+    {
+        iter->second->deleteEdgesAndTwinsByColor(c);
+        ++iter;
+    }
+}
+
+
+
+//
 void ScaffoldGraph::setVertexColors(GraphColor c)
 {
     ScaffoldVertexMap::iterator iter = m_vertices.begin(); 
     while(iter != m_vertices.end())
     {
         iter->second->setColor(c);
+        ++iter;
+    }
+}
+
+//
+void ScaffoldGraph::setEdgeColors(GraphColor c)
+{
+    ScaffoldVertexMap::iterator iter = m_vertices.begin(); 
+    while(iter != m_vertices.end())
+    {
+        iter->second->setEdgeColors(c);
         ++iter;
     }
 }

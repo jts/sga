@@ -51,6 +51,8 @@ namespace ScaffoldSearch
                           ScaffoldWalkVector& outWalks);
 
 
+    void printWalks(const ScaffoldWalkVector& walkVector);
+
 };
 
 #endif

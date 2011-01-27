@@ -35,7 +35,12 @@ class ScaffoldGraph
 
         // Remove all the vertices in the graph with the given classification
         void deleteVertices(ScaffoldVertexClassification classification);
+
+        // Remove all edges with color c
+        void deleteEdgesByColor(GraphColor c);
+
         void setVertexColors(GraphColor c);
+        void setEdgeColors(GraphColor c);
 
         // Visit each vertex in the graph and call the visit functor object
         template<typename VF>

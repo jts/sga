@@ -26,6 +26,11 @@ void ScaffoldEdge::setLink(ScaffoldLink link)
 }
 
 //
+void ScaffoldEdge::setColor(GraphColor c)
+{
+    m_color = c;
+}
+
 //
 VertexID ScaffoldEdge::getStartID() const
 {
@@ -37,6 +42,13 @@ VertexID ScaffoldEdge::getStartID() const
 VertexID ScaffoldEdge::getEndID() const
 {
     return m_pEnd->getID();
+}
+
+//
+ScaffoldVertex* ScaffoldEdge::getStart() const
+{
+    assert(m_pTwin != NULL);
+    return m_pTwin->getEnd();
 }
 
 //
@@ -74,6 +86,12 @@ double ScaffoldEdge::getStdDev() const
 {
     return m_link.stdDev;
 }
+
+//
+GraphColor ScaffoldEdge::getColor() const
+{
+    return m_color;
+}   
 
 //
 ScaffoldLinkType ScaffoldEdge::getType() const
