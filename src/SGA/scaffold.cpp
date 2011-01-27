@@ -121,38 +121,11 @@ int scaffoldMain(int argc, char** argv)
     graph.writeDot("afterLayout.dot");
     graph.visit(layoutVisitor);
 
-    /*
-    // remove transitive edges from the graph
-    ScaffoldTransitiveReductionVisitor trVisit;
-    graph.visit(trVisit);
-
-    graph.writeDot("aftertr-scaffold.dot");
-    */
-    exit(1);
-    if(!opt::asqgFile.empty())
-    {
-        StringGraph* pStringGraph = SGUtil::loadASQG(opt::asqgFile, 0, false);
-        ScaffoldDistanceRefinementVisitor refineVisitor(pStringGraph);
-        graph.visit(refineVisitor);
-        delete pStringGraph;
-    }
-
-    // Validate links
-    ScaffoldLinkValidator linkValidator(maxOverlap, 0.2f);   
-    graph.visit(linkValidator);
-    exit(1);
-    graph.visit(statsVisitor);
-
-    ScaffoldChainVisitor chainVisitor(maxOverlap);
-
-    // Collapse all chains
-    while(graph.visit(chainVisitor)) {}
-    graph.writeDot("finalChain.dot");
-    graph.visit(statsVisitor);
-
+    // Break up any remaining scaffolds
     ScaffoldMultiEdgeRemoveVisitor cutVisitor;
     graph.visit(cutVisitor);
 
+    // Write out the scaffolds
     ScaffoldWriterVisitor writer(opt::outFile);
     graph.visit(writer);
 
