@@ -229,9 +229,68 @@ void ScaffoldGroup::getLinearLinks(LinkVector& outLinks)
         outLinks.push_back(inferred);
         previousLink = currentLink;
     }
-
 }
 
+// Attempt to place contigs in the gaps of the current scaffold using secondary links
+void ScaffoldGroup::getSecondaryLinks()
+{
+    assert(m_isOrdered);
+
+    if(m_links.empty())
+        return;
+
+    LinkPairVector::const_iterator iter = m_links.begin();
+    for(; iter != m_links.end(); ++iter)
+    {
+        ScaffoldLink xyLink = iter->link;
+        ScaffoldVertex* pY = iter->pEndpoint;
+        ScaffoldEdgePtrVector yEdges = pY->getEdges();
+
+        // Infer a link to this contig
+
+        // Get the direction from contig y back to contig x (the root)
+        int xyDistance = xyLink.distance;
+        EdgeDir yxDir = xyLink.getTwinDir();
+        EdgeComp yxComp = xyLink.getComp();
+        for(size_t i = 0; i < yEdges.size(); ++i)
+        {
+            ScaffoldEdge* pYZ = yEdges[i];
+            ScaffoldVertex* pZ = pYZ->getEnd();
+            EdgeDir yzDir = pYZ->getDir();
+            EdgeComp yzComp = pYZ->getComp();
+            int yzDistance = pYZ->getDistance();
+
+            // Calculate the distance between x and z
+            // Two possible orientations of the three contigs:
+            //  ---x---  ----z---- ----y---- (case 1)
+            //  ---x---  ----y---- ----z---- (case 2)
+            // If the direction y->z is the same as y -> x, its case 1
+            // otherwise, case 2
+            int xzDistance;
+            if(yzDir == yxDir)
+            {
+                // In same direction as x
+                xzDistance = xyDistance - (pZ->getSeqLen() + yzDistance);
+                printf("SAME xy %d - (%d + %d) = %d\n", xyDistance, (int)pZ->getSeqLen(), yzDistance, xzDistance);
+            }
+            else
+            {
+                // opposite direction of x
+                xzDistance = xyDistance + pY->getSeqLen() + yzDistance;
+                printf("DIFF xy %d + %d + %d = %d\n", xyDistance, (int)pY->getSeqLen(), yzDistance, xzDistance);
+            }
+
+            std::cout << "yzLink: " << pYZ->getLink() << "\n";
+
+            WARN_ONCE("Recalculate xzDir");
+            EdgeDir xzDir = xyLink.getDir();
+            double xzSD = sqrt(pow(xyLink.stdDev, 2.0) + pow(pYZ->getStdDev(), 2.0));
+            EdgeComp xzComp = (yxComp == yzComp) ? EC_SAME : EC_REVERSE;
+            ScaffoldLink xzLink(pZ->getID(), xzDir, xzComp, xzDistance, xzSD, 0, pZ->getSeqLen(), SLT_INFERRED);
+            std::cout << "Inferred secondary edge: " << xzLink << "\n";
+        }
+    }
+}
 
 // Calculate the score of placing the given link before
 // all the other links in the unplaced list

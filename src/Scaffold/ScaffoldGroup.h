@@ -43,9 +43,9 @@ class ScaffoldGroup
                                const ScaffoldLink& linkB,
                                double p);
 
+        void getSecondaryLinks();
 
         void computeBestOrdering();
-        int scoreLinkPlacement(const ScaffoldLink& link, const LinkList& unplacedList);
         int calculateLongestOverlap();
         double calculateProbACloserThanB(const ScaffoldLink& linkA,
                                          const ScaffoldLink& linkB);
@@ -58,6 +58,7 @@ class ScaffoldGroup
     private:
 
         double normCDF(double x, double mean, double sd);
+        int scoreLinkPlacement(const ScaffoldLink& link, const LinkList& unplacedList);
 
         const ScaffoldVertex* m_pRootVertex;
         int m_maxOverlap;

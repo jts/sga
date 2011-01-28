@@ -34,6 +34,7 @@ class ScaffoldLink
         int getEndpoint() const;
 
         EdgeDir getDir() const;
+        EdgeDir getTwinDir() const;
         EdgeComp getComp() const;
         char getTypeCode() const;
         static ScaffoldLinkType getType(char tc);

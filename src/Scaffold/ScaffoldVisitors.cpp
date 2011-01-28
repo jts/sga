@@ -487,7 +487,6 @@ bool ScaffoldLayoutVisitor::visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex
         LinkVector linearLinks;
         group.getLinearLinks(linearLinks);
 
-
         std::cout << "Linearized links:\n";
 
         // Iterate through the linearized links and see if they are sane
@@ -514,6 +513,8 @@ bool ScaffoldLayoutVisitor::visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex
             assert(pCurrEndVertex != NULL);
             pCurrStartVertex = pCurrEndVertex;
         }
+
+        group.getSecondaryLinks();
 
         if(allResolved)
         {
@@ -647,6 +648,7 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
         record.setRoot(pVertex->getID());
         
         bases += pVertex->getSeqLen();
+        span += pVertex->getSeqLen();
         num_contigs += 1;
         
         if(edges.size() == 1)

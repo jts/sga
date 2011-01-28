@@ -40,6 +40,12 @@ EdgeDir ScaffoldLink::getDir() const
     return edgeData.getDir();
 }
 
+// Return the direction of the twin edge
+EdgeDir ScaffoldLink::getTwinDir() const
+{
+    return (getComp() == EC_SAME) ? !getDir() : getDir();     
+}
+
 //
 EdgeComp ScaffoldLink::getComp() const
 {
