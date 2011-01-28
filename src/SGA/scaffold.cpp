@@ -85,7 +85,6 @@ int scaffoldMain(int argc, char** argv)
 
     int maxOverlap = 100;
 
-    ScaffoldStatsVisitor statsVisitor;
     ScaffoldGraph graph;
     
     graph.loadVertices(opt::contigsFile, opt::minContigLength);
