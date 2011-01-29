@@ -17,6 +17,7 @@
 #include "HashMap.h"
 
 typedef SparseHashMap<VertexID, ScaffoldVertex*, StringHasher> ScaffoldVertexMap;
+typedef std::vector<ScaffoldVertex*> ScaffoldVertexPtrVector;
 
 class ScaffoldGraph
 {
@@ -32,6 +33,7 @@ class ScaffoldGraph
         void addEdge(ScaffoldVertex* pVertex, ScaffoldEdge* pEdge);
 
         ScaffoldVertex* getVertex(VertexID id) const;
+        ScaffoldVertexPtrVector getAllVertices() const;
 
         // Remove all the vertices in the graph with the given classification
         void deleteVertices(ScaffoldVertexClassification classification);

@@ -11,6 +11,9 @@
 
 #include "GraphSearchTree.h"
 #include "ScaffoldWalk.h"
+#include "ScaffoldGraph.h"
+
+typedef std::vector<ScaffoldVertexPtrVector> ScaffoldConnectedComponents;
 
 //
 struct ScaffoldWalkBuilder
@@ -50,6 +53,9 @@ namespace ScaffoldSearch
                           size_t maxNodes, 
                           ScaffoldWalkVector& outWalks);
 
+
+    // Compute the connected components of the scaffold graph
+    void connectedComponents(ScaffoldGraph* pGraph);
 
     void printWalks(const ScaffoldWalkVector& walkVector);
 

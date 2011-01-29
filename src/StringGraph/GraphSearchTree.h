@@ -16,6 +16,7 @@
 #include "Bigraph.h"
 #include "SGWalk.h"
 #include <deque>
+#include <queue>
 
 template<typename VERTEX, typename EDGE, typename DISTANCE>
 class GraphSearchNode
@@ -63,6 +64,9 @@ class GraphSearchTree
     typedef typename std::set<_SearchNode*> _SearchNodePtrSet;
     typedef std::vector<EDGE*> WALK; // list of edges defines a walk through the graph
     typedef std::vector<WALK> WALKVector; // vector of walks
+    
+    typedef std::vector<VERTEX*> VertexPtrVector;
+    typedef std::vector<VertexPtrVector> VertexPtrVectorVector;
 
     public:
 
@@ -73,6 +77,10 @@ class GraphSearchTree
                      size_t nodeLimit);
 
         ~GraphSearchTree();
+
+        // Find connected components in the graph
+        // Takes in a vector of all the vertices in the graph
+        static void connectedComponents(VertexPtrVector allVertices, VertexPtrVectorVector& connectedComponents);
 
         // Returns true if the search has converged on a single vertex. In
         // other words, all walks from the start node share a common vertex,
@@ -497,6 +505,78 @@ void GraphSearchTree<VERTEX,EDGE,DISTANCE>::printBranch(_SearchNode* pNode) cons
         std::cout << pNode->getVertex()->getID() << ",";
         printBranch(pNode->getParent());
     }
+}
+
+template<typename VERTEX, typename EDGE, typename DISTANCE>
+void GraphSearchTree<VERTEX,EDGE,DISTANCE>::connectedComponents(VertexPtrVector allVertices, 
+                                                                VertexPtrVectorVector& connectedComponents)
+{
+    // Set the color of each vertex to be white signalling its not visited
+    typename VertexPtrVector::iterator iter = allVertices.begin();
+    for(; iter != allVertices.end(); ++iter)
+    {
+        assert((*iter)->getColor() == GC_WHITE);
+        (*iter)->setColor(GC_WHITE);
+    }
+
+    // 
+    iter = allVertices.begin();
+    for(; iter != allVertices.end(); ++iter)
+    {
+        // Do nothing if this vertex is already part of a CC
+        if((*iter)->getColor() == GC_BLACK)
+            continue;
+
+       // Start a new CC
+       VertexPtrVector currComponent;
+
+       std::queue<VERTEX*> exploreQueue;
+       (*iter)->setColor(GC_GRAY); // queued color
+       exploreQueue.push(*iter);
+
+       while(!exploreQueue.empty())
+       {
+            VERTEX* pCurr = exploreQueue.front();
+            exploreQueue.pop();
+
+            assert(pCurr->getColor() != GC_BLACK);
+            currComponent.push_back(pCurr);
+            pCurr->setColor(GC_BLACK); //done with this vertex
+
+            // Enqueue edges if they havent been visited already
+            std::vector<EDGE*> edges = pCurr->getEdges();
+            for(size_t i = 0; i < edges.size(); ++i)
+            {
+                EDGE* pEdge = edges[i];
+                VERTEX* pNext = pEdge->getEnd();
+                if(pNext->getColor() == GC_WHITE)
+                {
+                    pNext->setColor(GC_GRAY); // queued
+                    exploreQueue.push(pNext);
+                }
+            }
+       }
+
+        connectedComponents.push_back(currComponent);
+    }
+
+    iter = allVertices.begin();
+    for(; iter != allVertices.end(); ++iter)
+    {
+        (*iter)->setColor(GC_WHITE);
+    }
+
+    // Sanity check
+    size_t totalVertices = allVertices.size();
+    size_t totalInComponents = 0;
+
+    for(size_t i = 0; i < connectedComponents.size(); ++i)
+    {
+        totalInComponents += connectedComponents[i].size();
+    }
+    assert(totalVertices == totalInComponents);
+    std::cout << "[CC] total: " << totalVertices << " num components: " << connectedComponents.size() << "\n";
+    std::cout << "[CC] total vertices in components: " << totalInComponents << "\n";
 }
 
 #endif

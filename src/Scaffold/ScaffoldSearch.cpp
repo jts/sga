@@ -113,6 +113,14 @@ void ScaffoldSearch::findPrimaryWalks(ScaffoldVertex* pX,
     
 }
 
+void ScaffoldSearch::connectedComponents(ScaffoldGraph* pGraph)
+{
+    ScaffoldVertexPtrVector allVertices = pGraph->getAllVertices();
+
+    ScaffoldConnectedComponents connectedComponents;
+    ScaffoldSearchTree::connectedComponents(allVertices, connectedComponents);
+}
+
 //
 void ScaffoldSearch::printWalks(const ScaffoldWalkVector& walkVector)
 {

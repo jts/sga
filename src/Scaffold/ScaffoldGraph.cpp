@@ -40,6 +40,15 @@ void ScaffoldGraph::addEdge(ScaffoldVertex* pVertex, ScaffoldEdge* pEdge)
     pVertex->addEdge(pEdge);
 }
 
+ScaffoldVertexPtrVector ScaffoldGraph::getAllVertices() const
+{
+    ScaffoldVertexPtrVector outVertices;
+    ScaffoldVertexMap::const_iterator iter = m_vertices.begin();
+    for(; iter != m_vertices.end(); ++iter)
+        outVertices.push_back(iter->second);
+    return outVertices;
+}
+
 //
 ScaffoldVertex* ScaffoldGraph::getVertex(VertexID id) const
 {

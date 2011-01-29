@@ -114,12 +114,38 @@ int scaffoldMain(int argc, char** argv)
 
     graph.writeDot("nopoly-scaffold.dot");
 
+    /*
+    ScaffoldWalkVector outWalks;
+    ScaffoldSearch::findPrimaryWalks(graph.getVertex("contig-14709"), graph.getVertex("contig-18695"), ED_SENSE, 10000, 1000, outWalks);
+    //ScaffoldSearch::printWalks(outWalks);
+
+    for(size_t i = 0; i < outWalks.size(); ++i)
+    {
+        std::cout << "walk " << i << " " << outWalks[i].getContigLengthSum() << " " << outWalks[i].getGapSum() << "\n";
+    }
+
+    ScaffoldWalk& selectedWalk = outWalks[34];
+    ScaffoldVertexPtrVector walkVertices = selectedWalk.getVertices();
+
+    ScaffoldSearch::connectedComponents(&graph);
+
+    for(size_t i = 0; i < walkVertices.size(); ++i)
+    {
+        walkVertices[i]->setClassification(SVC_REPEAT);
+    }
+    selectedWalk.printDot(std::cout);
+
+    graph.writeDot("testPath.dot");
+
+    exit(1);
+    */
+    /*
     // Compute the layout of the scaffolds
     ScaffoldLayoutVisitor layoutVisitor;
     graph.visit(layoutVisitor);
     graph.writeDot("afterLayout.dot");
     graph.visit(layoutVisitor);
-
+    */
     // Break up any remaining scaffolds
     ScaffoldMultiEdgeRemoveVisitor cutVisitor;
     graph.visit(cutVisitor);

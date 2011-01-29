@@ -13,6 +13,7 @@
 #include "ScaffoldEdge.h"
 
 typedef std::vector<ScaffoldEdge*> ScaffoldEdgePtrVector;
+typedef std::vector<ScaffoldVertex*> ScaffoldVertexPtrVector;
 
 // A walk through the scaffold graph
 class ScaffoldWalk
@@ -25,7 +26,17 @@ class ScaffoldWalk
         // if pvertex is not found, returns -1
         int findVertex(ScaffoldVertex* pVertex) const;
 
+        // Returns all the ordered list of vertices in the walk
+        ScaffoldVertexPtrVector getVertices() const;
+
+        // Returns the sum of gap distances in the walk
+        int64_t getGapSum() const;
+
+        // Returns the sum of contig lengths
+        int64_t getContigLengthSum() const;
+
         void print() const;
+        void printDot(std::ostream& out) const;
 
     private:
         ScaffoldVertex* m_pStartVertex;
