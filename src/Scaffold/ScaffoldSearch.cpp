@@ -10,15 +10,6 @@
 #include "ScaffoldVertex.h"
 
 //
-struct ScaffoldDistanceFunction
-{
-    int operator()(const ScaffoldEdge* pEdge) const
-    {
-        return pEdge->getDistance();
-    }
-};
-
-//
 ScaffoldWalkBuilder::ScaffoldWalkBuilder(ScaffoldWalkVector& outWalks) : m_outWalks(outWalks), m_pCurrWalk(NULL)
 {
     
@@ -53,8 +44,7 @@ void ScaffoldWalkBuilder::finishCurrentWalk()
     m_pCurrWalk = NULL;
 }
 
-typedef GraphSearchTree<ScaffoldVertex, ScaffoldEdge, ScaffoldDistanceFunction> ScaffoldSearchTree;
-
+//
 void ScaffoldSearch::findVariantWalks(ScaffoldVertex* pX, 
                                       EdgeDir initialDir, 
                                       int maxDistance,
@@ -111,14 +101,6 @@ void ScaffoldSearch::findPrimaryWalks(ScaffoldVertex* pX,
         searchTree.buildWalksToGoal(builder);
     }
     
-}
-
-void ScaffoldSearch::connectedComponents(ScaffoldGraph* pGraph)
-{
-    ScaffoldVertexPtrVector allVertices = pGraph->getAllVertices();
-
-    ScaffoldConnectedComponents connectedComponents;
-    ScaffoldSearchTree::connectedComponents(allVertices, connectedComponents);
 }
 
 //

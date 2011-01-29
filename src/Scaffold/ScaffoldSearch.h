@@ -13,7 +13,17 @@
 #include "ScaffoldWalk.h"
 #include "ScaffoldGraph.h"
 
-typedef std::vector<ScaffoldVertexPtrVector> ScaffoldConnectedComponents;
+//
+struct ScaffoldDistanceFunction
+{
+    int operator()(const ScaffoldEdge* pEdge) const
+    {
+        return pEdge->getDistance();
+    }
+};
+
+//
+typedef GraphSearchTree<ScaffoldVertex, ScaffoldEdge, ScaffoldDistanceFunction> ScaffoldSearchTree;
 
 //
 struct ScaffoldWalkBuilder
@@ -52,10 +62,6 @@ namespace ScaffoldSearch
                           int maxDistance,
                           size_t maxNodes, 
                           ScaffoldWalkVector& outWalks);
-
-
-    // Compute the connected components of the scaffold graph
-    void connectedComponents(ScaffoldGraph* pGraph);
 
     void printWalks(const ScaffoldWalkVector& walkVector);
 

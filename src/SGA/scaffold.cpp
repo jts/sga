@@ -13,6 +13,7 @@
 #include "ScaffoldGraph.h"
 #include "ScaffoldVisitors.h"
 #include "ScaffoldSearch.h"
+#include "ScaffoldAlgorithms.h"
 
 #define SUBPROGRAM "scaffold"
 static const char *SCAFFOLD_VERSION_MESSAGE =
@@ -127,18 +128,18 @@ int scaffoldMain(int argc, char** argv)
     ScaffoldWalk& selectedWalk = outWalks[34];
     ScaffoldVertexPtrVector walkVertices = selectedWalk.getVertices();
 
-    ScaffoldSearch::connectedComponents(&graph);
+    ScaffoldAlgorithms::connectedComponents(&graph);
 
     for(size_t i = 0; i < walkVertices.size(); ++i)
     {
         walkVertices[i]->setClassification(SVC_REPEAT);
     }
-    selectedWalk.printDot(std::cout);
 
     graph.writeDot("testPath.dot");
 
     exit(1);
     */
+
     /*
     // Compute the layout of the scaffolds
     ScaffoldLayoutVisitor layoutVisitor;
