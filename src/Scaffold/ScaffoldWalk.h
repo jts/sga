@@ -28,6 +28,7 @@ class ScaffoldWalk
 
         // Returns all the ordered list of vertices in the walk
         ScaffoldVertexPtrVector getVertices() const;
+        ScaffoldEdgePtrVector getEdges() const;
 
         // Returns the sum of gap distances in the walk
         int64_t getGapSum() const;
@@ -36,6 +37,7 @@ class ScaffoldWalk
         int64_t getContigLengthSum() const;
 
         // Return the last vertex in the walk
+        ScaffoldVertex* getStartVertex() const;
         ScaffoldVertex* getLastVertex() const;
 
         void print() const;

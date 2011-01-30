@@ -33,7 +33,6 @@ int64_t ScaffoldWalk::getGapSum() const
 int64_t ScaffoldWalk::getContigLengthSum() const
 {
     int64_t sum = m_pStartVertex->getSeqLen();
-
     ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin();
     for(; iter != m_edges.end(); ++iter)
         sum += (*iter)->getEnd()->getSeqLen();
@@ -51,6 +50,11 @@ ScaffoldVertexPtrVector ScaffoldWalk::getVertices() const
     return outVertices;
 }
 
+//
+ScaffoldEdgePtrVector ScaffoldWalk::getEdges() const
+{
+    return m_edges;
+}
 
 //
 int ScaffoldWalk::findVertex(ScaffoldVertex* pVertex) const
@@ -68,6 +72,12 @@ int ScaffoldWalk::findVertex(ScaffoldVertex* pVertex) const
         ++idx;
     }
     return -1;
+}
+
+//
+ScaffoldVertex* ScaffoldWalk::getStartVertex() const
+{
+    return m_pStartVertex;
 }
 
 //

@@ -114,6 +114,7 @@ int scaffoldMain(int argc, char** argv)
     while(graph.visit(polyVisitor)) {}
 
     graph.writeDot("nopoly-scaffold.dot");
+    ScaffoldAlgorithms::makeScaffolds(&graph);
 
     /*
     ScaffoldWalkVector outWalks;

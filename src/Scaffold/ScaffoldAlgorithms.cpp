@@ -9,19 +9,83 @@
 //
 #include "ScaffoldAlgorithms.h"
 
-// Compute the connected components of the graph
-void ScaffoldAlgorithms::connectedComponents(ScaffoldGraph* pGraph)
+// Build the scaffolds.
+// The algorithm first finds the connected components of the graph then
+// all the terminal vertices of each component. It then searches the
+// components starting from the terminals for a walk that maximizes
+// the size of the contigs in the primary scaffold.
+void ScaffoldAlgorithms::makeScaffolds(ScaffoldGraph* pGraph)
 {
-    ScaffoldVertexPtrVector allVertices = pGraph->getAllVertices();
+    // Set every edge to be colored black
+    // Edges that are kept in the scaffold will be colored white
+    pGraph->setEdgeColors(GC_BLACK);
 
     ScaffoldConnectedComponents connectedComponents;
-    ScaffoldSearchTree::connectedComponents(allVertices, connectedComponents);
-
+    ScaffoldAlgorithms::connectedComponents(pGraph, connectedComponents);
+ 
+    // Iterate over each connected component and linearize the scaffolds   
     for(size_t i = 0; i < connectedComponents.size(); ++i)
     {
-        ScaffoldVertexPtrVector terminals;
-        computeTerminalsForConnectedComponent(connectedComponents[i], terminals);
+        WARN_ONCE("CHECK FOR CYCLES IN SCAFFOLD GRAPH");
+
+
+        // Discover the terminal vertices in the component
+        ScaffoldVertexPtrVector& component = connectedComponents[i];
+
+        if(component.size() == 1) 
+            continue; //nothing to do
+
+        //
+        ScaffoldVertexPtrVector terminalVertices;
+        computeTerminalsForConnectedComponent(component, terminalVertices);
+
+        // Construct a scaffold layout for each terminal vertex of the component
+        // We select the layout that contains the greatest amount of sequence as
+        // the initial layout of the scaffold
+        size_t bestLayoutBases = 0;
+        ScaffoldWalk bestWalk(NULL);
+
+        for(size_t j = 0; j < terminalVertices.size(); j++)
+        {
+            ScaffoldWalkVector layouts;
+            computeLayout(terminalVertices[j], layouts);
+
+            for(size_t k = 0; k < layouts.size(); ++k)
+            {
+                size_t layoutSum = layouts[k].getContigLengthSum();
+
+                if(layoutSum > bestLayoutBases)
+                {
+                    bestLayoutBases = layoutSum;
+                    bestWalk = layouts[k];
+                }
+            }
+        }
+
+        // Ensure a valid layout is chosen
+        assert(bestLayoutBases > 0 && bestWalk.getStartVertex() != NULL);
+
+        // Remove every edge that is not a part of the chosen walk
+        // Since every edge in the graph was initially colored black,
+        // we color the kept edges white then remove every black edge
+        // in a single pass later
+        ScaffoldEdgePtrVector keptEdges = bestWalk.getEdges();
+        for(size_t j = 0; j < keptEdges.size(); ++j)
+        {
+            keptEdges[j]->setColor(GC_WHITE);
+            keptEdges[j]->getTwin()->setColor(GC_WHITE);
+        }
     }
+
+    // Remove all edges that aren't on a chosen layouts
+    pGraph->deleteEdgesByColor(GC_BLACK);
+}
+
+// Compute the connected components of the graph
+void ScaffoldAlgorithms::connectedComponents(ScaffoldGraph* pGraph, ScaffoldConnectedComponents& outComponents)
+{
+    ScaffoldVertexPtrVector allVertices = pGraph->getAllVertices();
+    ScaffoldSearchTree::connectedComponents(allVertices, outComponents);
 }
 
 // Compute the terminal vertices of a connected component
@@ -61,10 +125,11 @@ typedef std::queue<LayoutNode> LayoutQueue;
 typedef std::set<ScaffoldVertex*> LayoutTerminalSet;
 
 // Compute a layout of a component of the scaffold graph starting
-// from a particular vertex.
+// from a particular vertex. Writes a path each reachable terminal vertex
+// into outWalks.
 // Precondition: The connected component containing pVertex does not contain
 // a cycle.
-void ScaffoldAlgorithms::computeLayout(ScaffoldVertex* pStartVertex)
+void ScaffoldAlgorithms::computeLayout(ScaffoldVertex* pStartVertex, ScaffoldWalkVector& outWalks)
 {
     // Detect the direction to begin constructing the component
     size_t asCount = pStartVertex->getEdges(ED_ANTISENSE).size();
@@ -155,12 +220,8 @@ void ScaffoldAlgorithms::computeLayout(ScaffoldVertex* pStartVertex)
         ScaffoldWalk walk(pStartVertex);
         ScaffoldEdgePtrVector::reverse_iterator rIter = reverseEdges.rbegin();
         for(; rIter != reverseEdges.rend(); ++rIter)
-        {
             walk.addEdge(*rIter);
-        }
-        std::cout << "walk to " << (*terminalIter)->getID() << " " << walk.getContigLengthSum() << " " << walk.getGapSum() << "\n";
-        //walk.print();
-
+        outWalks.push_back(walk);
     }
 }
 

@@ -18,8 +18,11 @@ typedef std::vector<ScaffoldVertexPtrVector> ScaffoldConnectedComponents;
 
 namespace ScaffoldAlgorithms
 {
+    // Construct scaffolds from the given graph
+    void makeScaffolds(ScaffoldGraph* pGraph);
+
     // Compute the connected components of the scaffold graph
-    void connectedComponents(ScaffoldGraph* pGraph);
+    void connectedComponents(ScaffoldGraph* pGraph, ScaffoldConnectedComponents& outComponents);
 
     // Compute the terminal vertices in the given connected component
     // A terminal vertex is one that has a connection in at most one direction
@@ -29,7 +32,9 @@ namespace ScaffoldAlgorithms
                                                ScaffoldVertexPtrVector& terminals);
 
     // Compute the layout of a component of the scaffold graph starting from pVertex
-    void computeLayout(ScaffoldVertex* pVertex);
+    // to all the terminal vertices in the component.
+    // Precondition: the connected component containing pVertex cannot have a cycle
+    void computeLayout(ScaffoldVertex* pVertex, ScaffoldWalkVector& outWalks);
 
 };
 
