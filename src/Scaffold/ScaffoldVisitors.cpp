@@ -727,6 +727,7 @@ void ScaffoldWriterVisitor::postvisit(ScaffoldGraph*)
         }
     }
 
+    printf("\n======\n");
     printf("Constructed %d scaffolds from %d contigs (%d singleton scaffolds)\n", totalScaffolds, totalContigs, singleton);
     printf("Total bases: %.2lfMbp\n", (double)sumBases / 1000000);
     printf("Total span: %.2lfMbp\n", (double)sumSpan / 1000000);
