@@ -25,9 +25,11 @@ namespace ScaffoldAlgorithms
     // A terminal vertex is one that has a connection in at most one direction
     // If the connected component forms a simple loop, this is possibly empty.
     // This case would signal an inconsistency in the scaffold graph 
-    void computeTerminalsForConnectedComponent(const ScaffoldVertexPtrVector component, 
+    void computeTerminalsForConnectedComponent(const ScaffoldVertexPtrVector& component, 
                                                ScaffoldVertexPtrVector& terminals);
 
+    // Compute the layout of a component of the scaffold graph starting from pVertex
+    void computeLayout(ScaffoldVertex* pVertex);
 
 };
 

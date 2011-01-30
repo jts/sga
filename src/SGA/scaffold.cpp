@@ -122,24 +122,23 @@ int scaffoldMain(int argc, char** argv)
 
     for(size_t i = 0; i < outWalks.size(); ++i)
     {
-        std::cout << "walk " << i << " " << outWalks[i].getContigLengthSum() << " " << outWalks[i].getGapSum() << "\n";
+        std::cout << "walk " << i << " to " << outWalks[i].getLastVertex()->getID() << " " << outWalks[i].getContigLengthSum() << " " << outWalks[i].getGapSum() << "\n";
     }
 
     ScaffoldWalk& selectedWalk = outWalks[34];
     ScaffoldVertexPtrVector walkVertices = selectedWalk.getVertices();
-
-    ScaffoldAlgorithms::connectedComponents(&graph);
 
     for(size_t i = 0; i < walkVertices.size(); ++i)
     {
         walkVertices[i]->setClassification(SVC_REPEAT);
     }
 
-    graph.writeDot("testPath.dot");
+    //graph.writeDot("testPath.dot");
+    //ScaffoldAlgorithms::connectedComponents(&graph);
+    ScaffoldAlgorithms::computeLayout(graph.getVertex("contig-14709"));
 
     exit(1);
     */
-
     /*
     // Compute the layout of the scaffolds
     ScaffoldLayoutVisitor layoutVisitor;

@@ -70,6 +70,19 @@ int ScaffoldWalk::findVertex(ScaffoldVertex* pVertex) const
     return -1;
 }
 
+//
+ScaffoldVertex* ScaffoldWalk::getLastVertex() const
+{
+    if(m_edges.empty())
+    {
+        return m_pStartVertex;
+    }
+    else
+    {
+        return m_edges.back()->getEnd();
+    }
+}
+
 // Print the edges in dot format
 void ScaffoldWalk::printDot(std::ostream& out) const
 {

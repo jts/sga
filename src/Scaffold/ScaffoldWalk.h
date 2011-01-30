@@ -35,6 +35,9 @@ class ScaffoldWalk
         // Returns the sum of contig lengths
         int64_t getContigLengthSum() const;
 
+        // Return the last vertex in the walk
+        ScaffoldVertex* getLastVertex() const;
+
         void print() const;
         void printDot(std::ostream& out) const;
 
