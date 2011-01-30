@@ -101,16 +101,6 @@ void ScaffoldAlgorithms::computeTerminalsForConnectedComponent(const ScaffoldVer
         if(asCount == 0 || sCount == 0)
             terminals.push_back(pVertex);
     }
-
-    std::cout << "CC: ";
-    for(size_t i = 0; i < component.size(); ++i)
-        std::cout << component[i]->getID() << " ";
-    std::cout << "\n";
-
-    std::cout << "Terminals: ";
-    for(size_t i = 0; i < terminals.size(); ++i)
-        std::cout << terminals[i]->getID() << " ";
-    std::cout << "\n";
 }
 
 struct LayoutNode

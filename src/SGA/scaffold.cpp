@@ -115,6 +115,7 @@ int scaffoldMain(int argc, char** argv)
 
     graph.writeDot("nopoly-scaffold.dot");
     ScaffoldAlgorithms::makeScaffolds(&graph);
+    graph.writeDot("post-scaffold.dot");
 
     /*
     ScaffoldWalkVector outWalks;
