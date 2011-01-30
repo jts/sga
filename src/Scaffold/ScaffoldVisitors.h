@@ -155,6 +155,18 @@ class ScaffoldMultiEdgeRemoveVisitor
 
 };
 
+struct ScaffoldStats
+{
+    int bases;
+    int numContigs;
+    int span; // size + gaps
+
+    static bool sortSpanDesc(const ScaffoldStats& a, const ScaffoldStats& b)
+    {
+        return a.span > b.span;
+    }
+};
+
 // Output scaffolds
 class ScaffoldWriterVisitor
 {
@@ -164,10 +176,11 @@ class ScaffoldWriterVisitor
 
         void previsit(ScaffoldGraph* /*pGraph*/);
         bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
-        void postvisit(ScaffoldGraph* /*pGraph*/) {}
+        void postvisit(ScaffoldGraph* /*pGraph*/);
 
     private:
         std::ostream* m_pWriter;
+        std::vector<ScaffoldStats> m_statsVector;
 };
 
 #endif

@@ -625,6 +625,7 @@ ScaffoldWriterVisitor::~ScaffoldWriterVisitor()
 void ScaffoldWriterVisitor::previsit(ScaffoldGraph* pGraph)
 {
     pGraph->setVertexColors(GC_WHITE);
+    m_statsVector.clear();
 }
 
 //
@@ -679,7 +680,58 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
             }
         }
         record.writeScaf(m_pWriter);
-        printf("Wrote scaffold with %zu components, %zu bases (%zu span)\n", num_contigs, bases, span);
+
+        ScaffoldStats stats;
+        stats.numContigs = num_contigs;
+        stats.bases = bases;
+        stats.span = span;
+        m_statsVector.push_back(stats);
     }
     return false;
+}
+
+void ScaffoldWriterVisitor::postvisit(ScaffoldGraph*)
+{
+    int totalScaffolds = m_statsVector.size();
+    int singleton = 0;
+    int sumSpan = 0;
+    int sumBases = 0;
+    int totalContigs = 0;
+    std::vector<ScaffoldStats>::iterator iter = m_statsVector.begin();
+    for(; iter != m_statsVector.end(); ++iter)
+    {
+        sumSpan += iter->span;
+        sumBases += iter->bases;       
+        totalContigs += iter->numContigs;
+        if(iter->numContigs == 1)
+            ++singleton;
+    }
+
+
+    std::sort(m_statsVector.begin(), m_statsVector.end(), ScaffoldStats::sortSpanDesc);
+
+    int targetSpan = sumSpan / 2;
+    int spanN50 = -1;
+    int maxSpan = 0;
+    int runningSum = 0;
+    iter = m_statsVector.begin();
+    for(; iter != m_statsVector.end(); ++iter)
+    {
+        if(iter->span > maxSpan)
+            maxSpan = iter->span;
+        runningSum += iter->span;
+        if(runningSum > targetSpan)
+        {
+            spanN50 = iter->span;
+            break;
+        }
+    }
+
+    printf("Constructed %d scaffolds from %d contigs (%d singleton scaffolds)\n", totalScaffolds, totalContigs, singleton);
+    printf("Total bases: %.2lfMbp\n", (double)sumBases / 1000000);
+    printf("Total span: %.2lfMbp\n", (double)sumSpan / 1000000);
+    
+    printf("Max scaffold span: %d bp\n", maxSpan);
+    printf("N50 scaffold span: %d bp\n", spanN50);
+    printf("Mean scaffold span: %.0lf bp\n", (double)sumSpan / totalScaffolds);
 }
