@@ -14,8 +14,12 @@
 struct BitChar
 {
     public:
-        BitChar() : d(0) {}
+        BitChar() : m_data(0) {}
         
+        // Update the value of bit idx from oldValue to newValue using an atomic compare and swap operation
+        // Returns true if the update was successfully performed. This is the only thread-safe way to update the BitChar
+        bool updateCAS(unsigned char idx, bool oldValue, bool newValue);
+
         // set the bit at idx to the value u
         void set(unsigned char idx, bool v);
 
@@ -33,7 +37,7 @@ struct BitChar
         void read(std::istream& in);
 
     private:
-        unsigned char d;
+        volatile unsigned char m_data;
 };
 
 #endif

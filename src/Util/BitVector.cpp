@@ -63,6 +63,16 @@ void BitVector::unlock()
     pthread_mutex_unlock(&m_mutex);
 }
 
+//
+bool BitVector::updateCAS(size_t i, bool oldValue, bool newValue)
+{
+    size_t byte = i / 8;
+    assert(byte < m_data.size());
+    size_t offset = i - byte * 8;
+    return m_data[byte].updateCAS(offset, oldValue, newValue);
+}
+
+
 // Set bit at position i to value v
 void BitVector::set(size_t i, bool v)
 {

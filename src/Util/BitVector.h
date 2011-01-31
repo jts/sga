@@ -28,6 +28,10 @@ class BitVector
         void lock();
         void unlock();
 
+        // Update the bit at position i from oldValue to newValue using a
+        // compare and swap operation. Returns true if the update is successful.
+        bool updateCAS(size_t i, bool oldValue, bool newValue);
+
         void resize(size_t n);
         void set(size_t i, bool v);
         bool test(size_t i) const;
