@@ -1229,7 +1229,7 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 std::stringstream variantID;
                 std::stringstream ss;
                 ss << "variant-" << m_numRemovedTotal << "/" << variantIdx++;
-                ss << " IGD:" << (double)gapPercent[i] << " ITD:" << totalPercent[i] << " Cigar:" << cigarStrings[i];
+                ss << " IGD:" << (double)gapPercent[i] << " ITD:" << totalPercent[i] << " InternalCigar:" << cigarStrings[i];
                 writeFastaRecord(&m_outFile, ss.str(), variantSequence);
             }
 

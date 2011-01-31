@@ -136,7 +136,7 @@ the FM-index were developed and implemented in the fall of 2009. The initial pub
 
 SGA uses Bentley and Sedgwick's multikey quicksort code that can be found here: http://www.cs.princeton.edu/~rs/strings/demo.c
 It also uses zlib, the google sparse hash and gzstream by Deepak Bandyopadhyay and Lutz Kettner (see Thirdparty/README).
-SGA also uses the stdaln dynamic programming functions written by Heng Li.
+SGA also uses the stdaln dynamic programming functions written by Heng Li. 
 
 *** Credits
 
