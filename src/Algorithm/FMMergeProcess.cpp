@@ -134,53 +134,62 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
 
     if(result.isMerged)
     {
-        // If some work was performed, update the bitvector so other threads do not try to merge the same set of reads
-        // This uses a lock on the bitvector to ensure it is atomic. If some other thread has merged this set (and updated
-        // the bitvector), we discard all the merged data
-        m_pMarkedReads->lock();
+        // If some work was performed, update the bitvector so other threads do not try to merge the same set of reads.
+        // This uses compare-and-swap instructions to ensure the uppdate is atomic. If some other thread has merged this set (and updated
+        // the bitvector), we discard all the merged data.
+        
+        // As a given set of reads should all be merged together, we only need to make sure we atomically update
+        // the bit for the read with the lowest index in the set.
+        // Sort the intervals into ascending order
+        std::sort(result.usedIntervals.begin(), result.usedIntervals.end(), BWTInterval::compare);
+        int64_t lowestIndex = result.usedIntervals.front().lower;
 
-        // Check the mark bits for each sequence to be merged
-        int bitsSet = 0;
-        int bitsUnset = 0;
-        for(std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();
-               iter != result.usedIntervals.end(); ++iter)
+        // Check if the bit in the vector has already been set for this read index.
+        // If it has some other thread has already output this set so we do nothing
+        bool currentValue = m_pMarkedReads->test(lowestIndex);
+        bool updateSuccess = false;
+
+        if(currentValue == false)
         {
-            for(int64_t i = iter->lower; i <= iter->upper; ++i)
-            {
-                if(m_pMarkedReads->test(i))
-                    ++bitsSet;
-                else
-                    ++bitsUnset;
-            }
+            // Attempt to update the bit vector with an atomic CAS. If this returns false
+            // the bit was set by some other thread
+            updateSuccess = m_pMarkedReads->updateCAS(lowestIndex, currentValue, true);
         }
 
-        // Either all the bits should be set or not set
-        assert(bitsSet == 0 || bitsUnset == 0);
-        (void)bitsUnset;
-
-        if(bitsSet == 0)
+        if(updateSuccess)
         {
-            // All the reads have not been marked so we can safely merged
-            // the sequences. Update the bit vector so no other thread
-            // will output these reads
-            for(std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();
-                   iter != result.usedIntervals.end(); ++iter)
+            // We successfully atomically set the bit for the first read in this set
+            // to true. We can safely update the rest of the bits and keep the merged sequences
+            // for output.
+            std::vector<BWTInterval>::const_iterator iter = result.usedIntervals.begin();
+            for(; iter != result.usedIntervals.end(); ++iter)
             {
                 for(int64_t i = iter->lower; i <= iter->upper; ++i)
-                    m_pMarkedReads->set(i, true);
+                {
+                    if(i == lowestIndex) //already set
+                        continue;
+
+                    currentValue = m_pMarkedReads->test(i);
+                    if(currentValue)
+                    {
+                        // This value should not be true, emit a warning
+                        std::cout << "Warning: Bit " << i << " was set outside of critical section\n";
+                    }
+                    else
+                    {
+                        m_pMarkedReads->updateCAS(i, currentValue, true);
+                    }
+                }
             }
         }
         else
         {
-            // Some other thread merged all these reads already, discard the intermediate
+            // Some other thread merged these reads already, discard the intermediate
             // data and set the result to false
             result.mergedSequences.clear();
             result.usedIntervals.clear();
             result.isMerged = false;
         }
-
-        // Release the mutex on the vector
-        m_pMarkedReads->unlock();
     }
 
     return result;
