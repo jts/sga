@@ -12,6 +12,7 @@
 #include "ErrorCorrect.h"
 #include "CompleteOverlapSet.h"
 #include "SGSearch.h"
+#include "stdaln.h"
 
 //
 // SGFastaVisitor - output the vertices in the graph in 
@@ -1030,28 +1031,168 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
         const int MAX_WALKS = 10;
         const int MAX_DISTANCE = 5000;
+        bool bIsDegenerate = false;
+        bool bFailGapCheck = false;
+        bool bFailDivergenceCheck = false;
 
         SGWalkVector variantWalks;
         SGSearch::findVariantWalks(pVertex, dir, MAX_DISTANCE, MAX_WALKS, variantWalks);
+
         if(variantWalks.size() > 0)
         {
             found = true;
             size_t selectedIdx = -1;
             size_t selectedLength = 0;
 
-            // Select the walk with the longest length
+            // Calculate the minimum amount overlapped on the start/end vertex.
+            // This is used to properly extract the sequences from walks that represent the variation.
+            int minOverlapX = std::numeric_limits<int>::max();
+            int minOverlapY = std::numeric_limits<int>::max();
+
             for(size_t i = 0; i < variantWalks.size(); ++i)
             {
+                if(variantWalks[i].getNumEdges() <= 1)
+                    bIsDegenerate = true;
+
                 if(variantWalks[i].getNumEdges() > selectedLength)
                 {
                     selectedIdx = i;
                     selectedLength = variantWalks[i].getNumEdges();
                 }
-                //variantWalks[i].print();
+                
+                Edge* pFirstEdge = variantWalks[i].getFirstEdge();
+                Edge* pLastEdge = variantWalks[i].getLastEdge();
+
+                if((int)pFirstEdge->getMatchLength() < minOverlapX)
+                    minOverlapX = pFirstEdge->getMatchLength();
+
+                if((int)pLastEdge->getTwin()->getMatchLength() < minOverlapY)
+                    minOverlapY = pLastEdge->getTwin()->getMatchLength();
             }
+
+            // Calculate the strings for each walk that represent the region of variation
+            StringVector walkStrings;
+            for(size_t i = 0; i < variantWalks.size(); ++i)
+            {
+                Vertex* pStartVertex = variantWalks[i].getStartVertex();
+                Vertex* pLastVertex = variantWalks[i].getLastVertex();
+                assert(pStartVertex != NULL && pLastVertex != NULL);
+                
+                std::string full = variantWalks[i].getString(SGWT_START_TO_END);
+                int posStart = 0;
+                int posEnd = 0;
+
+                if(dir == ED_ANTISENSE)
+                {
+                    // pLast   -----------
+                    // pStart          ------------
+                    // full    --------------------
+                    // out             ----
+                    posStart = pLastVertex->getSeqLen() - minOverlapY;
+                    posEnd = full.size() - (pStartVertex->getSeqLen() - minOverlapX);
+                }
+                else
+                {
+                    // pStart         --------------
+                    // pLast   -----------
+                    // full    ---------------------
+                    // out            ----
+                    posStart = pStartVertex->getSeqLen() - minOverlapX; // match start position
+                    posEnd = full.size() - (pLastVertex->getSeqLen() - minOverlapY); // match end position
+                }
+                
+                std::string out;
+                if(posEnd > posStart)
+                    out = full.substr(posStart, posEnd - posStart);
+                walkStrings.push_back(out);
+            }
+
             assert(selectedIdx != (size_t)-1);
             SGWalk& selectedWalk = variantWalks[selectedIdx];
             assert(selectedWalk.isIndexed());
+
+            // Check the divergence of the other walks to this walk
+            StringVector cigarStrings;
+            std::vector<double> gapPercent; // percentage of matching that is gaps
+            std::vector<double> totalPercent; // percent of total alignment that is mismatch or gap
+
+            cigarStrings.resize(variantWalks.size());
+            gapPercent.resize(variantWalks.size());
+            totalPercent.resize(variantWalks.size());
+
+            for(size_t i = 0; i < variantWalks.size(); ++i)
+            {
+                if(i == selectedIdx)
+                    continue;
+
+                // We want to compute the total gap length, total mismatches and percent
+                // divergence between the two paths.
+                int matchLen = 0;
+                int totalDiff = 0;
+                int gapLength = 0;
+
+                // We have to handle the degenerate case where one internal string has zero length
+                // this can happen when there is an isolated insertion/deletion and the walks are like:
+                // x -> y -> z
+                // x -> z
+                if(walkStrings[selectedIdx].empty() || walkStrings[i].empty())
+                {
+                    matchLen = std::max(walkStrings[selectedIdx].size(), walkStrings[i].size());
+                    totalDiff = matchLen;
+                    gapLength = matchLen;
+                }
+                else
+                {
+                    AlnAln *aln_global;
+                    aln_global = aln_stdaln(walkStrings[selectedIdx].c_str(), walkStrings[i].c_str(), &aln_param_blast, 1, 1);
+
+                    // Calculate the alignment parameters
+                    while(aln_global->outm[matchLen] != '\0')
+                    {
+                        if(aln_global->outm[matchLen] == ' ')
+                            totalDiff += 1;
+                        matchLen += 1;
+                    }
+
+                    std::stringstream cigarSS;
+                    for (int j = 0; j != aln_global->n_cigar; ++j)
+                    {
+                        char cigarOp = "MID"[aln_global->cigar32[j]&0xf];
+                        int cigarLen = aln_global->cigar32[j]>>4;
+                        if(cigarOp == 'I' || cigarOp == 'D')
+                            gapLength += cigarLen;
+                        cigarSS << cigarLen;
+                        cigarSS << cigarOp;
+                    }
+                    cigarStrings[i] = cigarSS.str();
+
+                    /*
+                    printf("1: %s\n", aln_global->out1);
+                    printf("M: %s\n", aln_global->outm);
+                    printf("2: %s\n", aln_global->out2);
+                    printf("CIGAR: %s\n", cigarStrings[i].c_str());
+                    */
+
+                    aln_free_AlnAln(aln_global);
+                }
+
+                double percentDiff = (double)totalDiff / matchLen;
+                double percentGap = (double)gapLength / matchLen;
+
+                if(percentDiff > m_maxTotalDivergence)
+                    bFailDivergenceCheck = true;
+                
+                if(percentGap > m_maxGapDivergence)
+                    bFailGapCheck = true;
+
+                gapPercent[i] = percentGap;
+                totalPercent[i] = percentDiff;
+
+                //printf("ml: %d tmm: %d pd: %lf pg: %lf\n", matchLen, totalDiff, percentDiff, percentGap);
+            }
+
+            if(bIsDegenerate || bFailGapCheck || bFailDivergenceCheck)
+                continue;
 
             // Write the selected path to the variants file as variant 0
             int variantIdx = 0;
@@ -1088,6 +1229,7 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 std::stringstream variantID;
                 std::stringstream ss;
                 ss << "variant-" << m_numRemovedTotal << "/" << variantIdx++;
+                ss << " IGD:" << (double)gapPercent[i] << " ITD:" << totalPercent[i] << " Cigar:" << cigarStrings[i];
                 writeFastaRecord(&m_outFile, ss.str(), variantSequence);
             }
 

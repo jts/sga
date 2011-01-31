@@ -162,7 +162,7 @@ std::string SGWalk::getString(SGWalkType type) const
 {
     std::string out;
 
-    if(type == SGWT_START_TO_END)
+    if(type == SGWT_START_TO_END || type == SGWT_INTERNAL)
     {
         out.append(m_pStartVertex->getSeq().toString());
     }
@@ -208,8 +208,40 @@ std::string SGWalk::getString(SGWalkType type) const
         currComp = ecXZ;
     }
 
+    // If we want the internal portion of the string (which does not contain the endpoints
+    // perform the truncation now. This needs to be done before the reversal.
+    if(type == SGWT_INTERNAL)
+    {
+        Edge* pFirstEdge = getFirstEdge();
+        Edge* pLastEdge = getLastEdge();
+        if(pFirstEdge == NULL || pLastEdge == NULL)
+        {
+            out.clear();
+        }
+        else
+        {
+            Vertex* pStart = m_pStartVertex;
+            Vertex* pLast = getLastVertex();
+            int start = pStart->getSeqLen() - pFirstEdge->getMatchLength();
+            int end = out.size() - (pLast->getSeqLen() - pLastEdge->getMatchLength());
+
+            if(end <= start)
+                out.clear();
+            else
+            {
+                std::string ss = out.substr(start, end - start);
+                out = ss;
+            }
+        }
+    }
+
+    if(out.empty())
+        std::cout << "No output for walk: " << pathSignature() << "\n";
+
     if(reverseAll)
         out = reverse(out);
+
+    // truncate 
     return out;
 }
 
@@ -364,10 +396,30 @@ int SGWalk::getEndToStartDistance() const
 }
 
 //
+Edge* SGWalk::getFirstEdge() const
+{
+    if(m_edges.empty())
+        return NULL;
+    else
+        return m_edges.front();
+}
+
+//
 Edge* SGWalk::getLastEdge() const
 {
-    assert(!m_edges.empty());
-    return m_edges.back();
+    if(m_edges.empty())
+        return NULL;
+    else
+        return m_edges.back();
+}
+
+//
+Vertex* SGWalk::getLastVertex() const
+{
+    if(m_edges.empty())
+        return NULL;
+    else
+        return getLastEdge()->getEnd();
 }
 
 //

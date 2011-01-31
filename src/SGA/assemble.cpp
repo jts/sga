@@ -37,12 +37,18 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -o, --out-prefix=NAME            use NAME as the prefix of the output files (output files will be NAME-contigs.fa, etc)\n"
 "      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
+
+"\nBubble/Variation removal parameters:\n"
 "      -b, --bubble=N                   perform N bubble removal steps (default: 3)\n"
-//"      -s, --smooth                     perform variation smoothing algorithm\n"
+"      -d, --max-divergence=F           only remove variation if the divergence between sequences is less than F (default: 0.05)\n"
+"      -g, --max-gap-divergence=F       only remove variation if the divergence between sequences when only counting indels is less than F (default: 0.01)\n"
+"                                       Setting this to 0.0 will suppress removing indel variation\n"
+
+"\nTrimming parameters:\n"
 "      -x, --cut-terminal=N             cut off terminal branches in N rounds (default: 10)\n"
 "      -l, --min-branch-length=LEN      remove terminal branches only if they are less than LEN bases in length (default: 150)\n"
-"      -c, --coverage=N                 remove edges that have junction-sequence coverage less than N. This is used\n"
-"                                       to detect and remove chimeric reads (default: not performed)\n"
+
+"\nSmall repeat resolution parameters:\n"
 "      -r,--resolve-small=LEN           resolve small repeats using spanning overlaps when the difference between the shortest\n"
 "                                       and longest overlap is greater than LEN (default: not performed)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -59,34 +65,43 @@ namespace opt
     static bool bEdgeStats = false;
     static bool bSmoothGraph = false;
     static int resolveSmallRepeatLen = -1;
+
+    // Trim parameters
     static int numTrimRounds = 10;
     static size_t trimLengthThreshold = 150;
+    
+    // Bubble parameters
     static int numBubbleRounds = 3;
+    static double maxBubbleDivergence = 0.05f;
+    static double maxBubbleGapDivergence = 0.01f;
+
+    // 
     static int coverageCutoff = 0;
     static bool bValidate;
     static bool bExact = true;
 }
 
-static const char* shortopts = "p:o:m:d:b:a:c:r:x:sv";
+static const char* shortopts = "p:o:m:d:g:b:a:c:r:x:sv";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT };
 
 static const struct option longopts[] = {
-    { "verbose",           no_argument,       NULL, 'v' },
-    { "out-prefix",        required_argument, NULL, 'o' },
-    { "min-overlap",       required_argument, NULL, 'm' },
-    { "debug-file",        required_argument, NULL, 'd' },
-    { "bubble",            required_argument, NULL, 'b' },
-    { "cut-terminal",      required_argument, NULL, 'x' },
-    { "min-branch-length", required_argument, NULL, 'l' },
-    { "resolve-small",     required_argument, NULL, 'r' },
-    { "coverage",          required_argument, NULL, 'c' },    
-    { "smooth",            no_argument,       NULL, 's' },    
-    { "edge-stats",        no_argument,       NULL, OPT_EDGESTATS },
-    { "exact",             no_argument,       NULL, OPT_EXACT },
-    { "help",              no_argument,       NULL, OPT_HELP },
-    { "version",           no_argument,       NULL, OPT_VERSION },
-    { "validate",          no_argument,       NULL, OPT_VALIDATE},
+    { "verbose",            no_argument,       NULL, 'v' },
+    { "out-prefix",         required_argument, NULL, 'o' },
+    { "min-overlap",        required_argument, NULL, 'm' },
+    { "bubble",             required_argument, NULL, 'b' },
+    { "cut-terminal",       required_argument, NULL, 'x' },
+    { "min-branch-length",  required_argument, NULL, 'l' },
+    { "resolve-small",      required_argument, NULL, 'r' },
+    { "coverage",           required_argument, NULL, 'c' },    
+    { "max-divergence",     required_argument, NULL, 'd' },
+    { "max-gap-divergence", required_argument, NULL, 'g' },
+    { "smooth",             no_argument,       NULL, 's' },
+    { "edge-stats",         no_argument,       NULL, OPT_EDGESTATS },
+    { "exact",              no_argument,       NULL, OPT_EXACT },
+    { "help",               no_argument,       NULL, OPT_HELP },
+    { "version",            no_argument,       NULL, OPT_VERSION },
+    { "validate",           no_argument,       NULL, OPT_VALIDATE},
     { NULL, 0, NULL, 0 }
 };
 
@@ -194,7 +209,7 @@ void assemble()
     if(opt::numBubbleRounds > 0)
     {
         std::cout << "\nPerforming variation smoothing\n";
-        SGSmoothingVisitor smoothingVisit(opt::outVariantsFile);
+        SGSmoothingVisitor smoothingVisit(opt::outVariantsFile, opt::maxBubbleGapDivergence, opt::maxBubbleDivergence);
         int numSmooth = opt::numBubbleRounds;
         while(numSmooth-- > 0)
             pGraph->visit(smoothingVisit);
@@ -239,6 +254,8 @@ void parseAssembleOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case 'l': arg >> opt::trimLengthThreshold; break;
             case 'b': arg >> opt::numBubbleRounds; break;
+            case 'd': arg >> opt::maxBubbleDivergence; break;
+            case 'g': arg >> opt::maxBubbleGapDivergence; break;
             case 's': opt::bSmoothGraph = true; break;
             case 'x': arg >> opt::numTrimRounds; break;
             case 'c': arg >> opt::coverageCutoff; break;

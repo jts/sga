@@ -17,8 +17,9 @@
 // then a vector of edges used in the walk
 enum SGWalkType
 {
-    SGWT_START_TO_END,
-    SGWT_EXTENSION
+    SGWT_START_TO_END, // include every vertex of the walk
+    SGWT_EXTENSION, // do not include the start vertex
+    SGWT_INTERNAL // do not include the start and end vertex
 };
 
 class SGWalk
@@ -40,6 +41,9 @@ class SGWalk
 
         VertexPtrVec getVertices() const;
         Vertex* getStartVertex() const;
+        Vertex* getLastVertex() const;
+
+        Edge* getFirstEdge() const;
         Edge* getLastEdge() const;
         Edge* getEdge(size_t idx) const;
         size_t getNumVertices() const;
