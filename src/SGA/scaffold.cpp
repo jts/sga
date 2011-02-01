@@ -107,48 +107,29 @@ int scaffoldMain(int argc, char** argv)
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
     graph.writeDot("pregraph.dot");
     graph.deleteVertices(SVC_REPEAT);
-    graph.writeDot("scaffold.dot");
+    graph.writeDot("postastat-scaffold.dot");
     
     // Remove polymorphic nodes from the graph
     ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
     while(graph.visit(polyVisitor)) {}
-
     graph.writeDot("nopoly-scaffold.dot");
+
+    // Check the consistency of the links in the pre-scaffolds.
+    ScaffoldLinkValidator linkValidator(100, 0.05f);
+    graph.visit(linkValidator);
+    graph.deleteVertices(SVC_REPEAT);
+    graph.writeDot("pre-linear.dot");
+    
+    // Check for cycles in the graph
+
+    // Linearize the scaffolds
     ScaffoldAlgorithms::makeScaffolds(&graph);
+
+    // Place floating contigs and repeats into the gaps.
+    
     graph.writeDot("post-scaffold.dot");
 
-    /*
-    ScaffoldWalkVector outWalks;
-    ScaffoldSearch::findPrimaryWalks(graph.getVertex("contig-14709"), graph.getVertex("contig-18695"), ED_SENSE, 10000, 1000, outWalks);
-    //ScaffoldSearch::printWalks(outWalks);
-
-    for(size_t i = 0; i < outWalks.size(); ++i)
-    {
-        std::cout << "walk " << i << " to " << outWalks[i].getLastVertex()->getID() << " " << outWalks[i].getContigLengthSum() << " " << outWalks[i].getGapSum() << "\n";
-    }
-
-    ScaffoldWalk& selectedWalk = outWalks[34];
-    ScaffoldVertexPtrVector walkVertices = selectedWalk.getVertices();
-
-    for(size_t i = 0; i < walkVertices.size(); ++i)
-    {
-        walkVertices[i]->setClassification(SVC_REPEAT);
-    }
-
-    //graph.writeDot("testPath.dot");
-    //ScaffoldAlgorithms::connectedComponents(&graph);
-    ScaffoldAlgorithms::computeLayout(graph.getVertex("contig-14709"));
-
-    exit(1);
-    */
-    /*
-    // Compute the layout of the scaffolds
-    ScaffoldLayoutVisitor layoutVisitor;
-    graph.visit(layoutVisitor);
-    graph.writeDot("afterLayout.dot");
-    graph.visit(layoutVisitor);
-    */
-    // Break up any remaining scaffolds
+    // Break any remaining multi-edge contigs scaffolds
     ScaffoldMultiEdgeRemoveVisitor cutVisitor;
     graph.visit(cutVisitor);
 

@@ -169,8 +169,9 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
     double NUM_STDDEV = 3.0f;
     int threshold = static_cast<int>(NUM_STDDEV * link.stdDev);
     int maxDistance = link.distance + threshold;
+    int maxExtensionDistance = maxDistance + pEndVertex->getSeqLen();
     SGWalkVector walks;
-    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), maxDistance, 10000, walks);
+    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), maxExtensionDistance, 10000, walks);
 
     int numWalksValid = 0;
     int numWalksClosest = 0;
@@ -263,11 +264,9 @@ bool ScaffoldRecord::overlapResolve(const std::string& s1, const std::string& s2
     
     // Calculate the best match
     Match match;
-    std::cout << "Searching for overlap of length: " << expectedOverlap << " max: " << upperBound << " sd: " << link.stdDev << "\n";
     bool overlapFound = OverlapTools::boundedOverlapDP(s1, s2, minOverlap, upperBound, maxErrorRate, match);
     if(overlapFound)
     {
-        std::cout << "Overlap found, length: " << match.getMinOverlapLength() << "\n";
         SeqCoord overlapCoord = match.coord[1];
         SeqCoord overhangCoord = overlapCoord.complement();
         outString = overhangCoord.getSubstring(s2);

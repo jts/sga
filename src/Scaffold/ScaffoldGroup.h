@@ -36,6 +36,8 @@ class ScaffoldGroup
         void resolveAmbiguity();
         bool markPolymorphic(double p_cutoff, double cn_cutoff);
 
+        bool hasConsistentLayout();
+
         // Is the ordering between linkA and linkB ambiguous?
         // Returns true if the probabilty that the most likely
         // ordering is incorrect is greater than p

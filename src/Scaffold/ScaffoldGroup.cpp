@@ -30,7 +30,6 @@ void ScaffoldGroup::addLink(const ScaffoldLink& link, ScaffoldVertex* pVertex)
 void ScaffoldGroup::resolveAmbiguity()
 {
     double ambiguity_p = 0.01f;
-    std::cout << "Checking " << m_pRootVertex->getID() << " for ambiguous links\n";
     LinkVectorPairIterator i = m_links.begin();
     for(; i != m_links.end(); ++i)
     {
@@ -41,6 +40,7 @@ void ScaffoldGroup::resolveAmbiguity()
             if(isAmbiguous)
             {
                 double sum = i->pEndpoint->getEstCopyNumber() + j->pEndpoint->getEstCopyNumber();
+                std::cout << "Checking " << m_pRootVertex->getID() << " for ambiguous links\n";
                 std::cout << "\tLinks " << i->link << " and " << j->link << " are ambiguous\n";
                 std::cout << "\tECN I: "<< i->pEndpoint->getEstCopyNumber() << " ECN J: " << j->pEndpoint->getEstCopyNumber() << "\n";
                 std::cout << "\tsum: " << sum << "\n";
@@ -95,7 +95,11 @@ bool ScaffoldGroup::areLinksAmbiguous(const ScaffoldLink& linkA,
     return p_wrong > p;
 }
 
+// Return true if the scaffoldgroup has a consistent layout
+bool ScaffoldGroup::hasConsistentLayout()
+{
 
+}
 
 // Calculate the longest overlap between any
 // pair of nodes in the scaffold
@@ -110,13 +114,11 @@ int ScaffoldGroup::calculateLongestOverlap()
     {
         // Compute interval for this link using closed coordionates [start, end]
         Interval interval_i(i->link.distance, i->link.getEndpoint() - 1);
-        std::cout << "II: " << i->link.endpointID << " " << interval_i << "\n";
 
         LinkVectorPairIterator j = i + 1;
         for(; j != m_links.end(); ++j)
         {
             Interval interval_j(j->link.distance, j->link.getEndpoint() - 1);
-            std::cout << "IJ: " << j->link.endpointID << " " << interval_j << "\n";
             if(Interval::isIntersecting(interval_i.start, interval_i.end,
                                         interval_j.start, interval_j.end)) {
                 Interval intersection;

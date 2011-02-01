@@ -139,11 +139,15 @@ bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
         {
             ScaffoldGroup group(pVertex, m_maxOverlap);
             for(size_t i = 0; i < edgeVec.size(); ++i)
-            {
                 group.addLink(edgeVec[i]->getLink(), edgeVec[i]->getEnd());
-            }
 
             group.resolveAmbiguity();
+            int longestOverlap = group.calculateLongestOverlap();
+            if(longestOverlap > 400)
+            {
+                pVertex->setClassification(SVC_REPEAT);
+                std::cout << pVertex->getID() << " has max overlap of " << longestOverlap << "\n";
+            }
         }
     }
     return false;   
