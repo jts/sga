@@ -25,6 +25,7 @@ typedef LinkList::iterator LinkListIterator;
 typedef std::vector<ScaffoldLink> LinkVector;
 typedef std::vector<LinkVertexPair> LinkPairVector;
 typedef LinkPairVector::iterator LinkVectorPairIterator;
+typedef LinkPairVector::const_iterator LinkVectorPairConstIterator;
 
 class ScaffoldGroup
 {
@@ -33,7 +34,7 @@ class ScaffoldGroup
 
         void addLink(const ScaffoldLink& link, ScaffoldVertex* pVertex);
 
-        void resolveAmbiguity();
+        bool isOrderAmbiguous();
         bool markPolymorphic(double p_cutoff, double cn_cutoff);
 
         bool hasConsistentLayout();
@@ -48,6 +49,8 @@ class ScaffoldGroup
         void getSecondaryLinks();
 
         void computeBestOrdering();
+        std::string getBestOrderingString() const;
+
         int calculateLongestOverlap();
         double calculateProbACloserThanB(const ScaffoldLink& linkA,
                                          const ScaffoldLink& linkB);

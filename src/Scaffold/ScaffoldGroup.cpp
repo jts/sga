@@ -27,7 +27,7 @@ void ScaffoldGroup::addLink(const ScaffoldLink& link, ScaffoldVertex* pVertex)
 }
 
 // 
-void ScaffoldGroup::resolveAmbiguity()
+bool ScaffoldGroup::isOrderAmbiguous()
 {
     double ambiguity_p = 0.01f;
     LinkVectorPairIterator i = m_links.begin();
@@ -39,14 +39,11 @@ void ScaffoldGroup::resolveAmbiguity()
             bool isAmbiguous = areLinksAmbiguous(i->link, j->link, ambiguity_p);
             if(isAmbiguous)
             {
-                double sum = i->pEndpoint->getEstCopyNumber() + j->pEndpoint->getEstCopyNumber();
-                std::cout << "Checking " << m_pRootVertex->getID() << " for ambiguous links\n";
-                std::cout << "\tLinks " << i->link << " and " << j->link << " are ambiguous\n";
-                std::cout << "\tECN I: "<< i->pEndpoint->getEstCopyNumber() << " ECN J: " << j->pEndpoint->getEstCopyNumber() << "\n";
-                std::cout << "\tsum: " << sum << "\n";
+                return true;
             }
         }
     }
+    return false;
 }
 
 // 
@@ -139,14 +136,6 @@ int ScaffoldGroup::calculateLongestOverlap()
 //
 void ScaffoldGroup::computeBestOrdering()
 {
-    std::cout << "Compute ordering for" << m_pRootVertex->getID() << "\n";
-    for(LinkVectorPairIterator iter = m_links.begin();
-                                            iter != m_links.end();
-                                            ++iter)
-    {
-        std::cout << "\tlink: " << iter->link << "\n";
-    }
-          
     // We compute the best ordering of the links for a given vertex
     // with a greedy algorithm as follows. Initially, all links
     // are unplaced. At each step, we test and score each unplaced
@@ -168,7 +157,6 @@ void ScaffoldGroup::computeBestOrdering()
                              ++iter)
         {
             int score = scoreLinkPlacement(iter->link, unplacedLinks);
-            std::cout << "Link score: " << score << "\n";
             if(score < bestScore)
             {
                 bestScore = score;
@@ -183,18 +171,20 @@ void ScaffoldGroup::computeBestOrdering()
         totalScore += bestScore;
     }
 
-    std::cout << "Total ordering score: " << totalScore << "\n";
-    std::cout << "Ordering: \n";
-    for(LinkVectorPairIterator iter = placedLinks.begin(); iter != placedLinks.end(); ++iter)
-    {
-        std::cout << "\tlink: " << iter->link << "\n";
-    }
-
     m_links = placedLinks;
-
-    std::cout << "Longest overlap: " << calculateLongestOverlap() << "\n";
-
     m_isOrdered = true;
+}
+
+// Get a simple representation of the best ordering as a string
+std::string ScaffoldGroup::getBestOrderingString() const
+{
+    assert(m_isOrdered);
+    std::stringstream ss;
+    for(LinkVectorPairConstIterator iter = m_links.begin(); iter != m_links.end(); ++iter)
+    {
+        ss << iter->link.endpointID << ":" << iter->link.distance << "-" << iter->link.getEndpoint() << " ";
+    }
+    return ss.str();
 }
 
 // Construct a set of links between successive elements of the
@@ -309,7 +299,6 @@ int ScaffoldGroup::scoreLinkPlacement(const ScaffoldLink& link,
     {
         if(link.endpointID != iter->link.endpointID)
         {
-            std::cout << "P(" << link.endpointID << " < " << iter->link.endpointID << ") = " << calculateProbACloserThanB(link, iter->link) << "\n";
             // Compute the offset of this link based on input link preceding it
             // If the interval [start,end] includes the distance estimate
             // of the unplaced link, shift the estimate to the first valid

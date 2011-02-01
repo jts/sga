@@ -140,13 +140,30 @@ bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
             ScaffoldGroup group(pVertex, m_maxOverlap);
             for(size_t i = 0; i < edgeVec.size(); ++i)
                 group.addLink(edgeVec[i]->getLink(), edgeVec[i]->getEnd());
-
-            group.resolveAmbiguity();
+        
+            bool isAmbiguous = group.isOrderAmbiguous();
             int longestOverlap = group.calculateLongestOverlap();
-            if(longestOverlap > 400)
+            group.computeBestOrdering();
+            bool overlapCheck = longestOverlap < 400;
+            bool result = overlapCheck;
+            std::string ambiStr = isAmbiguous ? "ambiguous" : "unambiguous";
+            std::string overStr = overlapCheck ? "good-ordering" : "no-ordering";
+            std::string resultStr = result ? "PASS" : "FAIL";
+            std::string orderStr = group.getBestOrderingString();
+            printf("LV %s %d CL:%d EC:%2.2lf AS:%2.2lf %s %s %s LO:%d BO:%s\n", pVertex->getID().c_str(), 
+                                                                              (int)idx, 
+                                                                              (int)pVertex->getSeqLen(), 
+                                                                              pVertex->getEstCopyNumber(),
+                                                                              pVertex->getAStatistic(),
+                                                                              ambiStr.c_str(), 
+                                                                              overStr.c_str(), 
+                                                                              resultStr.c_str(), 
+                                                                              longestOverlap,
+                                                                              orderStr.c_str());
+
+            if(!result)
             {
                 pVertex->setClassification(SVC_REPEAT);
-                std::cout << pVertex->getID() << " has max overlap of " << longestOverlap << "\n";
             }
         }
     }
