@@ -121,6 +121,7 @@ int scaffoldMain(int argc, char** argv)
     graph.writeDot("pre-linear.dot");
     
     // Check for cycles in the graph
+    ScaffoldAlgorithms::removeCycles(&graph);
 
     // Linearize the scaffolds
     ScaffoldAlgorithms::makeScaffolds(&graph);

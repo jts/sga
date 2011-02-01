@@ -98,7 +98,7 @@ bool ScaffoldGroup::areLinksAmbiguous(const ScaffoldLink& linkA,
 // Return true if the scaffoldgroup has a consistent layout
 bool ScaffoldGroup::hasConsistentLayout()
 {
-
+    return true;
 }
 
 // Calculate the longest overlap between any
