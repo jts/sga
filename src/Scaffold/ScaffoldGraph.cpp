@@ -190,8 +190,10 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename, bool 
                     }
                     else
                     {
-                        if(pEdge->getDistance() != link1.distance)
-                            std::cout << "Skipping suspect mate-pair link: " << link1 << " curr: " << pEdge->getLink() << "\n";
+                        if(abs(pEdge->getDistance() - link1.distance) > 100)
+                        {
+                            std::cout << "LL skipped from: " << pVertex1->getID() << " in: " << link1 << " n-in: " << link1.numPairs << " existing: " << pEdge->getLink() << " n-ex: " << pEdge->getLink().numPairs << "\n";
+                        }
                     }
                 }
                 else

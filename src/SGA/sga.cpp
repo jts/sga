@@ -25,6 +25,7 @@
 #include "fm-merge.h"
 #include "scaffold2fasta.h"
 #include "stats.h"
+#include "filterBAM.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -57,6 +58,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           connect         resolve the complete sequence of a paired-end fragment\n"
 "           scaffold        generate ordered sets of contigs using distance estimates\n"
 "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
+"           filterBAM       filter out contaminating mate-pair data in a BAM file\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 int main(int argc, char** argv)
@@ -114,6 +116,8 @@ int main(int argc, char** argv)
             scaffoldMain(argc - 1, argv + 1);
         else if(command == "scaffold2fasta")
             scaffold2fastaMain(argc - 1, argv + 1);
+        else if(command == "filterBAM")
+            filterBAMMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

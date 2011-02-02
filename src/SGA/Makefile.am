@@ -42,5 +42,6 @@ sga_SOURCES = sga.cpp \
               stats.cpp stats.h \
               fm-merge.cpp fm-merge.h \
               gmap.h gmap.cpp \
+              filterBAM.h filterBAM.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 
