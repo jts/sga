@@ -1034,6 +1034,7 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         bool bIsDegenerate = false;
         bool bFailGapCheck = false;
         bool bFailDivergenceCheck = false;
+        bool bFailIndelSizeCheck = false;
 
         SGWalkVector variantWalks;
         SGSearch::findVariantWalks(pVertex, dir, MAX_DISTANCE, MAX_WALKS, variantWalks);
@@ -1113,12 +1114,14 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
             // Check the divergence of the other walks to this walk
             StringVector cigarStrings;
+            std::vector<int> maxIndel;
             std::vector<double> gapPercent; // percentage of matching that is gaps
             std::vector<double> totalPercent; // percent of total alignment that is mismatch or gap
 
             cigarStrings.resize(variantWalks.size());
             gapPercent.resize(variantWalks.size());
             totalPercent.resize(variantWalks.size());
+            maxIndel.resize(variantWalks.size());
 
             for(size_t i = 0; i < variantWalks.size(); ++i)
             {
@@ -1130,7 +1133,7 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 int matchLen = 0;
                 int totalDiff = 0;
                 int gapLength = 0;
-
+                int maxGapLength = 0;
                 // We have to handle the degenerate case where one internal string has zero length
                 // this can happen when there is an isolated insertion/deletion and the walks are like:
                 // x -> y -> z
@@ -1160,7 +1163,12 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                         char cigarOp = "MID"[aln_global->cigar32[j]&0xf];
                         int cigarLen = aln_global->cigar32[j]>>4;
                         if(cigarOp == 'I' || cigarOp == 'D')
+                        {
                             gapLength += cigarLen;
+                            if(gapLength > maxGapLength)
+                                maxGapLength = gapLength;
+                        }
+
                         cigarSS << cigarLen;
                         cigarSS << cigarOp;
                     }
@@ -1185,13 +1193,17 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 if(percentGap > m_maxGapDivergence)
                     bFailGapCheck = true;
 
+                if(maxGapLength > m_maxIndelLength)
+                    bFailIndelSizeCheck = true;
+
                 gapPercent[i] = percentGap;
                 totalPercent[i] = percentDiff;
+                maxIndel[i] = maxGapLength;
 
                 //printf("ml: %d tmm: %d pd: %lf pg: %lf\n", matchLen, totalDiff, percentDiff, percentGap);
             }
 
-            if(bIsDegenerate || bFailGapCheck || bFailDivergenceCheck)
+            if(bIsDegenerate || bFailGapCheck || bFailDivergenceCheck || bFailIndelSizeCheck)
                 continue;
 
             // Write the selected path to the variants file as variant 0
@@ -1229,7 +1241,7 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 std::stringstream variantID;
                 std::stringstream ss;
                 ss << "variant-" << m_numRemovedTotal << "/" << variantIdx++;
-                ss << " IGD:" << (double)gapPercent[i] << " ITD:" << totalPercent[i] << " InternalCigar:" << cigarStrings[i];
+                ss << " IGD:" << (double)gapPercent[i] << " ITD:" << totalPercent[i] << " MID: " << maxIndel[i] << " InternalCigar:" << cigarStrings[i];
                 writeFastaRecord(&m_outFile, ss.str(), variantSequence);
             }
 

@@ -43,7 +43,8 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -d, --max-divergence=F           only remove variation if the divergence between sequences is less than F (default: 0.05)\n"
 "      -g, --max-gap-divergence=F       only remove variation if the divergence between sequences when only counting indels is less than F (default: 0.01)\n"
 "                                       Setting this to 0.0 will suppress removing indel variation\n"
-
+"          --max-indel=D                do not remove variation that is an indel of length greater than D (default: 20)\n"
+"\n"
 "\nTrimming parameters:\n"
 "      -x, --cut-terminal=N             cut off terminal branches in N rounds (default: 10)\n"
 "      -l, --min-branch-length=LEN      remove terminal branches only if they are less than LEN bases in length (default: 150)\n"
@@ -74,6 +75,7 @@ namespace opt
     static int numBubbleRounds = 3;
     static double maxBubbleDivergence = 0.05f;
     static double maxBubbleGapDivergence = 0.01f;
+    static int maxIndelLength = 20;
 
     // 
     static int coverageCutoff = 0;
@@ -83,7 +85,7 @@ namespace opt
 
 static const char* shortopts = "p:o:m:d:g:b:a:c:r:x:sv";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT, OPT_MAXINDEL };
 
 static const struct option longopts[] = {
     { "verbose",            no_argument,       NULL, 'v' },
@@ -96,6 +98,7 @@ static const struct option longopts[] = {
     { "coverage",           required_argument, NULL, 'c' },    
     { "max-divergence",     required_argument, NULL, 'd' },
     { "max-gap-divergence", required_argument, NULL, 'g' },
+    { "max-indel",          required_argument, NULL, OPT_MAXINDEL },
     { "smooth",             no_argument,       NULL, 's' },
     { "edge-stats",         no_argument,       NULL, OPT_EDGESTATS },
     { "exact",              no_argument,       NULL, OPT_EXACT },
@@ -209,7 +212,7 @@ void assemble()
     if(opt::numBubbleRounds > 0)
     {
         std::cout << "\nPerforming variation smoothing\n";
-        SGSmoothingVisitor smoothingVisit(opt::outVariantsFile, opt::maxBubbleGapDivergence, opt::maxBubbleDivergence);
+        SGSmoothingVisitor smoothingVisit(opt::outVariantsFile, opt::maxBubbleGapDivergence, opt::maxBubbleDivergence, opt::maxIndelLength);
         int numSmooth = opt::numBubbleRounds;
         while(numSmooth-- > 0)
             pGraph->visit(smoothingVisit);
@@ -260,6 +263,7 @@ void parseAssembleOptions(int argc, char** argv)
             case 'x': arg >> opt::numTrimRounds; break;
             case 'c': arg >> opt::coverageCutoff; break;
             case 'r': arg >> opt::resolveSmallRepeatLen; break;
+            case OPT_MAXINDEL: arg >> opt::maxIndelLength; break;
             case OPT_EXACT: opt::bExact = true; break;
             case OPT_EDGESTATS: opt::bEdgeStats = true; break;
             case OPT_VALIDATE: opt::bValidate = true; break;

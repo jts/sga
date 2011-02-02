@@ -208,10 +208,14 @@ struct SGBubbleEdgeVisitor
 // Smooth out variation in the graph
 struct SGSmoothingVisitor
 {
-    SGSmoothingVisitor(std::string filename, double maxGapDiv, double maxTotalDiv) : m_numRemovedTotal(0), 
-                                                                                     m_maxGapDivergence(maxGapDiv),
-                                                                                     m_maxTotalDivergence(maxTotalDiv),
-                                                                                     m_outFile(filename.c_str()) {}
+    SGSmoothingVisitor(std::string filename, 
+                       double maxGapDiv, 
+                       double maxTotalDiv, 
+                       int maxIndelLength) : m_numRemovedTotal(0), 
+                                             m_maxGapDivergence(maxGapDiv),
+                                             m_maxTotalDivergence(maxTotalDiv),
+                                             m_maxIndelLength(maxIndelLength),
+                                             m_outFile(filename.c_str()) {}
 
     void previsit(StringGraph* pGraph);
     bool visit(StringGraph* pGraph, Vertex* pVertex);
@@ -223,7 +227,7 @@ struct SGSmoothingVisitor
 
     double m_maxGapDivergence;
     double m_maxTotalDivergence;
-
+    int m_maxIndelLength;
     std::ofstream m_outFile;
 };
 
