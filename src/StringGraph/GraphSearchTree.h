@@ -305,7 +305,7 @@ bool GraphSearchTree<VERTEX,EDGE,DISTANCE>::stepOnce()
     {
         _SearchNode* pNode = m_expandQueue.front();
         m_expandQueue.pop_front();
-
+        
         if(pNode->getVertex() == m_pGoalVertex)
         {
             // This node represents the goal, add it to the goal queue

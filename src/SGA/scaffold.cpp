@@ -114,6 +114,10 @@ int scaffoldMain(int argc, char** argv)
     while(graph.visit(polyVisitor)) {}
     graph.writeDot("nopoly-scaffold.dot");
 
+    // Fix up transitive structures in the graph
+    //ScaffoldTransitiveReductionVisitor trVisit;
+    //graph.visit(trVisit);
+
     // Check the consistency of the links in the pre-scaffolds.
     ScaffoldLinkValidator linkValidator(100, 0.05f);
     graph.visit(linkValidator);
