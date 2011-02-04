@@ -60,6 +60,7 @@ class ScaffoldVertex
         void deleteEdgesAndTwins(EdgeDir dir);
         void deleteEdgesAndTwins();
         void deleteEdgesAndTwinsByColor(GraphColor c);
+        void markEdgesInDir(EdgeDir dir, GraphColor c);
 
         ScaffoldEdge* findEdgeTo(VertexID id, ScaffoldLinkType type) const;
         ScaffoldEdge* findEdgeTo(VertexID id, EdgeDir dir, EdgeComp comp) const;

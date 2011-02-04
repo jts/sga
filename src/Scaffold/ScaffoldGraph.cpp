@@ -193,6 +193,8 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename, bool 
                         if(abs(pEdge->getDistance() - link1.distance) > 100)
                         {
                             std::cout << "LL skipped from: " << pVertex1->getID() << " in: " << link1 << " n-in: " << link1.numPairs << " existing: " << pEdge->getLink() << " n-ex: " << pEdge->getLink().numPairs << "\n";
+                            pVertex1->setConflictingFlag(true);
+                            pVertex2->setConflictingFlag(true);
                         }
                     }
                 }

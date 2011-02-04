@@ -118,10 +118,11 @@ ScaffoldLinkValidator::ScaffoldLinkValidator(int maxOverlap,
 }
 
 //
-void ScaffoldLinkValidator::previsit(ScaffoldGraph* /*pGraph*/)
+void ScaffoldLinkValidator::previsit(ScaffoldGraph* pGraph)
 {
     m_numUnique = 0;
     m_numRepeat = 0;
+    pGraph->setEdgeColors(GC_WHITE);
 }
 
 //
@@ -161,9 +162,14 @@ bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
                                                                               longestOverlap,
                                                                               orderStr.c_str());
 
+            // If the link did not pass validation, cut the scaffold at this point for all involved vertices
             if(!result)
             {
-                pVertex->setClassification(SVC_REPEAT);
+                for(size_t i = 0; i < edgeVec.size(); ++i)
+                {
+                    edgeVec[i]->setColor(GC_BLACK);
+                    edgeVec[i]->getEnd()->markEdgesInDir(edgeVec[i]->getTwin()->getDir(), GC_BLACK);
+                }
             }
         }
     }
@@ -171,9 +177,10 @@ bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
 }
 
 //
-void ScaffoldLinkValidator::postvisit(ScaffoldGraph* /*pGraph*/)
+void ScaffoldLinkValidator::postvisit(ScaffoldGraph* pGraph)
 {
-    std::cerr << "Link validator done\n"; 
+    std::cerr << "Link validator done\n";
+    pGraph->deleteEdgesByColor(GC_BLACK);
 }
 
 //
@@ -572,6 +579,30 @@ void ScaffoldSVVisitor::postvisit(ScaffoldGraph* pGraph)
     pGraph->deleteEdgesByColor(GC_BLACK);
 }
 
+//
+//
+//
+void ScaffoldConflictingVisitor::previsit(ScaffoldGraph*)
+{
+    m_numMarked = 0;
+}
+
+//
+bool ScaffoldConflictingVisitor::visit(ScaffoldGraph*, ScaffoldVertex* pVertex)
+{
+    if(pVertex->hasConflictingLink())
+    {
+        pVertex->setClassification(SVC_REPEAT);
+        m_numMarked += 1;
+    }
+    return false;
+}
+
+//
+void ScaffoldConflictingVisitor::postvisit(ScaffoldGraph*)
+{
+    std::cout << "[conflict] marked: " << m_numMarked << "\n";
+}
 
 ScaffoldLayoutVisitor::ScaffoldLayoutVisitor()
 {

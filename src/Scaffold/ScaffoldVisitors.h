@@ -131,6 +131,19 @@ class ScaffoldSVVisitor
         int m_maxSVSize;
 };
 
+// Remove the vertices with conflicting distance estimates
+class ScaffoldConflictingVisitor
+{
+    public:
+        ScaffoldConflictingVisitor() {}
+        void previsit(ScaffoldGraph*);
+        bool visit(ScaffoldGraph*, ScaffoldVertex*);
+        void postvisit(ScaffoldGraph*);
+
+    private:
+        int m_numMarked;
+};
+
 // Compute a layout of the contigs linked to each vertex
 class ScaffoldLayoutVisitor
 {

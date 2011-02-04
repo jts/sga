@@ -183,6 +183,19 @@ void ScaffoldVertex::deleteEdgesAndTwinsByColor(GraphColor c)
     }
 }
 
+//
+void ScaffoldVertex::markEdgesInDir(EdgeDir dir, GraphColor c)
+{
+    ScaffoldEdgePtrVector::iterator iter = m_edges.begin();
+    while(iter != m_edges.end())
+    {
+        ScaffoldEdge* pEdge = *iter;
+        if(pEdge->getDir() == dir)
+            pEdge->setColor(c);
+        ++iter;
+    }
+}
+
 // Set all the edges of the vertex to color c
 void ScaffoldVertex::setEdgeColors(GraphColor c)
 {

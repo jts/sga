@@ -42,6 +42,8 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "                                       classified as unique or repetitive\n"
 "      -s, --max-sv-size=N              collapse heterozygous structural variation if the event size is less than N (default: 0)\n"
 "      -o, --outfile=FILE               write the scaffolds to FILE (default: CONTIGSFILE.scaf\n"
+"          --remove-conflicting         if two contigs have multiple distance estimates between them and they do not agree, break the scaffold\n"
+"                                       at this point\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -53,6 +55,7 @@ namespace opt
     static std::string astatFile;
     static std::string outFile;
     static std::string asqgFile;
+    static bool removeConflicting = false;
     static double uniqueAstatThreshold = 20.0f;
     static double repeatAstatThreshold = 5.0f;
     static int maxSVSize = 0;
@@ -61,7 +64,7 @@ namespace opt
 
 static const char* shortopts = "vm:a:u:r:o:g:s:";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PE, OPT_MATEPAIR };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PE, OPT_MATEPAIR, OPT_CUTCONFLICT };
 
 static const struct option longopts[] = {
     { "verbose",         no_argument,       NULL, 'v' },
@@ -72,6 +75,7 @@ static const struct option longopts[] = {
     { "repeat-astat",    required_argument, NULL, 'r' },
     { "outfile",         required_argument, NULL, 'o' },
     { "max-sv-size",     required_argument, NULL, 's' },
+    { "remove-conflicting", no_argument,       NULL, OPT_CUTCONFLICT },
     { "pe",              required_argument, NULL, OPT_PE },
     { "mate-pair",       required_argument, NULL, OPT_MATEPAIR },
     { "help",            no_argument,       NULL, OPT_HELP },
@@ -111,7 +115,15 @@ int scaffoldMain(int argc, char** argv)
     graph.writeDot("pregraph.dot");
     graph.deleteVertices(SVC_REPEAT);
     graph.writeDot("postastat-scaffold.dot");
-    
+
+    if(opt::removeConflicting)
+    {
+        ScaffoldConflictingVisitor conflictVisitor;
+        graph.visit(conflictVisitor);
+        graph.writeDot("conflict-scaffold.dot");
+        graph.deleteVertices(SVC_REPEAT);
+    }
+
     // Remove polymorphic nodes from the graph
     ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
     while(graph.visit(polyVisitor)) {}
@@ -169,6 +181,7 @@ void parseScaffoldOptions(int argc, char** argv)
             case 'r': arg >> opt::repeatAstatThreshold; break;
             case 'o': arg >> opt::outFile; break;
             case 's': arg >> opt::maxSVSize; break;
+            case OPT_CUTCONFLICT: opt::removeConflicting = true; break;
             case OPT_PE: 
                 arg >> opt::peDistanceEstFile; 
                 break;
