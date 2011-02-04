@@ -16,6 +16,10 @@
 #include "SGUtil.h"
 #include "OverlapTools.h"
 
+//
+void writeUnplaced(std::ostream* pWriter, StringGraph* pGraph, int minLength);
+
+
 #define SUBPROGRAM "scaffold2fasta"
 static const char *SCAFFOLD2FASTA_VERSION_MESSAGE =
 SUBPROGRAM " Version " PACKAGE_VERSION "\n"
@@ -37,6 +41,9 @@ static const char *SCAFFOLD2FASTA_USAGE_MESSAGE =
 "          --no-singletons              do not output scaffolds that consist of a single contig\n"
 "      -o, --outfile=FILE               write the scaffolds to FILE (default: scaffolds.fa)\n"
 "      -m, --min-length=N               only output scaffolds longer than N bases\n"
+"          --write-unplaced             output unplaced contigs that are larger than minLength\n"
+"          --min-gap-length=N           separate contigs by at least N bases. All predicted gaps less\n"
+"                                       than N will be extended to N (default: 25)\n"
 "          --use-overlap                attempt to merge contigs using predicted overlaps.\n"
 "                                       This can help close gaps in the scaffolds but comes\n"
 "                                       with a small risk of collapsing tandem repeats.\n"
@@ -61,17 +68,19 @@ namespace opt
     static std::string asqgFile;
     static std::string outFile = "scaffolds.fa";
     static std::string scafFile;
+    static int minGapLength = 25;
     static int minOverlap = 20;
     static int maxOverlap = 100;
     static int resolveMask = RESOLVE_GRAPH_UNIQUE;
     static double maxErrorRate = 0.05f;
     static bool bNoSingletons = false;
-    static int minScaffoldLength = 0;
+    static bool bWriteUnplaced = false;
+    static int minScaffoldLength = 200;
 }
 
 static const char* shortopts = "vm:o:f:a:g:";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_NOSINGLETON, OPT_USEOVERLAP };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_NOSINGLETON, OPT_USEOVERLAP, OPT_MINGAPLENGTH, OPT_WRITEUNPLACED };
 
 static const struct option longopts[] = {
     { "verbose",        no_argument,       NULL, 'v' },
@@ -80,6 +89,8 @@ static const struct option longopts[] = {
     { "contig-file",    required_argument, NULL, 'f' },
     { "asqg-file",      required_argument, NULL, 'a' },
     { "graph-resolve",  required_argument, NULL, 'g' },
+    { "min-gap-length", required_argument, NULL, OPT_MINGAPLENGTH },
+    { "write-unplaced", no_argument,       NULL, OPT_WRITEUNPLACED },
     { "no-singleton",   no_argument,       NULL, OPT_NOSINGLETON },
     { "use-overlap",    no_argument,       NULL, OPT_USEOVERLAP },
     { "help",           no_argument,       NULL, OPT_HELP },
@@ -116,7 +127,7 @@ int scaffold2fastaMain(int argc, char** argv)
         if(record.getNumComponents() > 1 || !opt::bNoSingletons)
         {
             std::string sequence = record.generateString(pGraph, opt::minOverlap, opt::maxOverlap, 
-                                                         opt::maxErrorRate, opt::resolveMask, &stats);
+                                                         opt::maxErrorRate, opt::resolveMask, opt::minGapLength, &stats);
             std::stringstream idss;
             idss << "scaffold-" << idx;
             writeFastaRecord(pWriter, idss.str(), sequence);
@@ -124,10 +135,48 @@ int scaffold2fastaMain(int argc, char** argv)
         }
     }
 
+    if(opt::bWriteUnplaced)
+    {
+        writeUnplaced(pWriter, pGraph, opt::minScaffoldLength);
+    }
+
     delete pReader;
     delete pGraph;
     delete pWriter;
     return 0;
+}
+
+struct UnplacedVisitor
+{
+    UnplacedVisitor(std::ostream* pWriter, int minLength) : m_pWriter(pWriter), m_numUnplaced(0), m_minLength(minLength) {}
+
+    void previsit(StringGraph*) {}
+    
+    bool visit(StringGraph*, Vertex* pVertex)
+    {
+        if(pVertex->getColor() == GC_BLACK)
+            return false;
+        
+        if((int)pVertex->getSeqLen() >= m_minLength)
+        {
+            std::stringstream idss;
+            idss << "unplaced-" << m_numUnplaced++;
+            writeFastaRecord(m_pWriter, idss.str(), pVertex->getSeq().toString());
+        }
+        return false;
+    }
+
+    void postvisit(StringGraph*) {}
+
+    std::ostream* m_pWriter;
+    int m_numUnplaced;
+    int m_minLength;
+};
+
+void writeUnplaced(std::ostream* pWriter, StringGraph* pGraph, int minLength)
+{
+    UnplacedVisitor uvisit(pWriter, minLength);
+    pGraph->visit(uvisit);
 }
 
 //
@@ -148,6 +197,8 @@ void parseScaffold2fastaOptions(int argc, char** argv)
             case 'a': arg >> opt::asqgFile; break;
             case 'o': arg >> opt::outFile; break;
             case 'g': arg >> modeStr; break;
+            case OPT_WRITEUNPLACED: opt::bWriteUnplaced = true; break;
+            case OPT_MINGAPLENGTH: arg >> opt::minGapLength; break;
             case OPT_NOSINGLETON: opt::bNoSingletons = true; break;
             case OPT_USEOVERLAP: opt::resolveMask |= RESOLVE_OVERLAP; break;
             case OPT_HELP:

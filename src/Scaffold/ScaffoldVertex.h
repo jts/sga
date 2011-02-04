@@ -43,6 +43,7 @@ class ScaffoldVertex
         GraphColor getColor() const;
         std::string getColorString() const;
         ScaffoldVertexClassification getClassification() const;
+        bool hasConflictingLink() const;
 
         //
         void setAStatistic(double v);
@@ -50,6 +51,7 @@ class ScaffoldVertex
         void setClassification(ScaffoldVertexClassification classification);
         void setColor(GraphColor c);
         void setEdgeColors(GraphColor c);
+        void setConflictingFlag(bool b);
 
         //
         void deleteEdge(ScaffoldEdge* pEdge);
@@ -77,6 +79,11 @@ class ScaffoldVertex
         ScaffoldEdgePtrVector m_edges;
         ScaffoldVertexClassification m_classification;
         GraphColor m_color;
+
+        // This flag is set if there are multiple distance estimates
+        // between this vertex and some other which disagree. This can
+        // indicate there is a heterozygous structural variation in a diploid genome.
+        bool m_hasConflictingLink; 
 };
 
 #endif

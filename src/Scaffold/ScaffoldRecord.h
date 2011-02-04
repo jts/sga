@@ -77,7 +77,7 @@ class ScaffoldRecord
         std::string generateString(const StringGraph* pGraph, 
                                    int minOverlap, int maxOverlap, 
                                    double maxErrorRate, int resolveMask,
-                                   ResolveStats* pStats) const;
+                                   int minGapLength, ResolveStats* pStats) const;
 
 
         // Resolve a link by find walks through the graph
@@ -92,7 +92,7 @@ class ScaffoldRecord
                             std::string& outString) const;
 
         // Resolve a link by introducing a gap
-        bool introduceGap(const std::string& contigString, const ScaffoldLink& link, std::string& outString) const;
+        bool introduceGap(int minGapLength, const std::string& contigString, const ScaffoldLink& link, std::string& outString) const;
 
         void parse(const std::string& text);
         void writeScaf(std::ostream* pWriter);

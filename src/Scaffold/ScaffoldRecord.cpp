@@ -44,7 +44,7 @@ size_t ScaffoldRecord::getNumComponents() const
 // Construct a string from the scaffold
 std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOverlap, 
                                            int maxOverlap, double maxErrorRate, int resolveMask, 
-                                           ResolveStats* pStats) const
+                                           int minGapLength, ResolveStats* pStats) const
 {
     pStats->numScaffolds += 1;
 
@@ -141,9 +141,11 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
 
                 // Step 3, just introduce a gap between the sequences
                 if(!resolved)
-                    introduceGap(toAppend, link, resolvedSequence);
+                    introduceGap(minGapLength, toAppend, link, resolvedSequence);
 
             }
+
+            pGraph->getVertex(currID)->setColor(GC_BLACK);
 
             sequence.append(resolvedSequence);
             currID = link.endpointID;
@@ -235,6 +237,11 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
         assert(selectedIdx != -1);
         outExtensionString = walks[selectedIdx].getString(SGWT_EXTENSION);
         pStats->graphWalkFound += 1;
+
+        // Mark all vertices in the walk as visited
+        VertexPtrVec vertexPtrVector = walks[selectedIdx].getVertices();
+        for(size_t i = 0; i < vertexPtrVector.size(); ++i)
+            vertexPtrVector[i]->setColor(GC_BLACK);
         return true;
     }
     else
@@ -279,20 +286,21 @@ bool ScaffoldRecord::overlapResolve(const std::string& s1, const std::string& s2
 }
 
 // Resolve a link with a gap
-bool ScaffoldRecord::introduceGap(const std::string& contigString, const ScaffoldLink& link, std::string& out) const
+bool ScaffoldRecord::introduceGap(int minGapLength, const std::string& contigString, const ScaffoldLink& link, std::string& out) const
 {
     assert(out.empty());
     if(link.distance < 0)
     {
         // Truncate the string using the expected overlap and add a gap with a fixed number of Ns
-        out.append(10, 'N');
+        out.append(minGapLength, 'N');
         int expectedOverlap = -1 * link.distance;
         assert(expectedOverlap < (int)contigString.length());
         out.append(contigString.substr(expectedOverlap));
     }
     else
     {
-        out.append(link.distance, 'N');
+        int gap = std::max(link.distance, minGapLength);
+        out.append(gap, 'N');
         out.append(contigString);
     }
     return true;

@@ -14,7 +14,8 @@ ScaffoldVertex::ScaffoldVertex(VertexID id, size_t seqLen) : m_id(id),
                                                              m_AStatistic(0.0f),
                                                              m_estCopyNumber(-1.0f),
                                                              m_classification(SVC_UNKNOWN), 
-                                                             m_color(GC_WHITE)
+                                                             m_color(GC_WHITE),
+                                                             m_hasConflictingLink(false)
 {
 
 }
@@ -218,6 +219,12 @@ void ScaffoldVertex::setColor(GraphColor c)
 }
 
 //
+void ScaffoldVertex::setConflictingFlag(bool b)
+{
+    m_hasConflictingLink = b;
+}
+
+//
 VertexID ScaffoldVertex::getID() const
 {
     return m_id;
@@ -262,6 +269,12 @@ ScaffoldVertexClassification ScaffoldVertex::getClassification() const
 GraphColor ScaffoldVertex::getColor() const
 {
     return m_color;
+}
+
+//
+bool ScaffoldVertex::hasConflictingLink() const
+{
+    return m_hasConflictingLink;
 }
 
 //
