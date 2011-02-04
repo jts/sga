@@ -74,6 +74,25 @@ int ScaffoldWalk::findVertex(ScaffoldVertex* pVertex) const
     return -1;
 }
 
+// returns the sum of the gaps plus contig lengths from
+// the starting vertex to pVertex.
+// Precondition: pVertex is required to be in the walk
+int ScaffoldWalk::getDistanceToVertex(ScaffoldVertex* pVertex) const
+{
+    int distance = 0;
+    ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin();
+    for(; iter != m_edges.end(); ++iter)
+    {
+        distance += (*iter)->getDistance();
+        if(pVertex == (*iter)->getEnd())
+            return distance;
+        distance += (*iter)->getEnd()->getSeqLen();
+    }
+    assert(false);
+    return -1;
+}
+
+
 //
 ScaffoldVertex* ScaffoldWalk::getStartVertex() const
 {

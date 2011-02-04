@@ -40,6 +40,7 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "      -r, --repeat-astat=FLOAT         Contigs with an a-statistic below FLOAT will be considered repetitive (default: 5.0)\n"
 "                                       Contigs with an a-statistic between these thresholds will not be\n"
 "                                       classified as unique or repetitive\n"
+"      -s, --max-sv-size=N              collapse heterozygous structural variation if the event size is less than N (default: 0)\n"
 "      -o, --outfile=FILE               write the scaffolds to FILE (default: CONTIGSFILE.scaf\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -54,10 +55,11 @@ namespace opt
     static std::string asqgFile;
     static double uniqueAstatThreshold = 20.0f;
     static double repeatAstatThreshold = 5.0f;
+    static int maxSVSize = 0;
     static int minContigLength = 0;
 }
 
-static const char* shortopts = "vm:a:u:r:o:g:";
+static const char* shortopts = "vm:a:u:r:o:g:s:";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_PE, OPT_MATEPAIR };
 
@@ -69,6 +71,7 @@ static const struct option longopts[] = {
     { "unique-astat",    required_argument, NULL, 'u' },
     { "repeat-astat",    required_argument, NULL, 'r' },
     { "outfile",         required_argument, NULL, 'o' },
+    { "max-sv-size",     required_argument, NULL, 's' },
     { "pe",              required_argument, NULL, OPT_PE },
     { "mate-pair",       required_argument, NULL, OPT_MATEPAIR },
     { "help",            no_argument,       NULL, OPT_HELP },
@@ -113,16 +116,19 @@ int scaffoldMain(int argc, char** argv)
     ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
     while(graph.visit(polyVisitor)) {}
     graph.writeDot("nopoly-scaffold.dot");
+    
+    // If requested, collapse structural variation in the graph
+    if(opt::maxSVSize > 0)
+    {
+        ScaffoldSVVisitor svVisit(opt::maxSVSize);
+        graph.visit(svVisit);
+        graph.writeDot("afterSV.dot");
+    }
 
-    // Fix up transitive structures in the graph
-    //ScaffoldTransitiveReductionVisitor trVisit;
-    //graph.visit(trVisit);
-
-    // Check the consistency of the links in the pre-scaffolds.
+    // Break any links in the graph that are inconsistent
     ScaffoldLinkValidator linkValidator(100, 0.05f);
     graph.visit(linkValidator);
     graph.deleteVertices(SVC_REPEAT);
-    graph.writeDot("pre-linear.dot");
     
     // Check for cycles in the graph
     ScaffoldAlgorithms::removeCycles(&graph);
@@ -162,6 +168,7 @@ void parseScaffoldOptions(int argc, char** argv)
             case 'u': arg >> opt::uniqueAstatThreshold; break;
             case 'r': arg >> opt::repeatAstatThreshold; break;
             case 'o': arg >> opt::outFile; break;
+            case 's': arg >> opt::maxSVSize; break;
             case OPT_PE: 
                 arg >> opt::peDistanceEstFile; 
                 break;

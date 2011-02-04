@@ -117,6 +117,20 @@ class ScaffoldPolymorphismVisitor
         int m_numMarked;        
 };
 
+// Detect structural variation in the scaffold
+class ScaffoldSVVisitor
+{
+    public:
+        ScaffoldSVVisitor(int maxSize);
+        
+        void previsit(ScaffoldGraph* /*pGraph*/);
+        bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
+        void postvisit(ScaffoldGraph* /*pGraph*/);
+
+    private:
+        int m_maxSVSize;
+};
+
 // Compute a layout of the contigs linked to each vertex
 class ScaffoldLayoutVisitor
 {

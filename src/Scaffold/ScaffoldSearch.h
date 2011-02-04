@@ -53,6 +53,11 @@ namespace ScaffoldSearch
                           size_t maxWalks, 
                           ScaffoldWalkVector& outWalks);
 
+    
+    // Return the index of a walk in allWalks that every vertex in coverVector
+    // If no covering walk can be found, returns -1
+    int findCoveringWalk(const ScaffoldWalkVector& allWalks, 
+                         const ScaffoldVertexPtrVector& coverVector);
 
     // Returns walks from pX to pY that exclusively
     // travel along primary links

@@ -465,6 +465,114 @@ void ScaffoldPolymorphismVisitor::postvisit(ScaffoldGraph* pGraph)
     pGraph->deleteVertices(SVC_POLYMORPHIC);
 }
 
+
+// 
+// ScaffoldTransitiveReductionVisitor - Detect and resolve structural variation in the scaffold graph
+//
+ScaffoldSVVisitor::ScaffoldSVVisitor(int maxSize) : m_maxSVSize(maxSize)
+{
+
+}
+
+//
+void ScaffoldSVVisitor::previsit(ScaffoldGraph* pGraph)
+{
+    pGraph->setEdgeColors(GC_WHITE);
+}
+
+//
+bool ScaffoldSVVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex)
+{
+    // Never try to make chains from a repeat
+    if(pVertex->getClassification() == SVC_REPEAT)
+        return false;
+
+    bool changed_graph = false;
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        ScaffoldEdgePtrVector edgeVec = pVertex->getEdges(dir);
+        if(edgeVec.size() <= 1)
+            continue;
+
+        // Try to make a transitive set out of these edges
+        // Search the graph for a variation walk that contains a common
+        // endpoint for all links
+        ScaffoldWalkVector walkVector;
+        ScaffoldSearch::findVariantWalks(pVertex, dir, 50000, 100, walkVector);
+
+        // Search the walks to see if one contains all the links.
+        ScaffoldVertexPtrVector linkedVertices;
+        for(size_t i = 0; i < edgeVec.size(); ++i)
+            linkedVertices.push_back(edgeVec[i]->getEnd());
+
+        int coveringWalkIdx = ScaffoldSearch::findCoveringWalk(walkVector, linkedVertices);
+        if(coveringWalkIdx == -1)
+        {
+            // no valid found
+            continue;
+        }
+
+        // Keep the first link in the walk and discard all others
+        std::cout << "Walk " << coveringWalkIdx << " contains all links ";
+        walkVector[coveringWalkIdx].print();
+        
+        // Calculate the difference between the distance in the walk and the distance
+        // estimate for each linked vertex
+        int maxDiff = 0;
+        int closestIdx = 0;
+        int closestDistance = std::numeric_limits<int>::max();
+        bool hasOOR = false;
+        for(int i = 0; i < (int)edgeVec.size(); ++i)
+        {
+            int distance = walkVector[coveringWalkIdx].getDistanceToVertex(edgeVec[i]->getEnd());
+            int diff = abs(distance - edgeVec[i]->getDistance());
+          
+            /*
+            printf("SVW: %s -> %s DE: %d WD: %d DF: %d TL: %.2lf\n", edgeVec[i]->getStartID().c_str(), 
+                                                                     edgeVec[i]->getEndID().c_str(),
+                                                                     edgeVec[i]->getDistance(), distance, 
+                                                                     diff, 
+                                                                     3*edgeVec[i]->getStdDev());
+            */
+
+            if(diff > maxDiff)
+                maxDiff = diff;
+
+            if((double)diff > 3*edgeVec[i]->getStdDev())
+                hasOOR = true;
+
+            if(distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestIdx = i;
+            }
+        }
+
+        //printf("SVW: %s MD: %d OR: %d\n", pVertex->getID().c_str(), maxDiff, hasOOR);
+        if(maxDiff > m_maxSVSize)
+            continue;
+
+        // Mark the edges for removal that are not the closest
+        for(int i = 0; i < (int)edgeVec.size(); ++i)
+        {
+            if(i != closestIdx)
+            {
+                edgeVec[i]->setColor(GC_BLACK);
+                edgeVec[i]->getTwin()->setColor(GC_BLACK);
+            }
+        }
+    }
+    return changed_graph;
+}
+
+//
+void ScaffoldSVVisitor::postvisit(ScaffoldGraph* pGraph)
+{
+    pGraph->deleteEdgesByColor(GC_BLACK);
+}
+
+
 ScaffoldLayoutVisitor::ScaffoldLayoutVisitor()
 {
 

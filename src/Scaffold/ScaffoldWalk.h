@@ -30,6 +30,11 @@ class ScaffoldWalk
         ScaffoldVertexPtrVector getVertices() const;
         ScaffoldEdgePtrVector getEdges() const;
 
+        // returns the sum of the gaps plus contig lengths from
+        // the starting vertex to pVertex.
+        // Precondition: pVertex is required to be in the walk
+        int getDistanceToVertex(ScaffoldVertex* pVertex) const;
+
         // Returns the sum of gap distances in the walk
         int64_t getGapSum() const;
 

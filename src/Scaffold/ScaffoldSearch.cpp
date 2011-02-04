@@ -79,6 +79,28 @@ void ScaffoldSearch::findVariantWalks(ScaffoldVertex* pX,
     outWalks.clear();
 }
 
+int ScaffoldSearch::findCoveringWalk(const ScaffoldWalkVector& allWalks, 
+                                      const ScaffoldVertexPtrVector& coverVector)
+{
+    for(size_t i = 0; i < allWalks.size(); ++i)
+    {
+        bool containsAll = true;
+        for(size_t j = 0; j < coverVector.size(); ++j)
+        {
+            int idxInWalk = allWalks[i].findVertex(coverVector[j]);
+            if(idxInWalk == -1)
+            {
+                containsAll = false;
+            }
+        }
+        
+        if(containsAll)
+            return i;
+    }
+    return -1;
+}
+
+
 void ScaffoldSearch::findPrimaryWalks(ScaffoldVertex* pX,
                                       ScaffoldVertex* pY,
                                       EdgeDir initialDir,
