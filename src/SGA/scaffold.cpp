@@ -112,45 +112,38 @@ int scaffoldMain(int argc, char** argv)
     graph.visit(astatVisitor);
 
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
-    graph.writeDot("pregraph.dot");
     graph.deleteVertices(SVC_REPEAT);
-    graph.writeDot("postastat-scaffold.dot");
 
     if(opt::removeConflicting)
     {
         ScaffoldConflictingVisitor conflictVisitor;
         graph.visit(conflictVisitor);
-        graph.writeDot("conflict-scaffold.dot");
         graph.deleteVertices(SVC_REPEAT);
     }
 
     // Remove polymorphic nodes from the graph
     ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
     while(graph.visit(polyVisitor)) {}
-    graph.writeDot("nopoly-scaffold.dot");
     
     // If requested, collapse structural variation in the graph
     if(opt::maxSVSize > 0)
     {
         ScaffoldSVVisitor svVisit(opt::maxSVSize);
         graph.visit(svVisit);
-        graph.writeDot("afterSV.dot");
     }
 
     // Break any links in the graph that are inconsistent
     ScaffoldLinkValidator linkValidator(100, 0.05f);
     graph.visit(linkValidator);
     graph.deleteVertices(SVC_REPEAT);
-    
+
     // Check for cycles in the graph
     ScaffoldAlgorithms::removeCycles(&graph);
 
     // Linearize the scaffolds
     ScaffoldAlgorithms::makeScaffolds(&graph);
 
-    // Place floating contigs and repeats into the gaps.
-    
-    graph.writeDot("post-scaffold.dot");
+    // TODO Place floating contigs and repeats into the gaps.
 
     // Break any remaining multi-edge contigs scaffolds
     ScaffoldMultiEdgeRemoveVisitor cutVisitor;
