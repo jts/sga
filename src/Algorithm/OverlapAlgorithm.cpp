@@ -706,7 +706,9 @@ void OverlapAlgorithm::computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRev
 {
     // processIrreducibleBlocks requires the pOBList to be sorted in descending order
     pOBList->sort(OverlapBlock::sortSizeDescending);
-    _processIrreducibleBlocksInexact(pBWT, pRevBWT, *pOBList, pOBFinal);
+    assert(m_errorRate < 0.00001f);
+    _processIrreducibleBlocksExact(pBWT, pRevBWT, *pOBList, pOBFinal);
+    pOBList->clear();
 }
 
 // iterate through obList and determine the overlaps that are irreducible. This function is recursive.
@@ -722,6 +724,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT
     
     // Count the extensions in the top level (longest) blocks first
     int topLen = obList.front().overlapLen;
+
     AlphaCount64 ext_count;
     OBLIter iter = obList.begin();
     while(iter != obList.end() && iter->overlapLen == topLen)
@@ -750,7 +753,15 @@ void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT
             // Ensure the tlb is actually terminal and not a substring block
             AlphaCount64 test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
             assert(test_count.get('$') > 0);
-            pOBFinal->push_back(OverlapBlock(*tlbIter));
+            
+            // Perform the final right-update to make the block terminal
+            OverlapBlock branched = *tlbIter;
+            BWTAlgorithms::updateBothR(branched.ranges, '$', branched.getExtensionBWT(pBWT, pRevBWT));
+            pOBFinal->push_back(branched);
+#ifdef DEBUGOVERLAP
+            std::cout << "[IE] TLB of length " << branched.overlapLen << " has ended\n";
+            std::cout << "[IE]\tBlock data: " << branched << "\n";
+#endif             
             ++tlbIter;
         } 
         return;
@@ -766,7 +777,6 @@ void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT
 
         if(ext_count.hasUniqueDNAChar())
         {
-
             // Update all the blocks using the unique extension character
             // This character is in the canonical representation wrt to the query
             char b = ext_count.getUniqueDNAChar();
@@ -818,7 +828,6 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
         OverlapBlockList::iterator containedIter = potentialContainedList.begin();
         for(; containedIter != potentialContainedList.end(); ++containedIter)
         {
-            std::cout << "contain check\n";
            if(!isBlockSubstring(*containedIter, terminalList, m_errorRate) && 
               !isBlockSubstring(*containedIter, activeList, m_errorRate))
            {
@@ -840,7 +849,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
         for(; terminalIter != terminalList.end(); ++terminalIter)
         {
 #ifdef DEBUGOVERLAP
-            std::cout << "***TLB of length " << terminalIter->overlapLen << " has ended\n";
+            std::cout << "[II] ***TLB of length " << terminalIter->overlapLen << " has ended\n";
 #endif       
             all_eliminated = true;
             OverlapBlockList::iterator activeIter = activeList.begin();
@@ -856,7 +865,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
                 if(activeIter->overlapLen < terminalIter->overlapLen && 
                    isErrorRateAcceptable(inferredErrorRate, m_errorRate))
                 {
-#ifdef DEBUGOVERLAP                            
+#ifdef DEBUGOVERLAP_2                            
                     std::cout << "Marking block of length " << activeIter->overlapLen << " as eliminated\n";
 #endif
                     activeIter->isEliminated = true;
@@ -871,7 +880,7 @@ void OverlapAlgorithm::_processIrreducibleBlocksInexact(const BWT* pBWT, const B
             if(!terminalIter->isEliminated)
             {
 #ifdef DEBUGOVERLAP
-                std::cout << "Adding block of length " << terminalIter->overlapLen << " to final\n";
+                std::cout << "[II] Adding block " << *terminalIter << " to final list\n";
                 //std::cout << "  extension: " << terminalIter->forwardHistory << "\n";
 #endif                
                 pOBFinal->push_back(*terminalIter);
@@ -909,7 +918,7 @@ void OverlapAlgorithm::extendActiveBlocksRight(const BWT* pBWT, const BWT* pRevB
                 OverlapBlock branched = *iter;
                 BWTAlgorithms::updateBothR(branched.ranges, '$', branched.getExtensionBWT(pBWT, pRevBWT));
                 terminalList.push_back(branched);
-#ifdef DEBUGOVERLAP            
+#ifdef DEBUGOVERLAP_2            
                 std::cout << "Block of length " << iter->overlapLen << " moved to terminal\n";
 #endif
             }
@@ -1004,7 +1013,7 @@ double OverlapAlgorithm::calculateBlockErrorRate(const OverlapBlock& terminalBlo
     int trans_overlap_length = back_max + forward_len;
     double er = static_cast<double>(backwards_diff + forward_diff) / trans_overlap_length;
             
-#ifdef DEBUGOVERLAP
+#ifdef DEBUGOVERLAP_2
     std::cout << "OL: " << terminalBlock.overlapLen << "\n";
     std::cout << "TLB BH: " << terminalBlock.backHistory << "\n";
     std::cout << "TB  BH: " << otherBlock.backHistory << "\n";
@@ -1019,18 +1028,25 @@ double OverlapAlgorithm::calculateBlockErrorRate(const OverlapBlock& terminalBlo
 
 // Update the overlap block list with a righthand extension to b, removing ranges that become invalid
 void OverlapAlgorithm::updateOverlapBlockRangesRight(const BWT* pBWT, const BWT* pRevBWT, 
-                                                     OverlapBlockList& obList, char b) const
+                                                     OverlapBlockList& obList, char canonical_base) const
 {
     OverlapBlockList::iterator iter = obList.begin(); 
     while(iter != obList.end())
     {
-        char cb = iter->flags.isQueryComp() ? complement(b) : b;
-        BWTAlgorithms::updateBothR(iter->ranges, cb, iter->getExtensionBWT(pBWT, pRevBWT));
+        char relative_base = iter->flags.isQueryComp() ? complement(canonical_base) : canonical_base;
+        BWTAlgorithms::updateBothR(iter->ranges, relative_base, iter->getExtensionBWT(pBWT, pRevBWT));
         // remove the block from the list if its no longer valid
         if(!iter->ranges.isValid())
+        {
             iter = obList.erase(iter);
+        }
         else
+        {
+            // Add the base to the extension history
+            int currExtension = iter->forwardHistory.size();
+            iter->forwardHistory.add(currExtension, canonical_base);
             ++iter;
+        }
     }
 }
 

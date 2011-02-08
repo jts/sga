@@ -83,6 +83,10 @@ std::string OverlapBlock::getFullString(const std::string& original) const
     std::string str = getOverlapString(original);
     std::string history = forwardHistory.getBaseString();
 
+    if(history.empty())
+    {
+        WARN_ONCE("getFullString() called on block with no history")
+    }
 /*
     std::cout << "OVERLAP: " << str << "\n";
     std::cout << "HIST: " << history << "\n";
@@ -130,10 +134,13 @@ Overlap OverlapBlock::toOverlap(const std::string queryID, const std::string tar
     // The coordinates are always with respect to the read, so flip them if
     // we aligned to/from the reverse of the read
     if(flags.isQueryRev())
+    {
         sc1.flip();
+    }
     if(flags.isTargetRev())
+    {
         sc2.flip();
-
+    }
     bool isRC = flags.isReverseComplement();
 
     Overlap o(queryID, sc1, targetID, sc2, isRC, numDiff);

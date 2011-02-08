@@ -54,7 +54,6 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
     }
 
     FMMergeResult result;
-    //std::cout << "Processing read " << item.read.id << "\n";
 
     if(!used)
     {
@@ -191,7 +190,6 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
             result.isMerged = false;
         }
     }
-
     return result;
 }
 
