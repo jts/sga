@@ -58,6 +58,10 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "                                       For example M will be changed to A or C. If this option is not specified, the\n"
 "                                       entire read will be discarded.\n"
 "      -s, --sample=FLOAT               Randomly sample reads or pairs with acceptance probability FLOAT.\n"
+"      --dust                           Perform dust-style filtering of low complexity reads. If you are performing\n"
+"                                       de novo genome assembly, you probably do not want this.\n"
+"      --dust-threshold=FLOAT           filter out reads that have a dust score higher than FLOAT (default: 4.0).\n"
+"                                       This option implies --dust\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 enum QualityScaling
@@ -84,6 +88,8 @@ namespace opt
     static QualityScaling qualityScale = QS_SANGER;
 
     static bool bFilterGC = false;
+    static bool bDustFilter = false;
+    static double dustThreshold = 4.0f;
     static double minGC = 0.0f;
     static double maxGC = 1.0;
     static bool bIlluminaScaling = false;
@@ -91,7 +97,7 @@ namespace opt
 
 static const char* shortopts = "o:q:m:h:p:s:f:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, OPT_DUST, OPT_DUST_THRESHOLD };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -102,6 +108,8 @@ static const struct option longopts[] = {
     { "hard-clip",              required_argument, NULL, 'h' },
     { "min-length",             required_argument, NULL, 'm' },
     { "sample",                 required_argument, NULL, 's' },
+    { "dust",                   no_argument,       NULL, OPT_DUST},
+    { "dust-threshold",         required_argument, NULL, OPT_DUST_THRESHOLD },
     { "quality-scale",          required_argument, NULL, OPT_QSCALE},
     { "min-gc",                 required_argument, NULL, OPT_MINGC},
     { "max-gc",                 required_argument, NULL, OPT_MAXGC},
@@ -117,6 +125,7 @@ static int64_t s_numBasesRead = 0;
 static int64_t s_numBasesKept = 0;
 static int64_t s_numReadsPrimer = 0;
 static int64_t s_numInvalidPE = 0;
+static int64_t s_numFailedDust = 0;
 
 //
 // Main
@@ -144,7 +153,8 @@ int preprocessMain(int argc, char** argv)
     std::cerr << "Outfile: " << (opt::outFile.empty() ? "stdout" : opt::outFile) << "\n";
     if(opt::bDiscardAmbiguous)
         std::cerr << "Discarding sequences with ambiguous bases\n";
-    
+    if(opt::bDustFilter)
+        std::cerr << "Dust threshold: " << opt::dustThreshold << "\n";
     // Seed the RNG
     srand(time(NULL));
 
@@ -270,6 +280,8 @@ int preprocessMain(int argc, char** argv)
     std::cerr << "Bases parsed:\t" << s_numBasesRead << "\n";
     std::cerr << "Bases kept:\t" << s_numBasesKept << " (" << (double)s_numBasesKept / (double)s_numBasesRead << ")\n"; 
     std::cerr << "Number of incorrectly paired reads that were discarded: " << s_numInvalidPE << "\n"; 
+    if(opt::bDustFilter)
+        std::cerr << "Number of reads failed dust filter: " << s_numFailedDust << "\n";
     delete pTimer;
     return 0;
 }
@@ -332,6 +344,25 @@ bool processRead(SeqRecord& record)
         int numLowQuality = countLowQuality(seqStr, qualStr);
         if(numLowQuality > opt::qualityFilter)
             return false;
+    }
+
+    // Dust filter
+    if(opt::bDustFilter)
+    {
+        double dustScore = calculateDustScore(seqStr);
+        bool bAcceptDust = dustScore < opt::dustThreshold;
+        
+        if(!bAcceptDust)
+        {
+            s_numFailedDust += 1;
+            if(opt::verbose >= 1)
+            {
+                printf("Failed dust: %s %s %lf\n", record.id.c_str(), 
+                                                   seqStr.c_str(), 
+                                                   dustScore);
+            }
+            return false;
+        }
     }
 
     // Filter by GC content
@@ -452,6 +483,8 @@ void parsePreprocessOptions(int argc, char** argv)
             case 's': arg >> opt::sampleFreq; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_DUST: opt::bDustFilter = true; break;
+            case OPT_DUST_THRESHOLD: arg >> opt::dustThreshold; opt::bDustFilter = true; break;
             case OPT_PERMUTE: opt::bDiscardAmbiguous = false; break;
             case OPT_MINGC: arg >> opt::minGC; opt::bFilterGC = true; break;
             case OPT_MAXGC: arg >> opt::maxGC; opt::bFilterGC = true; break;

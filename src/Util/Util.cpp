@@ -8,6 +8,7 @@
 //
 #include <iostream>
 #include <math.h>
+#include <map>
 #include "Util.h"
 
 //
@@ -58,6 +59,33 @@ std::string suffix(const std::string& seq, const unsigned int len)
     return seq.substr(seq.length() - len);
 }
 
+//
+// Dust scoring scheme as given by:
+// Morgulis A. "A fast and symmetric DUST implementation to Mask
+// Low-Complexity DNA Sequences". J Comp Bio.
+double calculateDustScore(const std::string& seq)
+{
+    std::map<std::string, int> scoreMap;
+
+    // Slide a 3-mer window over the sequence and insert the sequences into the map
+    for(size_t i = 0; i < seq.size() - 3; ++i)
+    {
+        std::string triMer = seq.substr(i, 3);
+        scoreMap[triMer]++;
+    }
+
+    // Calculate the score by summing the square of every element in the map
+    double sum = 0;
+    std::map<std::string, int>::iterator iter = scoreMap.begin();
+    for(; iter != scoreMap.end(); ++iter)
+    {
+        int tc = iter->second;
+        double score = (double)(tc * (tc - 1)) / 2.0f;
+        sum += score;
+    }
+    return sum / (seq.size() - 2);
+}
+ 
 // count the differences between s1 and s2 over the first n bases
 int countDifferences(const std::string& s1, const std::string& s2, size_t n)
 {

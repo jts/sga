@@ -194,6 +194,8 @@ std::string reverse(const std::string& seq);
 std::string prefix(const std::string& seq, const unsigned int len);
 std::string suffix(const std::string& seq, const unsigned int len);
 
+// Calculate the dust score for the given sequence
+double calculateDustScore(const std::string& seq);
 
 // Count the number of differences between s1 and s2 over the first n chars
 int countDifferences(const std::string& s1, const std::string& s2, size_t n);
