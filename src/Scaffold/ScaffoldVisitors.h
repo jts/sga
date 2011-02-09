@@ -63,7 +63,7 @@ class ScaffoldLinkValidator
 {
     public:
         
-        ScaffoldLinkValidator(int maxOverlap, double threshold);
+        ScaffoldLinkValidator(int maxOverlap, double threshold, int verbose);
         void previsit(ScaffoldGraph* /*pGraph*/);
         bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
         void postvisit(ScaffoldGraph* /*pGraph*/);
@@ -74,6 +74,7 @@ class ScaffoldLinkValidator
         double m_threshold;
         size_t m_numUnique;
         size_t m_numRepeat;
+        int m_verbose;
 };
 
 // Walk through the scaffold graph making chains of vertices

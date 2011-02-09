@@ -49,7 +49,7 @@ bool ScaffoldGroup::isOrderAmbiguous()
 // 
 bool ScaffoldGroup::markPolymorphic(double p_cutoff, double cn_cutoff)
 {
-    std::cout << "Checking " << m_pRootVertex->getID() << " for polymorphic links\n";
+    //std::cout << "Checking " << m_pRootVertex->getID() << " for polymorphic links\n";
     LinkVectorPairIterator i = m_links.begin();
     for(; i != m_links.end(); ++i)
     {
@@ -60,9 +60,11 @@ bool ScaffoldGroup::markPolymorphic(double p_cutoff, double cn_cutoff)
             if(isAmbiguous)
             {
                 double sum = i->pEndpoint->getEstCopyNumber() + j->pEndpoint->getEstCopyNumber();
+                /*
                 std::cout << "\tLinks " << i->link << " and " << j->link << " are ambiguous\n";
                 std::cout << "\tECN I: "<< i->pEndpoint->getEstCopyNumber() << " ECN J: " << j->pEndpoint->getEstCopyNumber() << "\n";
                 std::cout << "\tsum: " << sum << "\n";
+                */
                 if(sum < cn_cutoff)
                 {
                     if(i->pEndpoint->getEstCopyNumber() < j->pEndpoint->getEstCopyNumber())

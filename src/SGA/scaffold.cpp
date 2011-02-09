@@ -98,10 +98,10 @@ int scaffoldMain(int argc, char** argv)
     graph.loadVertices(opt::contigsFile, opt::minContigLength);
 
     if(!opt::peDistanceEstFile.empty())
-        graph.loadDistanceEstimateEdges(opt::peDistanceEstFile, false);
+        graph.loadDistanceEstimateEdges(opt::peDistanceEstFile, false, opt::verbose);
     
     if(!opt::mateDistanceEstFile.empty())
-        graph.loadDistanceEstimateEdges(opt::mateDistanceEstFile, true);
+        graph.loadDistanceEstimateEdges(opt::mateDistanceEstFile, true, opt::verbose);
 
     assert(!opt::astatFile.empty());
     
@@ -133,7 +133,7 @@ int scaffoldMain(int argc, char** argv)
     }
 
     // Break any links in the graph that are inconsistent
-    ScaffoldLinkValidator linkValidator(100, 0.05f);
+    ScaffoldLinkValidator linkValidator(100, 0.05f, opt::verbose);
     graph.visit(linkValidator);
     graph.deleteVertices(SVC_REPEAT);
 

@@ -130,7 +130,7 @@ void ScaffoldGraph::loadVertices(const std::string& filename, int minLength)
 }
 
 // 
-void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename, bool isMatePair)
+void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename, bool isMatePair, int verbose)
 {
     std::istream* pReader = createReader(filename);
     std::string line;
@@ -192,7 +192,13 @@ void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename, bool 
                     {
                         if(abs(pEdge->getDistance() - link1.distance) > 100)
                         {
-                            std::cout << "LL skipped from: " << pVertex1->getID() << " in: " << link1 << " n-in: " << link1.numPairs << " existing: " << pEdge->getLink() << " n-ex: " << pEdge->getLink().numPairs << "\n";
+                            if(verbose >= 1)
+                            {
+                                printf("LL skipped from %s to %s. Distance1: %d Distance2: %d\n", pVertex1->getID().c_str(), 
+                                                                                                  link1.endpointID.c_str(), 
+                                                                                                  link1.distance, 
+                                                                                                  pEdge->getDistance());
+                            }
                             pVertex1->setConflictingFlag(true);
                             pVertex2->setConflictingFlag(true);
                         }

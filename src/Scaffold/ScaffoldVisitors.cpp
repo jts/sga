@@ -111,8 +111,10 @@ void ScaffoldAStatisticVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
 
 //
 ScaffoldLinkValidator::ScaffoldLinkValidator(int maxOverlap, 
-                                             double threshold) : m_maxOverlap(maxOverlap),
-                                                                 m_threshold(threshold)
+                                             double threshold,
+                                             int verbose) : m_maxOverlap(maxOverlap),
+                                                            m_threshold(threshold),
+                                                            m_verbose(verbose)
 {
 
 }
@@ -147,20 +149,24 @@ bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
             group.computeBestOrdering();
             bool overlapCheck = longestOverlap < 400;
             bool result = overlapCheck;
-            std::string ambiStr = isAmbiguous ? "ambiguous" : "unambiguous";
-            std::string overStr = overlapCheck ? "good-ordering" : "no-ordering";
-            std::string resultStr = result ? "PASS" : "FAIL";
-            std::string orderStr = group.getBestOrderingString();
-            printf("LV %s %d CL:%d EC:%2.2lf AS:%2.2lf %s %s %s LO:%d BO:%s\n", pVertex->getID().c_str(), 
-                                                                              (int)idx, 
-                                                                              (int)pVertex->getSeqLen(), 
-                                                                              pVertex->getEstCopyNumber(),
-                                                                              pVertex->getAStatistic(),
-                                                                              ambiStr.c_str(), 
-                                                                              overStr.c_str(), 
-                                                                              resultStr.c_str(), 
-                                                                              longestOverlap,
-                                                                              orderStr.c_str());
+
+            if(m_verbose >= 1)
+            {
+                std::string ambiStr = isAmbiguous ? "ambiguous" : "unambiguous";
+                std::string overStr = overlapCheck ? "good-ordering" : "no-ordering";
+                std::string resultStr = result ? "PASS" : "FAIL";
+                std::string orderStr = group.getBestOrderingString();
+                printf("LV %s %d CL:%d EC:%2.2lf AS:%2.2lf %s %s %s LO:%d BO:%s\n", pVertex->getID().c_str(), 
+                                                                                  (int)idx, 
+                                                                                  (int)pVertex->getSeqLen(), 
+                                                                                  pVertex->getEstCopyNumber(),
+                                                                                  pVertex->getAStatistic(),
+                                                                                  ambiStr.c_str(), 
+                                                                                  overStr.c_str(), 
+                                                                                  resultStr.c_str(), 
+                                                                                  longestOverlap,
+                                                                                  orderStr.c_str());
+            }
 
             // If the link did not pass validation, cut the scaffold at this point for all involved vertices
             if(!result)

@@ -26,7 +26,7 @@ class ScaffoldGraph
         ~ScaffoldGraph();
 
         void loadVertices(const std::string& filename, int minLength);
-        void loadDistanceEstimateEdges(const std::string& filename, bool isMatePair);
+        void loadDistanceEstimateEdges(const std::string& filename, bool isMatePair, int verbose);
         void loadAStatistic(const std::string& filename);
 
         void addVertex(ScaffoldVertex* pVertex);
