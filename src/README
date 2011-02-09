@@ -14,6 +14,12 @@ SGA dependencies:
     -zlib (http://www.zlib.net/)
     -(optional) the hoard memory allocator (http://www.hoard.org/)
 
+Additionally, the pipeline python scripts use the following modules. These
+are not required to build SGA but must be available if you want to use the relevant 
+python helper scripts:
+    -pysam (http://code.google.com/p/pysam/)
+    -ruffus (http://www.ruffus.org.uk/)
+
 If you cloned the repository from github, run autogen.sh from the src directory 
 to generate the configure file:
 
