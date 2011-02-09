@@ -110,10 +110,14 @@ int scaffold2fastaMain(int argc, char** argv)
     std::cout << "Graph unique: " << (opt::resolveMask & RESOLVE_GRAPH_UNIQUE) << "\n";
     std::cout << "Find overlaps: " << (opt::resolveMask & RESOLVE_OVERLAP) << "\n";
 
-    if(opt::asqgFile.empty())
-        assert(false && "only asqg mode is implemented, please provide an ASQG file");
+    assert(opt::asqgFile.empty() || opt::contigFile.empty());
 
-    StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
+    StringGraph* pGraph;
+    if(!opt::asqgFile.empty())
+        pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
+    else
+        pGraph = SGUtil::loadFASTA(opt::contigFile);
+
     std::istream* pReader = new std::ifstream(opt::scafFile.c_str());
     std::ostream* pWriter = createWriter(opt::outFile);
 

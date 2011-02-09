@@ -23,5 +23,9 @@ namespace SGUtil
 // Vertices that are substrings of other vertices (SS flag = 1) are never kept
 StringGraph* loadASQG(const std::string& filename, const unsigned int minOverlap, bool allowContainments = false);
 
+// Load a string graph from a fasta file.
+// Returns a graph where each sequence in the fasta is a vertex but there are no edges in the graph.
+StringGraph* loadFASTA(const std::string& filename);
+
 };
 #endif

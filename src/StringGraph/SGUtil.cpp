@@ -135,3 +135,18 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
     return pGraph;
 }
 
+// Load a graph (with no edges) from a fasta file
+StringGraph* SGUtil::loadFASTA(const std::string& filename)
+{
+    StringGraph* pGraph = new StringGraph;
+    SeqReader reader(filename, SRF_FULL_VALIDATION);
+    SeqRecord record;
+
+    while(reader.get(record))
+    {
+        Vertex* pVertex = new(pGraph->getVertexAllocator()) Vertex(record.id, record.seq.toString());
+        pGraph->addVertex(pVertex);
+    }
+    return pGraph;
+}
+
