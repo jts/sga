@@ -52,9 +52,13 @@ class ErrorCorrectProcess
 {
     public:
         ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
-                            int minOverlap, int numRounds, 
-                            int conflictCutoff, int kmerLength,
-                            int kmerThreshold, ErrorCorrectAlgorithm algo,
+                            int minOverlap, 
+                            int numOverlapRounds, 
+                            int numKmerRouns,
+                            int conflictCutoff,
+                            int kmerLength,
+                            int kmerThreshold,
+                            ErrorCorrectAlgorithm algo,
                             bool printMO);
 
         ~ErrorCorrectProcess();
@@ -72,7 +76,8 @@ class ErrorCorrectProcess
         OverlapBlockList m_blockList;
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;
-        const int m_numRounds;
+        const int m_numOverlapRounds;
+        const int m_numKmerRounds;
         const int m_conflictCutoff;
         const int m_kmerLength;
         const int m_kmerThreshold;

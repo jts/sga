@@ -667,7 +667,7 @@ void MultiOverlap::printMasked()
             if(b == '\0')
                 out.push_back('.');
             else if(b == m_rootSeq[i])
-                out.push_back('-');
+                out.push_back('=');
             else
                 out.push_back(b);
         }
