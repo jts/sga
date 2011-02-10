@@ -69,6 +69,7 @@ static const char *CORRECT_USAGE_MESSAGE =
 "\nKmer correction parameters:\n"
 "      -k, --kmer-size=N                The length of the kmer to use. (default: 41)\n"
 "      -x, --kmer-threshold=N           Attempt to correct kmers that are seen less than N times. (default: 3)\n"
+"      -i, --kmer-rounds=N              Perform N rounds of k-mer correction, correcting up to N bases (default: 5)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -78,7 +79,7 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
-    static int numRounds = 1;
+    static int numOverlapRounds = 1;
     static std::string prefix;
     static std::string readsFile;
     static std::string outFile;
@@ -95,11 +96,12 @@ namespace opt
 
     static int kmerLength = 41;
     static int kmerThreshold = 3;
+    static int numKmerRounds = 5;
 
     static ErrorCorrectAlgorithm algorithm = ECA_HYBRID;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:o:r:b:a:c:k:x:vi";
+static const char* shortopts = "p:m:d:e:t:l:s:o:r:b:a:c:k:x:i:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD };
 
@@ -119,6 +121,7 @@ static const struct option longopts[] = {
     { "branch-cutoff", required_argument, NULL, 'b' },
     { "kmer-size",     required_argument, NULL, 'k' },
     { "kmer-threshold",required_argument, NULL, 'x' },
+    { "kmer-rounds",   required_argument, NULL, 'i' },
     { "discard",       no_argument,       NULL, OPT_DISCARD },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
@@ -152,8 +155,15 @@ int correctMain(int argc, char** argv)
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        ErrorCorrectProcess processor(pOverlapper, opt::minOverlap, opt::numRounds, opt::conflictCutoff, 
-                                      opt::kmerLength, opt::kmerThreshold, opt::algorithm, opt::verbose > 1);
+        ErrorCorrectProcess processor(pOverlapper, 
+                                      opt::minOverlap, 
+                                      opt::numOverlapRounds, 
+                                      opt::numKmerRounds,
+                                      opt::conflictCutoff, 
+                                      opt::kmerLength, 
+                                      opt::kmerThreshold, 
+                                      opt::algorithm, 
+                                      opt::verbose > 1);
 
         SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
                                                          ErrorCorrectResult, 
@@ -167,9 +177,13 @@ int correctMain(int argc, char** argv)
         for(int i = 0; i < opt::numThreads; ++i)
         {
             ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, 
-                                                                      opt::numRounds, opt::conflictCutoff, 
-                                                                      opt::kmerLength, opt::kmerThreshold, 
-                                                                      opt::algorithm, opt::verbose > 1);
+                                                                      opt::numOverlapRounds,
+                                                                      opt::numKmerRounds,
+                                                                      opt::conflictCutoff, 
+                                                                      opt::kmerLength, 
+                                                                      opt::kmerThreshold, 
+                                                                      opt::algorithm, 
+                                                                      opt::verbose > 1);
             processorVector.push_back(pProcessor);
         }
         
@@ -226,7 +240,7 @@ void parseCorrectOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
-            case 'r': arg >> opt::numRounds; break;
+            case 'r': arg >> opt::numOverlapRounds; break;
             case 'a': arg >> algo_str; break;
             case 'd': arg >> opt::sampleRate; break;
             case 'c': arg >> opt::conflictCutoff; break;
@@ -235,6 +249,7 @@ void parseCorrectOptions(int argc, char** argv)
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case 'b': arg >> opt::branchCutoff; break;
+            case 'i': arg >> opt::numKmerRounds; break;
             case OPT_DISCARD: bDiscardReads = true; break;
             case OPT_METRICS: arg >> opt::metricsFile; break;
             case OPT_HELP:
@@ -263,12 +278,18 @@ void parseCorrectOptions(int argc, char** argv)
         die = true;
     }
 
-    if(opt::numRounds <= 0)
+    if(opt::numOverlapRounds <= 0)
     {
-        std::cerr << SUBPROGRAM ": invalid number of rounds: " << opt::numRounds << ", must be at least 1\n";
+        std::cerr << SUBPROGRAM ": invalid number of overlap rounds: " << opt::numOverlapRounds << ", must be at least 1\n";
         die = true;
     }
     
+    if(opt::numKmerRounds <= 0)
+    {
+        std::cerr << SUBPROGRAM ": invalid number of kmer rounds: " << opt::numKmerRounds << ", must be at least 1\n";
+        die = true;
+    }
+
     if(opt::kmerLength <= 0)
     {
         std::cerr << SUBPROGRAM ": invalid kmer length: " << opt::kmerLength << ", must be greater than zero\n";

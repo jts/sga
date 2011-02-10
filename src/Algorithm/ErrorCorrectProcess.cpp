@@ -17,13 +17,18 @@
 //
 //
 ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
-                                         int minOverlap, int numRounds, 
-                                         int conflictCutoff, int kmerLength,
-                                         int kmerThreshold, ErrorCorrectAlgorithm algo,
+                                         int minOverlap, 
+                                         int numOverlapRounds,
+                                         int numKmerRounds,
+                                         int conflictCutoff,
+                                         int kmerLength,
+                                         int kmerThreshold, 
+                                         ErrorCorrectAlgorithm algo,
                                          bool printMO) : 
                                             m_pOverlapper(pOverlapper), 
                                             m_minOverlap(minOverlap),
-                                            m_numRounds(numRounds),
+                                            m_numOverlapRounds(numOverlapRounds),
+                                            m_numKmerRounds(numKmerRounds),
                                             m_conflictCutoff(conflictCutoff),
                                             m_kmerLength(kmerLength),
                                             m_kmerThreshold(kmerThreshold),
@@ -43,6 +48,8 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
     ErrorCorrectResult result = correct(workItem);
+    if(!result.kmerQC && !result.overlapQC && m_printOverlaps)
+        std::cout << workItem.read.id << " failed error correction QC\n";
     return result;
 }
     
@@ -125,7 +132,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
         result.correctSequence = mo.consensusConflict(p_error, m_conflictCutoff);
 
         ++rounds;
-        if(rounds == m_numRounds || result.correctSequence == currRead.seq)
+        if(rounds == m_numOverlapRounds || result.correctSequence == currRead.seq)
             done = true;
         else
             currRead.seq = result.correctSequence;
@@ -148,7 +155,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
         std::cout << "CS:     " << corrected_seq << "\n";
         std::cout << "DS:     " << getDiffString(originalRead, corrected_seq) << "\n";
         std::cout << "QS:     " << currRead.qual << "\n";
-	std::cout << "\n";
+    	std::cout << "\n";
     }
     
     return result;
@@ -175,7 +182,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     bool allSolid = false;
     bool done = false;
     int rounds = 0;
-    int maxAttempts = 4;
+    int maxAttempts = m_numKmerRounds;
 
     // For each kmer, calculate the minimum phred score seen in the bases
     // of the kmer
