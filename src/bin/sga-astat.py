@@ -26,6 +26,8 @@ numIterations = 3
 singleCopyThreshold = 30
 bKeepDuplicates = True
 minLength = 0
+genomeSize = 0
+arrivalRate = 0
 
 def usage():
     print 'usage: sga-astat.py in.bam'
@@ -35,10 +37,11 @@ def usage():
     print '    -b=INT          use the longest INT contigs to perform the initial estimate'
     print '                    of the arrival rate (default: ' + str(numContigsForInitialEstimate) + ')' 
     print '    -n=INT          perform INT bootstrap iterations of the estimate'
+    print '    -g=INT          use INT as the genome size instead of estimating it'
     print '    --no-duplicates do not use duplicate reads to calculate statistics'
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], 'm:b:n:', ['help', 'no-duplicates'])
+    opts, args = getopt.gnu_getopt(sys.argv[1:], 'm:b:n:g:', ['help', 'no-duplicates'])
 except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -51,6 +54,8 @@ for (oflag, oarg) in opts:
             numContigsForInitialEstimate = int(oarg)
         if oflag == '-n':
             numIterations = int(oarg)
+        if oflag == '-g':
+            genomeSize = int(oarg)
         if oflag == '--no-duplicates':
             bKeepDuplicates = False
         if oflag == '--help':
@@ -113,37 +118,52 @@ for cd in contigData:
     cd.nlen = cd.len - avgReadLen + 1
 
 # Estimate the initial arrival rate using the longest contigs
+# if the genome size was not provided
 bootstrapLen = 0;
 bootstrapReads = 0;
 
-for i in range(0, numContigsForInitialEstimate):
-    cd = contigData[i]
-    bootstrapLen += cd.nlen
-    bootstrapReads += cd.n
+if genomeSize == 0:
+    for i in range(0, numContigsForInitialEstimate):
+        cd = contigData[i]
+        bootstrapLen += cd.nlen
+        bootstrapReads += cd.n
 
-arrivalRate = float(bootstrapReads) / float(bootstrapLen)
-genomeSize = int(totalReads / arrivalRate)
-
-sys.stderr.write('Initial arrival rate: ' + str(arrivalRate) + '\n');
-sys.stderr.write('Initial genome size estimate: ' + str(genomeSize) + '\n')
-
-for i in range(0, numIterations):
-
-    bootstrapLen = 0;
-    bootstrapReads = 0;
-    for cd in contigData:
-        cd.astat = computeAStat(arrivalRate, cd.nlen, cd.n)
-        cd.bUnique = cd.astat > singleCopyThreshold
-
-        if cd.len >= minLength and cd.bUnique:
-            bootstrapLen += cd.nlen
-            bootstrapReads += cd.n
-
-    # Estimate arrival rate based on unique contigs
     arrivalRate = float(bootstrapReads) / float(bootstrapLen)
     genomeSize = int(totalReads / arrivalRate)
-    sys.stderr.write('Iteration ' + str(i) + ' arrival rate: ' + str(arrivalRate) + '\n');
-    sys.stderr.write('Iteration ' + str(i) + ' genome size estimate: ' + str(genomeSize) + '\n')
+
+    sys.stderr.write('Initial arrival rate: ' + str(arrivalRate) + '\n');
+    sys.stderr.write('Initial genome size estimate: ' + str(genomeSize) + '\n')
+
+    for i in range(0, numIterations):
+
+        bootstrapLen = 0;
+        bootstrapReads = 0;
+        for cd in contigData:
+            cd.astat = computeAStat(arrivalRate, cd.nlen, cd.n)
+            cd.bUnique = cd.astat > singleCopyThreshold
+
+            if cd.len >= minLength and cd.bUnique:
+                bootstrapLen += cd.nlen
+                bootstrapReads += cd.n
+
+        # Estimate arrival rate based on unique contigs
+        arrivalRate = float(bootstrapReads) / float(bootstrapLen)
+        genomeSize = int(totalReads / arrivalRate)
+        sys.stderr.write('Iteration ' + str(i) + ' arrival rate: ' + str(arrivalRate) + '\n');
+        sys.stderr.write('Iteration ' + str(i) + ' genome size estimate: ' + str(genomeSize) + '\n')
+
+arrivalRate = float(totalReads) / genomeSize
+sys.stderr.write('Using genome size: ' + str(genomeSize) + '\n')
+sys.stderr.write('Using arrival rate: ' + str(arrivalRate) + '\n')
+
+# Compute final astat values
+for cd in contigData:
+    cd.astat = computeAStat(arrivalRate, cd.nlen, cd.n)
+    cd.bUnique = cd.astat > singleCopyThreshold
+
+    if cd.len >= minLength and cd.bUnique:
+        bootstrapLen += cd.nlen
+        bootstrapReads += cd.n
 
 for cd in contigData:
     if cd.len >= minLength:
