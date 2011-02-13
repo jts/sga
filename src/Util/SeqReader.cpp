@@ -83,9 +83,15 @@ bool SeqReader::get(SeqRecord& sr)
         if(seq.size() != qual.size() && warn_count++ < MAX_WARN)
         {
             std::cerr << "Warning, FASTQ quality string is not the same length as the sequence string for read " << header << "\n";
-            
         }
-        validRecord = seq.size() > 0 && qual.size() > 0 && !m_pHandle->eof();
+        
+        // Fix [Issue GH-3]: Handle FASTQ records that have no sequence or quality value. We only
+        // emit a warning here as long as the record is properly formed.
+        if(seq.empty() || qual.empty())
+        {
+            std::cerr << "Warning, read " << header << " has no sequence or quality values\n";
+        }
+        validRecord = !m_pHandle->eof();
     }
 
     if(validRecord)
