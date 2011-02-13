@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 # sga-joinpe - join the two ends of a paired end read together 
 # into one composite sequence. This is used to run rmdup on the pairs
 import getopt

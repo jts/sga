@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 # pipeline to align reads to contigs implemented with ruffus (http://ruffus.org.uk)
 from ruffus import *
@@ -38,9 +38,6 @@ def runBWAAln(inFiles, contigsFile, outFile):
 
     os.unlink(tempSAI[0])
     os.unlink(tempSAI[1])
-
-    cmd = "samtools index %s" % (outFile)
-    runCmd(cmd)
 
 def runMerge(inFiles, outFile):
     cmd = "samtools merge %s %s" % (outFile, " ".join(inFiles))
@@ -86,6 +83,11 @@ for (oflag, oarg) in opts:
             print 'Unrecognized argument', oflag
             usage()
             sys.exit(0)
+
+if len(args) < 2:
+    print 'Error, a contigs file and reads file must be provided'
+    usage()
+    sys.exit(0)
 
 bPEMode = True
 contigFile = args[0]

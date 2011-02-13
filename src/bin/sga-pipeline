@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
 # sga assembly pipeline implemented with ruffus (http://ruffus.org.uk)
 from ruffus import *

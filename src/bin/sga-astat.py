@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 #
 # sga-astat.py - Compute Myers' a-statistic for a set of contigs using read alignments
 # in a bam file
