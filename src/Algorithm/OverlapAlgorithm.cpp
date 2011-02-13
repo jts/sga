@@ -752,7 +752,11 @@ void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT
         {
             // Ensure the tlb is actually terminal and not a substring block
             AlphaCount64 test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
-            assert(test_count.get('$') > 0);
+            if(test_count.get('$') > 0)
+            {
+                std::cerr << "Error in overlap calculation: substring block found. Please run rmdup before overlap\n";
+                exit(EXIT_FAILURE);
+            }
             
             // Perform the final right-update to make the block terminal
             OverlapBlock branched = *tlbIter;
