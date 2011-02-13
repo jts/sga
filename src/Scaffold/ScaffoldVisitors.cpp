@@ -735,7 +735,7 @@ bool ScaffoldDistanceRefinementVisitor::visit(ScaffoldGraph* /*pGraph*/, Scaffol
             assert(pX != NULL && pY != NULL);
 
             SGWalkVector walks;
-            SGSearch::findWalks(pX, pY, edgeVec[i]->getDir(), edgeVec[i]->getDistance() + pY->getSeqLen() + 1000, 100000, walks); 
+            SGSearch::findWalks(pX, pY, edgeVec[i]->getDir(), edgeVec[i]->getDistance() + pY->getSeqLen() + 1000, true, 100000, walks); 
 
             // Select the walk closest to the distance estimate
             if(walks.size() > 0)

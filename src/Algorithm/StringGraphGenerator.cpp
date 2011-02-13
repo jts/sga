@@ -105,7 +105,7 @@ void StringGraphGenerator::buildGraph(FrontierQueue& queue)
 SGWalkVector StringGraphGenerator::searchWalks()
 {
     SGWalkVector walks;
-    SGSearch::findWalks(m_pStartVertex, m_pEndVertex, m_startDir, m_maxDistance, 10000, walks);
+    SGSearch::findWalks(m_pStartVertex, m_pEndVertex, m_startDir, m_maxDistance, true, 10000, walks);
     return walks;
 }
 

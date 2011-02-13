@@ -273,7 +273,7 @@ int connectMain(int argc, char** argv)
         int maxWalkDistance = opt::maxDistance - coveredX;
 
         SGWalkVector walks;
-        SGSearch::findWalks(pX, pY, walkDirectionXOut, maxWalkDistance, 10000, walks);
+        SGSearch::findWalks(pX, pY, walkDirectionXOut, maxWalkDistance, 10000, true, walks);
 
         // Mark used vertices in the graph
         // If the entire path was resolved, mark black

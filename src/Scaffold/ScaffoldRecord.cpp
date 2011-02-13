@@ -173,7 +173,7 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
     int maxDistance = link.distance + threshold;
     int maxExtensionDistance = maxDistance + pEndVertex->getSeqLen();
     SGWalkVector walks;
-    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), maxExtensionDistance, 10000, walks);
+    SGSearch::findWalks(pStartVertex, pEndVertex, link.getDir(), maxExtensionDistance, 10000, true, walks);
 
     int numWalksValid = 0;
     int numWalksClosest = 0;

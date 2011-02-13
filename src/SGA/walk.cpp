@@ -84,8 +84,8 @@ void walk()
 
     SGWalkVector walkVector;
 
-    SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000, walkVector);
-    SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000, walkVector);
+    SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000, false, walkVector);
+    SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000, false, walkVector);
 
     for(size_t i = 0; i < walkVector.size(); ++i)
     {

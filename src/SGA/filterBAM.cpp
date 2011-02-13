@@ -195,7 +195,7 @@ int filterBAMMain(int argc, char** argv)
         {
 
             SGWalkVector walks;
-            SGSearch::findWalks(pX, pY, walkDirectionXOut, maxWalkDistance, 10000, walks);
+            SGSearch::findWalks(pX, pY, walkDirectionXOut, maxWalkDistance, 10000, true, walks);
 
             if(!walks.empty())
             {

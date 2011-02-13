@@ -38,8 +38,13 @@ struct SGWalkBuilder
 namespace SGSearch
 {
     //
-    void findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
-                   int maxDistance, size_t maxNodes, SGWalkVector& outWalks);
+    bool findWalks(Vertex* pX, 
+                   Vertex* pY, 
+                   EdgeDir initialDir,
+                   int maxDistance, 
+                   size_t maxNodes, 
+                   bool exhaustive,
+                   SGWalkVector& outWalks);
 
     void findVariantWalks(Vertex* pX, 
                           EdgeDir initialDir, 
