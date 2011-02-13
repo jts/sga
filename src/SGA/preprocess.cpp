@@ -232,6 +232,13 @@ int preprocessMain(int argc, char** argv)
             SeqRecord record2;
             while(pReader1->get(record1) && pReader2->get(record2))
             {
+                // If the names of the records are the same, append a /1 and /2 to them
+                if(record1.id == record2.id)
+                {
+                    record1.id.append("/1");
+                    record2.id.append("/2");
+                }
+
                 // Ensure the read names are sensible
                 std::string expectedID2 = getPairID(record1.id);
                 std::string expectedID1 = getPairID(record2.id);
