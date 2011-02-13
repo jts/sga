@@ -45,9 +45,12 @@ class MultiOverlap
                      const std::string& rootSeq, 
                      const std::string rootQual = "");
         
+        ///
         void add(const std::string& seq, const Overlap& ovr);
         void add(const MOData& mod);
+        void updateRootSeq(const std::string& newSeq);
 
+        //
         Overlap getOverlap(size_t idx) const;
         size_t getNumBases() const;
 
@@ -68,10 +71,10 @@ class MultiOverlap
         void setPartition(size_t idx, int p);
         std::string consensusConflict(double p_error, int conflictCutoff);
 
-        void makeSeqTries(double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie);
-
-        // Count the number of members in the given partition
-        size_t countPartition(int id) const;
+        // Returns true if each base of the root sequence has enough support from
+        // other reads in the multioverlap. The level of support is determined by
+        // the quality score.
+        bool qcCheck() const;
 
         // Count the number of prefix and suffix overlaps
         void countOverlaps(size_t& prefix_count, size_t& suffix_count) const;

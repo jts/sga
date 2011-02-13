@@ -96,6 +96,8 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
     SeqRecord currRead = workItem.read;
     std::string originalRead = workItem.read.seq.toString();
 
+    bool bQCPass = false;
+
     while(!done)
     {
         // Compute the set of overlap blocks for the read
@@ -115,6 +117,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
             result.num_prefix_overlaps = sumOverlaps;
             result.num_suffix_overlaps = sumOverlaps;
             result.correctSequence = currRead.seq;
+            result.overlapQC = true;
             break;
         }
 
@@ -133,20 +136,20 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
 
         ++rounds;
         if(rounds == m_numOverlapRounds || result.correctSequence == currRead.seq)
+        {
+            // Correction has converged or the number of rounds was exceeded.
+            // Check if the sequence of the read passes QC in the multioverlap
+            mo.updateRootSeq(result.correctSequence.toString());
+            bQCPass = mo.qcCheck();
             done = true;
+        }
         else
+        {
             currRead.seq = result.correctSequence;
+        }
     }
     
-    // Quality checks
-    if(result.num_prefix_overlaps > 0 && result.num_suffix_overlaps > 0)
-    {
-        result.overlapQC = true;
-    }
-    else
-    {
-        result.overlapQC = false;
-    }
+    result.overlapQC = bQCPass;
 
     if(m_printOverlaps)
     {
@@ -155,7 +158,8 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
         std::cout << "CS:     " << corrected_seq << "\n";
         std::cout << "DS:     " << getDiffString(originalRead, corrected_seq) << "\n";
         std::cout << "QS:     " << currRead.qual << "\n";
-    	std::cout << "\n";
+        std::cout << "QC: " << (result.overlapQC ? "pass" : "fail") << "\n"; 
+        std::cout << "\n";
     }
     
     return result;

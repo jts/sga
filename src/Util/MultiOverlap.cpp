@@ -54,6 +54,12 @@ void MultiOverlap::add(const MOData& mod)
 }
 
 //
+void MultiOverlap::updateRootSeq(const std::string& newSeq)
+{
+    m_rootSeq = newSeq;
+}
+
+//
 Overlap MultiOverlap::getOverlap(size_t idx) const
 {
     assert(idx < m_overlaps.size());
@@ -318,34 +324,27 @@ std::string MultiOverlap::consensusConflict(double /*p_error*/, int conflictCuto
     return consensus;
 }
 
-// Construct the left and right seqtries representing the multioverlap
-void MultiOverlap::makeSeqTries(double p_error, SeqTrie& leftTrie, SeqTrie& rightTrie)
-{
-    double lp = log(p_error);
-    if(m_overlaps.empty())
-        return;
-
-    for(size_t i = 0; i < m_overlaps.size(); ++i)
-    {
-        MOData data = m_overlaps[i];
-
-        if(data.offset == 0)
-            leftTrie.insert(data.seq, lp);
-        else
-            rightTrie.insert(reverse(data.seq), lp);
-    }    
-}
-
 //
-size_t MultiOverlap::countPartition(int id) const
+bool MultiOverlap::qcCheck() const
 {
-    size_t count = 0;
-    for(size_t i = 0; i < m_overlaps.size(); ++i)
+    for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
-        if(m_overlaps[i].partitionID == id)
-            ++count;
+        AlphaCount64 ac = getAlphaCount(i);
+        size_t minSupport = CorrectionThresholds::minSupportLowQuality;
+        if(!m_rootQual.empty())
+        {
+            int phredScore = Quality::char2phred(m_rootQual[i]);
+            if(phredScore >= CorrectionThresholds::highQualityCutoff)
+                minSupport = CorrectionThresholds::minSupportHighQuality;
+            else
+                minSupport = CorrectionThresholds::minSupportLowQuality;
+        }
+
+        size_t callSupport = ac.get(m_rootSeq[i]);
+        if(callSupport < 2)
+            return false;
     }
-    return count;
+    return true;
 }
 
 //
