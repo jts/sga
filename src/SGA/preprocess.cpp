@@ -14,6 +14,7 @@
 #include "SeqReader.h"
 #include "PrimerScreen.h"
 #include "Alphabet.h"
+#include "Quality.h"
 
 static unsigned int DEFAULT_MIN_LENGTH = 40;
 static int LOW_QUALITY_PHRED_SCORE = 3;
@@ -35,10 +36,8 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
-//"      --quality-scale=STR              Specify the quality scaling to use. This parameter is mandatory and acceptable\n"
-//"                                       strings are none, sanger, illumina1.3, illumina1.5. It is extremely important\n"
-//"                                       to set this correctly.\n"
 "      -o, --out=FILE                   write the reads to FILE (default: stdout)\n"
+"          --phred64                    the input reads are phred64 scaled. They will be converted to phred33.\n"
 "      -p, --pe-mode=INT                0 - do not treat reads as paired (default)\n"
 "                                       1 - reads are paired with the first read in READS1 and the second\n"
 "                                       read in READS2. The paired reads will be interleaved in the output file\n"
@@ -69,8 +68,7 @@ enum QualityScaling
     QS_UNDEFINED,
     QS_NONE,
     QS_SANGER,
-    QS_ILLUMINA_1_3,
-    QS_ILLUMINA_1_5
+    QS_PHRED64
 };
 
 namespace opt
@@ -97,7 +95,7 @@ namespace opt
 
 static const char* shortopts = "o:q:m:h:p:s:f:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, OPT_DUST, OPT_DUST_THRESHOLD };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, OPT_DUST, OPT_DUST_THRESHOLD, OPT_PHRED64 };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -110,7 +108,7 @@ static const struct option longopts[] = {
     { "sample",                 required_argument, NULL, 's' },
     { "dust",                   no_argument,       NULL, OPT_DUST},
     { "dust-threshold",         required_argument, NULL, OPT_DUST_THRESHOLD },
-    { "quality-scale",          required_argument, NULL, OPT_QSCALE},
+    { "phred64",                no_argument, NULL, OPT_PHRED64},
     { "min-gc",                 required_argument, NULL, OPT_MINGC},
     { "max-gc",                 required_argument, NULL, OPT_MAXGC},
     { "help",                   no_argument,       NULL, OPT_HELP },
@@ -176,7 +174,7 @@ int preprocessMain(int argc, char** argv)
         while(optind < argc)
         {
             std::string filename = argv[optind++];
-            std::cerr << "Processing " << filename << "\n";
+            std::cerr << "Processing " << filename << "\n\n";
             SeqReader reader(filename, SRF_NO_VALIDATION);
             SeqRecord record;
 
@@ -280,7 +278,7 @@ int preprocessMain(int argc, char** argv)
     if(pWriter != &std::cout)
         delete pWriter;
 
-    std::cerr << "Preprocess stats:\n";
+    std::cerr << "\nPreprocess stats:\n";
     std::cerr << "Reads parsed:\t" << s_numReadsRead << "\n";
     std::cerr << "Reads kept:\t" << s_numReadsKept << " (" << (double)s_numReadsKept / (double)s_numReadsRead << ")\n";
     std::cerr << "Reads failed primer screen:\t" << s_numReadsPrimer << " (" << (double)s_numReadsPrimer / (double)s_numReadsRead << ")\n";
@@ -332,7 +330,30 @@ bool processRead(SeqRecord& record)
     size_t pos = seqStr.find_first_not_of("ACGT");
     if(pos != std::string::npos)
         return false;
-    
+
+    // Validate the quality string (if present) and
+    // perform any necessary transformations
+    if(!qualStr.empty())
+    {
+        // Calculate the range of phred scores for validation
+        bool allValid = true;
+        for(size_t i = 0; i < qualStr.size(); ++i)
+        {
+            if(opt::qualityScale == QS_PHRED64)
+                qualStr[i] = Quality::phred64toPhred33(qualStr[i]);
+            allValid = Quality::isValidPhred33(qualStr[i]) && allValid;
+        }
+
+        if(!allValid)
+        {
+            std::cerr << "Error: read " << record.id << " has out of range quality values.\n";
+            std::cerr << "Expected phred" << (opt::qualityScale == QS_SANGER ? "33" : "64") << ".\n";
+            std::cerr << "Quality string: "  << qualStr << "\n";
+            std::cerr << "Check your data and re-run preprocess with the correct quality scaling flag.\n";
+            exit(EXIT_FAILURE);
+        }
+    }
+
     // Hard clip
     if(opt::hardClip > 0)
     {
@@ -495,30 +516,7 @@ void parsePreprocessOptions(int argc, char** argv)
             case OPT_PERMUTE: opt::bDiscardAmbiguous = false; break;
             case OPT_MINGC: arg >> opt::minGC; opt::bFilterGC = true; break;
             case OPT_MAXGC: arg >> opt::maxGC; opt::bFilterGC = true; break;
-            case OPT_QSCALE:
-                if(arg.str() == "none")
-                {
-                    opt::qualityScale = QS_NONE;
-                }
-                else if(arg.str() == "sanger")
-                {
-                    opt::qualityScale = QS_SANGER;
-                }
-                else if(arg.str() == "illumina1.3")
-                {
-                    opt::qualityScale = QS_ILLUMINA_1_3;
-                    assert(false && "not implemented");
-                }
-                else if(arg.str() == "illumina1.5")
-                {
-                    opt::qualityScale = QS_ILLUMINA_1_5;
-                    assert(false && "not implemented");
-                }
-                else
-                    std::cout << "Unknown quality string value: " << arg.str() << "\n";
-                    std::cout << "Expected one of: none, sanger, illumina1.3, illumina1.5\n";
-                    exit(EXIT_FAILURE);
-                break;
+            case OPT_PHRED64: opt::qualityScale = QS_PHRED64; break;
             case OPT_HELP:
                 std::cout << PREPROCESS_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

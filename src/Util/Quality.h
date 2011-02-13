@@ -17,10 +17,25 @@
 #include <iostream>
 
 static const int DEFAULT_QUAL_SCORE = 15;
+static const int PHRED64_DIFF = 31;
 
 typedef std::vector<double> DoubleVector;
 namespace Quality
 {
+    // Convert the quality character from phred64 to phred33 encoding
+    inline char phred64toPhred33(char c)
+    {
+        return (int)c - PHRED64_DIFF;
+    }
+
+    // Returns true if the character c is a valid phred 33 encoding
+    // of a quality value in the range [0, 60]
+    inline bool isValidPhred33(char c)
+    {
+        int p = (int)c - 33;
+        return p >= 0 && p <= 60;
+    }
+
     // Phred score transformations
     inline int char2phred(char b)
     {
