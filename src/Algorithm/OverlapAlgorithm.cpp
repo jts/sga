@@ -707,7 +707,7 @@ void OverlapAlgorithm::computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRev
     // processIrreducibleBlocks requires the pOBList to be sorted in descending order
     pOBList->sort(OverlapBlock::sortSizeDescending);
     assert(m_errorRate < 0.00001f);
-    _processIrreducibleBlocksExact(pBWT, pRevBWT, *pOBList, pOBFinal);
+    _processIrreducibleBlocksInexact(pBWT, pRevBWT, *pOBList, pOBFinal);
     pOBList->clear();
 }
 
