@@ -7,8 +7,20 @@ use Getopt::Long;
 
 my $numThreads = 1;
 my $sgaBin = "sga";
+my $bHelp = 0;
 GetOptions("threads=i" => \$numThreads,
-           "bin=s" => \$sgaBin);
+           "bin=s" => \$sgaBin,
+           "help" => \$bHelp);
+
+if($bHelp)
+{
+    print "sga-mergeDriver.pl - generate sga merge commands from a list of files\n";
+    print "usage: sga-mergeDriver.pl [options] <files>\n";
+    print "options: \n";
+    print "               -t,--threads=N       use N threads for the merge processes\n";
+    print "                  --bin=PROG        use PROG as the sga executable [default: sga]\n";
+    exit(1);
+}
 
 my @files = @ARGV;
 my $n = scalar(@files);
