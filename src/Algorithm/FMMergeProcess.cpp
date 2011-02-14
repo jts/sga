@@ -59,7 +59,9 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
     {
         // Construct a new local graph around this read
         StringGraph* pGraph = new StringGraph;
-        std::string rootID = "root";
+        std::stringstream ssID;
+        ssID << "IDX-" << readInterval.lower;
+        std::string rootID = ssID.str();
         
         Vertex* pVertex = new(pGraph->getVertexAllocator()) Vertex(rootID, readString);
         pGraph->addVertex(pVertex);
@@ -134,17 +136,24 @@ FMMergeResult FMMergeProcess::process(const SequenceWorkItem& item)
     if(result.isMerged)
     {
         // If some work was performed, update the bitvector so other threads do not try to merge the same set of reads.
-        // This uses compare-and-swap instructions to ensure the uppdate is atomic. If some other thread has merged this set (and updated
+        // This uses compare-and-swap instructions to ensure the uppdate is atomic. 
+        // If some other thread has merged this set (and updated
         // the bitvector), we discard all the merged data.
         
         // As a given set of reads should all be merged together, we only need to make sure we atomically update
         // the bit for the read with the lowest index in the set.
-        // Sort the intervals into ascending order
-        std::sort(result.usedIntervals.begin(), result.usedIntervals.end(), BWTInterval::compare);
-        int64_t lowestIndex = result.usedIntervals.front().lower;
 
-        // Check if the bit in the vector has already been set for this read index.
+        // Sort the intervals into ascending order and remove any duplicate intervals (which can occur
+        // if the subgraph has a simple cycle)
+        std::sort(result.usedIntervals.begin(), result.usedIntervals.end(), BWTInterval::compare);
+        std::vector<BWTInterval>::iterator newEnd = std::unique(result.usedIntervals.begin(),
+                                                                result.usedIntervals.end(),
+                                                                BWTInterval::equal);
+        result.usedIntervals.erase(newEnd, result.usedIntervals.end());
+
+        // Check if the bit in the vector has already been set for the lowest read index
         // If it has some other thread has already output this set so we do nothing
+        int64_t lowestIndex = result.usedIntervals.front().lower;
         bool currentValue = m_pMarkedReads->test(lowestIndex);
         bool updateSuccess = false;
 
