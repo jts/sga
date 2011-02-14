@@ -50,7 +50,7 @@ class StatsProcess
 class StatsPostProcess
 {
     public:
-        StatsPostProcess();
+        StatsPostProcess(bool bPrintKmer);
         ~StatsPostProcess();
 
         void process(const SequenceWorkItem& item, const StatsResult& result);
@@ -58,6 +58,7 @@ class StatsPostProcess
     private:
 
         std::map<int, int> kmerCovHist;
+        bool m_bPrintKmer;
         int m_basesCounted;
         int m_basesWrong;
         double m_depthSum;

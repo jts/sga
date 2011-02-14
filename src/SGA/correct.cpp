@@ -22,6 +22,7 @@
 #include "gzstream.h"
 #include "SequenceProcessFramework.h"
 #include "ErrorCorrectProcess.h"
+#include "CorrectionThresholds.h"
 
 // Functions
 
@@ -135,7 +136,6 @@ static const struct option longopts[] = {
 int correctMain(int argc, char** argv)
 {
     parseCorrectOptions(argc, argv);
-
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
@@ -347,6 +347,14 @@ void parseCorrectOptions(int argc, char** argv)
     {
         opt::prefix = stripFilename(opt::readsFile);
     }
+
+    // Set the correction threshold
+    if(opt::kmerThreshold <= 0)
+    {
+        std::cerr << "Invalid kmer support threshold: " << opt::kmerThreshold << "\n";
+        exit(EXIT_FAILURE);
+    }
+    CorrectionThresholds::setBaseMinSupport(opt::kmerThreshold);
 
     std::string out_prefix = stripFilename(opt::readsFile);
     if(opt::outFile.empty())
