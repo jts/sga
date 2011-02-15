@@ -151,7 +151,7 @@ int overlapMain(int argc, char** argv)
                                                          opt::seedStride, opt::bIrreducibleOnly);
 
     pOverlapper->setExactModeOverlap(opt::errorRate <= 0.0001);
-    pOverlapper->setExactModeIrreducible(opt::bExactIrreducible);
+    pOverlapper->setExactModeIrreducible(opt::errorRate <= 0.0001);
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
