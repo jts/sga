@@ -20,7 +20,7 @@ static const AlignFlags preSufAF(true, true, false);
 OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, int minOverlap, OverlapBlockList* pOutList) const
 {
     OverlapResult r;
-    if(!m_exactMode)
+    if(!m_exactModeOverlap)
         r = overlapReadInexact(read, minOverlap, pOutList);
     else
         r = overlapReadExact(read, minOverlap, pOutList);
@@ -707,7 +707,10 @@ void OverlapAlgorithm::computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRev
     // processIrreducibleBlocks requires the pOBList to be sorted in descending order
     pOBList->sort(OverlapBlock::sortSizeDescending);
     assert(m_errorRate < 0.00001f);
-    _processIrreducibleBlocksInexact(pBWT, pRevBWT, *pOBList, pOBFinal);
+    if(m_exactModeIrreducible)
+        _processIrreducibleBlocksExact(pBWT, pRevBWT, *pOBList, pOBFinal);
+    else
+        _processIrreducibleBlocksInexact(pBWT, pRevBWT, *pOBList, pOBFinal);
     pOBList->clear();
 }
 
@@ -752,8 +755,9 @@ void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT
         {
             // Ensure the tlb is actually terminal and not a substring block
             AlphaCount64 test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
-            if(test_count.get('$') > 0)
+            if(test_count.get('$') == 0)
             {
+                std::cout << "The block that ended is not the TLB of length " << tlbIter->overlapLen << "\n";
                 std::cerr << "Error in overlap calculation: substring block found. Please run rmdup before overlap\n";
                 exit(EXIT_FAILURE);
             }

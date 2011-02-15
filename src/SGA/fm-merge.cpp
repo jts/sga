@@ -86,7 +86,7 @@ int FMMergeMain(int argc, char** argv)
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          0.0f, 0,0,true); 
-    pOverlapper->setExactMode(true);
+    pOverlapper->setExactModeOverlap(true);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
     pBWT->printInfo();
 

@@ -38,7 +38,7 @@ size_t processSequencesSerial(SeqReader& reader, Processor* pProcessor, PostProc
         
         pPostProcessor->process(workItem, output);
         if(generator.getNumConsumed() % 50000 == 0)
-            printf("[sga] Processed %zu sequences\n", generator.getNumConsumed());
+            printf("[sga] Processed %zu sequences (%lfs elapsed)\n", generator.getNumConsumed(), timer.getElapsedWallTime());
     }
 
     assert(n == (size_t)-1 || generator.getNumConsumed() == n);

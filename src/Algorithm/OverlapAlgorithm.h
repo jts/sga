@@ -40,7 +40,8 @@ class OverlapAlgorithm
                                          m_seedLength(seedLen),
                                          m_seedStride(seedStride),
                                          m_bIrreducible(irrOnly),
-                                         m_exactMode(false),
+                                         m_exactModeOverlap(false),
+                                         m_exactModeIrreducible(false),
                                          m_maxSeeds(maxSeeds) {}
 
         // Perform the overlap
@@ -63,7 +64,8 @@ class OverlapAlgorithm
         void writeOverlapBlocks(std::ostream& writer, size_t readIdx, bool isSubstring, const OverlapBlockList* pList) const;
 
         // Set flag to use exact-match algorithms only
-        void setExactMode(bool b) { m_exactMode = b; }
+        void setExactModeOverlap(bool b) { m_exactModeOverlap = b; }
+        void setExactModeIrreducible(bool b) { m_exactModeIrreducible = b; }
 
         //
         const BWT* getBWT() const { return m_pBWT; }
@@ -154,7 +156,8 @@ class OverlapAlgorithm
         int m_seedLength;
         int m_seedStride;
         bool m_bIrreducible;
-        bool m_exactMode;
+        bool m_exactModeOverlap;
+        bool m_exactModeIrreducible;
         
         // Optional parameter to limit the amount of branching that is performed
         int m_maxSeeds; 
