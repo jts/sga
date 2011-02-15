@@ -237,9 +237,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 //            std::cout << i << "\t" << phred << "\t" << count << "\n";
 
             // Determine whether the base is solid or not based on phred scores
-            int threshold = CorrectionThresholds::minSupportLowQuality;
-            if(phred >= CorrectionThresholds::highQualityCutoff)
-                threshold = CorrectionThresholds::minSupportHighQuality;
+            int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
             if(count >= threshold)
             {
                 for(int j = i; j < i + m_kmerLength; ++j)
@@ -273,9 +271,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             {
                 // Attempt to correct the base using the leftmost covering kmer
                 int phred = workItem.read.getPhredScore(i);
-                int threshold = CorrectionThresholds::minSupportLowQuality;
-                if(phred >= CorrectionThresholds::highQualityCutoff)
-                    threshold = CorrectionThresholds::minSupportHighQuality;
+                int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
 
                 int left_k_idx = (i + 1 >= m_kmerLength ? i + 1 - m_kmerLength : 0);
                 corrected = attemptKmerCorrection(i, left_k_idx, std::max(countVector[left_k_idx], threshold), readSequence);

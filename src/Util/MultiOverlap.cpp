@@ -260,18 +260,11 @@ std::string MultiOverlap::consensusConflict(double /*p_error*/, int conflictCuto
         getPartitionedPileup(i, p0, p1);
         AlphaCount64 ac = p0.getAlphaCount();
         
-        size_t minSupport = CorrectionThresholds::minSupportLowQuality;
+        size_t minSupport = CorrectionThresholds::Instance().getMinSupportLowQuality();
         if(!m_rootQual.empty())
         {
             int phredScore = Quality::char2phred(m_rootQual[i]);
-            if(phredScore >= CorrectionThresholds::highQualityCutoff)
-            {
-                minSupport = CorrectionThresholds::minSupportHighQuality;
-            }
-            else
-            {
-                minSupport = CorrectionThresholds::minSupportLowQuality;
-            }
+            minSupport = CorrectionThresholds::Instance().getRequiredSupport(phredScore);
         }
 
         size_t callSupport = ac.get(m_rootSeq[i]);
@@ -330,16 +323,6 @@ bool MultiOverlap::qcCheck() const
     for(size_t i = 0; i < m_rootSeq.size(); ++i)
     {
         AlphaCount64 ac = getAlphaCount(i);
-        size_t minSupport = CorrectionThresholds::minSupportLowQuality;
-        if(!m_rootQual.empty())
-        {
-            int phredScore = Quality::char2phred(m_rootQual[i]);
-            if(phredScore >= CorrectionThresholds::highQualityCutoff)
-                minSupport = CorrectionThresholds::minSupportHighQuality;
-            else
-                minSupport = CorrectionThresholds::minSupportLowQuality;
-        }
-
         size_t callSupport = ac.get(m_rootSeq[i]);
         if(callSupport < 2)
             return false;

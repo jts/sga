@@ -354,7 +354,7 @@ void parseCorrectOptions(int argc, char** argv)
         std::cerr << "Invalid kmer support threshold: " << opt::kmerThreshold << "\n";
         exit(EXIT_FAILURE);
     }
-    CorrectionThresholds::setBaseMinSupport(opt::kmerThreshold);
+    CorrectionThresholds::Instance().setBaseMinSupport(opt::kmerThreshold);
 
     std::string out_prefix = stripFilename(opt::readsFile);
     if(opt::outFile.empty())

@@ -4,30 +4,33 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// CorrectionThresholds.h - Cutoff values for determining
-// whether a particular base should be corrected or not
+// CorrectionThresholds.h - Singeleton class containing
+// cutoff values for determining whether a 
+// base should be corrected or not
 //
 #ifndef CORRECTION_THRESHOLDS_H
 #define CORRECTION_THRESHOLDS_H
 
-namespace CorrectionThresholds
+class CorrectionThresholds
 {
-    // The number of reads that needs to support
-    // a base call given a low or high quality value
-    static int minSupportLowQuality = 6;
-    static int minSupportHighQuality = 5;
+    public:
+        CorrectionThresholds();
+        static CorrectionThresholds& Instance();
+        
+        // Set the base minimum support level (for high-quality reads)
+        void setBaseMinSupport(int ms);
 
-    // Set the base minimum support level (for high-quality reads)
-    inline void setBaseMinSupport(int ms)
-    {
-        minSupportHighQuality = ms;
-        minSupportLowQuality = ms + 1;
-    }
+        int getMinSupportHighQuality() { return m_minSupportHighQuality; }
+        int getMinSupportLowQuality() { return m_minSupportLowQuality; }
+        int getHighQualityCutoff() { return m_highQualityCutoff; }
 
-    // The threshold for a determining whether
-    // a quality score is low or high
-    const static int highQualityCutoff = 20;
+        // Returns the support required for a base with phred score phred
+        int getRequiredSupport(int phred);
 
+    private:
+        int m_highQualityCutoff;
+        int m_minSupportLowQuality;
+        int m_minSupportHighQuality;
 };
 
 #endif

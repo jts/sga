@@ -25,6 +25,7 @@ libutil_a_SOURCES = \
 		Quality.h Quality.cpp \
 		PrimerScreen.h PrimerScreen.cpp \
 		BitVector.h BitVector.cpp \
+        CorrectionThresholds.h CorrectionThresholds.cpp \
         Timer.h \
         EncodedString.h \
         DNACodec.h \
