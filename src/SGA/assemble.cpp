@@ -217,7 +217,6 @@ void assemble()
         while(numSmooth-- > 0)
             pGraph->visit(smoothingVisit);
         pGraph->simplify();
-        pGraph->visit(trimVisit);
     }
     
     pGraph->renameVertices("contig-");

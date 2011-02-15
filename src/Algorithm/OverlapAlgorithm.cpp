@@ -154,7 +154,7 @@ OverlapResult OverlapAlgorithm::overlapReadExact(const SeqRecord& read, int minO
     removeSubMaximalBlocks(&oblPrefixFwd, m_pBWT, m_pRevBWT);
     removeSubMaximalBlocks(&oblSuffixRev, m_pRevBWT, m_pBWT);
     removeSubMaximalBlocks(&oblPrefixRev, m_pRevBWT, m_pBWT);
-
+    
     // Remove the contain blocks from the suffix/prefix lists
     removeContainmentBlocks(seq.length(), &oblSuffixFwd);
     removeContainmentBlocks(seq.length(), &oblPrefixFwd);
@@ -708,7 +708,7 @@ void OverlapAlgorithm::computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRev
     pOBList->sort(OverlapBlock::sortSizeDescending);
     assert(m_errorRate < 0.00001f);
     if(m_exactModeIrreducible)
-        _processIrreducibleBlocksExact(pBWT, pRevBWT, *pOBList, pOBFinal);
+        _processIrreducibleBlocksExactIterative(pBWT, pRevBWT, *pOBList, pOBFinal);
     else
         _processIrreducibleBlocksInexact(pBWT, pRevBWT, *pOBList, pOBFinal);
     pOBList->clear();
@@ -718,92 +718,126 @@ void OverlapAlgorithm::computeIrreducibleBlocks(const BWT* pBWT, const BWT* pRev
 // The final overlap blocks corresponding to irreducible overlaps are written to pOBFinal.
 // Invariant: the blocks are ordered in descending order of the overlap size so that the longest overlap is first.
 // Invariant: each block corresponds to the same extension of the root sequence w.
-void OverlapAlgorithm::_processIrreducibleBlocksExact(const BWT* pBWT, const BWT* pRevBWT, 
-                                                      OverlapBlockList& obList, 
-                                                      OverlapBlockList* pOBFinal) const
+void OverlapAlgorithm::_processIrreducibleBlocksExactIterative(const BWT* pBWT, const BWT* pRevBWT, 
+                                                               OverlapBlockList& inList, 
+                                                               OverlapBlockList* pOBFinal) const
 {
-    if(obList.empty())
+    if(inList.empty())
         return;
     
-    // Count the extensions in the top level (longest) blocks first
-    int topLen = obList.front().overlapLen;
+    // We store the overlap blocks in groups of blocks that have the same right-extension.
+    // When a branch is found, the groups are split based on the extension
+    typedef std::list<OverlapBlockList> BlockGroups;
 
-    AlphaCount64 ext_count;
-    OBLIter iter = obList.begin();
-    while(iter != obList.end() && iter->overlapLen == topLen)
+    BlockGroups blockGroups;
+    blockGroups.push_back(inList);
+    int numExtensions = 0;
+    int numBranches = 0;
+    while(!blockGroups.empty())
     {
-        ext_count += iter->getCanonicalExtCount(pBWT, pRevBWT);
-        ++iter;
-    }
-    
-    // Three cases:
-    // 1) The top level block has ended as it contains the extension $. Output TLB and end.
-    // 2) There is a singular unique extension base for all the blocks. Update all blocks and recurse.
-    // 3) There are multiple extension bases, branch and recurse.
-    // If some block other than the TLB ended, it must be contained within the TLB and it is not output
-    // or considered further. 
-    // Likewise if multiple distinct strings in the TLB ended, we only output the top one. The rest
-    // must have the same sequence as the top one and are hence considered to be contained with the top element.
-    if(ext_count.get('$') > 0)
-    {
-        // An irreducible overlap has been found. It is possible that there are two top level blocks
-        // (one in the forward and reverse direction). Since we can't decide which one
-        // contains the other at this point, we output hits to both. Under a fixed 
-        // length string assumption one will be contained within the other and removed later.
-        OBLIter tlbIter = obList.begin();
-        while(tlbIter != obList.end() && tlbIter->overlapLen == topLen)
+        // Perform one extenion round for each group.
+        // If the top-level block has ended, push the result
+        // to the final list and remove the group from processing
+        BlockGroups::iterator groupIter = blockGroups.begin();
+        BlockGroups incomingGroups; // Branched blocks are placed here
+
+        while(groupIter != blockGroups.end())
         {
-            // Ensure the tlb is actually terminal and not a substring block
-            AlphaCount64 test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
-            if(test_count.get('$') == 0)
+            OverlapBlockList& currList = *groupIter;
+            bool bEraseGroup = false;
+
+            // Count the extensions in the top level (longest) blocks first
+            int topLen = currList.front().overlapLen;
+            AlphaCount64 ext_count;
+            OBLIter blockIter = currList.begin();
+            while(blockIter != currList.end() && blockIter->overlapLen == topLen)
             {
-                std::cout << "The block that ended is not the TLB of length " << tlbIter->overlapLen << "\n";
-                std::cerr << "Error in overlap calculation: substring block found. Please run rmdup before overlap\n";
-                exit(EXIT_FAILURE);
+                ext_count += blockIter->getCanonicalExtCount(pBWT, pRevBWT);
+                ++blockIter;
             }
             
-            // Perform the final right-update to make the block terminal
-            OverlapBlock branched = *tlbIter;
-            BWTAlgorithms::updateBothR(branched.ranges, '$', branched.getExtensionBWT(pBWT, pRevBWT));
-            pOBFinal->push_back(branched);
-#ifdef DEBUGOVERLAP
-            std::cout << "[IE] TLB of length " << branched.overlapLen << " has ended\n";
-            std::cout << "[IE]\tBlock data: " << branched << "\n";
-#endif             
-            ++tlbIter;
-        } 
-        return;
-    }
-    else
-    {
-        // Count the rest of the blocks
-        while(iter != obList.end())
-        {
-            ext_count += iter->getCanonicalExtCount(pBWT, pRevBWT);
-            ++iter;
-        }
-
-        if(ext_count.hasUniqueDNAChar())
-        {
-            // Update all the blocks using the unique extension character
-            // This character is in the canonical representation wrt to the query
-            char b = ext_count.getUniqueDNAChar();
-            updateOverlapBlockRangesRight(pBWT, pRevBWT, obList, b);
-            return _processIrreducibleBlocksExact(pBWT, pRevBWT, obList, pOBFinal);
-        }
-        else
-        {
-            for(size_t idx = 0; idx < DNA_ALPHABET_SIZE; ++idx)
+            // Three cases:
+            // 1) The top level block has ended as it contains the extension $. Output TLB and end.
+            // 2) There is a singular unique extension base for all the blocks. Update the blocks and continue.
+            // 3) There are multiple extension bases, split the block group and continue.
+            // If some block other than the TLB ended, it must be contained within the TLB and it is not output
+            // or considered further. 
+            // Likewise if multiple distinct strings in the TLB ended, we only output the top one. The rest
+            // must have the same sequence as the top one and are hence considered to be contained with the top element.
+            if(ext_count.get('$') > 0)
             {
-                char b = ALPHABET[idx];
-                if(ext_count.get(b) > 0)
+                // An irreducible overlap has been found. It is possible that there are two top level blocks
+                // (one in the forward and reverse direction). Since we can't decide which one
+                // contains the other at this point, we output hits to both. Under a fixed 
+                // length string assumption one will be contained within the other and removed later.
+                OBLIter tlbIter = currList.begin();
+                while(tlbIter != currList.end() && tlbIter->overlapLen == topLen)
                 {
-                    OverlapBlockList branched = obList;
-                    updateOverlapBlockRangesRight(pBWT, pRevBWT, branched, b);
-                    _processIrreducibleBlocksExact(pBWT, pRevBWT, branched, pOBFinal);
+                    // Ensure the tlb is actually terminal and not a substring block
+                    AlphaCount64 test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
+                    if(test_count.get('$') == 0)
+                    {
+                        std::cerr << "Error: the top level block in irreducible-overlap computation does not have the expected terminal character\n";
+                        exit(EXIT_FAILURE);
+                    }
+                    
+                    // Perform the final right-update to make the block terminal
+                    OverlapBlock branched = *tlbIter;
+                    BWTAlgorithms::updateBothR(branched.ranges, '$', branched.getExtensionBWT(pBWT, pRevBWT));
+                    pOBFinal->push_back(branched);
+#ifdef DEBUGOVERLAP
+                    std::cout << "[IE] TLB of length " << branched.overlapLen << " has ended\n";
+                    std::cout << "[IE]\tBlock data: " << branched << "\n";
+#endif             
+                    ++tlbIter;
+                } 
+
+                // Set the flag to erase this group, it is finished
+                bEraseGroup = true;
+            }
+            else
+            {
+                // Count the extension for the rest of the blocks
+                while(blockIter != currList.end())
+                {
+                    ext_count += blockIter->getCanonicalExtCount(pBWT, pRevBWT);
+                    ++blockIter;
+                }
+
+                if(ext_count.hasUniqueDNAChar())
+                {
+                    // Update all the blocks using the unique extension character
+                    // This character is in the canonical representation wrt to the query
+                    char b = ext_count.getUniqueDNAChar();
+                    updateOverlapBlockRangesRight(pBWT, pRevBWT, currList, b);
+                    numExtensions++;
+                    bEraseGroup = false;
+                }
+                else
+                {
+                    for(size_t idx = 0; idx < DNA_ALPHABET_SIZE; ++idx)
+                    {
+                        char b = ALPHABET[idx];
+                        if(ext_count.get(b) > 0)
+                        {
+                            numBranches++;
+                            OverlapBlockList branched = currList;
+                            updateOverlapBlockRangesRight(pBWT, pRevBWT, branched, b);
+                            incomingGroups.push_back(branched);
+                            bEraseGroup = true;
+                        }
+                    }
                 }
             }
+
+            if(bEraseGroup)
+                groupIter = blockGroups.erase(groupIter);
+            else
+                ++groupIter;
         }
+
+        // Splice in the newly branched blocks, if any
+        blockGroups.splice(blockGroups.end(), incomingGroups);
     }
 }
 

@@ -132,6 +132,11 @@ class OverlapAlgorithm
         void _processIrreducibleBlocksExact(const BWT* pBWT, const BWT* pRevBWT, 
                                             OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
 
+
+        void _processIrreducibleBlocksExactIterative(const BWT* pBWT, 
+                                                     const BWT* pRevBWT, 
+                                                     OverlapBlockList& inList, 
+                                                     OverlapBlockList* pOBFinal) const;
         //
         void _processIrreducibleBlocksInexact(const BWT* pBWT, const BWT* pRevBWT, 
                                               OverlapBlockList& obList, OverlapBlockList* pOBFinal) const;
