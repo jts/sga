@@ -119,6 +119,9 @@ class Bigraph
         // Visit each vertex in the graph and perform the visit function
         bool visit(VertexVisitFunction f);
 
+        //
+        VertexPtrVec getAllVertices() const;
+
         // Append each vertex sequence to the vector of strings
         void getVertexSequences(std::vector<std::string>& outSequences) const;
 

@@ -12,8 +12,23 @@
 
 #include "Bigraph.h"
 #include "SGWalk.h"
+#include "GraphSearchTree.h"
 #include <deque>
 
+// Returns the extension distance indicated
+// by the given edge
+struct SGDistanceFunction
+{
+    int operator()(const Edge* pEdge) const
+    {
+        return pEdge->getSeqLen();
+    }
+};
+
+// 
+typedef GraphSearchTree<Vertex, Edge, SGDistanceFunction> SGSearchTree;
+
+//
 struct SGWalkBuilder
 {
     public:

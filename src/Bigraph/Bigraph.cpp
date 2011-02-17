@@ -479,6 +479,16 @@ Vertex* Bigraph::getFirstVertex() const
         return m_vertices.begin()->second;
 }
 
+// Returns a vector of pointers to the vertices
+VertexPtrVec Bigraph::getAllVertices() const
+{
+    VertexPtrVec out;
+    VertexPtrMapConstIter iter = m_vertices.begin();
+    for(; iter != m_vertices.end(); ++iter)
+        out.push_back(iter->second);
+    return out;
+}
+
 //
 // Append vertex sequences to the vector
 void Bigraph::getVertexSequences(std::vector<std::string>& outSequences) const

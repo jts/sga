@@ -8,18 +8,7 @@
 // for searching a string graph
 //
 #include "SGSearch.h"
-#include "GraphSearchTree.h"
 #include <queue>
-
-// Returns the extension distance indicated
-// by the given edge
-struct SGDistanceFunction
-{
-    int operator()(const Edge* pEdge) const
-    {
-        return pEdge->getSeqLen();
-    }
-};
 
 //
 SGWalkBuilder::SGWalkBuilder(SGWalkVector& outWalks, bool bIndexWalk) : m_outWalks(outWalks), m_pCurrWalk(NULL), m_bIndexWalk(bIndexWalk)
@@ -55,8 +44,6 @@ void SGWalkBuilder::finishCurrentWalk()
     delete m_pCurrWalk;
     m_pCurrWalk = NULL;
 }
-
-typedef GraphSearchTree<Vertex, Edge, SGDistanceFunction> SGSearchTree;
 
 // Find all the walks between pX and pY that are within maxDistance
 // If the exhaustive flag is set, only return walks if all the possible

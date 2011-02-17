@@ -26,6 +26,7 @@
 #include "scaffold2fasta.h"
 #include "stats.h"
 #include "filterBAM.h"
+#include "cluster.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -59,6 +60,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           scaffold        generate ordered sets of contigs using distance estimates\n"
 "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
 "           filterBAM       filter out contaminating mate-pair data in a BAM file\n"
+"           cluster         find clusters of reads belonging to the same connected component\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 int main(int argc, char** argv)
@@ -118,6 +120,8 @@ int main(int argc, char** argv)
             scaffold2fastaMain(argc - 1, argv + 1);
         else if(command == "filterBAM")
             filterBAMMain(argc - 1, argv + 1);
+        else if(command == "cluster")
+            clusterMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
