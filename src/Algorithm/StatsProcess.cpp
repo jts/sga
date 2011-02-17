@@ -13,21 +13,21 @@
 //
 //
 //
-StatsProcess::StatsProcess(const BWT* pBWT, const BWT* pRBWT, int kmerLength, int minOverlap) :
+StatsProcess::StatsProcess(const BWT* pBWT, const BWT* pRBWT, int kmerLength, int minOverlap, int branchCutoff, bool bNoOverlap) :
                             m_pBWT(pBWT),
                             m_pRBWT(pRBWT),
                             m_kmerLength(kmerLength),
-                            m_minOverlap(minOverlap)
+                            m_minOverlap(minOverlap),
+                            m_branchCutoff(branchCutoff),
+                            m_bNoOverlap(bNoOverlap)
 {
-    m_pAllOverlapper = new OverlapAlgorithm(m_pBWT, m_pRBWT, 0.05, 16, 16, false, -1);
-    m_pIrrOverlapper = new OverlapAlgorithm(m_pBWT, m_pRBWT, 0.05, 16, 16, true, -1);
+    m_pAllOverlapper = new OverlapAlgorithm(m_pBWT, m_pRBWT, 0.05, 16, 16, false, m_branchCutoff);
 }
 
 //
 StatsProcess::~StatsProcess()
 {
     delete m_pAllOverlapper;
-    delete m_pIrrOverlapper;
 }
 
 //
@@ -55,17 +55,23 @@ StatsResult StatsProcess::process(const SequenceWorkItem& workItem)
     //
     // Compute the number of implied errors in the read
     //
-    SeqRecord currRead = workItem.read;
-    OverlapBlockList blockList;
-    OverlapResult overlap_result = m_pAllOverlapper->overlapRead(currRead, m_minOverlap, &blockList);
-    
-    // Convert the overlap block list into a multi-overlap 
-    MultiOverlap mo = blockListToMultiOverlap(currRead, blockList);
-    int covered = mo.countBasesCovered();
-    int wrong = mo.countPotentialIncorrect(m_errorThreshold);
-    result.mean_depth = mo.getMeanDepth();
-    result.bases_counted += covered;
-    result.bases_wrong += wrong;
+    if(!m_bNoOverlap)
+    {
+        SeqRecord currRead = workItem.read;
+        OverlapBlockList blockList;
+        OverlapResult overlap_result = m_pAllOverlapper->overlapRead(currRead, m_minOverlap, &blockList);
+        
+        // Convert the overlap block list into a multi-overlap 
+        if(!overlap_result.searchAborted)
+        {
+            MultiOverlap mo = blockListToMultiOverlap(currRead, blockList);
+            int covered = mo.countBasesCovered();
+            int wrong = mo.countPotentialIncorrect(m_errorThreshold);
+            result.mean_depth = mo.getMeanDepth();
+            result.bases_counted += covered;
+            result.bases_wrong += wrong;
+        }
+    }
 
     return result;
 }

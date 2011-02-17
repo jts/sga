@@ -24,8 +24,9 @@ enum OverlapMode
 
 struct OverlapResult
 {
-    OverlapResult() : isSubstring(false) {}
+    OverlapResult() : isSubstring(false), searchAborted(false) {}
     bool isSubstring;
+    bool searchAborted;
 };
 
 class OverlapAlgorithm

@@ -49,8 +49,11 @@ static const char *STATS_USAGE_MESSAGE =
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      -k, --kmer-size=N                The length of the kmer to use. (default: 27)\n"
 "      -n, --num-reads=N                Only use N reads to compute the statistics\n"
+"      -b, --branch-cutoff=N            stop the overlap search at N branches. This lowers the compute time but will bias the statistics\n"
+"                                       away from repetitive reads\n"
 "      --run-lengths                    Print the run length distribution of the BWT\n"
 "      --kmer-distribution              Print the distribution of kmer counts\n"
+"      --no-overlap                     Suppress the overlap-based error statistics (faster if you only want the k-mer distribution)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -65,14 +68,16 @@ namespace opt
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
     static int kmerLength = 27;
     static int minOverlap = 45;
+    static int branchCutoff = -1;
     static size_t numReads = -1;
     static bool bPrintRunLengths = false;
     static bool bPrintKmerDist = false;
+    static bool bNoOverlap = false;
 }
 
-static const char* shortopts = "p:d:t:o:k:n:v";
+static const char* shortopts = "p:d:t:o:k:n:b:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_RUNLENGTHS, OPT_KMERDIST};
+enum { OPT_HELP = 1, OPT_VERSION, OPT_RUNLENGTHS, OPT_KMERDIST, OPT_NOOVERLAP};
 
 static const struct option longopts[] = {
     { "verbose",            no_argument,       NULL, 'v' },
@@ -81,7 +86,9 @@ static const struct option longopts[] = {
     { "sample-rate",        required_argument, NULL, 'd' },
     { "kmer-size",          required_argument, NULL, 'k' },
     { "num-reads",          required_argument, NULL, 'n' },
+    { "branch-cutoff",      required_argument, NULL, 'b' },
     { "kmer-distribution",  no_argument,       NULL, OPT_KMERDIST },
+    { "no-overlap",         no_argument,       NULL, OPT_NOOVERLAP },
     { "run-lengths",        no_argument,       NULL, OPT_RUNLENGTHS },
     { "help",               no_argument,       NULL, OPT_HELP },
     { "version",            no_argument,       NULL, OPT_VERSION },
@@ -111,7 +118,7 @@ int statsMain(int argc, char** argv)
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        StatsProcess processor(pBWT, pRBWT, opt::kmerLength, opt::minOverlap);
+        StatsProcess processor(pBWT, pRBWT, opt::kmerLength, opt::minOverlap, opt::branchCutoff, opt::bNoOverlap);
 
         SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
                                                          StatsResult, 
@@ -124,7 +131,7 @@ int statsMain(int argc, char** argv)
         std::vector<StatsProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            StatsProcess* pProcessor = new StatsProcess(pBWT, pRBWT, opt::kmerLength, opt::minOverlap);
+            StatsProcess* pProcessor = new StatsProcess(pBWT, pRBWT, opt::kmerLength, opt::minOverlap, opt::branchCutoff, opt::bNoOverlap);
             processorVector.push_back(pProcessor);
         }
         
@@ -166,10 +173,12 @@ void parseStatsOptions(int argc, char** argv)
             case 'd': arg >> opt::sampleRate; break;
             case 'k': arg >> opt::kmerLength; break;
             case 'n': arg >> opt::numReads; break;
+            case 'b': arg >> opt::branchCutoff; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_KMERDIST: opt::bPrintKmerDist = true; break;
             case OPT_RUNLENGTHS: opt::bPrintRunLengths = true; break;
+            case OPT_NOOVERLAP: opt::bNoOverlap = true; break;
             case OPT_HELP:
                 std::cout << STATS_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

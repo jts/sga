@@ -93,6 +93,7 @@ OverlapResult OverlapAlgorithm::overlapReadInexact(const SeqRecord& read, int mi
     {
         pOBOut->clear();
         result.isSubstring = false;
+        result.searchAborted = true;
         return result;
     }
 

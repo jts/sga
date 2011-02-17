@@ -30,7 +30,7 @@ class StatsResult
 class StatsProcess
 {
     public:
-        StatsProcess(const BWT* pBWT, const BWT* pRBWT, int kmerLength, int minOverlap);
+        StatsProcess(const BWT* pBWT, const BWT* pRBWT, int kmerLength, int minOverlap, int branchCutoff, bool bNoOverlap);
         ~StatsProcess();
         StatsResult process(const SequenceWorkItem& item);
 
@@ -40,10 +40,11 @@ class StatsProcess
         const BWT* m_pRBWT;
         const int m_kmerLength;
         const int m_minOverlap;
+        const int m_branchCutoff;
+        const bool m_bNoOverlap;
         static const int m_errorThreshold = 3;
 
         const OverlapAlgorithm* m_pAllOverlapper;
-        const OverlapAlgorithm* m_pIrrOverlapper;
 };
 
 // Write the results from the overlap step to an ASQG file
