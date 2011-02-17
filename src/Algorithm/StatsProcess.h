@@ -14,6 +14,7 @@
 #include "SequenceProcessFramework.h"
 #include "SequenceWorkItem.h"
 #include "OverlapAlgorithm.h"
+#include "KmerDistribution.h"
 
 class StatsResult
 {
@@ -58,7 +59,7 @@ class StatsPostProcess
 
     private:
 
-        std::map<int, int> kmerCovHist;
+        KmerDistribution m_kmerDist;
         bool m_bPrintKmer;
         int m_basesCounted;
         int m_basesWrong;

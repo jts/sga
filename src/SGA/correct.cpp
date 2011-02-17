@@ -25,6 +25,7 @@
 #include "CorrectionThresholds.h"
 
 // Functions
+void learnKmerParameters(const BWT* pBWT, const BWT* pRBWT);
 
 //
 // Getopt
@@ -143,6 +144,10 @@ int correctMain(int argc, char** argv)
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false, opt::branchCutoff);
     
+
+    // Learn the parameters of the kmer corrector
+    //learnKmerParameters(pBWT, pRBWT);
+
     Timer* pTimer = new Timer(PROGRAM_IDENT);
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
@@ -218,6 +223,20 @@ int correctMain(int argc, char** argv)
         pthread_exit(NULL);
 
     return 0;
+}
+
+// Learn parameters of the kmer corrector
+void learnKmerParameters(const BWT* pBWT, const BWT* /*pRBWT*/)
+{
+    std::cout << "Learning kmer parameters\n";
+    srand(time(0));
+    size_t n_samples = 1000;
+    for(size_t i = 0; i < n_samples; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(pBWT);
+        std::cout << "S: " << s << "\n";
+    }
+    exit(1);
 }
 
 // 

@@ -105,3 +105,29 @@ AlphaCount64 BWTAlgorithms::calculateExactExtensions(const unsigned int overlapL
     return ext_counts;
 }
 
+// 
+std::string BWTAlgorithms::sampleRandomString(const BWT* pBWT)
+{
+    assert(RAND_MAX > 0x7FFF);
+    size_t n = pBWT->getNumStrings();
+    size_t idx = rand() % n;
+
+    std::string out;
+
+    // The range [0,n) in the BWT contains all the terminal
+    // symbols for the reads. Search backwards from one of them
+    // until the '$' is found gives a full string.
+
+    BWTInterval interval(idx, idx);
+    while(1)
+    {
+        assert(interval.isValid());
+        char b = pBWT->getChar(interval.lower);
+        if(b == '$')
+            break;
+        else
+            out.push_back(b);
+        updateInterval(interval, b, pBWT);
+    } 
+    return reverse(out);
+}

@@ -91,17 +91,7 @@ StatsPostProcess::~StatsPostProcess()
     if(m_bPrintKmer)
     {
         int max = 100;
-        int maxCount = 0;
-        printf("Kmer coverage histogram\n");
-        printf("cov\tcount\n");
-        for(std::map<int,int>::iterator iter = kmerCovHist.begin(); iter != kmerCovHist.end(); ++iter)
-        {
-            if(iter->first <= max)
-                printf("%d\t%d\n", iter->first, iter->second);
-            else
-                maxCount += iter->second;
-        }
-        printf(">%d\t%d\n", max, maxCount);
+        m_kmerDist.print(max);
     }
 
     printf("%d out of %d bases are potentially incorrect (%lf)\n", m_basesWrong, m_basesCounted, (double)m_basesWrong/m_basesCounted);
@@ -113,9 +103,7 @@ StatsPostProcess::~StatsPostProcess()
 void StatsPostProcess::process(const SequenceWorkItem& /*item*/, const StatsResult& result)
 {
     for(size_t i = 0; i < result.kmerCoverage.size(); ++i)
-    {
-        kmerCovHist[result.kmerCoverage[i]]++;
-    }
+        m_kmerDist.add(result.kmerCoverage[i]);
 
     m_basesCounted += result.bases_counted;
     m_basesWrong += result.bases_wrong;

@@ -26,6 +26,7 @@ libutil_a_SOURCES = \
 		PrimerScreen.h PrimerScreen.cpp \
 		BitVector.h BitVector.cpp \
         CorrectionThresholds.h CorrectionThresholds.cpp \
+        KmerDistribution.h KmerDistribution.cpp \
         Timer.h \
         EncodedString.h \
         DNACodec.h \
