@@ -79,6 +79,8 @@ void walk()
 {
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
     pGraph->printMemSize();
+    std::ostream* pWriter = createWriter(opt::outFile);
+
     Vertex* pX = pGraph->getVertex(opt::id1);
     Vertex* pY = pGraph->getVertex(opt::id2);
 
@@ -96,11 +98,12 @@ void walk()
         std::cout << "Str: " << str << "\n";
         std::cout << "Len: " << str.length() << "\n";
 
-        std::cout << ">test" << i << "\n";
-        std::cout << str << "\n";
+        *pWriter << ">test" << i << " " << walk.pathSignature() << "\n";
+        *pWriter << str << "\n";
     }
 
     delete pGraph;
+    delete pWriter;
 }
 
 // 
@@ -109,7 +112,7 @@ void walk()
 void parseWalkOptions(int argc, char** argv)
 {
     // Set defaults
-    opt::outFile = "";
+    opt::outFile = "walks.fa";
 
     bool die = false;
     for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 

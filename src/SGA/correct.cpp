@@ -23,9 +23,10 @@
 #include "SequenceProcessFramework.h"
 #include "ErrorCorrectProcess.h"
 #include "CorrectionThresholds.h"
+#include "KmerDistribution.h"
 
 // Functions
-void learnKmerParameters(const BWT* pBWT, const BWT* pRBWT);
+int learnKmerParameters(const BWT* pBWT, const BWT* pRBWT);
 
 //
 // Getopt
@@ -72,6 +73,7 @@ static const char *CORRECT_USAGE_MESSAGE =
 "      -k, --kmer-size=N                The length of the kmer to use. (default: 41)\n"
 "      -x, --kmer-threshold=N           Attempt to correct kmers that are seen less than N times. (default: 3)\n"
 "      -i, --kmer-rounds=N              Perform N rounds of k-mer correction, correcting up to N bases (default: 5)\n"
+"          --learn                      Attempt to learn the k-mer correction threshold (experimental). Overrides -x parameter.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -99,13 +101,13 @@ namespace opt
     static int kmerLength = 41;
     static int kmerThreshold = 3;
     static int numKmerRounds = 5;
-
+    static bool bLearnKmerParams = false;
     static ErrorCorrectAlgorithm algorithm = ECA_HYBRID;
 }
 
 static const char* shortopts = "p:m:d:e:t:l:s:o:r:b:a:c:k:x:i:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD, OPT_LEARN };
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -124,6 +126,7 @@ static const struct option longopts[] = {
     { "kmer-size",     required_argument, NULL, 'k' },
     { "kmer-threshold",required_argument, NULL, 'x' },
     { "kmer-rounds",   required_argument, NULL, 'i' },
+    { "learn",         no_argument,       NULL, OPT_LEARN },
     { "discard",       no_argument,       NULL, OPT_DISCARD },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
@@ -146,7 +149,12 @@ int correctMain(int argc, char** argv)
     
 
     // Learn the parameters of the kmer corrector
-    //learnKmerParameters(pBWT, pRBWT);
+    if(opt::bLearnKmerParams)
+    {
+        int threshold = learnKmerParameters(pBWT, pRBWT);
+        if(threshold != -1)
+            CorrectionThresholds::Instance().setBaseMinSupport(threshold);
+    }
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
     std::ostream* pWriter = createWriter(opt::outFile);
@@ -226,17 +234,52 @@ int correctMain(int argc, char** argv)
 }
 
 // Learn parameters of the kmer corrector
-void learnKmerParameters(const BWT* pBWT, const BWT* /*pRBWT*/)
+int learnKmerParameters(const BWT* pBWT, const BWT* pRBWT)
 {
     std::cout << "Learning kmer parameters\n";
     srand(time(0));
-    size_t n_samples = 1000;
+    size_t n_samples = 10000;
+
+    //
+    KmerDistribution kmerDistribution;
+    int k = opt::kmerLength;
     for(size_t i = 0; i < n_samples; ++i)
     {
         std::string s = BWTAlgorithms::sampleRandomString(pBWT);
-        std::cout << "S: " << s << "\n";
+        int n = s.size();
+        int nk = n - k + 1;
+        for(int j = 0; j < nk; ++j)
+        {
+            std::string kmer = s.substr(j, k);
+            int count = BWTAlgorithms::countSequenceOccurrences(kmer, pBWT, pRBWT);
+            kmerDistribution.add(count);
+        }
     }
-    exit(1);
+
+    //
+    kmerDistribution.print(75);
+
+    double ratio = 2.0f;
+    int chosenThreshold = kmerDistribution.findErrorBoundaryByRatio(ratio);
+    double cumulativeLEQ = kmerDistribution.getCumulativeProportionLEQ(chosenThreshold);
+
+    if(chosenThreshold == -1)
+    {
+        std::cerr << "[sga correct] Error k-mer threshold learning failed\n";
+        std::cerr << "[sga correct] This can indicate the k-mer you choose is too high or your data has very low coverage\n";
+        exit(EXIT_FAILURE);
+    }
+
+    std::cout << "Chosen kmer threshold: " << chosenThreshold << "\n";
+    std::cout << "Proportion of kmer density right of threshold: " << 1.0f - cumulativeLEQ << "\n";
+    if(cumulativeLEQ > 0.25f)
+    {
+        std::cerr << "[sga correct] Warning: Proportion of kmers greater than the chosen threshold is less than 0.75 (" << cumulativeLEQ  << "\n";
+        std::cerr << "[sga correct] This can indicate your chosen kmer size is too large or your data is too low coverage to reliably correct\n";
+        std::cerr << "[sga correct] It is suggest to lower the kmer size and/or choose the threshold manually\n";
+    }
+    
+    return chosenThreshold;
 }
 
 // 
@@ -269,6 +312,7 @@ void parseCorrectOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case 'b': arg >> opt::branchCutoff; break;
             case 'i': arg >> opt::numKmerRounds; break;
+            case OPT_LEARN: opt::bLearnKmerParams = true; break;
             case OPT_DISCARD: bDiscardReads = true; break;
             case OPT_METRICS: arg >> opt::metricsFile; break;
             case OPT_HELP:
