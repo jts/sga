@@ -14,8 +14,8 @@
 
 struct ErrorCount
 {
-    int num_samples;
-    int num_errors;
+    int64_t num_samples;
+    int64_t num_errors;
 };
 
 template<class Key>

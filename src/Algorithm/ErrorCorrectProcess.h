@@ -108,7 +108,7 @@ class ErrorCorrectPostProcess
         bool m_bCollectMetrics;
 
         ErrorCountMap<char> m_qualityMetrics;
-        ErrorCountMap<int> m_positionMetrics;
+        ErrorCountMap<int64_t> m_positionMetrics;
         ErrorCountMap<char> m_originalBaseMetrics;
         ErrorCountMap<std::string> m_precedingSeqMetrics;
 
@@ -117,9 +117,9 @@ class ErrorCorrectPostProcess
         size_t m_readsKept;
         size_t m_readsDiscarded;
 
-        int m_kmerQCPassed;
-        int m_overlapQCPassed;
-        int m_qcFail;
+        size_t m_kmerQCPassed;
+        size_t m_overlapQCPassed;
+        size_t m_qcFail;
 };
 
 #endif
