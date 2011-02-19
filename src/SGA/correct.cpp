@@ -50,11 +50,13 @@ static const char *CORRECT_USAGE_MESSAGE =
 "          --discard                    detect and discard low-quality reads\n"
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
-"      -a, --algorithm=STR              specify the correction algorithm to use. STR must be one of hybrid, kmer, overlap.\n"
-"                                       The default algorithm is hybrid which first attempts kmer correction, then performs\n"
-"                                       overlap correction on the remaining uncorrected reads.\n"
-"          --metrics=FILE               collect error correction metrics (error rate by position in read, etc) and write\n"
-"                                       them to FILE\n"
+"      -a, --algorithm=STR              specify the correction algorithm to use. STR must be one of kmer, hybrid, overlap. (default: kmer)\n"
+"          --metrics=FILE               collect error correction metrics (error rate by position in read, etc) and write them to FILE\n"
+"\nKmer correction parameters:\n"
+"      -k, --kmer-size=N                The length of the kmer to use. (default: 31)\n"
+"      -x, --kmer-threshold=N           Attempt to correct kmers that are seen less than N times. (default: 3)\n"
+"      -i, --kmer-rounds=N              Perform N rounds of k-mer correction, correcting up to N bases (default: 10)\n"
+"          --learn                      Attempt to learn the k-mer correction threshold (experimental). Overrides -x parameter.\n"
 "\nOverlap correction parameters:\n"
 "      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them overlapped (default: 0.04)\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads (default: 45)\n"
@@ -69,11 +71,6 @@ static const char *CORRECT_USAGE_MESSAGE =
 "                                       highly-repetitive reads. If the number of branches exceeds N, the search stops and the read\n"
 "                                       will not be corrected. This is not enabled by default.\n"
 "      -r, --rounds=NUM                 iteratively correct reads up to a maximum of NUM rounds (default: 1)\n"
-"\nKmer correction parameters:\n"
-"      -k, --kmer-size=N                The length of the kmer to use. (default: 41)\n"
-"      -x, --kmer-threshold=N           Attempt to correct kmers that are seen less than N times. (default: 3)\n"
-"      -i, --kmer-rounds=N              Perform N rounds of k-mer correction, correcting up to N bases (default: 5)\n"
-"          --learn                      Attempt to learn the k-mer correction threshold (experimental). Overrides -x parameter.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -98,11 +95,11 @@ namespace opt
     static int conflictCutoff = 5;
     static int branchCutoff = -1;
 
-    static int kmerLength = 41;
+    static int kmerLength = 31;
     static int kmerThreshold = 3;
-    static int numKmerRounds = 5;
+    static int numKmerRounds = 10;
     static bool bLearnKmerParams = false;
-    static ErrorCorrectAlgorithm algorithm = ECA_HYBRID;
+    static ErrorCorrectAlgorithm algorithm = ECA_KMER;
 }
 
 static const char* shortopts = "p:m:d:e:t:l:s:o:r:b:a:c:k:x:i:v";
