@@ -28,7 +28,8 @@ def runBWAIndex(inFile):
 def runBWAAln(inFiles, contigsFile, outFile):
     assert len(inFiles) == 2
     
-    tempSAI = map(lambda x : x + "." + contigsFile + ".bwsai", inFiles)
+    contigsBasename = getBasename(contigsFile)
+    tempSAI = map(lambda x : getBasename(x) + "." + contigsBasename + ".bwsai", inFiles)
 
     _align(contigsFile, inFiles[0], tempSAI[0])
     _align(contigsFile, inFiles[1], tempSAI[1])
