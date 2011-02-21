@@ -56,6 +56,7 @@ static const char *CONNECT_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 //"      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
+"      -l, --min-distance=LEN           minimum expected distance between the PE reads (start to end). Default: 150.\n"
 "      -m, --max-distance=LEN           maximum expected distance between the PE reads (start to end). This option specifies\n"
 "                                       how long the search should proceed for. Default: 250\n"
 "      -o, --outfile=FILE               write the connected reads to FILE\n"
@@ -87,13 +88,14 @@ namespace opt
 
 static const char* shortopts = "p:m:e:t:l:s:o:d:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_HETSV, OPT_CONNECTED_ONLY };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_HETSV, OPT_CONNECTED_ONLY, };
 
 static const struct option longopts[] = {
     { "verbose",         no_argument,       NULL, 'v' },
     { "threads",         required_argument, NULL, 't' },
     { "max-distance",    required_argument, NULL, 'd' },
     { "outfile",         required_argument, NULL, 'o' },
+    { "min-distance",    required_argument, NULL, 'l' },
     { "connected-only",  no_argument,       NULL, OPT_CONNECTED_ONLY },
     { "het-sv",          no_argument,       NULL, OPT_HETSV },
     { "help",            no_argument,       NULL, OPT_HELP },
@@ -468,6 +470,7 @@ void parseConnectOptions(int argc, char** argv)
             case 'o': arg >> opt::outFile; break;
             case 'd': arg >> opt::maxDistance; break;
             case 't': arg >> opt::numThreads; break;
+            case 'l': arg >> opt::minDistance; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_CONNECTED_ONLY: 
