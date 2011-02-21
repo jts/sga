@@ -179,6 +179,6 @@ for cd in contigData:
         else:
             sumRepeat += cd.len
 
-sys.stderr.write('Sum unique bases: %d\n' % (sumUnique))
-sys.stderr.write('Sum repeat bases: %d\n' % (sumRepeat))
+sys.stderr.write('Sum unique bases in contigs >= %d bp in length: %d\n' % (minLength, sumUnique))
+sys.stderr.write('Sum repeat bases in contigs >= %d bp in length: %d\n' % (minLength, sumRepeat))
 

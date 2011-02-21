@@ -30,6 +30,7 @@ if($bamFile eq "")
 if($bFail)
 {
     usage();
+    exit(1);
 }
 
 my $cmd;
