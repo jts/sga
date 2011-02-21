@@ -23,7 +23,7 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2010 Wellcome Trust Sanger Institute\n";
 
 static const char *SCAFFOLD_USAGE_MESSAGE =
-"Usage: " SUBPROGRAM " [OPTION] ... CONTIGSFILE DISTANCE-EST\n"
+"Usage: " SUBPROGRAM " [OPTION] ... [--pe PE-DE] [--mate-pair MATEPAIR-DE] CONTIGSFILE\n"
 "Construct scaffolds from CONTIGSFILE using distance estimates. \n"
 "The distance estimates are read from the --pe and --matepair parameters\n"
 "\n"
