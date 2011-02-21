@@ -4,11 +4,13 @@ use strict;
 use Getopt::Long;
 
 my $n = 5;
+my $k = 99;
 my $minLength = 0;
 my $prefix = "";
 my $numThreads = 1;
 
 GetOptions("prefix=s" => \$prefix,
+           "k=i"      => \$k,
            "n=i"      => \$n,
            "m=i"      => \$minLength,
            "t=i"      => \$numThreads);
@@ -44,7 +46,7 @@ $cmd = "samtools sort $prefix.diffcontigs.bam $prefix.diffcontigs.sorted";
 runCmd($cmd);
 
 # distance est
-$cmd = "DistanceEst -n $n -k 99 -j $numThreads -s $minLength -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
+$cmd = "DistanceEst -n $n -k $k -j $numThreads -s $minLength -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
 runCmd($cmd);
 
 sub usage
