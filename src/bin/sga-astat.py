@@ -85,11 +85,14 @@ for (name, len) in zip(bamFile.references, bamFile.lengths):
 totalReads = 0
 sumReadLength = 0
 
-iter = bamFile.fetch()
 last_ref_idx = -1
 last_pos = -1
 
-for alignment in iter:
+for alignment in bamFile:
+
+    if alignment.is_unmapped:
+        continue
+
     ref_idx = alignment.rname
     ref_name = bamFile.getrname(ref_idx)
 
@@ -165,6 +168,17 @@ for cd in contigData:
         bootstrapLen += cd.nlen
         bootstrapReads += cd.n
 
+sumUnique = 0
+sumRepeat = 0
 for cd in contigData:
     if cd.len >= minLength:
         print '%s\t%d\t%d\t%d\t%f\t%f' % (cd.name, cd.len, cd.nlen, cd.n, cd.n / (cd.nlen * arrivalRate), cd.astat)
+        
+        if cd.bUnique:
+            sumUnique += cd.len
+        else:
+            sumRepeat += cd.len
+
+sys.stderr.write('Sum unique bases: %d\n' % (sumUnique))
+sys.stderr.write('Sum repeat bases: %d\n' % (sumRepeat))
+
