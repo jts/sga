@@ -48,7 +48,7 @@ static const char *FILTERBAM_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 //"      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
-"      -m, --max-distance=LEN           search the graph for a path completing the mate-pair fragment. If the path is less than LEN\n"
+"      -d, --max-distance=LEN           search the graph for a path completing the mate-pair fragment. If the path is less than LEN\n"
 "                                       then the pair will be discarded.\n"
 "      -o, --out-bam=FILE               write the filtered reads to FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
