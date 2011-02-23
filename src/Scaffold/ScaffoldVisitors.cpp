@@ -858,11 +858,11 @@ bool ScaffoldWriterVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
 
 void ScaffoldWriterVisitor::postvisit(ScaffoldGraph*)
 {
-    int totalScaffolds = m_statsVector.size();
-    int singleton = 0;
-    int sumSpan = 0;
-    int sumBases = 0;
-    int totalContigs = 0;
+    size_t totalScaffolds = m_statsVector.size();
+    size_t singleton = 0;
+    size_t sumSpan = 0;
+    size_t sumBases = 0;
+    size_t totalContigs = 0;
     std::vector<ScaffoldStats>::iterator iter = m_statsVector.begin();
     for(; iter != m_statsVector.end(); ++iter)
     {
@@ -876,14 +876,14 @@ void ScaffoldWriterVisitor::postvisit(ScaffoldGraph*)
 
     std::sort(m_statsVector.begin(), m_statsVector.end(), ScaffoldStats::sortSpanDesc);
 
-    int targetSpan = sumSpan / 2;
-    int spanN50 = -1;
-    int maxSpan = 0;
-    int runningSum = 0;
+    size_t targetSpan = sumSpan / 2;
+    size_t spanN50 = -1;
+    size_t maxSpan = 0;
+    size_t runningSum = 0;
     iter = m_statsVector.begin();
     for(; iter != m_statsVector.end(); ++iter)
     {
-        if(iter->span > maxSpan)
+        if((size_t)iter->span > maxSpan)
             maxSpan = iter->span;
         runningSum += iter->span;
         if(runningSum > targetSpan)
@@ -894,11 +894,11 @@ void ScaffoldWriterVisitor::postvisit(ScaffoldGraph*)
     }
 
     printf("\n======\n");
-    printf("Constructed %d scaffolds from %d contigs (%d singleton scaffolds)\n", totalScaffolds, totalContigs, singleton);
+    printf("Constructed %zu scaffolds from %zu contigs (%zu singleton scaffolds)\n", totalScaffolds, totalContigs, singleton);
     printf("Total bases: %.2lfMbp\n", (double)sumBases / 1000000);
     printf("Total span: %.2lfMbp\n", (double)sumSpan / 1000000);
     
-    printf("Max scaffold span: %d bp\n", maxSpan);
-    printf("N50 scaffold span: %d bp\n", spanN50);
+    printf("Max scaffold span: %zu bp\n", maxSpan);
+    printf("N50 scaffold span: %zu bp\n", spanN50);
     printf("Mean scaffold span: %.0lf bp\n", (double)sumSpan / totalScaffolds);
 }

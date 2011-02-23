@@ -36,6 +36,11 @@ void ScaffoldAlgorithms::makeScaffolds(ScaffoldGraph* pGraph)
         ScaffoldVertexPtrVector terminalVertices;
         computeTerminalsForConnectedComponent(component, terminalVertices);
 
+        if(terminalVertices.empty())
+        {
+            std::cerr << "Warning: scaffold component of size " << component.size() << " does not have a terminal vertex. Skipping\n";
+            continue;
+        }
         // Construct a scaffold layout for each terminal vertex of the component
         // We select the layout that contains the greatest amount of sequence as
         // the initial layout of the scaffold
