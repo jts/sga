@@ -124,6 +124,7 @@ AlphaCount64 calculateExactExtensions(const unsigned int overlapLen, const std::
 
 // Returns a randomly chosen string from the BWT
 std::string sampleRandomString(const BWT* pBWT);
+
 };
 
 #endif
