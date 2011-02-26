@@ -83,7 +83,7 @@ std::string OverlapBlock::getFullString(const std::string& original) const
     std::string str = getOverlapString(original);
     std::string history = forwardHistory.getBaseString();
 
-    if(history.empty() && overlapLen != original.size())
+    if(history.empty() && overlapLen != (int)original.size())
     {
         WARN_ONCE("getFullString() called on block with no history")
     }
