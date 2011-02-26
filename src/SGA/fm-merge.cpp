@@ -84,8 +84,7 @@ int FMMergeMain(int argc, char** argv)
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
-    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
-                                                         0.0f, 0,0,true); 
+    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT,0.0f, 0,0,true); 
     pOverlapper->setExactModeOverlap(true);
     pOverlapper->setExactModeIrreducible(true);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
@@ -107,7 +106,6 @@ int FMMergeMain(int argc, char** argv)
                                                          FMMergeResult, 
                                                          FMMergeProcess, 
                                                          FMMergePostProcess>(opt::readsFile, &processor, &postProcessor);
-        //count = computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
     else
     {
@@ -130,7 +128,6 @@ int FMMergeMain(int argc, char** argv)
             delete processorVector[i];
             processorVector[i] = NULL;
         }
-        //count = computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
 
     // Check that every bit was set in the bit vector
