@@ -161,18 +161,6 @@ QCResult QCProcess::process(const SequenceWorkItem& workItem)
         }
     }
 
-    /*
-    for(int i = 0; i < nk; ++i)
-    {
-        std::string kmer = w.substr(i, k);
-        int count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pBWT, m_pRBWT);
-        if(count <= threshold)
-        {
-            allSolid = false;
-            break;
-        }
-    }
-    */
     if(allSolid)
         result.qcPassed = true;
     else

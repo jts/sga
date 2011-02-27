@@ -50,8 +50,8 @@ def runSort(inFile, outFile):
     cmd = "samtools sort %s %s" % (inFile, outPrefix)
     runCmd(cmd)
     
-    cmd = "samtools index %s" % (outFile)
-    runCmd(cmd)
+    #cmd = "samtools index %s" % (outFile)
+    #runCmd(cmd)
 
 def runSplitReads(inFiles, outFiles):
     assert len(inFiles) == 1 and len(outFiles) == 2
