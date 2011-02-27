@@ -162,6 +162,8 @@ int filterBAMMain(int argc, char** argv)
             printf("[sga filterBAM] Processed %d pairs\n", numPairsTotal);
 
         done = !readAlignmentPair(pBamReader, record1, record2);
+        if(done)
+            break;
 
         if(!record1.IsMapped() || !record2.IsMapped())
         {
@@ -235,6 +237,9 @@ int filterBAMMain(int argc, char** argv)
 
     if(pRBWT != NULL)
         delete pRBWT;
+
+    pBamWriter->Close();
+    pBamReader->Close();
 
     delete pTimer;
     delete pBamReader;
