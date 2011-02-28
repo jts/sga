@@ -423,6 +423,24 @@ bool OverlapAlgorithm::findOverlapBlocksInexact(const std::string& w, const BWT*
     return !fail;
 }
 
+// Build forward history for the blocks
+void OverlapAlgorithm::buildForwardHistory(OverlapBlockList* pList) const
+{
+    OverlapBlockList terminalList;
+    OverlapBlockList potentialContainedList;
+    while(!pList->empty())
+    {
+        // The terminalBlock list contains all the blocks that became right-terminal
+        // in the current extension round.
+
+        // Perform a single round of extension, any terminal blocks
+        // are moved to the terminated list
+        extendActiveBlocksRight(m_pBWT, m_pRevBWT, *pList, terminalList, potentialContainedList);
+    }
+    *pList = terminalList;
+    pList->splice(pList->end(), potentialContainedList);
+}
+
 // Calculate the single right extension to the '$' for each the contained blocks
 // so that the interval ranges are consistent
 void OverlapAlgorithm::terminateContainedBlocks(OverlapBlockList& containedBlocks) const

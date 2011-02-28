@@ -64,6 +64,9 @@ class OverlapAlgorithm
         // Write all the overlap blocks pList to the filehandle
         void writeOverlapBlocks(std::ostream& writer, size_t readIdx, bool isSubstring, const OverlapBlockList* pList) const;
 
+        // Build the forward history structures for the blocks
+        void buildForwardHistory(OverlapBlockList* pList) const;
+
         // Set flag to use exact-match algorithms only
         void setExactModeOverlap(bool b) { m_exactModeOverlap = b; }
         void setExactModeIrreducible(bool b) { m_exactModeIrreducible = b; }

@@ -55,8 +55,8 @@ namespace opt
     static std::string outFile;
     static std::string readsFile;
     static std::string prefix;
-    static int seedLength = 16;
-    static int seedStride = seedLength;
+    static int seedLength = 0;
+    static int seedStride = 0;//seedLength;
     static int numThreads = 1;
     static double errorRate = 0.0f;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
@@ -96,6 +96,9 @@ void cluster()
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT,opt::errorRate, opt::seedLength, opt::seedStride, true);
+
+    pOverlapper->setExactModeOverlap(opt::errorRate < 0.001f);
+    pOverlapper->setExactModeIrreducible(opt::errorRate < 0.001f);
 
     BitVector markedReads(pBWT->getNumStrings());
 

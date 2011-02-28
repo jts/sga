@@ -64,7 +64,6 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
     node.isReverseInterval = false;
     usedIndex.insert(readInterval.lower);
     queue.push(node);
-
     while(!queue.empty())
     {
         ClusterNode node = queue.front();
@@ -76,10 +75,10 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
         SeqRecord tempRecord;
         tempRecord.id = "cluster";
         tempRecord.seq = node.sequence;
-
         OverlapBlockList blockList;
         OverlapResult result = m_pOverlapper->overlapRead(tempRecord, m_minOverlap, &blockList);
-
+        //m_pOverlapper->buildForwardHistory(&blockList);
+        
         // Parse each member of the block list and potentially expand the cluster
         for(OverlapBlockList::const_iterator iter = blockList.begin(); iter != blockList.end(); ++iter)
         {
@@ -144,12 +143,12 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
             {
                 if(i == lowestIndex) //already set
                     continue;
-
                 currentValue = m_pMarkedReads->test(i);
                 if(currentValue)
                 {
                     // This value should not be true, emit a warning
                     std::cout << "Warning: Bit " << i << " was set outside of critical section\n";
+                    std::cout << "Read: " << readString << "\n";
                 }
                 else
                 {
