@@ -32,6 +32,15 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
     // Calculate the intervals in the forward FM-index for this read
     const BWT* pBWT = m_pOverlapper->getBWT();
 
+    // Check if this read is a substring
+    OverlapBlockList tempBlockList;
+    OverlapResult overlapResult = m_pOverlapper->alignReadDuplicate(item.read, &tempBlockList);
+    if(overlapResult.isSubstring)
+    {
+        std::cerr << "Error: substring reads found in sga-cluster. Please run rmdup before cluster\n";
+        exit(1);
+    }
+
     // Find the interval in the fm-index containing the read
     std::string readString = item.read.seq.toString();
     BWTInterval readInterval = BWTAlgorithms::findInterval(pBWT, readString);
