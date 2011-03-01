@@ -51,6 +51,8 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
     // Starting from the root, join the sequence(s) of the scaffold
     // together along with the appropriate gaps/overlap
     Vertex* pVertex = pGraph->getVertex(m_rootID);
+    pVertex->setColor(GC_BLACK);
+
     assert(pVertex != NULL);
     
     EdgeComp relativeComp = EC_SAME;
@@ -62,7 +64,6 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
     // Add in the sequences of linked contigs, if any
     if(m_links.size() > 0)
     {
-
         EdgeDir rootDir = m_links[0].getDir();
         
         // If this scaffold grows in the antisense direction,
@@ -79,6 +80,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
             const ScaffoldLink& link = m_links[i];
 
             pVertex = pGraph->getVertex(link.endpointID);
+            pVertex->setColor(GC_BLACK);
 
             // Calculate the strand this sequence is on relative to the root
             if(link.getComp() == EC_REVERSE)
@@ -144,8 +146,6 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
                     introduceGap(minGapLength, toAppend, link, resolvedSequence);
 
             }
-
-            pGraph->getVertex(currID)->setColor(GC_BLACK);
 
             sequence.append(resolvedSequence);
             currID = link.endpointID;
