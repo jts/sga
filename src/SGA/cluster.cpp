@@ -102,7 +102,7 @@ void cluster()
 
     BitVector markedReads(pBWT->getNumStrings());
 
-    std::string preclustersFile = opt::prefix + ".preclusters";
+    std::string preclustersFile = opt::outFile + ".preclusters";
     std::ostream* pPreWriter = createWriter(preclustersFile);
     ClusterPostProcess postProcessor(pPreWriter, opt::minSize, &markedReads);
     
