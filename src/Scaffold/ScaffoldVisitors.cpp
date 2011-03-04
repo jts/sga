@@ -64,8 +64,9 @@ void ScaffoldStatsVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
 
 // ScaffoldAStatistic
 ScaffoldAStatisticVisitor::ScaffoldAStatisticVisitor(double uniqueThreshold, 
-                                                     double repeatThreshold) : m_uniqueThreshold(uniqueThreshold),
-                                                                               m_repeatThreshold(repeatThreshold)
+                                                     double minCopyNumber) : m_uniqueThreshold(uniqueThreshold),
+                                                                             m_minCopyNumber(minCopyNumber)
+
 {
                                                                                
 }
@@ -75,8 +76,10 @@ void ScaffoldAStatisticVisitor::previsit(ScaffoldGraph* /*pGraph*/)
 {
     m_sumUnique = 0;
     m_sumRepeat = 0;
+    m_sumLowCN = 0;
     m_numUnique = 0;
     m_numRepeat = 0;
+    m_numLowCN = 0;
 }
 
 //
@@ -91,12 +94,18 @@ bool ScaffoldAStatisticVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex*
             ++m_numUnique;
             m_sumUnique += pVertex->getSeqLen();
         }
-
-        if(pVertex->getAStatistic() < m_repeatThreshold)
+        else
         {
             pVertex->setClassification(SVC_REPEAT);
             ++m_numRepeat;
             m_sumRepeat += pVertex->getSeqLen();
+        }
+
+        if(pVertex->getEstCopyNumber() < m_minCopyNumber)
+        {
+            pVertex->setClassification(SVC_REPEAT);
+            ++m_numLowCN;
+            m_sumLowCN += pVertex->getSeqLen();
         }
     }
     return false;   
@@ -107,6 +116,7 @@ void ScaffoldAStatisticVisitor::postvisit(ScaffoldGraph* /*pGraph*/)
 {
     printf("A-statistic: classified %zu vertices as unique (%.2lf Mbp)\n", m_numUnique, (double)m_sumUnique / 1000000);
     printf("A-statistic: classified %zu vertices as repeat (%.2lf Mbp)\n", m_numRepeat, (double)m_sumRepeat / 1000000);
+    printf("A-statistic: classified %zu vertices as spurious (%.2lf Mbp)\n", m_numLowCN, (double)m_sumLowCN / 1000000);
 }
 
 //

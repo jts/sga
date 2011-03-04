@@ -43,19 +43,21 @@ class ScaffoldAStatisticVisitor
 {
     public:
         
-        ScaffoldAStatisticVisitor(double uniqueThreshold, double repeatThreshold);
+        ScaffoldAStatisticVisitor(double uniqueThreshold, double minCopyNumber);
         void previsit(ScaffoldGraph* /*pGraph*/);
         bool visit(ScaffoldGraph* pGraph, ScaffoldVertex* pVertex);
         void postvisit(ScaffoldGraph* /*pGraph*/);
 
     private:
         double m_uniqueThreshold;
-        double m_repeatThreshold;
+        double m_minCopyNumber;
 
         size_t m_numUnique;
         size_t m_numRepeat;
+        size_t m_numLowCN;
         size_t m_sumUnique;
         size_t m_sumRepeat;
+        size_t m_sumLowCN;
 };
 
 // Walk the graph validating that the links present are valid

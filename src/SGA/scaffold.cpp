@@ -37,9 +37,7 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "                                       determine unique and repetitive contigs with the -u/--unique-astat\n"
 "                                       and -r/--repeat-astat parameters (required)\n"
 "      -u, --unique-astat=FLOAT         Contigs with an a-statitic value about FLOAT will be considered unique (default: 20.0)\n"
-"      -r, --repeat-astat=FLOAT         Contigs with an a-statistic below FLOAT will be considered repetitive (default: 5.0)\n"
-"                                       Contigs with an a-statistic between these thresholds will not be\n"
-"                                       classified as unique or repetitive\n"
+"      -c, --min-copy-number=FLOAT      remove vertices with estimated copy number less than FLOAT (default: 0.5f)\n"
 "      -s, --max-sv-size=N              collapse heterozygous structural variation if the event size is less than N (default: 0)\n"
 "      -o, --outfile=FILE               write the scaffolds to FILE (default: CONTIGSFILE.scaf\n"
 "          --remove-conflicting         if two contigs have multiple distance estimates between them and they do not agree, break the scaffold\n"
@@ -57,29 +55,30 @@ namespace opt
     static std::string asqgFile;
     static bool removeConflicting = false;
     static double uniqueAstatThreshold = 20.0f;
-    static double repeatAstatThreshold = 5.0f;
+    static double minEstCopyNumber = 0.3f;
     static int maxSVSize = 0;
     static int minContigLength = 0;
 }
 
-static const char* shortopts = "vm:a:u:r:o:g:s:";
+static const char* shortopts = "vm:a:u:r:o:g:s:c:";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_PE, OPT_MATEPAIR, OPT_CUTCONFLICT };
 
 static const struct option longopts[] = {
-    { "verbose",         no_argument,       NULL, 'v' },
-    { "min-length",      required_argument, NULL, 'm' },
-    { "asgq-file",       required_argument, NULL, 'g' }, 
-    { "astatistic-file", required_argument, NULL, 'a' },
-    { "unique-astat",    required_argument, NULL, 'u' },
-    { "repeat-astat",    required_argument, NULL, 'r' },
-    { "outfile",         required_argument, NULL, 'o' },
-    { "max-sv-size",     required_argument, NULL, 's' },
+    { "verbose",            no_argument,       NULL, 'v' },
+    { "min-length",         required_argument, NULL, 'm' },
+    { "asgq-file",          required_argument, NULL, 'g' }, 
+    { "astatistic-file",    required_argument, NULL, 'a' },
+    { "unique-astat",       required_argument, NULL, 'u' },
+    { "repeat-astat",       required_argument, NULL, 'r' },
+    { "outfile",            required_argument, NULL, 'o' },
+    { "max-sv-size",        required_argument, NULL, 's' },
+    { "min-copy-number",    required_argument, NULL, 'c' },
     { "remove-conflicting", no_argument,       NULL, OPT_CUTCONFLICT },
-    { "pe",              required_argument, NULL, OPT_PE },
-    { "mate-pair",       required_argument, NULL, OPT_MATEPAIR },
-    { "help",            no_argument,       NULL, OPT_HELP },
-    { "version",         no_argument,       NULL, OPT_VERSION },
+    { "pe",                 required_argument, NULL, OPT_PE },
+    { "mate-pair",          required_argument, NULL, OPT_MATEPAIR },
+    { "help",               no_argument,       NULL, OPT_HELP },
+    { "version",            no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
 };
 
@@ -108,7 +107,7 @@ int scaffoldMain(int argc, char** argv)
     // Load the a-stat data and mark vertices as unique and repeat
     graph.loadAStatistic(opt::astatFile);
     ScaffoldAStatisticVisitor astatVisitor(opt::uniqueAstatThreshold, 
-                                           opt::repeatAstatThreshold);
+                                           opt::minEstCopyNumber);
     graph.visit(astatVisitor);
 
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
@@ -171,9 +170,9 @@ void parseScaffoldOptions(int argc, char** argv)
             case 'a': arg >> opt::astatFile; break;
             case 'g': arg >> opt::asqgFile; break;
             case 'u': arg >> opt::uniqueAstatThreshold; break;
-            case 'r': arg >> opt::repeatAstatThreshold; break;
             case 'o': arg >> opt::outFile; break;
             case 's': arg >> opt::maxSVSize; break;
+            case 'c': arg >> opt::minEstCopyNumber; break;
             case OPT_CUTCONFLICT: opt::removeConflicting = true; break;
             case OPT_PE: 
                 arg >> opt::peDistanceEstFile; 
@@ -225,13 +224,6 @@ void parseScaffoldOptions(int argc, char** argv)
     if(opt::astatFile.empty())
     {
         std::cerr << SUBPROGRAM ": an a-statistic file must be provided\n";
-        exit(1);
-    }
-
-    if(opt::uniqueAstatThreshold < opt::repeatAstatThreshold)
-    {
-        std::cerr << SUBPROGRAM ": the unique a-stat threshold must be greater than the repeat a-stat threshold\n";
-        std::cerr << "Found unique value: " << opt::uniqueAstatThreshold << " repeat value: " << opt::repeatAstatThreshold << "\n";
         exit(1);
     }
 
