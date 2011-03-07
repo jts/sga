@@ -45,7 +45,7 @@ static const char *INDEX_USAGE_MESSAGE =
 "                                       values can substantially reduce the amount of memory required at the cost of less predictable memory usage.\n"
 "                                       When this value is set to 32, the memory requirement is essentially deterministic and requires ~5N bytes where\n"
 "                                       N is the size of the FM-index of READS2.\n"
-"                                       The default value is 4.\n"
+"                                       The default value is 8.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -57,7 +57,7 @@ namespace opt
     static int numThreads = 1;
     static bool bDiskAlgo = false;
     static bool validate;
-    static int gapArrayStorage = 4;
+    static int gapArrayStorage = 8;
 }
 
 static const char* shortopts = "p:m:t:d:g:cv";
