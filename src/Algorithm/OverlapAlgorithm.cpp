@@ -795,7 +795,8 @@ void OverlapAlgorithm::_processIrreducibleBlocksExactIterative(const BWT* pBWT, 
                     AlphaCount64 test_count = tlbIter->getCanonicalExtCount(pBWT, pRevBWT);
                     if(test_count.get('$') == 0)
                     {
-                        std::cerr << "Error: the top level block in irreducible-overlap computation does not have the expected terminal character\n";
+                        std::cerr << "Error: substring read found during overlap computation.\n";
+                        std::cerr << "Please run sga rmdup before sga overlap\n";
                         exit(EXIT_FAILURE);
                     }
                     
