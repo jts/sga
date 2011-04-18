@@ -44,7 +44,7 @@ size_t ScaffoldRecord::getNumComponents() const
 // Construct a string from the scaffold
 std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOverlap, 
                                            int maxOverlap, double maxErrorRate, int resolveMask, 
-                                           int minGapLength, ResolveStats* pStats) const
+                                           int minGapLength, double distanceFactor, ResolveStats* pStats) const
 {
     pStats->numScaffolds += 1;
 
@@ -95,7 +95,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
             bool resolved = false;
             if(resolveMask & RESOLVE_GRAPH_BEST || resolveMask & RESOLVE_GRAPH_UNIQUE)
             {
-                resolved = graphResolve(pGraph, currID, link, resolveMask, pStats, resolvedSequence);
+                resolved = graphResolve(pGraph, currID, link, resolveMask, distanceFactor, pStats, resolvedSequence);
                 /*
                 std::cout << "GR " << link.endpointID << " PC: " << prevComp << " LC: " << 
                              link.getComp() << " RC: " << relativeComp << " LD: " << 
@@ -160,7 +160,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
 
 // Attempt to resolve a scaffold link by finding a walk through the graph linking the two vertices
 bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& startID, 
-                                  const ScaffoldLink& link, int resolveMask, 
+                                  const ScaffoldLink& link, int resolveMask, double distanceFactor,
                                   ResolveStats* pStats, std::string& outExtensionString) const
 {
     // Get the vertex to start the search from
@@ -168,8 +168,7 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
     Vertex* pEndVertex = pGraph->getVertex(link.endpointID);
     assert(pStartVertex != NULL && pEndVertex != NULL);
 
-    double NUM_STDDEV = 3.0f;
-    int threshold = static_cast<int>(NUM_STDDEV * link.stdDev);
+    int threshold = static_cast<int>(distanceFactor * link.stdDev);
     int maxDistance = link.distance + threshold;
     int maxExtensionDistance = maxDistance + pEndVertex->getSeqLen();
     SGWalkVector walks;

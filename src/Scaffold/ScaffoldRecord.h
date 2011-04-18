@@ -77,12 +77,12 @@ class ScaffoldRecord
         std::string generateString(const StringGraph* pGraph, 
                                    int minOverlap, int maxOverlap, 
                                    double maxErrorRate, int resolveMask,
-                                   int minGapLength, ResolveStats* pStats) const;
+                                   int minGapLength, double distanceFactor, ResolveStats* pStats) const;
 
 
         // Resolve a link by find walks through the graph
         bool graphResolve(const StringGraph* pGraph, const std::string& startID, 
-                          const ScaffoldLink& link, int resolveMask,
+                          const ScaffoldLink& link, int resolveMask, double factor,
                           ResolveStats* pStats, std::string& extensionString) const;
 
         // Resolve a predicted overlap between s1 and s2 by aligning the ends of the sequences

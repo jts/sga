@@ -59,6 +59,8 @@ static const char *SCAFFOLD2FASTA_USAGE_MESSAGE =
 "                                       none: do not resolve gaps using the graph\n"
 "                                       The most conservative most is unique, then best-unique with best-any being the most\n"
 "                                       aggressive. The default is unique\n"
+"      -d, --distanceFactor=T           Accept a walk as correctly resolving a gap if the walk length is within T standard \n"
+"                                       deviations from the estimated distance (default: 3.0f)\n" 
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -76,9 +78,10 @@ namespace opt
     static bool bNoSingletons = false;
     static bool bWriteUnplaced = false;
     static int minScaffoldLength = 200;
+    static float distanceFactor = 3.0f;
 }
 
-static const char* shortopts = "vm:o:f:a:g:";
+static const char* shortopts = "vm:o:f:a:g:d:";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_NOSINGLETON, OPT_USEOVERLAP, OPT_MINGAPLENGTH, OPT_WRITEUNPLACED };
 
@@ -89,6 +92,7 @@ static const struct option longopts[] = {
     { "contig-file",    required_argument, NULL, 'f' },
     { "asqg-file",      required_argument, NULL, 'a' },
     { "graph-resolve",  required_argument, NULL, 'g' },
+    { "distanceFactor", required_argument, NULL, 'd' },
     { "min-gap-length", required_argument, NULL, OPT_MINGAPLENGTH },
     { "write-unplaced", no_argument,       NULL, OPT_WRITEUNPLACED },
     { "no-singleton",   no_argument,       NULL, OPT_NOSINGLETON },
@@ -130,8 +134,14 @@ int scaffold2fastaMain(int argc, char** argv)
         record.parse(line);
         if(record.getNumComponents() > 1 || !opt::bNoSingletons)
         {
-            std::string sequence = record.generateString(pGraph, opt::minOverlap, opt::maxOverlap, 
-                                                         opt::maxErrorRate, opt::resolveMask, opt::minGapLength, &stats);
+            std::string sequence = record.generateString(pGraph, 
+                                                         opt::minOverlap, 
+                                                         opt::maxOverlap, 
+                                                         opt::maxErrorRate, 
+                                                         opt::resolveMask, 
+                                                         opt::minGapLength, 
+                                                         opt::distanceFactor, 
+                                                         &stats);
             std::stringstream idss;
             idss << "scaffold-" << idx;
             writeFastaRecord(pWriter, idss.str(), sequence);
@@ -201,6 +211,7 @@ void parseScaffold2fastaOptions(int argc, char** argv)
             case 'a': arg >> opt::asqgFile; break;
             case 'o': arg >> opt::outFile; break;
             case 'g': arg >> modeStr; break;
+            case 'd': arg >> opt::distanceFactor; break;
             case OPT_WRITEUNPLACED: opt::bWriteUnplaced = true; break;
             case OPT_MINGAPLENGTH: arg >> opt::minGapLength; break;
             case OPT_NOSINGLETON: opt::bNoSingletons = true; break;
