@@ -20,7 +20,7 @@
 #include "RLUnit.h"
 
 // Defines
-#define RLBWT_VALIDATE 1
+//#define RLBWT_VALIDATE 1
 
 //
 // RLBWT
