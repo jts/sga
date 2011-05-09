@@ -428,6 +428,17 @@ Edge* SGWalk::getEdge(size_t idx) const
     return m_edges[idx];
 }
 
+
+//
+Vertex* SGWalk::getVertex(size_t idx) const
+{
+    assert(idx < getNumVertices());
+    if(idx == 0)
+        return m_pStartVertex;
+    else
+        return m_edges[idx - 1]->getEnd();
+}
+
 //
 VertexPtrVec SGWalk::getVertices() const
 {

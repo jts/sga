@@ -82,8 +82,6 @@ class GraphSearchTree
         // Takes in a vector of all the vertices in the graph
         static void connectedComponents(VertexPtrVector allVertices, VertexPtrVectorVector& connectedComponents);
 
-        static bool bellmanFord(VERTEX* pSource, VertexPtrVector& component);
-
         // Returns true if the search has converged on a single vertex. In
         // other words, all walks from the start node share a common vertex,
         // which is represented by one of the nodes waiting expansion.

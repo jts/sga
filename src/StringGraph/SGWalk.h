@@ -46,6 +46,8 @@ class SGWalk
         Edge* getFirstEdge() const;
         Edge* getLastEdge() const;
         Edge* getEdge(size_t idx) const;
+        Vertex* getVertex(size_t idx) const;
+
         size_t getNumVertices() const;
         size_t getNumEdges() const;
 
