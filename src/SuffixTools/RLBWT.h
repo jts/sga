@@ -31,6 +31,7 @@ class RLBWT
     
         // Constructors
         RLBWT(const std::string& filename, int sampleRate = DEFAULT_SAMPLE_RATE_SMALL);
+        RLBWT(const SuffixArray* pSA, const ReadTable* pRT);
 
         //    
         void initializeFMIndex();

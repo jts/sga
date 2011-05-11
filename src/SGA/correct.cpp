@@ -25,6 +25,7 @@
 #include "CorrectionThresholds.h"
 #include "KmerDistribution.h"
 #include "BWTIntervalCache.h"
+#include "LRAlignment.h"
 
 // Functions
 int learnKmerParameters(const BWT* pBWT);
@@ -100,8 +101,9 @@ namespace opt
     static int kmerThreshold = 3;
     static int numKmerRounds = 10;
     static bool bLearnKmerParams = false;
-
     static int intervalCacheLength = 10;
+    static bool bLongReadCorrection = true;
+
     static ErrorCorrectAlgorithm algorithm = ECA_KMER;
 }
 
@@ -155,6 +157,16 @@ int correctMain(int argc, char** argv)
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false, opt::branchCutoff);
     
+    if(opt::bLongReadCorrection)
+    {
+        WARN_ONCE("TESTING LONG READ CORRECTION");
+
+        // example 454 read from E. coli K12
+        //std::string query = "GGCGTCTTTTATAAAGATGAGCCCATCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTATCTGGCCACAAAACAGCGTTGATTTGCTGAAATTTATCGAGCATAACCCTCGAATTTGCGGCGTGATTTTTGACTGGGATGAGTACAGTCTCGATTTATGTAGCGATATCAATCAGCTTAATGAATATCTCCCGCTTTATGCCTTCATCAACACCCACTCGA";
+        std::string query = "TCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTAT";
+        LRAlignment::bwaswAlignment(query, pBWT);
+        exit(1);
+    }
 
     // Learn the parameters of the kmer corrector
     if(opt::bLearnKmerParams)

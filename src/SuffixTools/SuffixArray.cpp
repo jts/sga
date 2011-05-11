@@ -25,10 +25,10 @@ SuffixArray::SuffixArray(const std::string& filename)
 }
 
 // Construct the suffix array for a table of reads
-SuffixArray::SuffixArray(const ReadTable* pRT, int numThreads)
+SuffixArray::SuffixArray(const ReadTable* pRT, int numThreads, bool silent)
 {
-    Timer timer("SuffixArray Construction");
-    saca_induced_copying(this, pRT, numThreads);
+    Timer timer("SuffixArray Construction", silent);
+    saca_induced_copying(this, pRT, numThreads, silent);
 }
 
 // Initialize a suffix array for the strings in RT
