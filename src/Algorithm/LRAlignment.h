@@ -33,6 +33,7 @@ struct LRCell
     // Functions
     void initializeDefault();
     void clearChildren();
+    bool hasUninitializedChild() const;
 
     // Data Members
     BWTInterval interval;
