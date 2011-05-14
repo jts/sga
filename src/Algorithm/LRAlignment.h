@@ -12,6 +12,7 @@
 
 #include "BWT.h"
 #include "BWTAlgorithms.h"
+#include "HashMap.h"
 #include <stack>
 
 namespace LRAlignment
@@ -21,7 +22,7 @@ namespace LRAlignment
 struct LRParams
 {
     static const int gap_open = 5;
-    static const int gap_ext = 3;
+    static const int gap_ext = 2;
     static const int mismatch = 3;
     static const int match = 1;
     static const int gap_open_extend = gap_open + gap_ext;
@@ -62,6 +63,7 @@ struct LRCell
 };
 
 typedef std::vector<LRCell> LRCellVector;
+typedef HashMap<uint64_t, uint64_t> LRHash;
 
 //
 struct LRStackEntry
@@ -70,10 +72,23 @@ struct LRStackEntry
     LRCellVector cells;
 };
 
-typedef std::stack<LRStackEntry> LRStack;
+typedef std::stack<LRStackEntry*> LRStack;
+typedef std::vector<LRStackEntry*> LRPendingVector;
 
+//
+void initializeDAWGHash(BWT* pQueryBWT, LRHash& dawgHash);
+
+//
 void bwaswAlignment(const std::string& query, BWT* pTargetBWT);
-int fill_cells(const LRParams& params, int match_score, LRCell* c[4]);
+
+//
+void mergeStackEntries(LRStackEntry* u, LRStackEntry* v);
+
+//
+void removeDuplicateCells(LRStackEntry* u, LRHash& hash);
+
+//
+int fillCells(const LRParams& params, int match_score, LRCell* c[4]);
 
 };
 
