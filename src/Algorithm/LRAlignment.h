@@ -18,7 +18,7 @@
 namespace LRAlignment
 {
 
-
+// 
 struct LRParams
 {
     static const int gap_open = 5;
@@ -26,7 +26,23 @@ struct LRParams
     static const int mismatch = 3;
     static const int match = 1;
     static const int gap_open_extend = gap_open + gap_ext;
+    static const int threshold = 30;
 };
+
+//
+struct LRHit
+{
+    LRHit() : interval(0,0), flag(0), num_seeds(0), length(0), G(0), G2(0), beg(0), end(0) {}
+    BWTInterval interval;
+    uint32_t flag;
+    uint32_t num_seeds;
+    int length;
+    int G;
+    int G2;
+    int beg;
+    int end;
+};
+typedef std::vector<LRHit> LRHitVector;
 
 //
 struct LRCell
@@ -86,6 +102,9 @@ void mergeStackEntries(LRStackEntry* u, LRStackEntry* v);
 
 //
 void removeDuplicateCells(LRStackEntry* u, LRHash& hash);
+
+//
+void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHitVector& hits);
 
 //
 int fillCells(const LRParams& params, int match_score, LRCell* c[4]);

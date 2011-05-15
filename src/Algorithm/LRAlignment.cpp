@@ -49,20 +49,26 @@ bool LRCell::hasUninitializedChild() const
 void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
 {
     // Construct an FM-index of the query sequence
-    BWT* pQueryBWT = createQuickBWT(query);
+    BWT* pQueryBWT = NULL;
+    SuffixArray* pQuerySA = NULL;
+    createQuickBWT(query, pQueryBWT, pQuerySA);
 
     LRHash dupHash;
 
     // Initialize the hash table of DAWG nodes
     LRHash dawgHash;
     initializeDAWGHash(pQueryBWT, dawgHash);
-
+    
+    //
     LRParams params;
 
     // Initialize a stack of elements with a single entry for the root node
     // of the query DAWG
     LRStack stack;
     
+    // Initialize hits vector with enough space to hold 2 hits per query base
+    LRHitVector hitsVector(2*pQueryBWT->getBWLen());
+
     // Initialize the vector of dawg nodes pending addition to the stack
     LRPendingVector pendingVector;
     size_t num_pending = 0;
@@ -78,12 +84,13 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
     x.G = 0;
     x.interval.lower = 0;
     x.interval.upper = pTargetBWT->getBWLen() - 1;
-    x.q_len = pTargetBWT->getBWLen();
+    x.t_len = 0;
+    x.q_len = 0;
+
     pInitial->cells.push_back(x);
 
     stack.push(pInitial);
 
-    int abort = 500;
     // Traverse DAG
     while(!stack.empty())
     {
@@ -123,7 +130,7 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
             for(size_t i = 0; i < v->cells.size(); ++i)
             {
                 LRCell* p = &v->cells[i];
-                printf("processing p = v[%d] [%d %d] is deleted? %d\n", i, p->interval.lower == -1 ? 0 : p->interval.lower, p->interval.upper == -1 ? 0 : p->interval.upper, p->interval.upper == -1);
+                printf("processing p = v[%zu] [%zu %zu] is deleted? %d\n", i, p->interval.lower == -1 ? 0 : p->interval.lower, p->interval.upper == -1 ? 0 : p->interval.upper, p->interval.upper == -1);
                 if(p->interval.upper == -1)
                     continue; // duplicate that has been deleted
                 LRCell x; // the cell being calculated
@@ -150,8 +157,7 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
                     if(score > 0)
                     {
                         // this cell has a positive score
-
-                        // Set the x's parent position in u and set the
+                        // set the x's parent position in u and set the
                         // parent's child position to x
                         x.parent_idx = upos;
                         p->u_idx = u->cells.size(); // x will be added to u in this position
@@ -241,7 +247,11 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
                 } // if X.h
             } // for all v
 		
+            // If the score for any cell in u exceeds the threshold, save it
+            if(!u->cells.empty())
+                saveHits(pQuerySA, u, params.threshold, hitsVector);
 
+            //
             uint32_t count = (uint32_t)hashIter->second;
             uint32_t position = hashIter->second >> 32;
             printf("cnt: %d pos: %d\n", count, position);
@@ -319,8 +329,57 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
     assert(num_pending == 0);
 
     delete pQueryBWT;
+    delete pQuerySA;
 
     WARN_ONCE("CHECK FOR MEM LEAKS");
+}
+
+// Process a list of cells and save alignment hits meeting the threshold
+void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHitVector& hits)
+{
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        if(p->G < threshold)
+            continue;
+        
+        for(int64_t k = u->interval.lower; k <= u->interval.upper; ++k)
+        {
+            // Calculate the beginning of the alignment using the suffix array
+            // of the query
+            SAElem e = pQuerySA->get(k);
+            int beg = e.getPos();
+            int end = beg + p->q_len;
+
+            // Save the best hit for alignments starting at beg in positions hits[2*beg]
+            // and the second best hit in hits[2*beg+1]
+            LRHit* q = NULL;
+            if(p->G > hits[beg*2].G)
+            {
+                // move the previous best to the second best slot
+                hits[beg*2+1] = hits[beg*2];
+                q = &hits[2*beg];
+            }
+            else if(p->G > hits[beg*2+1].G)
+            {
+                // the current hit is the second best at this position
+                q = &hits[2*beg+1];
+            }
+
+            if(q)
+            {
+                q->interval = p->interval;
+                q->length = p->t_len;
+                q->G = p->G;
+                q->beg = beg;
+                q->end = end;
+                q->G2 = (q->interval.size() == 1) ? 0 : q->G;
+                q->flag = 0;
+                q->num_seeds = 0;
+                printf("saved hit (%d %d) len: %d score: %d\n", q->beg, q->end, q->length, q->G);
+            }
+        }
+    }
 }
 
 // Initialize the hash table of DAWG nodes by inserting an element
@@ -420,7 +479,7 @@ void removeDuplicateCells(LRStackEntry* u, LRHash& hash)
 
         if(j >= 0)
         {
-            printf("marking p [%d %d] as deleted cidx: %d [DUP]\n", p->interval.lower, p->interval.upper, p->parent_cidx);
+            printf("marking p [%zu %zu] as deleted cidx: %d [DUP]\n", p->interval.lower, p->interval.upper, p->parent_cidx);
             p = &u->cells[j];
             p->interval.lower = -1;
             p->interval.upper = -1;

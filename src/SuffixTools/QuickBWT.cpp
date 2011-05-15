@@ -10,18 +10,16 @@
 
 // Construct a BWT for a small string.
 // Calling function is responsible for freeing the memory
-BWT* createQuickBWT(const std::string& str)
+void createQuickBWT(const std::string& str, BWT*& pBWT, SuffixArray*& pSA)
 {
     ReadTable rt;
     SeqItem si = { "a", str };
     rt.addRead(si);  
 
-    SuffixArray sa(&rt, 1, true);
-
-    BWT* pBWT = new BWT(&sa, &rt);
+    pSA = new SuffixArray(&rt, 1, true);
+    pBWT = new BWT(pSA, &rt);
 
     std::cout << "QBWT -- str len: " << str.length() << "\n";
     std::cout << "QBWT -- bwt len: " << pBWT->getBWLen() << "\n";
     pBWT->printInfo();
-    return pBWT;
 }

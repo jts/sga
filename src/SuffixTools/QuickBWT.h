@@ -8,4 +8,6 @@
 //
 #include "BWT.h"
 
-BWT* createQuickBWT(const std::string& str);
+// Construct a BWT/suffix array of the given string
+// Calling code is responsible for freeing the BWT/SA
+void createQuickBWT(const std::string& str, BWT*& pBWT, SuffixArray*& pSA);
