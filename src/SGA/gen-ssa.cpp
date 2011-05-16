@@ -47,6 +47,7 @@ namespace opt
     static std::string readsFile;
     static std::string prefix;
     static int numThreads = 1;
+    static int sampleRate = 32;
     static bool validate = false;
 }
 
@@ -67,9 +68,22 @@ int genSSAMain(int argc, char** argv)
 {
     Timer t("sga gen-ssa");
     parseGenSSAOptions(argc, argv);
-    SampledSuffixArray ssa;
-    ssa.build(opt::prefix + BWT_EXT, opt::prefix + SAI_EXT);
-//    ssa.validate(opt::readsFile);
+    
+    BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
+    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile);
+    pBWT->printInfo();
+
+    SampledSuffixArray* pSSA = new SampledSuffixArray();
+    pSSA->build(pBWT, pRIT, opt::sampleRate);
+    pSSA->printInfo();
+    pSSA->write(opt::prefix + SSA_EXT);
+
+    if(opt::validate)
+        pSSA->validate(opt::readsFile, pBWT);
+
+    delete pBWT;
+    delete pRIT;
+    delete pSSA;
 
     return 0;
 }

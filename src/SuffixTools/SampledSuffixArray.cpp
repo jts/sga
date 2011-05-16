@@ -12,6 +12,13 @@
 #include "SampledSuffixArray.h"
 #include "SAReader.h"
 
+static const uint32_t SSA_MAGIC_NUMBER = 77832;
+#define SSA_READ(x) pReader->read(reinterpret_cast<char*>(&(x)), sizeof((x)));
+#define SSA_READ_N(x,n) pReader->read(reinterpret_cast<char*>(&(x)), (n));
+
+#define SSA_WRITE(x) pWriter->write(reinterpret_cast<const char*>(&(x)), sizeof((x)));
+#define SSA_WRITE_N(x,n) pWriter->write(reinterpret_cast<const char*>(&(x)), (n));
+
 //
 SampledSuffixArray::SampledSuffixArray()
 {
@@ -21,7 +28,8 @@ SampledSuffixArray::SampledSuffixArray()
 SampledSuffixArray::SampledSuffixArray(const std::string& filename)
 {
     // Read the sampled suffix array from a file
-    
+    read(filename);
+    printInfo();
 }
 
 // 
@@ -63,46 +71,66 @@ SAElem SampledSuffixArray::calcSA(int64_t idx, const BWT* pBWT) const
 }
 
 // 
-void SampledSuffixArray::build(std::string bwtFilename, std::string saiFilename, int sampleRate)
+void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int sampleRate)
 {
     m_sampleRate = sampleRate;
 
-    // Read in the sampled suffix array
-    SAReader saReader(saiFilename);
-
-    size_t numStrings = 0;
-    size_t numSAIElems = 0;
-    saReader.readHeader(numStrings, numSAIElems);
-
-    m_saLexoIndex.reserve(numStrings);
-    saReader.readElems(m_saLexoIndex);
-
-    // Load BWT
-    BWT* pBWT = new BWT(bwtFilename);
+    size_t numStrings = pRIT->getCount();
+    m_saLexoIndex.resize(numStrings);
 
     // Set the size of the sampled vector
     size_t numElems = (pBWT->getBWLen() / m_sampleRate) + 1;
-
     m_saSamples.resize(numElems);
 
-    // For each sample, backtrack through the BWT until a valid sample is found
-    for(size_t i = 0; i < numElems; ++i)
+    // For each read, start from the end of the read and backtrack through the suffix array/BWT.
+    // For every idx that is divisible by the sample rate, store the calculate SAElem
+    for(size_t i = 0; i < numStrings; ++i)
     {
-        size_t idx = i * m_sampleRate;
-        assert(idx < pBWT->getBWLen());
-        SAElem elem = calcSA(idx, pBWT);
-        m_saSamples[i] = elem;
-    }
+        // The suffix array positions for the ends of reads are ordered
+        // by their position in the read information table, therefore
+        // the starting suffix array index is i
+        size_t idx = i;
 
-    delete pBWT;
+        // The ID of the read is i. The position coordinate is inclusive but 
+        // since the read information table does not store the '$' symbol
+        // the starting position equals the read length
+        SAElem elem(i, pRIT->getReadLength(i));
+
+        while(1)
+        {
+            if(idx % m_sampleRate == 0)
+            {
+                // store this SAElem
+                m_saSamples[idx / m_sampleRate] = elem;
+            }
+
+            char b = pBWT->getChar(idx);
+            idx = pBWT->getPC(b) + pBWT->getOcc(b, idx - 1);
+            if(b == '$')
+            {
+                // we have hit the beginning of this string
+                // store the SAElem for the beginning of the read
+                // in the lexicographic index
+                if(elem.getPos() != 0)
+                    std::cout << "elem: " << elem << " i: " << i << "\n";
+                assert(elem.getPos() == 0);
+                m_saLexoIndex[idx] = elem;
+                break; // done;
+            }
+            else
+            {
+                // Decrease the position of the elem
+                elem.setPos(elem.getPos() - 1);
+            }
+        }
+    }
 }
 
 // Validate the sampled suffix array values are correct
-void SampledSuffixArray::validate(const std::string filename)
+void SampledSuffixArray::validate(const std::string filename, const BWT* pBWT)
 {
     ReadTable* pRT = new ReadTable(filename);
     SuffixArray* pSA = new SuffixArray(pRT, 1);
-    BWT* pBWT = new BWT(pSA, pRT);
     
     std::cout << "Validating sampled suffix array entries\n";
 
@@ -123,7 +151,77 @@ void SampledSuffixArray::validate(const std::string filename)
 
     delete pRT;
     delete pSA;
-    delete pBWT;
 }
 
+// Save the SA to disc
+void SampledSuffixArray::write(std::string filename)
+{
+    std::ostream* pWriter = createWriter(filename, std::ios::out | std::ios::binary);
+    
+    // Write a magic number
+    SSA_WRITE(SSA_MAGIC_NUMBER)
 
+    // Write sample rate
+    SSA_WRITE(m_sampleRate)
+
+    // Write number of lexicographic index entries
+    size_t n = m_saLexoIndex.size();
+    SSA_WRITE(n)
+
+    // Write lexo index
+    SSA_WRITE_N(m_saLexoIndex.front(), sizeof(SAElem) * n)
+    
+    // Write number of samples
+    n = m_saSamples.size();
+    SSA_WRITE(n)
+
+    // Write samples
+    SSA_WRITE_N(m_saSamples.front(), sizeof(SAElem) * n)
+
+    delete pWriter;
+}
+
+void SampledSuffixArray::read(std::string filename)
+{
+    std::istream* pReader = createReader(filename, std::ios::binary);
+    
+    // Write a magic number
+    uint32_t magic = 0;
+    SSA_READ(magic)
+    assert(magic == SSA_MAGIC_NUMBER);
+
+    // Read sample rate
+    SSA_READ(m_sampleRate)
+
+    // Read number of lexicographic index entries
+    size_t n = 0;
+    SSA_READ(n)
+    m_saLexoIndex.resize(n);
+
+    // Read lexo index
+    SSA_READ_N(m_saLexoIndex.front(), sizeof(SAElem) * n)
+    
+    // Read number of samples
+    n = 0;
+    SSA_READ(n)
+    m_saSamples.resize(n);
+
+    // Read samples
+    SSA_READ_N(m_saSamples.front(), sizeof(SAElem) * n)
+
+    delete pReader;
+}
+
+// Print memory usage information
+void SampledSuffixArray::printInfo()
+{
+    double mb = (double)(1024*1024);
+    double lexoSize = (double)(sizeof(SAElem) * m_saLexoIndex.capacity()) / mb;
+    double sampleSize = (double)(sizeof(SAElem) * m_saSamples.capacity()) / mb;
+    
+    printf("SampledSuffixArray info:\n");
+    printf("Sample rate: %d\n", m_sampleRate);
+    printf("Contains %zu entries in lexicographic array (%.1lf MB)\n", m_saLexoIndex.size(), lexoSize);
+    printf("Contains %zu entries in sample array (%.1lf MB)\n", m_saSamples.size(), sampleSize);
+    printf("Total size: %.1lf\n", lexoSize + sampleSize);
+}

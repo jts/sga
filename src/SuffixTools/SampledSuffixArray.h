@@ -14,6 +14,7 @@
 
 #include "SuffixArray.h"
 #include "BWT.h"
+#include "ReadInfoTable.h"
 
 class SampledSuffixArray
 {
@@ -25,13 +26,16 @@ class SampledSuffixArray
         // Calculate the suffix array element for the given index
         SAElem calcSA(int64_t idx, const BWT* pBWT) const;
 
-        // Construct the sampled SA using the initial suffix array index
-        // and the bwt of a set of reads
-        void build(std::string bwtFilename, std::string saiFilename, int sampleRate = DEFAULT_SA_SAMPLE_RATE);
+        // Construct the sampled SA using the bwt of a set of reads and their lengths
+        void build(const BWT* pBWT, const ReadInfoTable* pRIT, int sampleRate = DEFAULT_SA_SAMPLE_RATE);
 
         // Validate using the full suffix array for the given set of reads. Very slow.
-        void validate(std::string readsFile);
+        void validate(std::string readsFile, const BWT* pBWT);
+        void printInfo();
 
+        // I/O
+        void write(std::string filename);
+        void read(std::string filename);
 
     private:
 
