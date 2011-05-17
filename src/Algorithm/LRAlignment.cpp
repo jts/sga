@@ -11,6 +11,8 @@
 #include "QuickBWT.h"
 #include "stdaln.h"
 
+//#define BWA_COMPAT_DEBUG 1
+
 namespace LRAlignment
 {
 static const int MINUS_INF = -0x3fffffff;
@@ -101,8 +103,10 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
         stack.pop();
         
         size_t old_n = v->cells.size();
-        printf("Outer stack loop [%zu %zu] old_n: %zu\n", old_n, v->interval.lower, v->interval.upper);
 
+#ifdef BWA_COMPAT_DEBUG
+        printf("Outer stack loop [%zu %zu] old_n: %zu\n", old_n, v->interval.lower, v->interval.upper);
+#endif
         // TODO: bandwidth test and max depth
         
         // Calculate occurrence values for children of the current entry
@@ -111,7 +115,11 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             char query_child_base = DNA_ALPHABET::getBase(qci);
             BWTInterval child_interval = v->interval;
             BWTAlgorithms::updateInterval(child_interval, query_child_base, pQueryBWT);
-            std::cout << "Query child interval(" << qci << "): [" << child_interval << "]\n";
+
+#ifdef BWA_COMPAT_DEBUG
+            printf("Query child interval(%d): [%zu %zu]\n", qci, child_interval.lower, child_interval.upper);
+#endif
+
             if(!child_interval.isValid())
                 continue;
 
@@ -122,8 +130,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             assert((uint32_t)hashIter->second > 0);
             --hashIter->second;
 
+#ifdef BWA_COMPAT_DEBUG
 			printf("hash k1: %zu k2: %zu v1: %zu v2: %d\n", child_interval.lower,  child_interval.upper, hashIter->second >> 32, (uint32_t)hashIter->second);
-
+#endif
             // Create an array of cells for the current node holding
             // scores between the current node and nodes in the prefix trie
             LRStackEntry* u = new LRStackEntry;
@@ -133,7 +142,14 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             for(size_t i = 0; i < v->cells.size(); ++i)
             {
                 LRCell* p = &v->cells[i];
-                printf("processing p = v[%zu] [%zu %zu] is deleted? %d\n", i, p->interval.lower == -1 ? 0 : p->interval.lower, p->interval.upper == -1 ? 0 : p->interval.upper, p->interval.upper == -1);
+
+#ifdef BWA_COMPAT_DEBUG
+                printf("processing p = v[%zu] [%zu %zu] is deleted? %d\n", 
+                        i, p->interval.lower == -1 ? 0 : p->interval.lower, 
+                           p->interval.upper == -1 ? 0 : p->interval.upper, 
+                           p->interval.upper == -1);
+#endif
+
                 if(p->interval.upper == -1)
                     continue; // duplicate that has been deleted
                 LRCell x; // the cell being calculated
@@ -146,17 +162,24 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                 bool add_x_to_u = false;
                 if(p->parent_idx >= 0) 
                 {
-                    std::cout << "parent has been visited\n";
-
+#ifdef BWA_COMPAT_DEBUG
+                    printf("parent has been visited\n");
+#endif
                     int upos = v->cells[p->parent_idx].u_idx;
-                    std::cout << "    upos: " << upos << "\n";
+
+#ifdef BWA_COMPAT_DEBUG
+                    printf("    upos: %d\n", upos);
+#endif
                     c[1] = upos >= 0 ? &u->cells[upos] : NULL;
                     c[2] = p;
                     c[3] = &v->cells[p->parent_idx];
 
                     int match_score = qci == p->parent_cidx ? params.match : -params.mismatch;
                     int score = fillCells(params, match_score, c);
-                    std::cout << "    score: " << score << "\n";
+
+#ifdef BWA_COMPAT_DEBUG
+                    printf("    score: %d\n", score);
+#endif
                     if(score > 0)
                     {
                         // this cell has a positive score
@@ -172,7 +195,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                 }
                 else
                 {
-                    std::cout << "parent not visited\n";
+#ifdef BWA_COMPAT_DEBUG
+                    printf("parent not visited\n");
+#endif
                     if(p->D > p->G - params.gap_open)
                         x.D = p->D - params.gap_ext; // extend gap
                     else
@@ -190,7 +215,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
 
                 if(add_x_to_u)
                 {
-                    std::cout << "adding x to u\n";
+#ifdef BWA_COMPAT_DEBUG
+                    printf("adding x to u\n");
+#endif
                     // set the remaining fields in the current cell
                     x.clearChildren();
                     x.parent_cidx = p->parent_cidx;
@@ -204,28 +231,40 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                 }
 
                 // Check if we should descend into another node of the prefix trie of the target
-                std::cout << "x->G: " << x.G << " qr: " << params.gap_open_extend << " i: " << i << " old_n: " << old_n << "\n";
+#ifdef BWA_COMPAT_DEBUG
+                printf("x->G: %d qr: %d i: %zu old_n: %zu\n", x.G, params.gap_open_extend, i, old_n);
+#endif
                 if( (x.G > params.gap_open_extend /* && heap test */) || i < old_n)
                 {
+#ifdef BWA_COMPAT_DEBUG
                     printf("    pass test 1\n");
+#endif
                     if(p->hasUninitializedChild())
                     {
+#ifdef BWA_COMPAT_DEBUG
                         printf("    pass test 2\n");
+#endif
                         for(int tci = 0; tci < DNA_ALPHABET::size; ++tci)
                         {
                             if(p->children_idx[tci] != -1)
                             {
+#ifdef BWA_COMPAT_DEBUG
                                 printf("    child exists at pos %d\n", p->children_idx[tci]);
+#endif
                                 continue; // already added
                             }
                             else
                             {
+#ifdef BWA_COMPAT_DEBUG
                                 printf("    child does not exist %d\n", p->children_idx[tci]);
+#endif
                             }
                             char target_child_base = DNA_ALPHABET::getBase(tci);
                             BWTInterval target_child_interval = p->interval;
                             BWTAlgorithms::updateInterval(target_child_interval, target_child_base, pTargetBWT);
-                            std::cout << "Target child interval(" << tci << "): [" << target_child_interval << "]\n";
+#ifdef BWA_COMPAT_DEBUG
+                            printf("Target child interval(%d)): [%zu %zu]\n", tci, target_child_interval.lower, target_child_interval.upper);
+#endif
                             if(!target_child_interval.isValid()) // child with this extension does not exist
                             {
                                 p->children_idx[tci] = -2;
@@ -261,8 +300,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             //
             uint32_t count = (uint32_t)hashIter->second;
             uint32_t position = hashIter->second >> 32;
+#ifdef BWA_COMPAT_DEBUG
             printf("cnt: %d pos: %d\n", count, position);
-
+#endif
             // Check if an entry in the pending array exists for this DAWG node
             if(position > 0)
             {
@@ -281,7 +321,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                         pendingVector[position - 1] = w;
                     }
 
+#ifdef BWA_COMPAT_DEBUG
                     printf("merging stack entries\n");
+#endif
                     mergeStackEntries(w, u);
                 }
 
@@ -290,7 +332,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                     // this node in the dawg will not be visited again
                     // move the stack entry from the pending list to the stack
                     removeDuplicateCells(w, dupHash);
+#ifdef BWA_COMPAT_DEBUG
                     printf("moving w from pending to stack[%zu %zu]\n", w->interval.lower, w->interval.upper);
+#endif
                     stack.push(w);
                     pendingVector[position - 1] = 0;
                     num_pending -= 1;
@@ -313,7 +357,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                     // will get merged into this position. index + 1 is stored
                     // so that position == 0 indicates the empty case
                     hashIter->second = (uint64_t)pendingVector.size() << 32 | count;
+#ifdef BWA_COMPAT_DEBUG
                     printf("saving u to pending [%zu %zu]\n", u->interval.lower, u->interval.upper);
+#endif
                 }
                 else
                 {
@@ -325,7 +371,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             {
                 // This substring is unique, push u straight onto the stack
                 stack.push(u);
+#ifdef BWA_COMPAT_DEBUG
                 printf("pushing u to stack [%zu %zu]\n", u->interval.lower, u->interval.upper);
+#endif
             }
         } // for qci
         
@@ -492,7 +540,9 @@ void removeDuplicateCells(LRStackEntry* u, LRHash& hash)
 
         if(j >= 0)
         {
+#ifdef BWA_COMPAT_DEBUG
             printf("marking p [%zu %zu] as deleted cidx: %d [DUP]\n", p->interval.lower, p->interval.upper, p->parent_cidx);
+#endif
             p = &u->cells[j];
             p->interval.lower = -1;
             p->interval.upper = -1;
@@ -502,7 +552,9 @@ void removeDuplicateCells(LRStackEntry* u, LRHash& hash)
             n += 1;
         }
     }
+#ifdef BWA_COMPAT_DEBUG
     printf("removed %d duplicate entries\n", n);
+#endif
 }
 
 // Fill the values of C[0] depending on the values in the other 3 cells
@@ -562,8 +614,10 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
             else if(p->G > 0)
                 ++n;
         }
+#ifdef BWA_COMPAT_DEBUG
         printf("Total hits: %zu\n", hits.size());
         printf("Reallocating hits array to size: %d\n", n);
+#endif
         newHits.resize(n);
 
         int j = 0;
@@ -579,7 +633,9 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
                     newHits[j].interval.lower = 0;
                     newHits[j].interval.upper = -1;
 
+#ifdef BWA_COMPAT_DEBUG
                     printf("Created new hit at position %d\n", newHits[j].position);
+#endif
                     ++j;
                 }
             }
@@ -590,7 +646,9 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
                 newHits[j].interval.lower = 0;
                 newHits[j].interval.upper = -1;
                 newHits[j].flag |= 1;
+#ifdef BWA_COMPAT_DEBUG
                 printf("Created new hit at position %d\n", newHits[j].position);
+#endif
                 ++j;
             }
         }
@@ -639,8 +697,9 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
 					if((double)tol / p->length > MASK_LEVEL || (double)tol / q->length > MASK_LEVEL)
 						compatible = false;
 
+#ifdef BWA_COMPAT_DEBUG
                     printf("    idx = (%d,%d) G=(%d,%d) qol: %d tol: %zu\n", i,j, p->G, q->G, qol, tol);
-
+#endif
                     if(!compatible)
                     {
                         p->G = 0;
@@ -663,7 +722,9 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
             ++j;
     }
     hits.resize(j);
+#ifdef BWA_COMPAT_DEBUG
     printf("Final number of hits after duplicate removal: %zu\n", hits.size());
+#endif
     WARN_ONCE("RESOLVE DUPLICATE - NEED TO USE READ ID")
     return hits.size();
 }
