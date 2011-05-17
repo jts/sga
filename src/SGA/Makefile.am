@@ -45,5 +45,6 @@ sga_SOURCES = sga.cpp \
               filterBAM.h filterBAM.cpp \
               cluster.h cluster.cpp \
               gen-ssa.h gen-ssa.cpp \
+              correct-long.h correct-long.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

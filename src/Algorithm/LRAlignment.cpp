@@ -9,9 +9,12 @@
 //
 #include "LRAlignment.h"
 #include "QuickBWT.h"
+#include "stdaln.h"
+
 namespace LRAlignment
 {
 static const int MINUS_INF = -0x3fffffff;
+#define MASK_LEVEL 0.90f
 
 // Initialize the LRCell with default values
 void LRCell::initializeDefault()
@@ -46,7 +49,7 @@ bool LRCell::hasUninitializedChild() const
 
 // Implementation of bwa-sw algorithm.
 // Roughly follows Heng Li's code
-void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
+void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA)
 {
     // Construct an FM-index of the query sequence
     BWT* pQueryBWT = NULL;
@@ -67,7 +70,7 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
     LRStack stack;
     
     // Initialize hits vector with enough space to hold 2 hits per query base
-    LRHitVector hitsVector(2*pQueryBWT->getBWLen());
+    LRHitVector hitsVector(2*query.size());
 
     // Initialize the vector of dawg nodes pending addition to the stack
     LRPendingVector pendingVector;
@@ -191,6 +194,7 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
                     // set the remaining fields in the current cell
                     x.clearChildren();
                     x.parent_cidx = p->parent_cidx;
+                    x.revTargetString = p->revTargetString;
                     x.interval = p->interval;
                     x.q_len = p->q_len + 1;
                     x.t_len = p->t_len;
@@ -235,6 +239,9 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
                             y.parent_cidx = tci;
                             y.q_len = p->q_len;
                             y.t_len = p->t_len + 1;
+
+                            y.revTargetString = p->revTargetString + target_child_base;
+
                             y.parent_idx = i;
                             y.clearChildren();
 
@@ -328,6 +335,11 @@ void bwaswAlignment(const std::string& query, BWT* pTargetBWT)
 
     assert(num_pending == 0);
 
+    //
+    resolveDuplicateHits(pTargetBWT, pTargetSSA, hitsVector, 3);
+
+    generateCIGAR(query, params, hitsVector);
+
     delete pQueryBWT;
     delete pQuerySA;
 
@@ -376,10 +388,11 @@ void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHit
                 q->G2 = (q->interval.size() == 1) ? 0 : q->G;
                 q->flag = 0;
                 q->num_seeds = 0;
-                printf("saved hit (%d %d) len: %d score: %d\n", q->beg, q->end, q->length, q->G);
+                q->targetString.assign(p->revTargetString.rbegin(), p->revTargetString.rend());
             }
         }
     }
+
 }
 
 // Initialize the hash table of DAWG nodes by inserting an element
@@ -526,6 +539,190 @@ int fillCells(const LRParams& params, int match_score, LRCell* c[4])
     }
     
 	return(c[0]->G = G);
+}
+
+int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, LRHitVector& hits, int IS)
+{
+    if(hits.empty())
+        return 0;
+    assert(pTargetBWT != NULL);
+
+    if(pTargetBWT != NULL && pTargetSSA != NULL)
+    {
+        // Convert each hit to target coordinates
+        int old_n = hits.size();
+        int n = 0;
+        
+        LRHitVector newHits;
+        for(size_t i = 0; i < hits.size(); ++i)
+        {
+            LRHit* p = &hits[i];
+            if(p->interval.isValid() && p->interval.size() <= IS)
+                n += p->interval.size();
+            else if(p->G > 0)
+                ++n;
+        }
+        printf("Total hits: %zu\n", hits.size());
+        printf("Reallocating hits array to size: %d\n", n);
+        newHits.resize(n);
+
+        int j = 0;
+        for(int i = 0; i < old_n; ++i)
+        {
+            LRHit* p = &hits[i];
+            if(p->interval.isValid() && p->interval.size() <= IS)
+            {
+                for(int64_t k = p->interval.lower; k <= p->interval.upper; ++k)
+                {
+                    newHits[j] = *p;
+                    newHits[j].position = pTargetSSA->calcSA(k, pTargetBWT).getPos();
+                    newHits[j].interval.lower = 0;
+                    newHits[j].interval.upper = -1;
+
+                    printf("Created new hit at position %d\n", newHits[j].position);
+                    ++j;
+                }
+            }
+            else if(p->G > 0)
+            {
+                newHits[j] = *p;
+                newHits[j].position = pTargetSSA->calcSA(p->interval.lower, pTargetBWT).getPos();
+                newHits[j].interval.lower = 0;
+                newHits[j].interval.upper = -1;
+                newHits[j].flag |= 1;
+                printf("Created new hit at position %d\n", newHits[j].position);
+                ++j;
+            }
+        }
+
+        // Swap the new hits structure with the old hits
+        hits.swap(newHits);
+    }
+
+    // sort hits by score
+    std::sort(hits.begin(), hits.end(), LRHit::compareG);
+    
+    int i,j;
+    // Remove hits with significant overlaps on the query or target sequences
+    for(i = 1; i < (int)hits.size(); ++i)
+    {
+        LRHit* p = &hits[i];
+        if(p->G == 0)
+            break;
+        for(j = 0; j < i; ++j)
+        {
+            LRHit* q = &hits[j];
+            bool compatible = true;
+            if(q->G == 0)
+                continue;
+            
+            if(p->interval.upper == -1 && q->interval.upper == -1)
+            {
+                // Calculate the overlap length on the query
+                int qol = (p->end < q->end? p->end : q->end) - (p->beg > q->beg? p->beg : q->beg);
+                if(qol < 0)
+                    qol = 0;
+
+                if((float)qol / (p->end - p->beg) > MASK_LEVEL || (float)qol / (q->end - q->beg) > MASK_LEVEL) 
+                {
+                    int64_t tol = 0;
+                    if(p->position + p->length < q->position + q->length)
+                        tol = p->position + p->length;
+                    else
+                        tol = q->position + q->length;
+
+                    if(p->position > q->position)
+                        tol -= p->position;
+                    else
+                        tol -= q->position;
+                    
+					if((double)tol / p->length > MASK_LEVEL || (double)tol / q->length > MASK_LEVEL)
+						compatible = false;
+
+                    printf("    idx = (%d,%d) G=(%d,%d) qol: %d tol: %zu\n", i,j, p->G, q->G, qol, tol);
+
+                    if(!compatible)
+                    {
+                        p->G = 0;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    int new_n = i;
+
+    for(i = j = 0; i < new_n; ++i)
+    {
+        if(hits[i].G == 0)
+            continue;
+        if(i != j)
+            hits[j++] = hits[i];
+        else
+            ++j;
+    }
+    hits.resize(j);
+    printf("Final number of hits after duplicate removal: %zu\n", hits.size());
+    WARN_ONCE("RESOLVE DUPLICATE - NEED TO USE READ ID")
+    return hits.size();
+}
+
+void generateCIGAR(const std::string& query, LRParams& params, LRHitVector& hits)
+{
+    // Set up stdaln data structures
+	size_t max_target = ((query.size() + 1) / 2 * params.match + params.gap_ext) / params.gap_ext + query.size(); // maximum possible target length
+    path_t* path = (path_t*)calloc(max_target + query.size(), sizeof(path_t));
+    AlnParam par;
+    int matrix[25];
+    par.matrix = matrix;
+
+    // Set matrix
+	for (size_t i = 0; i < 25; ++i) par.matrix[i] = -params.mismatch;	
+	for (size_t i = 0; i < 4; ++i) par.matrix[i*5+i] = params.match; 
+	par.gap_open = params.gap_open;
+    par.gap_ext = params.gap_ext;
+    par.gap_end = params.gap_ext;
+	par.row = 5; 
+    par.band_width = params.bandwidth;
+
+    for(size_t i = 0; i < hits.size(); ++i)
+    {
+        std::string querySub = query.substr(hits[i].beg, hits[i].end - hits[i].beg + 1);
+
+        printf("Alignment DP\n");
+        printf("Target: %s\n", hits[i].targetString.c_str());
+        printf("Query: %s\n", querySub.c_str());
+        // Convert strings to 0-3 representation, as needed by the stdaln routine
+        // STDALN uses the same representation as DNA_ALPHABET
+        int ql = querySub.size();
+        uint8_t* pQueryT = new uint8_t[ql];
+        
+        int tl = hits[i].targetString.size();
+        assert(tl <= (int)max_target);
+
+        uint8_t* pTargetT = new uint8_t[hits[i].targetString.size()];
+    
+        for(int j = 0; j < ql; ++j)
+            pQueryT[j] = DNA_ALPHABET::getBaseRank(querySub[j]);
+
+        for(int j = 0; j < tl; ++j)
+            pTargetT[j] = DNA_ALPHABET::getBaseRank(hits[i].targetString[j]);
+
+        
+        int path_len = 0;
+		/*int score =*/ aln_global_core(pTargetT, tl, pQueryT, ql, &par, path, &path_len);
+        int cigarLen = 0;
+		uint32_t* pCigar = aln_path2cigar32(path, path_len, &cigarLen);
+	    printf("CIGAR: ");
+        for (int j = 0; j != cigarLen; ++j)
+		    printf("%d%c", pCigar[j]>>4, "MID"[pCigar[j]&0xf]);
+        printf("\n");
+        delete [] pQueryT;
+        delete [] pTargetT;
+        free(pCigar);
+    }
+    free(path);
 }
 
 };

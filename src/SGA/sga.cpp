@@ -28,6 +28,7 @@
 #include "filterBAM.h"
 #include "cluster.h"
 #include "gen-ssa.h"
+#include "correct-long.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -56,6 +57,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           filter          remove reads from a data set\n"
 "\n\nExperimental commands:\n"
 "           gen-ssa         generate a sampled suffix array for the given set of reads\n"
+"           correct-long    correct long reads\n"
 "           stats           print useful statistics about the read set\n"
 "           connect         resolve the complete sequence of a paired-end fragment\n"
 "           scaffold        generate ordered sets of contigs using distance estimates\n"
@@ -127,6 +129,8 @@ int main(int argc, char** argv)
             clusterMain(argc - 1, argv + 1);
         else if(command == "gen-ssa")
             genSSAMain(argc - 1, argv + 1);
+        else if(command == "correct-long")
+            correctLongMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

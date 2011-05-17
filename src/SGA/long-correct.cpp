@@ -24,11 +24,10 @@
 #include "ErrorCorrectProcess.h"
 #include "CorrectionThresholds.h"
 #include "KmerDistribution.h"
-#include "BWTIntervalCache.h"
 #include "LRAlignment.h"
 
 // Functions
-int learnKmerParameters(const BWT* pBWT);
+int learnKmerParameters(const BWT* pBWT, const BWT* pRBWT);
 
 //
 // Getopt
@@ -101,7 +100,6 @@ namespace opt
     static int kmerThreshold = 3;
     static int numKmerRounds = 10;
     static bool bLearnKmerParams = false;
-    static int intervalCacheLength = 10;
     static bool bLongReadCorrection = true;
 
     static ErrorCorrectAlgorithm algorithm = ECA_KMER;
@@ -144,56 +142,52 @@ int correctMain(int argc, char** argv)
     parseCorrectOptions(argc, argv);
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
-    BWT* pRBWT = NULL;
-
-    // If the correction mode is k-mer only, then do not load the reverse
-    // BWT as it is not needed
-    if(opt::algorithm != ECA_KMER)
-        pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
-    
-    BWTIntervalCache intervalCache(opt::intervalCacheLength, pBWT);
-
-    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, NULL, 
+    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
+    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false, opt::branchCutoff);
     
+    if(opt::bLongReadCorrection)
+    {
+        WARN_ONCE("TESTING LONG READ CORRECTION");
+
+        // example 454 read from E. coli K12
+        //std::string query = "GGCGTCTTTTATAAAGATGAGCCCATCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTATCTGGCCACAAAACAGCGTTGATTTGCTGAAATTTATCGAGCATAACCCTCGAATTTGCGGCGTGATTTTTGACTGGGATGAGTACAGTCTCGATTTATGTAGCGATATCAATCAGCTTAATGAATATCTCCCGCTTTATGCCTTCATCAACACCCACTCGA";
+        std::string query = "TCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTAT";
+        LRAlignment::bwaswAlignment(query, pBWT);
+        exit(1);
+    }
+
     // Learn the parameters of the kmer corrector
     if(opt::bLearnKmerParams)
     {
-        int threshold = learnKmerParameters(pBWT);
+        int threshold = learnKmerParameters(pBWT, pRBWT);
         if(threshold != -1)
             CorrectionThresholds::Instance().setBaseMinSupport(threshold);
     }
 
-
-    // Open outfiles and start a timer
+    Timer* pTimer = new Timer(PROGRAM_IDENT);
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
-    Timer* pTimer = new Timer(PROGRAM_IDENT);
+
+    bool bCollectMetrics = !opt::metricsFile.empty();
     pBWT->printInfo();
 
-    // Set the error correction parameters
-    ErrorCorrectParameters ecParams;
-    ecParams.pOverlapper = pOverlapper;
-    ecParams.pIntervalCache = &intervalCache;
-    ecParams.algorithm = opt::algorithm;
-
-    ecParams.minOverlap = opt::minOverlap;
-    ecParams.numOverlapRounds = opt::numOverlapRounds;
-    ecParams.conflictCutoff = opt::conflictCutoff;
-
-    ecParams.numKmerRounds = opt::numKmerRounds;
-    ecParams.kmerLength = opt::kmerLength;
-    ecParams.printOverlaps = opt::verbose > 1;
-
-    // Setup post-processor
-    bool bCollectMetrics = !opt::metricsFile.empty();
     ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter, bCollectMetrics);
 
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        ErrorCorrectProcess processor(ecParams); 
+        ErrorCorrectProcess processor(pOverlapper, 
+                                      opt::minOverlap, 
+                                      opt::numOverlapRounds, 
+                                      opt::numKmerRounds,
+                                      opt::conflictCutoff, 
+                                      opt::kmerLength, 
+                                      opt::kmerThreshold, 
+                                      opt::algorithm, 
+                                      opt::verbose > 1);
+
         SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
                                                          ErrorCorrectResult, 
                                                          ErrorCorrectProcess, 
@@ -205,7 +199,14 @@ int correctMain(int argc, char** argv)
         std::vector<ErrorCorrectProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(ecParams);
+            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, 
+                                                                      opt::numOverlapRounds,
+                                                                      opt::numKmerRounds,
+                                                                      opt::conflictCutoff, 
+                                                                      opt::kmerLength, 
+                                                                      opt::kmerThreshold, 
+                                                                      opt::algorithm, 
+                                                                      opt::verbose > 1);
             processorVector.push_back(pProcessor);
         }
         
@@ -228,9 +229,7 @@ int correctMain(int argc, char** argv)
     }
 
     delete pBWT;
-    if(pRBWT != NULL)
-        delete pRBWT;
-
+    delete pRBWT;
     delete pOverlapper;
     delete pTimer;
     
@@ -245,7 +244,7 @@ int correctMain(int argc, char** argv)
 }
 
 // Learn parameters of the kmer corrector
-int learnKmerParameters(const BWT* pBWT)
+int learnKmerParameters(const BWT* pBWT, const BWT* pRBWT)
 {
     std::cout << "Learning kmer parameters\n";
     srand(time(0));
@@ -262,7 +261,7 @@ int learnKmerParameters(const BWT* pBWT)
         for(int j = 0; j < nk; ++j)
         {
             std::string kmer = s.substr(j, k);
-            int count = BWTAlgorithms::countSequenceOccurrences(kmer, pBWT);
+            int count = BWTAlgorithms::countSequenceOccurrences(kmer, pBWT, pRBWT);
             kmerDistribution.add(count);
         }
     }
