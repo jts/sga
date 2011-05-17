@@ -92,12 +92,18 @@ int correctLongMain(int argc, char** argv)
     //BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pSSA = new SampledSuffixArray(opt::prefix + SSA_EXT);
 
-    WARN_ONCE("TESTING LONG READ CORRECTION");
+    SeqRecord record;
+    SeqReader reader(opt::readsFile);
+    while(reader.get(record))
+    {
+        std::cout << "Aligning sequence " << record.id << "\n";
+        LRAlignment::bwaswAlignment(record.seq.toString(), pBWT, pSSA);
+    }
 
     // example 454 read from E. coli K12
     //std::string query = "GGCGTCTTTTATAAAGATGAGCCCATCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTATCTGGCCACAAAACAGCGTTGATTTGCTGAAATTTATCGAGCATAACCCTCGAATTTGCGGCGTGATTTTTGACTGGGATGAGTACAGTCTCGATTTATGTAGCGATATCAATCAGCTTAATGAATATCTCCCGCTTTATGCCTTCATCAACACCCACTCGA";
-    std::string query = "TCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTAT";
-    LRAlignment::bwaswAlignment(query, pBWT, pSSA);
+    //std::string query = "TCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTAT";
+    //LRAlignment::bwaswAlignment(query, pBWT, pSSA);
 
     delete pBWT;
     //delete pRBWT;
