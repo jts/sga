@@ -14,6 +14,7 @@
 #include "SampledSuffixArray.h"
 #include "BWTAlgorithms.h"
 #include "HashMap.h"
+#include "stdaln.h"
 #include <stack>
 
 namespace LRAlignment
@@ -34,18 +35,20 @@ struct LRParams
 //
 struct LRHit
 {
-    LRHit() : interval(0,-1), flag(0), num_seeds(0), position(-1), length(0), G(0), G2(0), beg(0), end(0) {}
+    LRHit() : interval(0,-1), flag(0), num_seeds(0), targetID(-1), position(-1), length(0), G(0), G2(0), beg(0), end(0) {}
     BWTInterval interval;
     std::string targetString;
 
     uint32_t flag;
     uint32_t num_seeds;
-    int position;
+
+    int targetID; // ID of target sequence
+    int position; // alignment start position on target
     int length;
     int G;
     int G2;
-    int beg;
-    int end;
+    int beg; // alignment start on query
+    int end; // alignment end (exclusive) on query
 
     static bool compareG(const LRHit& a, const LRHit& b) { return a.G > b.G; }
 };
@@ -123,6 +126,8 @@ int fillCells(const LRParams& params, int match_score, LRCell* c[4]);
 
 // Generate a cigar string for all hits in the vector
 void generateCIGAR(const std::string& query, LRParams& params, LRHitVector& hits);
+
+void path2padded(const std::string& s1, const std::string& s2, std::string& out1, std::string& out2, std::string& outm, path_t* path, int path_len);
 
 };
 

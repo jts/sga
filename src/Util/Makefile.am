@@ -27,6 +27,7 @@ libutil_a_SOURCES = \
 		BitVector.h BitVector.cpp \
         CorrectionThresholds.h CorrectionThresholds.cpp \
         KmerDistribution.h KmerDistribution.cpp \
+        MultiAlignment.h MultiAlignment.cpp \
         Timer.h \
         EncodedString.h \
         DNACodec.h \

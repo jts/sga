@@ -9,9 +9,11 @@
 //
 #include "LRAlignment.h"
 #include "QuickBWT.h"
+#include "MultiAlignment.h"
 #include "stdaln.h"
 
 //#define BWA_COMPAT_DEBUG 1
+//#define BWA_COMPAT_DEBUG_RESOLVE 1
 
 namespace LRAlignment
 {
@@ -611,10 +613,12 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
             LRHit* p = &hits[i];
             if(p->interval.isValid() && p->interval.size() <= IS)
                 n += p->interval.size();
+            else if(!p->interval.isValid()) // bwa compatibility hack
+                n += 1; 
             else if(p->G > 0)
                 ++n;
         }
-#ifdef BWA_COMPAT_DEBUG
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
         printf("Total hits: %zu\n", hits.size());
         printf("Reallocating hits array to size: %d\n", n);
 #endif
@@ -629,11 +633,13 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
                 for(int64_t k = p->interval.lower; k <= p->interval.upper; ++k)
                 {
                     newHits[j] = *p;
-                    newHits[j].position = pTargetSSA->calcSA(k, pTargetBWT).getPos();
+                    SAElem elem = pTargetSSA->calcSA(k, pTargetBWT);
+                    newHits[j].targetID = elem.getID();
+                    newHits[j].position = elem.getPos();
                     newHits[j].interval.lower = 0;
                     newHits[j].interval.upper = -1;
 
-#ifdef BWA_COMPAT_DEBUG
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
                     printf("Created new hit at position %d\n", newHits[j].position);
 #endif
                     ++j;
@@ -642,11 +648,13 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
             else if(p->G > 0)
             {
                 newHits[j] = *p;
-                newHits[j].position = pTargetSSA->calcSA(p->interval.lower, pTargetBWT).getPos();
+                SAElem elem = pTargetSSA->calcSA(p->interval.lower, pTargetBWT);
+                newHits[j].targetID = elem.getID();
+                newHits[j].position = elem.getPos();
                 newHits[j].interval.lower = 0;
                 newHits[j].interval.upper = -1;
                 newHits[j].flag |= 1;
-#ifdef BWA_COMPAT_DEBUG
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
                 printf("Created new hit at position %d\n", newHits[j].position);
 #endif
                 ++j;
@@ -671,9 +679,15 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
         {
             LRHit* q = &hits[j];
             bool compatible = true;
+
+            // hit q has already been removed
             if(q->G == 0)
                 continue;
-            
+
+            // if the hits are to different targets they can't overlap
+            if(p->targetID != q->targetID)
+                continue;
+
             if(p->interval.upper == -1 && q->interval.upper == -1)
             {
                 // Calculate the overlap length on the query
@@ -697,7 +711,7 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
 					if((double)tol / p->length > MASK_LEVEL || (double)tol / q->length > MASK_LEVEL)
 						compatible = false;
 
-#ifdef BWA_COMPAT_DEBUG
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
                     printf("    idx = (%d,%d) G=(%d,%d) qol: %d tol: %zu\n", i,j, p->G, q->G, qol, tol);
 #endif
                     if(!compatible)
@@ -722,10 +736,9 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
             ++j;
     }
     hits.resize(j);
-#ifdef BWA_COMPAT_DEBUG
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
     printf("Final number of hits after duplicate removal: %zu\n", hits.size());
 #endif
-    WARN_ONCE("RESOLVE DUPLICATE - NEED TO USE READ ID")
     return hits.size();
 }
 
@@ -746,14 +759,15 @@ void generateCIGAR(const std::string& query, LRParams& params, LRHitVector& hits
     par.gap_end = params.gap_ext;
 	par.row = 5; 
     par.band_width = params.bandwidth;
+    MAlignDataVector mAlignVec;
 
     for(size_t i = 0; i < hits.size(); ++i)
     {
-        std::string querySub = query.substr(hits[i].beg, hits[i].end - hits[i].beg + 1);
+        std::string querySub = query.substr(hits[i].beg, hits[i].end - hits[i].beg);
 
         printf("Alignment DP\n");
-        printf("Target: %s\n", hits[i].targetString.c_str());
-        printf("Query: %s\n", querySub.c_str());
+        printf("Target (%d): %s\n", hits[i].position, hits[i].targetString.c_str());
+        printf("Query (%d): %s\n", hits[i].beg, querySub.c_str());
         // Convert strings to 0-3 representation, as needed by the stdaln routine
         // STDALN uses the same representation as DNA_ALPHABET
         int ql = querySub.size();
@@ -775,15 +789,64 @@ void generateCIGAR(const std::string& query, LRParams& params, LRHitVector& hits
 		/*int score =*/ aln_global_core(pTargetT, tl, pQueryT, ql, &par, path, &path_len);
         int cigarLen = 0;
 		uint32_t* pCigar = aln_path2cigar32(path, path_len, &cigarLen);
-	    printf("CIGAR: ");
+        
+        //
+        MAlignData maData;
+        maData.str = hits[i].targetString;
+        maData.position = hits[i].beg;
+        
+        // Build cigar string
+        
+        // Add initial padding
+        maData.expandedCigar.append(maData.position, 'S');
+        
+        // Add alignment symbols
         for (int j = 0; j != cigarLen; ++j)
-		    printf("%d%c", pCigar[j]>>4, "MID"[pCigar[j]&0xf]);
-        printf("\n");
+            maData.expandedCigar.append(pCigar[j]>>4, "MID"[pCigar[j]&0xf]);
+
+        mAlignVec.push_back(maData);
+
         delete [] pQueryT;
         delete [] pTargetT;
         free(pCigar);
     }
+
+    if(!mAlignVec.empty())
+        MultiAlignment ma(query, mAlignVec);
+
     free(path);
+}
+
+// Convert a dynamic programming path to a set of padded strings
+// Algorithm ported from stdaln.c:aln_stdaln_aux
+void path2padded(const std::string& s1, const std::string& s2, std::string& out1, std::string& out2, std::string& outm, path_t* path, int path_len)
+{
+    path_t* p = path + path_len;
+
+    out1.resize(path_len + 1, 'A');
+    out2.resize(path_len + 1, 'A');
+    outm.resize(path_len + 1, 'A');
+
+    for (int l = 0; p >= path; --p, ++l) {
+        switch (p->ctype) 
+        {
+            case FROM_M: 
+                out1[l] = s1[p->i]; 
+                out2[l] = s2[p->j];
+                outm[l] = (s1[p->i] == s2[p->j] /*&& s1[p->i] != ap->row*/)? '|' : ' ';
+                break;
+            case FROM_I: 
+                out1[l] = '-'; 
+                out2[l] = s2[p->j]; 
+                outm[l] = ' '; 
+                break;
+            case FROM_D: 
+                out1[l] = s1[p->i]; 
+                out2[l] = '-'; 
+                outm[l] = ' '; 
+                break;
+        }
+    }    
 }
 
 };
