@@ -26,7 +26,7 @@
 #include "KmerDistribution.h"
 
 // Functions
-int learnKmerParameters(const BWT* pBWT, const BWT* pRBWT);
+int learnKmerParameters(const BWT* pBWT);
 
 //
 // Getopt
@@ -139,8 +139,14 @@ int correctMain(int argc, char** argv)
     parseCorrectOptions(argc, argv);
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
-    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
-    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
+    BWT* pRBWT = NULL;
+
+    // If the correction mode is k-mer only, then do not load the reverse
+    // BWT as it is not needed
+    if(opt::algorithm != ECA_KMER)
+        pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
+
+    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, NULL, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false, opt::branchCutoff);
     
@@ -148,7 +154,7 @@ int correctMain(int argc, char** argv)
     // Learn the parameters of the kmer corrector
     if(opt::bLearnKmerParams)
     {
-        int threshold = learnKmerParameters(pBWT, pRBWT);
+        int threshold = learnKmerParameters(pBWT);
         if(threshold != -1)
             CorrectionThresholds::Instance().setBaseMinSupport(threshold);
     }
@@ -216,7 +222,9 @@ int correctMain(int argc, char** argv)
     }
 
     delete pBWT;
-    delete pRBWT;
+    if(pRBWT != NULL)
+        delete pRBWT;
+
     delete pOverlapper;
     delete pTimer;
     
@@ -231,7 +239,7 @@ int correctMain(int argc, char** argv)
 }
 
 // Learn parameters of the kmer corrector
-int learnKmerParameters(const BWT* pBWT, const BWT* pRBWT)
+int learnKmerParameters(const BWT* pBWT)
 {
     std::cout << "Learning kmer parameters\n";
     srand(time(0));
@@ -248,7 +256,7 @@ int learnKmerParameters(const BWT* pBWT, const BWT* pRBWT)
         for(int j = 0; j < nk; ++j)
         {
             std::string kmer = s.substr(j, k);
-            int count = BWTAlgorithms::countSequenceOccurrences(kmer, pBWT, pRBWT);
+            int count = BWTAlgorithms::countSequenceOccurrences(kmer, pBWT);
             kmerDistribution.add(count);
         }
     }

@@ -28,7 +28,8 @@ BWTIntervalPair findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std:
 
 // Count the number of times the sequence w appears in the collection, including
 // its reverse complement
-size_t countSequenceOccurrences(const std::string& w, const BWT* pBWT, const BWT* pRBWT);
+size_t countSequenceOccurrences(const std::string& w, const BWT* pBWT);
+
 
 // Update the given interval using backwards search
 // If the interval corrsponds to string S, it will be updated 

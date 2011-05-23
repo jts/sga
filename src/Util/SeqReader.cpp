@@ -118,7 +118,7 @@ bool SeqReader::get(SeqRecord& sr)
             {
                 std::cerr << "Error: read " << sr.id << " contains non-ACGT characters.\n";
                 std::cerr << "Please run sga preprocess on the data first.\n";
-                exit(0);
+                exit(EXIT_FAILURE);
             }
         }
 

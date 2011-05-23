@@ -53,10 +53,10 @@ BWTIntervalPair BWTAlgorithms::findIntervalPair(const BWT* pBWT, const BWT* pRev
 }
 
 // Count the number of occurrences of string w, including the reverse complement
-size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWT* pBWT, const BWT* pRBWT)
+size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWT* pBWT)
 {
     BWTInterval fwd_interval = findInterval(pBWT, w);
-    BWTInterval rc_interval = findInterval(pRBWT, complement(w));
+    BWTInterval rc_interval = findInterval(pBWT, reverseComplement(w));
 
     size_t count = 0;
     if(fwd_interval.isValid())

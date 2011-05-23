@@ -333,7 +333,7 @@ double getErrorRate(BamTools::BamAlignment& record)
 
 int64_t getMaxKmerDepth(const std::string& w, 
                         const BWT* pBWT, 
-                        const BWT* pRBWT)
+                        const BWT* /*pRBWT*/)
 {
     int64_t max = 0;
     int nk = w.size() - opt::kmerSize + 1;
@@ -343,7 +343,7 @@ int64_t getMaxKmerDepth(const std::string& w,
     for(int i = 0; i < nk; ++i)
     {
         std::string kmer = w.substr(i, opt::kmerSize);
-        int count = BWTAlgorithms::countSequenceOccurrences(kmer, pBWT, pRBWT);
+        int count = BWTAlgorithms::countSequenceOccurrences(kmer, pBWT);
         if(count > max)
             max = count;
     }

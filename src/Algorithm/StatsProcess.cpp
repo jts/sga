@@ -48,7 +48,7 @@ StatsResult StatsProcess::process(const SequenceWorkItem& workItem)
     for(int i = 0; i < nk; ++i)
     {
         std::string kmer = readSequence.substr(i, k);
-        int count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pBWT, m_pRBWT);
+        int count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pBWT);
         result.kmerCoverage.push_back(count);
     }
     
