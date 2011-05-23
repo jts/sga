@@ -21,7 +21,7 @@
 #include "connect.h"
 #include "walk.h"
 #include "gmap.h"
-#include "qc.h"
+#include "filter.h"
 #include "fm-merge.h"
 #include "scaffold2fasta.h"
 #include "stats.h"
@@ -46,21 +46,22 @@ static const char *SGA_USAGE_MESSAGE =
 "           preprocess      filter and quality-trim reads\n"
 "           index           build the BWT and FM-index for a set of reads\n"
 "           merge           merge multiple BWT/FM-index files into a single index\n"
-"           rmdup           remove duplicated or identical reads from the data set\n"
 "           correct         correct sequencing errors in a set of reads\n"
 "           fm-merge        merge unambiguously overlapped sequences using the FM-index\n"
 "           overlap         compute overlaps between reads\n"
 "           assemble        generate contigs from an assembly graph\n"
 "           oview           view overlap alignments\n"
 "           subgraph        extract a subgraph from a graph\n"
+"           filter          remove reads from a data set\n"
 "\n\nExperimental commands:\n"
-"           qc              detect and discard reads that could be problematic for the assembly\n"
 "           stats           print useful statistics about the read set\n"
 "           connect         resolve the complete sequence of a paired-end fragment\n"
 "           scaffold        generate ordered sets of contigs using distance estimates\n"
 "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
 "           filterBAM       filter out contaminating mate-pair data in a BAM file\n"
 "           cluster         find clusters of reads belonging to the same connected component\n"
+"\n\nDeprecated commands:\n"
+"           rmdup           duplicate read removal - superceded by sga filter\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 int main(int argc, char** argv)
@@ -90,8 +91,8 @@ int main(int argc, char** argv)
             indexMain(argc - 1, argv + 1);
         else if(command == "merge")
             mergeMain(argc - 1, argv + 1);
-        else if(command == "qc")
-            qcMain(argc - 1, argv + 1);
+        else if(command == "filter")
+            filterMain(argc - 1, argv + 1);
         else if(command == "stats")
             statsMain(argc - 1, argv + 1);
         else if(command == "rmdup")

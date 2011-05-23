@@ -4,14 +4,14 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// qc - Perform a quality check on a set of reads, discarding low quality
+// filter - remove reads from a data set based on various criteria
 //
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iterator>
 #include "Util.h"
-#include "qc.h"
+#include "filter.h"
 #include "SuffixArray.h"
 #include "BWT.h"
 #include "SGACommon.h"
@@ -23,24 +23,25 @@
 #include "SequenceProcessFramework.h"
 #include "QCProcess.h"
 #include "BWTDiskConstruction.h"
+#include "BitVector.h"
 
 // Functions
 
 //
 // Getopt
 //
-#define SUBPROGRAM "qc"
-static const char *QC_VERSION_MESSAGE =
+#define SUBPROGRAM "filter"
+static const char *FILTER_VERSION_MESSAGE =
 SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Written by Jared Simpson.\n"
 "\n"
 "Copyright 2010 Wellcome Trust Sanger Institute\n";
 
-static const char *QC_USAGE_MESSAGE =
+static const char *FILTER_USAGE_MESSAGE =
 "Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READSFILE\n"
-"Perform a quality check on a set of reads, discarding low quality reads.\n"
-"By default, the quality check looks for a tiled set of high-coverage k-mers across the reads.\n"
-"This check is fast and can detect chimeric reads or reads with internal uncorrected mismatches.\n"
+"Remove reads from a data set.\n"
+"The currently available filters are removing exact-match duplicates\n"
+"and removing reads with low-frequency k-mers.\n"
 "Automatically rebuilds the FM-index without the discarded reads.\n"
 "\n"
 "      --help                           display this help and exit\n"
@@ -50,6 +51,9 @@ static const char *QC_USAGE_MESSAGE =
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
+"      --no-duplicate-check             turn off duplicate removal\n"
+"      --no-kmer-check                  turn off the kmer check\n"
+"\nK-mer filter options:\n"
 "      -k, --kmer-size=N                The length of the kmer to use. (default: 27)\n"
 "      -x, --kmer-threshold=N           Require at least N kmer coverage for each kmer in a read. (default: 3)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -66,35 +70,39 @@ namespace opt
     static std::string outFile;
     static std::string discardFile;
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
-    
+
+    static bool dupCheck = true;
+    static bool kmerCheck = true;
+
     static int kmerLength = 27;
     static int kmerThreshold = 3;
 }
 
 static const char* shortopts = "p:d:t:o:k:x:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD };
+enum { OPT_HELP = 1, OPT_VERSION, PT_DISCARD, OPT_NO_RMDUP, OPT_NO_KMER };
 
 static const struct option longopts[] = {
-    { "verbose",       no_argument,       NULL, 'v' },
-    { "threads",       required_argument, NULL, 't' },
-    { "outfile",       required_argument, NULL, 'o' },
-    { "prefix",        required_argument, NULL, 'p' },
-    { "sample-rate",   required_argument, NULL, 'd' },
-    { "kmer-size",     required_argument, NULL, 'k' },
-    { "kmer-threshold",required_argument, NULL, 'x' },
-    { "help",          no_argument,       NULL, OPT_HELP },
-    { "version",       no_argument,       NULL, OPT_VERSION },
-    { "metrics",       required_argument, NULL, OPT_METRICS },
+    { "verbose",            no_argument,       NULL, 'v' },
+    { "threads",            required_argument, NULL, 't' },
+    { "outfile",            required_argument, NULL, 'o' },
+    { "prefix",             required_argument, NULL, 'p' },
+    { "sample-rate",        required_argument, NULL, 'd' },
+    { "kmer-size",          required_argument, NULL, 'k' },
+    { "kmer-threshold",     required_argument, NULL, 'x' },
+    { "help",               no_argument,       NULL, OPT_HELP },
+    { "version",            no_argument,       NULL, OPT_VERSION },
+    { "no-duplicate-check", no_argument,       NULL, OPT_NO_RMDUP },
+    { "no-kmer-check",      no_argument,       NULL, OPT_NO_KMER },
     { NULL, 0, NULL, 0 }
 };
 
 //
 // Main
 //
-int qcMain(int argc, char** argv)
+int filterMain(int argc, char** argv)
 {
-    parseQCOptions(argc, argv);
+    parseFilterOptions(argc, argv);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
 
@@ -104,17 +112,23 @@ int qcMain(int argc, char** argv)
     
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = createWriter(opt::discardFile);
+    QCPostProcess* pPostProcessor = new QCPostProcess(pWriter, pDiscardWriter);
 
-    QCPostProcess postProcessor(pWriter, pDiscardWriter);
+    // If performing duplicate check, create a bitvector to record
+    // which reads are duplicates
+    BitVector* pSharedBV = NULL;
+    if(opt::dupCheck)
+        pSharedBV = new BitVector(pBWT->getNumStrings());
+
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        QCProcess processor(pBWT, pRBWT, opt::kmerLength, opt::kmerThreshold);
+        QCProcess processor(pBWT, pRBWT, pSharedBV, opt::dupCheck, opt::kmerCheck, opt::kmerLength, opt::kmerThreshold);
 
         SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
                                                          QCResult, 
                                                          QCProcess, 
-                                                         QCPostProcess>(opt::readsFile, &processor, &postProcessor);
+                                                         QCPostProcess>(opt::readsFile, &processor, pPostProcessor);
     }
     else
     {
@@ -122,14 +136,14 @@ int qcMain(int argc, char** argv)
         std::vector<QCProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            QCProcess* pProcessor = new QCProcess(pBWT, pRBWT, opt::kmerLength, opt::kmerThreshold);
+            QCProcess* pProcessor = new QCProcess(pBWT, pRBWT, pSharedBV, opt::dupCheck, opt::kmerCheck, opt::kmerLength, opt::kmerThreshold);
             processorVector.push_back(pProcessor);
         }
         
         SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
                                                            QCResult, 
                                                            QCProcess, 
-                                                           QCPostProcess>(opt::readsFile, processorVector, &postProcessor);
+                                                           QCPostProcess>(opt::readsFile, processorVector, pPostProcessor);
 
         for(int i = 0; i < opt::numThreads; ++i)
         {
@@ -137,12 +151,15 @@ int qcMain(int argc, char** argv)
         }
     }
 
-    // close filehandles
+    delete pPostProcessor;
     delete pWriter;
     delete pDiscardWriter;
 
     delete pBWT;
     delete pRBWT;
+
+    if(pSharedBV != NULL)
+        delete pSharedBV;
 
     // Rebuild the FM-index without the discarded reads
     std::string out_prefix = stripFilename(opt::outFile);
@@ -160,7 +177,7 @@ int qcMain(int argc, char** argv)
 // 
 // Handle command line arguments
 //
-void parseQCOptions(int argc, char** argv)
+void parseFilterOptions(int argc, char** argv)
 {
     std::string algo_str;
     bool die = false;
@@ -175,13 +192,15 @@ void parseQCOptions(int argc, char** argv)
             case 'd': arg >> opt::sampleRate; break;
             case 'k': arg >> opt::kmerLength; break;
             case 'x': arg >> opt::kmerThreshold; break;
+            case OPT_NO_RMDUP: opt::dupCheck = false; break;
+            case OPT_NO_KMER: opt::kmerCheck = false; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
-                std::cout << QC_USAGE_MESSAGE;
+                std::cout << FILTER_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
             case OPT_VERSION:
-                std::cout << QC_VERSION_MESSAGE;
+                std::cout << FILTER_VERSION_MESSAGE;
                 exit(EXIT_SUCCESS);
         }
     }
@@ -217,7 +236,7 @@ void parseQCOptions(int argc, char** argv)
 
     if (die) 
     {
-        std::cout << "\n" << QC_USAGE_MESSAGE;
+        std::cout << "\n" << FILTER_USAGE_MESSAGE;
         exit(EXIT_FAILURE);
     }
 
@@ -231,7 +250,7 @@ void parseQCOptions(int argc, char** argv)
 
     if(opt::outFile.empty())
     {
-        opt::outFile = opt::prefix + ".qcpass.fa";
+        opt::outFile = opt::prefix + ".filter.pass.fa";
     }
 
     opt::discardFile = opt::prefix + ".discard.fa";

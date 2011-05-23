@@ -39,9 +39,12 @@ struct KmerWindow
 //
 //
 //
-QCProcess::QCProcess(const BWT* pBWT, const BWT* pRBWT, int kmerLength, int kmerThreshold) :
+QCProcess::QCProcess(const BWT* pBWT, const BWT* pRBWT, BitVector* pSharedBV, bool checkDup, bool checkKmer, int kmerLength, int kmerThreshold) :
                      m_pBWT(pBWT),
                      m_pRBWT(pRBWT),
+                     m_pSharedBV(pSharedBV),
+                     m_checkDuplicate(checkDup),
+                     m_checkKmer(checkKmer),
                      m_kmerLength(kmerLength),
                      m_kmerThreshold(kmerThreshold)
 {
@@ -56,6 +59,25 @@ QCProcess::~QCProcess()
 
 //
 QCResult QCProcess::process(const SequenceWorkItem& workItem)
+{
+    QCResult result;
+
+    if(m_checkDuplicate)
+        result.dupPassed = performDuplicateCheck(workItem);
+    else
+        result.dupPassed = true;
+    
+    // Only perform the more expensive k-mer test if the dup check succeeded
+    if(m_checkKmer && result.dupPassed)
+        result.kmerPassed = performKmerCheck(workItem);
+    else
+        result.kmerPassed = true;
+
+
+    return result;
+}
+
+bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
 {
     // Perform a k-mer filter on the read
     // Each k-mer must be seen at least m times for the read to be kept
@@ -161,11 +183,68 @@ QCResult QCProcess::process(const SequenceWorkItem& workItem)
         }
     }
 
-    if(allSolid)
-        result.qcPassed = true;
+    return allSolid;
+}
+
+// Perform duplicate check
+// Look up the interval of the read in the BWT. If the index of the read
+bool QCProcess::performDuplicateCheck(const SequenceWorkItem& workItem)
+{
+    assert(m_pSharedBV != NULL);
+
+    std::string w = workItem.read.seq.toString();
+    std::string rc_w = reverseComplement(w);
+
+    // Look up the interval of the sequence and its reverse complement
+    BWTIntervalPair fwdIntervals = BWTAlgorithms::findIntervalPair(m_pBWT, m_pRBWT, w);
+    BWTIntervalPair rcIntervals = BWTAlgorithms::findIntervalPair(m_pBWT, m_pRBWT, rc_w);
+
+    // Check if this read is a substring of any other
+    // This is indicated by the presence of a non-$ extension in the left or right direction
+    AlphaCount64 fwdECL = BWTAlgorithms::getExtCount(fwdIntervals.interval[0], m_pBWT);
+    AlphaCount64 fwdECR = BWTAlgorithms::getExtCount(fwdIntervals.interval[1], m_pRBWT);
+
+    AlphaCount64 rcECL = BWTAlgorithms::getExtCount(rcIntervals.interval[0], m_pBWT);
+    AlphaCount64 rcECR = BWTAlgorithms::getExtCount(rcIntervals.interval[1], m_pRBWT);
+
+    if(fwdECL.hasDNAChar() || fwdECR.hasDNAChar() || rcECL.hasDNAChar() || rcECR.hasDNAChar())
+    {
+        // Substring reads are always removed so no need to update the bit vector
+        return false;
+    }
+
+    // Calculate the lexicographic intervals for the fwd and reverse intervals
+    BWTAlgorithms::updateBothL(fwdIntervals, '$', m_pBWT);
+    BWTAlgorithms::updateBothL(rcIntervals, '$', m_pBWT);
+
+    // Calculate the canonical index for this string - the lowest
+    // value in the two lexicographic index
+    int64_t fi = fwdIntervals.interval[0].isValid() ? fwdIntervals.interval[0].lower : std::numeric_limits<int64_t>::max();
+    int64_t ri = rcIntervals.interval[0].isValid() ? rcIntervals.interval[0].lower : std::numeric_limits<int64_t>::max();
+    int64_t canonicalIdx = std::min(fi, ri);
+
+    // Check if the bit reprsenting the canonical index is set in the shared bit vector
+    if(!m_pSharedBV->test(canonicalIdx))
+    {
+        // This read is not a duplicate
+        // Attempt to atomically set the bit from false to true
+        if(m_pSharedBV->updateCAS(canonicalIdx, false, true))
+        {
+            // Call succeed, return that this read is not a duplicate
+            return true;
+        }
+        else
+        {
+            // Call failed, some other thread set the bit before
+            // this thread. Return that the reead is a duplicate
+            return false;
+        }
+    }
     else
-        result.qcPassed = false;
-    return result;
+    {
+        // this read is duplicate
+        return false;
+    }
 }
 
 //
@@ -175,7 +254,8 @@ QCPostProcess::QCPostProcess(std::ostream* pCorrectedWriter,
                              std::ostream* pDiscardWriter) :
                                 m_pCorrectedWriter(pCorrectedWriter),
                                 m_pDiscardWriter(pDiscardWriter),
-                                m_readsKept(0), m_readsDiscarded(0)
+                                m_readsKept(0), m_readsDiscarded(0),
+                                m_readsFailedKmer(0), m_readsFailedDup(0)
 {
 
 }
@@ -185,13 +265,15 @@ QCPostProcess::~QCPostProcess()
 {
     std::cout << "Reads kept: " << m_readsKept << "\n";
     std::cout << "Reads discarded: " << m_readsDiscarded << "\n";
+    std::cout << "Reads failed kmer check: " << m_readsFailedKmer << "\n";
+    std::cout << "Reads failed duplicate check: " << m_readsFailedDup << "\n";
 }
 
 //
 void QCPostProcess::process(const SequenceWorkItem& item, const QCResult& result)
 {
     SeqRecord record = item.read;
-    if(result.qcPassed)
+    if(result.kmerPassed && result.dupPassed)
     {
         record.write(*m_pCorrectedWriter);
         ++m_readsKept;
@@ -206,5 +288,10 @@ void QCPostProcess::process(const SequenceWorkItem& item, const QCResult& result
 
         record.write(*m_pDiscardWriter);
         ++m_readsDiscarded;
+
+        if(!result.kmerPassed)
+            m_readsFailedKmer += 1;
+        else if(!result.dupPassed)
+            m_readsFailedDup += 1;
     }
 }

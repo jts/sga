@@ -4,10 +4,10 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// qc - Quality check reads
+// filter - remove reads from a data set based on various criteria
 //
-#ifndef QC_H
-#define QC_H
+#ifndef FILTER_H
+#define FILTER_H
 #include <getopt.h>
 #include "config.h"
 #include "BWT.h"
@@ -18,9 +18,9 @@
 // functions
 
 //
-int qcMain(int argc, char** argv);
+int filterMain(int argc, char** argv);
 
 // options
-void parseQCOptions(int argc, char** argv);
+void parseFilterOptions(int argc, char** argv);
 
 #endif

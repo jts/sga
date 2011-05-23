@@ -38,7 +38,7 @@ sga_SOURCES = sga.cpp \
 			  scaffold2fasta.cpp scaffold2fasta.h \
               connect.cpp connect.h \
               walk.cpp walk.h \
-              qc.cpp qc.h \
+              filter.cpp filter.h \
               stats.cpp stats.h \
               fm-merge.cpp fm-merge.h \
               gmap.h gmap.cpp \

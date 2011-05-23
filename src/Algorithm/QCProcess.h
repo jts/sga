@@ -14,27 +14,36 @@
 #include "BWT.h"
 #include "SequenceProcessFramework.h"
 #include "SequenceWorkItem.h"
+#include "BitVector.h"
 
 class QCResult
 {
     public:
-        QCResult() : qcPassed(false) {}
+        QCResult() : kmerPassed(false), dupPassed(false) {}
 
-        bool qcPassed;
+        bool kmerPassed;
+        bool dupPassed;
 };
 
 //
 class QCProcess
 {
     public:
-        QCProcess(const BWT* pBWT, const BWT* pRBWT, int kmerLength, int kmerThreshold);
+        QCProcess(const BWT* pBWT, const BWT* pRBWT, BitVector* pSharedBV, bool checkDup, bool checkKmer, int kmerLength, int kmerThreshold);
         ~QCProcess();
         QCResult process(const SequenceWorkItem& item);
+
+        bool performKmerCheck(const SequenceWorkItem& item);
+        bool performDuplicateCheck(const SequenceWorkItem& item);
 
     private:
         
         const BWT* m_pBWT;
         const BWT* m_pRBWT;
+        BitVector* m_pSharedBV;
+
+        bool m_checkDuplicate;
+        bool m_checkKmer;
         const int m_kmerLength;
         const int m_kmerThreshold;
 };
@@ -55,6 +64,8 @@ class QCPostProcess
 
         size_t m_readsKept;
         size_t m_readsDiscarded;
+        size_t m_readsFailedKmer;
+        size_t m_readsFailedDup;
 };
 
 #endif
