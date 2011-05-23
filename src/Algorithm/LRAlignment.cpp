@@ -765,9 +765,9 @@ void generateCIGAR(const std::string& query, LRParams& params, LRHitVector& hits
     {
         std::string querySub = query.substr(hits[i].beg, hits[i].end - hits[i].beg);
 
-        printf("Alignment DP\n");
-        printf("Target (%d): %s\n", hits[i].position, hits[i].targetString.c_str());
-        printf("Query (%d): %s\n", hits[i].beg, querySub.c_str());
+        //printf("Alignment DP\n");
+        //printf("Target (%d): %s\n", hits[i].position, hits[i].targetString.c_str());
+        //printf("Query (%d): %s\n", hits[i].beg, querySub.c_str());
         // Convert strings to 0-3 representation, as needed by the stdaln routine
         // STDALN uses the same representation as DNA_ALPHABET
         int ql = querySub.size();

@@ -9,8 +9,8 @@
 //
 #include <iostream>
 #include <algorithm>
+#include <map>
 #include "MultiAlignment.h"
-#include "Util.h"
 
 struct CigarIter
 {
@@ -53,7 +53,11 @@ struct CigarIter
             }
             else if(cigSym == 'I')
             {
-                assert(false);
+                outBase = '-';
+            }
+            else if(cigSym == 'S')
+            {
+                outBase = '.';
             }
             else
             {
@@ -103,18 +107,23 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
     MAlignData rootData = {rootStr, std::string(rootStr.size(), 'M'), 0};
     CigarIter tmp = {&rootData, 0, 0};
     iterVec.push_back(tmp);
-    printf("%zu\t%s\n", 0, tmp.pData->expandedCigar.c_str());
-    for(size_t i = 0; i < inData.size(); ++i)
+
+    if(m_verbose > 1)
     {
-        CigarIter iter = {&inData[i], 0, 0};
-        iterVec.push_back(iter);
-        printf("%zu\t%s\n", i+1, iter.pData->expandedCigar.c_str());
+        printf("%d\t%s\n", 0, tmp.pData->expandedCigar.c_str());
+
+        for(size_t i = 0; i < inData.size(); ++i)
+        {
+            CigarIter iter = {&inData[i], 0, 0};
+            iterVec.push_back(iter);
+            printf("%zu\t%s\n", i+1, iter.pData->expandedCigar.c_str());
+        }
     }
 
     std::stable_sort(iterVec.begin(), iterVec.end(), CigarIter::sortPosition);
 
     bool done = false;
-    StringVector outStrings(iterVec.size());
+    m_paddedStrings.resize(iterVec.size());
     while(!done)
     {
         // Check if any strings have a deletion or insertion at this base
@@ -141,20 +150,88 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
         for(size_t i = 0; i < iterVec.size(); ++i)
         {
             char outSym = iterVec[i].updateAndEmit(updateMode);
-            outStrings[i].append(1,outSym);
+            m_paddedStrings[i].append(1,outSym);
         }
     }
 
-    size_t len = outStrings[0].size();
-    for(size_t l = 0; l < len; l += 80)
+    generateConsensus();
+}
+
+// Generate simple consensus string from the multiple alignment
+std::string MultiAlignment::generateConsensus()
+{
+    assert(!m_paddedStrings.empty());
+
+    std::string consensus;
+    std::string paddedConsensus;
+
+    std::map<char, int> baseMap;
+
+    size_t num_rows = m_paddedStrings.size() - 1; // do not include root
+    size_t num_cols = m_paddedStrings.front().size();
+    for(size_t i = 0; i < num_cols; ++i)
     {
-        for(size_t i = 0; i < outStrings.size(); ++i)
+        baseMap.clear();
+        for(size_t j = 1; j < num_rows; ++j)
         {
-            size_t stop = outStrings[i].size() - l < 80 ? outStrings[i].size() - l : 80;        
-            printf("%zu\t%s\n", i, outStrings[i].substr(l, stop).c_str());
+            char b = m_paddedStrings[j][i];
+            if(b != '.')
+                baseMap[b]++;
+        }
+
+        int max = 0;
+        char maxBase = '.';
+        for(std::map<char,int>::iterator iter = baseMap.begin(); iter != baseMap.end(); ++iter)
+        {
+            if(iter->second > max)
+            {
+                max = iter->second;
+                maxBase = iter->first;
+            }
+        }
+
+        paddedConsensus.append(1,maxBase);
+
+        if(maxBase == '.' && consensus.empty())
+            continue; // skip no-call at beginning
+        else if(maxBase == '.')
+            break; // non-called position in middle of read, stop consensus generation
+        else if(maxBase != '-') //
+            consensus.append(1, maxBase);
+    }
+
+    if(m_verbose > 0)
+        print(&paddedConsensus);
+
+    return consensus;
+}
+
+//
+void MultiAlignment::print(const std::string* pConsensus) const
+{
+    assert(!m_paddedStrings.empty());
+
+    size_t len = m_paddedStrings[0].size();
+    int col_size = 120;
+    for(size_t l = 0; l < len; l += col_size)
+    {
+        if(pConsensus != NULL)
+        {
+            int diff = pConsensus->size() - l;
+            int stop = diff < col_size ? diff : col_size;
+            if(stop > 0)
+                printf("C\t%s\n", pConsensus->substr(l,stop).c_str());
+            else
+                printf("C\n");
+        }
+        
+        for(size_t i = 0; i < m_paddedStrings.size(); ++i)
+        {
+            int diff = m_paddedStrings[i].size() - l;
+            int stop = diff < col_size ? diff : col_size;
+            printf("%zu\t%s\n", i, m_paddedStrings[i].substr(l, stop).c_str());
         }
 
         std::cout << "\n";
     }
 }
-

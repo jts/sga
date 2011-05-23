@@ -19,7 +19,9 @@ void createQuickBWT(const std::string& str, BWT*& pBWT, SuffixArray*& pSA)
     pSA = new SuffixArray(&rt, 1, true);
     pBWT = new BWT(pSA, &rt);
 
+    /*
     std::cout << "QBWT -- str len: " << str.length() << "\n";
     std::cout << "QBWT -- bwt len: " << pBWT->getBWLen() << "\n";
     pBWT->printInfo();
+    */
 }

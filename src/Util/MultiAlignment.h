@@ -12,6 +12,7 @@
 
 #include <string>
 #include <vector>
+#include "Util.h"
 
 struct MAlignData
 {
@@ -27,9 +28,15 @@ class MultiAlignment
     public:
         MultiAlignment(std::string rootStr, const MAlignDataVector& inData);
 
-    private:
-        
+        std::string generateConsensus();
+        void print(const std::string* pConsensus = NULL) const;
 
+    private:
+
+        
+        // data
+        StringVector m_paddedStrings;
+        int m_verbose;
 };
 
 #endif
