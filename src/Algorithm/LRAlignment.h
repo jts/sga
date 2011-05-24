@@ -23,13 +23,28 @@ namespace LRAlignment
 // 
 struct LRParams
 {
-    static const int gap_open = 5;
-    static const int gap_ext = 2;
-    static const int mismatch = 3;
-    static const int match = 1;
-    static const int gap_open_extend = gap_open + gap_ext;
-    static const int threshold = 30;
-    static const int bandwidth = 50;
+    LRParams() { setDefaults(); }
+
+    void setDefaults()
+    {
+        gap_open = 5;
+        gap_ext = 2;
+        mismatch = 3;
+        match = 1;
+        gap_open_extend = gap_open + gap_ext;
+        threshold = 30;
+        bandwidth = 50;
+        zBest = 20;
+    }
+
+    int gap_open;
+    int gap_ext;
+    int mismatch;
+    int match;
+    int gap_open_extend;
+    int threshold;
+    int bandwidth;
+    int zBest;
 };
 
 //
@@ -107,7 +122,10 @@ typedef std::vector<LRStackEntry*> LRPendingVector;
 void initializeDAWGHash(BWT* pQueryBWT, LRHash& dawgHash);
 
 //
-void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA);
+void bwaswAlignment(const std::string& query, 
+                    const BWT* pTargetBWT, 
+                    const SampledSuffixArray* pTargetSSA,
+                    const LRParams& params);
 
 //
 void mergeStackEntries(LRStackEntry* u, LRStackEntry* v);
@@ -116,7 +134,10 @@ void mergeStackEntries(LRStackEntry* u, LRStackEntry* v);
 void removeDuplicateCells(LRStackEntry* u, LRHash& hash);
 
 //
-int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, LRHitVector& hits, int IS);
+int resolveDuplicateHits(const BWT* pTargetBWT, 
+                         const SampledSuffixArray* pTargetSSA, 
+                         LRHitVector& hits, 
+                         int IS);
 
 //
 void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHitVector& hits);
@@ -124,8 +145,10 @@ void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHit
 //
 int fillCells(const LRParams& params, int match_score, LRCell* c[4]);
 
+void cutTail(LRStackEntry* u, int T);
+
 // Generate a cigar string for all hits in the vector
-void generateCIGAR(const std::string& query, LRParams& params, LRHitVector& hits);
+void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector& hits);
 
 void path2padded(const std::string& s1, const std::string& s2, std::string& out1, std::string& out2, std::string& outm, path_t* path, int path_len);
 

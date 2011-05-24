@@ -53,7 +53,7 @@ bool LRCell::hasUninitializedChild() const
 
 // Implementation of bwa-sw algorithm.
 // Roughly follows Heng Li's code
-void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA)
+void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, const LRParams& params)
 {
     // Construct an FM-index of the query sequence
     BWT* pQueryBWT = NULL;
@@ -66,9 +66,6 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     LRHash dawgHash;
     initializeDAWGHash(pQueryBWT, dawgHash);
     
-    //
-    LRParams params;
-
     // Initialize a stack of elements with a single entry for the root node
     // of the query DAWG
     LRStack stack;
@@ -265,7 +262,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                             BWTInterval target_child_interval = p->interval;
                             BWTAlgorithms::updateInterval(target_child_interval, target_child_base, pTargetBWT);
 #ifdef BWA_COMPAT_DEBUG
-                            printf("Target child interval(%d)): [%zu %zu]\n", tci, target_child_interval.lower, target_child_interval.upper);
+                            printf("Target child interval(%d): [%zu %zu]\n", tci, target_child_interval.lower, target_child_interval.upper);
 #endif
                             if(!target_child_interval.isValid()) // child with this extension does not exist
                             {
@@ -334,6 +331,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                     // this node in the dawg will not be visited again
                     // move the stack entry from the pending list to the stack
                     removeDuplicateCells(w, dupHash);
+                    cutTail(w, params.zBest);
 #ifdef BWA_COMPAT_DEBUG
                     printf("moving w from pending to stack[%zu %zu]\n", w->interval.lower, w->interval.upper);
 #endif
@@ -372,6 +370,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             else // count == 0, pos == 0
             {
                 // This substring is unique, push u straight onto the stack
+                cutTail(u, params.zBest);
                 stack.push(u);
 #ifdef BWA_COMPAT_DEBUG
                 printf("pushing u to stack [%zu %zu]\n", u->interval.lower, u->interval.upper);
@@ -392,8 +391,6 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
 
     delete pQueryBWT;
     delete pQuerySA;
-
-    WARN_ONCE("CHECK FOR MEM LEAKS");
 }
 
 // Process a list of cells and save alignment hits meeting the threshold
@@ -595,6 +592,7 @@ int fillCells(const LRParams& params, int match_score, LRCell* c[4])
 	return(c[0]->G = G);
 }
 
+// Remove duplicated hits from the hits vector
 int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, LRHitVector& hits, int IS)
 {
     if(hits.empty())
@@ -607,6 +605,7 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
         int old_n = hits.size();
         int n = 0;
         
+        // Count the number of valid hits 
         LRHitVector newHits;
         for(size_t i = 0; i < hits.size(); ++i)
         {
@@ -616,14 +615,15 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
             else if(!p->interval.isValid()) // bwa compatibility hack
                 n += 1; 
             else if(p->G > 0)
-                ++n;
+                n += 1;
         }
 #ifdef BWA_COMPAT_DEBUG_RESOLVE
         printf("Total hits: %zu\n", hits.size());
         printf("Reallocating hits array to size: %d\n", n);
 #endif
         newHits.resize(n);
-
+    
+        // Populate the newHits vector with the hits to keep
         int j = 0;
         for(int i = 0; i < old_n; ++i)
         {
@@ -640,7 +640,7 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
                     newHits[j].interval.upper = -1;
 
 #ifdef BWA_COMPAT_DEBUG_RESOLVE
-                    printf("Created new hit at position %d\n", newHits[j].position);
+                    printf("Created new hit at position (%d, %d)\n", newHits[j].targetID, newHits[j].position);
 #endif
                     ++j;
                 }
@@ -655,7 +655,7 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
                 newHits[j].interval.upper = -1;
                 newHits[j].flag |= 1;
 #ifdef BWA_COMPAT_DEBUG_RESOLVE
-                printf("Created new hit at position %d\n", newHits[j].position);
+                printf("Created new hit at position (%d, %d)\n", newHits[j].targetID, newHits[j].position);
 #endif
                 ++j;
             }
@@ -742,7 +742,51 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
     return hits.size();
 }
 
-void generateCIGAR(const std::string& query, LRParams& params, LRHitVector& hits)
+// Remove all but the top scoring T cells in the stack entry
+void cutTail(LRStackEntry* u, int T)
+{
+    // Save an int vector of scores
+    IntVector scores;
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        if(u->cells[i].interval.upper != -1 && u->cells[i].G > 0)
+            scores.push_back(-u->cells[i].G);
+    }
+
+    if((int)scores.size() <= T)
+        return;
+
+    // Partially sort the scores to select the T-th best score
+    std::nth_element(scores.begin(), scores.begin() + T, scores.end());
+    int split = -scores[T];
+
+#ifdef BWA_COMPAT_DEBUG
+    printf("[CT] split score: %d\n", split);
+#endif
+
+    int n = 0;
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        if(p->G == split)
+            ++n;
+        if(p->G < split || (p->G == split && n >= T))
+        {
+#ifdef BWA_COMPAT_DEBUG
+            if(p->interval.upper > -1)
+                printf("marking p [%d %d] as deleted [CT]\n", (int)p->interval.lower, (int)p->interval.upper);
+#endif
+            p->interval.lower = 0;
+            p->interval.upper = -1;
+            p->G = 0;
+            if(p->parent_idx >= 0)
+                u->cells[p->parent_idx].children_idx[p->parent_cidx] = -1;
+        }
+    }
+}
+
+//
+void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector& hits)
 {
     // Set up stdaln data structures
 	size_t max_target = ((query.size() + 1) / 2 * params.match + params.gap_ext) / params.gap_ext + query.size(); // maximum possible target length

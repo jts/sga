@@ -100,6 +100,7 @@ typedef std::vector<CigarIter> CigarIterVector;
 
 MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inData)
 {
+    m_verbose = 1;
     // Build a padded multiple alignment from the pairwise alignments to the root
     CigarIterVector iterVec;
 
@@ -109,15 +110,14 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
     iterVec.push_back(tmp);
 
     if(m_verbose > 1)
-    {
         printf("%d\t%s\n", 0, tmp.pData->expandedCigar.c_str());
 
-        for(size_t i = 0; i < inData.size(); ++i)
-        {
-            CigarIter iter = {&inData[i], 0, 0};
-            iterVec.push_back(iter);
+    for(size_t i = 0; i < inData.size(); ++i)
+    {
+        CigarIter iter = {&inData[i], 0, 0};
+        iterVec.push_back(iter);
+        if(m_verbose > 1)
             printf("%zu\t%s\n", i+1, iter.pData->expandedCigar.c_str());
-        }
     }
 
     std::stable_sort(iterVec.begin(), iterVec.end(), CigarIter::sortPosition);

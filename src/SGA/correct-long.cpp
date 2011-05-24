@@ -46,6 +46,7 @@ static const char *CORRECT_LONG_USAGE_MESSAGE =
 "      -o, --outfile=FILE               write the corrected reads to FILE (default: READSFILE.ec.fa)\n"
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
+"      -z, --z-best=N                   keep N hits at each node.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -55,6 +56,7 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
+    static int zBest = -1;
     static std::string prefix;
     static std::string readsFile;
     static std::string outFile;
@@ -65,7 +67,7 @@ namespace opt
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
 }
 
-static const char* shortopts = "p:m:d:t:o:";
+static const char* shortopts = "p:m:d:t:o:z:";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD, OPT_LEARN };
 
@@ -76,6 +78,7 @@ static const struct option longopts[] = {
     { "outfile",       required_argument, NULL, 'o' },
     { "prefix",        required_argument, NULL, 'p' },
     { "sample-rate",   required_argument, NULL, 'd' },
+    { "z-best",        required_argument, NULL, 'z' },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -92,18 +95,21 @@ int correctLongMain(int argc, char** argv)
     //BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pSSA = new SampledSuffixArray(opt::prefix + SSA_EXT);
 
+    LRAlignment::LRParams params;
+    if(opt::zBest != -1)
+        params.zBest = opt::zBest;
+
+    size_t totalSize = 0;
     SeqRecord record;
     SeqReader reader(opt::readsFile);
     while(reader.get(record))
     {
         std::cout << "Aligning sequence " << record.id << "\n";
-        LRAlignment::bwaswAlignment(record.seq.toString(), pBWT, pSSA);
+        LRAlignment::bwaswAlignment(record.seq.toString(), pBWT, pSSA, params);
+        totalSize += record.seq.length();
     }
 
-    // example 454 read from E. coli K12
-    //std::string query = "GGCGTCTTTTATAAAGATGAGCCCATCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTATCTGGCCACAAAACAGCGTTGATTTGCTGAAATTTATCGAGCATAACCCTCGAATTTGCGGCGTGATTTTTGACTGGGATGAGTACAGTCTCGATTTATGTAGCGATATCAATCAGCTTAATGAATATCTCCCGCTTTATGCCTTCATCAACACCCACTCGA";
-    //std::string query = "TCAAAGAACTGGAGTCGGCGCTGGTGGCGCAAGGCTTTCAGATTAT";
-    //LRAlignment::bwaswAlignment(query, pBWT, pSSA);
+    printf("Aligned %zu bases (%.2lf Mbp)\n", totalSize, (double)totalSize / 1000000);
 
     delete pBWT;
     //delete pRBWT;
@@ -134,6 +140,7 @@ void parseCorrectLongOptions(int argc, char** argv)
             case 'd': arg >> opt::sampleRate; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case 'z': arg >> opt::zBest; break;
             case OPT_HELP:
                 std::cout << CORRECT_LONG_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
