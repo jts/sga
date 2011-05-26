@@ -321,11 +321,11 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
     size_t numProcessed = 0;
     if(numThreads <= 1)
     {
-        RankProcess processor(pBWT, doReverse, removeMode);
+        RankProcess processor(pBWT, pGapArray, doReverse, removeMode);
 
         numProcessed = 
            SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
-                                                            RankVector, 
+                                                            RankResult, 
                                                             RankProcess, 
                                                             RankPostProcess>(*pReader, &processor, &postProcessor, n);
     }
@@ -335,13 +335,13 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
         RankProcessVector rankProcVec;
         for(int i = 0; i < numThreads; ++i)
         {
-            RankProcess* pProcess = new RankProcess(pBWT, doReverse, removeMode);
+            RankProcess* pProcess = new RankProcess(pBWT, pGapArray, doReverse, removeMode);
             rankProcVec.push_back(pProcess);
         }
     
         numProcessed = 
            SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
-                                                              RankVector, 
+                                                              RankResult, 
                                                               RankProcess, 
                                                               RankPostProcess>(*pReader, rankProcVec, &postProcessor, n);
 
@@ -476,7 +476,12 @@ void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem,
             }
         }
     }
-    assert(num_bwt_wrote == total_symbols);
+    if(num_bwt_wrote != total_symbols)
+    {
+        printf("Error expected to write %zu symbols, actually wrote %zu\n", total_symbols, num_bwt_wrote);
+        assert(num_bwt_wrote == total_symbols);
+    }
+        
     assert(num_sai_wrote == total_strings);
     
     // Ensure we read the entire bw string from disk
@@ -567,7 +572,12 @@ void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
         }
         i += num_to_read;
     }
-    assert(num_bwt_wrote == output_symbols);
+    
+    if(num_bwt_wrote != output_symbols)
+    {
+        printf("Error expected to write %zu symbols, actually wrote %zu\n", output_symbols, num_bwt_wrote);
+        assert(num_bwt_wrote == output_symbols);
+    }
 
     // Finalize the BWT disk file
     pBWTWriter->finalize();
