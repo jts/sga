@@ -42,11 +42,10 @@ class SparseBaseStorage
             m_data[i] = c;
         }
 
+        // Attempt to set the value using an atomic update
+        // Returns false if the update fails
         inline bool setCAS(size_t i, IntType oldV, IntType newV)
         {
-            // Attempt to set the value using an atomic update
-            // If the update succeeds, true is returned otherwise
-            // we return false. 
             assert(oldV != getMax() && newV <= getMax() && oldV != newV);
             bool success = __sync_bool_compare_and_swap(&m_data[i], oldV, newV);
             return success;
@@ -113,8 +112,8 @@ class SparseBaseStorage4
             elem |= c << storage4_shift[offset];
         }
 
-        // Update the value at index i from oldV to newV using a compare and swap
-        // instruction. If the call fails, false is returned
+        // Attempt to set the value using an atomic update
+        // Returns false if the update fails
         inline bool setCAS(size_t i, uint8_t oldV, uint8_t newV)
         {
             assert(i < m_numElems);
@@ -195,6 +194,7 @@ class SparseBaseStorage1
         }
 
         // Set bit i from oldV to newV using a compare and swap
+        // Returns false if the update fails
         inline bool setCAS(size_t i, uint8_t oldV, uint8_t newV)
         {
             assert(i < m_numElems);
