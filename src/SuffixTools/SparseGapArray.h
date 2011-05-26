@@ -237,6 +237,16 @@ class SparseBaseStorage1
         size_t m_numElems;
 };
 
+// The SparseGapArray has two levels of storage.
+// The first level uses x bits to store counts
+// up to 2**x for n elements in the array. 
+// If the count for a particular element exceeds 2**x
+// then an entry in the overflow hash table is created
+// allowing arbitrary values to be stored. This
+// class is optimized to allow the base storage to be updated
+// concurrently with compare and swap operations. Any overflowed
+// updates must be serialized though incrementOverflowSerial
+// 
 template<class BaseStorage, class OverflowStorage>
 class SparseGapArray : public GapArray
 {
