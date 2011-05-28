@@ -44,8 +44,9 @@ if test "$with_sparsehash" -a -d "$with_sparsehash"; then
 fi
 
 # Set compiler flags.
-AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra")
+AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror")
 AC_SUBST(CXXFLAGS, "-O3")
+AC_SUBST(CFLAGS, "-O3")
 AC_SUBST(CPPFLAGS, "$CPPFLAGS $sparsehash_include $bamtools_include")
 AC_SUBST(LDFLAGS, "$hoard_ldflags $bamtools_ldflags $LDFLAGS")
 
