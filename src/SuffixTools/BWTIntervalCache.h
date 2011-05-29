@@ -21,10 +21,10 @@ class BWTIntervalCache
         BWTIntervalCache(size_t k, const BWT* pBWT);
         
         // Look up the bwt interval for the given string
-        inline BWTInterval lookup(const std::string& w) const
+        inline BWTInterval lookup(const char* w) const
         {
             // Convert the string to an integer index in the lookup table
-            size_t idx = string2int(w);
+            size_t idx = str2int(w);
             return m_table[idx];
         }
 
@@ -37,9 +37,9 @@ class BWTIntervalCache
         void build(const BWT* pBWT);
         
         // Map a string to an integer
-        inline size_t string2int(const std::string& w) const
+        // Precondition: w must be at least m_kmer symbols long
+        inline size_t str2int(const char* w) const
         {
-            assert(w.size() == m_kmer);
             size_t out = 0;
             for(size_t k = 0; k < m_kmer; ++k)
                 out |= DNA_ALPHABET::getBaseRank(w[k]) << 2*(m_kmer - k - 1);
