@@ -164,29 +164,35 @@ int correctMain(int argc, char** argv)
             CorrectionThresholds::Instance().setBaseMinSupport(threshold);
     }
 
-    Timer* pTimer = new Timer(PROGRAM_IDENT);
+
+    // Open outfiles and start a timer
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
-
-    bool bCollectMetrics = !opt::metricsFile.empty();
+    Timer* pTimer = new Timer(PROGRAM_IDENT);
     pBWT->printInfo();
 
+    // Set the error correction parameters
+    ErrorCorrectParameters ecParams;
+    ecParams.pOverlapper = pOverlapper;
+    ecParams.pIntervalCache = &intervalCache;
+    ecParams.algorithm = opt::algorithm;
+
+    ecParams.minOverlap = opt::minOverlap;
+    ecParams.numOverlapRounds = opt::numOverlapRounds;
+    ecParams.conflictCutoff = opt::conflictCutoff;
+
+    ecParams.numKmerRounds = opt::numKmerRounds;
+    ecParams.kmerLength = opt::kmerLength;
+    ecParams.printOverlaps = opt::verbose > 1;
+
+    // Setup post-processor
+    bool bCollectMetrics = !opt::metricsFile.empty();
     ErrorCorrectPostProcess postProcessor(pWriter, pDiscardWriter, bCollectMetrics);
 
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        ErrorCorrectProcess processor(pOverlapper, 
-                                      &intervalCache,
-                                      opt::minOverlap, 
-                                      opt::numOverlapRounds, 
-                                      opt::numKmerRounds,
-                                      opt::conflictCutoff, 
-                                      opt::kmerLength, 
-                                      opt::kmerThreshold, 
-                                      opt::algorithm, 
-                                      opt::verbose > 1);
-
+        ErrorCorrectProcess processor(ecParams); 
         SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
                                                          ErrorCorrectResult, 
                                                          ErrorCorrectProcess, 
@@ -198,16 +204,7 @@ int correctMain(int argc, char** argv)
         std::vector<ErrorCorrectProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, 
-                                                                      &intervalCache,
-                                                                      opt::minOverlap, 
-                                                                      opt::numOverlapRounds,
-                                                                      opt::numKmerRounds,
-                                                                      opt::conflictCutoff, 
-                                                                      opt::kmerLength, 
-                                                                      opt::kmerThreshold, 
-                                                                      opt::algorithm, 
-                                                                      opt::verbose > 1);
+            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(ecParams);
             processorVector.push_back(pProcessor);
         }
         

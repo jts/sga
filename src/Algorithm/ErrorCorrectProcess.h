@@ -33,6 +33,27 @@ enum ECFlag
     ECF_DUPLICATE
 };
 
+// Parameter object for the error corrector
+struct ErrorCorrectParameters
+{
+    const OverlapAlgorithm* pOverlapper;
+    const BWTIntervalCache* pIntervalCache;
+    ErrorCorrectAlgorithm algorithm;
+
+    // Overlap-based corrector params
+    int minOverlap;
+    int numOverlapRounds;
+    int conflictCutoff;
+    int depthFilter;
+
+    // k-mer based corrector params
+    int numKmerRounds;
+    int kmerLength;
+
+    // output options
+    bool printOverlaps;
+};
+
 class ErrorCorrectResult
 {
     public:
@@ -52,17 +73,7 @@ class ErrorCorrectResult
 class ErrorCorrectProcess
 {
     public:
-        ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
-                            const BWTIntervalCache* pIntervalCache,
-                            int minOverlap, 
-                            int numOverlapRounds, 
-                            int numKmerRouns,
-                            int conflictCutoff,
-                            int kmerLength,
-                            int kmerThreshold,
-                            ErrorCorrectAlgorithm algo,
-                            bool printMO);
-
+        ErrorCorrectProcess(const ErrorCorrectParameters params); 
         ~ErrorCorrectProcess();
 
         ErrorCorrectResult process(const SequenceWorkItem& item);
@@ -76,17 +87,7 @@ class ErrorCorrectProcess
         bool attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence);
 
         OverlapBlockList m_blockList;
-        const OverlapAlgorithm* m_pOverlapper;
-        const BWTIntervalCache* m_pIntervalCache;
-        const int m_minOverlap;
-        const int m_numOverlapRounds;
-        const int m_numKmerRounds;
-        const int m_conflictCutoff;
-        const int m_kmerLength;
-        const int m_kmerThreshold;
-        const ErrorCorrectAlgorithm m_algorithm;
-        const bool m_printOverlaps;
-        const int m_depthFilter;
+        ErrorCorrectParameters m_params;
 };
 
 // Write the results from the overlap step to an ASQG file
