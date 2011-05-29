@@ -29,6 +29,7 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
                            BWTReaderBinary.h BWTReaderBinary.cpp \
                            BWTWriterAscii.h BWTWriterAscii.cpp \
                            BWTReaderAscii.h BWTReaderAscii.cpp \
+                           BWTIntervalCache.h BWTIntervalCache.cpp \
                            BWT.h \
                            BWTInterval.h \
                            HitData.h \

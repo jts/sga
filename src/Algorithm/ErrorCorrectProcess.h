@@ -16,6 +16,7 @@
 #include "SequenceWorkItem.h"
 #include "MultiOverlap.h"
 #include "Metrics.h"
+#include "BWTIntervalCache.h"
 
 enum ErrorCorrectAlgorithm
 {
@@ -52,6 +53,7 @@ class ErrorCorrectProcess
 {
     public:
         ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
+                            const BWTIntervalCache* pIntervalCache,
                             int minOverlap, 
                             int numOverlapRounds, 
                             int numKmerRouns,
@@ -75,6 +77,7 @@ class ErrorCorrectProcess
 
         OverlapBlockList m_blockList;
         const OverlapAlgorithm* m_pOverlapper;
+        const BWTIntervalCache* m_pIntervalCache;
         const int m_minOverlap;
         const int m_numOverlapRounds;
         const int m_numKmerRounds;

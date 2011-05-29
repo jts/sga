@@ -17,6 +17,7 @@
 //
 //
 ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
+                                         const BWTIntervalCache* pIntervalCache,
                                          int minOverlap, 
                                          int numOverlapRounds,
                                          int numKmerRounds,
@@ -26,6 +27,7 @@ ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper,
                                          ErrorCorrectAlgorithm algo,
                                          bool printMO) : 
                                             m_pOverlapper(pOverlapper), 
+                                            m_pIntervalCache(pIntervalCache),
                                             m_minOverlap(minOverlap),
                                             m_numOverlapRounds(numOverlapRounds),
                                             m_numKmerRounds(numKmerRounds),
@@ -227,7 +229,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             }
             else
             {
-                count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT());
+                count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_pOverlapper->getBWT(), m_pIntervalCache);
                 kmerCache.insert(std::make_pair(kmer, count));
             }
 
@@ -328,7 +330,7 @@ bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t m
         if(currBase == originalBase)
             continue;
         kmer[base_idx] = currBase;
-        size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT());
+        size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_pOverlapper->getBWT(), m_pIntervalCache);
 
 #if KMER_TESTING
         printf("%c %zu\n", currBase, count);

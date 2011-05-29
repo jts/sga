@@ -24,6 +24,7 @@
 #include "ErrorCorrectProcess.h"
 #include "CorrectionThresholds.h"
 #include "KmerDistribution.h"
+#include "BWTIntervalCache.h"
 
 // Functions
 int learnKmerParameters(const BWT* pBWT);
@@ -99,6 +100,8 @@ namespace opt
     static int kmerThreshold = 3;
     static int numKmerRounds = 10;
     static bool bLearnKmerParams = false;
+
+    static int intervalCacheLength = 10;
     static ErrorCorrectAlgorithm algorithm = ECA_KMER;
 }
 
@@ -145,6 +148,8 @@ int correctMain(int argc, char** argv)
     // BWT as it is not needed
     if(opt::algorithm != ECA_KMER)
         pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
+    
+    BWTIntervalCache intervalCache(opt::intervalCacheLength, pBWT);
 
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, NULL, 
                                                          opt::errorRate, opt::seedLength, 
@@ -172,6 +177,7 @@ int correctMain(int argc, char** argv)
     {
         // Serial mode
         ErrorCorrectProcess processor(pOverlapper, 
+                                      &intervalCache,
                                       opt::minOverlap, 
                                       opt::numOverlapRounds, 
                                       opt::numKmerRounds,
@@ -192,7 +198,9 @@ int correctMain(int argc, char** argv)
         std::vector<ErrorCorrectProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, opt::minOverlap, 
+            ErrorCorrectProcess* pProcessor = new ErrorCorrectProcess(pOverlapper, 
+                                                                      &intervalCache,
+                                                                      opt::minOverlap, 
                                                                       opt::numOverlapRounds,
                                                                       opt::numKmerRounds,
                                                                       opt::conflictCutoff, 
