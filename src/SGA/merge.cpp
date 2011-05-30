@@ -8,6 +8,7 @@
 //
 #include <iostream>
 #include <fstream>
+#include <sys/stat.h>
 #include "SGACommon.h"
 #include "Util.h"
 #include "merge.h"
@@ -86,14 +87,23 @@ int mergeMain(int argc, char** argv)
 
     if(opt::prefix.empty())
     {
-        std::string prefix1 = stripFilename(inFiles[0]);
-        std::string prefix2 = stripFilename(inFiles[1]);
         opt::prefix = prefix1 + "." + prefix2;
     }
 
-    // Merge the forward and reverse indices
+    // Merge the indices
     mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
-    mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
+
+    // Skip merging the reverse indices if the reverse bwt file does not exist. 
+    std::string rbwt_filename_1 = prefix1 + RBWT_EXT;
+    std::string rbwt_filename_2 = prefix2 + RBWT_EXT;
+
+    struct stat file_s_1;
+    struct stat file_s_2;
+    int ret1 = stat(rbwt_filename_1.c_str(), &file_s_1);
+    int ret2 = stat(rbwt_filename_2.c_str(), &file_s_2);
+
+    if(ret1 == 0 || ret2 == 0)
+        mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
 
     // Merge the read files
     mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
