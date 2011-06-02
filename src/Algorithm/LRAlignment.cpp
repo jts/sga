@@ -746,11 +746,12 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
 void cutTail(LRStackEntry* u, int T)
 {
     // Save an int vector of scores
-    IntVector scores;
+    DoubleVector scores;
     for(size_t i = 0; i < u->cells.size(); ++i)
     {
-        if(u->cells[i].interval.upper != -1 && u->cells[i].G > 0)
-            scores.push_back(-u->cells[i].G);
+        LRCell* p = &u->cells[i];
+        if(p->interval.upper != -1 && p->G > 0)
+            scores.push_back(- (double)p->G * 100.0f / p->q_len * 1 );
     }
 
     if((int)scores.size() <= T)
@@ -758,30 +759,37 @@ void cutTail(LRStackEntry* u, int T)
 
     // Partially sort the scores to select the T-th best score
     std::nth_element(scores.begin(), scores.begin() + T, scores.end());
-    int split = -scores[T];
+    double split = -scores[T];
 
 #ifdef BWA_COMPAT_DEBUG
-    printf("[CT] split score: %d\n", split);
+    printf("[CT] split score: %2.lf\n", split);
 #endif
 
     int n = 0;
+    //printf("cutTail starting split score: %2.lf\n", split);
     for(size_t i = 0; i < u->cells.size(); ++i)
     {
         LRCell* p = &u->cells[i];
-        if(p->G == split)
+        double cellScore = (double)p->G * 100.0f / (p->q_len * 1);
+
+        if(cellScore == split)
             ++n;
-        if(p->G < split || (p->G == split && n >= T))
+        if(cellScore < split || (cellScore == split && n >= T))
         {
 #ifdef BWA_COMPAT_DEBUG
             if(p->interval.upper > -1)
                 printf("marking p [%d %d] as deleted [CT]\n", (int)p->interval.lower, (int)p->interval.upper);
 #endif
+            //printf("cutTail cutting cell with qlen: %d %d %2.1lf\n", p->q_len, p->G, cellScore);
             p->interval.lower = 0;
             p->interval.upper = -1;
             p->G = 0;
             if(p->parent_idx >= 0)
                 u->cells[p->parent_idx].children_idx[p->parent_cidx] = -1;
         }
+//        else
+//            printf("cutTail keeping cell with qlen: %d %d %2.1lf\n", p->q_len, p->G, cellScore);
+
     }
 }
 

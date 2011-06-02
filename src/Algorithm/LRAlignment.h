@@ -23,13 +23,25 @@ namespace LRAlignment
 // 
 struct LRParams
 {
-    LRParams() { setDefaults(); }
+    LRParams() { setPacBio(); }
 
     void setDefaults()
     {
         gap_open = 5;
         gap_ext = 2;
         mismatch = 3;
+        match = 1;
+        gap_open_extend = gap_open + gap_ext;
+        threshold = 30;
+        bandwidth = 50;
+        zBest = 20;
+    }
+
+    void setPacBio()
+    {
+        gap_open = 2;
+        gap_ext = 1;
+        mismatch = 5;
         match = 1;
         gap_open_extend = gap_open + gap_ext;
         threshold = 30;
