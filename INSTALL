@@ -1,0 +1,41 @@
+Local installation of SGA on a modern Linux distro
+
+git clone git@github.com:jts/sga.git
+cd sga/
+# Download zlib
+mv ~/Downloads/zlib-1.2.5.tar.gz .
+tar xzf zlib-1.2.5.tar.gz 
+cd zlib-1.2.5/
+./configure --prefix=/home/avilella/github/avilella/sga/libs/
+make
+make install
+cd ..
+# Download sparsehash
+mv ~/Downloads/sparsehash-1.10.tar.gz .
+tar xzf sparsehash-1.10.tar.gz 
+cd sparsehash-1.10/
+./configure --prefix=/home/avilella/github/avilella/sga/libs
+make
+make install
+
+# Install automake, cmake and ant
+sudo apt-get install automake
+sudo apt-get install cmake
+sudo apt-get install ant
+
+# git clone bamtools
+git clone http://github.com/pezmaster31/bamtools
+cd bamtools/
+mkdir build
+cd build
+cmake ..
+make -j16
+
+# compile sga with library dependencies
+./autogen.sh 
+rm -rf build-tmp
+mkdir build-tmp
+cd build-tmp/
+../configure --with-sparsehash=/home/avilella/github/avilella/sga/libs --with-bamtools=/home/avilella/github/avilella/sga/bamtools
+make -j16
+cp SGA/sga ../
