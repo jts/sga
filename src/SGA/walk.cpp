@@ -48,6 +48,7 @@ static const char *WALK_USAGE_MESSAGE =
 "         --component-walks             find all possible walks through the largest connected component\n"
 "                                       of the graph.\n"
 "      -o,--out-file=FILE               write the walks to FILE in FASTA format (default: walks.fa)\n"
+"      -p, --prefix=PREFIX              write final walks sequence ids starting with PREFIX (the default is walk-N)\n"
 "         --description-file=FILE       write the walk descriptions to FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -59,6 +60,7 @@ namespace opt
     static std::string id1;
     static std::string id2;
     static std::string outFile;
+    static std::string prefix;
     static std::string descFile;
     static int maxDistance = 500;
     static bool componentWalks = false;
@@ -71,6 +73,7 @@ enum { OPT_HELP = 1, OPT_VERSION, OPT_COMPONENT, OPT_DESCRIPTION };
 static const struct option longopts[] = {
     { "verbose",           no_argument,       NULL, 'v' },
     { "out-file",          required_argument, NULL, 'o' },
+    { "prefix",            required_argument, NULL, 'p' },
     { "description-file",  required_argument, NULL, OPT_DESCRIPTION },
     { "distance",          required_argument, NULL, 'd' },
     { "start",             required_argument, NULL, 's' },
@@ -131,7 +134,12 @@ void walk()
         SGWalk& walk = walkVector[i];
 
         std::stringstream idSS;
-        idSS << "walk-" << i;
+        if(opt::prefix.empty())
+        {
+                idSS << "walk-" << i;
+        } else {
+                idSS << opt::prefix << "-walk-" << i;
+        }
         std::string walkID = idSS.str();
 
         std::string str = walk.getString(SGWT_START_TO_END);
@@ -277,6 +285,7 @@ void parseWalkOptions(int argc, char** argv)
         switch (c) 
         {
             case 'o': arg >> opt::outFile; break;
+            case 'p': arg >> opt::prefix; break;
             case 'd': arg >> opt::maxDistance; break;
             case 's': arg >> opt::id1; break;
             case 'e': arg >> opt::id2; break;
