@@ -981,6 +981,8 @@ void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector
         MAlignData maData;
         maData.str = hits[i].targetString;
         maData.position = hits[i].beg;
+        maData.targetID = hits[i].targetID;
+        maData.targetAlignLength = tl;
 
         // Build cigar string
         // Add initial padding

@@ -105,7 +105,10 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
     CigarIterVector iterVec;
 
     // Create entry for the root
-    MAlignData rootData = {rootStr, std::string(rootStr.size(), 'M'), 0};
+    MAlignData rootData = {rootStr, std::string(rootStr.size(), 'M'), 0, -1, 0};
+    m_alignData.push_back(rootData);
+    m_alignData.insert(m_alignData.end(), inData.begin(), inData.end());
+
     CigarIter tmp = {&rootData, 0, 0};
     iterVec.push_back(tmp);
 
@@ -229,7 +232,7 @@ void MultiAlignment::print(const std::string* pConsensus) const
         {
             int diff = m_paddedStrings[i].size() - l;
             int stop = diff < col_size ? diff : col_size;
-            printf("%zu\t%s\n", i, m_paddedStrings[i].substr(l, stop).c_str());
+            printf("%zu\t%s\t%d\t%d\n", i, m_paddedStrings[i].substr(l, stop).c_str(), m_alignData[i].targetID, m_alignData[i].targetAlignLength);
         }
 
         std::cout << "\n";
