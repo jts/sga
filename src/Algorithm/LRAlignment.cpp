@@ -331,7 +331,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                     // this node in the dawg will not be visited again
                     // move the stack entry from the pending list to the stack
                     removeDuplicateCells(w, dupHash);
-                    cutTail(w, params.zBest);
+                    cutTail(w, params);
 #ifdef BWA_COMPAT_DEBUG
                     printf("moving w from pending to stack[%zu %zu]\n", w->interval.lower, w->interval.upper);
 #endif
@@ -370,7 +370,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             else // count == 0, pos == 0
             {
                 // This substring is unique, push u straight onto the stack
-                cutTail(u, params.zBest);
+                cutTail(u, params);
                 stack.push(u);
 #ifdef BWA_COMPAT_DEBUG
                 printf("pushing u to stack [%zu %zu]\n", u->interval.lower, u->interval.upper);
@@ -742,39 +742,24 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
     return hits.size();
 }
 
-// Remove all but the top scoring T cells in the stack entry
-void cutTail(LRStackEntry* u, int T)
+// Remove cells from a stack entry based on some criteria
+void cutTail(LRStackEntry* u, const LRParams& params)
 {
-    // Save an int vector of scores
-    DoubleVector scores;
-    for(size_t i = 0; i < u->cells.size(); ++i)
-    {
-        LRCell* p = &u->cells[i];
-        if(p->interval.upper != -1 && p->G > 0)
-            scores.push_back(- (double)p->G * 100.0f / p->q_len * 1 );
-    }
+    cutTailByStratifiedZBest(u, params);
+}
 
-    if((int)scores.size() <= T)
-        return;
-
-    // Partially sort the scores to select the T-th best score
-    std::nth_element(scores.begin(), scores.begin() + T, scores.end());
-    double split = -scores[T];
-
-#ifdef BWA_COMPAT_DEBUG
-    printf("[CT] split score: %2.lf\n", split);
-#endif
-
-    int n = 0;
+// Remove cells from a stack entry (query dawg node) by their score
+// as expressed as a fraction of the maximum possible score for the
+// query
+void cutTailByScorePercent(LRStackEntry* u, const LRParams& params)
+{
     //printf("cutTail starting split score: %2.lf\n", split);
     for(size_t i = 0; i < u->cells.size(); ++i)
     {
         LRCell* p = &u->cells[i];
         double cellScore = (double)p->G * 100.0f / (p->q_len * 1);
 
-        if(cellScore == split)
-            ++n;
-        if(cellScore < split || (cellScore == split && n >= T))
+        if(cellScore < params.percentCutoff)
         {
 #ifdef BWA_COMPAT_DEBUG
             if(p->interval.upper > -1)
@@ -792,6 +777,141 @@ void cutTail(LRStackEntry* u, int T)
 
     }
 }
+
+// Remove cells from a stack entry, only keeping the top zBest scoring nodes
+void cutTailByZBest(LRStackEntry* u, const LRParams& params)
+{
+    assert(params.zBest > 0);
+    // Save an int vector of scores
+    IntVector scores;
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        if(p->interval.upper != -1 && p->G > 0)
+            scores.push_back(-p->G);
+    }
+
+    if((int)scores.size() <= params.zBest)
+        return;
+
+    // Partially sort the scores to select the T-th best score
+    std::nth_element(scores.begin(), scores.begin() + params.zBest, scores.end());
+    double split = -scores[params.zBest];
+
+#ifdef BWA_COMPAT_DEBUG
+    printf("[CT] split score: %2.lf\n", split);
+#endif
+
+    int n = 0;
+    //printf("cutTail starting split score: %2.lf\n", split);
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        if(p->G == split)
+            ++n;
+        if(p->G < split || (p->G == split && n >= params.zBest))
+        {
+#ifdef BWA_COMPAT_DEBUG
+            if(p->interval.upper > -1)
+                printf("marking p [%d %d] as deleted [CT]\n", (int)p->interval.lower, (int)p->interval.upper);
+#endif
+            //printf("cutTail cutting cell with qlen: %d %d %2.1lf\n", p->q_len, p->G, cellScore);
+            p->interval.lower = 0;
+            p->interval.upper = -1;
+            p->G = 0;
+            if(p->parent_idx >= 0)
+                u->cells[p->parent_idx].children_idx[p->parent_cidx] = -1;
+        }
+        /*else
+            printf("cutTail keeping cell with qlen: %d %d %2.1lf\n", p->q_len, p->G, cellScore);
+        */
+
+    }
+}
+
+// Remove cells from a stack entry, only keeping the top zBest scoring nodes for each query length
+void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params)
+{
+    assert(params.zBest > 0);
+
+    // Calculate the range of query lengths
+    int minQ = std::numeric_limits<int>::max();
+    int maxQ = 0;
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        if(p->q_len < minQ)
+            minQ = p->q_len;
+        if(p->q_len > maxQ)
+            maxQ = p->q_len;
+    }
+    
+    // Calculate cut points for each strata
+    int span = maxQ - minQ + 1;
+    assert(span > 0);
+
+    //
+    std::vector<IntVector> scores(span);
+    IntVector cutoffs(span);
+    IntVector counts(span);
+
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        int strata = p->q_len - minQ;
+        assert(strata >= 0 && strata < (int)scores.size());
+
+        if(p->interval.upper != -1 && p->G > 0)
+            scores[strata].push_back(-p->G);
+    }
+
+    // Perform a partial sort of each strata and determine cutoff points
+    for(int i = 0; i < span; ++i)
+    {
+        if((int)scores[i].size() < params.zBest)
+        {
+            cutoffs[i] = 0; // keep all positively-scored nodes
+            continue;
+        }
+
+        // Partially sort the scores to select the T-th best score
+        std::nth_element(scores[i].begin(), scores[i].begin() + params.zBest, scores[i].end());
+        cutoffs[i] = -scores[i][params.zBest];
+    }
+
+#ifdef BWA_COMPAT_DEBUG
+    printf("[CT] split score: %2.lf\n", split);
+#endif
+
+    //printf("cutTail starting split score: %2.lf\n", split);
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        int strata = p->q_len - minQ;
+        int c = cutoffs[strata];
+
+        if(p->G == c)
+            ++counts[strata];
+        if(p->G < c || (p->G == c && counts[strata] >= params.zBest))
+        {
+#ifdef BWA_COMPAT_DEBUG
+            if(p->interval.upper > -1)
+                printf("marking p [%d %d] as deleted [CT]\n", (int)p->interval.lower, (int)p->interval.upper);
+#endif
+            //printf("cutTail cutting cell with qlen: %d %d %2.1lf\n", p->q_len, p->G, cellScore);
+            p->interval.lower = 0;
+            p->interval.upper = -1;
+            p->G = 0;
+            if(p->parent_idx >= 0)
+                u->cells[p->parent_idx].children_idx[p->parent_cidx] = -1;
+        }
+        /*else
+            printf("cutTail keeping cell with qlen: %d %d %2.1lf\n", p->q_len, p->G, cellScore);
+        */
+
+    }
+}
+
 
 //
 void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector& hits)
@@ -846,9 +966,8 @@ void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector
         MAlignData maData;
         maData.str = hits[i].targetString;
         maData.position = hits[i].beg;
-        
+
         // Build cigar string
-        
         // Add initial padding
         maData.expandedCigar.append(maData.position, 'S');
         

@@ -23,7 +23,7 @@ namespace LRAlignment
 // 
 struct LRParams
 {
-    LRParams() { setPacBio(); }
+    LRParams() { setDefaults(); }
 
     void setDefaults()
     {
@@ -35,18 +35,17 @@ struct LRParams
         threshold = 30;
         bandwidth = 50;
         zBest = 20;
+        percentCutoff = 0.90f;
     }
 
     void setPacBio()
     {
+        setDefaults();
+
         gap_open = 2;
         gap_ext = 1;
         mismatch = 5;
-        match = 1;
         gap_open_extend = gap_open + gap_ext;
-        threshold = 30;
-        bandwidth = 50;
-        zBest = 20;
     }
 
     int gap_open;
@@ -56,7 +55,10 @@ struct LRParams
     int gap_open_extend;
     int threshold;
     int bandwidth;
+    
+    // Cell filtering heuristics
     int zBest;
+    double percentCutoff;
 };
 
 //
@@ -157,7 +159,10 @@ void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHit
 //
 int fillCells(const LRParams& params, int match_score, LRCell* c[4]);
 
-void cutTail(LRStackEntry* u, int T);
+void cutTail(LRStackEntry* u, const LRParams& params);
+void cutTailByScorePercent(LRStackEntry* u, const LRParams& params);
+void cutTailByZBest(LRStackEntry* u, const LRParams& params);
+void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params);
 
 // Generate a cigar string for all hits in the vector
 void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector& hits);
