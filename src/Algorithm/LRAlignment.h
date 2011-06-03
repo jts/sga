@@ -20,6 +20,15 @@
 namespace LRAlignment
 {
 
+enum CutAlgorithm
+{
+    LRCA_DEFAULT,
+    LRCA_Z_BEST,
+    LRCA_Z_BEST_STRATA,
+    LRCA_SCORE_FRAC,
+    LRCA_NONE
+};
+
 // 
 struct LRParams
 {
@@ -36,6 +45,7 @@ struct LRParams
         bandwidth = 50;
         zBest = 20;
         percentCutoff = 0.90f;
+        cutTailAlgorithm = LRCA_Z_BEST_STRATA;
     }
 
     void setPacBio()
@@ -59,6 +69,7 @@ struct LRParams
     // Cell filtering heuristics
     int zBest;
     double percentCutoff;
+    CutAlgorithm cutTailAlgorithm;
 };
 
 //

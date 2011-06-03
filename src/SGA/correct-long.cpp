@@ -47,10 +47,11 @@ static const char *CORRECT_LONG_USAGE_MESSAGE =
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      -z, --z-best=N                   keep N hits at each node.\n"
+"          --cut=STR                    use STR as the cell pruning heuristic. Options are strata, zbest, score, none.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
-static const char* PROGRAM_IDENT =
-PACKAGE_NAME "::" SUBPROGRAM;
+//static const char* PROGRAM_IDENT =
+//PACKAGE_NAME "::" SUBPROGRAM;
 
 namespace opt
 {
@@ -62,6 +63,8 @@ namespace opt
     static std::string outFile;
     static std::string discardFile;
     static std::string metricsFile;
+
+    static LRAlignment::CutAlgorithm cutAlgorithm = LRAlignment::LRCA_DEFAULT;
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
     
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
@@ -69,7 +72,7 @@ namespace opt
 
 static const char* shortopts = "p:m:d:t:o:z:";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD, OPT_LEARN };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD, OPT_LEARN, OPT_CUT };
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -79,6 +82,7 @@ static const struct option longopts[] = {
     { "prefix",        required_argument, NULL, 'p' },
     { "sample-rate",   required_argument, NULL, 'd' },
     { "z-best",        required_argument, NULL, 'z' },
+    { "cut",           required_argument, NULL, OPT_CUT },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -98,6 +102,9 @@ int correctLongMain(int argc, char** argv)
     LRAlignment::LRParams params;
     if(opt::zBest != -1)
         params.zBest = opt::zBest;
+
+    if(opt::cutAlgorithm != LRAlignment::LRCA_DEFAULT)
+        params.cutTailAlgorithm = opt::cutAlgorithm;
 
     size_t totalSize = 0;
     SeqRecord record;
@@ -141,6 +148,7 @@ void parseCorrectLongOptions(int argc, char** argv)
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case 'z': arg >> opt::zBest; break;
+            case OPT_CUT: arg >> algo_str; break;
             case OPT_HELP:
                 std::cout << CORRECT_LONG_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
@@ -172,6 +180,24 @@ void parseCorrectLongOptions(int argc, char** argv)
     {
         std::cout << "\n" << CORRECT_LONG_USAGE_MESSAGE;
         exit(EXIT_FAILURE);
+    }
+
+    // Parse the cut algorithm string
+    if(!algo_str.empty())
+    {
+        if(algo_str == "zbest")
+            opt::cutAlgorithm = LRAlignment::LRCA_Z_BEST;
+        else if(algo_str == "strata")
+            opt::cutAlgorithm = LRAlignment::LRCA_Z_BEST_STRATA;
+        else if(algo_str == "score")
+            opt::cutAlgorithm = LRAlignment::LRCA_SCORE_FRAC;
+        else if(algo_str == "none")
+            opt::cutAlgorithm = LRAlignment::LRCA_NONE;
+        else
+        {
+            std::cerr << "Error: unrecognized cut algorithm " << algo_str << "\n";
+            exit(EXIT_FAILURE);
+        }
     }
 
     // Parse the input filenames

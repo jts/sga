@@ -745,7 +745,22 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
 // Remove cells from a stack entry based on some criteria
 void cutTail(LRStackEntry* u, const LRParams& params)
 {
-    cutTailByStratifiedZBest(u, params);
+    switch(params.cutTailAlgorithm)
+    {
+        case LRCA_Z_BEST:
+            cutTailByZBest(u, params);
+            break;
+        case LRCA_Z_BEST_STRATA:
+            cutTailByStratifiedZBest(u, params);
+            break;
+        case LRCA_SCORE_FRAC:
+            cutTailByScorePercent(u, params);
+            break;
+        case LRCA_NONE:
+            return;
+        default:
+            assert(false);
+    }
 }
 
 // Remove cells from a stack entry (query dawg node) by their score
