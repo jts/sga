@@ -42,10 +42,13 @@ class SparseBaseStorage
             m_data[i] = c;
         }
 
-        //
-        inline void increment(size_t i)
+        // Attempt to set the value using an atomic update
+        // Returns false if the update fails
+        inline bool setCAS(size_t i, IntType oldV, IntType newV)
         {
-            ++m_data[i];
+            assert(oldV != getMax() && newV <= getMax() && oldV != newV);
+            bool success = __sync_bool_compare_and_swap(&m_data[i], oldV, newV);
+            return success;
         }
 
         //
@@ -109,6 +112,35 @@ class SparseBaseStorage4
             elem |= c << storage4_shift[offset];
         }
 
+        // Attempt to set the value using an atomic update
+        // Returns false if the update fails
+        inline bool setCAS(size_t i, uint8_t oldV, uint8_t newV)
+        {
+            assert(i < m_numElems);
+            assert(oldV < getMax() && newV <= getMax());
+            assert(oldV != newV);
+            size_t idx = i >> 1; // equivalent to i / 2
+            size_t offset = i & 1; // 0 if even, 1 if odd
+            uint8_t mask = storage4_offset_mask[offset];
+
+            uint8_t oldElem = m_data[idx];
+            
+            // If the count in the stored element has changed since this
+            // function was called, return false
+            uint8_t currV = (oldElem & mask) >> storage4_shift[offset];
+            if(currV != oldV)
+                return false;
+            
+            // Calculate the new element to swap in
+            uint8_t newElem = oldElem;
+            newElem &= ~mask;
+            newElem |= newV << storage4_shift[offset];
+
+            // Perform the update
+            bool success = __sync_bool_compare_and_swap(&m_data[idx], oldElem, newElem);
+            return success;
+        }
+
         //
         inline uint8_t get(size_t i) const
         {
@@ -161,6 +193,16 @@ class SparseBaseStorage1
             m_bitVector.resize(n);
         }
 
+        // Set bit i from oldV to newV using a compare and swap
+        // Returns false if the update fails
+        inline bool setCAS(size_t i, uint8_t oldV, uint8_t newV)
+        {
+            assert(i < m_numElems);
+            assert(oldV == 0);
+            assert(newV == 1);
+            return m_bitVector.updateCAS(i, oldV, newV);
+        }
+
         //
         inline void set(size_t i, uint8_t c)
         {
@@ -195,11 +237,21 @@ class SparseBaseStorage1
         size_t m_numElems;
 };
 
+// The SparseGapArray has two levels of storage.
+// The first level uses x bits to store counts
+// up to 2**x for n elements in the array. 
+// If the count for a particular element exceeds 2**x
+// then an entry in the overflow hash table is created
+// allowing arbitrary values to be stored. This
+// class is optimized to allow the base storage to be updated
+// concurrently with compare and swap operations. Any overflowed
+// updates must be serialized though incrementOverflowSerial
+// 
 template<class BaseStorage, class OverflowStorage>
 class SparseGapArray : public GapArray
 {
     public:
-        SparseGapArray() {}
+        SparseGapArray() : m_rankZeroCount(0) {}
         ~SparseGapArray()
         {
             //printf("SparseGapArray -- n: %zu overflow: %zu (%lf)\n", m_baseStorage.size(), m_overflow.size(), (double)m_overflow.size() / m_baseStorage.size());    
@@ -211,29 +263,58 @@ class SparseGapArray : public GapArray
             m_baseStorage.resize(n);
         }
 
-        //
-        void increment(size_t i)
+        // Attempt to increment a value in the GapArray using a compare and swap function
+        // This call can fail to perform the update and return false. In this case
+        // the calling code is responsible for serializing access to this data structure
+        // and calling incrementSerial
+        bool attemptBaseIncrement(size_t i)
         {
+            assert(i < m_baseStorage.size());
+
+            bool success = false;
+            // Rank zero optimization
+            // When merging two indices, all reads
+            // start at rank 0. This would cause many serial
+            // updates to the overflow array so we optimize 
+            // for this case by doing a compare and swap update
+            // of a large integer value if the rank is zero.
+            if(i == 0)
+            {
+                do
+                {
+                    size_t count = m_rankZeroCount;
+                    success = __sync_bool_compare_and_swap(&m_rankZeroCount, count, count+1);
+                }
+                while(!success);
+                return true;
+            }
+
+            success = false;
+            do
+            {
+                size_t count = m_baseStorage.get(i);
+                if(count == getBaseMax())
+                    return false;
+                success = m_baseStorage.setCAS(i, count, count + 1);
+            } while(!success);
+            return success;
+        }
+
+        // Increment the value for rank i in the overflow array. This call must be serialized
+        // between any threads.
+        void incrementOverflowSerial(size_t i)
+        {
+            assert(i != 0);
             assert(i < m_baseStorage.size());    
             size_t count = m_baseStorage.get(i);
-            if(count == getBaseMax())
-            {
-                // Check if the overflow map has a value for this index already
-                // if not, enter one
-                if(m_overflow.count(i) == 0)
-                    initOverflow(i, count);
+            assert(count == getBaseMax());
+            
+            // Check if the overflow map has a value for this index already
+            // if not, enter one
+            if(m_overflow.count(i) == 0)
+                initOverflow(i, count);
 
-                // Increment overflow
-                incrementOverflow(i);
-            }
-            else
-            {
-                // Increment the base count
-                // If it is now the maximum representable value
-                // add it to the overlow map
-                ++count;
-                m_baseStorage.set(i, count);
-            }
+            incrementOverflow(i);
         }
 
         //
@@ -253,6 +334,10 @@ class SparseGapArray : public GapArray
         //
         size_t get(size_t i) const
         {
+            // rank zero optimization
+            if(i == 0)
+                return m_rankZeroCount;
+
             size_t count = m_baseStorage.get(i);
             if(count == getBaseMax())
             {
@@ -289,6 +374,7 @@ class SparseGapArray : public GapArray
         typedef SparseHashMap<size_t, OverflowStorage> OverflowHash;
         OverflowHash m_overflow;
         BaseStorage m_baseStorage;
+        size_t m_rankZeroCount;
 };
 
 typedef SparseGapArray<SparseBaseStorage1, size_t> SparseGapArray1;

@@ -21,12 +21,22 @@ class GapArray
         GapArray() {}
         virtual ~GapArray() {}
         virtual void resize(size_t n) = 0;
-        virtual void increment(size_t i) = 0;
+
+        // Attempt to increment the value in the gap array
+        // Call can fail in which case the updates must be serialized
+        // through the call to incrementOverflowSerial
+        virtual bool attemptBaseIncrement(size_t i) = 0;
+
+        // Update the overflow array of the gap array. This call
+        // is not threadsafe.
+        virtual void incrementOverflowSerial(size_t i) = 0;
+
         virtual size_t get(size_t i) const = 0;
         virtual size_t size() const = 0;
 
 };
 
+#if 0
 // The simplest representation of a gap array is a vector
 // of integers. This has a deterministic size
 // and O(1) increment/get but in most cases will
@@ -46,8 +56,7 @@ class SimpleGapArray : public GapArray
         typedef std::vector<GAP_TYPE> GapStorage;
         GapStorage m_data; 
 };
-
-
+#endif
 
 //typedef uint32_t GAP_TYPE;
 //typedef std::vector<GAP_TYPE> GapArray;

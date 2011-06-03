@@ -12,9 +12,13 @@
 //
 //
 //
-RankProcess::RankProcess(const BWT* pBWT, bool doReverse, bool removeMode) : m_pBWT(pBWT), 
-                                                                             m_doReverse(doReverse), 
-                                                                             m_removeMode(removeMode)
+RankProcess::RankProcess(const BWT* pBWT, 
+                         GapArray* pSharedGapArray, 
+                         bool doReverse, 
+                         bool removeMode) : m_pBWT(pBWT), 
+                                            m_pSharedGapArray(pSharedGapArray),
+                                            m_doReverse(doReverse), 
+                                            m_removeMode(removeMode)
 {
 
 }
@@ -25,10 +29,15 @@ RankProcess::~RankProcess()
 
 }
 
-// Calculate the vector of ranks for the given sequence
-RankVector RankProcess::process(const SequenceWorkItem& workItem)
+// Calculate the ranks of the given sequence.
+// We attempt to update the count of the rank in the gap array 
+// using an atomic compare and swap. The update will fail if the
+// small-storage maximum count is exceeded. In this case
+// we push the value to the overflow array for a serial
+// update in the post-processing step.
+RankResult RankProcess::process(const SequenceWorkItem& workItem)
 {
-    RankVector out;
+    RankResult out;
     DNAString w = workItem.read.seq;
     if(m_doReverse)
         w.reverse();
@@ -48,7 +57,9 @@ RankVector RankProcess::process(const SequenceWorkItem& workItem)
         rank = parseRankFromID(workItem.read.id);
     }
 
-    out.push_back(rank);
+    out.numRanksProcessed += 1;
+    if(!m_pSharedGapArray->attemptBaseIncrement(rank))
+        out.overflowVec.push_back(rank);
 
     // Compute the starting rank for the last symbol of w
     char c = w.get(i);
@@ -58,15 +69,13 @@ RankVector RankProcess::process(const SequenceWorkItem& workItem)
     // there can no occurrence of any characters before this
     // suffix so we just calculate the rank from C(a)
     if(rank == 0)
-    {
         rank = m_pBWT->getPC(c);
-    }
     else
-    {
         rank = m_pBWT->getPC(c) + m_pBWT->getOcc(c, rank - 1);
-    }
-
-    out.push_back(rank);
+    
+    out.numRanksProcessed += 1;
+    if(!m_pSharedGapArray->attemptBaseIncrement(rank))
+        out.overflowVec.push_back(rank);
     --i;
 
     // Iteratively compute the remaining ranks
@@ -75,7 +84,9 @@ RankVector RankProcess::process(const SequenceWorkItem& workItem)
         char c = w.get(i);
         rank = m_pBWT->getPC(c) + m_pBWT->getOcc(c, rank - 1);
         //std::cout << "c: " << c << " rank: " << rank << "\n";
-        out.push_back(rank);
+        out.numRanksProcessed += 1;
+        if(!m_pSharedGapArray->attemptBaseIncrement(rank))
+            out.overflowVec.push_back(rank);
         --i;
     }
     return out;
@@ -103,19 +114,25 @@ int64_t RankProcess::parseRankFromID(const std::string& id)
 //
 //
 //
-RankPostProcess::RankPostProcess(GapArray* pGapArray) : m_pGapArray(pGapArray), num_strings(0), num_symbols(0)
+RankPostProcess::RankPostProcess(GapArray* pGapArray) : m_pGapArray(pGapArray), num_strings(0), num_symbols(0), num_serial_updates(0)
 {
 
 }
 
+RankPostProcess::~RankPostProcess()
+{
+    //printf("Debug: num serial updates: %zu\n", num_serial_updates); 
+}
+
 //
-void RankPostProcess::process(const SequenceWorkItem& /*item*/, const RankVector& result)
+void RankPostProcess::process(const SequenceWorkItem& /*item*/, const RankResult& result)
 {
     ++num_strings;
-    num_symbols += result.size(); // one rank was generated per symbol
+    num_symbols += result.numRanksProcessed;
 
-    for(RankVector::const_iterator iter = result.begin(); iter != result.end(); ++iter)
-    {
-        m_pGapArray->increment(*iter);
-    }
+    // We update any overflowed ranks here. This call is serial and only updates
+    // the Overflow table in the gap array.
+    for(RankVector::const_iterator iter = result.overflowVec.begin(); iter != result.overflowVec.end(); ++iter)
+        m_pGapArray->incrementOverflowSerial(*iter);
+    num_serial_updates += result.overflowVec.size();
 }

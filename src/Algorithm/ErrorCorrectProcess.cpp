@@ -16,26 +16,9 @@
 //
 //
 //
-ErrorCorrectProcess::ErrorCorrectProcess(const OverlapAlgorithm* pOverlapper, 
-                                         int minOverlap, 
-                                         int numOverlapRounds,
-                                         int numKmerRounds,
-                                         int conflictCutoff,
-                                         int kmerLength,
-                                         int kmerThreshold, 
-                                         ErrorCorrectAlgorithm algo,
-                                         bool printMO) : 
-                                            m_pOverlapper(pOverlapper), 
-                                            m_minOverlap(minOverlap),
-                                            m_numOverlapRounds(numOverlapRounds),
-                                            m_numKmerRounds(numKmerRounds),
-                                            m_conflictCutoff(conflictCutoff),
-                                            m_kmerLength(kmerLength),
-                                            m_kmerThreshold(kmerThreshold),
-                                            m_algorithm(algo),
-                                            m_printOverlaps(printMO),
-                                            m_depthFilter(10000)
+ErrorCorrectProcess::ErrorCorrectProcess(const ErrorCorrectParameters params) : m_params(params)  
 {
+    m_params.depthFilter = 10000;
 }
 
 //
@@ -48,14 +31,14 @@ ErrorCorrectProcess::~ErrorCorrectProcess()
 ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem)
 {
     ErrorCorrectResult result = correct(workItem);
-    if(!result.kmerQC && !result.overlapQC && m_printOverlaps)
+    if(!result.kmerQC && !result.overlapQC && m_params.printOverlaps)
         std::cout << workItem.read.id << " failed error correction QC\n";
     return result;
 }
     
 ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem)
 {
-    switch(m_algorithm)
+    switch(m_params.algorithm)
     {
         case ECA_HYBRID:
         {
@@ -102,7 +85,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
     {
         // Compute the set of overlap blocks for the read
         m_blockList.clear();
-        OverlapResult overlap_result = m_pOverlapper->overlapRead(currRead, m_minOverlap, &m_blockList);
+        OverlapResult overlap_result = m_params.pOverlapper->overlapRead(currRead, m_params.minOverlap, &m_blockList);
         int sumOverlaps = 0;
 
         // Sum the spans of the overlap blocks to calculate the total number of overlaps this read has
@@ -112,7 +95,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
             sumOverlaps += iter->ranges.interval[0].size();
         }
 
-        if(m_depthFilter > 0 && sumOverlaps > m_depthFilter)
+        if(m_params.depthFilter > 0 && sumOverlaps > m_params.depthFilter)
         {
             result.num_prefix_overlaps = sumOverlaps;
             result.num_suffix_overlaps = sumOverlaps;
@@ -124,7 +107,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
         // Convert the overlap block list into a multi-overlap 
         MultiOverlap mo = blockListToMultiOverlap(currRead, m_blockList);
 
-        if(m_printOverlaps)
+        if(m_params.printOverlaps)
             mo.printMasked();
 
         result.num_prefix_overlaps = 0;
@@ -132,10 +115,10 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
         mo.countOverlaps(result.num_prefix_overlaps, result.num_suffix_overlaps);
 
         // Perform conflict-aware consensus correction on the read
-        result.correctSequence = mo.consensusConflict(p_error, m_conflictCutoff);
+        result.correctSequence = mo.consensusConflict(p_error, m_params.conflictCutoff);
 
         ++rounds;
-        if(rounds == m_numOverlapRounds || result.correctSequence == currRead.seq)
+        if(rounds == m_params.numOverlapRounds || result.correctSequence == currRead.seq)
         {
             // Correction has converged or the number of rounds was exceeded.
             // Check if the sequence of the read passes QC in the multioverlap
@@ -151,7 +134,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
     
     result.overlapQC = bQCPass;
 
-    if(m_printOverlaps)
+    if(m_params.printOverlaps)
     {
         std::string corrected_seq = result.correctSequence.toString();
         std::cout << "OS:     " << originalRead << "\n";
@@ -180,20 +163,20 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 #endif
 
     int n = readSequence.size();
-    int nk = n - m_kmerLength + 1;
+    int nk = n - m_params.kmerLength + 1;
     
     // Are all kmers in the read well-represented?
     bool allSolid = false;
     bool done = false;
     int rounds = 0;
-    int maxAttempts = m_numKmerRounds;
+    int maxAttempts = m_params.numKmerRounds;
 
     // For each kmer, calculate the minimum phred score seen in the bases
     // of the kmer
     std::vector<int> minPhredVector(nk, 0);
     for(int i = 0; i < nk; ++i)
     {
-        int end = i + m_kmerLength - 1;
+        int end = i + m_params.kmerLength - 1;
         int minPhred = std::numeric_limits<int>::max();
         for(int j = i; j <= end; ++j)
         {
@@ -214,7 +197,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 
         for(int i = 0; i < nk; ++i)
         {
-            std::string kmer = readSequence.substr(i, m_kmerLength);
+            std::string kmer = readSequence.substr(i, m_params.kmerLength);
 
             // First check if this kmer is in the cache
             // If its not, find its count from the fm-index and cache it
@@ -227,7 +210,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             }
             else
             {
-                count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT());
+                count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pOverlapper->getBWT(), m_params.pIntervalCache);
                 kmerCache.insert(std::make_pair(kmer, count));
             }
 
@@ -240,7 +223,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
             if(count >= threshold)
             {
-                for(int j = i; j < i + m_kmerLength; ++j)
+                for(int j = i; j < i + m_params.kmerLength; ++j)
                     solidVector[j] = 1;
             }
         }
@@ -273,13 +256,13 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
                 int phred = workItem.read.getPhredScore(i);
                 int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
 
-                int left_k_idx = (i + 1 >= m_kmerLength ? i + 1 - m_kmerLength : 0);
+                int left_k_idx = (i + 1 >= m_params.kmerLength ? i + 1 - m_params.kmerLength : 0);
                 corrected = attemptKmerCorrection(i, left_k_idx, std::max(countVector[left_k_idx], threshold), readSequence);
                 if(corrected)
                     break;
 
                 // base was not corrected, try using the rightmost covering kmer
-                size_t right_k_idx = std::min(i, n - m_kmerLength);
+                size_t right_k_idx = std::min(i, n - m_params.kmerLength);
                 corrected = attemptKmerCorrection(i, right_k_idx, std::max(countVector[right_k_idx], threshold), readSequence);
                 if(corrected)
                     break;
@@ -311,10 +294,10 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 // The correction is made only if the count of the corrected kmer is at least minCount
 bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence)
 {
-    assert(i >= k_idx && i < k_idx + m_kmerLength);
+    assert(i >= k_idx && i < k_idx + m_params.kmerLength);
     size_t base_idx = i - k_idx;
     char originalBase = readSequence[i];
-    std::string kmer = readSequence.substr(k_idx, m_kmerLength);
+    std::string kmer = readSequence.substr(k_idx, m_params.kmerLength);
     size_t bestCount = 0;
     char bestBase = '$';
 
@@ -328,7 +311,7 @@ bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t m
         if(currBase == originalBase)
             continue;
         kmer[base_idx] = currBase;
-        size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_pOverlapper->getBWT());
+        size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pOverlapper->getBWT(), m_params.pIntervalCache);
 
 #if KMER_TESTING
         printf("%c %zu\n", currBase, count);

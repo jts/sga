@@ -9,7 +9,7 @@
 //
 #include "GapArray.h"
 #include "SparseGapArray.h"
-
+#if 0
 // SimpleGapArray
 SimpleGapArray::SimpleGapArray()
 {
@@ -42,6 +42,7 @@ size_t SimpleGapArray::size() const
 {
     return m_data.size();
 }
+#endif
 
 // Construct a gap array for the given underlying storage storage
 GapArray* createGapArray(int storage)
@@ -66,9 +67,16 @@ GapArray* createGapArray(int storage)
     }
 }
 
-// Increment the gap array for each suffix of seq
+// Increment the gap array for each suffix of seq. Not thread safe.
 void updateGapArray(const DNAString& w, const BWT* pBWTInternal, GapArray* pGapArray)
 {
+    (void)w;
+    (void)pBWTInternal;
+    (void)pGapArray;
+
+    assert(false);
+
+#if 0
     size_t l = w.length();
     int i = l - 1;
 
@@ -76,12 +84,12 @@ void updateGapArray(const DNAString& w, const BWT* pBWTInternal, GapArray* pGapA
     // terminated by a $ character. The first rank calculated is for this and it is given
     // by the C(a) array in BWTInternal
     int64_t rank = pBWTInternal->getPC('$'); // always zero
-    pGapArray->increment(rank);
+    pGapArray->incrementSerial(rank);
 
     // Compute the starting rank for the last symbol of w
     char c = w.get(i);
     rank = pBWTInternal->getPC(c);
-    pGapArray->increment(rank);
+    pGapArray->incrementSerial(rank);
     --i;
 
     // Iteratively compute the remaining ranks
@@ -89,9 +97,10 @@ void updateGapArray(const DNAString& w, const BWT* pBWTInternal, GapArray* pGapA
     {
         char c = w.get(i);
         rank = pBWTInternal->getPC(c) + pBWTInternal->getOcc(c, rank - 1);
-        pGapArray->increment(rank);
+        pGapArray->incrementSerial(rank);
         --i;
     }
+#endif
 }
 
 //

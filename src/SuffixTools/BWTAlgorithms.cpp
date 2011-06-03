@@ -30,6 +30,30 @@ BWTInterval BWTAlgorithms::findInterval(const BWT* pBWT, const std::string& w)
     return interval;
 }
 
+// Find the interval in pBWT corresponding to w
+// using a cache of short k-mer intervals to avoid
+// some of the iterations
+BWTInterval BWTAlgorithms::findIntervalWithCache(const BWT* pBWT, const BWTIntervalCache* pIntervalCache, const std::string& w)
+{
+    size_t cacheLen = pIntervalCache->getCachedLength();
+    if(w.size() < cacheLen)
+        return findInterval(pBWT, w);
+
+    // Compute the interval using the cache for the last k bases
+    int len = w.size();
+    int j = len - cacheLen;
+    BWTInterval interval = pIntervalCache->lookup(w.c_str() + j);
+    j -= 1;
+    for(;j >= 0; --j)
+    {
+        char curr = w[j];
+        updateInterval(interval, curr, pBWT);
+        if(!interval.isValid())
+            return interval;
+    }
+    return interval;
+}
+
 // Find the intervals in pBWT/pRevBWT corresponding to w
 // If w does not exist in the BWT, the interval 
 // coordinates [l, u] will be such that l > u
@@ -65,6 +89,21 @@ size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWT* 
         count += rc_interval.size();
     return count;
 }
+
+// Count the number of occurrences of string w, including the reverse complement using a BWTInterval cache
+size_t BWTAlgorithms::countSequenceOccurrencesWithCache(const std::string& w, const BWT* pBWT, const BWTIntervalCache* pIntervalCache)
+{
+    BWTInterval fwd_interval = findIntervalWithCache(pBWT, pIntervalCache, w);
+    BWTInterval rc_interval = findIntervalWithCache(pBWT, pIntervalCache, reverseComplement(w));
+
+    size_t count = 0;
+    if(fwd_interval.isValid())
+        count += fwd_interval.size();
+    if(rc_interval.isValid())
+        count += rc_interval.size();
+    return count;
+}
+
 
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 

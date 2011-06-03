@@ -41,6 +41,8 @@ static const char *INDEX_USAGE_MESSAGE =
 "  -t, --threads=NUM                    use NUM threads to construct the index (default: 1)\n"
 "  -c, --check                          validate that the suffix array/bwt is correct\n"
 "  -p, --prefix=PREFIX                  write index to file using PREFIX instead of prefix of READSFILE\n"
+"      --no-reverse                     suppress construction of the reverse BWT. Use this option when building the index\n"
+"                                       for reads that will be error corrected using the k-mer corrector, which only needs the forward index\n"
 "  -g, --gap-array=N                    use N bits of storage for each element of the gap array. Acceptable values are 4,8,16 or 32. Lower\n"
 "                                       values can substantially reduce the amount of memory required at the cost of less predictable memory usage.\n"
 "                                       When this value is set to 32, the memory requirement is essentially deterministic and requires ~5N bytes where\n"
@@ -56,13 +58,14 @@ namespace opt
     static int numReadsPerBatch = 2000000;
     static int numThreads = 1;
     static bool bDiskAlgo = false;
+    static bool bBuildReverse = true;
     static bool validate;
     static int gapArrayStorage = 8;
 }
 
 static const char* shortopts = "p:m:t:d:g:cv";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_NO_REVERSE };
 
 static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
@@ -71,6 +74,7 @@ static const struct option longopts[] = {
     { "threads",     required_argument, NULL, 't' },
     { "disk",        required_argument, NULL, 'd' },
     { "gap-array",   required_argument, NULL, 'g' },
+    { "no-reverse",  no_argument,       NULL, OPT_NO_REVERSE },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -98,12 +102,15 @@ void indexInMemory()
     // Create and write the suffix array for the forward reads
     buildIndexForTable(opt::prefix, pRT, false);
     
-    // Reverse all the reads
-    pRT->reverseAll();
+    if(opt::bBuildReverse)
+    {
+        // Reverse all the reads
+        pRT->reverseAll();
 
-    // Build the reverse suffix array
-    buildIndexForTable(opt::prefix, pRT, true);
-    
+        // Build the reverse suffix array
+        buildIndexForTable(opt::prefix, pRT, true);
+    }
+
     delete pRT;
 }
 
@@ -112,7 +119,9 @@ void indexOnDisk()
 {
     std::cout << "Building index for " << opt::readsFile << " on disk\n";
     buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
-    buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
+    
+    if(opt::bBuildReverse)
+        buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
 }
 
 //
@@ -155,6 +164,7 @@ void parseIndexOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'g': arg >> opt::gapArrayStorage; break;
             case 'v': opt::verbose++; break;
+            case OPT_NO_REVERSE: opt::bBuildReverse = false; break;
             case OPT_HELP:
                 std::cout << INDEX_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
