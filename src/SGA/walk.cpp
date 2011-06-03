@@ -48,7 +48,7 @@ static const char *WALK_USAGE_MESSAGE =
 "         --component-walks             find all possible walks through the largest connected component\n"
 "                                       of the graph.\n"
 "      -o,--out-file=FILE               write the walks to FILE in FASTA format (default: walks.fa)\n"
-"      -p, --prefix=PREFIX              write final walks sequence ids starting with PREFIX (the default is walk-N)\n"
+"      -p, --prefix=PREFIX              write final walks sequence ids starting with PREFIX (default: walk-N)\n"
 "         --description-file=FILE       write the walk descriptions to FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
