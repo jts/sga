@@ -216,6 +216,8 @@ inline char complement(char base)
             return 'C';
         case 'T':
             return 'A';
+        case 'N':
+            return 'N';
         default:
             assert(false && "Unknown base!");
             return 'N';
