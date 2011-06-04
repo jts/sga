@@ -102,13 +102,18 @@ int scaffoldMain(int argc, char** argv)
     if(!opt::mateDistanceEstFile.empty())
         graph.loadDistanceEstimateEdges(opt::mateDistanceEstFile, true, opt::verbose);
 
-    assert(!opt::astatFile.empty());
-    
     // Load the a-stat data and mark vertices as unique and repeat
-    graph.loadAStatistic(opt::astatFile);
-    ScaffoldAStatisticVisitor astatVisitor(opt::uniqueAstatThreshold, 
-                                           opt::minEstCopyNumber);
-    graph.visit(astatVisitor);
+    if(!opt::astatFile.empty())
+    {
+        graph.loadAStatistic(opt::astatFile);
+        ScaffoldAStatisticVisitor astatVisitor(opt::uniqueAstatThreshold, 
+                                               opt::minEstCopyNumber);
+        graph.visit(astatVisitor);
+    }
+    else
+    {
+        std::cerr << "sga scaffold WARNING -- no a-stat file provided, assuming all vertices are not repeats\n";
+    }
 
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
     graph.deleteVertices(SVC_REPEAT);
@@ -221,11 +226,13 @@ void parseScaffoldOptions(int argc, char** argv)
         exit(1);
     }
 
+    /*
     if(opt::astatFile.empty())
     {
         std::cerr << SUBPROGRAM ": an a-statistic file must be provided\n";
         exit(1);
     }
+    */
 
     if(opt::outFile.empty())
     {
