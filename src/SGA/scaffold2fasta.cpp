@@ -15,6 +15,7 @@
 #include "ScaffoldRecord.h"
 #include "SGUtil.h"
 #include "OverlapTools.h"
+#include "ScaffoldSequenceCollection.h"
 
 //
 void writeUnplaced(std::ostream* pWriter, StringGraph* pGraph, int minLength);
@@ -124,12 +125,16 @@ int scaffold2fastaMain(int argc, char** argv)
 
     std::istream* pReader = new std::ifstream(opt::scafFile.c_str());
     std::ostream* pWriter = createWriter(opt::outFile);
-    
+
+    // Object holding the scaffold sequences
+    ScaffoldSequenceCollection* pSequenceCollection = new GraphSequenceCollection(pGraph);
+
     // Statistics tracking object
     ResolveStats stats;
 
     // Set up the parameters for the gap resolution function
     ResolveParams resolveParams;
+    resolveParams.pSequenceCollection = pSequenceCollection;
     resolveParams.pGraph = pGraph;
     resolveParams.minOverlap = opt::minOverlap;
     resolveParams.maxOverlap = opt::maxOverlap;
@@ -156,47 +161,13 @@ int scaffold2fastaMain(int argc, char** argv)
     }
 
     if(opt::bWriteUnplaced)
-    {
-        writeUnplaced(pWriter, pGraph, opt::minScaffoldLength);
-    }
+        pSequenceCollection->writeUnplaced(pWriter, opt::minScaffoldLength);
 
+    delete pSequenceCollection;
     delete pReader;
     delete pGraph;
     delete pWriter;
     return 0;
-}
-
-struct UnplacedVisitor
-{
-    UnplacedVisitor(std::ostream* pWriter, int minLength) : m_pWriter(pWriter), m_numUnplaced(0), m_minLength(minLength) {}
-
-    void previsit(StringGraph*) {}
-    
-    bool visit(StringGraph*, Vertex* pVertex)
-    {
-        if(pVertex->getColor() == GC_BLACK)
-            return false;
-        
-        if((int)pVertex->getSeqLen() >= m_minLength)
-        {
-            std::stringstream idss;
-            idss << "unplaced-" << m_numUnplaced++;
-            writeFastaRecord(m_pWriter, idss.str(), pVertex->getSeq().toString());
-        }
-        return false;
-    }
-
-    void postvisit(StringGraph*) {}
-
-    std::ostream* m_pWriter;
-    int m_numUnplaced;
-    int m_minLength;
-};
-
-void writeUnplaced(std::ostream* pWriter, StringGraph* pGraph, int minLength)
-{
-    UnplacedVisitor uvisit(pWriter, minLength);
-    pGraph->visit(uvisit);
 }
 
 //

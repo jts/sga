@@ -44,115 +44,106 @@ size_t ScaffoldRecord::getNumComponents() const
 // Construct a string from the scaffold
 std::string ScaffoldRecord::generateString(const ResolveParams& params) const
 {
+    assert(params.pSequenceCollection != NULL);
+
     params.pStats->numScaffolds += 1;
 
     // Starting from the root, join the sequence(s) of the scaffold
     // together along with the appropriate gaps/overlap
-    Vertex* pVertex = params.pGraph->getVertex(m_rootID);
-    pVertex->setColor(GC_BLACK);
+    std::string sequence = params.pSequenceCollection->getSequence(m_rootID);
+    params.pSequenceCollection->setPlaced(m_rootID);
+ 
+    if(m_links.empty())
+        return sequence;
 
-    assert(pVertex != NULL);
-    
+    EdgeDir rootDir = m_links[0].getDir();
     EdgeComp relativeComp = EC_SAME;
     EdgeComp prevComp = EC_SAME;
-
     std::string currID = m_rootID;
-    std::string sequence = pVertex->getSeq().toString();
+    
+    // If this scaffold grows in the antisense direction,
+    // we reverse every component and perform appends of the reversed
+    // parts. After the scaffold is constructed we reverse again
+    // to obtain the final scaffold in the desired orientation
+    bool reverseAll = (rootDir == ED_ANTISENSE);
+    if(reverseAll)
+        sequence = reverse(sequence);
 
-    // Add in the sequences of linked contigs, if any
-    if(m_links.size() > 0)
-    {
-        EdgeDir rootDir = m_links[0].getDir();
+    // Iterate over all the linked contigs and append their sequence
+    // to the scaffold
+    for(size_t i = 0; i < m_links.size(); ++i)
+    {   
+        params.pStats->numGapsAttempted += 1;
+
+        // Mark the current link as placed in the scaffold
+        const ScaffoldLink& link = m_links[i];
+        params.pSequenceCollection->setPlaced(link.endpointID);
+
+        // Calculate the strand this sequence is on relative to the root
+        if(link.getComp() == EC_REVERSE)
+            relativeComp = !relativeComp;
+
+        // Attempt to resolve the sequence of the link
+        std::string resolvedSequence;
         
-        // If this scaffold grows in the antisense direction,
-        // we reverse every component and perform appends of the reversed
-        // parts. After the scaffold is constructed we reverse again
-        // to obtain the final scaffold in the desired orientation
-        bool reverseAll = (rootDir == ED_ANTISENSE);
-        if(reverseAll)
-            sequence = reverse(sequence);
-
-        for(size_t i = 0; i < m_links.size(); ++i)
-        {   
-            params.pStats->numGapsAttempted += 1;
-            const ScaffoldLink& link = m_links[i];
-
-            pVertex = params.pGraph->getVertex(link.endpointID);
-            pVertex->setColor(GC_BLACK);
-
-            // Calculate the strand this sequence is on relative to the root
-            if(link.getComp() == EC_REVERSE)
-                relativeComp = !relativeComp;
-
-            //
-            // Attempt to resolve the sequence of the link
-            //
-            std::string resolvedSequence;
-            
-            // Step 1, try to walk through the graph between the vertices
-            bool resolved = false;
-            if(params.resolveMask & RESOLVE_GRAPH_BEST || params.resolveMask & RESOLVE_GRAPH_UNIQUE)
+        // Step 1, try to walk through the graph between the vertices
+        bool resolved = false;
+        if(params.resolveMask & RESOLVE_GRAPH_BEST || params.resolveMask & RESOLVE_GRAPH_UNIQUE)
+        {
+            resolved = graphResolve(params, currID, link, resolvedSequence);
+            if(resolved)
             {
-                resolved = graphResolve(params, currID, link, resolvedSequence);
-                /*
-                std::cout << "GR " << link.endpointID << " PC: " << prevComp << " LC: " << 
-                             link.getComp() << " RC: " << relativeComp << " LD: " << 
-                             link.getDir() << " resolved: " << resolved << "\n";
-                */
-                
-                if(resolved)
-                {
-                    // The returned sequence is wrt currID. If we flipped the sequence of currID, we must
-                    // flip this sequence
-                    if(prevComp == EC_REVERSE)
-                        resolvedSequence = reverseComplement(resolvedSequence);
+                // The returned sequence is wrt currID. If we flipped the sequence of currID, we must
+                // flip this sequence
+                if(prevComp == EC_REVERSE)
+                    resolvedSequence = reverseComplement(resolvedSequence);
 
-                    if(reverseAll)
-                        resolvedSequence = reverse(resolvedSequence);
-                    params.pStats->numGapsResolved += 1;
-                }
-            }
-
-            // Step 2, try to resolve a predicted overlap between current sequence
-            // and the sequence of the linked contig
-            if(!resolved)
-            {
-                // Get the sequence that should be potentially appended in
-                std::string toAppend = pVertex->getSeq().toString();
-                if(relativeComp == EC_REVERSE)
-                    toAppend = reverseComplement(toAppend);
                 if(reverseAll)
-                    toAppend = reverse(toAppend);
-                
-                //
-                if(!resolved && link.distance < 0 && params.resolveMask & RESOLVE_OVERLAP)
-                {
-                    resolved = overlapResolve(params, sequence, toAppend, link, resolvedSequence);
-                    if(resolved)
-                    {
-                        params.pStats->numGapsResolved += 1;
-                        params.pStats->overlapFound += 1;
-                    }
-                    else
-                    {
-                        params.pStats->overlapFailed += 1;
-                    }
-                }
-
-                // Step 3, just introduce a gap between the sequences
-                if(!resolved)
-                    introduceGap(params.minGapLength, toAppend, link, resolvedSequence);
-
+                    resolvedSequence = reverse(resolvedSequence);
+                params.pStats->numGapsResolved += 1;
             }
-
-            sequence.append(resolvedSequence);
-            currID = link.endpointID;
-            prevComp = relativeComp;
         }
 
-        if(reverseAll)
-            sequence = reverse(sequence);
+        // Step 2, try to resolve a predicted overlap between current sequence
+        // and the sequence of the linked contig
+        if(!resolved)
+        {
+            // Get the sequence that should be potentially appended in
+            std::string toAppend = params.pSequenceCollection->getSequence(link.endpointID);
+            if(relativeComp == EC_REVERSE)
+                toAppend = reverseComplement(toAppend);
+            if(reverseAll)
+                toAppend = reverse(toAppend);
+            
+            //
+            if(link.distance < 0 && params.resolveMask & RESOLVE_OVERLAP)
+            {
+                resolved = overlapResolve(params, sequence, toAppend, link, resolvedSequence);
+                if(resolved)
+                {
+                    params.pStats->numGapsResolved += 1;
+                    params.pStats->overlapFound += 1;
+                }
+                else
+                {
+                    params.pStats->overlapFailed += 1;
+                }
+            }
+
+            // Step 3, just introduce a gap between the sequences
+            if(!resolved)
+                introduceGap(params.minGapLength, toAppend, link, resolvedSequence);
+
+        }
+
+        sequence.append(resolvedSequence);
+        currID = link.endpointID;
+        prevComp = relativeComp;
     }
+
+    if(reverseAll)
+        sequence = reverse(sequence);
+    
     return sequence;
 }
 
@@ -160,6 +151,8 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params) const
 bool ScaffoldRecord::graphResolve(const ResolveParams& params, const std::string& startID, 
                                   const ScaffoldLink& link, std::string& outExtensionString) const
 {
+    assert(params.pGraph != NULL);
+
     // Get the vertex to start the search from
     Vertex* pStartVertex = params.pGraph->getVertex(startID);
     Vertex* pEndVertex = params.pGraph->getVertex(link.endpointID);

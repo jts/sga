@@ -12,6 +12,7 @@
 #define SCAFFOLDRECORD_H
 
 #include "ScaffoldLink.h"
+#include "ScaffoldSequenceCollection.h"
 #include "SGUtil.h"
 
 // Gap resolution statistics
@@ -64,7 +65,9 @@ struct ResolveStats
 // Parameter object for the scaffold record generateString function
 struct ResolveParams
 {
+    ScaffoldSequenceCollection* pSequenceCollection;
     StringGraph* pGraph;
+
     int minOverlap;
     int maxOverlap;
     double maxErrorRate;
