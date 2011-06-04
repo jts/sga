@@ -15,6 +15,7 @@
 
 #include "SGUtil.h"
 #include <string>
+#include <map>
 
 //
 class ScaffoldSequenceCollection
@@ -56,6 +57,35 @@ class GraphSequenceCollection : public ScaffoldSequenceCollection
     private:
         
         StringGraph* m_pGraph;
+};
+
+// ScaffoldSequenceCollection implemented using a simple map
+class MapSequenceCollection : public ScaffoldSequenceCollection
+{
+    public:
+
+        // Read the sequences from a fasta file
+        MapSequenceCollection(std::string filename);
+        ~MapSequenceCollection() {}
+        
+        // Returns the sequence with the given ID
+        std::string getSequence(const std::string& id) const;
+
+        // 
+        void setPlaced(const std::string& id);
+
+        // write the unplaced sequences of length at least minLength using pWriter
+        void writeUnplaced(std::ostream* pWriter, int minLength);
+
+    private:
+        
+        struct SequenceMapData
+        {
+            std::string sequence;
+            bool isPlaced;
+        };
+        typedef std::map<std::string, SequenceMapData> SMPMap;
+        SMPMap m_map;
 };
 
 #endif

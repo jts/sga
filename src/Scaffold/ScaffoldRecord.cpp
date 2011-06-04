@@ -221,6 +221,7 @@ bool ScaffoldRecord::graphResolve(const ResolveParams& params, const std::string
     std::cout << "Num walks: " << walks.size() << " Num valid: " << numWalksValid << " Num closest: " << numWalksClosest << " using: " << useWalk << "\n";
 #endif
 
+    // Was an acceptable walk found? 
     if(useWalk)
     {
         assert(selectedIdx != -1);
@@ -230,7 +231,7 @@ bool ScaffoldRecord::graphResolve(const ResolveParams& params, const std::string
         // Mark all vertices in the walk as visited
         VertexPtrVec vertexPtrVector = walks[selectedIdx].getVertices();
         for(size_t i = 0; i < vertexPtrVector.size(); ++i)
-            vertexPtrVector[i]->setColor(GC_BLACK);
+            params.pSequenceCollection->setPlaced(vertexPtrVector[i]->getID());
         return true;
     }
     else

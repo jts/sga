@@ -115,27 +115,26 @@ int scaffold2fastaMain(int argc, char** argv)
     std::cout << "Graph unique: " << (opt::resolveMask & RESOLVE_GRAPH_UNIQUE) << "\n";
     std::cout << "Find overlaps: " << (opt::resolveMask & RESOLVE_OVERLAP) << "\n";
 
-    assert(opt::asqgFile.empty() || opt::contigFile.empty());
+    assert((opt::asqgFile.empty() || opt::contigFile.empty()) && !(opt::asqgFile.empty() && opt::contigFile.empty()));
+    ResolveParams resolveParams;
 
-    StringGraph* pGraph;
     if(!opt::asqgFile.empty())
-        pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
+    {
+        resolveParams.pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
+        resolveParams.pSequenceCollection = new GraphSequenceCollection(resolveParams.pGraph);
+    }
     else
-        pGraph = SGUtil::loadFASTA(opt::contigFile);
-
+    {
+        resolveParams.pGraph = NULL;
+        resolveParams.pSequenceCollection = new MapSequenceCollection(opt::contigFile);
+    }
     std::istream* pReader = new std::ifstream(opt::scafFile.c_str());
     std::ostream* pWriter = createWriter(opt::outFile);
-
-    // Object holding the scaffold sequences
-    ScaffoldSequenceCollection* pSequenceCollection = new GraphSequenceCollection(pGraph);
 
     // Statistics tracking object
     ResolveStats stats;
 
     // Set up the parameters for the gap resolution function
-    ResolveParams resolveParams;
-    resolveParams.pSequenceCollection = pSequenceCollection;
-    resolveParams.pGraph = pGraph;
     resolveParams.minOverlap = opt::minOverlap;
     resolveParams.maxOverlap = opt::maxOverlap;
     resolveParams.maxErrorRate = opt::maxErrorRate;
@@ -161,11 +160,13 @@ int scaffold2fastaMain(int argc, char** argv)
     }
 
     if(opt::bWriteUnplaced)
-        pSequenceCollection->writeUnplaced(pWriter, opt::minScaffoldLength);
+        resolveParams.pSequenceCollection->writeUnplaced(pWriter, opt::minScaffoldLength);
 
-    delete pSequenceCollection;
+    delete resolveParams.pSequenceCollection;
+    if(resolveParams.pGraph != NULL)
+        delete resolveParams.pGraph;
+
     delete pReader;
-    delete pGraph;
     delete pWriter;
     return 0;
 }
@@ -246,6 +247,19 @@ void parseScaffold2fastaOptions(int argc, char** argv)
             std::cerr << "Unknown graph resolve mode string: " << modeStr << "\n"; 
             exit(1);
         }
+    }
+
+    // If a graph is not provided, turn off graph resolution
+    if(opt::asqgFile.empty())
+    {
+        if(opt::resolveMask & RESOLVE_GRAPH_UNIQUE || 
+           opt::resolveMask & RESOLVE_GRAPH_BEST)
+        {
+            std::cout << SUBPROGRAM << " WARNING: graph resolution was enabled but no graph provided\n";
+            std::cout << "graph resolution will not be performed\n\n";
+            opt::resolveMask &= ~(RESOLVE_GRAPH_UNIQUE | RESOLVE_GRAPH_BEST);
+        }
+             
     }
 
     // 

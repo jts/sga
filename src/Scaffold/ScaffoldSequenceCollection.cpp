@@ -11,6 +11,7 @@
 // sequences as being visited
 //
 #include "ScaffoldSequenceCollection.h"
+#include "SeqReader.h"
 
 //
 GraphSequenceCollection::GraphSequenceCollection(StringGraph* pGraph) : m_pGraph(pGraph)
@@ -62,10 +63,54 @@ struct UnplacedVisitor
     int m_minLength;
 };
 
-//
+// Write the unplaced sequences using a graph visitor
 void GraphSequenceCollection::writeUnplaced(std::ostream* pWriter, int minLength)
 {
     UnplacedVisitor uvisit(pWriter, minLength);
     m_pGraph->visit(uvisit);
+}
+
+// Read the sequences from the file
+MapSequenceCollection::MapSequenceCollection(std::string filename)
+{
+    SeqReader reader(filename, SRF_NO_VALIDATION);
+    SeqRecord record;
+    while(reader.get(record))
+    {
+        SequenceMapData& md = m_map[record.id];
+        md.sequence = record.seq.toString();
+        md.isPlaced = false;
+    }
+}
+
+// Returns the sequence with the given ID
+std::string MapSequenceCollection::getSequence(const std::string& id) const
+{
+    SMPMap::const_iterator iter = m_map.find(id);
+    assert(iter != m_map.end());
+    return iter->second.sequence;
+}
+
+// 
+void MapSequenceCollection::setPlaced(const std::string& id)
+{
+    SMPMap::iterator iter = m_map.find(id);
+    assert(iter != m_map.end());
+    iter->second.isPlaced = true;
+}
+
+// write the unplaced sequences of length at least minLength using pWriter
+void MapSequenceCollection::writeUnplaced(std::ostream* pWriter, int minLength)
+{
+    int numUnplaced = 0;
+    for(SMPMap::iterator iter = m_map.begin(); iter != m_map.end(); ++iter)
+    {
+        if(!iter->second.isPlaced && (int)iter->second.sequence.size() >= minLength)
+        {
+            std::stringstream idss;
+            idss << "unplaced-" << numUnplaced++;
+            writeFastaRecord(pWriter, idss.str(), iter->second.sequence);
+        }
+    }
 }
 
