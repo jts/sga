@@ -18,9 +18,12 @@ struct MAlignData
 {
     std::string str;
     std::string expandedCigar; // cigar string with symbol counts expanded
+    std::string padded;
+
     int position; // start position on the root
     int targetID; 
     int targetAlignLength;
+    int targetPosition;
 
 };
 typedef std::vector<MAlignData> MAlignDataVector;
@@ -37,7 +40,6 @@ class MultiAlignment
 
         
         // data
-        StringVector m_paddedStrings;
         MAlignDataVector m_alignData;
         int m_verbose;
 };

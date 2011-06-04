@@ -294,7 +294,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
 		
             // If the score for any cell in u exceeds the threshold, save it
             if(!u->cells.empty())
-                saveHits(pQuerySA, u, params.threshold, hitsVector);
+                saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, hitsVector);
 
             //
             uint32_t count = (uint32_t)hashIter->second;
@@ -385,7 +385,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     assert(num_pending == 0);
 
     //
-    resolveDuplicateHits(pTargetBWT, pTargetSSA, hitsVector, 3);
+    resolveDuplicateHits2(pTargetBWT, pTargetSSA, hitsVector, 300);
 
     generateCIGAR(query, params, hitsVector);
 
@@ -394,7 +394,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
 }
 
 // Process a list of cells and save alignment hits meeting the threshold
-void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHitVector& hits)
+void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA, const BWT* pTargetBWT, LRStackEntry* u, int threshold, LRHitVector& hits)
 {
     for(size_t i = 0; i < u->cells.size(); ++i)
     {
@@ -422,7 +422,17 @@ void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHit
             else if(p->G > hits[beg*2+1].G)
             {
                 // the current hit is the second best at this position
+                LRHit& dHit = hits[beg*2+1];
+                for(int i = dHit.interval.lower; i <= dHit.interval.upper; ++i)
+                    std::cout << "OVERWRITING HIT TO " << pTargetSSA->calcSA(i, pTargetBWT) << "\n";
                 q = &hits[2*beg+1];
+            }
+            else
+            {
+                for(int i = p->interval.lower; i <= p->interval.upper; ++i)
+                    std::cout << "REJECTING HIT TO " << pTargetSSA->calcSA(i, pTargetBWT) << 
+                                                 " " << p->interval << " " << p->G << " " << hits[beg*2].interval << " " << hits[beg*2].G << " " 
+                                                     << hits[beg*2+1].interval << " " << hits[beg*2+1].G << "\n";
             }
 
             if(q)
@@ -592,6 +602,70 @@ int fillCells(const LRParams& params, int match_score, LRCell* c[4])
 	return(c[0]->G = G);
 }
 
+// Remove duplicate hits to the same target sequence from the hits vector
+int resolveDuplicateHits2(const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, LRHitVector& hits, int /*IS*/)
+{
+    if(hits.empty())
+        return 0;
+    assert(pTargetBWT != NULL);
+    assert(pTargetSSA != NULL);
+
+    // Convert each hit interval to target coordinates
+    LRHitVector newHits;
+    for(size_t i = 0; i < hits.size(); ++i)
+    {
+        LRHit* p = &hits[i];
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
+        printf("Total hits: %zu\n", hits.size());
+        printf("Reallocating hits array to size: %d\n", n);
+#endif
+    
+        if(!p->interval.isValid() || p->G <= 0)
+            continue;
+
+        for(int64_t k = p->interval.lower; k <= p->interval.upper; ++k)
+        {
+            LRHit tmp = *p;
+            SAElem elem = pTargetSSA->calcSA(k, pTargetBWT);
+            std::cout << "Converted suffix array " << k << " to " << elem << " for " << p->targetString << " s: " << p->G << " b: " << p->beg << "\n";
+            tmp.targetID = elem.getID();
+            tmp.position = elem.getPos();
+            tmp.interval.lower = 0;
+            tmp.interval.upper = -1;
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
+            printf("Created new hit at position (%d, %d)\n", tmp.targetID, tmp.position);
+#endif
+            newHits.push_back(tmp);
+        }
+    }
+    
+    // Swap the new hits structure with the old hits
+    hits.swap(newHits);
+
+    // sort hits by targetID, then score
+    std::sort(hits.begin(), hits.end(), LRHit::compareIDandG);
+    
+    // Loop over the hits, zeroing all but the highest scoring hit for each target
+    int prevID = -1;
+    size_t new_n = 0;
+    for(size_t i = 0; i < hits.size(); ++i)
+    {
+        std::cout << "ID: " << hits[i].targetID << " score: " << hits[i].G << "\n";
+        if(prevID == hits[i].targetID)
+            hits[i].G = 0;
+        else
+            new_n += 1;
+        prevID = hits[i].targetID;
+    }
+
+    std::sort(hits.begin(), hits.end(), LRHit::compareG);
+    hits.resize(new_n);
+    std::cout << "FINAL HITS: " << new_n << "\n";
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
+    printf("Final number of hits after duplicate removal: %zu\n", hits.size());
+#endif
+    return hits.size();
+}
 // Remove duplicated hits from the hits vector
 int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, LRHitVector& hits, int IS)
 {
@@ -638,7 +712,6 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
                     newHits[j].position = elem.getPos();
                     newHits[j].interval.lower = 0;
                     newHits[j].interval.upper = -1;
-
 #ifdef BWA_COMPAT_DEBUG_RESOLVE
                     printf("Created new hit at position (%d, %d)\n", newHits[j].targetID, newHits[j].position);
 #endif
@@ -711,9 +784,9 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
 					if((double)tol / p->length > MASK_LEVEL || (double)tol / q->length > MASK_LEVEL)
 						compatible = false;
 
-#ifdef BWA_COMPAT_DEBUG_RESOLVE
-                    printf("    idx = (%d,%d) G=(%d,%d) qol: %d tol: %zu\n", i,j, p->G, q->G, qol, tol);
-#endif
+//#ifdef BWA_COMPAT_DEBUG_RESOLVE
+                    printf("    idx = (%d,%d) id=(%d,%d) G=(%d,%d) qol: %d tol: %zu compat: %d\n", i,j, p->targetID, q->targetID, p->G, q->G, qol, tol, compatible);
+//#endif
                     if(!compatible)
                     {
                         p->G = 0;
@@ -952,9 +1025,9 @@ void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector
     {
         std::string querySub = query.substr(hits[i].beg, hits[i].end - hits[i].beg);
 
-        //printf("Alignment DP\n");
-        //printf("Target (%d): %s\n", hits[i].position, hits[i].targetString.c_str());
-        //printf("Query (%d): %s\n", hits[i].beg, querySub.c_str());
+        printf("Alignment DP\n");
+        printf("Target (%d), ID: (%d): %s\n", hits[i].position, hits[i].targetID, hits[i].targetString.c_str());
+        printf("Query (%d): %s\n", hits[i].beg, querySub.c_str());
         // Convert strings to 0-3 representation, as needed by the stdaln routine
         // STDALN uses the same representation as DNA_ALPHABET
         int ql = querySub.size();
@@ -983,6 +1056,7 @@ void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector
         maData.position = hits[i].beg;
         maData.targetID = hits[i].targetID;
         maData.targetAlignLength = tl;
+        maData.targetPosition = hits[i].position;
 
         // Build cigar string
         // Add initial padding

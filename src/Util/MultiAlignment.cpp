@@ -105,7 +105,14 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
     CigarIterVector iterVec;
 
     // Create entry for the root
-    MAlignData rootData = {rootStr, std::string(rootStr.size(), 'M'), 0, -1, 0};
+    MAlignData rootData;
+    rootData.str = rootStr;
+    rootData.expandedCigar = std::string(rootStr.size(), 'M');
+    rootData.position = 0;
+    rootData.targetID = -1;
+    rootData.targetAlignLength = - 1;
+    rootData.targetPosition = -1;
+
     m_alignData.push_back(rootData);
     m_alignData.insert(m_alignData.end(), inData.begin(), inData.end());
 
@@ -123,10 +130,9 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             printf("%zu\t%s\n", i+1, iter.pData->expandedCigar.c_str());
     }
 
-    std::stable_sort(iterVec.begin(), iterVec.end(), CigarIter::sortPosition);
+//    std::stable_sort(iterVec.begin(), iterVec.end(), CigarIter::sortPosition);
 
     bool done = false;
-    m_paddedStrings.resize(iterVec.size());
     while(!done)
     {
         // Check if any strings have a deletion or insertion at this base
@@ -153,7 +159,7 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
         for(size_t i = 0; i < iterVec.size(); ++i)
         {
             char outSym = iterVec[i].updateAndEmit(updateMode);
-            m_paddedStrings[i].append(1,outSym);
+            m_alignData[i].padded.append(1,outSym);
         }
     }
 
@@ -163,21 +169,21 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
 // Generate simple consensus string from the multiple alignment
 std::string MultiAlignment::generateConsensus()
 {
-    assert(!m_paddedStrings.empty());
+    assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
 
     std::string consensus;
     std::string paddedConsensus;
 
     std::map<char, int> baseMap;
 
-    size_t num_rows = m_paddedStrings.size() - 1; // do not include root
-    size_t num_cols = m_paddedStrings.front().size();
+    size_t num_rows = m_alignData.size() - 1; // do not include root
+    size_t num_cols = m_alignData.front().padded.size();
     for(size_t i = 0; i < num_cols; ++i)
     {
         baseMap.clear();
         for(size_t j = 1; j < num_rows; ++j)
         {
-            char b = m_paddedStrings[j][i];
+            char b = m_alignData[j].padded[i];
             if(b != '.')
                 baseMap[b]++;
         }
@@ -212,9 +218,8 @@ std::string MultiAlignment::generateConsensus()
 //
 void MultiAlignment::print(const std::string* pConsensus) const
 {
-    assert(!m_paddedStrings.empty());
-
-    size_t len = m_paddedStrings[0].size();
+    assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
+    size_t len = m_alignData[0].padded.size();
     int col_size = 120;
     for(size_t l = 0; l < len; l += col_size)
     {
@@ -228,11 +233,12 @@ void MultiAlignment::print(const std::string* pConsensus) const
                 printf("C\n");
         }
         
-        for(size_t i = 0; i < m_paddedStrings.size(); ++i)
+        for(size_t i = 0; i < m_alignData.size(); ++i)
         {
-            int diff = m_paddedStrings[i].size() - l;
+            const MAlignData& mad = m_alignData[i];
+            int diff = mad.padded.size() - l;
             int stop = diff < col_size ? diff : col_size;
-            printf("%zu\t%s\t%d\t%d\n", i, m_paddedStrings[i].substr(l, stop).c_str(), m_alignData[i].targetID, m_alignData[i].targetAlignLength);
+            printf("%zu\t%s\t%d,%d,%d\n", i, mad.padded.substr(l, stop).c_str(), mad.targetID, mad.targetPosition, mad.targetAlignLength);
         }
 
         std::cout << "\n";

@@ -91,6 +91,13 @@ struct LRHit
     int end; // alignment end (exclusive) on query
 
     static bool compareG(const LRHit& a, const LRHit& b) { return a.G > b.G; }
+    static bool compareIDandG(const LRHit& a, const LRHit& b) 
+    { 
+        if(a.targetID == b.targetID)
+            return a.G > b.G;
+        else
+            return a.targetID < b.targetID;
+    }
 };
 typedef std::vector<LRHit> LRHitVector;
 
@@ -165,11 +172,18 @@ int resolveDuplicateHits(const BWT* pTargetBWT,
                          int IS);
 
 //
-void saveHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHitVector& hits);
+int resolveDuplicateHits2(const BWT* pTargetBWT, 
+                          const SampledSuffixArray* pTargetSSA, 
+                          LRHitVector& hits, 
+                          int IS);
+
+//
+void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA, const BWT* pTargetBWT, LRStackEntry* u, int threshold, LRHitVector& hits);
 
 //
 int fillCells(const LRParams& params, int match_score, LRCell* c[4]);
 
+// Functions to heuristically remove low-scoring cells
 void cutTail(LRStackEntry* u, const LRParams& params);
 void cutTailByScorePercent(LRStackEntry* u, const LRParams& params);
 void cutTailByZBest(LRStackEntry* u, const LRParams& params);
