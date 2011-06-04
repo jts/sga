@@ -14,6 +14,7 @@
 #include "ScaffoldLink.h"
 #include "SGUtil.h"
 
+// Gap resolution statistics
 struct ResolveStats
 {
     ResolveStats()
@@ -60,6 +61,20 @@ struct ResolveStats
     int overlapFailed;
 };
 
+// Parameter object for the scaffold record generateString function
+struct ResolveParams
+{
+    StringGraph* pGraph;
+    int minOverlap;
+    int maxOverlap;
+    double maxErrorRate;
+    int resolveMask;
+    int minGapLength;
+    double distanceFactor;
+    ResolveStats* pStats;
+};
+
+// Flags indicating what level of gap resolution should be performed
 const int RESOLVE_GRAPH_UNIQUE = 1;
 const int RESOLVE_GRAPH_BEST = 2;
 const int RESOLVE_OVERLAP = 4;
@@ -74,22 +89,15 @@ class ScaffoldRecord
         size_t getNumComponents() const;
 
         // Generate a sequence string representing the constructed scaffold
-        std::string generateString(const StringGraph* pGraph, 
-                                   int minOverlap, int maxOverlap, 
-                                   double maxErrorRate, int resolveMask,
-                                   int minGapLength, double distanceFactor, ResolveStats* pStats) const;
-
+        std::string generateString(const ResolveParams& params) const;
 
         // Resolve a link by find walks through the graph
-        bool graphResolve(const StringGraph* pGraph, const std::string& startID, 
-                          const ScaffoldLink& link, int resolveMask, double factor,
-                          ResolveStats* pStats, std::string& extensionString) const;
+        bool graphResolve(const ResolveParams& params, const std::string& startID, 
+                          const ScaffoldLink& link, std::string& extensionString) const;
 
         // Resolve a predicted overlap between s1 and s2 by aligning the ends of the sequences
-        bool overlapResolve(const std::string& s1, const std::string& s2, 
-                            const ScaffoldLink& link, int minOverlap, 
-                            int maxOverlap, double maxErrorRate,
-                            std::string& outString) const;
+        bool overlapResolve(const ResolveParams& params, const std::string& s1, const std::string& s2, 
+                            const ScaffoldLink& link, std::string& outString) const;
 
         // Resolve a link by introducing a gap
         bool introduceGap(int minGapLength, const std::string& contigString, const ScaffoldLink& link, std::string& outString) const;

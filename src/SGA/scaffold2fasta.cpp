@@ -124,8 +124,21 @@ int scaffold2fastaMain(int argc, char** argv)
 
     std::istream* pReader = new std::ifstream(opt::scafFile.c_str());
     std::ostream* pWriter = createWriter(opt::outFile);
-
+    
+    // Statistics tracking object
     ResolveStats stats;
+
+    // Set up the parameters for the gap resolution function
+    ResolveParams resolveParams;
+    resolveParams.pGraph = pGraph;
+    resolveParams.minOverlap = opt::minOverlap;
+    resolveParams.maxOverlap = opt::maxOverlap;
+    resolveParams.maxErrorRate = opt::maxErrorRate;
+    resolveParams.resolveMask = opt::resolveMask;
+    resolveParams.minGapLength = opt::minGapLength;
+    resolveParams.distanceFactor = opt::distanceFactor;
+    resolveParams.pStats = &stats;
+
     std::string line;
     size_t idx = 0;
     while(getline(*pReader, line))
@@ -134,14 +147,7 @@ int scaffold2fastaMain(int argc, char** argv)
         record.parse(line);
         if(record.getNumComponents() > 1 || !opt::bNoSingletons)
         {
-            std::string sequence = record.generateString(pGraph, 
-                                                         opt::minOverlap, 
-                                                         opt::maxOverlap, 
-                                                         opt::maxErrorRate, 
-                                                         opt::resolveMask, 
-                                                         opt::minGapLength, 
-                                                         opt::distanceFactor, 
-                                                         &stats);
+            std::string sequence = record.generateString(resolveParams);
             std::stringstream idss;
             idss << "scaffold-" << idx;
             writeFastaRecord(pWriter, idss.str(), sequence);

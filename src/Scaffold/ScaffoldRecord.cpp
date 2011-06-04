@@ -42,15 +42,13 @@ size_t ScaffoldRecord::getNumComponents() const
 }
 
 // Construct a string from the scaffold
-std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOverlap, 
-                                           int maxOverlap, double maxErrorRate, int resolveMask, 
-                                           int minGapLength, double distanceFactor, ResolveStats* pStats) const
+std::string ScaffoldRecord::generateString(const ResolveParams& params) const
 {
-    pStats->numScaffolds += 1;
+    params.pStats->numScaffolds += 1;
 
     // Starting from the root, join the sequence(s) of the scaffold
     // together along with the appropriate gaps/overlap
-    Vertex* pVertex = pGraph->getVertex(m_rootID);
+    Vertex* pVertex = params.pGraph->getVertex(m_rootID);
     pVertex->setColor(GC_BLACK);
 
     assert(pVertex != NULL);
@@ -76,10 +74,10 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
 
         for(size_t i = 0; i < m_links.size(); ++i)
         {   
-            pStats->numGapsAttempted += 1;
+            params.pStats->numGapsAttempted += 1;
             const ScaffoldLink& link = m_links[i];
 
-            pVertex = pGraph->getVertex(link.endpointID);
+            pVertex = params.pGraph->getVertex(link.endpointID);
             pVertex->setColor(GC_BLACK);
 
             // Calculate the strand this sequence is on relative to the root
@@ -93,9 +91,9 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
             
             // Step 1, try to walk through the graph between the vertices
             bool resolved = false;
-            if(resolveMask & RESOLVE_GRAPH_BEST || resolveMask & RESOLVE_GRAPH_UNIQUE)
+            if(params.resolveMask & RESOLVE_GRAPH_BEST || params.resolveMask & RESOLVE_GRAPH_UNIQUE)
             {
-                resolved = graphResolve(pGraph, currID, link, resolveMask, distanceFactor, pStats, resolvedSequence);
+                resolved = graphResolve(params, currID, link, resolvedSequence);
                 /*
                 std::cout << "GR " << link.endpointID << " PC: " << prevComp << " LC: " << 
                              link.getComp() << " RC: " << relativeComp << " LD: " << 
@@ -111,7 +109,7 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
 
                     if(reverseAll)
                         resolvedSequence = reverse(resolvedSequence);
-                    pStats->numGapsResolved += 1;
+                    params.pStats->numGapsResolved += 1;
                 }
             }
 
@@ -127,23 +125,23 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
                     toAppend = reverse(toAppend);
                 
                 //
-                if(!resolved && link.distance < 0 && resolveMask & RESOLVE_OVERLAP)
+                if(!resolved && link.distance < 0 && params.resolveMask & RESOLVE_OVERLAP)
                 {
-                    resolved = overlapResolve(sequence, toAppend, link, minOverlap, maxOverlap, maxErrorRate, resolvedSequence);
+                    resolved = overlapResolve(params, sequence, toAppend, link, resolvedSequence);
                     if(resolved)
                     {
-                        pStats->numGapsResolved += 1;
-                        pStats->overlapFound += 1;
+                        params.pStats->numGapsResolved += 1;
+                        params.pStats->overlapFound += 1;
                     }
                     else
                     {
-                        pStats->overlapFailed += 1;
+                        params.pStats->overlapFailed += 1;
                     }
                 }
 
                 // Step 3, just introduce a gap between the sequences
                 if(!resolved)
-                    introduceGap(minGapLength, toAppend, link, resolvedSequence);
+                    introduceGap(params.minGapLength, toAppend, link, resolvedSequence);
 
             }
 
@@ -159,16 +157,15 @@ std::string ScaffoldRecord::generateString(const StringGraph* pGraph, int minOve
 }
 
 // Attempt to resolve a scaffold link by finding a walk through the graph linking the two vertices
-bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& startID, 
-                                  const ScaffoldLink& link, int resolveMask, double distanceFactor,
-                                  ResolveStats* pStats, std::string& outExtensionString) const
+bool ScaffoldRecord::graphResolve(const ResolveParams& params, const std::string& startID, 
+                                  const ScaffoldLink& link, std::string& outExtensionString) const
 {
     // Get the vertex to start the search from
-    Vertex* pStartVertex = pGraph->getVertex(startID);
-    Vertex* pEndVertex = pGraph->getVertex(link.endpointID);
+    Vertex* pStartVertex = params.pGraph->getVertex(startID);
+    Vertex* pEndVertex = params.pGraph->getVertex(link.endpointID);
     assert(pStartVertex != NULL && pEndVertex != NULL);
 
-    int threshold = static_cast<int>(distanceFactor * link.stdDev);
+    int threshold = static_cast<int>(params.distanceFactor * link.stdDev);
     int maxDistance = link.distance + threshold;
     int maxExtensionDistance = maxDistance + pEndVertex->getSeqLen();
     SGWalkVector walks;
@@ -210,20 +207,20 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
 
     if(numWalksValid > 0)
     {
-        if(resolveMask & RESOLVE_GRAPH_BEST)
+        if(params.resolveMask & RESOLVE_GRAPH_BEST)
         {
             // If the unique flag is not set, or we only have 1 closest walk, select it
-            if(!(resolveMask & RESOLVE_GRAPH_UNIQUE) || numWalksClosest == 1)
+            if(!(params.resolveMask & RESOLVE_GRAPH_UNIQUE) || numWalksClosest == 1)
                 useWalk = true;
-            else if((resolveMask & RESOLVE_GRAPH_UNIQUE) && numWalksClosest > 1)
-                pStats->graphWalkTooMany += 1;
+            else if((params.resolveMask & RESOLVE_GRAPH_UNIQUE) && numWalksClosest > 1)
+                params.pStats->graphWalkTooMany += 1;
         }
         else
         {
             if(numWalksValid == 1)
                 useWalk = true;
             else if(numWalksValid > 1)
-                pStats->graphWalkTooMany += 1;
+                params.pStats->graphWalkTooMany += 1;
         }
     }
 
@@ -235,7 +232,7 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
     {
         assert(selectedIdx != -1);
         outExtensionString = walks[selectedIdx].getString(SGWT_EXTENSION);
-        pStats->graphWalkFound += 1;
+        params.pStats->graphWalkFound += 1;
 
         // Mark all vertices in the walk as visited
         VertexPtrVec vertexPtrVector = walks[selectedIdx].getVertices();
@@ -246,7 +243,7 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
     else
     {
         if(numWalksValid == 0)
-            pStats->graphWalkNoPath += 1;
+            params.pStats->graphWalkNoPath += 1;
         assert(outExtensionString.empty());
         return false;
     }
@@ -254,23 +251,22 @@ bool ScaffoldRecord::graphResolve(const StringGraph* pGraph, const std::string& 
 
 // Attempt to resolve a predicted overlap between s1 and s2
 // Returns true if there overlap was found and the overhang of s2 is placed in outString
-bool ScaffoldRecord::overlapResolve(const std::string& s1, const std::string& s2, 
-                                    const ScaffoldLink& link, int minOverlap, int maxOverlap, 
-                                    double maxErrorRate, std::string& outString) const
+bool ScaffoldRecord::overlapResolve(const ResolveParams& params, const std::string& s1, const std::string& s2, 
+                                    const ScaffoldLink& link, std::string& outString) const
 {
     // Attempt to find an overlap between these sequences
     int expectedOverlap = -1 * link.distance;
 
     // If the maximum overlap was not set, set it to the expected overlap * 3 stddev
     int upperBound = 0;
-    if(maxOverlap == -1)
+    if(params.maxOverlap == -1)
         upperBound = static_cast<int>(expectedOverlap + 3.0f * link.stdDev);
     else
-        upperBound = maxOverlap;
+        upperBound = params.maxOverlap;
     
     // Calculate the best match
     Match match;
-    bool overlapFound = OverlapTools::boundedOverlapDP(s1, s2, minOverlap, upperBound, maxErrorRate, match);
+    bool overlapFound = OverlapTools::boundedOverlapDP(s1, s2, params.minOverlap, upperBound, params.maxErrorRate, match);
     if(overlapFound)
     {
         SeqCoord overlapCoord = match.coord[1];
