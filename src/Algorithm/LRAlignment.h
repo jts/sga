@@ -177,8 +177,22 @@ int resolveDuplicateHits2(const BWT* pTargetBWT,
                           LRHitVector& hits, 
                           int IS);
 
-//
-void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA, const BWT* pTargetBWT, LRStackEntry* u, int threshold, LRHitVector& hits);
+// add hits to the vector for cells that score above threshold
+void saveHits(const SuffixArray* pQuerySA, 
+              const SampledSuffixArray* pTargetSSA, 
+              const BWT* pTargetBWT, 
+              LRStackEntry* u, 
+              int threshold, 
+              LRHitVector& hits);
+
+// save hits to cells that contain intervals that represent the
+// start of reads
+void saveTerminalHits(const SuffixArray* pQuerySA, 
+                      const SampledSuffixArray* pTargetSSA, 
+                      const BWT* pTargetBWT, 
+                      LRStackEntry* u, 
+                      int threshold, 
+                      LRHitVector& hits);
 
 //
 int fillCells(const LRParams& params, int match_score, LRCell* c[4]);

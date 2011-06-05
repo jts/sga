@@ -163,6 +163,7 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
         }
     }
 
+    std::stable_sort(m_alignData.begin(), m_alignData.end(), MAlignData::sortPosition);
     generateConsensus();
 }
 

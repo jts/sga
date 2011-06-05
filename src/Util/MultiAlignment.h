@@ -25,6 +25,9 @@ struct MAlignData
     int targetAlignLength;
     int targetPosition;
 
+    // Comparator
+    static bool sortPosition(const MAlignData& a, const MAlignData& b) { return a.position < b.position; }
+
 };
 typedef std::vector<MAlignData> MAlignDataVector;
 

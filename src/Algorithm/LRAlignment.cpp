@@ -72,6 +72,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     
     // Initialize hits vector with enough space to hold 2 hits per query base
     LRHitVector hitsVector(2*query.size());
+    LRHitVector terminalHitsVector;
 
     // Initialize the vector of dawg nodes pending addition to the stack
     LRPendingVector pendingVector;
@@ -292,9 +293,12 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                 } // if X.h
             } // for all v
 		
-            // If the score for any cell in u exceeds the threshold, save it
+            // Save high-scoring cells as hits
             if(!u->cells.empty())
-                saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, hitsVector);
+            {
+                //saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, hitsVector);
+                saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
+            }
 
             //
             uint32_t count = (uint32_t)hashIter->second;
@@ -385,6 +389,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     assert(num_pending == 0);
 
     //
+    // append the terminal hits then resolve any duplicates
+    hitsVector.insert(hitsVector.end(), terminalHitsVector.begin(), terminalHitsVector.end());
+    terminalHitsVector.clear();
     resolveDuplicateHits2(pTargetBWT, pTargetSSA, hitsVector, 300);
 
     generateCIGAR(query, params, hitsVector);
@@ -394,7 +401,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
 }
 
 // Process a list of cells and save alignment hits meeting the threshold
-void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA, const BWT* pTargetBWT, LRStackEntry* u, int threshold, LRHitVector& hits)
+void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA, 
+              const BWT* pTargetBWT, LRStackEntry* u, 
+              int threshold, LRHitVector& hits)
 {
     for(size_t i = 0; i < u->cells.size(); ++i)
     {
@@ -423,16 +432,18 @@ void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA,
             {
                 // the current hit is the second best at this position
                 LRHit& dHit = hits[beg*2+1];
-                for(int i = dHit.interval.lower; i <= dHit.interval.upper; ++i)
-                    std::cout << "OVERWRITING HIT TO " << pTargetSSA->calcSA(i, pTargetBWT) << "\n";
+                //for(int i = dHit.interval.lower; i <= dHit.interval.upper; ++i)
+                //    std::cout << "OVERWRITING HIT TO " << pTargetSSA->calcSA(i, pTargetBWT) << "\n";
                 q = &hits[2*beg+1];
             }
             else
             {
-                for(int i = p->interval.lower; i <= p->interval.upper; ++i)
+                /*
+                 * for(int i = p->interval.lower; i <= p->interval.upper; ++i)
                     std::cout << "REJECTING HIT TO " << pTargetSSA->calcSA(i, pTargetBWT) << 
                                                  " " << p->interval << " " << p->G << " " << hits[beg*2].interval << " " << hits[beg*2].G << " " 
                                                      << hits[beg*2+1].interval << " " << hits[beg*2+1].G << "\n";
+                */
             }
 
             if(q)
@@ -449,7 +460,47 @@ void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA,
             }
         }
     }
+}
 
+// Process all the cells in the stack entry and save hits to cells that represent
+// terminal intervals (those intervals containing the start of some reads)
+void saveTerminalHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*pTargetSSA*/, 
+                      const BWT* pTargetBWT, LRStackEntry* u, 
+                      int threshold, LRHitVector& hits)
+{
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        if(p->G < threshold)
+            continue;
+        
+        // If the target bwt interval contains a '$' symbol, push the hit
+        AlphaCount64 extCount = BWTAlgorithms::getExtCount(p->interval, pTargetBWT);
+        if(extCount.get('$') > 0)
+        {
+            // Create a hit for every beginning position in the query
+            for(int64_t k = u->interval.lower; k <= u->interval.upper; ++k)
+            {
+                // Calculate the beginning of the alignment using the suffix array
+                // of the query
+                SAElem e = pQuerySA->get(k);
+                int beg = e.getPos();
+                int end = beg + p->q_len;
+
+                LRHit q;
+                q.interval = p->interval;
+                q.length = p->t_len;
+                q.G = p->G;
+                q.beg = beg;
+                q.end = end;
+                q.G2 = 0;
+                q.flag = 0;
+                q.num_seeds = 0;
+                q.targetString.assign(p->revTargetString.rbegin(), p->revTargetString.rend());
+                hits.push_back(q);
+            }
+        }
+    }
 }
 
 // Initialize the hash table of DAWG nodes by inserting an element
@@ -627,7 +678,7 @@ int resolveDuplicateHits2(const BWT* pTargetBWT, const SampledSuffixArray* pTarg
         {
             LRHit tmp = *p;
             SAElem elem = pTargetSSA->calcSA(k, pTargetBWT);
-            std::cout << "Converted suffix array " << k << " to " << elem << " for " << p->targetString << " s: " << p->G << " b: " << p->beg << "\n";
+            //std::cout << "Converted suffix array " << k << " to " << elem << " for " << p->targetString << " s: " << p->G << " b: " << p->beg << "\n";
             tmp.targetID = elem.getID();
             tmp.position = elem.getPos();
             tmp.interval.lower = 0;
@@ -650,7 +701,7 @@ int resolveDuplicateHits2(const BWT* pTargetBWT, const SampledSuffixArray* pTarg
     size_t new_n = 0;
     for(size_t i = 0; i < hits.size(); ++i)
     {
-        std::cout << "ID: " << hits[i].targetID << " score: " << hits[i].G << "\n";
+//        std::cout << "ID: " << hits[i].targetID << " score: " << hits[i].G << "\n";
         if(prevID == hits[i].targetID)
             hits[i].G = 0;
         else
@@ -921,6 +972,8 @@ void cutTailByZBest(LRStackEntry* u, const LRParams& params)
 void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params)
 {
     assert(params.zBest > 0);
+    if(u->cells.empty())
+        return;
 
     // Calculate the range of query lengths
     int minQ = std::numeric_limits<int>::max();
@@ -933,7 +986,7 @@ void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params)
         if(p->q_len > maxQ)
             maxQ = p->q_len;
     }
-    
+
     // Calculate cut points for each strata
     int span = maxQ - minQ + 1;
     assert(span > 0);
@@ -956,14 +1009,14 @@ void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params)
     // Perform a partial sort of each strata and determine cutoff points
     for(int i = 0; i < span; ++i)
     {
-        if((int)scores[i].size() < params.zBest)
+        if((int)scores[i].size() <= params.zBest)
         {
             cutoffs[i] = 0; // keep all positively-scored nodes
             continue;
         }
 
         // Partially sort the scores to select the T-th best score
-        std::nth_element(scores[i].begin(), scores[i].begin() + params.zBest, scores[i].end());
+        std::sort(scores[i].begin(), scores[i].end());
         cutoffs[i] = -scores[i][params.zBest];
     }
 
@@ -1025,9 +1078,9 @@ void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector
     {
         std::string querySub = query.substr(hits[i].beg, hits[i].end - hits[i].beg);
 
-        printf("Alignment DP\n");
-        printf("Target (%d), ID: (%d): %s\n", hits[i].position, hits[i].targetID, hits[i].targetString.c_str());
-        printf("Query (%d): %s\n", hits[i].beg, querySub.c_str());
+        //printf("Alignment DP\n");
+        //printf("Target (%d), ID: (%d): %s\n", hits[i].position, hits[i].targetID, hits[i].targetString.c_str());
+        //printf("Query (%d): %s\n", hits[i].beg, querySub.c_str());
         // Convert strings to 0-3 representation, as needed by the stdaln routine
         // STDALN uses the same representation as DNA_ALPHABET
         int ql = querySub.size();
