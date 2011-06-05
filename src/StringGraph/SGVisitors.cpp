@@ -962,7 +962,6 @@ bool SGBubbleEdgeVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
                     Vertex* pZ = pEdge->getEnd();
 
                     // Compute the edgeDesc and overlap on pX for this edge
-                    EdgeDesc edYZ = pEdge->getDesc();
                     Overlap ovrYZ = pEdge->getOverlap();
 
                     if(SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))

@@ -122,7 +122,6 @@ bool Vertex::markDuplicateEdges(GraphColor dupColor)
 // Mark duplicate edges in the specified direction
 bool Vertex::markDuplicateEdges(EdgeDir dir, GraphColor dupColor)
 {
-    bool marked = false;
     for(EdgePtrVecIter iter = m_edges.begin(); iter != m_edges.end(); ++iter)
     {
         Edge* pEdge = *iter;
@@ -138,7 +137,6 @@ bool Vertex::markDuplicateEdges(EdgeDir dir, GraphColor dupColor)
                 Edge* pTwin = pEdge->getTwin();
                 pTwin->setColor(dupColor);
                 pEdge->setColor(dupColor);
-                marked = true;
             }
             else
             {

@@ -85,8 +85,7 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
         tempRecord.id = "cluster";
         tempRecord.seq = node.sequence;
         OverlapBlockList blockList;
-        OverlapResult result = m_pOverlapper->overlapRead(tempRecord, m_minOverlap, &blockList);
-        //m_pOverlapper->buildForwardHistory(&blockList);
+        m_pOverlapper->overlapRead(tempRecord, m_minOverlap, &blockList);
         
         // Parse each member of the block list and potentially expand the cluster
         for(OverlapBlockList::const_iterator iter = blockList.begin(); iter != blockList.end(); ++iter)

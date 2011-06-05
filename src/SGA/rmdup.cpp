@@ -104,16 +104,15 @@ void rmdup()
                                                          opt::errorRate, 0, 
                                                          0, false);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
-    size_t count;
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
-        count = computeRmdupHitsSerial(opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
+        computeRmdupHitsSerial(opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
     }
     else
     {
         printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        count = computeRmdupHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
+        computeRmdupHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
     }
 
     delete pOverlapper;

@@ -156,16 +156,15 @@ int overlapMain(int argc, char** argv)
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
     pBWT->printInfo();
-    size_t count;
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
-        count = computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
+        computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
     else
     {
         printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        count = computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
+        computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
 
     // Get the number of strings in the BWT, this is used to pre-allocated the read table

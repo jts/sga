@@ -197,7 +197,6 @@ void RemovalAlgorithm::enqueueEdges(const Vertex* pY, EdgeDir dirY, const Overla
         Vertex* pZ = pEdge->getEnd();
 
         // Compute the edgeDesc and overlap on pX for this edge
-        EdgeDesc edYZ = pEdge->getDesc();
         Overlap ovrYZ = pEdge->getOverlap();
 
         if(!ovrYZ.isContainment() && SGAlgorithms::hasTransitiveOverlap(ovrXY, ovrYZ))

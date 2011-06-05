@@ -85,7 +85,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
     {
         // Compute the set of overlap blocks for the read
         m_blockList.clear();
-        OverlapResult overlap_result = m_params.pOverlapper->overlapRead(currRead, m_params.minOverlap, &m_blockList);
+        m_params.pOverlapper->overlapRead(currRead, m_params.minOverlap, &m_blockList);
         int sumOverlaps = 0;
 
         // Sum the spans of the overlap blocks to calculate the total number of overlaps this read has

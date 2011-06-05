@@ -113,16 +113,15 @@ void gmap()
                                                          opt::errorRate, 0, 
                                                          0, false);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
-    size_t count;
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
-        count = computeGmapHitsSerial(opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
+        computeGmapHitsSerial(opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
     }
     else
     {
         printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        count = computeGmapHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
+        computeGmapHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, hitsFilenames);
     }
 
     delete pOverlapper;
@@ -254,9 +253,6 @@ void parseGmapHits(const StringVector& hitsFilenames)
                 }
             }
 
-            bool matched = false;
-            bool multimatch = matchedReads.size() > 1;
-            
             // Build the output record
             GmapRecord record;
             record.readID = id;
@@ -272,12 +268,10 @@ void parseGmapHits(const StringVector& hitsFilenames)
                 else
                     record.isRC = matchedReads.front().isRC;
 
-                matched = true;
                 numMapped += 1;
             }
             else if(matchedReads.size() > 1)
             {
-                multimatch = true;
                 record.mappedID = "MM";
             }
 

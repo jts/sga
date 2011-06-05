@@ -91,7 +91,7 @@ template<typename T, typename PrimarySorter, typename FinalSorter>
 void mkqs2(T* a, int n, int depth, const PrimarySorter& primarySorter, const FinalSorter& finalSorter)
 {   
     int r, partval;
-    T *pa, *pb, *pc, *pd, *pl, *pm, *pn, t;
+    T *pa, *pb, *pc, *pd, *pm, *pn, t;
    
     if (n < 10) 
     {
@@ -99,7 +99,6 @@ void mkqs2(T* a, int n, int depth, const PrimarySorter& primarySorter, const Fin
         return;
     }
 
-    pl = a;
     pm = a + (n/2);
     pn = a + (n-1);
 
@@ -261,7 +260,7 @@ void parallel_mkqs_process(MkqsJob<T>& job,
     int depth = job.depth;
     
     int r, partval;
-    T *pa, *pb, *pc, *pd, *pl, *pm, *pn, t;
+    T *pa, *pb, *pc, *pd, *pm, *pn, t;
     
     if(n < 10) 
     {
@@ -269,7 +268,6 @@ void parallel_mkqs_process(MkqsJob<T>& job,
         return;
     }
     
-    pl = a;
     pm = a + (n/2);
     pn = a + (n-1);
 

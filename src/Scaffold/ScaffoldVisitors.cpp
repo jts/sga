@@ -545,7 +545,6 @@ bool ScaffoldSVVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex
         int maxDiff = 0;
         int closestIdx = 0;
         int closestDistance = std::numeric_limits<int>::max();
-        bool hasOOR = false;
         for(int i = 0; i < (int)edgeVec.size(); ++i)
         {
             int distance = walkVector[coveringWalkIdx].getDistanceToVertex(edgeVec[i]->getEnd());
@@ -561,9 +560,6 @@ bool ScaffoldSVVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex
 
             if(diff > maxDiff)
                 maxDiff = diff;
-
-            if((double)diff > 3*edgeVec[i]->getStdDev())
-                hasOOR = true;
 
             if(distance < closestDistance)
             {
