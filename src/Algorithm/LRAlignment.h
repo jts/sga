@@ -20,6 +20,7 @@
 namespace LRAlignment
 {
 
+// Enum of identifiers for cell-filtering heuristics
 enum CutAlgorithm
 {
     LRCA_DEFAULT,
@@ -29,7 +30,7 @@ enum CutAlgorithm
     LRCA_NONE
 };
 
-// 
+// Parameters object
 struct LRParams
 {
     LRParams() { setDefaults(); }
@@ -48,6 +49,7 @@ struct LRParams
         cutTailAlgorithm = LRCA_Z_BEST_STRATA;
     }
 
+    //
     void setPacBio()
     {
         setDefaults();
@@ -84,7 +86,7 @@ struct LRHit
 
     int targetID; // ID of target sequence
     int position; // alignment start position on target
-    int length;
+    int length; // length of the target alignment
     int G;
     int G2;
     int beg; // alignment start on query
@@ -101,7 +103,7 @@ struct LRHit
 };
 typedef std::vector<LRHit> LRHitVector;
 
-//
+// Structure holding the score between 
 struct LRCell
 {
     // Functions
@@ -110,6 +112,8 @@ struct LRCell
     bool hasUninitializedChild() const;
 
     // Data Members
+    
+    // interval on the target bwt
     BWTInterval interval;
 
     // scores
@@ -153,29 +157,38 @@ typedef std::vector<LRStackEntry*> LRPendingVector;
 //
 void initializeDAWGHash(BWT* pQueryBWT, LRHash& dawgHash);
 
-//
+// Align sequence query to all the sequences in pTargetBWT
 void bwaswAlignment(const std::string& query, 
                     const BWT* pTargetBWT, 
                     const SampledSuffixArray* pTargetSSA,
                     const LRParams& params);
 
-//
+// Merge the cells of the two stack entries
 void mergeStackEntries(LRStackEntry* u, LRStackEntry* v);
+
+// Update the given LRStack to contain the new StackEntry after
+// performing any necessary merges with pending Stacks
+int updateStack(LRStack* pStack, 
+                LRStackEntry* u, 
+                LRPendingVector* pPendingVector, 
+                LRHash* pDawgHash, 
+                const LRParams& params);
 
 //
 void removeDuplicateCells(LRStackEntry* u, LRHash& hash);
 
-//
+// Filter duplicated hits from hitsVector using their position on the query sequence
 int resolveDuplicateHits(const BWT* pTargetBWT, 
                          const SampledSuffixArray* pTargetSSA, 
                          LRHitVector& hits, 
                          int IS);
 
-//
-int resolveDuplicateHits2(const BWT* pTargetBWT, 
-                          const SampledSuffixArray* pTargetSSA, 
-                          LRHitVector& hits, 
-                          int IS);
+// Filter hits out of the hits vector using their ID
+// At most 1 hit per target sequence is kept
+int resolveDuplicateHitsByID(const BWT* pTargetBWT, 
+                             const SampledSuffixArray* pTargetSSA, 
+                             LRHitVector& hits, 
+                             int IS);
 
 // add hits to the vector for cells that score above threshold
 void saveHits(const SuffixArray* pQuerySA, 
@@ -185,8 +198,7 @@ void saveHits(const SuffixArray* pQuerySA,
               int threshold, 
               LRHitVector& hits);
 
-// save hits to cells that contain intervals that represent the
-// start of reads
+// save hits to cells that contain intervals that represent prefixes of reads
 void saveTerminalHits(const SuffixArray* pQuerySA, 
                       const SampledSuffixArray* pTargetSSA, 
                       const BWT* pTargetBWT, 
@@ -194,7 +206,7 @@ void saveTerminalHits(const SuffixArray* pQuerySA,
                       int threshold, 
                       LRHitVector& hits);
 
-//
+// Using the cell points in c, calculate scores for cell c[0]
 int fillCells(const LRParams& params, int match_score, LRCell* c[4]);
 
 // Functions to heuristically remove low-scoring cells
@@ -206,7 +218,14 @@ void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params);
 // Generate a cigar string for all hits in the vector
 void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector& hits);
 
-void path2padded(const std::string& s1, const std::string& s2, std::string& out1, std::string& out2, std::string& outm, path_t* path, int path_len);
+// Convert a dynamic programming path to a pair of padded strings representing the alignment
+void path2padded(const std::string& s1, 
+                 const std::string& s2, 
+                 std::string& out1, 
+                 std::string& out2, 
+                 std::string& outm, 
+                 path_t* path, 
+                 int path_len);
 
 };
 

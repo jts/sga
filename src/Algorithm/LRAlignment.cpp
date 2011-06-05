@@ -38,6 +38,7 @@ void LRCell::initializeDefault()
     clearChildren();
 }
 
+// Reset the child indices for the cell
 void LRCell::clearChildren()
 {
     children_idx[0] = -1;
@@ -46,6 +47,7 @@ void LRCell::clearChildren()
     children_idx[3] = -1;
 }
 
+// Returns true if any child of the cell is uninitialized
 bool LRCell::hasUninitializedChild() const
 {
     return children_idx[0] == -1 || children_idx[1] == -1 || children_idx[2] == -1 ||  children_idx[3] == -1;
@@ -59,7 +61,8 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     BWT* pQueryBWT = NULL;
     SuffixArray* pQuerySA = NULL;
     createQuickBWT(query, pQueryBWT, pQuerySA);
-
+    
+    // Interval hash table used to mark cells as being duplicate
     LRHash dupHash;
 
     // Initialize the hash table of DAWG nodes
@@ -70,15 +73,19 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     // of the query DAWG
     LRStack stack;
     
-    // Initialize hits vector with enough space to hold 2 hits per query base
-    LRHitVector hitsVector(2*query.size());
+    // High scoring alignments are stored as LRHits in these vectors
+    // positionHitsVector stores up to 2 hits starting at every base of the query sequence
+    // terminalHitsVector stores hits to sequence prefixes 
+    LRHitVector positionHitsVector(2*query.size());
     LRHitVector terminalHitsVector;
 
-    // Initialize the vector of dawg nodes pending addition to the stack
+    // Each dawg node is added to the pendingVector initially
+    // Once all predecessors of the node have been visited,
+    // the node is moved to the stack
     LRPendingVector pendingVector;
     size_t num_pending = 0;
 
-    //
+    // Initialize a stack entry for the root node with an empty scoring cell
     LRStackEntry* pInitial = new LRStackEntry;
     pInitial->interval.lower = 0;
     pInitial->interval.upper = pQueryBWT->getBWLen() - 1;
@@ -93,10 +100,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     x.q_len = 0;
 
     pInitial->cells.push_back(x);
-
     stack.push(pInitial);
 
-    // Traverse DAG
+    // The main loop of the algorithm - traverse the DAWG
     while(!stack.empty())
     {
         LRStackEntry* v = stack.top();
@@ -104,37 +110,22 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
         
         size_t old_n = v->cells.size();
 
-#ifdef BWA_COMPAT_DEBUG
-        printf("Outer stack loop [%zu %zu] old_n: %zu\n", old_n, v->interval.lower, v->interval.upper);
-#endif
         // TODO: bandwidth test and max depth
         
-        // Calculate occurrence values for children of the current entry
+        // Descend into the children of the current dawg node
+        // If the interval update succeeds, calculate scores between
+        // the child node and all the LRCells of the current node
         for(int qci = 0; qci < DNA_ALPHABET::size; ++qci)
         {
             char query_child_base = DNA_ALPHABET::getBase(qci);
             BWTInterval child_interval = v->interval;
             BWTAlgorithms::updateInterval(child_interval, query_child_base, pQueryBWT);
 
-#ifdef BWA_COMPAT_DEBUG
-            printf("Query child interval(%d): [%zu %zu]\n", qci, child_interval.lower, child_interval.upper);
-#endif
-
             if(!child_interval.isValid())
                 continue;
-
-            // Update the hashed count of the number of times this substring needs to be visited
-            uint64_t key = child_interval.lower << 32 | child_interval.upper;
-            LRHash::iterator hashIter = dawgHash.find(key);
-            assert(hashIter != dawgHash.end());
-            assert((uint32_t)hashIter->second > 0);
-            --hashIter->second;
-
-#ifdef BWA_COMPAT_DEBUG
-			printf("hash k1: %zu k2: %zu v1: %zu v2: %d\n", child_interval.lower,  child_interval.upper, hashIter->second >> 32, (uint32_t)hashIter->second);
-#endif
-            // Create an array of cells for the current node holding
-            // scores between the current node and nodes in the prefix trie
+    
+            // Create an new array of cells for the scores between the child node
+            // and all the nodes in the prefix tree
             LRStackEntry* u = new LRStackEntry;
             u->interval = child_interval;
 
@@ -143,33 +134,21 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             {
                 LRCell* p = &v->cells[i];
 
-#ifdef BWA_COMPAT_DEBUG
-                printf("processing p = v[%zu] [%zu %zu] is deleted? %d\n", 
-                        i, p->interval.lower == -1 ? 0 : p->interval.lower, 
-                           p->interval.upper == -1 ? 0 : p->interval.upper, 
-                           p->interval.upper == -1);
-#endif
-
                 if(p->interval.upper == -1)
                     continue; // duplicate that has been deleted
                 LRCell x; // the cell being calculated
                 LRCell* c[4]; // pointers to cells required to calculate x
 
-                c[0] = &x;
+                c[0] = &x; 
                 x.G = MINUS_INF;
                 x.u_idx = p->u_idx = -1;
 
                 bool add_x_to_u = false;
                 if(p->parent_idx >= 0) 
                 {
-#ifdef BWA_COMPAT_DEBUG
-                    printf("parent has been visited\n");
-#endif
                     int upos = v->cells[p->parent_idx].u_idx;
 
-#ifdef BWA_COMPAT_DEBUG
-                    printf("    upos: %d\n", upos);
-#endif
+                    // Set pointers to the cell
                     c[1] = upos >= 0 ? &u->cells[upos] : NULL;
                     c[2] = p;
                     c[3] = &v->cells[p->parent_idx];
@@ -177,9 +156,6 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                     int match_score = qci == p->parent_cidx ? params.match : -params.mismatch;
                     int score = fillCells(params, match_score, c);
 
-#ifdef BWA_COMPAT_DEBUG
-                    printf("    score: %d\n", score);
-#endif
                     if(score > 0)
                     {
                         // this cell has a positive score
@@ -195,9 +171,6 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                 }
                 else
                 {
-#ifdef BWA_COMPAT_DEBUG
-                    printf("parent not visited\n");
-#endif
                     if(p->D > p->G - params.gap_open)
                         x.D = p->D - params.gap_ext; // extend gap
                     else
@@ -215,9 +188,6 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
 
                 if(add_x_to_u)
                 {
-#ifdef BWA_COMPAT_DEBUG
-                    printf("adding x to u\n");
-#endif
                     // set the remaining fields in the current cell
                     x.clearChildren();
                     x.parent_cidx = p->parent_cidx;
@@ -231,41 +201,18 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                 }
 
                 // Check if we should descend into another node of the prefix trie of the target
-#ifdef BWA_COMPAT_DEBUG
-                printf("x->G: %d qr: %d i: %zu old_n: %zu\n", x.G, params.gap_open_extend, i, old_n);
-#endif
                 if( (x.G > params.gap_open_extend /* && heap test */) || i < old_n)
                 {
-#ifdef BWA_COMPAT_DEBUG
-                    printf("    pass test 1\n");
-#endif
                     if(p->hasUninitializedChild())
                     {
-#ifdef BWA_COMPAT_DEBUG
-                        printf("    pass test 2\n");
-#endif
                         for(int tci = 0; tci < DNA_ALPHABET::size; ++tci)
                         {
                             if(p->children_idx[tci] != -1)
-                            {
-#ifdef BWA_COMPAT_DEBUG
-                                printf("    child exists at pos %d\n", p->children_idx[tci]);
-#endif
                                 continue; // already added
-                            }
-                            else
-                            {
-#ifdef BWA_COMPAT_DEBUG
-                                printf("    child does not exist %d\n", p->children_idx[tci]);
-#endif
-                            }
                             char target_child_base = DNA_ALPHABET::getBase(tci);
                             BWTInterval target_child_interval = p->interval;
                             BWTAlgorithms::updateInterval(target_child_interval, target_child_base, pTargetBWT);
-#ifdef BWA_COMPAT_DEBUG
-                            printf("Target child interval(%d): [%zu %zu]\n", tci, target_child_interval.lower, target_child_interval.upper);
-#endif
-                            if(!target_child_interval.isValid()) // child with this extension does not exist
+                            if(!target_child_interval.isValid()) // child with this extension base does not exist
                             {
                                 p->children_idx[tci] = -2;
                                 continue;
@@ -296,90 +243,12 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             // Save high-scoring cells as hits
             if(!u->cells.empty())
             {
-                //saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, hitsVector);
+                //saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, positionHitsVector);
                 saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
             }
 
-            //
-            uint32_t count = (uint32_t)hashIter->second;
-            uint32_t position = hashIter->second >> 32;
-#ifdef BWA_COMPAT_DEBUG
-            printf("cnt: %d pos: %d\n", count, position);
-#endif
-            // Check if an entry in the pending array exists for this DAWG node
-            if(position > 0)
-            {
-                LRStackEntry* w = pendingVector[position - 1];
+            num_pending += updateStack(&stack, u, &pendingVector, &dawgHash, params);
 
-                // An entry in the pending array has been created for this query substing
-                // Merge u into the interval
-                if(!u->cells.empty())
-                {
-                    // if the pending value has fewer cells than u
-                    // swap their pointers
-                    if(w->cells.size() < u->cells.size())
-                    {
-                        w = u;
-                        u = pendingVector[position - 1];
-                        pendingVector[position - 1] = w;
-                    }
-
-#ifdef BWA_COMPAT_DEBUG
-                    printf("merging stack entries\n");
-#endif
-                    mergeStackEntries(w, u);
-                }
-
-                if(count == 0)
-                {
-                    // this node in the dawg will not be visited again
-                    // move the stack entry from the pending list to the stack
-                    removeDuplicateCells(w, dupHash);
-                    cutTail(w, params);
-#ifdef BWA_COMPAT_DEBUG
-                    printf("moving w from pending to stack[%zu %zu]\n", w->interval.lower, w->interval.upper);
-#endif
-                    stack.push(w);
-                    pendingVector[position - 1] = 0;
-                    num_pending -= 1;
-                }
-
-                // u is empty or merged, it is no longer needed
-                delete u;
-
-            }
-            else if(count > 0)
-            {
-                // Create an entry in the pending queue for the current node of the DAWG
-                if(!u->cells.empty())
-                {
-                    pendingVector.push_back(u);
-                    num_pending += 1;
-
-                    // Save the position of u in the pending vector into the hash
-                    // all subsequent traversals that visit this node of the dawg
-                    // will get merged into this position. index + 1 is stored
-                    // so that position == 0 indicates the empty case
-                    hashIter->second = (uint64_t)pendingVector.size() << 32 | count;
-#ifdef BWA_COMPAT_DEBUG
-                    printf("saving u to pending [%zu %zu]\n", u->interval.lower, u->interval.upper);
-#endif
-                }
-                else
-                {
-                    // u has no cells to calculate, discard it
-                    delete u;
-                }
-            }
-            else // count == 0, pos == 0
-            {
-                // This substring is unique, push u straight onto the stack
-                cutTail(u, params);
-                stack.push(u);
-#ifdef BWA_COMPAT_DEBUG
-                printf("pushing u to stack [%zu %zu]\n", u->interval.lower, u->interval.upper);
-#endif
-            }
         } // for qci
         
         // done with v
@@ -388,17 +257,115 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
 
     assert(num_pending == 0);
 
-    //
-    // append the terminal hits then resolve any duplicates
-    hitsVector.insert(hitsVector.end(), terminalHitsVector.begin(), terminalHitsVector.end());
+    // Append the two hits vectors together
+    positionHitsVector.insert(positionHitsVector.end(), terminalHitsVector.begin(), terminalHitsVector.end());
     terminalHitsVector.clear();
-    resolveDuplicateHits2(pTargetBWT, pTargetSSA, hitsVector, 300);
+    resolveDuplicateHitsByID(pTargetBWT, pTargetSSA, positionHitsVector, 300);
 
-    generateCIGAR(query, params, hitsVector);
+    // Convert the hits into proper alignments
+    generateCIGAR(query, params, positionHitsVector);
 
     delete pQueryBWT;
     delete pQuerySA;
 }
+
+// Update the stack to contain entry u, after considering any possible merges
+// with StackEntries from the pending vector
+int updateStack(LRStack* pStack, 
+                LRStackEntry* u, 
+                LRPendingVector* pPendingVector, 
+                LRHash* pDawgHash, 
+                const LRParams& params)
+{
+    // Find the iterator for u in the dawgHash
+    LRHash dupHash;
+
+    uint64_t key = u->interval.lower << 32 | u->interval.upper;
+    LRHash::iterator hashIter = pDawgHash->find(key);
+    assert(hashIter != pDawgHash->end() && (uint32_t)hashIter->second > 0);
+    --hashIter->second;
+    uint32_t count = (uint32_t)hashIter->second;
+    uint32_t position = hashIter->second >> 32;
+
+    // Check if an entry in the pending array exists for this DAWG node
+    int change = 0;
+    if(position > 0)
+    {
+        LRStackEntry* w = (*pPendingVector)[position - 1];
+
+        // An entry in the pending array has been created for this query substing
+        // Merge u into the interval
+        if(!u->cells.empty())
+        {
+            // if the pending value has fewer cells than u
+            // swap their pointers
+            if(w->cells.size() < u->cells.size())
+            {
+                w = u;
+                u = (*pPendingVector)[position - 1];
+                (*pPendingVector)[position - 1] = w;
+            }
+
+#ifdef BWA_COMPAT_DEBUG
+            printf("merging stack entries\n");
+#endif
+            mergeStackEntries(w, u);
+        }
+
+        if(count == 0)
+        {
+            // this node in the dawg will not be visited again
+            // move the stack entry from the pending list to the stack
+            removeDuplicateCells(w, dupHash);
+            cutTail(w, params);
+#ifdef BWA_COMPAT_DEBUG
+            printf("moving w from pending to stack[%zu %zu]\n", w->interval.lower, w->interval.upper);
+#endif
+            pStack->push(w);
+            (*pPendingVector)[position - 1] = 0;
+            change -= 1;
+        }
+
+        // u is empty or merged, it is no longer needed
+        delete u;
+
+    }
+    else if(count > 0)
+    {
+        // Create an entry in the pending queue for the current node of the DAWG
+        if(!u->cells.empty())
+        {
+            pPendingVector->push_back(u);
+            change += 1;
+
+            // Save the position of u in the pending vector into the hash
+            // all subsequent traversals that visit this node of the dawg
+            // will get merged into this position. index + 1 is stored
+            // so that position == 0 indicates the empty case
+            hashIter->second = (uint64_t)pPendingVector->size() << 32 | count;
+#ifdef BWA_COMPAT_DEBUG
+            printf("saving u to pending [%zu %zu]\n", u->interval.lower, u->interval.upper);
+#endif
+        }
+        else
+        {
+            // u has no cells to calculate, discard it
+            delete u;
+        }
+    }
+    else // count == 0, pos == 0
+    {
+        // This substring is unique, push u straight onto the stack
+        cutTail(u, params);
+        pStack->push(u);
+#ifdef BWA_COMPAT_DEBUG
+        printf("pushing u to stack [%zu %zu]\n", u->interval.lower, u->interval.upper);
+#endif
+    }
+
+    return change;
+}
+
 
 // Process a list of cells and save alignment hits meeting the threshold
 void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*pTargetSSA*/,
@@ -642,7 +609,7 @@ int fillCells(const LRParams& params, int match_score, LRCell* c[4])
 }
 
 // Remove duplicate hits to the same target sequence from the hits vector
-int resolveDuplicateHits2(const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, LRHitVector& hits, int /*IS*/)
+int resolveDuplicateHitsByID(const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, LRHitVector& hits, int /*IS*/)
 {
     if(hits.empty())
         return 0;
