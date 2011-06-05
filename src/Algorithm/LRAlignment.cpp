@@ -76,7 +76,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     // High scoring alignments are stored as LRHits in these vectors
     // positionHitsVector stores up to 2 hits starting at every base of the query sequence
     // terminalHitsVector stores hits to sequence prefixes 
-    LRHitVector positionHitsVector(2*query.size());
+    LRHitVector positionHitsVector;//(2*query.size());
     LRHitVector terminalHitsVector;
 
     // Each dawg node is added to the pendingVector initially
@@ -243,10 +243,11 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             // Save high-scoring cells as hits
             if(!u->cells.empty())
             {
-                //saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, positionHitsVector);
-                saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
+                saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, positionHitsVector);
+                //saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
             }
 
+            // Update the stack by adding u or pushing it to the pending vector
             num_pending += updateStack(&stack, u, &pendingVector, &dawgHash, params);
 
         } // for qci
@@ -297,18 +298,13 @@ int updateStack(LRStack* pStack,
         // Merge u into the interval
         if(!u->cells.empty())
         {
-            // if the pending value has fewer cells than u
-            // swap their pointers
+            // Swap so w is the StackEntry wth more cells
             if(w->cells.size() < u->cells.size())
             {
                 w = u;
                 u = (*pPendingVector)[position - 1];
                 (*pPendingVector)[position - 1] = w;
             }
-
-#ifdef BWA_COMPAT_DEBUG
-            printf("merging stack entries\n");
-#endif
             mergeStackEntries(w, u);
         }
 
@@ -318,9 +314,6 @@ int updateStack(LRStack* pStack,
             // move the stack entry from the pending list to the stack
             removeDuplicateCells(w, dupHash);
             cutTail(w, params);
-#ifdef BWA_COMPAT_DEBUG
-            printf("moving w from pending to stack[%zu %zu]\n", w->interval.lower, w->interval.upper);
-#endif
             pStack->push(w);
             (*pPendingVector)[position - 1] = 0;
             change -= 1;
@@ -343,9 +336,6 @@ int updateStack(LRStack* pStack,
             // will get merged into this position. index + 1 is stored
             // so that position == 0 indicates the empty case
             hashIter->second = (uint64_t)pPendingVector->size() << 32 | count;
-#ifdef BWA_COMPAT_DEBUG
-            printf("saving u to pending [%zu %zu]\n", u->interval.lower, u->interval.upper);
-#endif
         }
         else
         {
@@ -358,9 +348,6 @@ int updateStack(LRStack* pStack,
         // This substring is unique, push u straight onto the stack
         cutTail(u, params);
         pStack->push(u);
-#ifdef BWA_COMPAT_DEBUG
-        printf("pushing u to stack [%zu %zu]\n", u->interval.lower, u->interval.upper);
-#endif
     }
 
     return change;
@@ -388,31 +375,17 @@ void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*pTargetSS
 
             // Save the best hit for alignments starting at beg in positions hits[2*beg]
             // and the second best hit in hits[2*beg+1]
-            LRHit* q = NULL;
-            if(p->G > hits[beg*2].G)
-            {
-                // move the previous best to the second best slot
-                hits[beg*2+1] = hits[beg*2];
-                q = &hits[2*beg];
-            }
-            else if(p->G > hits[beg*2+1].G)
-            {
-                // the current hit is the second best at this position
-                q = &hits[2*beg+1];
-            }
-
-            if(q)
-            {
-                q->interval = p->interval;
-                q->length = p->t_len;
-                q->G = p->G;
-                q->beg = beg;
-                q->end = end;
-                q->G2 = (q->interval.size() == 1) ? 0 : q->G;
-                q->flag = 0;
-                q->num_seeds = 0;
-                q->targetString.assign(p->revTargetString.rbegin(), p->revTargetString.rend());
-            }
+            LRHit q;
+            q.interval = p->interval;
+            q.length = p->t_len;
+            q.G = p->G;
+            q.beg = beg;
+            q.end = end;
+            q.G2 = (q.interval.size() == 1) ? 0 : q.G;
+            q.flag = 0;
+            q.num_seeds = 0;
+            q.targetString.assign(p->revTargetString.rbegin(), p->revTargetString.rend());
+            hits.push_back(q);
         }
     }
 }
