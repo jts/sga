@@ -401,8 +401,8 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
 }
 
 // Process a list of cells and save alignment hits meeting the threshold
-void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA, 
-              const BWT* pTargetBWT, LRStackEntry* u, 
+void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*pTargetSSA*/,
+              const BWT* /*pTargetBWT*/, LRStackEntry* u, 
               int threshold, LRHitVector& hits)
 {
     for(size_t i = 0; i < u->cells.size(); ++i)
@@ -431,19 +431,7 @@ void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* pTargetSSA,
             else if(p->G > hits[beg*2+1].G)
             {
                 // the current hit is the second best at this position
-                LRHit& dHit = hits[beg*2+1];
-                //for(int i = dHit.interval.lower; i <= dHit.interval.upper; ++i)
-                //    std::cout << "OVERWRITING HIT TO " << pTargetSSA->calcSA(i, pTargetBWT) << "\n";
                 q = &hits[2*beg+1];
-            }
-            else
-            {
-                /*
-                 * for(int i = p->interval.lower; i <= p->interval.upper; ++i)
-                    std::cout << "REJECTING HIT TO " << pTargetSSA->calcSA(i, pTargetBWT) << 
-                                                 " " << p->interval << " " << p->G << " " << hits[beg*2].interval << " " << hits[beg*2].G << " " 
-                                                     << hits[beg*2+1].interval << " " << hits[beg*2+1].G << "\n";
-                */
             }
 
             if(q)

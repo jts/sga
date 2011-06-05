@@ -102,7 +102,6 @@ namespace opt
     static int numKmerRounds = 10;
     static bool bLearnKmerParams = false;
     static int intervalCacheLength = 10;
-    static bool bLongReadCorrection = true;
 
     static ErrorCorrectAlgorithm algorithm = ECA_KMER;
 }
