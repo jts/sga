@@ -14,10 +14,18 @@
 
 namespace LRCorrection
 {
+    // Main correction function
     std::string correctLongRead(const std::string& query,
                                 const BWT* pTargetBWT, 
                                 const SampledSuffixArray* pTargetSSA,
                                 const LRAlignment::LRParams& params);
+
+    // Extend the hit vector by adding in reads that overlap the given set of reads
+    void addOverlappingHits(const std::string& query,
+                            const BWT* pTargetBWT, 
+                            const SampledSuffixArray* pTargetSSA,
+                            const LRAlignment::LRParams& params,
+                            LRAlignment::LRHitVector& hits);
 
 };
 

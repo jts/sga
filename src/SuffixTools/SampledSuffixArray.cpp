@@ -70,6 +70,12 @@ SAElem SampledSuffixArray::calcSA(int64_t idx, const BWT* pBWT) const
     return elem;
 }
 
+// Returns the ID of the read with lexicographic rank r
+size_t SampledSuffixArray::lookupLexoRank(size_t r) const
+{
+    return m_saLexoIndex[r].getID();
+}
+
 // 
 void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int sampleRate)
 {

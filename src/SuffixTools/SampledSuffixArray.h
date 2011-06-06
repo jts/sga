@@ -26,6 +26,9 @@ class SampledSuffixArray
         // Calculate the suffix array element for the given index
         SAElem calcSA(int64_t idx, const BWT* pBWT) const;
 
+        // Returns the ID of the read with lexicographic rank r
+        size_t lookupLexoRank(size_t r) const;
+
         // Construct the sampled SA using the bwt of a set of reads and their lengths
         void build(const BWT* pBWT, const ReadInfoTable* pRIT, int sampleRate = DEFAULT_SA_SAMPLE_RATE);
 
