@@ -1012,7 +1012,7 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
         std::string target = BWTAlgorithms::extractString(pTargetBWT, tempHit.targetID);
         uint8_t* pTargetT = createStdAlnPacked(target);
 
-        extendHitFullLength(tempHit, pQueryT, pTargetT, query.size(), target.size(), &par);
+        //extendHitFullLength(tempHit, pQueryT, pTargetT, query.size(), target.size(), &par);
 
         int q_start_pos, q_end_pos, t_start_pos, t_end_pos;
         q_start_pos = tempHit.q_start;
@@ -1096,15 +1096,11 @@ void extendHitFullLength(LRHit& hit, uint8_t* pQueryPacked, uint8_t* pTargetPack
         uint8_t* pQueryPackedSub = pQueryPacked + q_start;
         path_t path;
         int score = aln_extend_core(pTargetPackedSub, tel, pQueryPackedSub, qel, pStdAlnPar, &path, 0, hit.G, NULL);
-        printf("Read %zu: score before extension: %d after extension: %d\n", hit.targetID, 1, score);
         if(score > hit.G)
         {
-            int ol = hit.length;
             hit.G = score;
             hit.length = path.i;
             hit.q_end = path.j + hit.q_start;
-            printf("Path i: path j: %d %d\n", path.i, path.j);
-            printf("Length before extension %d, after extension: %d\n", ol, hit.length);
         }
     }
 }
