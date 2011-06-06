@@ -14,6 +14,7 @@
 #include "SampledSuffixArray.h"
 #include "BWTAlgorithms.h"
 #include "HashMap.h"
+#include "MultiAlignment.h"
 #include "stdaln.h"
 #include <stack>
 
@@ -77,7 +78,7 @@ struct LRParams
 // Structure holding an alignment between a query sequence and a BWT of a collection of sequences
 struct LRHit
 {
-    LRHit() : interval(0,-1), flag(0), num_seeds(0), targetID(-1), position(-1), length(0), G(0), G2(0), beg(0), end(0) {}
+    LRHit() : interval(0,-1), flag(0), num_seeds(0), targetID(-1), t_start(-1), length(0), G(0), q_start(0), q_end(0) {}
     BWTInterval interval;
     std::string targetString;
 
@@ -85,12 +86,11 @@ struct LRHit
     uint32_t num_seeds;
 
     int targetID; // ID of target sequence
-    int position; // alignment start position on target
+    int t_start; // alignment start position on target
     int length; // length of the target alignment
     int G;
-    int G2;
-    int beg; // alignment start on query
-    int end; // alignment end (exclusive) on query
+    int q_start; // alignment start on query
+    int q_end; // alignment end (exclusive) on query
 
     static bool compareG(const LRHit& a, const LRHit& b) { return a.G > b.G; }
     static bool compareIDandG(const LRHit& a, const LRHit& b) 
@@ -163,7 +163,15 @@ typedef std::vector<LRStackEntry*> LRPendingVector;
 void bwaswAlignment(const std::string& query, 
                     const BWT* pTargetBWT, 
                     const SampledSuffixArray* pTargetSSA,
-                    const LRParams& params);
+                    const LRParams& params,
+                    LRHitVector& outHits);
+
+MultiAlignment convertHitsToMultiAlignment(const std::string& query, 
+                                           const BWT* pTargetBWT, 
+                                           const SampledSuffixArray* pTargetSSA,
+                                           const LRParams& params,
+                                           const LRHitVector& hits);
+
 
 //
 // Helper functions

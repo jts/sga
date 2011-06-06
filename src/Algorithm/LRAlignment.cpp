@@ -55,7 +55,7 @@ bool LRCell::hasUninitializedChild() const
 
 // Implementation of bwa-sw algorithm.
 // Roughly follows Heng Li's implementation 
-void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, const LRParams& params)
+void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, const LRParams& params, LRHitVector& outHits)
 {
     // Construct an FM-index of the query sequence
     BWT* pQueryBWT = NULL;
@@ -261,8 +261,8 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     terminalHitsVector.clear();
     resolveDuplicateHitsByID(pTargetBWT, pTargetSSA, positionHitsVector, 300);
 
-    // Convert the hits into proper alignments
-    generateCIGAR(query, params, positionHitsVector);
+    // set the output hits
+    outHits.insert(outHits.end(), positionHitsVector.begin(), positionHitsVector.end());
 
     delete pQueryBWT;
     delete pQuerySA;
@@ -377,9 +377,8 @@ void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*pTargetSS
             q.interval = p->interval;
             q.length = p->t_len;
             q.G = p->G;
-            q.beg = beg;
-            q.end = end;
-            q.G2 = (q.interval.size() == 1) ? 0 : q.G;
+            q.q_start = beg;
+            q.q_end = end;
             q.flag = 0;
             q.num_seeds = 0;
             q.targetString.assign(p->revTargetString.rbegin(), p->revTargetString.rend());
@@ -417,9 +416,8 @@ void saveTerminalHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*p
                 q.interval = p->interval;
                 q.length = p->t_len;
                 q.G = p->G;
-                q.beg = beg;
-                q.end = end;
-                q.G2 = 0;
+                q.q_start = beg;
+                q.q_end = end;
                 q.flag = 0;
                 q.num_seeds = 0;
                 q.targetString.assign(p->revTargetString.rbegin(), p->revTargetString.rend());
@@ -606,7 +604,7 @@ int resolveDuplicateHitsByID(const BWT* pTargetBWT, const SampledSuffixArray* pT
             SAElem elem = pTargetSSA->calcSA(k, pTargetBWT);
             //std::cout << "Converted suffix array " << k << " to " << elem << " for " << p->targetString << " s: " << p->G << " b: " << p->beg << "\n";
             tmp.targetID = elem.getID();
-            tmp.position = elem.getPos();
+            tmp.t_start = elem.getPos();
             tmp.interval.lower = 0;
             tmp.interval.upper = -1;
 #ifdef BWA_COMPAT_DEBUG_RESOLVE
@@ -686,7 +684,7 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
                     newHits[j] = *p;
                     SAElem elem = pTargetSSA->calcSA(k, pTargetBWT);
                     newHits[j].targetID = elem.getID();
-                    newHits[j].position = elem.getPos();
+                    newHits[j].t_start = elem.getPos();
                     newHits[j].interval.lower = 0;
                     newHits[j].interval.upper = -1;
 #ifdef BWA_COMPAT_DEBUG_RESOLVE
@@ -700,7 +698,7 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
                 newHits[j] = *p;
                 SAElem elem = pTargetSSA->calcSA(p->interval.lower, pTargetBWT);
                 newHits[j].targetID = elem.getID();
-                newHits[j].position = elem.getPos();
+                newHits[j].t_start = elem.getPos();
                 newHits[j].interval.lower = 0;
                 newHits[j].interval.upper = -1;
                 newHits[j].flag |= 1;
@@ -741,22 +739,22 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
             if(p->interval.upper == -1 && q->interval.upper == -1)
             {
                 // Calculate the overlap length on the query
-                int qol = (p->end < q->end? p->end : q->end) - (p->beg > q->beg? p->beg : q->beg);
+                int qol = (p->q_end < q->q_end? p->q_end : q->q_end) - (p->q_start > q->q_start? p->q_start : q->q_start);
                 if(qol < 0)
                     qol = 0;
 
-                if((float)qol / (p->end - p->beg) > MASK_LEVEL || (float)qol / (q->end - q->beg) > MASK_LEVEL) 
+                if((float)qol / (p->q_end - p->q_start) > MASK_LEVEL || (float)qol / (q->q_end - q->q_start) > MASK_LEVEL) 
                 {
                     int64_t tol = 0;
-                    if(p->position + p->length < q->position + q->length)
-                        tol = p->position + p->length;
+                    if(p->t_start + p->length < q->t_start + q->length)
+                        tol = p->t_start + p->length;
                     else
-                        tol = q->position + q->length;
+                        tol = q->t_start + q->length;
 
-                    if(p->position > q->position)
-                        tol -= p->position;
+                    if(p->t_start > q->t_start)
+                        tol -= p->t_start;
                     else
-                        tol -= q->position;
+                        tol -= q->t_start;
                     
 					if((double)tol / p->length > MASK_LEVEL || (double)tol / q->length > MASK_LEVEL)
 						compatible = false;
@@ -980,8 +978,12 @@ void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params)
 }
 
 
-//
-void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector& hits)
+// Construct a multiple alignment from a vector of hits
+MultiAlignment convertHitsToMultiAlignment(const std::string& query, 
+                                           const BWT* /*pTargetBWT*/, 
+                                           const SampledSuffixArray* /*pTargetSSA*/,
+                                           const LRParams& params,
+                                           const LRHitVector& hits)
 {
     // Set up stdaln data structures
 	size_t max_target = ((query.size() + 1) / 2 * params.match + params.gap_ext) / params.gap_ext + query.size(); // maximum possible target length
@@ -1002,7 +1004,7 @@ void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector
 
     for(size_t i = 0; i < hits.size(); ++i)
     {
-        std::string querySub = query.substr(hits[i].beg, hits[i].end - hits[i].beg);
+        std::string querySub = query.substr(hits[i].q_start, hits[i].q_end - hits[i].q_start);
 
         //printf("Alignment DP\n");
         //printf("Target (%d), ID: (%d): %s\n", hits[i].position, hits[i].targetID, hits[i].targetString.c_str());
@@ -1032,10 +1034,10 @@ void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector
         //
         MAlignData maData;
         maData.str = hits[i].targetString;
-        maData.position = hits[i].beg;
+        maData.position = hits[i].q_start;
         maData.targetID = hits[i].targetID;
         maData.targetAlignLength = tl;
-        maData.targetPosition = hits[i].position;
+        maData.targetPosition = hits[i].t_start;
 
         // Build cigar string
         // Add initial padding
@@ -1052,10 +1054,10 @@ void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector
         free(pCigar);
     }
 
-    if(!mAlignVec.empty())
-        MultiAlignment ma(query, mAlignVec);
 
     free(path);
+    
+    return MultiAlignment(query, mAlignVec);
 }
 
 // Convert a dynamic programming path to a set of padded strings

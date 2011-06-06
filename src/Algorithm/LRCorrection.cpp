@@ -14,7 +14,11 @@ std::string LRCorrection::correctLongRead(const std::string& query,
                                           const SampledSuffixArray* pTargetSSA,
                                           const LRAlignment::LRParams& params)
 {
-    LRAlignment::bwaswAlignment(query, pTargetBWT, pTargetSSA, params);
+    LRAlignment::LRHitVector hits;
+    LRAlignment::bwaswAlignment(query, pTargetBWT, pTargetSSA, params, hits);
+    MultiAlignment ma = LRAlignment::convertHitsToMultiAlignment(query, pTargetBWT, pTargetSSA, params, hits);
+    ma.print();
+
     return query;
 }
 
