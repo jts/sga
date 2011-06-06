@@ -1002,6 +1002,7 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
 	par.row = 5; 
     par.band_width = params.bandwidth;
     MAlignDataVector mAlignVec;
+    uint8_t* pQueryT = createStdAlnPacked(query);
 
     for(size_t i = 0; i < hits.size(); ++i)
     {
@@ -1009,80 +1010,71 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
         // The hit to the target may not be full length due to a poorly-aligning region at the beginning or end
         // Attempt to extend the hit coordinates to full-length
         std::string target = BWTAlgorithms::extractString(pTargetBWT, tempHit.targetID);
+        uint8_t* pTargetT = createStdAlnPacked(target);
 
-        extendHitFullLength(tempHit, query, target, params, &par);
+        extendHitFullLength(tempHit, pQueryT, pTargetT, query.size(), target.size(), &par);
 
         int q_start_pos, q_end_pos, t_start_pos, t_end_pos;
         q_start_pos = tempHit.q_start;
         q_end_pos = tempHit.q_end; // exclusive
         t_start_pos = tempHit.t_start;
         t_end_pos = t_start_pos + tempHit.length; // exclusive
-
-        // Extract query and target substrings 
-        std::string querySub = query.substr(q_start_pos, q_end_pos - q_start_pos);
-        std::string targetSub = target.substr(t_start_pos, t_end_pos - t_start_pos);
-
-        // Convert strings to 0-3 representation, as needed by the stdaln routine
-        // STDALN uses the same base->int mapping as DNA_ALPHABET
-        int ql = querySub.size();
-        uint8_t* pQueryT = createStdAlnPacked(querySub);
         
-        int tl = targetSub.size();
-        assert(tl <= (int)max_target);
-        uint8_t* pTargetT = createStdAlnPacked(targetSub);
+        // Get pointers to the substrings of interest
+        int ql = q_end_pos - q_start_pos;
+        uint8_t* pQuerySub = pQueryT + q_start_pos; 
+        
+        int tl = t_end_pos - t_start_pos;
+        uint8_t* pTargetSub = pTargetT + t_start_pos;
         
         int path_len = 0;
-		/*int score =*/ aln_global_core(pTargetT, tl, pQueryT, ql, &par, path, &path_len);
+		/*int score =*/ aln_global_core(pTargetSub, tl, pQuerySub, ql, &par, path, &path_len);
         int cigarLen = 0;
 		uint32_t* pCigar = aln_path2cigar32(path, path_len, &cigarLen);
         
         //
         MAlignData maData;
-        maData.str = targetSub;
+        maData.str = target.substr(t_start_pos, t_end_pos - t_start_pos);
         maData.position = q_start_pos;
         maData.targetID = hits[i].targetID;
         maData.targetAlignLength = tl;
         maData.targetPosition = t_start_pos;
 
-        // Build cigar string
-        // Add initial padding
+        // Add initial padding to cigar
         maData.expandedCigar.append(maData.position, 'S');
         
         // Add alignment symbols
         for (int j = 0; j != cigarLen; ++j)
             maData.expandedCigar.append(pCigar[j]>>4, "MID"[pCigar[j]&0xf]);
 
-        
+        /*        
         printf("AlignmentDP (%zu)\n", hits[i].targetID);
         printf("Coords: q[%d, %d] t[%d, %d]\n", q_start_pos, q_end_pos, t_start_pos, t_end_pos);
-        printf("Q: %s\n", querySub.c_str());
-        printf("T: %s\n", targetSub.c_str());
         printf("C: %s\n", maData.expandedCigar.c_str());
-        
+        */
         mAlignVec.push_back(maData);
 
-        delete [] pQueryT;
+        // Cleanup
         delete [] pTargetT;
         free(pCigar);
     }
 
-
+    // Cleanup
     free(path);
-    
+    delete [] pQueryT;
+
     return MultiAlignment(query, mAlignVec);
 }
 
 // Attempt to extend a hit to the left and right using aln_extend_core
 // from stdaln
-void extendHitFullLength(LRHit& hit, const std::string& query, 
-                         const std::string& target, const LRParams& /*params*/, AlnParam* pStdAlnPar)
+void extendHitFullLength(LRHit& hit, uint8_t* pQueryPacked, uint8_t* pTargetPacked, 
+                         int q_length, int t_length, AlnParam* pStdAlnPar)
 {
-    int q_length = query.size();
     int q_start = hit.q_start;
     int q_end = hit.q_end; // exclusive
     int t_start = hit.t_start;
     int t_end = t_start + hit.length; // exclusive
-    int t_length = target.length();
 
     // Attempt left-extension
     if(t_start != 0 && q_start != 0)
@@ -1097,28 +1089,23 @@ void extendHitFullLength(LRHit& hit, const std::string& query,
     // Attempt right-extension
     if(q_end < q_length && t_end < t_length)
     {
-        std::cout << "HIT TO " << hit.targetID << " NEEDS RIGHT EXTEND\n";
-        
         // extension match lengths
         int tel = t_length - t_start;
         int qel = q_length - q_start;
-        uint8_t* pTargetPacked = createStdAlnPacked(target.substr(t_start));
-        uint8_t* pQueryPacked = createStdAlnPacked(query.substr(q_start));
-        std::cout << "TER: " << target.substr(t_start) << "\n";
-        std::cout << "QER: " << query.substr(t_start) << "\n";
+        uint8_t* pTargetPackedSub = pTargetPacked + t_start;
+        uint8_t* pQueryPackedSub = pQueryPacked + q_start;
         path_t path;
-        int score = aln_extend_core(pTargetPacked, tel, pQueryPacked, qel, pStdAlnPar, &path, 0, hit.G, NULL);
-        std::cout << "Old score: " << hit.G << " new score: " << score << "\n";
+        int score = aln_extend_core(pTargetPackedSub, tel, pQueryPackedSub, qel, pStdAlnPar, &path, 0, hit.G, NULL);
+        printf("Read %zu: score before extension: %d after extension: %d\n", hit.targetID, 1, score);
         if(score > hit.G)
         {
-            printf("Old len: %d New len: %d\n", hit.length, path.i);
+            int ol = hit.length;
             hit.G = score;
             hit.length = path.i;
             hit.q_end = path.j + hit.q_start;
+            printf("Path i: path j: %d %d\n", path.i, path.j);
+            printf("Length before extension %d, after extension: %d\n", ol, hit.length);
         }
-
-        delete [] pTargetPacked;
-        delete [] pQueryPacked;
     }
 }
 
