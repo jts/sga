@@ -127,6 +127,12 @@ inline AlphaCount64 getExtCount(const BWTInterval& interval, const BWT* pBWT)
 // appears in the FM-index for all i s.t. length(w[i, l]) >= minOverlap.
 AlphaCount64 calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT);
 
+// Extract the string at idx from the BWT
+std::string extractString(const BWT* pBWT, size_t idx);
+
+// Extract the substring from start, start+length of the sequence starting at position idx
+std::string extractSubstring(const BWT* pBWT, uint64_t idx, size_t start, size_t length = std::string::npos);
+
 // Returns a randomly chosen string from the BWT
 std::string sampleRandomString(const BWT* pBWT);
 

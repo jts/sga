@@ -130,8 +130,6 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             printf("%zu\t%s\n", i+1, iter.pData->expandedCigar.c_str());
     }
 
-//    std::stable_sort(iterVec.begin(), iterVec.end(), CigarIter::sortPosition);
-
     bool done = false;
     while(!done)
     {
@@ -164,7 +162,7 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
     }
 
     std::stable_sort(m_alignData.begin(), m_alignData.end(), MAlignData::sortPosition);
-    generateConsensus();
+    //generateConsensus();
 }
 
 // Generate simple consensus string from the multiple alignment

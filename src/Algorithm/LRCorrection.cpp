@@ -17,7 +17,9 @@ std::string LRCorrection::correctLongRead(const std::string& query,
     LRAlignment::LRHitVector hits;
     LRAlignment::bwaswAlignment(query, pTargetBWT, pTargetSSA, params, hits);
     MultiAlignment ma = LRAlignment::convertHitsToMultiAlignment(query, pTargetBWT, pTargetSSA, params, hits);
-    ma.print();
+    std::string consensus = ma.generateConsensus();
+    
+    //ma.print(&consensus);
 
     return query;
 }

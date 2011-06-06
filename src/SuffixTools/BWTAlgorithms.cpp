@@ -144,19 +144,24 @@ AlphaCount64 BWTAlgorithms::calculateExactExtensions(const unsigned int overlapL
     return ext_counts;
 }
 
-// 
+// Return a random string from the BWT
 std::string BWTAlgorithms::sampleRandomString(const BWT* pBWT)
 {
     assert(RAND_MAX > 0x7FFF);
     size_t n = pBWT->getNumStrings();
     size_t idx = rand() % n;
+    return extractString(pBWT, idx);
+}
 
-    std::string out;
+// Return the string from the BWT at idx
+std::string BWTAlgorithms::extractString(const BWT* pBWT, size_t idx)
+{
+    assert(idx < pBWT->getNumStrings());
 
     // The range [0,n) in the BWT contains all the terminal
     // symbols for the reads. Search backwards from one of them
     // until the '$' is found gives a full string.
-
+    std::string out;
     BWTInterval interval(idx, idx);
     while(1)
     {
@@ -170,3 +175,11 @@ std::string BWTAlgorithms::sampleRandomString(const BWT* pBWT)
     } 
     return reverse(out);
 }
+
+// Extract the substring from start, start+length of the sequence starting at position idx
+std::string BWTAlgorithms::extractSubstring(const BWT* pBWT, uint64_t idx, size_t start, size_t length)
+{
+    std::string s = extractString(pBWT, idx);
+    return s.substr(start, length);
+}
+

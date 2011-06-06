@@ -85,7 +85,7 @@ struct LRHit
     uint32_t flag;
     uint32_t num_seeds;
 
-    int targetID; // ID of target sequence
+    uint64_t targetID; // ID of target sequence
     int t_start; // alignment start position on target
     int length; // length of the target alignment
     int G;
@@ -233,8 +233,9 @@ void cutTailByScorePercent(LRStackEntry* u, const LRParams& params);
 void cutTailByZBest(LRStackEntry* u, const LRParams& params);
 void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params);
 
-// Generate a cigar string for all hits in the vector
-void generateCIGAR(const std::string& query, const LRParams& params, LRHitVector& hits);
+// Attempt to extend a hit coordinate to a full-length match
+void extendHitFullLength(LRHit& hit, const std::string& query, 
+                         const std::string& target, const LRParams& params, AlnParam* pStdAlnPar);
 
 // Convert a dynamic programming path to a pair of padded strings representing the alignment
 void path2padded(const std::string& s1, 
@@ -244,6 +245,13 @@ void path2padded(const std::string& s1,
                  std::string& outm, 
                  path_t* path, 
                  int path_len);
+
+// Convert a std::string into the stdAln required packed format.
+// This function allocates memory which the caller must free
+uint8_t* createStdAlnPacked(const std::string& s, size_t start = 0, size_t length = std::string::npos);
+
+// Calculate the maximum target length for a query of length ql
+size_t calculateMaxTargetLength(int ql, const LRParams& params);
 
 };
 

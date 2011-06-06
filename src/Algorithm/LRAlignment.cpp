@@ -621,7 +621,7 @@ int resolveDuplicateHitsByID(const BWT* pTargetBWT, const SampledSuffixArray* pT
     std::sort(hits.begin(), hits.end(), LRHit::compareIDandG);
     
     // Loop over the hits, zeroing all but the highest scoring hit for each target
-    int prevID = -1;
+    uint64_t prevID = std::numeric_limits<uint64_t>::max();
     size_t new_n = 0;
     for(size_t i = 0; i < hits.size(); ++i)
     {
@@ -760,7 +760,7 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
 						compatible = false;
 
 //#ifdef BWA_COMPAT_DEBUG_RESOLVE
-                    printf("    idx = (%d,%d) id=(%d,%d) G=(%d,%d) qol: %d tol: %zu compat: %d\n", i,j, p->targetID, q->targetID, p->G, q->G, qol, tol, compatible);
+                    printf("    idx = (%d,%d) id=(%d,%d) G=(%d,%d) qol: %d tol: %zu compat: %d\n", i,j, (int)p->targetID, (int)q->targetID, p->G, q->G, qol, tol, compatible);
 //#endif
                     if(!compatible)
                     {
@@ -980,13 +980,14 @@ void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params)
 
 // Construct a multiple alignment from a vector of hits
 MultiAlignment convertHitsToMultiAlignment(const std::string& query, 
-                                           const BWT* /*pTargetBWT*/, 
+                                           const BWT* pTargetBWT, 
                                            const SampledSuffixArray* /*pTargetSSA*/,
                                            const LRParams& params,
                                            const LRHitVector& hits)
 {
     // Set up stdaln data structures
-	size_t max_target = ((query.size() + 1) / 2 * params.match + params.gap_ext) / params.gap_ext + query.size(); // maximum possible target length
+	size_t max_target = calculateMaxTargetLength(query.size(), params);
+
     path_t* path = (path_t*)calloc(max_target + query.size(), sizeof(path_t));
     AlnParam par;
     int matrix[25];
@@ -1004,27 +1005,31 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
 
     for(size_t i = 0; i < hits.size(); ++i)
     {
-        std::string querySub = query.substr(hits[i].q_start, hits[i].q_end - hits[i].q_start);
+        LRHit tempHit = hits[i];
+        // The hit to the target may not be full length due to a poorly-aligning region at the beginning or end
+        // Attempt to extend the hit coordinates to full-length
+        std::string target = BWTAlgorithms::extractString(pTargetBWT, tempHit.targetID);
 
-        //printf("Alignment DP\n");
-        //printf("Target (%d), ID: (%d): %s\n", hits[i].position, hits[i].targetID, hits[i].targetString.c_str());
-        //printf("Query (%d): %s\n", hits[i].beg, querySub.c_str());
+        extendHitFullLength(tempHit, query, target, params, &par);
+
+        int q_start_pos, q_end_pos, t_start_pos, t_end_pos;
+        q_start_pos = tempHit.q_start;
+        q_end_pos = tempHit.q_end; // exclusive
+        t_start_pos = tempHit.t_start;
+        t_end_pos = t_start_pos + tempHit.length; // exclusive
+
+        // Extract query and target substrings 
+        std::string querySub = query.substr(q_start_pos, q_end_pos - q_start_pos);
+        std::string targetSub = target.substr(t_start_pos, t_end_pos - t_start_pos);
+
         // Convert strings to 0-3 representation, as needed by the stdaln routine
-        // STDALN uses the same representation as DNA_ALPHABET
+        // STDALN uses the same base->int mapping as DNA_ALPHABET
         int ql = querySub.size();
-        uint8_t* pQueryT = new uint8_t[ql];
+        uint8_t* pQueryT = createStdAlnPacked(querySub);
         
-        int tl = hits[i].targetString.size();
+        int tl = targetSub.size();
         assert(tl <= (int)max_target);
-
-        uint8_t* pTargetT = new uint8_t[hits[i].targetString.size()];
-    
-        for(int j = 0; j < ql; ++j)
-            pQueryT[j] = DNA_ALPHABET::getBaseRank(querySub[j]);
-
-        for(int j = 0; j < tl; ++j)
-            pTargetT[j] = DNA_ALPHABET::getBaseRank(hits[i].targetString[j]);
-
+        uint8_t* pTargetT = createStdAlnPacked(targetSub);
         
         int path_len = 0;
 		/*int score =*/ aln_global_core(pTargetT, tl, pQueryT, ql, &par, path, &path_len);
@@ -1033,11 +1038,11 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
         
         //
         MAlignData maData;
-        maData.str = hits[i].targetString;
-        maData.position = hits[i].q_start;
+        maData.str = targetSub;
+        maData.position = q_start_pos;
         maData.targetID = hits[i].targetID;
         maData.targetAlignLength = tl;
-        maData.targetPosition = hits[i].t_start;
+        maData.targetPosition = t_start_pos;
 
         // Build cigar string
         // Add initial padding
@@ -1047,6 +1052,13 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
         for (int j = 0; j != cigarLen; ++j)
             maData.expandedCigar.append(pCigar[j]>>4, "MID"[pCigar[j]&0xf]);
 
+        
+        printf("AlignmentDP (%zu)\n", hits[i].targetID);
+        printf("Coords: q[%d, %d] t[%d, %d]\n", q_start_pos, q_end_pos, t_start_pos, t_end_pos);
+        printf("Q: %s\n", querySub.c_str());
+        printf("T: %s\n", targetSub.c_str());
+        printf("C: %s\n", maData.expandedCigar.c_str());
+        
         mAlignVec.push_back(maData);
 
         delete [] pQueryT;
@@ -1059,6 +1071,78 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
     
     return MultiAlignment(query, mAlignVec);
 }
+
+// Attempt to extend a hit to the left and right using aln_extend_core
+// from stdaln
+void extendHitFullLength(LRHit& hit, const std::string& query, 
+                         const std::string& target, const LRParams& /*params*/, AlnParam* pStdAlnPar)
+{
+    int q_length = query.size();
+    int q_start = hit.q_start;
+    int q_end = hit.q_end; // exclusive
+    int t_start = hit.t_start;
+    int t_end = t_start + hit.length; // exclusive
+    int t_length = target.length();
+
+    // Attempt left-extension
+    if(t_start != 0 && q_start != 0)
+    {
+        int q_diff = q_start;
+        int t_diff = t_start;
+        int d = std::min(q_diff, t_diff);
+        q_start -= d;
+        t_start -= d;
+    }
+
+    // Attempt right-extension
+    if(q_end < q_length && t_end < t_length)
+    {
+        std::cout << "HIT TO " << hit.targetID << " NEEDS RIGHT EXTEND\n";
+        
+        // extension match lengths
+        int tel = t_length - t_start;
+        int qel = q_length - q_start;
+        uint8_t* pTargetPacked = createStdAlnPacked(target.substr(t_start));
+        uint8_t* pQueryPacked = createStdAlnPacked(query.substr(q_start));
+        std::cout << "TER: " << target.substr(t_start) << "\n";
+        std::cout << "QER: " << query.substr(t_start) << "\n";
+        path_t path;
+        int score = aln_extend_core(pTargetPacked, tel, pQueryPacked, qel, pStdAlnPar, &path, 0, hit.G, NULL);
+        std::cout << "Old score: " << hit.G << " new score: " << score << "\n";
+        if(score > hit.G)
+        {
+            printf("Old len: %d New len: %d\n", hit.length, path.i);
+            hit.G = score;
+            hit.length = path.i;
+            hit.q_end = path.j + hit.q_start;
+        }
+
+        delete [] pTargetPacked;
+        delete [] pQueryPacked;
+    }
+}
+
+// Convert a std::string into the stdAln required packed format.
+// This function allocates memory which the caller must free
+uint8_t* createStdAlnPacked(const std::string& s, size_t start, size_t length)
+{
+    if(length == std::string::npos)
+        length = s.size();
+    assert(length <= s.size());
+
+    uint8_t* pBuffer = new uint8_t[length];
+    for(size_t j = 0; j < length; ++j)
+        pBuffer[j] = DNA_ALPHABET::getBaseRank(s[start + j]);
+    return pBuffer;
+}
+
+// Calculate the maximum target length for a query of length ql
+size_t calculateMaxTargetLength(int ql, const LRParams& params)
+{
+    size_t mt = ((ql + 1) / 2 * params.match + params.gap_ext) / params.gap_ext + ql; // maximum possible target length
+    return mt;
+}
+
 
 // Convert a dynamic programming path to a set of padded strings
 // Algorithm ported from stdaln.c:aln_stdaln_aux
