@@ -54,7 +54,7 @@ bool LRCell::hasUninitializedChild() const
 }
 
 // Implementation of bwa-sw algorithm.
-// Roughly follows Heng Li's code
+// Roughly follows Heng Li's implementation 
 void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const SampledSuffixArray* pTargetSSA, const LRParams& params)
 {
     // Construct an FM-index of the query sequence
@@ -96,8 +96,6 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     x.G = 0;
     x.interval.lower = 0;
     x.interval.upper = pTargetBWT->getBWLen() - 1;
-    x.t_len = 0;
-    x.q_len = 0;
 
     pInitial->cells.push_back(x);
     stack.push(pInitial);
@@ -110,7 +108,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
         
         size_t old_n = v->cells.size();
 
-        // TODO: bandwidth test and max depth
+        // TODO: bandwidth test and max depth ?
         
         // Descend into the children of the current dawg node
         // If the interval update succeeds, calculate scores between
@@ -197,7 +195,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                     x.t_len = p->t_len;
                     u->cells.push_back(x);
 
-                    // TODO: some heap stuff?
+                    // TODO: heap heuristics from bwa-sw?
                 }
 
                 // Check if we should descend into another node of the prefix trie of the target
@@ -244,7 +242,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             if(!u->cells.empty())
             {
                 saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, positionHitsVector);
-                //saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
+                saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
             }
 
             // Update the stack by adding u or pushing it to the pending vector

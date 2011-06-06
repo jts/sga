@@ -74,7 +74,7 @@ struct LRParams
     CutAlgorithm cutTailAlgorithm;
 };
 
-//
+// Structure holding an alignment between a query sequence and a BWT of a collection of sequences
 struct LRHit
 {
     LRHit() : interval(0,-1), flag(0), num_seeds(0), targetID(-1), position(-1), length(0), G(0), G2(0), beg(0), end(0) {}
@@ -103,7 +103,8 @@ struct LRHit
 };
 typedef std::vector<LRHit> LRHitVector;
 
-// Structure holding the score between 
+// Structure holding the score between a node of the prefix DAWG of the query
+// and the prefix trie of the target
 struct LRCell
 {
     // Functions
@@ -140,28 +141,37 @@ struct LRCell
     // 
     std::string revTargetString;
 };
-
 typedef std::vector<LRCell> LRCellVector;
-typedef HashMap<uint64_t, uint64_t> LRHash;
 
 //
+typedef HashMap<uint64_t, uint64_t> LRHash;
+
+// A stack entry holds the an interval into the query BWT
+// and an array of cells with the scores for that interval
 struct LRStackEntry
 {
     BWTInterval interval;
     LRCellVector cells;
 };
 
+//
 typedef std::stack<LRStackEntry*> LRStack;
 typedef std::vector<LRStackEntry*> LRPendingVector;
 
-//
-void initializeDAWGHash(BWT* pQueryBWT, LRHash& dawgHash);
-
-// Align sequence query to all the sequences in pTargetBWT
+// Core alignment function - align the sequence query 
+// against all sequences in pTargetBWT
 void bwaswAlignment(const std::string& query, 
                     const BWT* pTargetBWT, 
                     const SampledSuffixArray* pTargetSSA,
                     const LRParams& params);
+
+//
+// Helper functions
+//
+
+// Initialize a hash table of BWT intervals representing
+// the nodes in a DAWG
+void initializeDAWGHash(BWT* pQueryBWT, LRHash& dawgHash);
 
 // Merge the cells of the two stack entries
 void mergeStackEntries(LRStackEntry* u, LRStackEntry* v);
@@ -174,7 +184,7 @@ int updateStack(LRStack* pStack,
                 LRHash* pDawgHash, 
                 const LRParams& params);
 
-//
+// Cull duplicated cells in the given stack entry
 void removeDuplicateCells(LRStackEntry* u, LRHash& hash);
 
 // Filter duplicated hits from hitsVector using their position on the query sequence
