@@ -24,7 +24,7 @@
 #include "ErrorCorrectProcess.h"
 #include "CorrectionThresholds.h"
 #include "KmerDistribution.h"
-#include "LRAlignment.h"
+#include "LRCorrection.h"
 
 //
 // Getopt
@@ -112,7 +112,7 @@ int correctLongMain(int argc, char** argv)
     while(reader.get(record))
     {
         std::cout << "Aligning sequence " << record.id << "\n";
-        LRAlignment::bwaswAlignment(record.seq.toString(), pBWT, pSSA, params);
+        LRCorrection::correctLongRead(record.seq.toString(), pBWT, pSSA, params);
         totalSize += record.seq.length();
     }
 

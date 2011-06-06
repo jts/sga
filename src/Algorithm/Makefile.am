@@ -24,4 +24,6 @@ libalgorithm_a_SOURCES = \
         FMMergeProcess.h FMMergeProcess.cpp \
         StatsProcess.h StatsProcess.cpp \
         ClusterProcess.h ClusterProcess.cpp \
-        LRAlignment.h LRAlignment.cpp
+        LRAlignment.h LRAlignment.cpp \
+        LRCorrection.h LRCorrection.cpp
+

@@ -241,7 +241,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             // Save high-scoring cells as hits
             if(!u->cells.empty())
             {
-                saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, positionHitsVector);
+                //saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, positionHitsVector);
                 saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
             }
 
