@@ -25,7 +25,7 @@
 #include "CorrectionThresholds.h"
 #include "KmerDistribution.h"
 #include "LRCorrection.h"
-
+      
 //
 // Getopt
 //
@@ -96,7 +96,7 @@ int correctLongMain(int argc, char** argv)
     parseCorrectLongOptions(argc, argv);
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
-    //BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
+    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pSSA = new SampledSuffixArray(opt::prefix + SSA_EXT);
 
     LRAlignment::LRParams params;
@@ -106,17 +106,24 @@ int correctLongMain(int argc, char** argv)
     if(opt::cutAlgorithm != LRAlignment::LRCA_DEFAULT)
         params.cutTailAlgorithm = opt::cutAlgorithm;
 
+    Timer timer("correct-long", false);
     size_t totalSize = 0;
+    size_t totalReads = 0;
+
     SeqRecord record;
     SeqReader reader(opt::readsFile);
     while(reader.get(record))
     {
-        std::cout << "Aligning sequence " << record.id << "\n";
-        LRCorrection::correctLongRead(record.seq.toString(), pBWT, pSSA, params);
-        totalSize += record.seq.length();
+        for(size_t i = 0; i < 1; ++i)
+        {
+            std::cout << "Aligning sequence " << record.id << "\n";
+            LRCorrection::correctLongRead(record.seq.toString(), pBWT, pRBWT, pSSA, params);
+            totalSize += record.seq.length();
+            totalReads += 1;
+        }
     }
 
-    printf("Aligned %zu bases (%.2lf Mbp)\n", totalSize, (double)totalSize / 1000000);
+    printf("Aligned %zu reads (%zu bases, %.2lf Mbp) in %.2lfs\n", totalReads, totalSize, (double)totalSize / 1000000, timer.getElapsedWallTime());
 
     delete pBWT;
     //delete pRBWT;

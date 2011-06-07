@@ -8,11 +8,25 @@
 // correcting long reads with a set of short reads
 //
 #include "LRCorrection.h"
+#include "StringBuilder.h"
 
 std::string LRCorrection::correctLongRead(const std::string& query,
                                           const BWT* pTargetBWT, 
+                                          const BWT* pRevTargetBWT, 
                                           const SampledSuffixArray* pTargetSSA,
                                           const LRAlignment::LRParams& params)
+{
+    if(0)
+        return correctAlignment(query, pTargetBWT, pTargetSSA, params);
+    else
+        return correctGraphThread(query, pTargetBWT, pRevTargetBWT, pTargetSSA, params);
+}
+
+// Correct the read using an alignment-based approach
+std::string LRCorrection::correctAlignment(const std::string& query,
+                                           const BWT* pTargetBWT, 
+                                           const SampledSuffixArray* pTargetSSA,
+                                           const LRAlignment::LRParams& params)
 {
     LRAlignment::LRHitVector hits;
     LRAlignment::bwaswAlignment(query, pTargetBWT, pTargetSSA, params, hits);
@@ -20,9 +34,68 @@ std::string LRCorrection::correctLongRead(const std::string& query,
     std::string consensus = ma.generateConsensus();
     
     addOverlappingHits(query, pTargetBWT, pTargetSSA, params, hits);
-    //ma.print(&consensus);
 
     return query;
+}
+
+// Attempt to correct the sequence via threading through a graph
+std::string LRCorrection::correctGraphThread(const std::string& query,
+                                             const BWT* pTargetBWT, 
+                                             const BWT* pRevTargetBWT, 
+                                             const SampledSuffixArray* /*pTargetSSA*/,
+                                             const LRAlignment::LRParams& /*params*/)
+{
+    int kmer = 61;
+    int seedPosition = -1;
+    std::string seed = findSeedStringNaive(query, pTargetBWT, kmer, seedPosition);
+    std::string querySub = query.substr(seedPosition);
+
+    if(!seed.empty())
+    {
+        StringBuilder stringBuilder(seed, kmer, pTargetBWT, pRevTargetBWT);
+        int extendCount = query.size() - kmer;
+
+        int cullDistance = 20;
+        int distanceFromLastCull = 0;
+        while(extendCount--)
+        {
+            stringBuilder.extendOnce();
+            distanceFromLastCull += 1;
+            if(distanceFromLastCull == cullDistance)
+            {
+                stringBuilder.cull(querySub, 20);
+                distanceFromLastCull = 0;
+            }
+        }
+        stringBuilder.cull(querySub, 2);
+        //stringBuilder.print(querySub);
+    }
+    else
+    {
+        std::cout << "No seed string found\n";
+    }
+    return query;
+}
+
+//
+std::string LRCorrection::findSeedStringNaive(const std::string& query,
+                                              const BWT* pTargetBWT, 
+                                              int k,
+                                              int& position)
+{
+    for(size_t i = 0; i < query.size() - k + 1; ++i)
+    {
+        std::string kmer = query.substr(i, k);
+        size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, pTargetBWT);
+        if(count > 0)
+        {
+            position = i;
+            std::cout << "SEED: " << kmer << " c: " << count << " p: " << position << "\n";
+            return kmer;
+        }
+    }
+    std::string empty;
+    return empty;
 }
 
 // Search pTargetBWT for sequences that overlap the current set of hits
