@@ -81,8 +81,15 @@ ThreadWorker<Input, Output, Processor>::ThreadWorker(sem_t* pReadySem,
     m_sharedOutputVector.reserve(max_items);
 
     // Set up semaphores and mutexes
-    sem_init( &m_producedSem, PTHREAD_PROCESS_PRIVATE, 0 );
-    int ret = pthread_mutex_init(&m_mutex, NULL);
+    int ret = sem_init( &m_producedSem, PTHREAD_PROCESS_PRIVATE, 0 );
+    if(ret != 0)
+    {
+        std::cerr << "Semaphore initialization failed with error " << ret << "\n";
+        std::cerr << "You are probably running on OSX which does not provide unnamed semaphores\n";
+        exit(EXIT_FAILURE);
+    }
+
+    ret = pthread_mutex_init(&m_mutex, NULL);
     if(ret != 0)
     {
         std::cerr << "Mutex initialization failed with error " << ret << ", aborting" << std::endl;

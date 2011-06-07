@@ -170,7 +170,13 @@ void parallel_mkqs(T* pData, int n, int numThreads, const PrimarySorter& primary
     // Create the semaphore used to signal that data is ready to be processed
     // Initial value is 1 as there is one item on the queue to start
     sem_t queue_sem;
-    sem_init( &queue_sem, PTHREAD_PROCESS_PRIVATE, 1 );
+    ret = sem_init( &queue_sem, PTHREAD_PROCESS_PRIVATE, 1 );
+    if(ret != 0)
+    {
+        std::cerr << "Semaphore initialization failed with error " << ret << "\n";
+        std::cerr << "You are probably running on OSX which does not provide unnamed semaphores\n";
+        exit(EXIT_FAILURE);
+    }
 
     // Create the semaphore indicating a thread is finished working.
     // This semaphore is incremented by the threads in their run loop
@@ -180,7 +186,13 @@ void parallel_mkqs(T* pData, int n, int numThreads, const PrimarySorter& primary
     // semaphore value equals the total number of threads, 
     // no more work can remain the the threads are cleaned up
     sem_t done_sem;
-    sem_init( &done_sem, PTHREAD_PROCESS_PRIVATE, 0 );
+    ret = sem_init( &done_sem, PTHREAD_PROCESS_PRIVATE, 0 );
+    if(ret != 0)
+    {
+        std::cerr << "Semaphore initialization failed with error " << ret << "\n";
+        std::cerr << "You are probably running on OSX which does not provide unnamed semaphores\n";
+        exit(EXIT_FAILURE);
+    }
 
     // Create and start the threads
     MkqsThread<T, PrimarySorter, FinalSorter>* threads[numThreads];

@@ -104,7 +104,13 @@ size_t processSequencesParallel(SeqReader& reader,
     for(int i = 0; i < numThreads; ++i)
     {
         semVec[i] = new sem_t;
-        sem_init( semVec[i], PTHREAD_PROCESS_PRIVATE, 0 );
+        int ret = sem_init( semVec[i], PTHREAD_PROCESS_PRIVATE, 0 );
+        if(ret != 0)
+        {
+            std::cerr << "Semaphore initialization failed with error " << ret << "\n";
+            std::cerr << "You are probably running on OSX which does not provide unnamed semaphores\n";
+            exit(EXIT_FAILURE);
+        }
 
         // Create and start the thread
         threadVec[i] = new Thread(semVec[i], processPtrVector[i], BUFFER_SIZE);
