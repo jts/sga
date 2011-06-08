@@ -12,7 +12,65 @@
 #include "StringBuilder.h"
 #include "BWTAlgorithms.h"
 #include "LRAlignment.h"
+#include "StdAlnTools.h"
 
+//
+// StringThreaderNode
+//
+StringThreaderNode::StringThreaderNode(const std::string& l, 
+                                       int tae, int qae, int as) : label(l),
+                                                                   target_alignment_end(tae),
+                                                                   query_alignment_end(qae),
+                                                                   alignment_score(as)
+{
+
+
+}
+
+// Delete the children of the node
+StringThreaderNode::~StringThreaderNode()
+{
+    for(STNodePtrList::iterator iter = m_children.begin(); iter != m_children.end(); ++iter)
+        delete *iter;
+}
+
+//
+void StringThreaderNode::printFullAlignment(const std::string* pQuery) const
+{
+    StdAlnTools::printGlobalAlignment(label, *pQuery);
+}
+
+//
+// StringTheader
+//
+StringThreader::StringThreader(const std::string& seed, 
+                               const std::string* pQuery, 
+                               int kmer, 
+                               const BWT* pBWT, 
+                               const BWT* pRevBWT) : m_pBWT(pBWT), m_pRevBWT(pRevBWT), 
+                                                     m_kmer(kmer), m_pQuery(pQuery)
+{
+    // Create the root node containing the seed string
+    WARN_ONCE("TODO: FIX INITIAL ALIGNMENT COORDINATES");
+    m_pRootNode = new StringThreaderNode(seed, seed.size(), seed.size(), 0);
+}
+
+//
+StringThreader::~StringThreader()
+{
+    // Recursively destroy the tree
+    delete m_pRootNode;
+}
+
+// Run the threading algorithm
+void StringThreader::run()
+{
+    m_pRootNode->printFullAlignment(m_pQuery);
+}
+
+//
+// String Builder. Deprecated
+//
 StringBuilder::StringBuilder(const std::string& seed, int kmer, const BWT* pBWT, const BWT* pRevBWT) : m_pBWT(pBWT), m_pRevBWT(pRevBWT), m_kmer(kmer)
 {
     m_strings.push_back(seed);
@@ -82,21 +140,12 @@ void StringBuilder::cull(const std::string& query, size_t n)
     LRAlignment::LRParams params;
     AlnParam par;
     int matrix[25];
-    par.matrix = matrix;
-
-    // Set matrix
-	for (size_t i = 0; i < 25; ++i) par.matrix[i] = -params.mismatch;	
-	for (size_t i = 0; i < 4; ++i) par.matrix[i*5+i] = params.match; 
-	par.gap_open = params.gap_open;
-    par.gap_ext = params.gap_ext;
-    par.gap_end = params.gap_ext;
-	par.row = 5; 
-    par.band_width = params.bandwidth;
+    StdAlnTools::setAlnParam(par, matrix, params.alnParams);
 
     // Make a packed version of the query
     IntVector scores;
 
-    uint8_t* pQueryT = LRAlignment::createStdAlnPacked(query);
+    uint8_t* pQueryT = StdAlnTools::createPacked(query);
     for(size_t i = 0; i < m_strings.size(); ++i)
     {
         // Skip deleted strings
@@ -104,7 +153,7 @@ void StringBuilder::cull(const std::string& query, size_t n)
         if(target.empty())
             continue;
 
-        uint8_t* pTargetT = LRAlignment::createStdAlnPacked(target);
+        uint8_t* pTargetT = StdAlnTools::createPacked(target);
         path_t path;
         int score = aln_extend_core(pTargetT, target.size(), pQueryT, query.size(), &par, &path, 0, 1, NULL);
         
@@ -150,24 +199,16 @@ void StringBuilder::print(const std::string& query) const
     // Set up alignment parameters
     //
     LRAlignment::LRParams params;
-	size_t max_target = LRAlignment::calculateMaxTargetLength(query.size(), params);
-    path_t* path = (path_t*)calloc(max_target + query.size(), sizeof(path_t));    
+	size_t max_target = StdAlnTools::calculateMaxTargetLength(query.size(), params.alnParams);
+    int max_path_length = max_target + query.size();
+    path_t* path = (path_t*)calloc(max_path_length, sizeof(path_t));    
 
     AlnParam par;
     int matrix[25];
-    par.matrix = matrix;
-
-    // Set matrix
-	for (size_t i = 0; i < 25; ++i) par.matrix[i] = -params.mismatch;	
-	for (size_t i = 0; i < 4; ++i) par.matrix[i*5+i] = params.match; 
-	par.gap_open = params.gap_open;
-    par.gap_ext = params.gap_ext;
-    par.gap_end = params.gap_ext;
-	par.row = 5; 
-    par.band_width = params.bandwidth;
+    StdAlnTools::setAlnParam(par, matrix, params.alnParams);
 
     // Make a packed version of the query
-    uint8_t* pQueryT = LRAlignment::createStdAlnPacked(query);
+    uint8_t* pQueryT = StdAlnTools::createPacked(query);
 
     MAlignDataVector mAlignVec;
     for(size_t i = 0; i < m_strings.size(); ++i)
@@ -179,9 +220,11 @@ void StringBuilder::print(const std::string& query) const
         //
         // Perform the alignment
         //
-        uint8_t* pTargetT = LRAlignment::createStdAlnPacked(target);
+        uint8_t* pTargetT = StdAlnTools::createPacked(target);
         int path_len = 0;
 		int score = aln_global_core(pTargetT, target.size(), pQueryT, query.size(), &par, path, &path_len);
+        assert(path_len <= max_path_length);
+
         int cigarLen = 0;
 		uint32_t* pCigar = aln_path2cigar32(path, path_len, &cigarLen);
         

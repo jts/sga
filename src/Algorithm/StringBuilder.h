@@ -12,7 +12,58 @@
 #ifndef STRING_BUILDER_H
 #define STRING_BUILDER_H
 
+#include <list>
 #include "BWT.h"
+
+// A node in the string threading tree
+class StringThreaderNode
+{
+    public:
+
+        // Functions
+        StringThreaderNode(const std::string& l, int tae, int qae, int as);
+        ~StringThreaderNode();
+
+        void printFullAlignment(const std::string* pQuery) const;
+
+        // Data
+        // The extension string from the parent
+        std::string label;
+
+        // The parent node, can be NULL
+        StringThreaderNode* pParent;
+        typedef std::list<StringThreaderNode*> STNodePtrList;
+        STNodePtrList m_children;
+
+        // The coordinates of the end of the alignment
+        // on the query string and the target thread up to this point
+        int target_alignment_end;
+        int query_alignment_end;
+
+        // The score of the alignment string
+        int alignment_score;
+};
+
+class StringThreader
+{
+    public:
+        StringThreader(const std::string& seed, 
+                       const std::string* pQuery, 
+                       int kmer,
+                       const BWT* pBWT, 
+                       const BWT* pRevBWT);
+        ~StringThreader();
+
+        void run();
+
+    private:
+        
+        const BWT* m_pBWT; 
+        const BWT* m_pRevBWT;
+        int m_kmer;
+        const std::string* m_pQuery;
+        StringThreaderNode* m_pRootNode;
+};
 
 class StringBuilder
 {

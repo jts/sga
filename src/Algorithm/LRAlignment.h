@@ -15,6 +15,7 @@
 #include "BWTAlgorithms.h"
 #include "HashMap.h"
 #include "MultiAlignment.h"
+#include "StdAlnTools.h"
 #include "stdaln.h"
 #include <stack>
 
@@ -38,13 +39,7 @@ struct LRParams
 
     void setDefaults()
     {
-        gap_open = 5;
-        gap_ext = 2;
-        mismatch = 3;
-        match = 1;
-        gap_open_extend = gap_open + gap_ext;
-        threshold = 30;
-        bandwidth = 50;
+        alnParams.setDefaults();
         zBest = 20;
         percentCutoff = 0.90f;
         cutTailAlgorithm = LRCA_Z_BEST_STRATA;
@@ -54,21 +49,11 @@ struct LRParams
     void setPacBio()
     {
         setDefaults();
-
-        gap_open = 2;
-        gap_ext = 1;
-        mismatch = 5;
-        gap_open_extend = gap_open + gap_ext;
+        alnParams.setPacBio();
     }
 
-    int gap_open;
-    int gap_ext;
-    int mismatch;
-    int match;
-    int gap_open_extend;
-    int threshold;
-    int bandwidth;
-    
+    GlobalAlnParams alnParams;
+
     // Cell filtering heuristics
     int zBest;
     double percentCutoff;
@@ -240,21 +225,6 @@ void cutTailByStratifiedZBest(LRStackEntry* u, const LRParams& params);
 void extendHitFullLength(LRHit& hit, uint8_t* pQueryPacked, uint8_t* pTargetPacked, 
                          int query_length, int target_length, AlnParam* pStdAlnPar);
 
-// Convert a dynamic programming path to a pair of padded strings representing the alignment
-void path2padded(const std::string& s1, 
-                 const std::string& s2, 
-                 std::string& out1, 
-                 std::string& out2, 
-                 std::string& outm, 
-                 path_t* path, 
-                 int path_len);
-
-// Convert a std::string into the stdAln required packed format.
-// This function allocates memory which the caller must free
-uint8_t* createStdAlnPacked(const std::string& s, size_t start = 0, size_t length = std::string::npos);
-
-// Calculate the maximum target length for a query of length ql
-size_t calculateMaxTargetLength(int ql, const LRParams& params);
 
 };
 

@@ -10,7 +10,7 @@
 #include "LRAlignment.h"
 #include "QuickBWT.h"
 #include "MultiAlignment.h"
-#include "stdaln.h"
+#include "StdAlnTools.h"
 
 //#define BWA_COMPAT_DEBUG 1
 //#define BWA_COMPAT_DEBUG_RESOLVE 1
@@ -151,7 +151,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                     c[2] = p;
                     c[3] = &v->cells[p->parent_idx];
 
-                    int match_score = qci == p->parent_cidx ? params.match : -params.mismatch;
+                    int match_score = qci == p->parent_cidx ? params.alnParams.match : -params.alnParams.mismatch;
                     int score = fillCells(params, match_score, c);
 
                     if(score > 0)
@@ -169,10 +169,10 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                 }
                 else
                 {
-                    if(p->D > p->G - params.gap_open)
-                        x.D = p->D - params.gap_ext; // extend gap
+                    if(p->D > p->G - params.alnParams.gap_open)
+                        x.D = p->D - params.alnParams.gap_ext; // extend gap
                     else
-                        x.D = p->G - params.gap_open_extend; // open a new gap
+                        x.D = p->G - params.alnParams.gap_open_extend; // open a new gap
 
                     if(x.D > 0)
                     {
@@ -198,7 +198,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                 }
 
                 // Check if we should descend into another node of the prefix trie of the target
-                if( (x.G > params.gap_open_extend /* && heap test */) || i < old_n)
+                if( (x.G > params.alnParams.gap_open_extend /* && heap test */) || i < old_n)
                 {
                     if(p->hasUninitializedChild())
                     {
@@ -239,7 +239,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             // Save high-scoring cells as hits
             if(!u->cells.empty())
             {
-                saveBestPositionHits(pQuerySA, u, params.threshold, positionHitsVector);
+                saveBestPositionHits(pQuerySA, u, params.alnParams.threshold, positionHitsVector);
                 //saveAllHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
                 //saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
             }
@@ -591,10 +591,10 @@ int fillCells(const LRParams& params, int match_score, LRCell* c[4])
 	int G = c[3] ? c[3]->G + match_score : MINUS_INF;
 	if(c[1]) 
     {
-		if(c[1]->I > c[1]->G - params.gap_open)
-            c[0]->I = c[1]->I - params.gap_ext; // extend gap
+		if(c[1]->I > c[1]->G - params.alnParams.gap_open)
+            c[0]->I = c[1]->I - params.alnParams.gap_ext; // extend gap
         else
-            c[0]->I = c[1]->G - params.gap_open_extend; // open new gap
+            c[0]->I = c[1]->G - params.alnParams.gap_open_extend; // open new gap
 		if (c[0]->I > G)
             G = c[0]->I; // new best score
 	} 
@@ -605,10 +605,10 @@ int fillCells(const LRParams& params, int match_score, LRCell* c[4])
 
 	if(c[2])
     {
-		if(c[2]->D > c[2]->G - params.gap_open)
-            c[0]->D = c[2]->D - params.gap_ext; // extend gap
+		if(c[2]->D > c[2]->G - params.alnParams.gap_open)
+            c[0]->D = c[2]->D - params.alnParams.gap_ext; // extend gap
         else
-            c[0]->D = c[2]->G - params.gap_open_extend; // open new gap
+            c[0]->D = c[2]->G - params.alnParams.gap_open_extend; // open new gap
 
 		if (c[0]->D > G) 
             G = c[0]->D; // new best score
@@ -1029,30 +1029,23 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
                                            const LRHitVector& hits)
 {
     // Set up stdaln data structures
-	size_t max_target = calculateMaxTargetLength(query.size(), params);
+	size_t max_target = StdAlnTools::calculateMaxTargetLength(query.size(), params.alnParams);
 
     path_t* path = (path_t*)calloc(max_target + query.size(), sizeof(path_t));
+    
     AlnParam par;
     int matrix[25];
-    par.matrix = matrix;
+    StdAlnTools::setAlnParam(par, matrix, params.alnParams);
 
-    // Set matrix
-	for (size_t i = 0; i < 25; ++i) par.matrix[i] = -params.mismatch;	
-	for (size_t i = 0; i < 4; ++i) par.matrix[i*5+i] = params.match; 
-	par.gap_open = params.gap_open;
-    par.gap_ext = params.gap_ext;
-    par.gap_end = params.gap_ext;
-	par.row = 5; 
-    par.band_width = params.bandwidth;
     MAlignDataVector mAlignVec;
-    uint8_t* pQueryT = createStdAlnPacked(query);
+    uint8_t* pQueryT = StdAlnTools::createPacked(query);
 
     for(size_t i = 0; i < hits.size(); ++i)
     {
         LRHit tempHit = hits[i];
         assert(tempHit.targetID != (uint64_t)-1);
         std::string target = BWTAlgorithms::extractString(pTargetBWT, tempHit.targetID);
-        uint8_t* pTargetT = createStdAlnPacked(target);
+        uint8_t* pTargetT = StdAlnTools::createPacked(target);
 
         //extendHitFullLength(tempHit, pQueryT, pTargetT, query.size(), target.size(), &par);
 
@@ -1147,58 +1140,6 @@ void extendHitFullLength(LRHit& hit, uint8_t* pQueryPacked, uint8_t* pTargetPack
     }
 }
 
-// Convert a std::string into the stdAln required packed format.
-// This function allocates memory which the caller must free
-uint8_t* createStdAlnPacked(const std::string& s, size_t start, size_t length)
-{
-    if(length == std::string::npos)
-        length = s.size();
-    assert(length <= s.size());
 
-    uint8_t* pBuffer = new uint8_t[length];
-    for(size_t j = 0; j < length; ++j)
-        pBuffer[j] = DNA_ALPHABET::getBaseRank(s[start + j]);
-    return pBuffer;
-}
-
-// Calculate the maximum target length for a query of length ql
-size_t calculateMaxTargetLength(int ql, const LRParams& params)
-{
-    size_t mt = ((ql + 1) / 2 * params.match + params.gap_ext) / params.gap_ext + ql; // maximum possible target length
-    return mt;
-}
-
-
-// Convert a dynamic programming path to a set of padded strings
-// Algorithm ported from stdaln.c:aln_stdaln_aux
-void path2padded(const std::string& s1, const std::string& s2, std::string& out1, std::string& out2, std::string& outm, path_t* path, int path_len)
-{
-    path_t* p = path + path_len;
-
-    out1.resize(path_len + 1, 'A');
-    out2.resize(path_len + 1, 'A');
-    outm.resize(path_len + 1, 'A');
-
-    for (int l = 0; p >= path; --p, ++l) {
-        switch (p->ctype) 
-        {
-            case FROM_M: 
-                out1[l] = s1[p->i]; 
-                out2[l] = s2[p->j];
-                outm[l] = (s1[p->i] == s2[p->j] /*&& s1[p->i] != ap->row*/)? '|' : ' ';
-                break;
-            case FROM_I: 
-                out1[l] = '-'; 
-                out2[l] = s2[p->j]; 
-                outm[l] = ' '; 
-                break;
-            case FROM_D: 
-                out1[l] = s1[p->i]; 
-                out2[l] = '-'; 
-                outm[l] = ' '; 
-                break;
-        }
-    }    
-}
 
 };

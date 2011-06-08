@@ -61,35 +61,9 @@ std::string LRCorrection::correctGraphThread(const std::string& query,
                                              const SampledSuffixArray* /*pTargetSSA*/,
                                              const LRAlignment::LRParams& /*params*/)
 {
-    int kmer = 61;
-    int seedPosition = -1;
-    std::string seed = findSeedStringNaive(query, pTargetBWT, kmer, seedPosition);
-    std::string querySub = query.substr(seedPosition);
-
-    if(!seed.empty())
-    {
-        StringBuilder stringBuilder(seed, kmer, pTargetBWT, pRevTargetBWT);
-        int extendCount = query.size() - kmer;
-
-        int cullDistance = 20;
-        int distanceFromLastCull = 0;
-        while(extendCount--)
-        {
-            stringBuilder.extendOnce();
-            distanceFromLastCull += 1;
-            if(distanceFromLastCull == cullDistance)
-            {
-                stringBuilder.cull(querySub, 20);
-                distanceFromLastCull = 0;
-            }
-        }
-        stringBuilder.cull(querySub, 2);
-        //stringBuilder.print(querySub);
-    }
-    else
-    {
-        std::cout << "No seed string found\n";
-    }
+    std::string seed = "GATTTCCAGCGCGCCATCGCCACAGGCAATCAGCAGTGGCGCAACAGAAATCACGCTCCCCGGCTGTGCTTTGCTGGCATG";
+    StringThreader threader(seed, &query, 51, pTargetBWT, pRevTargetBWT);
+    threader.run();
     return query;
 }
 
