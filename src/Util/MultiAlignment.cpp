@@ -219,7 +219,7 @@ void MultiAlignment::print(const std::string* pConsensus) const
 {
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
     size_t len = m_alignData[0].padded.size();
-    int col_size = 120;
+    int col_size = 140;
     for(size_t l = 0; l < len; l += col_size)
     {
         if(pConsensus != NULL)

@@ -80,7 +80,6 @@ struct LRHit
 {
     LRHit() : interval(0,-1), flag(0), num_seeds(0), targetID(-1), t_start(-1), length(0), G(0), q_start(0), q_end(0) {}
     BWTInterval interval;
-    std::string targetString;
 
     uint32_t flag;
     uint32_t num_seeds;
@@ -137,9 +136,6 @@ struct LRCell
 
     // Indices of the children in the cell array
     int children_idx[4];
-
-    // 
-    std::string revTargetString;
 };
 typedef std::vector<LRCell> LRCellVector;
 
@@ -208,13 +204,20 @@ int resolveDuplicateHitsByID(const BWT* pTargetBWT,
                              LRHitVector& hits, 
                              int IS);
 
+// Save the best hits at each position
+void saveBestPositionHits(const SuffixArray* pQuerySA, 
+                          LRStackEntry* u, 
+                          int threshold, 
+                          LRHitVector& hits);
+
+
 // add hits to the vector for cells that score above threshold
-void saveHits(const SuffixArray* pQuerySA, 
-              const SampledSuffixArray* pTargetSSA, 
-              const BWT* pTargetBWT, 
-              LRStackEntry* u, 
-              int threshold, 
-              LRHitVector& hits);
+void saveAllHits(const SuffixArray* pQuerySA, 
+                 const SampledSuffixArray* pTargetSSA, 
+                 const BWT* pTargetBWT, 
+                 LRStackEntry* u, 
+                 int threshold, 
+                 LRHitVector& hits);
 
 // save hits to cells that contain intervals that represent prefixes of reads
 void saveTerminalHits(const SuffixArray* pQuerySA, 

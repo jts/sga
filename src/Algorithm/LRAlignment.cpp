@@ -76,7 +76,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     // High scoring alignments are stored as LRHits in these vectors
     // positionHitsVector stores up to 2 hits starting at every base of the query sequence
     // terminalHitsVector stores hits to sequence prefixes 
-    LRHitVector positionHitsVector;//(2*query.size());
+    LRHitVector positionHitsVector(2*query.size());
     LRHitVector terminalHitsVector;
 
     // Each dawg node is added to the pendingVector initially
@@ -189,7 +189,6 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                     // set the remaining fields in the current cell
                     x.clearChildren();
                     x.parent_cidx = p->parent_cidx;
-                    x.revTargetString = p->revTargetString;
                     x.interval = p->interval;
                     x.q_len = p->q_len + 1;
                     x.t_len = p->t_len;
@@ -224,7 +223,6 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
                             y.q_len = p->q_len;
                             y.t_len = p->t_len + 1;
 
-                            y.revTargetString = p->revTargetString + target_child_base;
 
                             y.parent_idx = i;
                             y.clearChildren();
@@ -241,8 +239,9 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
             // Save high-scoring cells as hits
             if(!u->cells.empty())
             {
-                //saveHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, positionHitsVector);
-                saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
+                saveBestPositionHits(pQuerySA, u, params.threshold, positionHitsVector);
+                //saveAllHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
+                //saveTerminalHits(pQuerySA, pTargetSSA, pTargetBWT, u, params.threshold, terminalHitsVector);
             }
 
             // Update the stack by adding u or pushing it to the pending vector
@@ -351,11 +350,58 @@ int updateStack(LRStack* pStack,
     return change;
 }
 
+// Process a list of cells and save a best hit for each position
+void saveBestPositionHits(const SuffixArray* pQuerySA, LRStackEntry* u, int threshold, LRHitVector& hits)
+{
+    for(size_t i = 0; i < u->cells.size(); ++i)
+    {
+        LRCell* p = &u->cells[i];
+        if(p->G < threshold)
+            continue;
+        
+        for(int64_t k = u->interval.lower; k <= u->interval.upper; ++k)
+        {
+            // Calculate the beginning of the alignment using the suffix array
+            // of the query
+            SAElem e = pQuerySA->get(k);
+            int beg = e.getPos();
+            int end = beg + p->q_len;
+
+            // Save the best hit for alignments starting at beg in positions hits[2*beg]
+            // and the second best hit in hits[2*beg+1]
+            LRHit* q = NULL;
+            if(p->G > hits[beg*2].G)
+            {
+                // move the previous best to the second best slot
+                hits[beg*2+1] = hits[beg*2];
+                q = &hits[2*beg];
+            }
+            else if(p->G > hits[beg*2+1].G)
+            {
+                // the current hit is the second best at this position
+                q = &hits[2*beg+1];
+            }
+
+            if(q)
+            {
+                q->interval = p->interval;
+                q->length = p->t_len;
+                q->G = p->G;
+                q->q_start = beg;
+                q->q_end = end;
+                q->flag = 0;
+                q->num_seeds = 0;
+            }
+        }
+    }
+
+}
+
 
 // Process a list of cells and save alignment hits meeting the threshold
-void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*pTargetSSA*/,
-              const BWT* /*pTargetBWT*/, LRStackEntry* u, 
-              int threshold, LRHitVector& hits)
+void saveAllHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*pTargetSSA*/,
+                 const BWT* /*pTargetBWT*/, LRStackEntry* u, 
+                 int threshold, LRHitVector& hits)
 {
     for(size_t i = 0; i < u->cells.size(); ++i)
     {
@@ -381,7 +427,6 @@ void saveHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*pTargetSS
             q.q_end = end;
             q.flag = 0;
             q.num_seeds = 0;
-            q.targetString.assign(p->revTargetString.rbegin(), p->revTargetString.rend());
             hits.push_back(q);
         }
     }
@@ -420,7 +465,6 @@ void saveTerminalHits(const SuffixArray* pQuerySA, const SampledSuffixArray* /*p
                 q.q_end = end;
                 q.flag = 0;
                 q.num_seeds = 0;
-                q.targetString.assign(p->revTargetString.rbegin(), p->revTargetString.rend());
                 hits.push_back(q);
             }
         }
@@ -602,7 +646,6 @@ int resolveDuplicateHitsByID(const BWT* pTargetBWT, const SampledSuffixArray* pT
         {
             LRHit tmp = *p;
             SAElem elem = pTargetSSA->calcSA(k, pTargetBWT);
-            //std::cout << "Converted suffix array " << k << " to " << elem << " for " << p->targetString << " s: " << p->G << " b: " << p->beg << "\n";
             tmp.targetID = elem.getID();
             tmp.t_start = elem.getPos();
             tmp.interval.lower = 0;
@@ -1007,8 +1050,7 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
     for(size_t i = 0; i < hits.size(); ++i)
     {
         LRHit tempHit = hits[i];
-        // The hit to the target may not be full length due to a poorly-aligning region at the beginning or end
-        // Attempt to extend the hit coordinates to full-length
+        assert(tempHit.targetID != (uint64_t)-1);
         std::string target = BWTAlgorithms::extractString(pTargetBWT, tempHit.targetID);
         uint8_t* pTargetT = createStdAlnPacked(target);
 

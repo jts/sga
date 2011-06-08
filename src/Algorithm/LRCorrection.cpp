@@ -16,7 +16,7 @@ std::string LRCorrection::correctLongRead(const std::string& query,
                                           const SampledSuffixArray* pTargetSSA,
                                           const LRAlignment::LRParams& params)
 {
-    if(0)
+    if(1)
         return correctAlignment(query, pTargetBWT, pTargetSSA, params);
     else
         return correctGraphThread(query, pTargetBWT, pRevTargetBWT, pTargetSSA, params);
@@ -28,13 +28,29 @@ std::string LRCorrection::correctAlignment(const std::string& query,
                                            const SampledSuffixArray* pTargetSSA,
                                            const LRAlignment::LRParams& params)
 {
-    LRAlignment::LRHitVector hits;
-    LRAlignment::bwaswAlignment(query, pTargetBWT, pTargetSSA, params, hits);
+
+    size_t ss_length = 125;
+    size_t stride = 50;
+    for(size_t i = 0; i < query.size() - ss_length; i += stride)
+    {
+        if(query.size() < ss_length)
+            break;
+        std::string sub = query.substr(i, ss_length);
+    
+ //       std::string sub = query;
+        LRAlignment::LRHitVector hits;
+        LRAlignment::bwaswAlignment(sub, pTargetBWT, pTargetSSA, params, hits);
+        std::cout << "hits: " << hits.size() << "\n";
+        MultiAlignment ma = LRAlignment::convertHitsToMultiAlignment(sub, pTargetBWT, pTargetSSA, params, hits);
+        std::string consensus = ma.generateConsensus();
+        //addOverlappingHits(query, pTargetBWT, pTargetSSA, params, hits);        
+    }
+
+    /*
     MultiAlignment ma = LRAlignment::convertHitsToMultiAlignment(query, pTargetBWT, pTargetSSA, params, hits);
     std::string consensus = ma.generateConsensus();
-    
     addOverlappingHits(query, pTargetBWT, pTargetSSA, params, hits);
-
+    */
     return query;
 }
 
