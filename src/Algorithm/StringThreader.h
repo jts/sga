@@ -38,8 +38,14 @@ class StringThreaderNode
         // Returns a pointer to the created node
         StringThreaderNode* createChild(const std::string& label);
 
+        // Extend the label of this node by l
+        void extend(const std::string& ext);
+
         // Return a suffix of length l of the string represented by this branch
         std::string getSuffix(size_t l) const;
+
+        // Return the complete of this branch including all the parent's labels
+        std::string getFullString() const;
 
     private:
         
@@ -70,7 +76,10 @@ class StringThreader
         
         // Functions
         void extendLeaves();
-        void performExtension(StringThreaderNode* pNode);
+
+        // Perform a 1-base extension of the node
+        // Returns true if the node has a branch
+        StringVector getDeBruijnExtensions(StringThreaderNode* pNode);
 
         // Data
         const BWT* m_pBWT; 

@@ -16,7 +16,7 @@ std::string LRCorrection::correctLongRead(const std::string& query,
                                           const SampledSuffixArray* pTargetSSA,
                                           const LRAlignment::LRParams& params)
 {
-    if(0)
+    if(1)
         return correctAlignment(query, pTargetBWT, pTargetSSA, params);
     else
         return correctGraphThread(query, pTargetBWT, pRevTargetBWT, pTargetSSA, params);

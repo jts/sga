@@ -49,6 +49,15 @@ std::string StringThreaderNode::getSuffix(size_t l) const
     }
 }
 
+// Return a suffix of length l of the string represented by this branch
+std::string StringThreaderNode::getFullString() const
+{
+    if(pParent == NULL)
+        return label;
+    else
+        return pParent->getFullString() + label;
+}
+
 // Create a child node
 StringThreaderNode* StringThreaderNode::createChild(const std::string& label)
 {
@@ -57,10 +66,17 @@ StringThreaderNode* StringThreaderNode::createChild(const std::string& label)
     return pAdded;
 }
 
+// Extend the label of this node
+void StringThreaderNode::extend(const std::string& ext)
+{
+    label.append(ext);
+}
+
 //
 void StringThreaderNode::printFullAlignment(const std::string* pQuery) const
 {
-    StdAlnTools::printGlobalAlignment(label, *pQuery);
+    std::string fullString = getFullString();
+    StdAlnTools::printGlobalAlignment(fullString, *pQuery);
 }
 
 //
@@ -89,23 +105,88 @@ StringThreader::~StringThreader()
 void StringThreader::run()
 {
     // Extend the leaf nodes
-    extendLeaves();
+    int count = 100;
+    while(count-- > 0)
+        extendLeaves();
 }
 
 // Extend each leaf node
 void StringThreader::extendLeaves()
 {
+    std::cout << "****Extension***\n\n";
+    STNodePtrList newLeaves;
     for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
-        performExtension(*iter);
+        std::cout << "LEAF BEFORE EXTENSION\n";
+        (*iter)->printFullAlignment(m_pQuery);
+
+        StringVector extensions = getDeBruijnExtensions(*iter);
+
+        // Either extend the current node or branch it
+        // If no extension, do nothing so this node
+        // is no longer marked a leaf
+        if(extensions.size() == 1)
+        {
+            // Single extension, do not branch
+            (*iter)->extend(extensions.front());
+            newLeaves.push_back(*iter);
+        }
+        else if(extensions.size() > 1)
+        {
+            // Branch
+            for(size_t i = 0; i < extensions.size(); ++i)
+            {
+                StringThreaderNode* pAdded = (*iter)->createChild(extensions[i]);
+                newLeaves.push_back(pAdded);
+            }
+        }
     }
+
+    m_leaves = newLeaves;
 }
 
 // Extend a leaf node, possibly creating a branch
-void StringThreader::performExtension(StringThreaderNode* pNode)
+StringVector StringThreader::getDeBruijnExtensions(StringThreaderNode* pNode)
 {
     // Get the last k-1 bases of the node
     std::string pmer = pNode->getSuffix(m_kmer - 1);
-    assert(!pmer.empty());
-    std::cout << "PMER: " << pmer << "\n";
+    assert((int)pmer.size() == m_kmer - 1);
+    std::string rc_pmer = reverseComplement(pmer);
+
+    // Get an interval for the p-mer and its reverse complement
+    BWTIntervalPair ip = BWTAlgorithms::findIntervalPair(m_pBWT, m_pRevBWT, pmer);
+    BWTIntervalPair rc_ip = BWTAlgorithms::findIntervalPair(m_pBWT, m_pRevBWT, rc_pmer);
+
+    // Get the extension bases
+    AlphaCount64 extensions;
+    AlphaCount64 rc_extensions;
+    if(ip.interval[1].isValid())
+        extensions += BWTAlgorithms::getExtCount(ip.interval[1], m_pRevBWT);
+    if(rc_ip.interval[1].isValid())
+        rc_extensions = BWTAlgorithms::getExtCount(rc_ip.interval[0], m_pBWT);
+    rc_extensions.complement();
+    extensions += rc_extensions;
+
+    // Loop over the DNA symbols, if there is are more than two characters create a branch
+    // otherwise just perform an extension.
+    bool hasExtension = extensions.hasDNAChar();
+
+    StringVector out;
+    if(hasExtension)
+    {
+        for(int i = 0; i < DNA_ALPHABET::size; ++i)
+        {
+            char b = DNA_ALPHABET::getBase(i);
+            if(extensions.get(b) > 0)
+            {
+                // extend to b
+                std::string tmp;
+                tmp.append(1,b);
+                out.push_back(tmp);
+            }
+        }
+    }
+
+    // If the node branched, return true so the outer function can remove it from the leaf list
+    return out;
 }
