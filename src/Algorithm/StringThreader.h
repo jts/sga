@@ -1,11 +1,13 @@
-///-----------------------------------------------
+///----------------------------------------------
 // Copyright 2011 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
 // Released under the GPL
 //-----------------------------------------------
 //
-// StringBuilder - Iteratively construct strings
-// that represent sequences in an assembly graph.
+// StringThreader - Iteratively construct a
+// set of strings by threading a query sequence
+// through a graph.
+//
 // The assembly graph is abstractly represented as
 // an FM-index.
 //
@@ -15,33 +17,39 @@
 #include <list>
 #include "BWT.h"
 
+// Typedefs
+class StringThreaderNode;
+
+typedef std::list<StringThreaderNode*> STNodePtrList;
+
 // A node in the string threading tree
 class StringThreaderNode
 {
+
     public:
 
         // Functions
-        StringThreaderNode(const std::string& l, int tae, int qae, int as);
+        StringThreaderNode(const std::string& l, StringThreaderNode* parent);
         ~StringThreaderNode();
 
         void printFullAlignment(const std::string* pQuery) const;
+        
+        // Add a child node to this node with the given label
+        // Returns a pointer to the created node
+        StringThreaderNode* createChild(const std::string& label);
 
+        // Return a suffix of length l of the string represented by this branch
+        std::string getSuffix(size_t l) const;
+
+    private:
+        
         // Data
         // The extension string from the parent
         std::string label;
 
         // The parent node, can be NULL
         StringThreaderNode* pParent;
-        typedef std::list<StringThreaderNode*> STNodePtrList;
         STNodePtrList m_children;
-
-        // The coordinates of the end of the alignment
-        // on the query string and the target thread up to this point
-        int target_alignment_end;
-        int query_alignment_end;
-
-        // The score of the alignment string
-        int alignment_score;
 };
 
 class StringThreader
@@ -52,42 +60,25 @@ class StringThreader
                        int kmer,
                        const BWT* pBWT, 
                        const BWT* pRevBWT);
+
         ~StringThreader();
 
+        // Run the threading process
         void run();
 
     private:
         
+        // Functions
+        void extendLeaves();
+        void performExtension(StringThreaderNode* pNode);
+
+        // Data
         const BWT* m_pBWT; 
         const BWT* m_pRevBWT;
         int m_kmer;
         const std::string* m_pQuery;
         StringThreaderNode* m_pRootNode;
-};
-
-class StringBuilder
-{
-    public:
-        StringBuilder(const std::string& seed, int kmer, const BWT* pBWT, const BWT* pRevBWT);
-
-        // Perform one round of extension for all the strings
-        void extendOnce();
-
-        // Remove all strings but the top n scoring
-        void cull(const std::string& query, size_t n);
-
-        // Print the set of strings created
-        void print() const;
-        void print(const std::string& query) const;
-
-    private:
-
-        //
-        const BWT* m_pBWT; 
-        const BWT* m_pRevBWT;
-
-        StringVector m_strings;
-        int m_kmer;
+        STNodePtrList m_leaves;
 };
 
 #endif

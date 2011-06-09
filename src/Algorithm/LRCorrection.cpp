@@ -8,7 +8,7 @@
 // correcting long reads with a set of short reads
 //
 #include "LRCorrection.h"
-#include "StringBuilder.h"
+#include "StringThreader.h"
 
 std::string LRCorrection::correctLongRead(const std::string& query,
                                           const BWT* pTargetBWT, 
@@ -16,7 +16,7 @@ std::string LRCorrection::correctLongRead(const std::string& query,
                                           const SampledSuffixArray* pTargetSSA,
                                           const LRAlignment::LRParams& params)
 {
-    if(1)
+    if(0)
         return correctAlignment(query, pTargetBWT, pTargetSSA, params);
     else
         return correctGraphThread(query, pTargetBWT, pRevTargetBWT, pTargetSSA, params);

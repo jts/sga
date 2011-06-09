@@ -26,5 +26,5 @@ libalgorithm_a_SOURCES = \
         ClusterProcess.h ClusterProcess.cpp \
         LRAlignment.h LRAlignment.cpp \
         LRCorrection.h LRCorrection.cpp \
-        StringBuilder.h StringBuilder.cpp
+        StringThreader.h StringThreader.cpp
 

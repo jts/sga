@@ -126,7 +126,7 @@ int correctLongMain(int argc, char** argv)
     printf("Aligned %zu reads (%zu bases, %.2lf Mbp) in %.2lfs\n", totalReads, totalSize, (double)totalSize / 1000000, timer.getElapsedWallTime());
 
     delete pBWT;
-    //delete pRBWT;
+    delete pRBWT;
     delete pSSA;
 
     if(opt::numThreads > 1)
