@@ -233,6 +233,40 @@ double ExtensionDP::calculateLocalEditPercentage(const BandedDPColumn* pColumn, 
     return static_cast<double>(numDiffs) / alignLength;
 }
 
+//
+//
+double ExtensionDP::calculateGlobalEditPercentage(const BandedDPColumn* pColumn)
+{
+    // Get the row with in the start column with the best score
+    int rowIdx = pColumn->getBestRowIndex();
+    assert(rowIdx != -1);
+    int colIdx = pColumn->getColIdx();
+    int startScore = pColumn->getRowScore(rowIdx);
+
+    int alignLength = 1;
+    while(rowIdx != 0 && colIdx != 0)
+    {
+        char ctype = pColumn->getRowType(rowIdx);
+        switch(ctype)
+        {
+   			case FROM_M: 
+                pColumn = pColumn->getPreviousColumn();
+                --colIdx; 
+                --rowIdx; 
+                break;
+			case FROM_D: 
+                --rowIdx; 
+                break;
+			case FROM_I: 
+                pColumn = pColumn->getPreviousColumn();
+                --colIdx; 
+                break;
+        }
+        alignLength += 1;
+    }
+    return static_cast<double>(startScore) / alignLength;
+}
+
 // Calculate the best alignment through the matrix. Assumes that
 // path_t* is pre-allocated with max_path entries.
 void ExtensionDP::backtrack(const BandedDPColumn* pLastColumn, path_t* path, int* path_len, const int maxPathLength)

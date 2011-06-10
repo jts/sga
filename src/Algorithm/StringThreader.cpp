@@ -102,9 +102,15 @@ void StringThreaderNode::computeInitialAlignment(const std::string& initialLabel
     ExtensionDP::createInitialAlignment(m_label, m_pQuery->substr(0, queryAlignmentEnd), bandwidth, m_alignmentColumns);
 }
 
+//
 double StringThreaderNode::getLocalErrorRate(int context) const
 {
     return ExtensionDP::calculateLocalEditPercentage(m_alignmentColumns.back(), context);
+}
+
+double StringThreaderNode::getGlobalErrorRate() const
+{
+    return ExtensionDP::calculateGlobalEditPercentage(m_alignmentColumns.back());
 }
 
 //
@@ -112,14 +118,28 @@ void StringThreaderNode::printFullAlignment() const
 {
     std::string fullString = getFullString();
 
-    std::cout << "STDALN ALIGNMENT:\n";
-    StdAlnTools::printGlobalAlignment(*m_pQuery, fullString);
+//    std::cout << "STDALN ALIGNMENT:\n";
+//    StdAlnTools::printGlobalAlignment(*m_pQuery, fullString);
 
-    std::cout << "EXTENSIONDP ALIGNMENT:\n";
+//    std::cout << "EXTENSIONDP ALIGNMENT:\n";
     ExtensionDP::printAlignment(fullString, *m_pQuery, m_alignmentColumns.back());
 
     double localER = ExtensionDP::calculateLocalEditPercentage(m_alignmentColumns.back(), 20);
     printf("LocalER: %lf\n", localER);
+}
+
+//
+void StringThreaderNode::printAllStrings(const std::string& curr) const
+{
+    if(m_children.empty())
+    {
+        std::cout << "S: " << curr + m_label << "\n";
+    }
+    else
+    {
+        for(STNodePtrList::const_iterator iter = m_children.begin(); iter != m_children.end(); ++iter)
+            (*iter)->printAllStrings(curr + m_label);
+    }
 }
 
 //
@@ -152,6 +172,13 @@ void StringThreader::run()
     // Extend the leaf nodes
     while(!m_leaves.empty())
         extendLeaves();
+    printAll();
+}
+
+// Print the string represented by every node
+void StringThreader::printAll()
+{
+    m_pRootNode->printAllStrings("");
 }
 
 // Extend each leaf node
@@ -188,17 +215,34 @@ void StringThreader::extendLeaves()
     double threshold = 0.3f;
     // Calculate the local error rate of the alignments to each new leaf
     // If it is less than threshold, add the leaf to the node
+    std::cout << "***EXTENSION:\n";
     for(STNodePtrList::iterator iter = newLeaves.begin(); iter != newLeaves.end(); ++iter)
     {
         double ler = (*iter)->getLocalErrorRate(context);
+        double ger = (*iter)->getGlobalErrorRate();
+        printf("ger: %.2lf\n", ger);
+
         if(ler < threshold)
+        {
+            printf("Keeping leaf with ler: %.2lf ger: %.2lf\n", ler, ger);
             m_leaves.push_back(*iter);
+        }
         else
         {
-            printf("Culling leaf with ler: %.2lf\n", ler);
-            (*iter)->printFullAlignment();
+            printf("Culling leaf with ler: %.2lf ger: %.2lf\n", ler, ger);
+            
+            /*
+            static int boom = 20;
+            if(boom-- == 0)
+                exit(1);
+            */
         }
+        (*iter)->printFullAlignment();
     }
+
+    std::cout << "Leaves now: " << m_leaves.size() << "\n";
+    if(m_leaves.size() > 100)
+        exit(1);
 }
 
 // Extend a leaf node, possibly creating a branch

@@ -36,8 +36,12 @@ class StringThreaderNode
         // Print the alignment between this branch of the tree and the query
         void printFullAlignment() const;
         
+        // 
+        void printAllStrings(const std::string& curr) const;
+
         // Get the alignment error rate over the last context bases
         double getLocalErrorRate(int context) const;
+        double getGlobalErrorRate() const;
         
         // Add a child node to this node with the given label
         // Returns a pointer to the created node
@@ -88,6 +92,7 @@ class StringThreader
 
         // Run the threading process
         void run();
+        void printAll();
 
     private:
         
