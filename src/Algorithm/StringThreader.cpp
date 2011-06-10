@@ -19,11 +19,11 @@
 //
 // StringThreaderNode
 //
-StringThreaderNode::StringThreaderNode(const std::string& l, StringThreaderNode* parent) : label(l),
-                                                                                           pParent(parent)
+StringThreaderNode::StringThreaderNode(const std::string* pQuery,
+                                       StringThreaderNode* parent) : m_pQuery(pQuery),
+                                                                     m_pParent(parent)
 
 {
-
 
 }
 
@@ -42,31 +42,33 @@ StringThreaderNode::~StringThreaderNode()
 // Return a suffix of length l of the string represented by this branch
 std::string StringThreaderNode::getSuffix(size_t l) const
 {
-    size_t n = label.size();
+    size_t n = m_label.size();
     if(l <= n)
     {
-        return label.substr(n - l, l);
+        return m_label.substr(n - l, l);
     }
     else 
     {
-        assert(pParent != NULL);
-        return pParent->getSuffix(l - n) + label;
+        assert(m_pParent != NULL);
+        return m_pParent->getSuffix(l - n) + m_label;
     }
 }
 
 // Return a suffix of length l of the string represented by this branch
 std::string StringThreaderNode::getFullString() const
 {
-    if(pParent == NULL)
-        return label;
+    if(m_pParent == NULL)
+        return m_label;
     else
-        return pParent->getFullString() + label;
+        return m_pParent->getFullString() + m_label;
 }
 
 // Create a child node
 StringThreaderNode* StringThreaderNode::createChild(const std::string& label)
 {
-    StringThreaderNode* pAdded = new StringThreaderNode(label, this);
+    StringThreaderNode* pAdded = new StringThreaderNode(m_pQuery, this);
+    assert(!m_alignmentColumns.empty());
+    pAdded->computeExtendedAlignment(label, m_alignmentColumns.back());
     m_children.push_back(pAdded);
     return pAdded;
 }
@@ -74,22 +76,45 @@ StringThreaderNode* StringThreaderNode::createChild(const std::string& label)
 // Extend the label of this node
 void StringThreaderNode::extend(const std::string& ext)
 {
-    label.append(ext);
+    assert(!ext.empty());
+    assert(!m_alignmentColumns.empty());
+    computeExtendedAlignment(ext, m_alignmentColumns.back());
+}
+   
+void StringThreaderNode::computeExtendedAlignment(const std::string& ext, const BandedDPColumn* pPrevColumn)
+{
+    // Calculate a new alignment column for each base of the label
+    for(size_t i = 0; i < ext.size(); ++i)
+    {
+        BandedDPColumn* pNewColumn = ExtensionDP::createNewColumn(ext[i], *m_pQuery, pPrevColumn);
+        m_alignmentColumns.push_back(pNewColumn);
+        pPrevColumn = pNewColumn;
+    }
+    m_label.append(ext);
 }
 
 // Initialize the alignment columns
-void StringThreaderNode::initializeAlignment(const std::string* pQuery, int queryAlignmentEnd, int bandwidth)
+void StringThreaderNode::computeInitialAlignment(const std::string& initialLabel, int queryAlignmentEnd, int bandwidth)
 {
     // Create the initial alignment columnds between label and query
-    assert(!label.empty());
-    ExtensionDP::createInitialAlignment(label, pQuery->substr(0, queryAlignmentEnd), bandwidth, m_alignmentColumns);
+    m_label = initialLabel;
+    assert(!m_label.empty());
+    ExtensionDP::createInitialAlignment(m_label, m_pQuery->substr(0, queryAlignmentEnd), bandwidth, m_alignmentColumns);
 }
 
 //
-void StringThreaderNode::printFullAlignment(const std::string* pQuery) const
+void StringThreaderNode::printFullAlignment() const
 {
     std::string fullString = getFullString();
-    StdAlnTools::printGlobalAlignment(fullString, *pQuery);
+
+    std::cout << "STDALN ALIGNMENT:\n";
+    StdAlnTools::printGlobalAlignment(*m_pQuery, fullString);
+
+    std::cout << "EXTENSIONDP ALIGNMENT:\n";
+    ExtensionDP::printAlignment(fullString, *m_pQuery, m_alignmentColumns.back());
+
+    double localER = ExtensionDP::calculateLocalEditPercentage(m_alignmentColumns.back(), 20);
+    printf("LocalER: %lf\n", localER);
 }
 
 //
@@ -104,8 +129,8 @@ StringThreader::StringThreader(const std::string& seed,
                                                      m_kmer(kmer), m_pQuery(pQuery)
 {
     // Create the root node containing the seed string
-    m_pRootNode = new StringThreaderNode(seed, NULL);
-    m_pRootNode->initializeAlignment(pQuery, queryAlignmentEnd, 50);
+    m_pRootNode = new StringThreaderNode(pQuery, NULL);
+    m_pRootNode->computeInitialAlignment(seed, queryAlignmentEnd, 50);
     m_leaves.push_back(m_pRootNode);
 }
 
@@ -133,7 +158,7 @@ void StringThreader::extendLeaves()
     for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
         std::cout << "LEAF BEFORE EXTENSION\n";
-        (*iter)->printFullAlignment(m_pQuery);
+        (*iter)->printFullAlignment();
 
         StringVector extensions = getDeBruijnExtensions(*iter);
 

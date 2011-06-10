@@ -30,10 +30,10 @@ class StringThreaderNode
     public:
 
         // Functions
-        StringThreaderNode(const std::string& l, StringThreaderNode* parent);
+        StringThreaderNode(const std::string* pQuery, StringThreaderNode* parent);
         ~StringThreaderNode();
 
-        void printFullAlignment(const std::string* pQuery) const;
+        void printFullAlignment() const;
         
         // Add a child node to this node with the given label
         // Returns a pointer to the created node
@@ -43,7 +43,8 @@ class StringThreaderNode
         void extend(const std::string& ext);
 
         // Initialize the alignment columns. This function is for the root node.
-        void initializeAlignment(const std::string* pQuery, int queryAlignmentEnd, int bandwidth);
+        void computeInitialAlignment(const std::string& initialLabel, int queryAlignmentEnd, int bandwidth);
+        void computeExtendedAlignment(const std::string& ext, const BandedDPColumn* pPrevColumn);
 
         // Return a suffix of length l of the string represented by this branch
         std::string getSuffix(size_t l) const;
@@ -55,10 +56,13 @@ class StringThreaderNode
         
         // Data
         // The extension string from the parent
-        std::string label;
+        std::string m_label;
+
+        // The query string being threaded through the graph
+        const std::string* m_pQuery;
 
         // The parent node, can be NULL
-        StringThreaderNode* pParent;
+        StringThreaderNode* m_pParent;
         STNodePtrList m_children;
 
         // Alignment information between the label of this node and the query sequence

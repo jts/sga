@@ -30,12 +30,13 @@ inline int min3(int a, int b, int c)
     return std::min(std::min(a,b), c);
 }
 
-BandedDPColumn::BandedDPColumn(int ci, int maxRows, int bandWidth, const BandedDPColumn* prevColumn)
+BandedDPColumn::BandedDPColumn(int ci, int maxRows, int bandwidth, const BandedDPColumn* prevColumn)
 {
     // Calculate the lower and upper band indices
+    m_bandwidth = bandwidth; // the requested bandwidth, may be greater than actual
     m_colIdx = ci;
-    m_rowStartIdx = std::max(0, m_colIdx - (bandWidth / 2) - 1);
-    m_rowEndIdx = std::min(maxRows - 1, m_colIdx + (bandWidth / 2));
+    m_rowStartIdx = std::max(0, m_colIdx - (bandwidth / 2) - 1);
+    m_rowEndIdx = std::min(maxRows - 1, m_colIdx + (bandwidth / 2));
 
     int numRows = m_rowEndIdx - m_rowStartIdx + 1;
     m_cells.resize(numRows);
@@ -165,24 +166,33 @@ void ExtensionDP::createInitialAlignment(const std::string& extendable, const st
         pZeroCol->setRowScore(i, i, FROM_I);
 
     outPtrVec.push_back(pZeroCol);
-
+    BandedDPColumn* pPrevCol = outPtrVec.back();
     for(size_t colIdx = 1; colIdx < numCols; ++colIdx)
     {
-        BandedDPColumn* pPrevCol = outPtrVec[colIdx - 1];
-        BandedDPColumn* pCurrCol = new BandedDPColumn(colIdx, numRows, bandwidth, pPrevCol);
-
-        // Set the first row score
-        pCurrCol->setRowScore(0, colIdx, FROM_D);
-        
-        // Fill in the rest of the row
-        int startRow = std::max(1, pCurrCol->getMinRow());
-        for(int rowIdx = startRow; rowIdx <= pCurrCol->getMaxRow(); ++rowIdx)
-        {
-            int match_score = extendable[colIdx - 1] == fixed[rowIdx - 1] ? 0 : 1;
-            pCurrCol->fillRowEditDistance(rowIdx, match_score);
-        }
+        BandedDPColumn* pCurrCol = createNewColumn(extendable[colIdx - 1], fixed, pPrevCol);
         outPtrVec.push_back(pCurrCol);
+        pPrevCol = pCurrCol;
     }
+}
+
+//
+BandedDPColumn* ExtensionDP::createNewColumn(char b, const std::string& fixed, const BandedDPColumn* pPrevColumn)
+{
+    int numRows = fixed.size() + 1;
+    int colIdx = pPrevColumn->getColIdx() + 1;
+    BandedDPColumn* pCurrCol = new BandedDPColumn(colIdx, numRows, pPrevColumn->getBandwidth(), pPrevColumn);
+
+    // Set the first row score
+    pCurrCol->setRowScore(0, colIdx, FROM_D);
+    
+    // Fill in the rest of the rows
+    int startRow = std::max(1, pCurrCol->getMinRow());
+    for(int rowIdx = startRow; rowIdx <= pCurrCol->getMaxRow(); ++rowIdx)
+    {
+        int match_score = b == fixed[rowIdx - 1] ? 0 : 1;
+        pCurrCol->fillRowEditDistance(rowIdx, match_score);
+    }
+    return pCurrCol;
 }
 
 //
@@ -233,7 +243,7 @@ void ExtensionDP::backtrack(const BandedDPColumn* pLastColumn, path_t* path, int
 
     // Calculate the starting row and column
     int colIdx = pLastColumn->getColIdx();
-    int rowIdx = pLastColumn->getMaxRow();
+    int rowIdx = pLastColumn->getBestRowIndex();
     int pathLength = 0;
 
 

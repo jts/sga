@@ -16,7 +16,7 @@ std::string LRCorrection::correctLongRead(const std::string& query,
                                           const SampledSuffixArray* pTargetSSA,
                                           const LRAlignment::LRParams& params)
 {
-    if(1)
+    if(0)
         return correctAlignment(query, pTargetBWT, pTargetSSA, params);
     else
         return correctGraphThread(query, pTargetBWT, pRevTargetBWT, pTargetSSA, params);
@@ -63,7 +63,7 @@ std::string LRCorrection::correctGraphThread(const std::string& query,
 {
     std::string seed = "GATTTCCAGCGCGCCATCGCCACAGGCAATCAGCAGTGGCGCAACAGAAATCACGCTCCCCGGCTGTGCTTTGCTGGCATG";
     StringThreader threader(seed, &query, seed.size(), 51, pTargetBWT, pRevTargetBWT);
-    //threader.run();
+    threader.run();
     return query;
 }
 

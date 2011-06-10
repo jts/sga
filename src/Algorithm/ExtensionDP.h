@@ -28,10 +28,12 @@ typedef std::vector<DPCell> CellVector;
 class BandedDPColumn
 {
     public:
-        BandedDPColumn(int ci, int maxRows, int bandWidth, const BandedDPColumn* prevColumn);
+        BandedDPColumn(int ci, int maxRows, int bandwidth, const BandedDPColumn* prevColumn);
 
         //
         int getColIdx() const { return m_colIdx; }
+        int getBandwidth() const { return m_bandwidth; }
+
         int getRowScore(int row) const;
         char getRowType(int row) const;
         int getCellScore(int colIdx, int rowIdx) const;
@@ -57,6 +59,7 @@ class BandedDPColumn
         int m_maxRows;
         int m_rowStartIdx;
         int m_rowEndIdx;
+        int m_bandwidth;
         CellVector m_cells;
         const BandedDPColumn* m_pPrevColumn;
 };
@@ -67,6 +70,9 @@ namespace ExtensionDP
     // Initialize the extension DP by computing a global alignment between extendable and fixed
     // This function allocates memory and stores the created pointers in outPtrVec
     void createInitialAlignment(const std::string& extendable, const std::string& fixed, int bandwidth, BandedDPColumnPtrVector& outPtrVec);
+
+    // Create a new column, representing the extended alignment from pPrevColumn to char b
+    BandedDPColumn* createNewColumn(char b, const std::string& fixed, const BandedDPColumn* pPrevColumn);
 
     // Calculate the best alignment through the matrix. Assumes that
     // path_t* is pre-allocated with maxPathLength entries.
