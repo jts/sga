@@ -42,6 +42,9 @@ class BandedDPColumn
         //
         void setRowScore(int row, int score, char ctype);
         
+        // Returns the row index of the best scoring cell
+        int getBestRowIndex() const;
+
         // Calculate the score for the row and set it in the vector
         void fillRowEditDistance(int rowIdx, int matchScore);
 
@@ -66,6 +69,9 @@ namespace ExtensionDP
     // Calculate the best alignment through the matrix. Assumes that
     // path_t* is pre-allocated with maxPathLength entries.
     void backtrack(const BandedDPColumn* pLastColumn, path_t* path, int* pPathLen, const int maxPathLength);
+
+    // Calculate the edit percentage of the alignment starting from the given column, over the last numBases
+    double calculateLocalEditPercentage(const BandedDPColumn* pStartColumn, int numBases);
     
     // Print the alignment starting from the given column
     void printAlignment(const std::string& s1, const std::string& s2, const BandedDPColumn* pLastColumn);

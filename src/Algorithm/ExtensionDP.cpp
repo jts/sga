@@ -64,6 +64,23 @@ char BandedDPColumn::getRowType(int row) const
         return m_cells[vec_idx].ctype;
 }
 
+//
+int BandedDPColumn::getBestRowIndex() const
+{
+    int bestScore = POSITIVE_INF;
+    int bestIdx = -1;
+    for(int i = m_rowStartIdx; i <= m_rowEndIdx; ++i)
+    {
+        int s = getRowScore(i);
+        if(s < bestScore)
+        {
+            bestScore = s;
+            bestIdx = i;
+        }
+    }
+    return bestIdx;
+}
+
 // Return the pointer to the previous column
 const BandedDPColumn* BandedDPColumn::getPreviousColumn() const
 {
@@ -175,9 +192,55 @@ void ExtensionDP::initialize(const std::string& extendable, const std::string& f
     std::cout << "EDP: \n";
     printAlignment(extendable, fixed, m_columnPtrs.back());
 
+    for(size_t i = m_columnPtrs.size() - 10; i < m_columnPtrs.size(); ++i)
+    {
+        double ler = calculateLocalEditPercentage(m_columnPtrs[i], 20);
+        printf("Error rate (%zu): %lf\n", i, ler);
+    }
+
     // Delete the columns
     for(size_t i = 0; i < m_columnPtrs.size(); ++i)
         delete m_columnPtrs[i];
+}
+
+//
+//
+double ExtensionDP::calculateLocalEditPercentage(const BandedDPColumn* pColumn, int numBases)
+{
+    // Get the row with in the start column with the best score
+    int rowIdx = pColumn->getBestRowIndex();
+    assert(rowIdx != -1);
+    int colIdx = pColumn->getColIdx();
+    int startScore = pColumn->getRowScore(rowIdx);
+
+    printf("Start cell(%d %d) = %d\n", rowIdx, colIdx, startScore);
+    int alignLength = 1;
+    while(alignLength < numBases)
+    {
+        char ctype = pColumn->getRowType(rowIdx);
+        switch(ctype)
+        {
+   			case FROM_M: 
+                pColumn = pColumn->getPreviousColumn();
+                --colIdx; 
+                --rowIdx; 
+                break;
+			case FROM_D: 
+                --rowIdx; 
+                break;
+			case FROM_I: 
+                pColumn = pColumn->getPreviousColumn();
+                --colIdx; 
+                break;
+        }
+        alignLength += 1;
+    }
+    int endScore = pColumn->getRowScore(rowIdx);
+    printf("End cell(%d %d) = %d al: %d\n", rowIdx, colIdx, endScore, alignLength);
+
+    assert(startScore >= endScore);
+    int numDiffs = startScore - endScore;
+    return static_cast<double>(numDiffs) / alignLength;
 }
 
 // Calculate the best alignment through the matrix. Assumes that
@@ -199,7 +262,6 @@ void ExtensionDP::backtrack(const BandedDPColumn* pLastColumn, path_t* path, int
     p->i = rowIdx; 
     p->j = colIdx;
 	pathLength += 1;
-    printf("Starting at (%d %d) = %d\n", rowIdx,colIdx,ctype);
     
 	do {
         assert(pathLength < maxPathLength);
@@ -222,7 +284,6 @@ void ExtensionDP::backtrack(const BandedDPColumn* pLastColumn, path_t* path, int
                 --colIdx; 
                 break;
 		}
-        printf("Updating to (%d %d) = %d\n", rowIdx,colIdx,ctype);
 		ctype = pCurrColumn->getRowType(rowIdx);
 		p->ctype = ctype; 
         p->i = rowIdx; 
