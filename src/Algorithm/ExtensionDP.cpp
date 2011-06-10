@@ -18,9 +18,16 @@
 #include <assert.h>
 
 static const int MINUS_INF = -1073741823;
+static const int POSITIVE_INF = 1073741823;
+
 inline int max3(int a, int b, int c)
 {
     return std::max(std::max(a,b), c);
+}
+
+inline int min3(int a, int b, int c)
+{
+    return std::min(std::min(a,b), c);
 }
 
 BandedDPColumn::BandedDPColumn(int ci, int maxRows, int bandWidth, const BandedDPColumn* prevColumn)
@@ -42,7 +49,7 @@ int BandedDPColumn::getRowScore(int row) const
 {
     int vec_idx = getVectorIndex(row);
     if(vec_idx == -1)
-        return MINUS_INF;
+        return POSITIVE_INF;
     else
         return m_scores[vec_idx];
 }
@@ -73,18 +80,18 @@ int BandedDPColumn::getCellScore(int colIdx, int rowIdx) const
     return pColumn->getRowScore(rowIdx);   
 }
 
-// Calculate the score for the given row in the column
-void BandedDPColumn::fillRow(int rowIdx, int matchScore, const GlobalAlnParams& params)
+// Calculate the score for the given row in the column using an edit distance scheme
+void BandedDPColumn::fillRowEditDistance(int rowIdx, int matchScore)
 {
     int vec_idx = getVectorIndex(rowIdx);
     if(vec_idx == -1)
         return; // out of band, ignore
 
     // Get the scores for the cell above, to the left and diagonal
-    int above = getCellScore(m_colIdx, rowIdx - 1) - params.gap_open;
+    int above = getCellScore(m_colIdx, rowIdx - 1) + 1;
     int diag = getCellScore(m_colIdx - 1, rowIdx - 1) + matchScore;
-    int left = getCellScore(m_colIdx - 1, rowIdx) - params.gap_open;
-    int score = max3(above, left, diag);
+    int left = getCellScore(m_colIdx - 1, rowIdx) + 1;
+    int score = min3(above, left, diag);
     printf("Cell(%d, %d) a: %d d: %d l: %d s: %d\n", m_colIdx, rowIdx, above, diag, left, score);
     setRowScore(rowIdx, score);
 }
@@ -107,12 +114,12 @@ void ExtensionDP::initialize(const std::string& extendable, const std::string& f
     size_t numRows = fixed.size() + 1;
     size_t numCols = extendable.size() + 1;
     std::cout << "ROWS: " << numRows << "\n";
-    BandedDPColumn* pZeroCol = new BandedDPColumn(0, numRows, params.bandwidth, NULL);
 
-    // Set the score of (0,0) to be zero
+    // Set the score of column zero 
+    BandedDPColumn* pZeroCol = new BandedDPColumn(0, numRows, params.bandwidth, NULL);
     pZeroCol->setRowScore(0, 0);
     for(size_t i = 1; i < numRows; ++i)
-        pZeroCol->setRowScore(i, -(params.gap_open + i*params.gap_ext));
+        pZeroCol->setRowScore(i, i);
 
     m_columnPtrs.push_back(pZeroCol);
 
@@ -122,14 +129,14 @@ void ExtensionDP::initialize(const std::string& extendable, const std::string& f
         BandedDPColumn* pCurrCol = new BandedDPColumn(colIdx, numRows, params.bandwidth, pPrevCol);
 
         // Set the first row score
-        pCurrCol->setRowScore(0, -(params.gap_open + colIdx*params.gap_ext));
+        pCurrCol->setRowScore(0, colIdx);
         
         // Fill in the rest of the row
         int startRow = std::max(1, pCurrCol->getMinRow());
         for(int rowIdx = startRow; rowIdx <= pCurrCol->getMaxRow(); ++rowIdx)
         {
-            int match_score = extendable[colIdx - 1] == fixed[rowIdx - 1] ? params.match : -params.mismatch;
-            pCurrCol->fillRow(rowIdx, match_score, params);
+            int match_score = extendable[colIdx - 1] == fixed[rowIdx - 1] ? 0 : 1;
+            pCurrCol->fillRowEditDistance(rowIdx, match_score);
         }
         m_columnPtrs.push_back(pCurrCol);
     }

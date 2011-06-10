@@ -33,7 +33,7 @@ class BandedDPColumn
         void setRowScore(int row, int score);
         
         // Calculate the score for the row and set it in the vector
-        void fillRow(int rowIdx, int matchScore, const GlobalAlnParams& params);
+        void fillRowEditDistance(int rowIdx, int matchScore);
 
     private:
 

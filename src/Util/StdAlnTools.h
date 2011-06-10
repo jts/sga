@@ -67,6 +67,8 @@ namespace StdAlnTools
     void makePaddedStrings(const std::string& s1, const std::string& s2, path_t* path, int path_len,
                            std::string& out1, std::string& out2, std::string& outm);
     
+    std::string makeCigar(path_t* path, int path_len);
+
     // Print the padded aligned strings
     void printPaddedStrings(const std::string& s1, const std::string& s2, const std::string& m, int colSize = 100);
 };

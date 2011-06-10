@@ -15,8 +15,7 @@ void StdAlnTools::printGlobalAlignment(const std::string& target, const std::str
 {
     // Set up global alignment parameters and data structures
     GlobalAlnParams params;
-	size_t max_target = StdAlnTools::calculateMaxTargetLength(query.size(), params);
-    int max_path_length = max_target + query.size();
+    int max_path_length = target.size() + query.size();
     path_t* path = (path_t*)calloc(max_path_length, sizeof(path_t));    
 
     AlnParam par;
@@ -33,7 +32,10 @@ void StdAlnTools::printGlobalAlignment(const std::string& target, const std::str
     std::string paddedTarget, paddedQuery, paddedMatch;
     makePaddedStrings(target, query, path, path_len, paddedTarget, paddedQuery, paddedMatch);
     printPaddedStrings(paddedTarget, paddedQuery, paddedMatch);
+
+    std::cout << "CIGAR: " << makeCigar(path, path_len) << "\n";
     std::cout << "Global alignment score: " << score << "\n";
+
     delete [] pQueryT;
     delete [] pTargetT;
     free(path);
@@ -76,32 +78,53 @@ void StdAlnTools::setAlnParam(AlnParam& par, int matrix[25], const GlobalAlnPara
     par.band_width = params.bandwidth;
 }
 
+std::string StdAlnTools::makeCigar(path_t* path, int path_len)
+{
+    int cigarLen = 0;
+	uint32_t* pCigar = aln_path2cigar32(path, path_len, &cigarLen); 
+    std::stringstream cigarSS;
+    for (int j = 0; j != cigarLen; ++j)
+    {
+        cigarSS << (pCigar[j]>>4);
+        cigarSS << "MID"[pCigar[j]&0xf];
+    }
+    free(pCigar);
+    return cigarSS.str();
+}
+
 // Convert a dynamic programming path to a set of padded strings
 // Algorithm ported from stdaln.c:aln_stdaln_aux
 void StdAlnTools::makePaddedStrings(const std::string& s1, const std::string& s2, path_t* path, int path_len, 
                                     std::string& out1, std::string& out2, std::string& outm)
 {
-    path_t* p = path + path_len;
+    out1.resize(path_len, 'A');
+    out2.resize(path_len, 'A');
+    outm.resize(path_len, 'A');
 
-    out1.resize(path_len + 1, 'A');
-    out2.resize(path_len + 1, 'A');
-    outm.resize(path_len + 1, 'A');
+    path_t* p = path + path_len - 1;
 
-    for (int l = 0; p >= path; --p, ++l) {
+    for (int l = 0; p >= path; --p, ++l) 
+    {
+        assert(l < (int)out1.size());
+        int idx_i = p->i - 1;
+        int idx_j = p->j - 1;
+
         switch (p->ctype) 
         {
-            case FROM_M: 
-                out1[l] = s1[p->i]; 
-                out2[l] = s2[p->j];
-                outm[l] = (s1[p->i] == s2[p->j] /*&& s1[p->i] != ap->row*/)? '|' : ' ';
+            // p->i and p->j are indices into the DP matrix, which is
+            // the string coordinate - 1
+            case FROM_M:
+                out1[l] = s1[idx_i]; 
+                out2[l] = s2[idx_j];
+                outm[l] = (s1[idx_i] == s2[idx_j] /*&& s1[p->i] != ap->row*/)? '|' : ' ';
                 break;
             case FROM_I: 
                 out1[l] = '-'; 
-                out2[l] = s2[p->j]; 
+                out2[l] = s2[idx_j]; 
                 outm[l] = ' '; 
                 break;
             case FROM_D: 
-                out1[l] = s1[p->i]; 
+                out1[l] = s1[idx_i]; 
                 out2[l] = '-'; 
                 outm[l] = ' '; 
                 break;
