@@ -91,8 +91,8 @@ StringThreader::StringThreader(const std::string& seed,
 {
     // Create the root node containing the seed string
 
-    std::string test1 = "CGTGCGATGCACTGCTACGGCTCGCCTAGATCA";
-    std::string test2 = "CGTGCGATGCACTGCATACGGCTCGCCTAGATCA";
+    std::string test1 = "CGTGATGCACTGCATACGGCTGCCTAGACC";
+    std::string test2 = "CGTGGAGGCATGCAACGGCTGCCTAGATCC";
     GlobalAlnParams params;
 //    ExtensionDP::initialize(seed, pQuery->substr(0, seed.size()), params);
     ExtensionDP::initialize(test1, test2, params);

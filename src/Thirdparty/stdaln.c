@@ -493,6 +493,7 @@ int aln_global_core(unsigned char *seq1, int len1, unsigned char *seq2, int len2
 	if (s->D > max) { max = s->D; type = q->Dt; ctype = FROM_D; }
 
 	p = path;
+    printf("Starting at (%d %d) = %d\n", i,j,ctype);
 	p->ctype = ctype; p->i = i; p->j = j; /* bug fixed 040408 */
 	++p;
 	do {
@@ -508,11 +509,12 @@ int aln_global_core(unsigned char *seq1, int len1, unsigned char *seq2, int len2
 			case FROM_I: type = q->It; break;
 			case FROM_D: type = q->Dt; break;
 		}
+        printf("Updating to (%d %d) = %d\n", i,j,ctype);
 		p->ctype = ctype; p->i = i; p->j = j;
 		++p;
 	} while (i || j);
 	*path_len = p - path - 1;
-
+    printf("Path length: %d\n", *path_len);
 	/* free memory */
 	for (j = b2 + 1; j <= len2; ++j)
 		dpcell[j] += j - b2;
