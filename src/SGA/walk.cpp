@@ -323,7 +323,7 @@ void parseWalkOptions(int argc, char** argv)
 
     if(!opt::componentWalks && opt::walkStr.empty() && (opt::id1.empty() || opt::id2.empty()))
     {
-        std::cerr << SUBPROGRAM ": one of a start/end vertex pair (-s/-e), a walk string (-w) or --component-paths must be provided\n";
+        std::cerr << SUBPROGRAM ": one of a start/end vertex pair (-s/-e), a walk string (-w) or --component-walks must be provided\n";
         exit(EXIT_FAILURE);
     }
 
