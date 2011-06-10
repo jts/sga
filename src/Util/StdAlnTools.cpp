@@ -27,13 +27,13 @@ void StdAlnTools::printGlobalAlignment(const std::string& target, const std::str
     uint8_t* pQueryT = createPacked(query);
     uint8_t* pTargetT = createPacked(target);
     int path_len = 0;
-    /*int score =*/ aln_global_core(pTargetT, target.size(), pQueryT, query.size(), &par, path, &path_len);
+    int score = aln_global_core(pTargetT, target.size(), pQueryT, query.size(), &par, path, &path_len);
 
     assert(path_len <= max_path_length);
     std::string paddedTarget, paddedQuery, paddedMatch;
     makePaddedStrings(target, query, path, path_len, paddedTarget, paddedQuery, paddedMatch);
     printPaddedStrings(paddedTarget, paddedQuery, paddedMatch);
-
+    std::cout << "Global alignment score: " << score << "\n";
     delete [] pQueryT;
     delete [] pTargetT;
     free(path);

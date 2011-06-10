@@ -11,11 +11,12 @@
 // The assembly graph is abstractly represented as
 // an FM-index.
 //
-#ifndef STRING_BUILDER_H
-#define STRING_BUILDER_H
+#ifndef STRING_THREADER_H
+#define STRING_THREADER_H
 
 #include <list>
 #include "BWT.h"
+#include "ExtensionDP.h"
 
 // Typedefs
 class StringThreaderNode;

@@ -90,6 +90,13 @@ StringThreader::StringThreader(const std::string& seed,
                                                      m_kmer(kmer), m_pQuery(pQuery)
 {
     // Create the root node containing the seed string
+
+    std::string test1 = "CGTGCGATGCACTGCATACGGCTCGCCTAGATCA";
+    std::string test2 = "CGTGCGATGCACTGCATACGGCTCGCCTAGATCA";
+    GlobalAlnParams params;
+//    ExtensionDP::initialize(seed, pQuery->substr(0, seed.size()), params);
+    ExtensionDP::initialize(test1, test2, params);
+
     m_pRootNode = new StringThreaderNode(seed, NULL);
     m_leaves.push_back(m_pRootNode);
 }
