@@ -205,7 +205,6 @@ double ExtensionDP::calculateLocalEditPercentage(const BandedDPColumn* pColumn, 
     int colIdx = pColumn->getColIdx();
     int startScore = pColumn->getRowScore(rowIdx);
 
-    printf("Start cell(%d %d) = %d\n", rowIdx, colIdx, startScore);
     int alignLength = 1;
     while(alignLength < numBases)
     {
@@ -228,7 +227,6 @@ double ExtensionDP::calculateLocalEditPercentage(const BandedDPColumn* pColumn, 
         alignLength += 1;
     }
     int endScore = pColumn->getRowScore(rowIdx);
-    printf("End cell(%d %d) = %d al: %d\n", rowIdx, colIdx, endScore, alignLength);
 
     assert(startScore >= endScore);
     int numDiffs = startScore - endScore;

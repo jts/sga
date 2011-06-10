@@ -102,6 +102,11 @@ void StringThreaderNode::computeInitialAlignment(const std::string& initialLabel
     ExtensionDP::createInitialAlignment(m_label, m_pQuery->substr(0, queryAlignmentEnd), bandwidth, m_alignmentColumns);
 }
 
+double StringThreaderNode::getLocalErrorRate(int context) const
+{
+    return ExtensionDP::calculateLocalEditPercentage(m_alignmentColumns.back(), context);
+}
+
 //
 void StringThreaderNode::printFullAlignment() const
 {
@@ -145,21 +150,16 @@ StringThreader::~StringThreader()
 void StringThreader::run()
 {
     // Extend the leaf nodes
-    int count = 100;
-    while(count-- > 0)
+    while(!m_leaves.empty())
         extendLeaves();
 }
 
 // Extend each leaf node
 void StringThreader::extendLeaves()
 {
-    std::cout << "****Extension***\n\n";
     STNodePtrList newLeaves;
     for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
-        std::cout << "LEAF BEFORE EXTENSION\n";
-        (*iter)->printFullAlignment();
-
         StringVector extensions = getDeBruijnExtensions(*iter);
 
         // Either extend the current node or branch it
@@ -182,7 +182,23 @@ void StringThreader::extendLeaves()
         }
     }
 
-    m_leaves = newLeaves;
+    m_leaves.clear();
+
+    int context = 20;
+    double threshold = 0.3f;
+    // Calculate the local error rate of the alignments to each new leaf
+    // If it is less than threshold, add the leaf to the node
+    for(STNodePtrList::iterator iter = newLeaves.begin(); iter != newLeaves.end(); ++iter)
+    {
+        double ler = (*iter)->getLocalErrorRate(context);
+        if(ler < threshold)
+            m_leaves.push_back(*iter);
+        else
+        {
+            printf("Culling leaf with ler: %.2lf\n", ler);
+            (*iter)->printFullAlignment();
+        }
+    }
 }
 
 // Extend a leaf node, possibly creating a branch

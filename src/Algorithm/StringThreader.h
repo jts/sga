@@ -32,8 +32,12 @@ class StringThreaderNode
         // Functions
         StringThreaderNode(const std::string* pQuery, StringThreaderNode* parent);
         ~StringThreaderNode();
-
+        
+        // Print the alignment between this branch of the tree and the query
         void printFullAlignment() const;
+        
+        // Get the alignment error rate over the last context bases
+        double getLocalErrorRate(int context) const;
         
         // Add a child node to this node with the given label
         // Returns a pointer to the created node
