@@ -62,7 +62,7 @@ std::string LRCorrection::correctGraphThread(const std::string& query,
                                              const LRAlignment::LRParams& /*params*/)
 {
     std::string seed = "GATTTCCAGCGCGCCATCGCCACAGGCAATCAGCAGTGGCGCAACAGAAATCACGCTCCCCGGCTGTGCTTTGCTGGCATG";
-    StringThreader threader(seed, &query, 51, pTargetBWT, pRevTargetBWT);
+    StringThreader threader(seed, &query, seed.size(), 51, pTargetBWT, pRevTargetBWT);
     //threader.run();
     return query;
 }

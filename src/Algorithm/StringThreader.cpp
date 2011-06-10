@@ -30,8 +30,13 @@ StringThreaderNode::StringThreaderNode(const std::string& l, StringThreaderNode*
 // Delete the children of the node
 StringThreaderNode::~StringThreaderNode()
 {
+    // Delete children
     for(STNodePtrList::iterator iter = m_children.begin(); iter != m_children.end(); ++iter)
         delete *iter;
+
+    // Delete alignment columns
+    for(size_t i = 0; i < m_alignmentColumns.size(); ++i)
+        delete m_alignmentColumns[i];
 }
 
 // Return a suffix of length l of the string represented by this branch
@@ -72,6 +77,14 @@ void StringThreaderNode::extend(const std::string& ext)
     label.append(ext);
 }
 
+// Initialize the alignment columns
+void StringThreaderNode::initializeAlignment(const std::string* pQuery, int queryAlignmentEnd, int bandwidth)
+{
+    // Create the initial alignment columnds between label and query
+    assert(!label.empty());
+    ExtensionDP::createInitialAlignment(label, pQuery->substr(0, queryAlignmentEnd), bandwidth, m_alignmentColumns);
+}
+
 //
 void StringThreaderNode::printFullAlignment(const std::string* pQuery) const
 {
@@ -83,21 +96,16 @@ void StringThreaderNode::printFullAlignment(const std::string* pQuery) const
 // StringTheader
 //
 StringThreader::StringThreader(const std::string& seed, 
-                               const std::string* pQuery, 
+                               const std::string* pQuery,
+                               int queryAlignmentEnd,
                                int kmer, 
                                const BWT* pBWT, 
                                const BWT* pRevBWT) : m_pBWT(pBWT), m_pRevBWT(pRevBWT), 
                                                      m_kmer(kmer), m_pQuery(pQuery)
 {
     // Create the root node containing the seed string
-
-    std::string test1 = "CGTGATGCACTGCATACGGCTGCCTAGACC";
-    std::string test2 = "CGTGGAGGCATGCAACGGCTGCCTAGATCC";
-    GlobalAlnParams params;
-//    ExtensionDP::initialize(seed, pQuery->substr(0, seed.size()), params);
-    ExtensionDP::initialize(test1, test2, params);
-
     m_pRootNode = new StringThreaderNode(seed, NULL);
+    m_pRootNode->initializeAlignment(pQuery, queryAlignmentEnd, 50);
     m_leaves.push_back(m_pRootNode);
 }
 

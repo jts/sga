@@ -42,6 +42,9 @@ class StringThreaderNode
         // Extend the label of this node by l
         void extend(const std::string& ext);
 
+        // Initialize the alignment columns. This function is for the root node.
+        void initializeAlignment(const std::string* pQuery, int queryAlignmentEnd, int bandwidth);
+
         // Return a suffix of length l of the string represented by this branch
         std::string getSuffix(size_t l) const;
 
@@ -57,13 +60,18 @@ class StringThreaderNode
         // The parent node, can be NULL
         StringThreaderNode* pParent;
         STNodePtrList m_children;
+
+        // Alignment information between the label of this node and the query sequence
+        // One column per label base
+        BandedDPColumnPtrVector m_alignmentColumns;
 };
 
 class StringThreader
 {
     public:
         StringThreader(const std::string& seed, 
-                       const std::string* pQuery, 
+                       const std::string* pQuery,
+                       int queryAlignmentEnd,
                        int kmer,
                        const BWT* pBWT, 
                        const BWT* pRevBWT);

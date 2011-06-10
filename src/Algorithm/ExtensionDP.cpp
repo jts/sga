@@ -37,7 +37,6 @@ BandedDPColumn::BandedDPColumn(int ci, int maxRows, int bandWidth, const BandedD
     m_rowStartIdx = std::max(0, m_colIdx - (bandWidth / 2) - 1);
     m_rowEndIdx = std::min(maxRows - 1, m_colIdx + (bandWidth / 2));
 
-    printf("Col: %d Band: [%d %d]\n", m_colIdx, m_rowStartIdx, m_rowEndIdx);
     int numRows = m_rowEndIdx - m_rowStartIdx + 1;
     m_cells.resize(numRows);
 
@@ -150,27 +149,27 @@ int BandedDPColumn::getVectorIndex(int rowIdx) const
 }
 
 // Initialize the extension DP by computing a global alignment between extendable and fixed
-void ExtensionDP::initialize(const std::string& extendable, const std::string& fixed, const GlobalAlnParams& params)
+// This function allocates memory and stores the created pointers in outPtrVec, which
+// should initially be empty
+void ExtensionDP::createInitialAlignment(const std::string& extendable, const std::string& fixed, int bandwidth, BandedDPColumnPtrVector& outPtrVec)
 {
-    std::vector<BandedDPColumn*> m_columnPtrs;
-    
+    assert(outPtrVec.empty());
     // Initialize the zero-th column
     size_t numRows = fixed.size() + 1;
     size_t numCols = extendable.size() + 1;
-    std::cout << "ROWS: " << numRows << "\n";
 
     // Set the score of column zero 
-    BandedDPColumn* pZeroCol = new BandedDPColumn(0, numRows, params.bandwidth, NULL);
+    BandedDPColumn* pZeroCol = new BandedDPColumn(0, numRows, bandwidth, NULL);
     pZeroCol->setRowScore(0, 0, FROM_M);
     for(size_t i = 1; i < numRows; ++i)
         pZeroCol->setRowScore(i, i, FROM_I);
 
-    m_columnPtrs.push_back(pZeroCol);
+    outPtrVec.push_back(pZeroCol);
 
     for(size_t colIdx = 1; colIdx < numCols; ++colIdx)
     {
-        BandedDPColumn* pPrevCol = m_columnPtrs[colIdx - 1];
-        BandedDPColumn* pCurrCol = new BandedDPColumn(colIdx, numRows, params.bandwidth, pPrevCol);
+        BandedDPColumn* pPrevCol = outPtrVec[colIdx - 1];
+        BandedDPColumn* pCurrCol = new BandedDPColumn(colIdx, numRows, bandwidth, pPrevCol);
 
         // Set the first row score
         pCurrCol->setRowScore(0, colIdx, FROM_D);
@@ -182,25 +181,8 @@ void ExtensionDP::initialize(const std::string& extendable, const std::string& f
             int match_score = extendable[colIdx - 1] == fixed[rowIdx - 1] ? 0 : 1;
             pCurrCol->fillRowEditDistance(rowIdx, match_score);
         }
-        m_columnPtrs.push_back(pCurrCol);
+        outPtrVec.push_back(pCurrCol);
     }
-
-    printMatrix(m_columnPtrs);
-    std::cout << "STDALN: \n";
-    StdAlnTools::printGlobalAlignment(fixed, extendable);
-
-    std::cout << "EDP: \n";
-    printAlignment(extendable, fixed, m_columnPtrs.back());
-
-    for(size_t i = m_columnPtrs.size() - 10; i < m_columnPtrs.size(); ++i)
-    {
-        double ler = calculateLocalEditPercentage(m_columnPtrs[i], 20);
-        printf("Error rate (%zu): %lf\n", i, ler);
-    }
-
-    // Delete the columns
-    for(size_t i = 0; i < m_columnPtrs.size(); ++i)
-        delete m_columnPtrs[i];
 }
 
 //

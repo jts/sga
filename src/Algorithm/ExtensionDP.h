@@ -64,7 +64,9 @@ typedef std::vector<BandedDPColumn*> BandedDPColumnPtrVector;
 
 namespace ExtensionDP
 {
-    void initialize(const std::string& extendable, const std::string& fixed, const GlobalAlnParams& params);
+    // Initialize the extension DP by computing a global alignment between extendable and fixed
+    // This function allocates memory and stores the created pointers in outPtrVec
+    void createInitialAlignment(const std::string& extendable, const std::string& fixed, int bandwidth, BandedDPColumnPtrVector& outPtrVec);
 
     // Calculate the best alignment through the matrix. Assumes that
     // path_t* is pre-allocated with maxPathLength entries.
