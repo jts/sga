@@ -98,6 +98,7 @@ int correctLongMain(int argc, char** argv)
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pSSA = new SampledSuffixArray(opt::prefix + SSA_EXT);
+    std::ostream* pWriter = createWriter(opt::outFile);
 
     LRAlignment::LRParams params;
     if(opt::zBest != -1)
@@ -116,8 +117,16 @@ int correctLongMain(int argc, char** argv)
     {
         for(size_t i = 0; i < 1; ++i)
         {
-            std::cout << "Aligning sequence " << record.id << "\n";
-            LRCorrection::correctLongRead(record.seq.toString(), pBWT, pRBWT, pSSA, params);
+            //std::cout << "Aligning sequence " << record.id << "\n";
+            std::string correctedSeq = LRCorrection::correctLongRead(record.seq.toString(), pBWT, pRBWT, pSSA, params);
+            
+            // write the corrected read
+            SeqRecord correctedRecord;
+            correctedRecord.id = record.id;
+            correctedRecord.seq = correctedSeq;
+            correctedRecord.write(*pWriter);
+
+            // stats
             totalSize += record.seq.length();
             totalReads += 1;
         }
@@ -128,6 +137,7 @@ int correctLongMain(int argc, char** argv)
     delete pBWT;
     delete pRBWT;
     delete pSSA;
+    delete pWriter;
 
     if(opt::numThreads > 1)
         pthread_exit(NULL);

@@ -21,34 +21,26 @@ namespace LRCorrection
                                 const SampledSuffixArray* pTargetSSA,
                                 const LRAlignment::LRParams& params);
 
-    // 
+    // Correct the query read by aligning it to all the reads in pTargetBWT
     std::string correctAlignment(const std::string& query,
                                  const BWT* pTargetBWT, 
-                                 const SampledSuffixArray* /*pTargetSSA*/,
-                                 const LRAlignment::LRParams& /*params*/);
+                                 const SampledSuffixArray* pTargetSSA,
+                                 const LRAlignment::LRParams& params);
+    
+    // Correct the query read by aligning it in overlapping pieces to pTargetBWT
+    std::string correctAlignmentPartial(const std::string& query,
+                                        const BWT* pTargetBWT, 
+                                        const SampledSuffixArray* pTargetSSA,
+                                        const LRAlignment::LRParams& params);
 
 
-   //
+   // Experimental function for correcting a read by threading it through a graph
    std::string correctGraphThread(const std::string& query,
                                   const BWT* pTargetBWT, 
                                   const BWT* pRevTargetBWT, 
                                   const SampledSuffixArray* /*pTargetSSA*/,
                                   const LRAlignment::LRParams& /*params*/);
 
-    
-    // Find the first portion of query that is found in the BWT
-    std::string findSeedStringNaive(const std::string& query,
-                                    const BWT* pTargetBWT, 
-                                    int k,
-                                    int& position);
-
-
-    // Extend the hit vector by adding in reads that overlap the given set of reads
-    void addOverlappingHits(const std::string& query,
-                            const BWT* pTargetBWT, 
-                            const SampledSuffixArray* pTargetSSA,
-                            const LRAlignment::LRParams& params,
-                            LRAlignment::LRHitVector& hits);
 
 };
 

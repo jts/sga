@@ -100,7 +100,7 @@ typedef std::vector<CigarIter> CigarIterVector;
 
 MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inData)
 {
-    m_verbose = 1;
+    m_verbose = 0;
     // Build a padded multiple alignment from the pairwise alignments to the root
     CigarIterVector iterVec;
 

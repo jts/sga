@@ -258,7 +258,7 @@ void bwaswAlignment(const std::string& query, const BWT* pTargetBWT, const Sampl
     // Append the two hits vectors together
     positionHitsVector.insert(positionHitsVector.end(), terminalHitsVector.begin(), terminalHitsVector.end());
     terminalHitsVector.clear();
-    resolveDuplicateHitsByID(pTargetBWT, pTargetSSA, positionHitsVector, 300);
+    resolveDuplicateHits(pTargetBWT, pTargetSSA, positionHitsVector, 2);
 
     // set the output hits
     outHits.insert(outHits.end(), positionHitsVector.begin(), positionHitsVector.end());
@@ -802,9 +802,10 @@ int resolveDuplicateHits(const BWT* pTargetBWT, const SampledSuffixArray* pTarge
 					if((double)tol / p->length > MASK_LEVEL || (double)tol / q->length > MASK_LEVEL)
 						compatible = false;
 
-//#ifdef BWA_COMPAT_DEBUG_RESOLVE
-                    printf("    idx = (%d,%d) id=(%d,%d) G=(%d,%d) qol: %d tol: %zu compat: %d\n", i,j, (int)p->targetID, (int)q->targetID, p->G, q->G, qol, tol, compatible);
-//#endif
+#ifdef BWA_COMPAT_DEBUG_RESOLVE
+                    printf("    idx = (%d,%d) id=(%d,%d) G=(%d,%d) qol: %d tol: %zu compat: %d\n", 
+                            i,j, (int)p->targetID, (int)q->targetID, p->G, q->G, qol, tol, compatible);
+#endif
                     if(!compatible)
                     {
                         p->G = 0;
@@ -1100,6 +1101,14 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
 
     return MultiAlignment(query, mAlignVec);
 }
+
+/*
+void convertHitsToTiledSubstrings(const std::string& query, const BWT* pTargetBWT, 
+                                  const SampledSuffixArray* pTargetSSA, const LRParams& params)
+{
+
+}
+*/
 
 // Attempt to extend a hit to the left and right using aln_extend_core
 // from stdaln
