@@ -81,7 +81,8 @@ namespace ExtensionDP
     // Calculate the edit percentage of the alignment starting from the given column, over the last numBases
     double calculateLocalEditPercentage(const BandedDPColumn* pStartColumn, int numBases);
     double calculateGlobalEditPercentage(const BandedDPColumn* pStartColumn);
-    
+    void countEditsAndAlignLength(const BandedDPColumn* pStartColumn, int& edits, int& alignLength);
+
     // Print the alignment starting from the given column
     void printAlignment(const std::string& s1, const std::string& s2, const BandedDPColumn* pLastColumn);
 

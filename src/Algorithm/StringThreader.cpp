@@ -108,9 +108,18 @@ double StringThreaderNode::getLocalErrorRate(int context) const
     return ExtensionDP::calculateLocalEditPercentage(m_alignmentColumns.back(), context);
 }
 
+//
 double StringThreaderNode::getGlobalErrorRate() const
 {
     return ExtensionDP::calculateGlobalEditPercentage(m_alignmentColumns.back());
+}
+
+//
+int StringThreaderNode::countEdits() const
+{
+    int edits, alignLength;
+    ExtensionDP::countEditsAndAlignLength(m_alignmentColumns.back(), edits, alignLength);
+    return edits;
 }
 
 //
@@ -170,14 +179,18 @@ StringThreader::~StringThreader()
 void StringThreader::run()
 {
     // Extend the leaf nodes
-    while(!m_leaves.empty())
+    int ext_count = 700;
+    while(!m_leaves.empty() && ext_count-- > 0)
+    {
         extendLeaves();
-    printAll();
+        cullLeavesByEdits();
+    }
 }
 
 // Print the string represented by every node
 void StringThreader::printAll()
 {
+    std::cout << "Print all: \n";
     m_pRootNode->printAllStrings("");
 }
 
@@ -210,39 +223,71 @@ void StringThreader::extendLeaves()
     }
 
     m_leaves.clear();
+    m_leaves = newLeaves;
+}
+
+// Remove leaves that are likely to be erroneous extensions
+void StringThreader::cullLeavesByLocalError()
+{
+    STNodePtrList newLeaves;
 
     int context = 20;
     double threshold = 0.3f;
+
     // Calculate the local error rate of the alignments to each new leaf
     // If it is less than threshold, add the leaf to the node
     std::cout << "***EXTENSION:\n";
-    for(STNodePtrList::iterator iter = newLeaves.begin(); iter != newLeaves.end(); ++iter)
+    for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
         double ler = (*iter)->getLocalErrorRate(context);
         double ger = (*iter)->getGlobalErrorRate();
-        printf("ger: %.2lf\n", ger);
 
         if(ler < threshold)
         {
             printf("Keeping leaf with ler: %.2lf ger: %.2lf\n", ler, ger);
-            m_leaves.push_back(*iter);
+            newLeaves.push_back(*iter);
         }
         else
         {
             printf("Culling leaf with ler: %.2lf ger: %.2lf\n", ler, ger);
-            
-            /*
-            static int boom = 20;
-            if(boom-- == 0)
-                exit(1);
-            */
         }
         (*iter)->printFullAlignment();
     }
+    m_leaves = newLeaves;
+}
 
-    std::cout << "Leaves now: " << m_leaves.size() << "\n";
-    if(m_leaves.size() > 100)
-        exit(1);
+// Remove leaves that are likely to be erroneous extensions
+void StringThreader::cullLeavesByEdits()
+{
+    STNodePtrList newLeaves;
+
+    // Calculate the local error rate of the alignments to each new leaf
+    // If it is less than threshold, add the leaf to the node
+    std::cout << "***EXTENSION:\n";
+
+    int bestEdits = std::numeric_limits<int>::max();
+    IntVector editsVector;
+    for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
+    {
+        int edits = (*iter)->countEdits();
+        if(edits < bestEdits)
+            bestEdits = edits;
+         editsVector.push_back(edits);
+    }
+
+    int leafID = 0;
+    int threshold = 1;
+    for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
+    {
+        printf("leaf %d/%zu has %d edits\n", leafID, m_leaves.size(), editsVector[leafID]);
+//        (*iter)->printFullAlignment();
+
+        if(editsVector[leafID] <= bestEdits + threshold)
+            newLeaves.push_back(*iter);
+        leafID += 1;
+    }
+
+    m_leaves = newLeaves;
 }
 
 // Extend a leaf node, possibly creating a branch

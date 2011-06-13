@@ -42,6 +42,7 @@ class StringThreaderNode
         // Get the alignment error rate over the last context bases
         double getLocalErrorRate(int context) const;
         double getGlobalErrorRate() const;
+        int countEdits() const;
         
         // Add a child node to this node with the given label
         // Returns a pointer to the created node
@@ -62,6 +63,7 @@ class StringThreaderNode
 
     private:
         
+
         // Data
         // The extension string from the parent
         std::string m_label;
@@ -98,6 +100,8 @@ class StringThreader
         
         // Functions
         void extendLeaves();
+        void cullLeavesByLocalError();
+        void cullLeavesByEdits();
 
         // Perform a 1-base extension of the node
         // Returns true if the node has a branch

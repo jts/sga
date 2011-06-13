@@ -66,6 +66,8 @@ std::string LRCorrection::correctGraphThread(const std::string& query,
     std::string& seed = seed_yeast_test;
     StringThreader threader(seed, &query, seed.size(), 51, pTargetBWT, pRevTargetBWT);
     threader.run();
+    threader.printAll();
+
     return query;
 }
 

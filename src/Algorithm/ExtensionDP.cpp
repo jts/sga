@@ -37,7 +37,7 @@ BandedDPColumn::BandedDPColumn(int ci, int maxRows, int bandwidth, const BandedD
     m_colIdx = ci;
     m_rowStartIdx = std::max(0, m_colIdx - (bandwidth / 2) - 1);
     m_rowEndIdx = std::min(maxRows - 1, m_colIdx + (bandwidth / 2));
-
+    assert(m_rowStartIdx <= m_rowEndIdx);
     int numRows = m_rowEndIdx - m_rowStartIdx + 1;
     m_cells.resize(numRows);
 
@@ -69,6 +69,7 @@ int BandedDPColumn::getBestRowIndex() const
 {
     int bestScore = POSITIVE_INF;
     int bestIdx = -1;
+    printf("Start: %d End: %d\n", m_rowStartIdx, m_rowEndIdx);
     for(int i = m_rowStartIdx; i <= m_rowEndIdx; ++i)
     {
         int s = getRowScore(i);
@@ -235,15 +236,15 @@ double ExtensionDP::calculateLocalEditPercentage(const BandedDPColumn* pColumn, 
 
 //
 //
-double ExtensionDP::calculateGlobalEditPercentage(const BandedDPColumn* pColumn)
+void ExtensionDP::countEditsAndAlignLength(const BandedDPColumn* pColumn, int& edits, int& alignLength)
 {
     // Get the row with in the start column with the best score
     int rowIdx = pColumn->getBestRowIndex();
     assert(rowIdx != -1);
     int colIdx = pColumn->getColIdx();
-    int startScore = pColumn->getRowScore(rowIdx);
+    edits = pColumn->getRowScore(rowIdx);
+    alignLength = 1;
 
-    int alignLength = 1;
     while(rowIdx != 0 && colIdx != 0)
     {
         char ctype = pColumn->getRowType(rowIdx);
@@ -264,7 +265,14 @@ double ExtensionDP::calculateGlobalEditPercentage(const BandedDPColumn* pColumn)
         }
         alignLength += 1;
     }
-    return static_cast<double>(startScore) / alignLength;
+}
+
+//
+double ExtensionDP::calculateGlobalEditPercentage(const BandedDPColumn* pStartColumn)
+{
+    int edits, alignLength;
+    countEditsAndAlignLength(pStartColumn, edits, alignLength);
+    return (double)edits / alignLength;
 }
 
 // Calculate the best alignment through the matrix. Assumes that
