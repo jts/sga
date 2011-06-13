@@ -4,7 +4,7 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// LRCorrection - Collection of algorithms for 
+// LRCorrectionAlgorithm - Collection of algorithms for 
 // correcting long reads with a set of short reads
 //
 #ifndef LRCORRECTION_H
@@ -12,14 +12,14 @@
 
 #include "LRAlignment.h"
 
-namespace LRCorrection
+namespace LRCorrectionAlgorithm
 {
     // Main correction function
-    std::string correctLongRead(const std::string& query,
-                                const BWT* pTargetBWT, 
-                                const BWT* pRevTargetBWT, 
-                                const SampledSuffixArray* pTargetSSA,
-                                const LRAlignment::LRParams& params);
+    std::string correct(const std::string& query,
+                        const BWT* pTargetBWT, 
+                        const BWT* pRevTargetBWT, 
+                        const SampledSuffixArray* pTargetSSA,
+                        const LRAlignment::LRParams& params);
 
     // Correct the query read by aligning it to all the reads in pTargetBWT
     std::string correctAlignment(const std::string& query,

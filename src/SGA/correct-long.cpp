@@ -21,10 +21,10 @@
 #include "ASQG.h"
 #include "gzstream.h"
 #include "SequenceProcessFramework.h"
-#include "ErrorCorrectProcess.h"
+#include "LRCorrectionProcess.h"
 #include "CorrectionThresholds.h"
 #include "KmerDistribution.h"
-#include "LRCorrection.h"
+#include "LRCorrectionAlgorithm.h"
       
 //
 // Getopt
@@ -100,39 +100,51 @@ int correctLongMain(int argc, char** argv)
     SampledSuffixArray* pSSA = new SampledSuffixArray(opt::prefix + SSA_EXT);
     std::ostream* pWriter = createWriter(opt::outFile);
 
-    LRAlignment::LRParams params;
+    // Set the long read corrector options
+    LRAlignment::LRParams alignParams;
     if(opt::zBest != -1)
-        params.zBest = opt::zBest;
+        alignParams.zBest = opt::zBest;
 
     if(opt::cutAlgorithm != LRAlignment::LRCA_DEFAULT)
-        params.cutTailAlgorithm = opt::cutAlgorithm;
+        alignParams.cutTailAlgorithm = opt::cutAlgorithm;
 
-    Timer timer("correct-long", false);
-    size_t totalSize = 0;
-    size_t totalReads = 0;
+    LRCorrectionParameters params;
+    params.pBWT = pBWT;
+    params.pRBWT = pRBWT;
+    params.pSSA = pSSA;
+    params.alignParams = alignParams;
 
-    SeqRecord record;
-    SeqReader reader(opt::readsFile);
-    while(reader.get(record))
+    // Setup post-processor
+    LRCorrectionPostProcess postProcessor(pWriter);
+
+    if(opt::numThreads <= 1)
     {
-        for(size_t i = 0; i < 1; ++i)
+        // Serial mode
+        LRCorrectionProcess processor(params); 
+        SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
+                                                         LRCorrectionResult, 
+                                                         LRCorrectionProcess, 
+                                                         LRCorrectionPostProcess>(opt::readsFile, &processor, &postProcessor);
+    }
+    else
+    {
+        // Parallel mode
+        std::vector<LRCorrectionProcess*> processorVector;
+        for(int i = 0; i < opt::numThreads; ++i)
         {
-            //std::cout << "Aligning sequence " << record.id << "\n";
-            std::string correctedSeq = LRCorrection::correctLongRead(record.seq.toString(), pBWT, pRBWT, pSSA, params);
-            
-            // write the corrected read
-            SeqRecord correctedRecord;
-            correctedRecord.id = record.id;
-            correctedRecord.seq = correctedSeq;
-            correctedRecord.write(*pWriter);
+            LRCorrectionProcess* pProcessor = new LRCorrectionProcess(params);
+            processorVector.push_back(pProcessor);
+        }
+        SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
+                                                           LRCorrectionResult, 
+                                                           LRCorrectionProcess, 
+                                                           LRCorrectionPostProcess>(opt::readsFile, processorVector, &postProcessor);
 
-            // stats
-            totalSize += record.seq.length();
-            totalReads += 1;
+        for(int i = 0; i < opt::numThreads; ++i)
+        {
+            delete processorVector[i];
         }
     }
-
-    printf("Aligned %zu reads (%zu bases, %.2lf Mbp) in %.2lfs\n", totalReads, totalSize, (double)totalSize / 1000000, timer.getElapsedWallTime());
 
     delete pBWT;
     delete pRBWT;

@@ -1102,14 +1102,6 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
     return MultiAlignment(query, mAlignVec);
 }
 
-/*
-void convertHitsToTiledSubstrings(const std::string& query, const BWT* pTargetBWT, 
-                                  const SampledSuffixArray* pTargetSSA, const LRParams& params)
-{
-
-}
-*/
-
 // Attempt to extend a hit to the left and right using aln_extend_core
 // from stdaln
 void extendHitFullLength(LRHit& hit, uint8_t* pQueryPacked, uint8_t* pTargetPacked, 

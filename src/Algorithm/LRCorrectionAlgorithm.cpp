@@ -4,17 +4,17 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// LRCorrection - Collection of algorithms for 
+// LRCorrectionAlgorithmAlgorithm - Collection of algorithms for 
 // correcting long reads with a set of short reads
 //
-#include "LRCorrection.h"
+#include "LRCorrectionAlgorithm.h"
 #include "StringThreader.h"
 
-std::string LRCorrection::correctLongRead(const std::string& query,
-                                          const BWT* pTargetBWT, 
-                                          const BWT* pRevTargetBWT, 
-                                          const SampledSuffixArray* pTargetSSA,
-                                          const LRAlignment::LRParams& params)
+std::string LRCorrectionAlgorithm::correct(const std::string& query,
+                                           const BWT* pTargetBWT, 
+                                           const BWT* pRevTargetBWT, 
+                                           const SampledSuffixArray* pTargetSSA,
+                                           const LRAlignment::LRParams& params)
 {
     if(1)
         return correctAlignment(query, pTargetBWT, pTargetSSA, params);
@@ -23,7 +23,7 @@ std::string LRCorrection::correctLongRead(const std::string& query,
 }
 
 // Correct the read using an alignment-based approach
-std::string LRCorrection::correctAlignment(const std::string& query,
+std::string LRCorrectionAlgorithm::correctAlignment(const std::string& query,
                                            const BWT* pTargetBWT, 
                                            const SampledSuffixArray* pTargetSSA,
                                            const LRAlignment::LRParams& params)
@@ -35,12 +35,12 @@ std::string LRCorrection::correctAlignment(const std::string& query,
    if(consensus.size() > query.size() * 0.9f)
        return consensus;
     else
-        return query;
+        return "";
 }
 
 
 // Correct the read using an alignment-based approach
-std::string LRCorrection::correctAlignmentPartial(const std::string& query,
+std::string LRCorrectionAlgorithm::correctAlignmentPartial(const std::string& query,
                                                   const BWT* pTargetBWT, 
                                                   const SampledSuffixArray* pTargetSSA,
                                                   const LRAlignment::LRParams& params)
@@ -72,7 +72,7 @@ std::string LRCorrection::correctAlignmentPartial(const std::string& query,
 }
 
 // Attempt to correct the sequence via threading through a graph
-std::string LRCorrection::correctGraphThread(const std::string& query,
+std::string LRCorrectionAlgorithm::correctGraphThread(const std::string& query,
                                              const BWT* pTargetBWT, 
                                              const BWT* pRevTargetBWT, 
                                              const SampledSuffixArray* /*pTargetSSA*/,

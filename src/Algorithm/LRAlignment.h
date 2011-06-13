@@ -154,12 +154,6 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
                                            const LRParams& params,
                                            const LRHitVector& hits);
 
-// Convert this to tiled, unique substrings
-void convertHitsToTiledSubstrings(const std::string& query, 
-                                  const BWT* pTargetBWT, 
-                                  const SampledSuffixArray* pTargetSSA,
-                                  const LRParams& params);
-
 //
 // Helper functions
 //
