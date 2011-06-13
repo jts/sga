@@ -53,6 +53,7 @@ void LRCorrectionPostProcess::process(const SequenceWorkItem& item, const LRCorr
 {
     SeqRecord record = item.read;
     record.seq = result.correctedSequence;
+    record.qual = "";
 
     if(!record.seq.empty())
     {

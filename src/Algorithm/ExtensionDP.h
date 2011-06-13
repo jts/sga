@@ -50,6 +50,8 @@ class BandedDPColumn
         // Calculate the score for the row and set it in the vector
         void fillRowEditDistance(int rowIdx, int matchScore);
 
+        // Returns true if the best alignment in this column is to the endpoint of the query sequence
+        bool isAlignedToEnd() const;
 
     private:
 

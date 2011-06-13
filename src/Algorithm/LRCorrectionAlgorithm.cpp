@@ -60,14 +60,8 @@ std::string LRCorrectionAlgorithm::correctAlignmentPartial(const std::string& qu
         std::cout << "hits: " << hits.size() << "\n";
         MultiAlignment ma = LRAlignment::convertHitsToMultiAlignment(sub, pTargetBWT, pTargetSSA, params, hits);
         std::string consensus = ma.generateConsensus();
-        //addOverlappingHits(query, pTargetBWT, pTargetSSA, params, hits);        
     }
 
-    /*
-    MultiAlignment ma = LRAlignment::convertHitsToMultiAlignment(query, pTargetBWT, pTargetSSA, params, hits);
-    std::string consensus = ma.generateConsensus();
-    addOverlappingHits(query, pTargetBWT, pTargetSSA, params, hits);
-    */
     return query;
 }
 
@@ -75,15 +69,35 @@ std::string LRCorrectionAlgorithm::correctAlignmentPartial(const std::string& qu
 std::string LRCorrectionAlgorithm::correctGraphThread(const std::string& query,
                                              const BWT* pTargetBWT, 
                                              const BWT* pRevTargetBWT, 
-                                             const SampledSuffixArray* /*pTargetSSA*/,
-                                             const LRAlignment::LRParams& /*params*/)
+                                             const SampledSuffixArray* pTargetSSA,
+                                             const LRAlignment::LRParams& params)
 {
-    std::string seed_ecoli_test = "GATTTCCAGCGCGCCATCGCCACAGGCAATCAGCAGTGGCGCAACAGAAATCACGCTCCCCGGCTGTGCTTTGCTGGCATG";
-    std::string seed_yeast_test = "TTTTATTTTTCCAAGAGTGCAATCAGCGGGTTTCCTCCTTATTTGCGTTTGGAGCAATCTTCCCTTTTTCGAACACAAAAT";
-    std::string& seed = seed_yeast_test;
-    StringThreader threader(seed, &query, seed.size(), 51, pTargetBWT, pRevTargetBWT);
-    threader.run();
-    threader.printAll();
+    // Calculate a seed sequence
+    size_t ss_length = 200;
+    std::string sub = query.substr(0, ss_length);
+    LRAlignment::LRHitVector hits;
+    LRAlignment::bwaswAlignment(sub, pTargetBWT, pTargetSSA, params, hits);
 
-    return query;
+    if(hits.empty())
+        return "";
+
+    LRAlignment::LRHit seedHit = hits[0];
+    std::string seed = BWTAlgorithms::extractSubstring(pTargetBWT, seedHit.targetID, seedHit.t_start, seedHit.length);
+    if(seed.size() < 51)
+        return "";
+
+    std::string querySeed = query.substr(seedHit.q_start);
+    StringThreader threader(seed, &querySeed, seedHit.q_end, 51, pTargetBWT, pRevTargetBWT);
+
+    StringVector matchedStrings;
+    threader.run(matchedStrings);
+
+    if(matchedStrings.empty())
+        return "";
+
+    for(size_t i = 0; i < matchedStrings.size(); ++i)
+    {
+        StdAlnTools::printGlobalAlignment(query, matchedStrings[i]);
+    }
+    return matchedStrings.back();
 }

@@ -55,6 +55,9 @@ class StringThreaderNode
         void computeInitialAlignment(const std::string& initialLabel, int queryAlignmentEnd, int bandwidth);
         void computeExtendedAlignment(const std::string& ext, const BandedDPColumn* pPrevColumn);
 
+        //
+        bool hasExtensionTerminated() const;
+
         // Return a suffix of length l of the string represented by this branch
         std::string getSuffix(size_t l) const;
 
@@ -93,7 +96,7 @@ class StringThreader
         ~StringThreader();
 
         // Run the threading process
-        void run();
+        void run(StringVector& outStrings);
         void printAll();
 
     private:
@@ -102,6 +105,9 @@ class StringThreader
         void extendLeaves();
         void cullLeavesByLocalError();
         void cullLeavesByEdits();
+        
+        //
+        void checkTerminated(StringVector& outStrings);
 
         // Perform a 1-base extension of the node
         // Returns true if the node has a branch

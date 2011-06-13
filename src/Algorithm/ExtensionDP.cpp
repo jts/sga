@@ -37,6 +37,7 @@ BandedDPColumn::BandedDPColumn(int ci, int maxRows, int bandwidth, const BandedD
     m_colIdx = ci;
     m_rowStartIdx = std::max(0, m_colIdx - (bandwidth / 2) - 1);
     m_rowEndIdx = std::min(maxRows - 1, m_colIdx + (bandwidth / 2));
+    m_maxRows = maxRows;
     assert(m_rowStartIdx <= m_rowEndIdx);
     int numRows = m_rowEndIdx - m_rowStartIdx + 1;
     m_cells.resize(numRows);
@@ -69,7 +70,6 @@ int BandedDPColumn::getBestRowIndex() const
 {
     int bestScore = POSITIVE_INF;
     int bestIdx = -1;
-    printf("Start: %d End: %d\n", m_rowStartIdx, m_rowEndIdx);
     for(int i = m_rowStartIdx; i <= m_rowEndIdx; ++i)
     {
         int s = getRowScore(i);
@@ -80,6 +80,13 @@ int BandedDPColumn::getBestRowIndex() const
         }
     }
     return bestIdx;
+}
+
+// Returns true if the best alignment in this column is to the endpoint of the query sequence
+bool BandedDPColumn::isAlignedToEnd() const
+{
+    int bestIdx = getBestRowIndex();
+    return m_maxRows - bestIdx < 20;
 }
 
 // Return the pointer to the previous column
