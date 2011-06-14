@@ -37,7 +37,9 @@ LRCorrectionResult LRCorrectionProcess::process(const SequenceWorkItem& item)
 //
 // Post processor
 //
-LRCorrectionPostProcess::LRCorrectionPostProcess(std::ostream* pCorrectedWriter) : m_pCorrectedWriter(pCorrectedWriter)
+LRCorrectionPostProcess::LRCorrectionPostProcess(std::ostream* pCorrectedWriter) : m_pCorrectedWriter(pCorrectedWriter),
+                                                                                   m_readsKept(0),
+                                                                                   m_readsDiscarded(0)
 {
 
 }

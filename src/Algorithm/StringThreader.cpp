@@ -5,8 +5,8 @@
 //-----------------------------------------------
 //
 // StringThreader - Iteratively construct a
-// set of strings by threading a query sequence
-// through a graph.
+// string representing a walk through an assembly graph
+// matching a query sequence. 
 //
 // The assembly graph is abstractly represented as
 // an FM-index.
@@ -22,12 +22,11 @@
 StringThreaderNode::StringThreaderNode(const std::string* pQuery,
                                        StringThreaderNode* parent) : m_pQuery(pQuery),
                                                                      m_pParent(parent)
-
 {
 
 }
 
-// Delete the children of the node
+// Destructor, recurisvely delete the children of the node
 StringThreaderNode::~StringThreaderNode()
 {
     // Delete children
@@ -39,7 +38,7 @@ StringThreaderNode::~StringThreaderNode()
         delete m_alignmentColumns[i];
 }
 
-// Return a suffix of length l of the string represented by this branch
+// Return a suffix of length l of the path from the root to this node
 std::string StringThreaderNode::getSuffix(size_t l) const
 {
     size_t n = m_label.size();
@@ -54,7 +53,7 @@ std::string StringThreaderNode::getSuffix(size_t l) const
     }
 }
 
-// Return a suffix of length l of the string represented by this branch
+// Return the full string of the path from the root to this node
 std::string StringThreaderNode::getFullString() const
 {
     if(m_pParent == NULL)
@@ -63,13 +62,14 @@ std::string StringThreaderNode::getFullString() const
         return m_pParent->getFullString() + m_label;
 }
 
-// Create a child node
+// Create a new child node with the given label. Returns a pointer to the new node.
 StringThreaderNode* StringThreaderNode::createChild(const std::string& label)
 {
     StringThreaderNode* pAdded = new StringThreaderNode(m_pQuery, this);
+    m_children.push_back(pAdded);
+
     assert(!m_alignmentColumns.empty());
     pAdded->computeExtendedAlignment(label, m_alignmentColumns.back());
-    m_children.push_back(pAdded);
     return pAdded;
 }
 
@@ -81,6 +81,7 @@ void StringThreaderNode::extend(const std::string& ext)
     computeExtendedAlignment(ext, m_alignmentColumns.back());
 }
    
+// Update the alignment columns for this node.
 void StringThreaderNode::computeExtendedAlignment(const std::string& ext, const BandedDPColumn* pPrevColumn)
 {
     // Calculate a new alignment column for each base of the label
@@ -93,7 +94,7 @@ void StringThreaderNode::computeExtendedAlignment(const std::string& ext, const 
     m_label.append(ext);
 }
 
-// Initialize the alignment columns
+// Initialize the alignment columns. 
 void StringThreaderNode::computeInitialAlignment(const std::string& initialLabel, int queryAlignmentEnd, int bandwidth)
 {
     // Create the initial alignment columnds between label and query
@@ -102,20 +103,20 @@ void StringThreaderNode::computeInitialAlignment(const std::string& initialLabel
     ExtensionDP::createInitialAlignment(m_label, m_pQuery->substr(0, queryAlignmentEnd), bandwidth, m_alignmentColumns);
 }
 
-//
+// Calculate error rate over last context bases of the alignment
 double StringThreaderNode::getLocalErrorRate(int context) const
 {
     return ExtensionDP::calculateLocalEditPercentage(m_alignmentColumns.back(), context);
 }
 
-//
+// Calculate error rate over the entire alignment
 double StringThreaderNode::getGlobalErrorRate() const
 {
     return ExtensionDP::calculateGlobalEditPercentage(m_alignmentColumns.back());
 }
 
-//
-int StringThreaderNode::countEdits() const
+// Calculate the edit distance between the thread and query
+int StringThreaderNode::getEditDistance() const
 {
     int edits, alignLength;
     ExtensionDP::countEditsAndAlignLength(m_alignmentColumns.back(), edits, alignLength);
@@ -125,30 +126,37 @@ int StringThreaderNode::countEdits() const
 // Returns true if the extension has terminated
 bool StringThreaderNode::hasExtensionTerminated() const
 {
-    return m_alignmentColumns.back()->isAlignedToEnd();
+    return ExtensionDP::isExtensionTerminated(m_alignmentColumns.back(), 5);
 }
 
-//
+// Return the best alignment between the string represented by this node and the query
+StringThreaderResult StringThreaderNode::getAlignment() const
+{
+    ExtensionDPAlignment alignment = ExtensionDP::findTrimmedAlignment(m_alignmentColumns.back(), 5);
+    StringThreaderResult result;
+    result.query_align_length = alignment.query_align_length;
+    result.thread =  getFullString().substr(0, alignment.target_align_length);
+    return result;
+}
+
+// Print the alignment
 void StringThreaderNode::printFullAlignment() const
 {
     std::string fullString = getFullString();
     ExtensionDP::printAlignment(fullString, *m_pQuery, m_alignmentColumns.back());
-
-    double localER = ExtensionDP::calculateLocalEditPercentage(m_alignmentColumns.back(), 20);
-    printf("LocalER: %lf\n", localER);
 }
 
-//
-void StringThreaderNode::printAllStrings(const std::string& curr) const
+// Print the string(s) represented by this node and its children
+void StringThreaderNode::printAllStrings(const std::string& parent) const
 {
     if(m_children.empty())
     {
-        std::cout << "S: " << curr + m_label << "\n";
+        std::cout << "S: " << parent + m_label << "\n";
     }
     else
     {
         for(STNodePtrList::const_iterator iter = m_children.begin(); iter != m_children.end(); ++iter)
-            (*iter)->printAllStrings(curr + m_label);
+            (*iter)->printAllStrings(parent + m_label);
     }
 }
 
@@ -177,15 +185,14 @@ StringThreader::~StringThreader()
 }
 
 // Run the threading algorithm
-void StringThreader::run(StringVector& outStrings)
+void StringThreader::run(StringThreaderResultVector& results)
 {
     // Extend the leaf nodes
     while(!m_leaves.empty())
     {
         extendLeaves();
         cullLeavesByEdits();
-        cullLeavesByLocalError();
-        checkTerminated(outStrings);
+        checkTerminated(results);
     }
 }
 
@@ -205,8 +212,8 @@ void StringThreader::extendLeaves()
         StringVector extensions = getDeBruijnExtensions(*iter);
 
         // Either extend the current node or branch it
-        // If no extension, do nothing so this node
-        // is no longer marked a leaf
+        // If no extension, do nothing and this node
+        // is no longer considered a leaf
         if(extensions.size() == 1)
         {
             // Single extension, do not branch
@@ -228,7 +235,9 @@ void StringThreader::extendLeaves()
     m_leaves = newLeaves;
 }
 
-// Remove leaves that are likely to be erroneous extensions
+// Remove leaves that are have a high local error rate
+// These leaves probably represent branches that are not
+// the query sequence.
 void StringThreader::cullLeavesByLocalError()
 {
     STNodePtrList newLeaves;
@@ -238,7 +247,6 @@ void StringThreader::cullLeavesByLocalError()
 
     // Calculate the local error rate of the alignments to each new leaf
     // If it is less than threshold, add the leaf to the node
-    //std::cout << "***EXTENSION:\n";
     for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
         double ler = (*iter)->getLocalErrorRate(context);
@@ -249,7 +257,8 @@ void StringThreader::cullLeavesByLocalError()
     m_leaves = newLeaves;
 }
 
-// Remove leaves that are likely to be erroneous extensions
+// Remove leaves that have an edit distance much higher than
+// the best leaf
 void StringThreader::cullLeavesByEdits()
 {
     STNodePtrList newLeaves;
@@ -260,7 +269,7 @@ void StringThreader::cullLeavesByEdits()
     IntVector editsVector;
     for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
-        int edits = (*iter)->countEdits();
+        int edits = (*iter)->getEditDistance();
         if(edits < bestEdits)
             bestEdits = edits;
          editsVector.push_back(edits);
@@ -270,9 +279,6 @@ void StringThreader::cullLeavesByEdits()
     int threshold = 1;
     for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
-        //printf("leaf %d/%zu has %d edits\n", leafID, m_leaves.size(), editsVector[leafID]);
-//        (*iter)->printFullAlignment();
-
         if(editsVector[leafID] <= bestEdits + threshold)
             newLeaves.push_back(*iter);
         leafID += 1;
@@ -281,29 +287,26 @@ void StringThreader::cullLeavesByEdits()
     m_leaves = newLeaves;
 }
 
-// Check for terminated strings
-void StringThreader::checkTerminated(StringVector& outStrings)
+// Check for leaves whose extension has terminated. If the leaf has
+// terminated, its alignment result is pushed to the result vector
+void StringThreader::checkTerminated(StringThreaderResultVector& results)
 {
     STNodePtrList newLeaves;
     for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
         if((*iter)->hasExtensionTerminated())
-            outStrings.push_back((*iter)->getFullString());
+            results.push_back((*iter)->getAlignment());
         else
-        {
             newLeaves.push_back(*iter);
-//            (*iter)->printFullAlignment();
-        }
     }
     m_leaves = newLeaves;
 }
 
-// Extend a leaf node, possibly creating a branch
+// Calculate the successors of this node in the implicit deBruijn graph
 StringVector StringThreader::getDeBruijnExtensions(StringThreaderNode* pNode)
 {
     // Get the last k-1 bases of the node
     std::string pmer = pNode->getSuffix(m_kmer - 1);
-    assert((int)pmer.size() == m_kmer - 1);
     std::string rc_pmer = reverseComplement(pmer);
 
     // Get an interval for the p-mer and its reverse complement

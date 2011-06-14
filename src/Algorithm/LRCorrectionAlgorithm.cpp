@@ -10,11 +10,14 @@
 #include "LRCorrectionAlgorithm.h"
 #include "StringThreader.h"
 
-std::string LRCorrectionAlgorithm::correct(const std::string& query,
-                                           const BWT* pTargetBWT, 
-                                           const BWT* pRevTargetBWT, 
-                                           const SampledSuffixArray* pTargetSSA,
-                                           const LRAlignment::LRParams& params)
+namespace LRCorrectionAlgorithm
+{
+
+std::string correct(const std::string& query,
+                    const BWT* pTargetBWT, 
+                    const BWT* pRevTargetBWT, 
+                    const SampledSuffixArray* pTargetSSA,
+                    const LRAlignment::LRParams& params)
 {
     if(0)
         return correctAlignment(query, pTargetBWT, pTargetSSA, params);
@@ -23,10 +26,10 @@ std::string LRCorrectionAlgorithm::correct(const std::string& query,
 }
 
 // Correct the read using an alignment-based approach
-std::string LRCorrectionAlgorithm::correctAlignment(const std::string& query,
-                                           const BWT* pTargetBWT, 
-                                           const SampledSuffixArray* pTargetSSA,
-                                           const LRAlignment::LRParams& params)
+std::string correctAlignment(const std::string& query,
+                             const BWT* pTargetBWT, 
+                             const SampledSuffixArray* pTargetSSA,
+                             const LRAlignment::LRParams& params)
 {
    LRAlignment::LRHitVector hits;
    LRAlignment::bwaswAlignment(query, pTargetBWT, pTargetSSA, params, hits);
@@ -41,10 +44,10 @@ std::string LRCorrectionAlgorithm::correctAlignment(const std::string& query,
 
 
 // Correct the read using an alignment-based approach
-std::string LRCorrectionAlgorithm::correctAlignmentPartial(const std::string& query,
-                                                  const BWT* pTargetBWT, 
-                                                  const SampledSuffixArray* pTargetSSA,
-                                                  const LRAlignment::LRParams& params)
+std::string correctAlignmentPartial(const std::string& query,
+                                    const BWT* pTargetBWT, 
+                                    const SampledSuffixArray* pTargetSSA,
+                                    const LRAlignment::LRParams& params)
 {
 
     size_t ss_length = 150;
@@ -79,45 +82,56 @@ std::string LRCorrectionAlgorithm::correctAlignmentPartial(const std::string& qu
 }
 
 // Attempt to correct the sequence via threading through a graph
-std::string LRCorrectionAlgorithm::correctGraphThread(const std::string& query,
-                                             const BWT* pTargetBWT, 
-                                             const BWT* pRevTargetBWT, 
-                                             const SampledSuffixArray* pTargetSSA,
-                                             const LRAlignment::LRParams& params)
+std::string correctGraphThread(const std::string& query,
+                               const BWT* pTargetBWT, 
+                               const BWT* pRevTargetBWT, 
+                               const SampledSuffixArray* pTargetSSA,
+                               const LRAlignment::LRParams& params)
 {
-    // Calculate a seed sequence
+    // Calculate hits using bwa-sw alignment over the first portion
+    // of the long read. The hits will be used to seed the threading
+    // process.
+    size_t extension_kmer = 51;
     size_t ss_length = 150;
     std::string sub = query.substr(0, ss_length);
     LRAlignment::LRHitVector hits;
     LRAlignment::bwaswAlignment(sub, pTargetBWT, pTargetSSA, params, hits);
 
+    // No hits found
     if(hits.empty())
         return "";
 
-    size_t bestScore = 0;
+    int bestScore = std::numeric_limits<int>::min();
     std::string bestString = "";
+
     for(size_t i = 0; i < hits.size(); ++i)
     {
         LRAlignment::LRHit seedHit = hits[i];
         std::string seed = BWTAlgorithms::extractSubstring(pTargetBWT, seedHit.targetID, seedHit.t_start, seedHit.length);
-        if(seed.size() < 51)
+        if(seed.size() < extension_kmer)
             continue;
 
+        // Perform the threading for this query seed
         std::string querySeed = query.substr(seedHit.q_start);
-        StringThreader threader(seed, &querySeed, seedHit.q_end, 51, pTargetBWT, pRevTargetBWT);
+        StringThreader threader(seed, &querySeed, seedHit.q_end, extension_kmer, pTargetBWT, pRevTargetBWT);
 
-        StringVector matchedStrings;
-        threader.run(matchedStrings);
-
-        for(size_t j = 0; j < matchedStrings.size(); ++j)
+        StringThreaderResultVector results;
+        threader.run(results);
+        
+        // Process the results and save the best-scoring thread
+        for(size_t j = 0; j < results.size(); ++j)
         {
-            //StdAlnTools::printGlobalAlignment(query, matchedStrings[j]);
-            if(matchedStrings[j].size() > bestScore)
+            StringThreaderResult& r = results[j];
+            int score = StdAlnTools::globalAlignment(querySeed.substr(0, r.query_align_length), r.thread);
+            
+            if(score > bestScore)
             {
-                bestScore = matchedStrings[j].size();
-                bestString = matchedStrings[j];
+                bestScore = score;
+                bestString = r.thread;
             }
         }
     }
     return bestString;
 }
+
+} // namespace

@@ -8,29 +8,47 @@
 // ExtensionDP - Class implementing an iterative
 // dynamic programming alignment. The alignment
 // starts by globally constructing an alignment
-// between two strings in a seed region, 
-// then this alignment can be extended row by row.
+// between two strings in a seed region. This initial
+// alignment can then be extended row-by-row as one of the
+// strings is extended. This is the core data structure for the 
+// StringThreader class
+// 
 #ifndef EXTENSION_DP_H
 #define EXTENSION_DP_H
 
 #include <vector>
 #include "StdAlnTools.h"
 
+// Structure holding the score for a single cell
+// of the DP matrix
 struct DPCell
 {
     DPCell() : score(0), ctype('\0') {}
     int score;
     char ctype;
 };
-
 typedef std::vector<DPCell> CellVector;
 
+// Result object providing the coordinates
+// of the endpoints of the alignment
+struct ExtensionDPAlignment
+{
+    int query_align_length;
+    int target_align_length;
+};
+
+// Core class providing a single column of the dynamic
+// programming matrix
 class BandedDPColumn
 {
     public:
-        BandedDPColumn(int ci, int maxRows, int bandwidth, const BandedDPColumn* prevColumn);
 
         //
+        // Functions
+        //
+        BandedDPColumn(int ci, int maxRows, int bandwidth, const BandedDPColumn* prevColumn);
+
+        // Simple getters
         int getColIdx() const { return m_colIdx; }
         int getBandwidth() const { return m_bandwidth; }
 
@@ -41,22 +59,25 @@ class BandedDPColumn
         int getMaxRow() const { return m_rowEndIdx; }
         const BandedDPColumn* getPreviousColumn() const;
 
-        //
+        // Set the cell information for a given row in the column
         void setRowScore(int row, int score, char ctype);
         
         // Returns the row index of the best scoring cell
         int getBestRowIndex() const;
 
-        // Calculate the score for the row and set it in the vector
+        // Calculate and set the score for the row
         void fillRowEditDistance(int rowIdx, int matchScore);
 
-        // Returns true if the best alignment in this column is to the endpoint of the query sequence
-        bool isAlignedToEnd() const;
-
     private:
-
+        
+        //
+        // Functions
+        //
         int getVectorIndex(int rowIdx) const;
 
+        //
+        // Data
+        //
         int m_colIdx;
         int m_maxRows;
         int m_rowStartIdx;
@@ -67,6 +88,7 @@ class BandedDPColumn
 };
 typedef std::vector<BandedDPColumn*> BandedDPColumnPtrVector;
 
+// Algorithms to use/extend the extensionDP functionality
 namespace ExtensionDP
 {
     // Initialize the extension DP by computing a global alignment between extendable and fixed
@@ -80,7 +102,15 @@ namespace ExtensionDP
     // path_t* is pre-allocated with maxPathLength entries.
     void backtrack(const BandedDPColumn* pLastColumn, path_t* path, int* pPathLen, const int maxPathLength);
 
-    // Calculate the edit percentage of the alignment starting from the given column, over the last numBases
+    // Check if the extension has terminated. This is true if there are more
+    // than insertionThreshold insertions at the end of the alignment.
+    bool isExtensionTerminated(const BandedDPColumn* pLastColumn, int insertionThreshold);
+
+    // Return the best trimmed alignment of the extensionDP object requiring minMatches matches
+    // at the end of the alignment
+    ExtensionDPAlignment findTrimmedAlignment(const BandedDPColumn* pLastColumn, int minMatches);
+    
+    // Calculate mismatch/error rates between the query and the string up to pStartColumn
     double calculateLocalEditPercentage(const BandedDPColumn* pStartColumn, int numBases);
     double calculateGlobalEditPercentage(const BandedDPColumn* pStartColumn);
     void countEditsAndAlignLength(const BandedDPColumn* pStartColumn, int& edits, int& alignLength);

@@ -5,8 +5,8 @@
 //-----------------------------------------------
 //
 // StringThreader - Iteratively construct a
-// set of strings by threading a query sequence
-// through a graph.
+// string representing a walk through an assembly graph
+// matching a query sequence. 
 //
 // The assembly graph is abstractly represented as
 // an FM-index.
@@ -20,54 +20,70 @@
 
 // Typedefs
 class StringThreaderNode;
-
 typedef std::list<StringThreaderNode*> STNodePtrList;
 
-// A node in the string threading tree
+// Object to hold the result of the threading process
+struct StringThreaderResult
+{
+    std::string thread;
+    int query_align_length;
+};
+typedef std::vector<StringThreaderResult> StringThreaderResultVector;
+
+// A node in the threading tree
 class StringThreaderNode
 {
-
     public:
 
+        //
         // Functions
+        // 
         StringThreaderNode(const std::string* pQuery, StringThreaderNode* parent);
         ~StringThreaderNode();
-        
-        // Print the alignment between this branch of the tree and the query
-        void printFullAlignment() const;
-        
-        // 
-        void printAllStrings(const std::string& curr) const;
-
-        // Get the alignment error rate over the last context bases
-        double getLocalErrorRate(int context) const;
-        double getGlobalErrorRate() const;
-        int countEdits() const;
-        
+      
         // Add a child node to this node with the given label
         // Returns a pointer to the created node
         StringThreaderNode* createChild(const std::string& label);
 
         // Extend the label of this node by l
         void extend(const std::string& ext);
+        
+        // Return a suffix of length l of the string represented by this node
+        std::string getSuffix(size_t l) const;
 
-        // Initialize the alignment columns. This function is for the root node.
+        // Return the complete sequence of the string represented by the branch
+        std::string getFullString() const;
+
+        // Get alignment mismatch/error rate metrics
+        double getLocalErrorRate(int context) const;
+        double getGlobalErrorRate() const;
+        int getEditDistance() const;
+        
+        // Initialize or update the alignment data
         void computeInitialAlignment(const std::string& initialLabel, int queryAlignmentEnd, int bandwidth);
         void computeExtendedAlignment(const std::string& ext, const BandedDPColumn* pPrevColumn);
 
-        //
+        // Return the best alignment for the string this node represents
+        StringThreaderResult getAlignment() const;
+
+        // Check if this node can be extended any further
         bool hasExtensionTerminated() const;
 
-        // Return a suffix of length l of the string represented by this branch
-        std::string getSuffix(size_t l) const;
+        // Print the alignment between the string represented by the
+        // path from the root of the tree to this node
+        void printFullAlignment() const;
+        
+        // Recursive function to print all the strings represented
+        // by this node and all its children.
+        void printAllStrings(const std::string& parent) const;
 
-        // Return the complete of this branch including all the parent's labels
-        std::string getFullString() const;
 
     private:
         
-
+        //
         // Data
+        //
+        
         // The extension string from the parent
         std::string m_label;
 
@@ -86,6 +102,10 @@ class StringThreaderNode
 class StringThreader
 {
     public:
+
+        //
+        // Functions
+        //
         StringThreader(const std::string& seed, 
                        const std::string* pQuery,
                        int queryAlignmentEnd,
@@ -95,25 +115,34 @@ class StringThreader
 
         ~StringThreader();
 
-        // Run the threading process
-        void run(StringVector& outStrings);
+        // Run the threading process. Valid alignments are pushed to the results
+        // vector
+        void run(StringThreaderResultVector& results);
+
+        // Print all the strings represented by the tree
         void printAll();
 
     private:
-        
+
+        //
         // Functions
+        //
         void extendLeaves();
+
+        // Leaf removal heuristics
         void cullLeavesByLocalError();
         void cullLeavesByEdits();
         
-        //
-        void checkTerminated(StringVector& outStrings);
+        // Check if the leaves can be extended no further
+        // If so, the best alignment is pushed to results
+        void checkTerminated(StringThreaderResultVector& results);
 
-        // Perform a 1-base extension of the node
-        // Returns true if the node has a branch
+        // Calculate the successors of this node in the implicit deBruijn graph
         StringVector getDeBruijnExtensions(StringThreaderNode* pNode);
-
+        
+        //
         // Data
+        //
         const BWT* m_pBWT; 
         const BWT* m_pRevBWT;
         int m_kmer;

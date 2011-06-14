@@ -8,10 +8,11 @@
 // ExtensionDP - Class implementing an iterative
 // dynamic programming alignment. The alignment
 // starts by globally constructing an alignment
-// between two strings in a seed region, 
-// then this alignment can be extended column
-// by column for one of the strings.
-//
+// between two strings in a seed region. This initial
+// alignment can then be extended row-by-row as one of the
+// strings is extended. This is the core data structure for the 
+// StringThreader class
+// 
 #include "ExtensionDP.h"
 #include <stdio.h>
 #include <iostream>
@@ -20,16 +21,19 @@
 static const int MINUS_INF = -1073741823;
 static const int POSITIVE_INF = 1073741823;
 
+// Return the largest of the 3 values
 inline int max3(int a, int b, int c)
 {
     return std::max(std::max(a,b), c);
 }
 
+// Return the smalleset of the 3 values
 inline int min3(int a, int b, int c)
 {
     return std::min(std::min(a,b), c);
 }
 
+// Constructor
 BandedDPColumn::BandedDPColumn(int ci, int maxRows, int bandwidth, const BandedDPColumn* prevColumn)
 {
     // Calculate the lower and upper band indices
@@ -65,7 +69,7 @@ char BandedDPColumn::getRowType(int row) const
         return m_cells[vec_idx].ctype;
 }
 
-//
+// Return the index of the best-scoring row
 int BandedDPColumn::getBestRowIndex() const
 {
     int bestScore = POSITIVE_INF;
@@ -82,12 +86,6 @@ int BandedDPColumn::getBestRowIndex() const
     return bestIdx;
 }
 
-// Returns true if the best alignment in this column is to the endpoint of the query sequence
-bool BandedDPColumn::isAlignedToEnd() const
-{
-    int bestIdx = getBestRowIndex();
-    return m_maxRows - bestIdx < 20;
-}
 
 // Return the pointer to the previous column
 const BandedDPColumn* BandedDPColumn::getPreviousColumn() const
@@ -95,7 +93,7 @@ const BandedDPColumn* BandedDPColumn::getPreviousColumn() const
     return m_pPrevColumn;
 }
 
-// Set the score for row
+// Set the score and type for row 
 void BandedDPColumn::setRowScore(int row, int score, char ctype)
 {
     int vec_idx = getVectorIndex(row);
@@ -106,6 +104,7 @@ void BandedDPColumn::setRowScore(int row, int score, char ctype)
     }
 }
 
+// Return the score for the requested cell
 int BandedDPColumn::getCellScore(int colIdx, int rowIdx) const
 {
     // If accessing the col/row with negative index, return
@@ -132,16 +131,20 @@ void BandedDPColumn::fillRowEditDistance(int rowIdx, int matchScore)
         return; // out of band, ignore
 
     // Get the scores for the cell above, to the left and diagonal
+    
     int above = getCellScore(m_colIdx, rowIdx - 1) + 1;
     int diag = getCellScore(m_colIdx - 1, rowIdx - 1) + matchScore;
-    int left = getCellScore(m_colIdx - 1, rowIdx) + 1;
+    
+    // Give free insertions if the last row
+    int insert_score = rowIdx < (m_maxRows - 1) ? 1 : 0;
+    int left = getCellScore(m_colIdx - 1, rowIdx) + insert_score;
     int score = min3(above, left, diag);
 
     char ctype;
-    if(score == above)
-        ctype = FROM_D;
-    else if(score == diag)
+    if(score == diag)
         ctype = FROM_M;
+    else if(score == above)
+        ctype = FROM_D;
     else
         ctype = FROM_I;
 //    printf("Cell(%d, %d) a: %d d: %d l: %d s: %d t: %d\n", m_colIdx, rowIdx, above, diag, left, score, ctype);
@@ -183,7 +186,7 @@ void ExtensionDP::createInitialAlignment(const std::string& extendable, const st
     }
 }
 
-//
+// Create a new column, representing the extension of the alignment to char b
 BandedDPColumn* ExtensionDP::createNewColumn(char b, const std::string& fixed, const BandedDPColumn* pPrevColumn)
 {
     int numRows = fixed.size() + 1;
@@ -203,8 +206,7 @@ BandedDPColumn* ExtensionDP::createNewColumn(char b, const std::string& fixed, c
     return pCurrCol;
 }
 
-//
-//
+// Calculate the edit percentage over the last numBases bases
 double ExtensionDP::calculateLocalEditPercentage(const BandedDPColumn* pColumn, int numBases)
 {
     // Get the row with in the start column with the best score
@@ -241,8 +243,15 @@ double ExtensionDP::calculateLocalEditPercentage(const BandedDPColumn* pColumn, 
     return static_cast<double>(numDiffs) / alignLength;
 }
 
-//
-//
+// Returns the error percentage over the entire alignment
+double ExtensionDP::calculateGlobalEditPercentage(const BandedDPColumn* pStartColumn)
+{
+    int edits, alignLength;
+    countEditsAndAlignLength(pStartColumn, edits, alignLength);
+    return (double)edits / alignLength;
+}
+
+// Returns the number of edits and the total alignment length for the submatrix starting at pColumn
 void ExtensionDP::countEditsAndAlignLength(const BandedDPColumn* pColumn, int& edits, int& alignLength)
 {
     // Get the row with in the start column with the best score
@@ -272,14 +281,6 @@ void ExtensionDP::countEditsAndAlignLength(const BandedDPColumn* pColumn, int& e
         }
         alignLength += 1;
     }
-}
-
-//
-double ExtensionDP::calculateGlobalEditPercentage(const BandedDPColumn* pStartColumn)
-{
-    int edits, alignLength;
-    countEditsAndAlignLength(pStartColumn, edits, alignLength);
-    return (double)edits / alignLength;
 }
 
 // Calculate the best alignment through the matrix. Assumes that
@@ -334,6 +335,113 @@ void ExtensionDP::backtrack(const BandedDPColumn* pLastColumn, path_t* path, int
     *path_len = pathLength - 1;
 }
 
+// Return true if the extension can proceed no further. 
+// This is based on two conditions:
+// 1) There are n insertions at the end of the sequence
+// 2) The bandwidth in this column is one 
+bool ExtensionDP::isExtensionTerminated(const BandedDPColumn* pLastColumn, int insertionThreshold)
+{
+    if(pLastColumn->getMinRow() == pLastColumn->getMaxRow())
+        return true;
+
+    // Backtrack up to n steps checking for insertions
+    const BandedDPColumn* pCurrColumn = pLastColumn;
+    int rowIdx = pLastColumn->getBestRowIndex();
+    int colIdx = pLastColumn->getColIdx();
+    char ctype = pCurrColumn->getRowType(rowIdx);
+	do {
+        assert(pCurrColumn != NULL);
+
+		switch (ctype) 
+        {
+			case FROM_M: 
+            case FROM_D:
+                return false;
+			case FROM_I: 
+                pCurrColumn = pCurrColumn->getPreviousColumn();
+                --colIdx; 
+                insertionThreshold -= 1;
+                if(insertionThreshold == 0)
+                    return true;
+		}
+		ctype = pCurrColumn->getRowType(rowIdx);
+	} while (rowIdx || colIdx);
+    return false;
+}
+
+// Parse the score matrix and return a trimmed alignment between the query and target strings.
+// The trimming condition requires the last minMatches bases of the two sequences to be perfectly aligned
+ExtensionDPAlignment ExtensionDP::findTrimmedAlignment(const BandedDPColumn* pLastColumn, int minMatches)
+{
+    const BandedDPColumn* pBestColumn = pLastColumn;
+    bool columnFound = false;
+
+    // Iterate backwards over the columns searching for one that 
+    // has minMatches matches to the query at the end
+    while(!columnFound)
+    {
+        // Check if the best alignment starting from this column
+        // ends with n matches.
+        int matches = 0;
+        int mismatches = 0;
+        const BandedDPColumn* pCurrColumn = pBestColumn;
+        int rowIdx = pCurrColumn->getBestRowIndex();
+        int colIdx = pCurrColumn->getColIdx();
+        int startScore = pCurrColumn->getRowScore(rowIdx);
+        char ctype = pCurrColumn->getRowType(rowIdx);
+
+        do {
+            if(matches == minMatches)
+            {
+                // Ensure the edit distance is the same
+                columnFound = true;
+                break;    
+            }
+
+            switch (ctype) 
+            {
+                case FROM_M: 
+                    pCurrColumn = pCurrColumn->getPreviousColumn();
+                    --colIdx; 
+                    --rowIdx;
+                    matches += 1;
+                    break;
+
+                case FROM_D:
+                case FROM_I:
+                    mismatches += 1;
+                    columnFound = false;
+                    break;
+            }
+            
+            ctype = pCurrColumn->getRowType(rowIdx);
+            
+            // Update mismatches
+            if(pCurrColumn->getRowScore(rowIdx) != startScore)
+                ++mismatches;
+
+        } while ((rowIdx || colIdx) && pCurrColumn != NULL && mismatches == 0);
+
+        if(!columnFound)
+            pBestColumn = pBestColumn->getPreviousColumn();
+    }
+    
+    // set the result output
+    ExtensionDPAlignment result;
+    if(pBestColumn != NULL)
+    {
+        result.target_align_length = pBestColumn->getColIdx();
+        result.query_align_length = pBestColumn->getBestRowIndex();
+    }
+    else
+    {
+        result.target_align_length = 0;
+        result.query_align_length = 0;
+    }
+    return result;
+}
+
+// Print the alignment starting from the given column
 void ExtensionDP::printAlignment(const std::string& extendable, const std::string& fixed, const BandedDPColumn* pLastColumn)
 {
     // allocate space for the path
@@ -354,6 +462,7 @@ void ExtensionDP::printAlignment(const std::string& extendable, const std::strin
     delete [] path;
 }
 
+// Print the full scoring matrix
 void ExtensionDP::printMatrix(const BandedDPColumnPtrVector& columnPtrVec)
 {
     int numCols = columnPtrVec.size();

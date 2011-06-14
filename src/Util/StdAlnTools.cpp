@@ -11,7 +11,8 @@
 #include "stdaln.h"
 #include "Alphabet.h"
 
-void StdAlnTools::printGlobalAlignment(const std::string& target, const std::string& query)
+// Perform a global alignment between the given strings
+int StdAlnTools::globalAlignment(const std::string& target, const std::string& query, bool bPrint)
 {
     // Set up global alignment parameters and data structures
     GlobalAlnParams params;
@@ -27,18 +28,24 @@ void StdAlnTools::printGlobalAlignment(const std::string& target, const std::str
     uint8_t* pTargetT = createPacked(target);
     int path_len = 0;
     int score = aln_global_core(pTargetT, target.size(), pQueryT, query.size(), &par, path, &path_len);
-
     assert(path_len <= max_path_length);
-    std::string paddedTarget, paddedQuery, paddedMatch;
-    makePaddedStrings(target, query, path, path_len, paddedTarget, paddedQuery, paddedMatch);
-    printPaddedStrings(paddedTarget, paddedQuery, paddedMatch);
 
-    std::cout << "CIGAR: " << makeCigar(path, path_len) << "\n";
-    std::cout << "Global alignment score: " << score << "\n";
+    if(bPrint)
+    {
+        std::string paddedTarget, paddedQuery, paddedMatch;
+        makePaddedStrings(target, query, path, path_len, paddedTarget, paddedQuery, paddedMatch);
+        printPaddedStrings(paddedTarget, paddedQuery, paddedMatch);
 
+        std::cout << "CIGAR: " << makeCigar(path, path_len) << "\n";
+        std::cout << "Global alignment score: " << score << "\n";
+    }
+
+    // Clean up
     delete [] pQueryT;
     delete [] pTargetT;
     free(path);
+
+    return score;
 }
 
 // Convert a std::string into the stdaln required packed format.
@@ -63,7 +70,7 @@ size_t StdAlnTools::calculateMaxTargetLength(int ql, const GlobalAlnParams& para
     return mt;
 }
 
-//
+// Fill in the stdaln AlnParam data, using GlobalAlnParams
 void StdAlnTools::setAlnParam(AlnParam& par, int matrix[25], const GlobalAlnParams& params)
 {
     par.matrix = matrix;
@@ -78,6 +85,7 @@ void StdAlnTools::setAlnParam(AlnParam& par, int matrix[25], const GlobalAlnPara
     par.band_width = params.bandwidth;
 }
 
+// Convert a path to a CIGAR string
 std::string StdAlnTools::makeCigar(path_t* path, int path_len)
 {
     int cigarLen = 0;

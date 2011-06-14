@@ -13,6 +13,7 @@
 #include <inttypes.h>
 #include "stdaln.h"
 
+// Parameters object 
 struct GlobalAlnParams
 {
     GlobalAlnParams() { setDefaults(); }
@@ -50,23 +51,29 @@ struct GlobalAlnParams
 
 namespace StdAlnTools
 {
-    // Print the global alignment between target and query
-    void printGlobalAlignment(const std::string& target, const std::string& query);
+
+    // Perform a global alignment between target and query using stdaln
+    // If bPrint is true, the padded alignment is printed // to stdout.
+    // The alignment score is returned.
+    int globalAlignment(const std::string& target, const std::string& query, bool bPrint = false);
 
     // Convert a std::string into the stdAln required packed format.
-    // This function allocates memory which the caller must free
+    // This function allocates memory which the caller must free.
     uint8_t* createPacked(const std::string& s, size_t start = 0, size_t length = std::string::npos);
 
     // Calculate the maximum aligned target length possible for a query of length ql
+    // under the scoring scheme given by params
     size_t calculateMaxTargetLength(int ql, const GlobalAlnParams& params);
 
-    // Fill in the AlnParam data
+    // Fill in the stdaln AlnParam data, using GlobalAlnParams
     void setAlnParam(AlnParam& par, int matrix[25], const GlobalAlnParams& params);
 
     // Convert a stdaln path to a pair of padded strings representing the alignment
-    void makePaddedStrings(const std::string& s1, const std::string& s2, path_t* path, int path_len,
+    void makePaddedStrings(const std::string& s1, const std::string& s2, 
+                           path_t* path, int path_len,
                            std::string& out1, std::string& out2, std::string& outm);
     
+    // Make a cigar string from a path
     std::string makeCigar(path_t* path, int path_len);
 
     // Print the padded aligned strings

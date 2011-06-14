@@ -14,7 +14,8 @@
 
 namespace LRCorrectionAlgorithm
 {
-    // Main correction function
+    // Main correction function, dispatching the call to one 
+    // of the actual correction algorithms
     std::string correct(const std::string& query,
                         const BWT* pTargetBWT, 
                         const BWT* pRevTargetBWT, 
@@ -22,24 +23,26 @@ namespace LRCorrectionAlgorithm
                         const LRAlignment::LRParams& params);
 
     // Correct the query read by aligning it to all the reads in pTargetBWT
+    // and calling a consensus sequence
     std::string correctAlignment(const std::string& query,
                                  const BWT* pTargetBWT, 
                                  const SampledSuffixArray* pTargetSSA,
                                  const LRAlignment::LRParams& params);
     
-    // Correct the query read by aligning it in overlapping pieces to pTargetBWT
+    // Correct the query read by breaking it into pieces, aligning those
+    // pieces to pTargetBWT then constructing a multialignment from the sub-alignments.
     std::string correctAlignmentPartial(const std::string& query,
                                         const BWT* pTargetBWT, 
                                         const SampledSuffixArray* pTargetSSA,
                                         const LRAlignment::LRParams& params);
 
-
-   // Experimental function for correcting a read by threading it through a graph
-   std::string correctGraphThread(const std::string& query,
-                                  const BWT* pTargetBWT, 
-                                  const BWT* pRevTargetBWT, 
-                                  const SampledSuffixArray* /*pTargetSSA*/,
-                                  const LRAlignment::LRParams& /*params*/);
+    // Correct a read by threading it through an implicit assembly graph
+    // represented by pTargetBWT and pRevTargetBWT.
+    std::string correctGraphThread(const std::string& query,
+                                   const BWT* pTargetBWT, 
+                                   const BWT* pRevTargetBWT, 
+                                   const SampledSuffixArray* /*pTargetSSA*/,
+                                   const LRAlignment::LRParams& /*params*/);
 
 
 };
