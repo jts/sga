@@ -92,6 +92,11 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
     QCResult result;
 
     std::string w = workItem.read.seq.toString();
+
+    // Ensure the read is longer than the k-mer length
+    if((int)w.size() < m_kmerLength)
+        return false;
+
     int k = m_kmerLength;
     int n = w.size();
     int nk = n - m_kmerLength + 1;
