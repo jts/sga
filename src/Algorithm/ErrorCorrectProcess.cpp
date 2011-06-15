@@ -152,6 +152,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
 ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& workItem)
 {
     ErrorCorrectResult result;
+
     typedef std::map<std::string, int> KmerCountMap;
     KmerCountMap kmerCache;
 
@@ -161,10 +162,19 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 #ifdef KMER_TESTING
     std::cout << "Kmer correcting read " << workItem.read.id << "\n";
 #endif
+    
+    if((int)readSequence.size() < m_params.kmerLength)
+    {
+        // The read is shorter than the kmer length, nothing can be done
+        result.correctSequence = readSequence;
+        result.kmerQC = false;
+        return result;
+    }
 
     int n = readSequence.size();
     int nk = n - m_params.kmerLength + 1;
     
+
     // Are all kmers in the read well-represented?
     bool allSolid = false;
     bool done = false;
