@@ -50,11 +50,20 @@ ClusterNode ReadCluster::addSeed(const std::string& sequence)
     return node;
 }
 
-//
-void ReadCluster::run()
+// Run the cluster process. If the number of total nodes
+// exceeds max, abort the search.
+void ReadCluster::run(size_t max)
 {
     while(!m_queue.empty())
     {
+        if(m_queue.size() + m_outCluster.size() > max)
+        {
+            while(!m_queue.empty())
+                m_queue.pop();
+            m_outCluster.clear();
+            return;
+        }
+
         ClusterNode node = m_queue.front();
         m_queue.pop();
 

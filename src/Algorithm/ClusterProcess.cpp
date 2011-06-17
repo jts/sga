@@ -47,7 +47,7 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
     }
     
     // Run the clustering process
-    cluster.run();
+    cluster.run(m_maxClusterSize);
 
     // If some work was performed, update the bitvector so other threads do not try to merge the same set of reads.
     // As a given set of reads should all be merged together, we only need to make sure we atomically update
@@ -111,7 +111,7 @@ ClusterResult ClusterProcess::process(const ClusterVector& inSequences)
     for(size_t i = 0; i < inSequences.size(); ++i)
         cluster.addSeed(inSequences[i].sequence);
 
-    cluster.run();
+    cluster.run(m_maxClusterSize);
 
     ClusterResult result;
     result.clusterNodes = cluster.getOutput();

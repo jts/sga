@@ -41,7 +41,11 @@ class ReadCluster
     public:
         ReadCluster(const OverlapAlgorithm* pOverlapper, int minOverlap);
         ClusterNode addSeed(const std::string& sequence);
-        void run();
+
+        // Run the cluster process. If the number of total nodes
+        // exceeds max, abort the search.
+        void run(size_t max);
+
         ClusterNodeVector getOutput() const;
     
     private:
