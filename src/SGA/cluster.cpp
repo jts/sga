@@ -22,6 +22,21 @@
 #include "ClusterProcess.h"
 #include "ClusterReader.h"
 
+// Defines to clarify awful template function calls
+#define PROCESS_CLUSTER_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, ClusterResult, \
+                                                                                ClusterProcess, ClusterPostProcess>
+
+#define PROCESS_CLUSTER_PARALLEL SequenceProcessFramework::processSequencesParallel<SequenceWorkItem, ClusterResult, \
+                                                                                   ClusterProcess, ClusterPostProcess>
+
+
+#define PROCESS_EXTEND_SERIAL SequenceProcessFramework::processWorkSerial<ClusterVector, ClusterResult, \
+                                                                         ClusterReader, ClusterProcess, \
+                                                                         ClusterPostProcess>
+
+#define PROCESS_EXTEND_PARALLEL SequenceProcessFramework::processWorkParallel<ClusterVector, ClusterResult, \
+                                                                             ClusterReader, ClusterProcess, \
+                                                                             ClusterPostProcess>
 //
 // Getopt
 //
@@ -123,21 +138,13 @@ void cluster()
         // If the extend file is empty, build new clusters
         if(opt::extendFile.empty())
         {
-            SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
-                                                             ClusterResult, 
-                                                             ClusterProcess, 
-                                                             ClusterPostProcess>(opt::readsFile, &processor, &postProcessor);
+            PROCESS_CLUSTER_SERIAL(opt::readsFile, &processor, &postProcessor);
         }
         else
         {
             // Process a set of preexisting clusters
             ClusterReader clusterReader(opt::extendFile);
-            SequenceProcessFramework::processWorkSerial<ClusterVector,
-                                                        ClusterResult,
-                                                        ClusterReader, 
-                                                        ClusterProcess, 
-                                                        ClusterPostProcess>(clusterReader, &processor, &postProcessor);
-
+            PROCESS_EXTEND_SERIAL(clusterReader, &processor, &postProcessor);
         }
     }
     else
@@ -153,20 +160,12 @@ void cluster()
         
         if(opt::extendFile.empty())
         {
-            SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
-                                                               ClusterResult, 
-                                                               ClusterProcess, 
-                                                               ClusterPostProcess>(opt::readsFile, processorVector, &postProcessor);
+            PROCESS_CLUSTER_PARALLEL(opt::readsFile, processorVector, &postProcessor);
         }
         else
         {
             ClusterReader clusterReader(opt::extendFile);
-            SequenceProcessFramework::processWorkParallel<ClusterVector,
-                                                          ClusterResult,
-                                                          ClusterReader, 
-                                                          ClusterProcess, 
-                                                          ClusterPostProcess>(clusterReader, processorVector, &postProcessor);
-
+            PROCESS_EXTEND_PARALLEL(clusterReader, processorVector, &postProcessor);
         }
         
         for(size_t i = 0; i < processorVector.size(); ++i)
