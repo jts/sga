@@ -23,4 +23,5 @@ libalgorithm_a_SOURCES = \
         StringGraphGenerator.h StringGraphGenerator.cpp \
         FMMergeProcess.h FMMergeProcess.cpp \
         StatsProcess.h StatsProcess.cpp \
-        ClusterProcess.h ClusterProcess.cpp 
+        ClusterProcess.h ClusterProcess.cpp \
+        ReadCluster.h ReadCluster.cpp 

@@ -29,102 +29,27 @@ ClusterProcess::~ClusterProcess()
 //
 ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
 {
-    // Calculate the intervals in the forward FM-index for this read
-    const BWT* pBWT = m_pOverlapper->getBWT();
-
-    // Check if this read is a substring
-    OverlapBlockList tempBlockList;
-    OverlapResult overlapResult = m_pOverlapper->alignReadDuplicate(item.read, &tempBlockList);
-    if(overlapResult.isSubstring)
-    {
-        std::cerr << "Error: substring reads found in sga-cluster. Please run rmdup before cluster\n";
-        exit(1);
-    }
-
-    // Find the interval in the fm-index containing the read
-    std::string readString = item.read.seq.toString();
-    BWTInterval readInterval = BWTAlgorithms::findInterval(pBWT, readString);
-    BWTAlgorithms::updateInterval(readInterval, '$', pBWT);
-
-    // The read must be present in the index
-    assert(readInterval.isValid());
-
-    // Check if this read has been used yet
-    bool used = false;
-    for(int64_t i = readInterval.lower; i <= readInterval.upper; ++i)
+    ReadCluster cluster(m_pOverlapper, m_minOverlap);
+    ClusterNode node = cluster.addSeed(item.read.seq.toString());
+    
+    // Check if this read is already part of a cluster. If so, return an empty result
+    for(int64_t i = node.interval.lower; i <= node.interval.upper; ++i)
     {
         if(m_pMarkedReads->test(i))
         {
-            used = true;
-            break;
+            ClusterResult result;
+            return result; // already part of a cluster, return nothing
         }
     }
-
-    ClusterResult result;
-    if(used)
-        return result; // already part of a cluster, return nothing
-
-    // Compute a new cluster around this read
-    std::set<int64_t> usedIndex;
-    ClusterNodeQueue queue;
-    ClusterNode node;
-    node.sequence = item.read.seq.toString();
-    node.interval = readInterval;
-    node.isReverseInterval = false;
-    usedIndex.insert(readInterval.lower);
-    queue.push(node);
-    while(!queue.empty())
-    {
-        ClusterNode node = queue.front();
-        queue.pop();
-
-        // Update the used index and the result structure with this node's data
-        result.clusterNodes.push_back(node);
-
-        SeqRecord tempRecord;
-        tempRecord.id = "cluster";
-        tempRecord.seq = node.sequence;
-        OverlapBlockList blockList;
-        m_pOverlapper->overlapRead(tempRecord, m_minOverlap, &blockList);
-        
-        // Parse each member of the block list and potentially expand the cluster
-        for(OverlapBlockList::const_iterator iter = blockList.begin(); iter != blockList.end(); ++iter)
-        {
-            // Check if the reads in this block are part of the cluster already
-            BWTInterval canonicalInterval = iter->getCanonicalInterval();
-            int64_t canonicalIndex = canonicalInterval.lower;
-            if(usedIndex.count(canonicalIndex) == 0)
-            {
-                usedIndex.insert(canonicalIndex);
-                ClusterNode newNode;
-                newNode.sequence = iter->getFullString(node.sequence);
-                newNode.interval = canonicalInterval;
-                newNode.isReverseInterval = iter->flags.isTargetRev();
-                queue.push(newNode);
-            }
-        }
-    }
+    
+    // Run the clustering process
+    cluster.run();
 
     // If some work was performed, update the bitvector so other threads do not try to merge the same set of reads.
-    // This uses compare-and-swap instructions to ensure the uppdate is atomic. 
-    // If some other thread has merged this set (and updated
-    // the bitvector), we discard all the merged data.
-    
     // As a given set of reads should all be merged together, we only need to make sure we atomically update
     // the bit for the read with the lowest index in the set.
-
-    // Sort the intervals into ascending order and remove any duplicate intervals (which can occur
-    // if the subgraph has a simple cycle)
-    std::sort(result.clusterNodes.begin(), result.clusterNodes.end(), ClusterNode::compare);
-    std::vector<ClusterNode>::iterator newEnd = std::unique(result.clusterNodes.begin(),
-                                                            result.clusterNodes.end(),
-                                                            ClusterNode::equal);
-
-    size_t oldSize = result.clusterNodes.size();
-    result.clusterNodes.erase(newEnd, result.clusterNodes.end());
-    size_t newSize = result.clusterNodes.size();
-    if(oldSize != newSize)
-        std::cout << "Warning: duplicate cluster nodes were found\n";
+    ClusterResult result;
+    result.clusterNodes = cluster.getOutput();
 
     // Check if the bit in the vector has already been set for the lowest read index
     // If it has some other thread has already output this set so we do nothing
@@ -155,8 +80,7 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
                 if(currentValue)
                 {
                     // This value should not be true, emit a warning
-                    std::cout << "Warning: Bit " << i << " was set outside of critical section\n";
-                    std::cout << "Read: " << readString << "\n";
+                    std::cout << "Warning: Bit " << i << " was unexpectedly set by a different thread\n";
                 }
                 else
                 {

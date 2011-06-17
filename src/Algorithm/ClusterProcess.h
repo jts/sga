@@ -15,26 +15,7 @@
 #include "BitVector.h"
 #include "Bigraph.h"
 #include "SGUtil.h"
-
-//
-struct ClusterNode
-{
-    std::string sequence;
-    int64_t fwdCanonicalID;
-    BWTInterval interval;
-    bool isReverseInterval;
-
-    static inline bool compare(const ClusterNode& a, const ClusterNode& b)
-    {
-        return BWTInterval::compare(a.interval, b.interval);
-    }
-
-    static inline bool equal(const ClusterNode& a, const ClusterNode& b)
-    {
-        return BWTInterval::equal(a.interval, b.interval);
-    }
-};
-typedef std::queue<ClusterNode> ClusterNodeQueue;
+#include "ReadCluster.h"
 
 struct ClusterResult
 {
@@ -60,7 +41,7 @@ class ClusterProcess
         BitVector* m_pMarkedReads;
 };
 
-// Write the results from the overlap step to an ASQG file
+// Write the cluster results to a temporary output file
 class ClusterPostProcess
 {
     public:
