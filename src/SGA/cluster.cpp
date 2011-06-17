@@ -44,9 +44,9 @@ static const char *CLUSTER_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -o, --out=FILE                   write the clusters to FILE (default: clusters.txt)\n"
 "      -c, --min-cluster-size=N         only write clusters with at least N reads (default: 2)\n"
+"      -x, --max-cluster-size=N         abort the search if the cluster size exceeds N\n"
 "      -m, --min-overlap=N              require an overlap of at least N bases between reads (default: 45)\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned (default: exact matches only)\n"
-"      -x --max-cluster-size=N          abort the search if the cluster size exceeds N\n"
 "      -t, --threads=NUM                use NUM worker threads to compute the overlaps (default: no threading)\n"
 "          --extend=FILE                extend previously existing clusters in FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
