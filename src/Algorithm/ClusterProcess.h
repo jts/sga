@@ -16,6 +16,7 @@
 #include "Bigraph.h"
 #include "SGUtil.h"
 #include "ReadCluster.h"
+#include "ClusterReader.h"
 
 struct ClusterResult
 {
@@ -28,16 +29,23 @@ class ClusterProcess
 {
     public:
         ClusterProcess(const OverlapAlgorithm* pOverlapper, 
-                       int minOverlap, BitVector* pMarkedReads);
+                       int minOverlap, 
+                       size_t maxClusterSize,
+                       BitVector* pMarkedReads);
 
         ~ClusterProcess();
-
+        
+        // Generate a cluster from a single sequence
         ClusterResult process(const SequenceWorkItem& item);
+
+        // Generate a new cluster from a previously build cluster
+        ClusterResult process(const ClusterVector& inSequences);
     
     private:
 
         const OverlapAlgorithm* m_pOverlapper;
         const int m_minOverlap;
+        const size_t m_maxClusterSize;
         BitVector* m_pMarkedReads;
 };
 
@@ -49,6 +57,8 @@ class ClusterPostProcess
         ~ClusterPostProcess();
         
         void process(const SequenceWorkItem& item, const ClusterResult& result);
+        void process(const ClusterVector& inSequences /*in*/, const ClusterResult& result);
+        void process(const ClusterResult& result);
 
     private:
         size_t m_minClusterSize;

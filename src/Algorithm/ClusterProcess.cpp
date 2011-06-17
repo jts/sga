@@ -11,9 +11,13 @@
 #include "SGVisitors.h"
 
 //
-ClusterProcess::ClusterProcess(const OverlapAlgorithm* pOverlapper, int minOverlap, BitVector* pMarkedReads) : 
+ClusterProcess::ClusterProcess(const OverlapAlgorithm* pOverlapper, 
+                               int minOverlap, 
+                               size_t maxSize,
+                               BitVector* pMarkedReads) : 
                                      m_pOverlapper(pOverlapper), 
                                      m_minOverlap(minOverlap), 
+                                     m_maxClusterSize(maxSize),
                                      m_pMarkedReads(pMarkedReads)
 {
 
@@ -98,6 +102,22 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
     return result;
 }
 
+// Generate a new cluster from a previously build cluster
+ClusterResult ClusterProcess::process(const ClusterVector& inSequences)
+{
+    ReadCluster cluster(m_pOverlapper, m_minOverlap);
+    
+    // Add seeds to the cluster generator
+    for(size_t i = 0; i < inSequences.size(); ++i)
+        cluster.addSeed(inSequences[i].sequence);
+
+    cluster.run();
+
+    ClusterResult result;
+    result.clusterNodes = cluster.getOutput();
+    return result;
+}
+
 //
 ClusterPostProcess::ClusterPostProcess(std::ostream* pWriter, 
                                        size_t minClusterSize, 
@@ -117,10 +137,20 @@ ClusterPostProcess::~ClusterPostProcess()
     printf("[sga cluster] Clustered %zu reads into %zu clusters (%zu total reads input)\n", m_numTotalReadsClustered, m_numClusters, m_numTotalReads);
 }
 
-//
-void ClusterPostProcess::process(const SequenceWorkItem& item, const ClusterResult& result)
+// This just dispatches to main post-process function
+void ClusterPostProcess::process(const SequenceWorkItem& /*item*/, const ClusterResult& result)
 {
-    (void)item;
+    process(result);
+}
+
+//
+void ClusterPostProcess::process(const ClusterVector& /*in*/, const ClusterResult& result)
+{
+    process(result);
+}
+
+void ClusterPostProcess::process(const ClusterResult& result)
+{
     m_numTotalReads += 1;
 
     if(result.clusterNodes.size() > 0)

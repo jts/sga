@@ -5,7 +5,8 @@
 //-----------------------------------------------
 //
 // SequenceProcessFramework - Generic framework for performing
-// some operations on all sequneces in a file, serially or in parallel
+// some operations on input data produced by a generator,
+// serially or in parallel. 
 //
 #include "ThreadWorker.h"
 #include "Timer.h"
@@ -19,14 +20,13 @@ namespace SequenceProcessFramework
 
 const size_t BUFFER_SIZE = 1000;
 
-// Process n sequences from a file. With the default value of -1, n becomes the largest value representable for
+// Generic function to process n work items from a file. 
+// With the default value of -1, n becomes the largest value representable for
 // a size_t and all values will be read
-template<class Input, class Output, class Processor, class PostProcessor>
-size_t processSequencesSerial(SeqReader& reader, Processor* pProcessor, PostProcessor* pPostProcessor, size_t n = -1)
+template<class Input, class Output, class Generator, class Processor, class PostProcessor>
+size_t processWorkSerial(Generator& generator, Processor* pProcessor, PostProcessor* pPostProcessor, size_t n = -1)
 {
     Timer timer("SequenceProcess", true);
-
-    WorkItemGenerator<Input> generator(&reader);
     Input workItem;
     
     // Generate work items using the generic generation class while the number
@@ -51,31 +51,50 @@ size_t processSequencesSerial(SeqReader& reader, Processor* pProcessor, PostProc
     return generator.getNumConsumed();
 }
 
-// Framework for performing some processing on every sequence in a file
+// Wrapper function for performing operations over n elements from a SeqReader
+// This wrapper exists for interfacing with legacy code
+template<class Input, class Output, class Processor, class PostProcessor>
+size_t processSequencesSerial(SeqReader& reader, Processor* pProcessor, PostProcessor* pPostProcessor, size_t n = -1)
+{
+    WorkItemGenerator<Input> generator(&reader);
+    return processWorkSerial<Input, 
+                             Output, 
+                             WorkItemGenerator<Input>, 
+                             Processor, 
+                             PostProcessor>(generator, pProcessor, pPostProcessor, n);
+}
+
+// Wrapper function for performing operations over every sequence read in readsFile
 template<class Input, class Output, class Processor, class PostProcessor>
 size_t processSequencesSerial(const std::string& readsFile, Processor* pProcessor, PostProcessor* pPostProcessor)
 {
     SeqReader reader(readsFile);
-    return processSequencesSerial<Input, Output, Processor, PostProcessor>(reader, pProcessor, pPostProcessor);
+    WorkItemGenerator<Input> generator(&reader);
+    return processWorkSerial<Input, 
+                             Output, 
+                             WorkItemGenerator<Input>, 
+                             Processor, 
+                             PostProcessor>(generator, pProcessor, pPostProcessor);
 }
 
 // Design:
-// This function is a generic function to read in sequences from
-// a file and perform some work on them. The actual processing is done
-// by the Processor class that is passed in. The number of threads
+// This function is a generic function to read some INPUT from a 
+// generic generator object, then perform work on them.
+// The actual processing is done by the Processor class 
+// that is passed in. The number of threads
 // created is determined by the size of the vector of processors - 
 // one thread per processor. 
 //
-// The function reads in a batch of sequences from a file and buffers
-// them. Once the buffers are full, the reads are dispatched to the thread
+// The function buffers batches of input data.
+// Once the buffers are full, the reads are dispatched to the thread
 // which run the actual processing independently. An optional post processor
 // can be specified to process the results that the threads return. If the n
 // parameter is used, at most n sequences will be read from the file
-template<class Input, class Output, class Processor, class PostProcessor>
-size_t processSequencesParallel(SeqReader& reader, 
-                                std::vector<Processor*> processPtrVector, 
-                                PostProcessor* pPostProcessor, 
-                                size_t n = -1)
+template<class Input, class Output, class Generator, class Processor, class PostProcessor>
+size_t processWorkParallel(Generator& generator, 
+                           std::vector<Processor*> processPtrVector, 
+                           PostProcessor* pPostProcessor, 
+                           size_t n = -1)
 {
     Timer timer("SequenceProcess", true);
 
@@ -90,7 +109,6 @@ size_t processSequencesParallel(SeqReader& reader,
     typedef std::vector<OutputVector*> OutputBufferVector;
     typedef std::vector<sem_t*> SemaphorePtrVector;
 
-    typedef WorkItemGenerator<Input> InputGenerator;
 
     // Initialize threads, one thread per processor that was passed in
     int numThreads = processPtrVector.size();
@@ -129,7 +147,6 @@ size_t processSequencesParallel(SeqReader& reader,
     int next_thread = 0;
     int num_buffers_full = 0;
 
-    InputGenerator generator(&reader);
     while(!done)
     {
         // Parse reads from the stream and add them into the incoming buffers
@@ -215,6 +232,23 @@ size_t processSequencesParallel(SeqReader& reader,
     return generator.getNumConsumed();
 }
 
+// Wrapper function for operating over n elements of from a SeqReader
+template<class Input, class Output, class Processor, class PostProcessor>
+size_t processSequencesParallel(SeqReader& reader, 
+                                std::vector<Processor*> processPtrVector, 
+                                PostProcessor* pPostProcessor, 
+                                size_t n = -1)
+{
+    typedef WorkItemGenerator<Input> InputGenerator;
+    InputGenerator generator(&reader);
+    return processWorkParallel<Input, 
+                               Output, 
+                               InputGenerator, 
+                               Processor, 
+                               PostProcessor>(generator, processPtrVector, pPostProcessor, n);
+}
+
+// Wrapper function for operating over a file of sequences
 template<class Input, class Output, class Processor, class PostProcessor>
 size_t processSequencesParallel(const std::string& readsFile, std::vector<Processor*> processPtrVector, PostProcessor* pPostProcessor)
 {

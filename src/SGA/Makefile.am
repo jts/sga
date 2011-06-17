@@ -44,6 +44,5 @@ sga_SOURCES = sga.cpp \
               gmap.h gmap.cpp \
               filterBAM.h filterBAM.cpp \
               cluster.h cluster.cpp \
-              cluster-extend.h cluster-extend.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

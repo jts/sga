@@ -20,6 +20,7 @@
 #include "OverlapCommon.h"
 #include "BitVector.h"
 #include "ClusterProcess.h"
+#include "ClusterReader.h"
 
 //
 // Getopt
@@ -42,19 +43,23 @@ static const char *CLUSTER_USAGE_MESSAGE =
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
 "      -o, --out=FILE                   write the clusters to FILE (default: clusters.txt)\n"
-"      -c, --cluster-size=N             only write clusters with at least N reads (default: 2)\n"
+"      -c, --min-cluster-size=N         only write clusters with at least N reads (default: 2)\n"
 "      -m, --min-overlap=N              require an overlap of at least N bases between reads (default: 45)\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned (default: exact matches only)\n"
+"      -x --max-cluster-size=N          abort the search if the cluster size exceeds N\n"
 "      -t, --threads=NUM                use NUM worker threads to compute the overlaps (default: no threading)\n"
+"          --extend=FILE                extend previously existing clusters in FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
 {
     static unsigned int verbose;
     static size_t minSize = 2;
+    static size_t maxSize = (size_t)-1;
     static std::string outFile;
     static std::string readsFile;
     static std::string prefix;
+    static std::string extendFile;
     static int seedLength = 0;
     static int seedStride = 0;//seedLength;
     static int numThreads = 1;
@@ -62,19 +67,22 @@ namespace opt
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
 }
 
-static const char* shortopts = "o:m:c:t:e:";
+static const char* shortopts = "o:m:c:t:e:p:x:";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_EXTEND };
 
 static const struct option longopts[] = {
-    { "verbose",        no_argument,       NULL, 'v' },
-    { "out",            required_argument, NULL, 'o' },
-    { "cluster-size",   required_argument, NULL, 'c' },
-    { "min-overlap",    required_argument, NULL, 'm' },
-    { "error-rate",     required_argument, NULL, 'e' },
-    { "threads",        required_argument, NULL, 't' },
-    { "help",           no_argument,       NULL, OPT_HELP },
-    { "version",        no_argument,       NULL, OPT_VERSION },
+    { "verbose",          no_argument,       NULL, 'v' },
+    { "out",              required_argument, NULL, 'o' },
+    { "min-cluster-size", required_argument, NULL, 'c' },
+    { "max-cluster-size", required_argument, NULL, 'x' },
+    { "min-overlap",      required_argument, NULL, 'm' },
+    { "error-rate",       required_argument, NULL, 'e' },
+    { "threads",          required_argument, NULL, 't' },
+    { "prefix",           required_argument, NULL, 'p' },
+    { "extend",           required_argument, NULL, OPT_EXTEND },
+    { "help",             no_argument,       NULL, OPT_HELP },
+    { "version",          no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
 };
 
@@ -110,11 +118,27 @@ void cluster()
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode read clustering\n", PROGRAM_IDENT);
-        ClusterProcess processor(pOverlapper, opt::minOverlap, &markedReads);
-        SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
-                                                         ClusterResult, 
-                                                         ClusterProcess, 
-                                                         ClusterPostProcess>(opt::readsFile, &processor, &postProcessor);
+        ClusterProcess processor(pOverlapper, opt::minOverlap, opt::maxSize, &markedReads);
+        
+        // If the extend file is empty, build new clusters
+        if(opt::extendFile.empty())
+        {
+            SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
+                                                             ClusterResult, 
+                                                             ClusterProcess, 
+                                                             ClusterPostProcess>(opt::readsFile, &processor, &postProcessor);
+        }
+        else
+        {
+            // Process a set of preexisting clusters
+            ClusterReader clusterReader(opt::extendFile);
+            SequenceProcessFramework::processWorkSerial<ClusterVector,
+                                                        ClusterResult,
+                                                        ClusterReader, 
+                                                        ClusterProcess, 
+                                                        ClusterPostProcess>(clusterReader, &processor, &postProcessor);
+
+        }
     }
     else
     {
@@ -123,14 +147,27 @@ void cluster()
         std::vector<ClusterProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ClusterProcess* pProcessor = new ClusterProcess(pOverlapper, opt::minOverlap, &markedReads);
+            ClusterProcess* pProcessor = new ClusterProcess(pOverlapper, opt::minOverlap, opt::maxSize, &markedReads);
             processorVector.push_back(pProcessor);
         }
+        
+        if(opt::extendFile.empty())
+        {
+            SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
+                                                               ClusterResult, 
+                                                               ClusterProcess, 
+                                                               ClusterPostProcess>(opt::readsFile, processorVector, &postProcessor);
+        }
+        else
+        {
+            ClusterReader clusterReader(opt::extendFile);
+            SequenceProcessFramework::processWorkParallel<ClusterVector,
+                                                          ClusterResult,
+                                                          ClusterReader, 
+                                                          ClusterProcess, 
+                                                          ClusterPostProcess>(clusterReader, processorVector, &postProcessor);
 
-        SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
-                                                         ClusterResult, 
-                                                         ClusterProcess, 
-                                                         ClusterPostProcess>(opt::readsFile, processorVector, &postProcessor);
+        }
         
         for(size_t i = 0; i < processorVector.size(); ++i)
         {
@@ -189,11 +226,14 @@ void parseClusterOptions(int argc, char** argv)
         {
             case 'o': arg >> opt::outFile; break;
             case 'c': arg >> opt::minSize; break;
+            case 'x': arg >> opt::maxSize; break;
             case 'e': arg >> opt::errorRate; break;
             case 'm': arg >> opt::minOverlap; break;
             case 't': arg >> opt::numThreads; break;
+            case 'p': arg >> opt::prefix; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_EXTEND: arg >> opt::extendFile; break;
             case OPT_HELP:
                 std::cout << CLUSTER_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

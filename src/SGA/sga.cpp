@@ -27,7 +27,6 @@
 #include "stats.h"
 #include "filterBAM.h"
 #include "cluster.h"
-#include "cluster-extend.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -61,7 +60,6 @@ static const char *SGA_USAGE_MESSAGE =
 "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
 "           filterBAM       filter out contaminating mate-pair data in a BAM file\n"
 "           cluster         find clusters of reads belonging to the same connected component\n"
-"           cluster-extend  extend previously found clusters\n"
 "\n\nDeprecated commands:\n"
 "           rmdup           duplicate read removal - superceded by sga filter\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -125,8 +123,6 @@ int main(int argc, char** argv)
             filterBAMMain(argc - 1, argv + 1);
         else if(command == "cluster")
             clusterMain(argc - 1, argv + 1);
-        else if(command == "cluster-extend")
-            clusterExtendMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

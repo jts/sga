@@ -26,7 +26,7 @@ struct SequenceWorkItemPair
     SequenceWorkItem second;
 };
 
-// Genereic class to generate work items 
+// Genereic class to generate work items using a seq reader
 template<class INPUT>
 class WorkItemGenerator
 {
