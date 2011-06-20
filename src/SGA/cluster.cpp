@@ -4,7 +4,8 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// cluster - extract connected components from an asqg file
+// cluster - find connected components in an 
+// overlap graph
 //
 #include <iostream>
 #include <fstream>
