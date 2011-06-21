@@ -83,7 +83,7 @@ namespace opt
     static bool bExact = true;
 }
 
-static const char* shortopts = "p:o:m:d:g:b:a:c:r:x:sv";
+static const char* shortopts = "p:o:m:d:g:b:a:c:r:x:l:sv";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT, OPT_MAXINDEL };
 
