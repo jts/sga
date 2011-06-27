@@ -24,4 +24,9 @@ libalgorithm_a_SOURCES = \
         FMMergeProcess.h FMMergeProcess.cpp \
         StatsProcess.h StatsProcess.cpp \
         ClusterProcess.h ClusterProcess.cpp \
-        ReadCluster.h ReadCluster.cpp 
+        ReadCluster.h ReadCluster.cpp \
+        LRAlignment.h LRAlignment.cpp \
+        LRCorrectionAlgorithm.h LRCorrectionAlgorithm.cpp \
+        LRCorrectionProcess.h LRCorrectionProcess.cpp \
+        StringThreader.h StringThreader.cpp \
+        ExtensionDP.h ExtensionDP.cpp

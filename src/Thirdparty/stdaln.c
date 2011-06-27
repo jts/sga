@@ -512,7 +512,6 @@ int aln_global_core(unsigned char *seq1, int len1, unsigned char *seq2, int len2
 		++p;
 	} while (i || j);
 	*path_len = p - path - 1;
-
 	/* free memory */
 	for (j = b2 + 1; j <= len2; ++j)
 		dpcell[j] += j - b2;

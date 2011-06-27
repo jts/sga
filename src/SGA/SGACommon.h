@@ -24,6 +24,7 @@
 #define RBWT_EXT ".rbwt"
 #define SAI_EXT ".sai"
 #define RSAI_EXT ".rsai"
+#define SSA_EXT ".ssa"
 
 // Default values
 #define DEFAULT_MIN_OVERLAP 45

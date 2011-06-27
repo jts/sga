@@ -61,7 +61,7 @@ bool SeqReader::get(SeqRecord& sr)
     if(rt == RT_FASTA)
     {
         std::string temp;
-        while(m_pHandle->good() && m_pHandle->peek() != '>')
+        while(m_pHandle->good() && m_pHandle->peek() != '>' && m_pHandle->peek() != '@')
         {
             getline(*m_pHandle, temp);
             if(m_pHandle->good() && temp.size() > 0)

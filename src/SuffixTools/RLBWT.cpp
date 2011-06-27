@@ -31,6 +31,57 @@ RLBWT::RLBWT(const std::string& filename, int sampleRate) : m_numStrings(0),
     delete pReader;
 }
 
+// Construct the BWT from a suffix array
+RLBWT::RLBWT(const SuffixArray* pSA, const ReadTable* pRT)
+{
+    // Set up BWT state
+    size_t n = pSA->getSize();
+    m_smallSampleRate = DEFAULT_SAMPLE_RATE_SMALL;
+    m_largeSampleRate = DEFAULT_SAMPLE_RATE_LARGE;
+    m_numStrings = pSA->getNumStrings();
+    m_numSymbols = n;
+
+    RLUnit currRun;
+    // Set up the bwt string and suffix array from the cycled strings
+    for(size_t i = 0; i < n; ++i)
+    {
+        SAElem saElem = pSA->get(i);
+        const SeqItem& si = pRT->getRead(saElem.getID());
+
+        // Get the position of the start of the suffix
+        uint64_t f_pos = saElem.getPos();
+        uint64_t l_pos = (f_pos == 0) ? si.seq.length() : f_pos - 1;
+        char b = (l_pos == si.seq.length()) ? '$' : si.seq.get(l_pos);
+
+        // Add to the current run or append in the new char
+        if(currRun.isInitialized())
+        {
+            if(currRun.getChar() == b && !currRun.isFull())
+            {
+                currRun.incrementCount();
+            }
+            else
+            {
+                // Write out the old run and start a new one
+                assert(currRun.isInitialized());
+                m_rlString.push_back(currRun);
+                currRun = RLUnit(b);
+            }        
+        }
+        else
+        {
+            // Start a new run
+            currRun = RLUnit(b);
+        }
+    }
+
+    assert(currRun.isInitialized());
+    if(currRun.isInitialized())
+        m_rlString.push_back(currRun);
+    
+    initializeFMIndex();
+}
+
 //
 void RLBWT::append(char b)
 {
@@ -209,6 +260,7 @@ size_t RLBWT::getNumRequiredMarkers(size_t n, size_t d) const
 void RLBWT::print() const
 {
     size_t numRuns = getNumRuns();
+    std::string bwt;
     for(size_t i = 0; i < numRuns; ++i)
     {
         const RLUnit& unit = m_rlString[i];
@@ -217,7 +269,9 @@ void RLBWT::print() const
         for(size_t j = 0; j < length; ++j)
             std::cout << symbol;
         std::cout << " : " << symbol << "," << length << "\n"; 
+        bwt.append(length, symbol);
     }
+    std::cout << "B: " << bwt << "\n";
 }
 
 // Print information about the BWT

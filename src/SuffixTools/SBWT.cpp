@@ -30,7 +30,6 @@ SBWT::SBWT(const std::string& filename, int sampleRate)
 // Construct the BWT from a suffix array
 SBWT::SBWT(const SuffixArray* pSA, const ReadTable* pRT)
 {
-    Timer timer("BWT Construction");
     size_t n = pSA->getSize();
     m_numStrings = pSA->getNumStrings();
     m_bwStr.resize(n);
