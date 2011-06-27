@@ -31,6 +31,7 @@
 #include "correct-long.h"
 #include "convert-beetl.h"
 #include "bwt2fa.h"
+#include "graph-diff.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -60,6 +61,9 @@ static const char *SGA_USAGE_MESSAGE =
 "           bwt2fa          transform a bwt back into a set of sequences\n"
 "           convert-beetl   convert an index file constructed with BEETL into SGA's format\n"
 "\n\nExperimental commands:\n"
+"           graph-diff      find and report strings that differ between two graphs\n"
+"\n"
+"\nExperimental commands:\n"
 "           gen-ssa         generate a sampled suffix array for the given set of reads\n"
 "           correct-long    correct long reads\n"
 "           stats           print useful statistics about the read set\n"
