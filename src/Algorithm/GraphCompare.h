@@ -33,6 +33,7 @@ struct GraphCompareStackNode
     AlphaCount64 upperCounts[NUM_GRAPHS];
     std::string str;
     uint8_t alphaIndex;
+    int length;
 
     // functions
 

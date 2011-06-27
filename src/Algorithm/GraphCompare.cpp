@@ -33,7 +33,8 @@ void GraphCompareStackNode::initialize(char b, const BWTVector& bwts, const BWTV
         upperCounts[i] = bwts[i]->getFullOcc(intervalPairs[i].interval[0].upper);
     }
 
-    str.append(1,b);
+    //str.append(1,b);
+    length = 1;
     alphaIndex = 0;
 }
 
@@ -62,7 +63,8 @@ void GraphCompareStackNode::update(char b, const BWTVector& bwts, const BWTVecto
         }
     }
 
-    str.append(1,b);
+    //str.append(1,b);
+    length += 1;
     alphaIndex = 0;
 }
 
@@ -137,6 +139,7 @@ void GraphCompare::run()
     size_t loops = 0;
     size_t maxStack = 0;
     size_t kmersFound = 0;
+    size_t variantKmersFound = 0;
     size_t numPush = 0;
     size_t numPop = 0;
 
@@ -159,17 +162,21 @@ void GraphCompare::run()
 
         bool doPop = true;
 
-        if(pNode->str.size() == m_kmer)
+        if(pNode->length == (int)m_kmer)
         {
             // do something
             kmersFound += 1;
+
+            if(pNode->intervalPairs[1].isValid() && !pNode->intervalPairs[0].isValid())
+                variantKmersFound += 1;
         }
         else
         {
             // extend
             // Calculate the aggregate extension count
             AlphaCount64 ext_count = pNode->getAggregateExtCount(); 
-            bool hasBranch = ext_count.getNumNonZero() > 1;
+            bool hasBranch = ext_count.getNumNonZero() > 0 && !ext_count.hasUniqueDNAChar();
+
             while(pNode->alphaIndex < DNA_ALPHABET::size)
             {
                 char b = DNA_ALPHABET::getBase(pNode->alphaIndex);
@@ -212,5 +219,7 @@ void GraphCompare::run()
     printf("Max stack: %zu\n", maxStack);
     printf("Push: %zu\n", numPush);
     printf("Pop: %zu\n", numPop);
+    printf("Total kmers: %zu\n", kmersFound);
+    printf("Variant kmers: %zu\n", variantKmersFound);
 
 }   
