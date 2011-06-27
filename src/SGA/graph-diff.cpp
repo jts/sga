@@ -18,6 +18,7 @@
 #include "BWTAlgorithms.h"
 #include "SequenceProcessFramework.h"
 #include "SGACommon.h"
+#include "GraphCompare.h"
 #include "graph-diff.h"
 
       
@@ -88,6 +89,8 @@ int graphDiffMain(int argc, char** argv)
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     BWT* pVariantRBWT = new BWT(variantPrefix + RBWT_EXT, opt::sampleRate);
 
+    GraphCompare graphCompare(pBaseBWT, pBaseRBWT, pVariantBWT, pVariantRBWT, opt::kmer);
+    graphCompare.run();
 
     // Cleanup
     delete pBaseBWT;
@@ -129,12 +132,7 @@ void parseGraphDiffOptions(int argc, char** argv)
     }
 
     // Validate parameters
-    if (argc - optind < 1) 
-    {
-        std::cerr << SUBPROGRAM ": missing arguments\n";
-        die = true;
-    } 
-    else if (argc - optind > 1) 
+    if (argc - optind > 1) 
     {
         std::cerr << SUBPROGRAM ": too many arguments\n";
         die = true;

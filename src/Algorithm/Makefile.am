@@ -29,4 +29,5 @@ libalgorithm_a_SOURCES = \
         LRCorrectionAlgorithm.h LRCorrectionAlgorithm.cpp \
         LRCorrectionProcess.h LRCorrectionProcess.cpp \
         StringThreader.h StringThreader.cpp \
+        GraphCompare.h GraphCompare.cpp \
         ExtensionDP.h ExtensionDP.cpp
