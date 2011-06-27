@@ -134,6 +134,11 @@ class AlphaCount
         //
         inline AlphaCount()
         {
+            clear();
+        }
+
+        inline void clear()
+        {
             memset(m_counts, 0, ALPHABET_SIZE * sizeof(Storage));
         }
 
@@ -229,6 +234,18 @@ class AlphaCount
             for(int i = 0; i < stop; ++i)
                 out += m_counts[i];
             return out;
+        }
+
+        // Returns the number of non-zero counts
+        uint8_t getNumNonZero() const
+        {
+            uint8_t count = 0;
+            for(int i = 0; i < ALPHABET_SIZE; ++i)
+            {
+                if(m_counts[i] > 0)
+                    count += 1;
+            }
+            return count;
         }
 
         // Returns true if only one of the DNA characters

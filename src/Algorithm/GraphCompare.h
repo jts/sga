@@ -15,10 +15,41 @@
 #define GRAPH_COMPARE_H
 
 #include <list>
+#include <stack>
 #include "BWT.h"
+#include "BWTInterval.h"
 
 // Typedefs
+typedef std::vector<const BWT*> BWTVector;
 
+struct GraphCompareStackNode
+{
+    // data
+
+    static const size_t NUM_GRAPHS = 2;
+
+    BWTIntervalPair intervalPairs[NUM_GRAPHS];
+    AlphaCount64 lowerCounts[NUM_GRAPHS];
+    AlphaCount64 upperCounts[NUM_GRAPHS];
+    std::string str;
+    uint8_t alphaIndex;
+
+    // functions
+
+    // Initialize the intervals to be the range of all strings starting with b
+    void initialize(char b, const BWTVector& bwts, const BWTVector& rbwts);
+
+    // Update the intervals to extend to symbol b
+    void update(char b, const BWTVector& bwts, const BWTVector& rbwts);
+    
+    //
+    AlphaCount64 getAggregateExtCount() const;
+
+    //
+    void print() const;
+
+};
+typedef std::stack<GraphCompareStackNode> GraphCompareStack;
 
 class GraphCompare
 {
@@ -49,7 +80,7 @@ class GraphCompare
         const BWT* m_pBaseRevBWT;
         const BWT* m_pVariantBWT; 
         const BWT* m_pVariantRevBWT;
-        int m_kmer;
+        size_t m_kmer;
 };
 
 #endif
