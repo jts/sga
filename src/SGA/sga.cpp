@@ -143,6 +143,8 @@ int main(int argc, char** argv)
             convertBeetlMain(argc - 1, argv + 1);
         else if(command == "bwt2fa")
             bwt2faMain(argc - 1, argv + 1);
+        else if(command == "graph-diff")
+            graphDiffMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

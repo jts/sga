@@ -32,7 +32,7 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2011 Wellcome Trust Sanger Institute\n";
 
 static const char *GRAPH_DIFF_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] --base BASE.fa --variant VARIANT\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] --base BASE.fa --variant VARIANT.fa\n"
 "Find and report strings only present in the graph of VARIANT when compared to BASE\n"
 "\n"
 "      --help                           display this help and exit\n"
