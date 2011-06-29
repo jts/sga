@@ -21,6 +21,7 @@
 #include "BWTInterval.h"
 #include "SGUtil.h"
 #include "SGWalk.h"
+#include "BitVector.h"
 
 // Typedefs
 typedef std::vector<const BWT*> BWTVector;
@@ -73,7 +74,13 @@ class GraphCompare
 
     private:
         
-        bool processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex) const;
+        bool processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex);
+
+        // Mark all the kmers in seq (and their reverse complements as seen)
+        void markVariantSequenceKmers(const std::string& str);
+
+        // returns true if the given sequence is marked in the bitvector
+        bool isKmerMarked(const std::string& str) const;
 
         //
         // Functions
@@ -86,7 +93,16 @@ class GraphCompare
         const BWT* m_pBaseRevBWT;
         const BWT* m_pVariantBWT; 
         const BWT* m_pVariantRevBWT;
+        BitVector* m_pUsedVariantKmers;
         size_t m_kmer;
+};
+
+//
+struct BubbleResult
+{
+    std::string targetString;
+    std::string sourceString;
+    bool success;
 };
 
 //
@@ -118,7 +134,9 @@ class BubbleBuilder
         void setTargetIndex(const BWT* pBWT, const BWT* pRBWT);
 
         // Run the bubble construction process
-        void run();
+        // The found strings are placed in the StringVector
+        // If this vector is empty, a bubble could not be found
+        BubbleResult run();
 
     private:
         
@@ -130,7 +148,7 @@ class BubbleBuilder
 
         // After the bubble has been built into the graph, this function
         // finds and compares the two sequences
-        bool parseBubble();
+        BubbleResult parseBubble();
 
         // Returns true if the walk is the part of the target sequence
         bool classifyWalk(const SGWalk& walk) const;

@@ -103,14 +103,13 @@ GraphCompare::GraphCompare(const BWT* pBaseBWT,
                                        m_pVariantRevBWT(pVariantRBWT),
                                        m_kmer(kmer)
 {
-
-
+    m_pUsedVariantKmers = new BitVector(pVariantBWT->getBWLen());
 }
 
 //
 GraphCompare::~GraphCompare()
 {
-
+    delete m_pUsedVariantKmers;
 }
 
 // Run the actual comparison
@@ -241,7 +240,7 @@ void GraphCompare::run()
 }   
 
 //
-bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex) const
+bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex)
 {
     assert(varIndex == 0 || varIndex == 1);
     // Check the count of the kmer in both intervals
@@ -253,17 +252,76 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
     if(c1 > 0 && c2 > 0)
         return false;
 
+    // Check if this k-mer has been marked in the bitvector
+    bool seen = isKmerMarked(str);
+    if(seen)
+        return false;
+
     BubbleBuilder builder;
     builder.setSourceIndex(bwts[varIndex], rbwts[varIndex]);
     builder.setTargetIndex(bwts[1 - varIndex], rbwts[1 - varIndex]);
     builder.setSourceString(str);
-    builder.run();
 
-    /*
-    if(c1 == 0 || c2 == 0)
-        printf("Kmer: %s c1: %zu c2: %zu\n", str.c_str(), c1, c2);
-    */
-    return c1 == 0 || c2 == 0;
+    //
+    BubbleResult result = builder.run();
+    if(result.success)
+    {
+        assert(!result.targetString.empty());
+        assert(!result.sourceString.empty());
+        StdAlnTools::globalAlignment(result.targetString, result.sourceString, true);
+        markVariantSequenceKmers(result.sourceString);
+    }
+    
+    return result.success;
+}
+
+// Update the bit vector with the kmers that were assembled into str
+void GraphCompare::markVariantSequenceKmers(const std::string& str)
+{
+    assert(str.size() >= m_kmer);
+    size_t n = str.size() - m_kmer + 1;
+
+    for(size_t i = 0; i < n; ++i)
+    {
+        std::string kseq = str.substr(i, m_kmer);
+        BWTInterval interval = BWTAlgorithms::findInterval(m_pVariantBWT, kseq);
+        if(interval.isValid())
+        {
+            for(int64_t j = interval.lower; j <= interval.upper; ++j)
+                m_pUsedVariantKmers->updateCAS(j, false, true);
+        }
+
+        // Mark the reverse complement k-mers too
+        std::string rc_kseq = reverseComplement(kseq);
+        interval = BWTAlgorithms::findInterval(m_pVariantBWT, rc_kseq);
+        if(interval.isValid())
+        {
+            for(int64_t j = interval.lower; j <= interval.upper; ++j)
+                m_pUsedVariantKmers->updateCAS(j, false, true);
+        }
+    }
+}
+
+//
+bool GraphCompare::isKmerMarked(const std::string& str) const
+{
+    assert(str.size() == m_kmer);
+    BWTInterval interval = BWTAlgorithms::findInterval(m_pVariantBWT, str);
+    if(interval.isValid())
+    {
+        if(m_pUsedVariantKmers->test(interval.lower))
+            return true;
+    }
+    
+    // Mark the reverse complement k-mers too
+    std::string rc_str = reverseComplement(str);
+    interval = BWTAlgorithms::findInterval(m_pVariantBWT, rc_str);
+    if(interval.isValid())
+    {
+        if(m_pUsedVariantKmers->test(interval.lower))
+            return true;
+    }
+    return false;
 }
 
 //
@@ -310,21 +368,27 @@ void BubbleBuilder::setTargetIndex(const BWT* pBWT, const BWT* pRBWT)
 }
 
 // Run the bubble construction process
-void BubbleBuilder::run()
+BubbleResult BubbleBuilder::run()
 {
     std::cout << "Running bubble builder\n";
+    BubbleResult result;
+    result.success = false;
 
-    bool success = false;
-    success = buildSourceBubble();
-    if(!success)
-        return;
-    success = buildTargetBubble();
-    if(!success)
+    // Build the source half of the bubble
+    result.success = buildSourceBubble();
+    if(!result.success)
+        return result;
+    
+    // Build the target half of the bubble
+    result.success = buildTargetBubble();
+    if(!result.success)
     {
         std::cout << "Failed to build target\n";
-        return;
+        return result;
     }
-    success = parseBubble();
+
+    result = parseBubble();
+    return result;
 }
 
 // Build the portion of the graph from the source vertex
@@ -438,13 +502,12 @@ bool BubbleBuilder::buildTargetBubble()
 
 // After the bubble has been built into the graph, this function
 // finds and compares the two sequences
-bool BubbleBuilder::parseBubble()
+BubbleResult BubbleBuilder::parseBubble()
 {
-    SGWalkVector outWalks;
-    
-    //m_pGraph->writeDot("bubble.dot", DF_COLORED | DF_NOID );
-
+    BubbleResult result;
+    result.success = false;
     // Parse walks from the graph that go through the bubbles
+    SGWalkVector outWalks;
     bool success = SGSearch::findWalks(m_antisenseJoins.front(),
                                        m_senseJoins.front(),
                                        ED_SENSE,
@@ -453,11 +516,8 @@ bool BubbleBuilder::parseBubble()
                                        true, // exhaustive search
                                        outWalks);
     if(!success)
-    {
-        return false;
-    }
+        return result;
 
-    std::cout << "Found " << outWalks.size() << " walks\n";
     // Convert the walks into strings
     StringVector sourceStrings;
     StringVector targetStrings;
@@ -465,22 +525,23 @@ bool BubbleBuilder::parseBubble()
     {
         std::string walkStr = outWalks[i].getString(SGWT_START_TO_END);
         bool isTarget = classifyWalk(outWalks[i]);
-        std::cout << "IS TARGET: " << isTarget << "\n";
         if(isTarget)
             targetStrings.push_back(walkStr);
         else
             sourceStrings.push_back(walkStr);
     }
     
-    for(size_t i = 0; i < targetStrings.size(); ++i)
+    if(targetStrings.size() == 1 && sourceStrings.size() == 1)
+    {   
+        result.success = true;
+        result.targetString = targetStrings.front();
+        result.sourceString = sourceStrings.front();
+    }
+    else
     {
-        for(size_t j = 0; j < sourceStrings.size(); ++j)
-        {
-            StdAlnTools::globalAlignment(targetStrings[i], sourceStrings[j], true);
-        }
-    } 
-      
-    return true;
+        result.success = false;
+    }
+    return result;
 }
 
 // Returns true if the walk is the part of the target sequence
@@ -551,7 +612,7 @@ void BubbleBuilder::addDeBruijnEdges(const Vertex* pX, const Vertex* pY, EdgeDir
         o.match.coord[1].interval.start = 1;
     }
 
-    o.match.coord[0].interval.end = o.match.coord[0].interval.start + p - 1; // inclusive
+    o.match.coord[0].interval.end = o.match.coord[0].interval.start + p - 1; // inclusive coordinate
     o.match.coord[1].interval.end = o.match.coord[1].interval.start + p - 1;
     o.match.coord[0].seqlen = p + 1;
     o.match.coord[1].seqlen = p + 1;
