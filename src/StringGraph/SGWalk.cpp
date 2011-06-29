@@ -197,7 +197,6 @@ std::string SGWalk::getString(SGWalkType type, SGWalkVertexPlacementVector* pPla
     for(size_t i = 0; i < stop; ++i)
     {
         Edge* pYZ = m_edges[i];
-        
         // Append in the extension string
         std::string edge_str = pYZ->getLabel();
         assert(edge_str.size() != 0);

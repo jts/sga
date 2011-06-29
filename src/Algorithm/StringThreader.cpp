@@ -305,6 +305,8 @@ void StringThreader::checkTerminated(StringThreaderResultVector& results)
 // Calculate the successors of this node in the implicit deBruijn graph
 StringVector StringThreader::getDeBruijnExtensions(StringThreaderNode* pNode)
 {
+    WARN_ONCE("TODO: Refactor StringThreader to use new deBruijn code");
+
     // Get the last k-1 bases of the node
     std::string pmer = pNode->getSuffix(m_kmer - 1);
     std::string rc_pmer = reverseComplement(pmer);

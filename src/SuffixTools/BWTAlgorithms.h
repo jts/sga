@@ -13,6 +13,8 @@
 #include "BWT.h"
 #include "BWTInterval.h"
 #include "BWTIntervalCache.h"
+#include "GraphCommon.h"
+
 #include <queue>
 #include <list>
 
@@ -131,6 +133,12 @@ inline AlphaCount64 getExtCount(const BWTInterval& interval, const BWT* pBWT)
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
 // appears in the FM-index for all i s.t. length(w[i, l]) >= minOverlap.
 AlphaCount64 calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT);
+
+// Calculate de Bruijn graph extensions of the given sequence
+// Returns a string of the possible 1-base extensions
+// For example if str is "ACGT" and the de Bruijn graph has an edge "ACGT" -> "CGTA"
+// the return would be "A"
+std::string calculateDeBruijnExtensions(const std::string str, const BWT* pBWT, const BWT* pRevBWT, EdgeDir direction);
 
 // Extract the string at idx from the BWT
 std::string extractString(const BWT* pBWT, size_t idx);

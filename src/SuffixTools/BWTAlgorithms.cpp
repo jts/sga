@@ -177,6 +177,65 @@ AlphaCount64 BWTAlgorithms::calculateExactExtensions(const unsigned int overlapL
     return ext_counts;
 }
 
+// Calculate the 1-base de Bruijn graph extensions of str
+// The includes the reverse complement
+std::string BWTAlgorithms::calculateDeBruijnExtensions(const std::string str, const BWT* pBWT, const BWT* pRevBWT, EdgeDir direction)
+{
+    size_t k = str.size();
+    size_t p = k - 1;
+    
+    std::string pmer;
+
+    // In the sense direction, we extend from the 3' end
+    if(direction == ED_SENSE)
+        pmer = str.substr(1, p);
+    else
+        pmer = str.substr(0, p);
+    assert(pmer.length() == p);
+    std::string rc_pmer = reverseComplement(pmer);
+
+    // Get the interval for the p-mer and its reverse complement
+    BWTIntervalPair ip = BWTAlgorithms::findIntervalPair(pBWT, pRevBWT, pmer);
+    BWTIntervalPair rc_ip = BWTAlgorithms::findIntervalPair(pBWT, pRevBWT, rc_pmer);
+    assert(ip.isValid() || rc_ip.isValid());
+
+    // Get the extension bases
+    AlphaCount64 extensions;
+    AlphaCount64 rc_extensions;
+
+    // Calculate the interval to use to find the extensions. If extending in the sense
+    // direction this is the reverse interval/reverse bwt for the forward bwt and the forward
+    // interval for the reverse BWT. Vice-versa for anti-sense
+    size_t fwdIdx;
+    if(direction == ED_SENSE)
+        fwdIdx = 1;
+    else
+        fwdIdx = 0;
+    size_t revIdx = 1 - fwdIdx;
+    const BWT* bwts[2];
+    bwts[0] = pBWT;
+    bwts[1] = pRevBWT;
+
+    if(ip.interval[fwdIdx].isValid())
+        extensions += BWTAlgorithms::getExtCount(ip.interval[fwdIdx], bwts[fwdIdx]);
+    if(rc_ip.interval[revIdx].isValid())
+        rc_extensions = BWTAlgorithms::getExtCount(rc_ip.interval[revIdx], bwts[revIdx]);
+
+    // Switch the reverse-complement extensions to the same strand as the str
+    rc_extensions.complement();
+    extensions += rc_extensions;
+
+    // Append a letter to the output string for every non-zero count
+    std::string out;
+    for(int i = 0; i < DNA_ALPHABET::size; ++i)
+    {
+        char b = DNA_ALPHABET::getBase(i);
+        if(extensions.get(b) > 0)
+            out.append(1,b);
+    }
+    return out;
+}
+
 // Return a random string from the BWT
 std::string BWTAlgorithms::sampleRandomString(const BWT* pBWT)
 {

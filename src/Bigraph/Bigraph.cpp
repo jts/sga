@@ -683,7 +683,11 @@ void Bigraph::writeDot(const std::string& filename, int dotFlags) const
     for(; iter != m_vertices.end(); ++iter)
     {
         VertexID id = iter->second->getID();
-        out << "\"" << id << "\" [ label =\"" << id << "\" ";
+        std::string label = (dotFlags & DF_NOID) ? "" : id;
+        
+        out << "\"" << id << "\" [ label=\"" << label << "\" ";
+        if(dotFlags & DF_COLORED)
+            out << " style=\"filled\" fillcolor=\"" << getColorString(iter->second->getColor()) << "\" ";
         out << "];\n";
         iter->second->writeEdges(out, dotFlags);
     }
@@ -740,4 +744,22 @@ void Bigraph::writeASQG(const std::string& filename) const
     delete pWriter;
 }
 
-
+//
+std::string Bigraph::getColorString(GraphColor c)
+{
+    switch(c)
+    {
+        case GC_WHITE:
+            return "white";
+        case GC_GRAY:
+            return "gray";
+        case GC_BLACK:
+            return "black";
+        case GC_BLUE:
+            return "blue";
+        case GC_RED:
+            return "red";
+        default:
+            return "black";
+    }
+}

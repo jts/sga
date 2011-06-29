@@ -175,6 +175,9 @@ class Bigraph
         // Returns an allocator for the vertices of the graph
         SimpleAllocator<Vertex>* getVertexAllocator() { return m_pVertexAllocator; }
 
+        // Return a string for a color code
+        static std::string getColorString(GraphColor c);
+
     private:
         
         // Simplify the graph by compacting edges in the given direction
