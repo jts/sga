@@ -69,7 +69,7 @@ namespace opt
 
     // Trim parameters
     static int numTrimRounds = 10;
-    static size_t trimLengthThreshold = 150;
+    static size_t trimLengthThreshold = 300;
     
     // Bubble parameters
     static int numBubbleRounds = 3;
