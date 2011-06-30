@@ -69,6 +69,7 @@ AC_CHECK_HEADERS([ \
 AC_CHECK_HEADERS([api/BamReader.h],,[AC_MSG_ERROR([The bamtools library must be installed (http://github.com/pezmaster31/bamtools). You can specify its path with the --with-bamtools=PATH option])])
 
 AC_CONFIG_FILES([Makefile
+        bin/Makefile
 		Thirdparty/Makefile
 		Util/Makefile
 		SQG/Makefile

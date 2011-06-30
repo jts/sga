@@ -132,6 +132,11 @@ History
 The first SGA code check-in was August, 2009. The algorithms for directly constructing the string graph from
 the FM-index were developed and implemented in the fall of 2009. The initial public release was October 2010.
 
+-------
+License
+
+SGA is licensed under GPLv3. See the COPYING file in the src directory.
+
 ----------------
 Third party code
 
