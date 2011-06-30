@@ -34,7 +34,7 @@ ClusterProcess::~ClusterProcess()
 ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
 {
     ReadCluster cluster(m_pOverlapper, m_minOverlap);
-    ClusterNode node = cluster.addSeed(item.read.seq.toString());
+    ClusterNode node = cluster.addSeed(item.read.seq.toString(), true);
     
     // Check if this read is already part of a cluster. If so, return an empty result
     for(int64_t i = node.interval.lower; i <= node.interval.upper; ++i)
@@ -109,7 +109,7 @@ ClusterResult ClusterProcess::process(const ClusterVector& inSequences)
     
     // Add seeds to the cluster generator
     for(size_t i = 0; i < inSequences.size(); ++i)
-        cluster.addSeed(inSequences[i].sequence);
+        cluster.addSeed(inSequences[i].sequence, false);
 
     cluster.run(m_maxClusterSize);
 

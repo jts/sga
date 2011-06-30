@@ -18,7 +18,7 @@ ReadCluster::ReadCluster(const OverlapAlgorithm* pOverlapper, int minOverlap) : 
 
 // Add a seed read to the cluster. Overlaps will be found for 
 // each seed read to grow the cluster
-ClusterNode ReadCluster::addSeed(const std::string& sequence)
+ClusterNode ReadCluster::addSeed(const std::string& sequence, bool bCheckInIndex)
 {
     // Check if this read is a substring
     SeqRecord tempRecord;
@@ -38,8 +38,15 @@ ClusterNode ReadCluster::addSeed(const std::string& sequence)
     BWTInterval readInterval = BWTAlgorithms::findInterval(pBWT, sequence);
     BWTAlgorithms::updateInterval(readInterval, '$', pBWT);
 
-    // The read must be present in the index
-    assert(readInterval.isValid());
+    // When building primary clusters, we require each read to be in the index.
+    if(bCheckInIndex)
+    {
+        if(!readInterval.isValid())
+        {
+            std::cerr << "sga cluster error: The seed read is not part of the FM-index.\n";
+            exit(EXIT_FAILURE);
+        }
+    }
 
     ClusterNode node;
     node.sequence = sequence;

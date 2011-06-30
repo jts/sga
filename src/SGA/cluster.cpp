@@ -184,6 +184,7 @@ void cluster()
     SuffixArray* pFwdSAI = new SuffixArray(opt::prefix + SAI_EXT);
     ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings());
 
+    size_t seedIdx = 0;
     std::istream* pPreReader = createReader(preclustersFile);
     std::ostream* pClusterWriter = createWriter(opt::outFile);
     std::string line;
@@ -196,13 +197,21 @@ void cluster()
         int64_t lowIdx;
         int64_t highIdx;
         parser >> clusterName >> clusterSize >> readSequence >> lowIdx >> highIdx;
-        assert(lowIdx <= highIdx);
 
-        for(int64_t i = lowIdx; i <= highIdx; ++i)
+        if(lowIdx > highIdx)
         {
-            const ReadInfo& targetInfo = pRIT->getReadInfo(pFwdSAI->get(i).getID());
-            std::string readName = targetInfo.id;
-            *pClusterWriter << clusterName << "\t" << clusterSize << "\t" << readName << "\t" << readSequence << "\n";
+            // This is an extra read that is not present in the FM-index
+            // Output a record with a fake read ID
+            *pClusterWriter << clusterName << "\t" << clusterSize << "\tseed-" << seedIdx++ << "\t" << readSequence << "\n";
+        }
+        else
+        {
+            for(int64_t i = lowIdx; i <= highIdx; ++i)
+            {
+                const ReadInfo& targetInfo = pRIT->getReadInfo(pFwdSAI->get(i).getID());
+                std::string readName = targetInfo.id;
+                *pClusterWriter << clusterName << "\t" << clusterSize << "\t" << readName << "\t" << readSequence << "\n";
+            }
         }
     }
     unlink(preclustersFile.c_str());

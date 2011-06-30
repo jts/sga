@@ -40,7 +40,7 @@ class ReadCluster
 {
     public:
         ReadCluster(const OverlapAlgorithm* pOverlapper, int minOverlap);
-        ClusterNode addSeed(const std::string& sequence);
+        ClusterNode addSeed(const std::string& sequence, bool bCheckInIndex);
 
         // Run the cluster process. If the number of total nodes
         // exceeds max, abort the search.
