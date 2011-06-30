@@ -61,6 +61,11 @@ namespace StdAlnTools
     // This function allocates memory which the caller must free.
     uint8_t* createPacked(const std::string& s, size_t start = 0, size_t length = std::string::npos);
 
+    // Create a path array representing the global alignment between target and query
+    // Caller must free the path
+    void createGlobalAlignmentPath(const std::string& target, const std::string& query,
+                                            path_t** path, int* path_len, int* score);
+
     // Calculate the maximum aligned target length possible for a query of length ql
     // under the scoring scheme given by params
     size_t calculateMaxTargetLength(int ql, const GlobalAlnParams& params);
@@ -68,10 +73,14 @@ namespace StdAlnTools
     // Fill in the stdaln AlnParam data, using GlobalAlnParams
     void setAlnParam(AlnParam& par, int matrix[25], const GlobalAlnParams& params);
 
-    // Convert a stdaln path to a pair of padded strings representing the alignment
+    // Make a padded strings from a global alignment between the pair of sequences
     void makePaddedStrings(const std::string& s1, const std::string& s2, 
-                           path_t* path, int path_len,
-                           std::string& out1, std::string& out2, std::string& outm);
+                           std::string& out1, std::string& out2);
+
+    // Convert a stdaln path to a pair of padded strings representing the alignment
+    void makePaddedStringsFromPath(const std::string& s1, const std::string& s2, 
+                                   path_t* path, int path_len,
+                                   std::string& out1, std::string& out2, std::string& outm);
     
     // Make a cigar string from a path
     std::string makeCigar(path_t* path, int path_len);

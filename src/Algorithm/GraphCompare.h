@@ -95,6 +95,32 @@ class GraphCompare
         const BWT* m_pVariantRevBWT;
         BitVector* m_pUsedVariantKmers;
         size_t m_kmer;
+
+        // Results stats
+        int m_numBubbles;
+        int m_numAttempted;
+        int m_numTargetBranched;
+        int m_numSourceBranched;
+        int m_numTargetBroken;
+        int m_numSourceBroken;
+        int m_numWalkFailed;
+        int m_numNoSolution;
+
+        int m_numInsertions;
+        int m_numDeletions;
+        int m_numSubs;
+};
+
+enum BubbleResultCode
+{
+    BRC_UNKNOWN,
+    BRC_OK,
+    BRC_SOURCE_BROKEN,
+    BRC_SOURCE_BRANCH,
+    BRC_TARGET_BROKEN,
+    BRC_TARGET_BRANCH,
+    BRC_WALK_FAILED,
+    BRC_NO_SOLUTION
 };
 
 //
@@ -102,7 +128,7 @@ struct BubbleResult
 {
     std::string targetString;
     std::string sourceString;
-    bool success;
+    BubbleResultCode returnCode;
 };
 
 //
@@ -141,14 +167,14 @@ class BubbleBuilder
     private:
         
         // Build the source portion of the graph
-        bool buildSourceBubble();
+        BubbleResultCode buildSourceBubble();
 
         // Build the target portion of the graph
-        bool buildTargetBubble();
+        BubbleResultCode buildTargetBubble();
 
         // After the bubble has been built into the graph, this function
         // finds and compares the two sequences
-        BubbleResult parseBubble();
+        void parseBubble(BubbleResult& result);
 
         // Returns true if the walk is the part of the target sequence
         bool classifyWalk(const SGWalk& walk) const;
@@ -172,6 +198,8 @@ class BubbleBuilder
         static const GraphColor SOURCE_COLOR = GC_BLUE;
         static const GraphColor TARGET_COLOR = GC_RED;
         static const GraphColor JOIN_COLOR = GC_BLACK;
+
+
 };
 
 #endif

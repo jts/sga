@@ -104,6 +104,19 @@ GraphCompare::GraphCompare(const BWT* pBaseBWT,
                                        m_kmer(kmer)
 {
     m_pUsedVariantKmers = new BitVector(pVariantBWT->getBWLen());
+
+    m_numBubbles = 0;
+    m_numAttempted = 0;
+    m_numTargetBranched = 0;
+    m_numSourceBranched = 0;
+    m_numTargetBroken = 0;
+    m_numSourceBroken = 0;
+    m_numWalkFailed = 0;
+    m_numNoSolution = 0;
+        
+    m_numInsertions = 0;
+    m_numDeletions = 0;
+    m_numSubs = 0;
 }
 
 //
@@ -237,6 +250,18 @@ void GraphCompare::run()
     printf("Variant kmers: %zu\n", variantKmersFound);
     printf("Unexpected kmers: %zu\n", unexpectedKmersFound);
 
+    printf("Total attempts: %d\n", m_numAttempted);
+    printf("Total bubbles: %d\n", m_numBubbles);
+    printf("Failed - target branched: %d\n", m_numTargetBranched);
+    printf("Failed - source branched: %d\n", m_numSourceBranched);
+    printf("Failed - target broken: %d\n", m_numTargetBroken);
+    printf("Failed - source broken: %d\n", m_numSourceBroken);
+    printf("Failed - no walk: %d\n", m_numWalkFailed);
+    printf("Failed - no solution: %d\n", m_numNoSolution);
+    
+    printf("Num subs found: %d\n", m_numSubs);
+    printf("Num insertions found: %d\n", m_numInsertions);
+    printf("Num deletions found: %d\n", m_numDeletions);
 }   
 
 //
@@ -264,15 +289,86 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
 
     //
     BubbleResult result = builder.run();
-    if(result.success)
+    if(result.returnCode == BRC_OK)
     {
         assert(!result.targetString.empty());
         assert(!result.sourceString.empty());
         StdAlnTools::globalAlignment(result.targetString, result.sourceString, true);
         markVariantSequenceKmers(result.sourceString);
+
+        std::string tsM;
+        std::string vsM;
+        StdAlnTools::makePaddedStrings(result.targetString, result.sourceString, tsM, vsM);
+
+        assert(tsM.size() == vsM.size());
+        
+        std::cout << "TSM: " << tsM << "\n";
+        std::cout << "VSM: " << vsM << "\n";
+
+        bool inIns = false;
+        bool inDel = false;
+        for(size_t i = 0; i < tsM.size(); ++i)
+        {
+            if(tsM[i] != '-' && vsM[i] != '-' && vsM[i] != tsM[i])
+            {
+                m_numSubs += 1;
+            }
+            else if(tsM[i] == '-')
+            {
+                if(!inIns)
+                {
+                    m_numInsertions += 1;
+                }
+            }
+            else if(vsM[i] == '-')
+            {
+                if(!inDel)
+                {
+                    m_numDeletions += 1;
+                }
+            }
+
+            if(tsM[i] == '-')
+                inIns = true;
+            else
+                inIns = false;
+            if(vsM[i] == '-')
+                inDel = true;
+            else
+                inDel = false;
+        }
+    }
+
+    // Update the results stats
+    m_numAttempted += 1;
+    switch(result.returnCode)
+    {
+        case BRC_UNKNOWN:
+            assert(false);
+        case BRC_OK:
+            m_numBubbles += 1;
+            break;
+        case BRC_SOURCE_BROKEN:
+            m_numSourceBroken += 1;
+            break;
+        case BRC_SOURCE_BRANCH:
+            m_numSourceBranched += 1;
+            break;
+        case BRC_TARGET_BROKEN:
+            m_numTargetBroken += 1;
+            break;
+        case BRC_TARGET_BRANCH:
+            m_numTargetBranched += 1;
+            break;
+        case BRC_WALK_FAILED:
+            m_numWalkFailed += 1;
+            break;
+        case BRC_NO_SOLUTION:
+            m_numNoSolution += 1;
+            break;
     }
     
-    return result.success;
+    return result.returnCode == BRC_OK;
 }
 
 // Update the bit vector with the kmers that were assembled into str
@@ -372,29 +468,29 @@ BubbleResult BubbleBuilder::run()
 {
     std::cout << "Running bubble builder\n";
     BubbleResult result;
-    result.success = false;
+    result.returnCode = BRC_UNKNOWN;
 
     // Build the source half of the bubble
-    result.success = buildSourceBubble();
-    if(!result.success)
+    result.returnCode = buildSourceBubble();
+    if(result.returnCode != BRC_OK)
         return result;
     
     // Build the target half of the bubble
-    result.success = buildTargetBubble();
-    if(!result.success)
+    result.returnCode = buildTargetBubble();
+    if(result.returnCode != BRC_OK)
     {
         std::cout << "Failed to build target\n";
         return result;
     }
 
-    result = parseBubble();
+    parseBubble(result);
     return result;
 }
 
 // Build the portion of the graph from the source vertex
 // until it meets the target graph. Returns true
 // if a path to the target graph was found.
-bool BubbleBuilder::buildSourceBubble()
+BubbleResultCode BubbleBuilder::buildSourceBubble()
 {
     assert(!m_queue.empty());
     while(!m_queue.empty())
@@ -407,7 +503,7 @@ bool BubbleBuilder::buildSourceBubble()
         std::string extensions = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pSourceBWT, m_pSourceRevBWT, curr.direction);
 
         if(extensions.size() > 1)
-            std::cout << "Branching\n";
+            return BRC_SOURCE_BRANCH;
 
         for(size_t i = 0; i < extensions.size(); ++i)
         {
@@ -441,19 +537,19 @@ bool BubbleBuilder::buildSourceBubble()
 
     // Check if a unique join path was found
     if(m_antisenseJoins.size() == 1 && m_senseJoins.size() == 1)
-        return true;
+        return BRC_OK;
     else
-        return false;
+        return BRC_SOURCE_BROKEN;
 }
 
 // Build the portion of the graph between the found target
 // join vertices.
-bool BubbleBuilder::buildTargetBubble()
+BubbleResultCode BubbleBuilder::buildTargetBubble()
 {
     assert(m_queue.empty());
     assert(m_antisenseJoins.size() == 1);
     assert(m_senseJoins.size() == 1);
-    std::cout << "TARGET BUBBLE\n";
+
     // Add the antisense join vertex to the extension queue
     m_queue.push(BubbleExtensionNode(m_antisenseJoins.front(), ED_SENSE));
 
@@ -467,7 +563,7 @@ bool BubbleBuilder::buildTargetBubble()
         std::string extensions = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction);
 
         if(extensions.size() > 1)
-            return false;
+            return BRC_TARGET_BRANCH;
 
         for(size_t i = 0; i < extensions.size(); ++i)
         {
@@ -492,20 +588,18 @@ bool BubbleBuilder::buildTargetBubble()
             // Create the new edge in the graph        
             addDeBruijnEdges(curr.pVertex, pVertex, curr.direction);
             if(joinFound)
-                return true;
+                return BRC_OK;
         }
     }
 
     // no path found
-    return false;
+    return BRC_TARGET_BROKEN;
 }
 
 // After the bubble has been built into the graph, this function
 // finds and compares the two sequences
-BubbleResult BubbleBuilder::parseBubble()
+void BubbleBuilder::parseBubble(BubbleResult& result)
 {
-    BubbleResult result;
-    result.success = false;
     // Parse walks from the graph that go through the bubbles
     SGWalkVector outWalks;
     bool success = SGSearch::findWalks(m_antisenseJoins.front(),
@@ -516,7 +610,10 @@ BubbleResult BubbleBuilder::parseBubble()
                                        true, // exhaustive search
                                        outWalks);
     if(!success)
-        return result;
+    {
+        result.returnCode = BRC_WALK_FAILED;
+        return;
+    }
 
     // Convert the walks into strings
     StringVector sourceStrings;
@@ -533,15 +630,15 @@ BubbleResult BubbleBuilder::parseBubble()
     
     if(targetStrings.size() == 1 && sourceStrings.size() == 1)
     {   
-        result.success = true;
+        result.returnCode = BRC_OK;
         result.targetString = targetStrings.front();
         result.sourceString = sourceStrings.front();
     }
     else
     {
-        result.success = false;
+        result.returnCode = BRC_NO_SOLUTION;
     }
-    return result;
+    return;
 }
 
 // Returns true if the walk is the part of the target sequence
