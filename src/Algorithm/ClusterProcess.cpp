@@ -158,8 +158,13 @@ void ClusterPostProcess::process(const ClusterResult& result)
         // Compute the cluster size
         size_t clusterSize = 0;
         for(size_t i = 0; i < result.clusterNodes.size(); ++i)
-            clusterSize += result.clusterNodes[i].interval.size();
-        
+        {
+            if(result.clusterNodes[i].interval.isValid())
+                clusterSize += result.clusterNodes[i].interval.size();
+            else
+                clusterSize += 1;
+        }
+               
         if(clusterSize >= m_minClusterSize)
         {
             for(size_t i = 0; i < result.clusterNodes.size(); ++i)
