@@ -60,7 +60,6 @@ void VariationBubbleBuilder::setTargetIndex(const BWT* pBWT, const BWT* pRBWT)
 // Run the bubble construction process
 BubbleResult VariationBubbleBuilder::run()
 {
-    std::cout << "Running bubble builder\n";
     BubbleResult result;
     result.returnCode = BRC_UNKNOWN;
 
@@ -72,10 +71,7 @@ BubbleResult VariationBubbleBuilder::run()
     // Build the target half of the bubble
     result.returnCode = buildTargetBubble();
     if(result.returnCode != BRC_OK)
-    {
-        std::cout << "Failed to build target\n";
         return result;
-    }
 
     parseBubble(result);
     return result;
@@ -114,7 +110,6 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
             size_t targetCount = BWTAlgorithms::countSequenceOccurrences(newStr, m_pTargetBWT);
             if(targetCount > 0)
             {
-                std::cout << "Join point found for direction: " << curr.direction << " " << newStr << "\n";
                 pVertex->setColor(JOIN_COLOR);
                 if(curr.direction == ED_SENSE)
                     m_senseJoins.push_back(pVertex);

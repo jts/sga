@@ -294,51 +294,9 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
     {
         assert(!result.targetString.empty());
         assert(!result.sourceString.empty());
-        StdAlnTools::globalAlignment(result.targetString, result.sourceString, true);
         markVariantSequenceKmers(result.sourceString);
 
-        std::string tsM;
-        std::string vsM;
-        StdAlnTools::makePaddedStrings(result.targetString, result.sourceString, tsM, vsM);
-
-        assert(tsM.size() == vsM.size());
-        
-        std::cout << "TSM: " << tsM << "\n";
-        std::cout << "VSM: " << vsM << "\n";
-    
-        // Count differences
-        bool inIns = false;
-        bool inDel = false;
-        for(size_t i = 0; i < tsM.size(); ++i)
-        {
-            if(tsM[i] != '-' && vsM[i] != '-' && vsM[i] != tsM[i])
-            {
-                m_numSubs += 1;
-            }
-            else if(tsM[i] == '-')
-            {
-                if(!inIns)
-                {
-                    m_numInsertions += 1;
-                }
-            }
-            else if(vsM[i] == '-')
-            {
-                if(!inDel)
-                {
-                    m_numDeletions += 1;
-                }
-            }
-
-            if(tsM[i] == '-')
-                inIns = true;
-            else
-                inIns = false;
-            if(vsM[i] == '-')
-                inDel = true;
-            else
-                inDel = false;
-        }
+        updateVariationCount(result);
 
         // Write to the variants file
         std::stringstream baseIDMaker;
@@ -433,4 +391,50 @@ bool GraphCompare::isKmerMarked(const std::string& str) const
     return false;
 }
 
+// Update the counts of each error type
+void GraphCompare::updateVariationCount(const BubbleResult& result)
+{
+    std::string tsM;
+    std::string vsM;
+    StdAlnTools::makePaddedStrings(result.targetString, result.sourceString, tsM, vsM);
+
+    assert(tsM.size() == vsM.size());
+    
+//    std::cout << "TSM: " << tsM << "\n";
+//    std::cout << "VSM: " << vsM << "\n";
+
+    // Count differences
+    bool inIns = false;
+    bool inDel = false;
+    for(size_t i = 0; i < tsM.size(); ++i)
+    {
+        if(tsM[i] != '-' && vsM[i] != '-' && vsM[i] != tsM[i])
+        {
+            m_numSubs += 1;
+        }
+        else if(tsM[i] == '-')
+        {
+            if(!inIns)
+            {
+                m_numInsertions += 1;
+            }
+        }
+        else if(vsM[i] == '-')
+        {
+            if(!inDel)
+            {
+                m_numDeletions += 1;
+            }
+        }
+
+        if(tsM[i] == '-')
+            inIns = true;
+        else
+            inIns = false;
+        if(vsM[i] == '-')
+            inDel = true;
+        else
+            inDel = false;
+    }
+}
 

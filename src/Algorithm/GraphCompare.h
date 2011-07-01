@@ -83,6 +83,9 @@ class GraphCompare
         // returns true if the given sequence is marked in the bitvector
         bool isKmerMarked(const std::string& str) const;
 
+        // Update statistics 
+        void updateVariationCount(const BubbleResult& result);
+        
         //
         // Functions
         //
