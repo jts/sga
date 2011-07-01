@@ -94,6 +94,7 @@ class GraphCompare
         const BWT* m_pVariantBWT; 
         const BWT* m_pVariantRevBWT;
         BitVector* m_pUsedVariantKmers;
+        std::ostream* m_pWriter;
         size_t m_kmer;
 
         // Results stats

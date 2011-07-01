@@ -104,6 +104,7 @@ GraphCompare::GraphCompare(const BWT* pBaseBWT,
                                        m_kmer(kmer)
 {
     m_pUsedVariantKmers = new BitVector(pVariantBWT->getBWLen());
+    m_pWriter = createWriter("variants.fa");
 
     m_numBubbles = 0;
     m_numAttempted = 0;
@@ -123,6 +124,7 @@ GraphCompare::GraphCompare(const BWT* pBaseBWT,
 GraphCompare::~GraphCompare()
 {
     delete m_pUsedVariantKmers;
+    delete m_pWriter;
 }
 
 // Run the actual comparison
@@ -304,7 +306,8 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
         
         std::cout << "TSM: " << tsM << "\n";
         std::cout << "VSM: " << vsM << "\n";
-
+    
+        // Count differences
         bool inIns = false;
         bool inDel = false;
         for(size_t i = 0; i < tsM.size(); ++i)
@@ -337,6 +340,17 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
             else
                 inDel = false;
         }
+
+        // Write to the variants file
+        std::stringstream baseIDMaker;
+        baseIDMaker << "base-" << m_numBubbles;
+        SeqItem item1 = { baseIDMaker.str(), result.targetString };
+        item1.write(*m_pWriter);
+
+        std::stringstream varIDMaker;
+        varIDMaker << "variant-" << m_numBubbles;
+        SeqItem item2 = { varIDMaker.str(), result.sourceString };
+        item2.write(*m_pWriter);
     }
 
     // Update the results stats
