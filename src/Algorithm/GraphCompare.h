@@ -38,7 +38,7 @@ struct GraphCompareStackNode
     AlphaCount64 upperCounts[NUM_GRAPHS];
     std::string str;
     uint8_t alphaIndex;
-    int length;
+    size_t length;
 
     // functions
 
@@ -75,6 +75,14 @@ class GraphCompare
 
     private:
         
+        // Returns true if the kmer represented by the node is a variant
+        bool isVariantKmer(GraphCompareStackNode* pNode) const;
+
+        // Update the node stack by extending the given node
+        bool updateNodeAndStack(GraphCompareStackNode* pNode, GraphCompareStack& stack, const BWTVector& bwts, const BWTVector& rbwts);
+
+        // When a kmer that is found in only one index, this function is called to attempt to build the full variation
+        // string
         bool processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex);
 
         // Mark all the kmers in seq (and their reverse complements as seen)

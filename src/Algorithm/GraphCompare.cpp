@@ -170,71 +170,27 @@ void GraphCompare::run()
         if(stack.size() > maxStack)
             maxStack = stack.size();
 
-        if(loops % 10000000 == 0)
+        if(kmersFound % 5000000 == 0)
         {
             std::cout << "Loop: " << loops << "\n";
             std::cout << "Kmers: " << kmersFound << "\n";
             //pNode->print();
         }
 
-        bool doPop = true;
 
-        if(pNode->length == (int)m_kmer)
+        if(pNode->length == m_kmer)
         {
             // do something
             kmersFound += 1;
-
-            if(!pNode->intervalPairs[0].isValid() && pNode->intervalPairs[1].isValid())
+            
+            if(isVariantKmer(pNode))
             {
                 if(processVariantKmer(reverse(pNode->str), bwts, rbwts, 1))
                     variantKmersFound += 1;
             }
-            
-            /*
-            if(pNode->intervalPairs[0].isValid() && !pNode->intervalPairs[1].isValid())
-            {
-                if(processVariantKmer(reverse(pNode->str), bwts, rbwts))
-                    unexpectedKmersFound += 1;
-            }
-            */
-        }
-        else
-        {
-            // extend
-            // Calculate the aggregate extension count
-            AlphaCount64 ext_count = pNode->getAggregateExtCount(); 
-            bool hasBranch = ext_count.getNumNonZero() > 0 && !ext_count.hasUniqueDNAChar();
-
-            while(pNode->alphaIndex < DNA_ALPHABET::size)
-            {
-                char b = DNA_ALPHABET::getBase(pNode->alphaIndex);
-                if(ext_count.get(b) > 0)
-                {
-                    // Branch the search by creating a new stack entry
-                    if(hasBranch)
-                    {
-                        GraphCompareStackNode branched = *pNode;
-                        branched.update(b, bwts, rbwts);
-                        pNode->alphaIndex += 1;
-                        stack.push(branched);
-                        numPush += 1;
-                        doPop = false;
-                    }
-                    else
-                    {
-                        // Update the interval for the current stack entry
-                        pNode->update(b, bwts, rbwts);
-                        doPop = false;
-                    }
-                    break;
-                }
-                else
-                {
-                    pNode->alphaIndex += 1;
-                }
-            }
         }
 
+        bool doPop = updateNodeAndStack(pNode, stack, bwts, rbwts);
         if(doPop)
         {
             pNode = NULL;
@@ -264,6 +220,59 @@ void GraphCompare::run()
     printf("Num insertions found: %d\n", m_numInsertions);
     printf("Num deletions found: %d\n", m_numDeletions);
 }   
+
+// Update the node and stack by either expanding to new nodes or updating
+// the interval of the current node. Returns true if the node should
+// be removed from the stack
+bool GraphCompare::updateNodeAndStack(GraphCompareStackNode* pNode, GraphCompareStack& stack, const BWTVector& bwts, const BWTVector& rbwts)
+{
+    if(pNode->length == m_kmer)
+        return true; // extend no further
+
+    AlphaCount64 ext_count = pNode->getAggregateExtCount();
+    bool hasExtension = ext_count.getNumNonZero() > 0;
+    bool hasBranch = hasExtension && !ext_count.hasUniqueDNAChar();
+
+    while(pNode->alphaIndex < DNA_ALPHABET::size)
+    {
+        char b = DNA_ALPHABET::getBase(pNode->alphaIndex);
+        if(ext_count.get(b) == 0)
+        {
+            pNode->alphaIndex += 1;
+            continue; // extension to b does not exist
+        }
+
+        if(hasBranch)
+        {
+            // Extension to b exists and there is a branch
+            // Create a new element on the stack 
+            GraphCompareStackNode branched = *pNode;
+            branched.update(b, bwts, rbwts);
+            pNode->alphaIndex += 1;
+            stack.push(branched);
+
+            // This node needs to be visited later for the other
+            // possible extensions so it should not be popped
+            return false;
+        }
+        else
+        {
+            // Update the interval for the current stack entry
+            pNode->update(b, bwts, rbwts);
+            return false;
+        }
+    }
+
+    // No extensions were made, we are done with pNode
+    return true;
+}
+
+// Returns true if the kmer represented by the node is a variant
+bool GraphCompare::isVariantKmer(GraphCompareStackNode* pNode) const
+{
+    assert(pNode->length == m_kmer);
+    return !pNode->intervalPairs[0].isValid() && pNode->intervalPairs[1].isValid();
+}
 
 //
 bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex)
@@ -415,26 +424,16 @@ void GraphCompare::updateVariationCount(const BubbleResult& result)
         else if(tsM[i] == '-')
         {
             if(!inIns)
-            {
                 m_numInsertions += 1;
-            }
         }
         else if(vsM[i] == '-')
         {
             if(!inDel)
-            {
                 m_numDeletions += 1;
-            }
         }
 
-        if(tsM[i] == '-')
-            inIns = true;
-        else
-            inIns = false;
-        if(vsM[i] == '-')
-            inDel = true;
-        else
-            inDel = false;
+        inIns = tsM[i] == '-';
+        inDel = vsM[i] == '-';
     }
 }
 
