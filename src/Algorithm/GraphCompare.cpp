@@ -93,17 +93,9 @@ void GraphCompareStackNode::print() const
 //
 //
 //
-GraphCompare::GraphCompare(const BWT* pBaseBWT, 
-                           const BWT* pBaseRBWT,
-                           const BWT* pVariantBWT, 
-                           const BWT* pVariantRBWT, 
-                           int kmer) : m_pBaseBWT(pBaseBWT),  
-                                       m_pBaseRevBWT(pBaseRBWT),
-                                       m_pVariantBWT(pVariantBWT),  
-                                       m_pVariantRevBWT(pVariantRBWT),
-                                       m_kmer(kmer)
+GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params)
 {
-    m_pUsedVariantKmers = new BitVector(pVariantBWT->getBWLen());
+    m_pUsedVariantKmers = new BitVector(m_parameters.pVariantBWT->getBWLen());
     m_pWriter = createWriter("variants.fa");
 
     m_numBubbles = 0;
@@ -134,12 +126,12 @@ void GraphCompare::run()
 
     // Make a vector of the forward and reverse BWTS
     BWTVector bwts;
-    bwts.push_back(m_pBaseBWT);
-    bwts.push_back(m_pVariantBWT);
+    bwts.push_back(m_parameters.pBaseBWT);
+    bwts.push_back(m_parameters.pVariantBWT);
 
     BWTVector rbwts;
-    rbwts.push_back(m_pBaseRevBWT);
-    rbwts.push_back(m_pVariantRevBWT);
+    rbwts.push_back(m_parameters.pBaseRevBWT);
+    rbwts.push_back(m_parameters.pVariantRevBWT);
 
     // 
     GraphCompareStack stack;
@@ -170,7 +162,7 @@ void GraphCompare::run()
         if(stack.size() > maxStack)
             maxStack = stack.size();
 
-        if(kmersFound % 5000000 == 0)
+        if(kmersFound % 5000000 == 0 && kmersFound > 0)
         {
             std::cout << "Loop: " << loops << "\n";
             std::cout << "Kmers: " << kmersFound << "\n";
@@ -178,7 +170,7 @@ void GraphCompare::run()
         }
 
 
-        if(pNode->length == m_kmer)
+        if(pNode->length == m_parameters.kmer)
         {
             // do something
             kmersFound += 1;
@@ -226,7 +218,7 @@ void GraphCompare::run()
 // be removed from the stack
 bool GraphCompare::updateNodeAndStack(GraphCompareStackNode* pNode, GraphCompareStack& stack, const BWTVector& bwts, const BWTVector& rbwts)
 {
-    if(pNode->length == m_kmer)
+    if(pNode->length == m_parameters.kmer)
         return true; // extend no further
 
     AlphaCount64 ext_count = pNode->getAggregateExtCount();
@@ -270,7 +262,7 @@ bool GraphCompare::updateNodeAndStack(GraphCompareStackNode* pNode, GraphCompare
 // Returns true if the kmer represented by the node is a variant
 bool GraphCompare::isVariantKmer(GraphCompareStackNode* pNode) const
 {
-    assert(pNode->length == m_kmer);
+    assert(pNode->length == m_parameters.kmer);
     return !pNode->intervalPairs[0].isValid() && pNode->intervalPairs[1].isValid();
 }
 
@@ -354,13 +346,13 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
 // Update the bit vector with the kmers that were assembled into str
 void GraphCompare::markVariantSequenceKmers(const std::string& str)
 {
-    assert(str.size() >= m_kmer);
-    size_t n = str.size() - m_kmer + 1;
+    assert(str.size() >= m_parameters.kmer);
+    size_t n = str.size() - m_parameters.kmer + 1;
 
     for(size_t i = 0; i < n; ++i)
     {
-        std::string kseq = str.substr(i, m_kmer);
-        BWTInterval interval = BWTAlgorithms::findInterval(m_pVariantBWT, kseq);
+        std::string kseq = str.substr(i, m_parameters.kmer);
+        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, kseq);
         if(interval.isValid())
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
@@ -369,7 +361,7 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
 
         // Mark the reverse complement k-mers too
         std::string rc_kseq = reverseComplement(kseq);
-        interval = BWTAlgorithms::findInterval(m_pVariantBWT, rc_kseq);
+        interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, rc_kseq);
         if(interval.isValid())
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
@@ -381,8 +373,8 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
 //
 bool GraphCompare::isKmerMarked(const std::string& str) const
 {
-    assert(str.size() == m_kmer);
-    BWTInterval interval = BWTAlgorithms::findInterval(m_pVariantBWT, str);
+    assert(str.size() == m_parameters.kmer);
+    BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, str);
     if(interval.isValid())
     {
         if(m_pUsedVariantKmers->test(interval.lower))
@@ -391,7 +383,7 @@ bool GraphCompare::isKmerMarked(const std::string& str) const
     
     // Mark the reverse complement k-mers too
     std::string rc_str = reverseComplement(str);
-    interval = BWTAlgorithms::findInterval(m_pVariantBWT, rc_str);
+    interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, rc_str);
     if(interval.isValid())
     {
         if(m_pUsedVariantKmers->test(interval.lower))

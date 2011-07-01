@@ -24,7 +24,7 @@
 #include "BitVector.h"
 #include "VariationBubbleBuilder.h"
 
-// Typedefs
+// Structures and typedefs
 typedef std::vector<const BWT*> BWTVector;
 
 struct GraphCompareStackNode
@@ -57,6 +57,19 @@ struct GraphCompareStackNode
 };
 typedef std::stack<GraphCompareStackNode> GraphCompareStack;
 
+// Parameters structure
+struct GraphCompareParameters
+{
+    const BWT* pBaseBWT; 
+    const BWT* pBaseRevBWT;
+    const BWT* pVariantBWT;
+    const BWT* pVariantRevBWT;
+    size_t kmer;
+};
+
+//
+//
+//
 class GraphCompare
 {
     public:
@@ -64,9 +77,7 @@ class GraphCompare
         //
         // Functions
         //
-        GraphCompare(const BWT* pBaseBWT, const BWT* pBaseRBWT,
-                     const BWT* pVariantBWT, const BWT* pVariantRBWT,
-                     int kmer);
+        GraphCompare(const GraphCompareParameters& params);
 
         ~GraphCompare();
         
@@ -101,13 +112,9 @@ class GraphCompare
         //
         // Data
         //
-        const BWT* m_pBaseBWT; 
-        const BWT* m_pBaseRevBWT;
-        const BWT* m_pVariantBWT; 
-        const BWT* m_pVariantRevBWT;
+        GraphCompareParameters m_parameters;
         BitVector* m_pUsedVariantKmers;
         std::ostream* m_pWriter;
-        size_t m_kmer;
 
         // Results stats
         int m_numBubbles;

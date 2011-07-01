@@ -88,8 +88,15 @@ int graphDiffMain(int argc, char** argv)
     std::string variantPrefix = stripFilename(opt::variantFile);
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     BWT* pVariantRBWT = new BWT(variantPrefix + RBWT_EXT, opt::sampleRate);
+    
+    GraphCompareParameters parameters;
+    parameters.pVariantBWT = pVariantBWT;
+    parameters.pVariantRevBWT = pVariantRBWT;
+    parameters.pBaseBWT = pBaseBWT;
+    parameters.pBaseRevBWT = pBaseRBWT;
+    parameters.kmer = opt::kmer;
 
-    GraphCompare graphCompare(pBaseBWT, pBaseRBWT, pVariantBWT, pVariantRBWT, opt::kmer);
+    GraphCompare graphCompare(parameters);
     graphCompare.run();
 
     // Cleanup
