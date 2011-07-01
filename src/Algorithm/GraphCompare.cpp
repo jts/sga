@@ -162,7 +162,7 @@ void GraphCompare::run()
         if(stack.size() > maxStack)
             maxStack = stack.size();
 
-        if(kmersFound % 5000000 == 0 && kmersFound > 0)
+        if(loop % 10000000 == 0)
         {
             std::cout << "Loop: " << loops << "\n";
             std::cout << "Kmers: " << kmersFound << "\n";
