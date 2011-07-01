@@ -30,4 +30,5 @@ libalgorithm_a_SOURCES = \
         LRCorrectionProcess.h LRCorrectionProcess.cpp \
         StringThreader.h StringThreader.cpp \
         GraphCompare.h GraphCompare.cpp \
-        ExtensionDP.h ExtensionDP.cpp
+        ExtensionDP.h ExtensionDP.cpp \
+        VariationBubbleBuilder.h VariationBubbleBuilder.cpp
