@@ -59,7 +59,7 @@ namespace opt
     static std::string outFile = "variants.fa";
 }
 
-static const char* shortopts = "b:r:o:k:v";
+static const char* shortopts = "b:r:o:k:t:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -81,6 +81,7 @@ int graphDiffMain(int argc, char** argv)
 {
     parseGraphDiffOptions(argc, argv);
 
+    // Create BWTS
     std::string basePrefix = stripFilename(opt::baseFile);
     BWT* pBaseBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
     BWT* pBaseRBWT = new BWT(basePrefix + RBWT_EXT, opt::sampleRate);
@@ -89,21 +90,65 @@ int graphDiffMain(int argc, char** argv)
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     BWT* pVariantRBWT = new BWT(variantPrefix + RBWT_EXT, opt::sampleRate);
     
-    GraphCompareParameters parameters;
-    parameters.pVariantBWT = pVariantBWT;
-    parameters.pVariantRevBWT = pVariantRBWT;
-    parameters.pBaseBWT = pBaseBWT;
-    parameters.pBaseRevBWT = pBaseRBWT;
-    parameters.kmer = opt::kmer;
+    // Create the shared bit vector and shared results aggregator
+    BitVector* pSharedBitVector = new BitVector(pVariantBWT->getBWLen());
+    GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults();
 
-    GraphCompare graphCompare(parameters);
-    graphCompare.run();
+    // Set the parameters shared between all threads
+    GraphCompareParameters sharedParameters;
+    sharedParameters.pVariantBWT = pVariantBWT;
+    sharedParameters.pVariantRevBWT = pVariantRBWT;
+    sharedParameters.pBaseBWT = pBaseBWT;
+    sharedParameters.pBaseRevBWT = pBaseRBWT;
+    sharedParameters.kmer = opt::kmer;
+    sharedParameters.pBitVector = pSharedBitVector;
+    sharedParameters.pResults = pSharedResults;
+
+    if(opt::numThreads > 1)
+    {
+        std::vector<pthread_t> threads(opt::numThreads);
+        std::vector<GraphCompareParameters> threadParameters(opt::numThreads);
+
+        // Launch threads
+        for(size_t i = 0; i < threads.size(); ++i)
+        {
+            threadParameters[i] = sharedParameters;
+            threadParameters[i].range.initializeBatch(i, opt::numThreads);
+            int ret = pthread_create(&threads[i], 0, &GraphCompare::runThreaded, &threadParameters[i]);
+            if(ret != 0)
+            {
+                std::cerr << "Thread creation failed with error " << ret << ", aborting" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+        
+        // Wait for threads to complete
+        for(size_t i = 0; i < threads.size(); ++i)
+        {
+            int ret = pthread_join(threads[i], NULL);
+            if(ret != 0)
+            {
+                std::cerr << "Thread join failed with error " << ret << ", aborting" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+    else
+    {
+        sharedParameters.range.initializeBatch(0,1);
+        GraphCompare graphCompare(sharedParameters);
+        graphCompare.run();
+    }
+
+    pSharedResults->printStats();
 
     // Cleanup
     delete pBaseBWT;
     delete pBaseRBWT;
     delete pVariantBWT;
     delete pVariantRBWT;
+    delete pSharedBitVector;
+    delete pSharedResults;
 
     if(opt::numThreads > 1)
         pthread_exit(NULL);
