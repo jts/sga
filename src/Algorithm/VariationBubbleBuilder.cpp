@@ -100,6 +100,11 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
             std::string newStr = makeDeBruijnVertex(vertStr, extensions[i], curr.direction);
             
             // Create the new vertex and edge in the graph
+
+            // If this vertex already exists, the graph must contain a loop
+            if(m_pGraph->getVertex(newStr) != NULL)
+                return BRC_SOURCE_BRANCH;
+
             Vertex* pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
             pVertex->setColor(SOURCE_COLOR);
             m_pGraph->addVertex(pVertex);
@@ -162,6 +167,11 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
             if(pVertex == NULL)
             {
                 // Not a join vertex, create a new vertex and add it to the graph and queue
+                
+                // If this vertex already exists, the graph must contain a loop
+                if(m_pGraph->getVertex(newStr) != NULL)
+                    return BRC_TARGET_BRANCH;
+
                 pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
                 pVertex->setColor(TARGET_COLOR);
                 m_pGraph->addVertex(pVertex);
@@ -170,7 +180,13 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
             }
             else
             {
-                assert(pVertex->getColor() == JOIN_COLOR);
+                if(pVertex->getColor() != JOIN_COLOR)
+                {
+                    // Vertex exists but it is not the join vertex
+                    // This means a simple loop has been found in the target
+                    return BRC_TARGET_BRANCH;
+                }
+
                 joinFound = true;
             }
             
