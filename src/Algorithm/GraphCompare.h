@@ -100,6 +100,9 @@ class GraphCompare
         // When a kmer that is found in only one index, this function is called to attempt to build the full variation
         // string
         bool processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex);
+        
+        // Mark all the kmers in str as being visited
+        void markVariantSequenceKmers(const std::string& str);
 
         // Update statistics 
         void updateVariationCount(const BubbleResult& result);

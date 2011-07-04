@@ -132,19 +132,24 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         
         // Get the interval for this kmer
         BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, kmer);
+
+        // Check if this interval has been marked by a previous iteration of the loop
+        assert(interval.isValid());
+        if(m_parameters.pBitVector->test(interval.lower))
+            continue;
+
         BWTInterval rc_interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, reverseComplement(kmer));
 
-        // Mark the bit vector so it wont be visited again
-        assert(interval.isValid());
         
         size_t count = interval.size();
         if(rc_interval.isValid())
             count += rc_interval.size();
 
-        if(count > m_parameters.kmerThreshold)
+        if(count >= m_parameters.kmerThreshold)
         {
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.pBaseBWT);
+
             if(base_count == 0)
             {
                 // This is a variant kmer
@@ -159,6 +164,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             }
         }
 
+        // Update the bit vector
         for(int64_t i = interval.lower; i <= interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
 
@@ -180,19 +186,11 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex)
 {
     assert(varIndex == 0 || varIndex == 1);
-    // Check the count of the kmer in both intervals
-    size_t c1 = BWTAlgorithms::countSequenceOccurrences(str, bwts[0]);
-    size_t c2 = BWTAlgorithms::countSequenceOccurrences(str, bwts[1]);
-    
-    // If there is reverse-complement coverage of this kmer, do not use
-    // it as a bubble seed
-    if(c1 > 0 && c2 > 0)
-        return false;
-
     VariationBubbleBuilder builder;
     builder.setSourceIndex(bwts[varIndex], rbwts[varIndex]);
     builder.setTargetIndex(bwts[1 - varIndex], rbwts[1 - varIndex]);
     builder.setSourceString(str);
+    builder.setKmerThreshold(m_parameters.kmerThreshold);
 
     //
     BubbleResult result = builder.run();
@@ -202,7 +200,8 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
         assert(!result.sourceString.empty());
 
         updateVariationCount(result);
-        
+        markVariantSequenceKmers(result.sourceString);
+
         /*
         // Write to the variants file
         std::stringstream baseIDMaker;
@@ -248,6 +247,34 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
     
     return result.returnCode == BRC_OK;
 }
+
+// Update the bit vector with the kmers that were assembled into str
+void GraphCompare::markVariantSequenceKmers(const std::string& str)
+{
+    assert(str.size() >= m_parameters.kmer);
+    size_t n = str.size() - m_parameters.kmer + 1;
+
+    for(size_t i = 0; i < n; ++i)
+    {
+        std::string kseq = str.substr(i, m_parameters.kmer);
+        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, kseq);
+        if(interval.isValid())
+        {
+            for(int64_t j = interval.lower; j <= interval.upper; ++j)
+                m_parameters.pBitVector->updateCAS(j, false, true);
+        }
+
+        // Mark the reverse complement k-mers too
+        std::string rc_kseq = reverseComplement(kseq);
+        interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, rc_kseq);
+        if(interval.isValid())
+        {
+            for(int64_t j = interval.lower; j <= interval.upper; ++j)
+                m_parameters.pBitVector->updateCAS(j, false, true);
+        }
+    }
+}
+
 
 // Update the counts of each error type
 void GraphCompare::updateVariationCount(const BubbleResult& result)

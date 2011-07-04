@@ -116,6 +116,7 @@ int graphDiffMain(int argc, char** argv)
         printf("[%s] starting serial-mode graph diff\n", PROGRAM_IDENT);
         GraphCompare graphCompare(sharedParameters); 
         PROCESS_GDIFF_SERIAL(opt::variantFile, &graphCompare, pSharedResults);
+        graphCompare.updateSharedStats(pSharedResults);
     }
     else
     {
