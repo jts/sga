@@ -21,7 +21,14 @@
 #include "GraphCompare.h"
 #include "graph-diff.h"
 
-      
+// Defines to clarify awful template function calls
+#define PROCESS_GDIFF_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, GraphCompareResult, \
+                                                                              GraphCompare, GraphCompareAggregateResults>
+
+#define PROCESS_GDIFF_PARALLEL SequenceProcessFramework::processSequencesParallel<SequenceWorkItem, GraphCompareResult, \
+                                                                                  GraphCompare, GraphCompareAggregateResults>
+
+   
 //
 // Getopt
 //
@@ -45,8 +52,8 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "      -t, --threads=NUM                use NUM computation threads\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
-//static const char* PROGRAM_IDENT =
-//PACKAGE_NAME "::" SUBPROGRAM;
+static const char* PROGRAM_IDENT =
+PACKAGE_NAME "::" SUBPROGRAM;
 
 namespace opt
 {
@@ -102,44 +109,38 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.pBaseRevBWT = pBaseRBWT;
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = pSharedBitVector;
-    sharedParameters.pResults = pSharedResults;
+    sharedParameters.kmerThreshold = 3;
 
-    if(opt::numThreads > 1)
+    if(opt::numThreads <= 1)
     {
-        std::vector<pthread_t> threads(opt::numThreads);
-        std::vector<GraphCompareParameters> threadParameters(opt::numThreads);
-
-        // Launch threads
-        for(size_t i = 0; i < threads.size(); ++i)
-        {
-            threadParameters[i] = sharedParameters;
-            threadParameters[i].range.initializeBatch(i, opt::numThreads);
-            int ret = pthread_create(&threads[i], 0, &GraphCompare::runThreaded, &threadParameters[i]);
-            if(ret != 0)
-            {
-                std::cerr << "Thread creation failed with error " << ret << ", aborting" << std::endl;
-                exit(EXIT_FAILURE);
-            }
-        }
-        
-        // Wait for threads to complete
-        for(size_t i = 0; i < threads.size(); ++i)
-        {
-            int ret = pthread_join(threads[i], NULL);
-            if(ret != 0)
-            {
-                std::cerr << "Thread join failed with error " << ret << ", aborting" << std::endl;
-                exit(EXIT_FAILURE);
-            }
-        }
+        printf("[%s] starting serial-mode graph diff\n", PROGRAM_IDENT);
+        GraphCompare graphCompare(sharedParameters); 
+        PROCESS_GDIFF_SERIAL(opt::variantFile, &graphCompare, pSharedResults);
     }
     else
     {
-        sharedParameters.range.initializeBatch(0,1);
-        GraphCompare graphCompare(sharedParameters);
-        graphCompare.run();
-    }
+        printf("[%s] starting parallel-mode graph diff with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+        
+        std::vector<GraphCompare*> processorVector;
+        for(int i = 0; i < opt::numThreads; ++i)
+        {
+            GraphCompare* pProcessor = new GraphCompare(sharedParameters);
+            processorVector.push_back(pProcessor);
+        }
+        
+        PROCESS_GDIFF_PARALLEL(opt::variantFile, processorVector, pSharedResults);
+        
+        for(size_t i = 0; i < processorVector.size(); ++i)
+        {
+            // Update the shared stats
+            processorVector[i]->updateSharedStats(pSharedResults);
 
+            delete processorVector[i];
+            processorVector[i] = NULL;
+        }
+
+
+    }
     pSharedResults->printStats();
 
     // Cleanup

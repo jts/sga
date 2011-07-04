@@ -137,8 +137,9 @@ AlphaCount64 calculateExactExtensions(const unsigned int overlapLen, const std::
 // Calculate de Bruijn graph extensions of the given sequence
 // Returns a string of the possible 1-base extensions
 // For example if str is "ACGT" and the de Bruijn graph has an edge "ACGT" -> "CGTA"
-// the return would be "A"
-std::string calculateDeBruijnExtensions(const std::string str, const BWT* pBWT, const BWT* pRevBWT, EdgeDir direction);
+// the return would be "A".
+// If the target kmer ("CGTA") is seen less than minOccurrences times, it is not counted
+std::string calculateDeBruijnExtensions(const std::string str, const BWT* pBWT, const BWT* pRevBWT, EdgeDir direction, size_t minOccurrences = 1);
 
 // Extract the string at idx from the BWT
 std::string extractString(const BWT* pBWT, size_t idx);

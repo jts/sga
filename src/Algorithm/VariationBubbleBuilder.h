@@ -68,6 +68,9 @@ class VariationBubbleBuilder
         // The target index is the index that we try to build the bubble onto
         void setTargetIndex(const BWT* pBWT, const BWT* pRBWT);
 
+        // Set the threshold of kmer occurrences to use it as an edge
+        void setKmerThreshold(size_t t);
+
         // Run the bubble construction process
         // The found strings are placed in the StringVector
         // If this vector is empty, a bubble could not be found
@@ -103,6 +106,8 @@ class VariationBubbleBuilder
 
         VertexPtrVec m_senseJoins;
         VertexPtrVec m_antisenseJoins;
+
+        size_t m_kmerThreshold;
 
         static const GraphColor SOURCE_COLOR = GC_BLUE;
         static const GraphColor TARGET_COLOR = GC_RED;

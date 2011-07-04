@@ -17,7 +17,7 @@
 //
 //
 //
-VariationBubbleBuilder::VariationBubbleBuilder()
+VariationBubbleBuilder::VariationBubbleBuilder() : m_kmerThreshold(1)
 {
     m_pGraph = new StringGraph;
 }
@@ -26,6 +26,12 @@ VariationBubbleBuilder::VariationBubbleBuilder()
 VariationBubbleBuilder::~VariationBubbleBuilder()
 {
     delete m_pGraph;
+}
+
+//
+void VariationBubbleBuilder::setKmerThreshold(size_t t)
+{
+    m_kmerThreshold = t;
 }
 
 // The source string is the string the bubble starts from
@@ -90,7 +96,7 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        std::string extensions = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pSourceBWT, m_pSourceRevBWT, curr.direction);
+        std::string extensions = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pSourceBWT, m_pSourceRevBWT, curr.direction, m_kmerThreshold);
 
         if(extensions.size() > 1)
             return BRC_SOURCE_BRANCH;
@@ -154,7 +160,7 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        std::string extensions = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction);
+        std::string extensions = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction, m_kmerThreshold);
 
         if(extensions.size() > 1)
             return BRC_TARGET_BRANCH;
