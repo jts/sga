@@ -75,14 +75,12 @@ void GraphCompareStats::print() const
 //
 GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params)
 {
-    //m_pWriter = createWriter("variants.fa");
     m_stats.clear();
 }
 
 //
 GraphCompare::~GraphCompare()
 {
-    //delete m_pWriter;
 }
 
 GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
@@ -92,7 +90,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     std::string w = item.read.seq.toString();
     if(w.size() <= m_parameters.kmer)
     {
-        result.temp = 1;
         return result;
     }
 
@@ -160,7 +157,12 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 BWTVector rbwts;
                 rbwts.push_back(m_parameters.pBaseRevBWT);
                 rbwts.push_back(m_parameters.pVariantRevBWT);
-                processVariantKmer(kmer, bwts, rbwts, 1);
+                BubbleResult bubbleResult = processVariantKmer(kmer, bwts, rbwts, 1);
+                if(bubbleResult.returnCode == BRC_OK)
+                {
+                    result.varStrings.push_back(bubbleResult.sourceString);
+                    result.baseStrings.push_back(bubbleResult.targetString);
+                }
             }
         }
 
@@ -183,7 +185,7 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 }
 
 //
-bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex)
+BubbleResult GraphCompare::processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex)
 {
     assert(varIndex == 0 || varIndex == 1);
     VariationBubbleBuilder builder;
@@ -201,19 +203,7 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
 
         updateVariationCount(result);
         markVariantSequenceKmers(result.sourceString);
-
-        /*
-        // Write to the variants file
-        std::stringstream baseIDMaker;
-        baseIDMaker << "base-" << 0;
-        SeqItem item1 = { baseIDMaker.str(), result.targetString };
-        item1.write(*m_pWriter);
-
-        std::stringstream varIDMaker;
-        varIDMaker << "variant-" << 0;
-        SeqItem item2 = { varIDMaker.str(), result.sourceString };
-        item2.write(*m_pWriter);
-        */
+        
     }
 
     // Update the results stats
@@ -245,7 +235,7 @@ bool GraphCompare::processVariantKmer(const std::string& str, const BWTVector& b
             break;
     }
     
-    return result.returnCode == BRC_OK;
+    return result;
 }
 
 // Update the bit vector with the kmers that were assembled into str
@@ -316,8 +306,11 @@ void GraphCompare::updateVariationCount(const BubbleResult& result)
 //
 // GraphCompareAggregateResult
 //
-GraphCompareAggregateResults::GraphCompareAggregateResults()
+GraphCompareAggregateResults::GraphCompareAggregateResults() : m_numVariants(0)
 {
+    //
+    m_pWriter = createWriter("variants.fa");
+
     // Initialize mutex
     int ret = pthread_mutex_init(&m_mutex, NULL);
     if(ret != 0)
@@ -330,6 +323,8 @@ GraphCompareAggregateResults::GraphCompareAggregateResults()
 //
 GraphCompareAggregateResults::~GraphCompareAggregateResults()
 {
+    delete m_pWriter;
+
     int ret = pthread_mutex_destroy(&m_mutex);
     if(ret != 0)
     {
@@ -346,10 +341,23 @@ void GraphCompareAggregateResults::updateShared(const GraphCompareStats stats)
     pthread_mutex_unlock(&m_mutex);
 }
 
-void GraphCompareAggregateResults::process(const SequenceWorkItem& item, const GraphCompareResult& result)
+void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, const GraphCompareResult& result)
 {
-    (void)item;
-    (void)result;
+    assert(result.varStrings.size() == result.baseStrings.size());
+    for(size_t i = 0; i < result.varStrings.size(); ++i)
+    {
+        // Write to the variants file
+        std::stringstream baseIDMaker;
+        baseIDMaker << "base-" << m_numVariants;
+        SeqItem item1 = { baseIDMaker.str(), result.baseStrings[i] };
+        item1.write(*m_pWriter);
+
+        std::stringstream varIDMaker;
+        varIDMaker << "variant-" << m_numVariants;
+        SeqItem item2 = { varIDMaker.str(), result.varStrings[i] };
+        item2.write(*m_pWriter);
+        m_numVariants += 1;
+    }
 }
 
 //
