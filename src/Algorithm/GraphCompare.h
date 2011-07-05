@@ -71,6 +71,8 @@ struct GraphCompareResult
 {
     StringVector varStrings;
     StringVector baseStrings;
+    DoubleVector varCoverages;
+    DoubleVector baseCoverages;
 };
 
 //
@@ -100,7 +102,7 @@ class GraphCompare
 
         // When a kmer that is found in only one index, this function is called to attempt to build the full variation
         // string
-        BubbleResult processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex);
+        BubbleResult processVariantKmer(const std::string& str, int count, const BWTVector& bwts, const BWTVector& rbwts, int varIndex);
         
         // Mark all the kmers in str as being visited
         void markVariantSequenceKmers(const std::string& str);

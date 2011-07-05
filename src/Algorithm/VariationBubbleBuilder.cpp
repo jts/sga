@@ -35,14 +35,14 @@ void VariationBubbleBuilder::setKmerThreshold(size_t t)
 }
 
 // The source string is the string the bubble starts from
-void VariationBubbleBuilder::setSourceString(const std::string& str)
+void VariationBubbleBuilder::setSourceString(const std::string& str, int coverage)
 {
     // Create a new vertex for the source sequence
     // As we are creating a de Bruijn graph, we use the sequence
     // of the vertex as its ID
     Vertex* pVertex = new(m_pGraph->getVertexAllocator()) Vertex(str, str);
     pVertex->setColor(SOURCE_COLOR);
-    m_pGraph->addVertex(pVertex);
+    addVertex(pVertex, coverage);
 
     // Add the vertex to the extension queue
     m_queue.push(BubbleExtensionNode(pVertex, ED_SENSE));
@@ -96,24 +96,28 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        std::string extensions = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pSourceBWT, m_pSourceRevBWT, curr.direction, m_kmerThreshold);
+        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pSourceBWT, m_pSourceRevBWT, curr.direction);
 
-        if(extensions.size() > 1)
+        if(extensionCounts.hasDNAChar() && !extensionCounts.hasUniqueDNAChar())
             return BRC_SOURCE_BRANCH;
 
-        for(size_t i = 0; i < extensions.size(); ++i)
+        for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
-            std::string newStr = makeDeBruijnVertex(vertStr, extensions[i], curr.direction);
+            char b = DNA_ALPHABET::getBase(i);
+            size_t count = extensionCounts.get(b);
+            if(count <= m_kmerThreshold)
+                continue;
+
+            std::string newStr = makeDeBruijnVertex(vertStr, b, curr.direction);
             
             // Create the new vertex and edge in the graph
-
             // If this vertex already exists, the graph must contain a loop
             if(m_pGraph->getVertex(newStr) != NULL)
                 return BRC_SOURCE_BRANCH;
 
             Vertex* pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
             pVertex->setColor(SOURCE_COLOR);
-            m_pGraph->addVertex(pVertex);
+            addVertex(pVertex, count);
             addDeBruijnEdges(curr.pVertex, pVertex, curr.direction);
             
             // Check if this sequence is present in the FM-index of the target
@@ -160,14 +164,19 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        std::string extensions = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction, m_kmerThreshold);
+        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction);
 
-        if(extensions.size() > 1)
+        if(extensionCounts.hasDNAChar() && !extensionCounts.hasUniqueDNAChar())    
             return BRC_TARGET_BRANCH;
 
-        for(size_t i = 0; i < extensions.size(); ++i)
+        for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
-            std::string newStr = makeDeBruijnVertex(vertStr, extensions[i], curr.direction);
+            char b = DNA_ALPHABET::getBase(i);
+            size_t count = extensionCounts.get(b);
+            if(count <= m_kmerThreshold)
+                continue;
+
+            std::string newStr = makeDeBruijnVertex(vertStr, b, curr.direction);
             Vertex* pVertex = m_pGraph->getVertex(newStr);
             bool joinFound = false;
             if(pVertex == NULL)
@@ -180,7 +189,8 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
 
                 pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
                 pVertex->setColor(TARGET_COLOR);
-                m_pGraph->addVertex(pVertex);
+                addVertex(pVertex, count);
+
                 // Add the vertex to the extension queue
                 m_queue.push(BubbleExtensionNode(pVertex, curr.direction));
             }
@@ -229,14 +239,24 @@ void VariationBubbleBuilder::parseBubble(BubbleResult& result)
     // Convert the walks into strings
     StringVector sourceStrings;
     StringVector targetStrings;
+    DoubleVector sourceCoverages;
+    DoubleVector targetCoverages;
+
     for(size_t i = 0; i < outWalks.size(); ++i)
     {
         std::string walkStr = outWalks[i].getString(SGWT_START_TO_END);
-        bool isTarget = classifyWalk(outWalks[i]);
+        int walkCoverage = 0;
+        bool isTarget = classifyWalk(outWalks[i], walkCoverage);
         if(isTarget)
+        {
             targetStrings.push_back(walkStr);
+            targetCoverages.push_back((double)walkCoverage / outWalks[i].getNumVertices());
+        }
         else
+        {
             sourceStrings.push_back(walkStr);
+            sourceCoverages.push_back((double)walkCoverage / outWalks[i].getNumVertices());
+        }
     }
     
     if(targetStrings.size() == 1 && sourceStrings.size() == 1)
@@ -244,6 +264,8 @@ void VariationBubbleBuilder::parseBubble(BubbleResult& result)
         result.returnCode = BRC_OK;
         result.targetString = targetStrings.front();
         result.sourceString = sourceStrings.front();
+        result.targetCoverage = targetCoverages.front();
+        result.sourceCoverage = sourceCoverages.front();
     }
     else
     {
@@ -266,7 +288,8 @@ StringVector VariationBubbleBuilder::getSourceKmers() const
 }
 
 // Returns true if the walk is the part of the target sequence
-bool VariationBubbleBuilder::classifyWalk(const SGWalk& walk) const
+// The total coverage of the walk is written to outCoverage
+bool VariationBubbleBuilder::classifyWalk(const SGWalk& walk, int& outCoverage) const
 {
     GraphColor branchCol = GC_WHITE;
 
@@ -277,9 +300,12 @@ bool VariationBubbleBuilder::classifyWalk(const SGWalk& walk) const
         exit(EXIT_FAILURE);
     }
 
+    outCoverage = 0;
     for(size_t i = 0; i < numVertices; ++i)
     {
         const Vertex* pVertex = walk.getVertex(i);
+
+        // Update color state
         GraphColor vertCol = pVertex->getColor();
         if(vertCol == JOIN_COLOR && i != 0 && i != numVertices - 1)
         {
@@ -298,9 +324,21 @@ bool VariationBubbleBuilder::classifyWalk(const SGWalk& walk) const
         {
             branchCol = vertCol;
         }
+
+        // Update coverage
+        StrIntMap::const_iterator iter = m_vertexCoverageMap.find(pVertex->getSeq().toString());
+        assert(iter != m_vertexCoverageMap.end());
+        outCoverage += iter->second;
     }
 
     return branchCol == TARGET_COLOR;
+}
+
+// Add a vertex to the graph
+void VariationBubbleBuilder::addVertex(Vertex* pVertex, int coverage)
+{
+    m_pGraph->addVertex(pVertex);
+    m_vertexCoverageMap[pVertex->getSeq().toString()] = coverage;
 }
 
 // Add a new edge to the graph denoting the relationship between pX and pY.

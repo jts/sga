@@ -157,11 +157,15 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 BWTVector rbwts;
                 rbwts.push_back(m_parameters.pBaseRevBWT);
                 rbwts.push_back(m_parameters.pVariantRevBWT);
-                BubbleResult bubbleResult = processVariantKmer(kmer, bwts, rbwts, 1);
+                BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, rbwts, 1);
                 if(bubbleResult.returnCode == BRC_OK)
                 {
                     result.varStrings.push_back(bubbleResult.sourceString);
+                    result.varCoverages.push_back(bubbleResult.sourceCoverage);
+
                     result.baseStrings.push_back(bubbleResult.targetString);
+                    result.baseCoverages.push_back(bubbleResult.targetCoverage);
+
                 }
             }
         }
@@ -185,13 +189,13 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 }
 
 //
-BubbleResult GraphCompare::processVariantKmer(const std::string& str, const BWTVector& bwts, const BWTVector& rbwts, int varIndex)
+BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count, const BWTVector& bwts, const BWTVector& rbwts, int varIndex)
 {
     assert(varIndex == 0 || varIndex == 1);
     VariationBubbleBuilder builder;
     builder.setSourceIndex(bwts[varIndex], rbwts[varIndex]);
     builder.setTargetIndex(bwts[1 - varIndex], rbwts[1 - varIndex]);
-    builder.setSourceString(str);
+    builder.setSourceString(str, count);
     builder.setKmerThreshold(m_parameters.kmerThreshold);
 
     //
@@ -353,14 +357,19 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
     {
         // Write to the variants file
         std::stringstream baseIDMaker;
+        std::stringstream baseMeta;
         baseIDMaker << "base-" << m_numVariants;
+        baseMeta << "coverage=" << result.baseCoverages[i];
+
         SeqItem item1 = { baseIDMaker.str(), result.baseStrings[i] };
-        item1.write(*m_pWriter);
+        item1.write(*m_pWriter, baseMeta.str());
 
         std::stringstream varIDMaker;
+        std::stringstream varMeta;
         varIDMaker << "variant-" << m_numVariants;
+        varMeta << "coverage=" << result.varCoverages[i];
         SeqItem item2 = { varIDMaker.str(), result.varStrings[i] };
-        item2.write(*m_pWriter);
+        item2.write(*m_pWriter, varMeta.str());
         m_numVariants += 1;
     }
 }

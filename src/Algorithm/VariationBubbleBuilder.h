@@ -36,6 +36,8 @@ struct BubbleResult
 {
     std::string targetString;
     std::string sourceString;
+    double targetCoverage;
+    double sourceCoverage;
     BubbleResultCode returnCode;
 };
 
@@ -49,6 +51,7 @@ struct BubbleExtensionNode
     EdgeDir direction; // the direction to extend to
 };
 typedef std::queue<BubbleExtensionNode> BubbleExtensionQueue;
+typedef std::map<std::string, int> StrIntMap;
 
 //
 // Class to build a variant bubble starting at a particular sequence
@@ -60,7 +63,7 @@ class VariationBubbleBuilder
         ~VariationBubbleBuilder();
 
         // The source string is the string the bubble starts from
-        void setSourceString(const std::string& str);
+        void setSourceString(const std::string& str, int coverage);
 
         // The source index is the index that the contains the source string
         void setSourceIndex(const BWT* pBWT, const BWT* pRBWT);
@@ -92,13 +95,19 @@ class VariationBubbleBuilder
         void parseBubble(BubbleResult& result);
 
         // Returns true if the walk is the part of the target sequence
-        bool classifyWalk(const SGWalk& walk) const;
+        // Also calculates the kmer coverage of the walk
+        bool classifyWalk(const SGWalk& walk, int& outCoverage) const;
     
+        // Add a vertex to the graph and record the sequence coverage value
+        void addVertex(Vertex* pVertex, int coverage);
+
         // Make the sequence of a new deBruijn vertex using the edge details
         std::string makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction);
         void addDeBruijnEdges(const Vertex* pX, const Vertex* pY, EdgeDir direction);
         
+        //
         // Data
+        //
         const BWT* m_pSourceBWT;
         const BWT* m_pSourceRevBWT;
 
@@ -106,6 +115,7 @@ class VariationBubbleBuilder
         const BWT* m_pTargetRevBWT;
 
         StringGraph* m_pGraph;
+        StrIntMap m_vertexCoverageMap;
 
         BubbleExtensionQueue m_queue;
 

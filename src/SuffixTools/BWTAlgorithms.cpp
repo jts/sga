@@ -179,7 +179,7 @@ AlphaCount64 BWTAlgorithms::calculateExactExtensions(const unsigned int overlapL
 
 // Calculate the 1-base de Bruijn graph extensions of str
 // The includes the reverse complement
-std::string BWTAlgorithms::calculateDeBruijnExtensions(const std::string str, const BWT* pBWT, const BWT* pRevBWT, EdgeDir direction, size_t minOccurrences)
+AlphaCount64 BWTAlgorithms::calculateDeBruijnExtensions(const std::string str, const BWT* pBWT, const BWT* pRevBWT, EdgeDir direction)
 {
     size_t k = str.size();
     size_t p = k - 1;
@@ -224,16 +224,7 @@ std::string BWTAlgorithms::calculateDeBruijnExtensions(const std::string str, co
     // Switch the reverse-complement extensions to the same strand as the str
     rc_extensions.complement();
     extensions += rc_extensions;
-
-    // Append a letter to the output string for every non-zero count
-    std::string out;
-    for(int i = 0; i < DNA_ALPHABET::size; ++i)
-    {
-        char b = DNA_ALPHABET::getBase(i);
-        if(extensions.get(b) >= minOccurrences)
-            out.append(1,b);
-    }
-    return out;
+    return extensions;
 }
 
 // Return a random string from the BWT
