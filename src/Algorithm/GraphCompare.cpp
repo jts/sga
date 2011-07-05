@@ -210,6 +210,7 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
     }
     else
     {
+        
         // Get all the kmers on this failed variant and mark them
         StringVector kmers = builder.getSourceKmers();
         for(size_t i = 0; i < kmers.size(); ++i)

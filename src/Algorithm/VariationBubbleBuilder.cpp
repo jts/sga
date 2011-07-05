@@ -105,7 +105,7 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-            if(count <= m_kmerThreshold)
+            if(count < m_kmerThreshold)
                 continue;
 
             std::string newStr = makeDeBruijnVertex(vertStr, b, curr.direction);
@@ -173,7 +173,7 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-            if(count <= m_kmerThreshold)
+            if(count < m_kmerThreshold)
                 continue;
 
             std::string newStr = makeDeBruijnVertex(vertStr, b, curr.direction);
@@ -321,9 +321,7 @@ bool VariationBubbleBuilder::classifyWalk(const SGWalk& walk, int& outCoverage) 
         }
         
         if(vertCol == TARGET_COLOR || vertCol == SOURCE_COLOR)
-        {
             branchCol = vertCol;
-        }
 
         // Update coverage
         StrIntMap::const_iterator iter = m_vertexCoverageMap.find(pVertex->getSeq().toString());
