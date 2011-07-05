@@ -75,6 +75,9 @@ class VariationBubbleBuilder
         // The found strings are placed in the StringVector
         // If this vector is empty, a bubble could not be found
         BubbleResult run();
+        
+        // Get all the kmers on the source branch
+        StringVector getSourceKmers() const;
 
     private:
         
@@ -94,7 +97,8 @@ class VariationBubbleBuilder
         // Make the sequence of a new deBruijn vertex using the edge details
         std::string makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction);
         void addDeBruijnEdges(const Vertex* pX, const Vertex* pY, EdgeDir direction);
-
+        
+        // Data
         const BWT* m_pSourceBWT;
         const BWT* m_pSourceRevBWT;
 
@@ -102,6 +106,7 @@ class VariationBubbleBuilder
         const BWT* m_pTargetRevBWT;
 
         StringGraph* m_pGraph;
+
         BubbleExtensionQueue m_queue;
 
         VertexPtrVec m_senseJoins;

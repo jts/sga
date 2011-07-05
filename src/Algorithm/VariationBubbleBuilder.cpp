@@ -252,6 +252,19 @@ void VariationBubbleBuilder::parseBubble(BubbleResult& result)
     return;
 }
 
+// Return a vector of kmers on the source portion of the graph
+StringVector VariationBubbleBuilder::getSourceKmers() const
+{
+    StringVector out;
+    VertexPtrVec vertexPtrs =  m_pGraph->getAllVertices();
+    for(size_t i = 0; i < vertexPtrs.size(); ++i)
+    {
+        if(vertexPtrs[i]->getColor() == SOURCE_COLOR)
+            out.push_back(vertexPtrs[i]->getSeq().toString());
+    }
+    return out;
+}
+
 // Returns true if the walk is the part of the target sequence
 bool VariationBubbleBuilder::classifyWalk(const SGWalk& walk) const
 {

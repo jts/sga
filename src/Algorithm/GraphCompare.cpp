@@ -203,7 +203,13 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, const BWTV
 
         updateVariationCount(result);
         markVariantSequenceKmers(result.sourceString);
-        
+    }
+    else
+    {
+        // Get all the kmers on this failed variant and mark them
+        StringVector kmers = builder.getSourceKmers();
+        for(size_t i = 0; i < kmers.size(); ++i)
+            markVariantSequenceKmers(kmers[i]);
     }
 
     // Update the results stats
@@ -264,7 +270,6 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
         }
     }
 }
-
 
 // Update the counts of each error type
 void GraphCompare::updateVariationCount(const BubbleResult& result)
