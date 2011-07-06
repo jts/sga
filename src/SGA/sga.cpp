@@ -32,6 +32,7 @@
 #include "convert-beetl.h"
 #include "bwt2fa.h"
 #include "graph-diff.h"
+#include "var2vcf.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -72,6 +73,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
 "           filterBAM       filter out contaminating mate-pair data in a BAM file\n"
 "           cluster         find clusters of reads belonging to the same connected component\n"
+"           var2vcf         convert aligned variant sequences found by graph-diff into a VCF file\n"
 "\n\nDeprecated commands:\n"
 "           rmdup           duplicate read removal - superceded by sga filter\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -145,6 +147,8 @@ int main(int argc, char** argv)
             bwt2faMain(argc - 1, argv + 1);
         else if(command == "graph-diff")
             graphDiffMain(argc - 1, argv + 1);
+        else if(command == "var2vcf")
+            var2vcfMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

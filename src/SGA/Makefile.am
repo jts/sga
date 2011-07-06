@@ -49,5 +49,6 @@ sga_SOURCES = sga.cpp \
               convert-beetl.h convert-beetl.cpp \
               bwt2fa.h bwt2fa.cpp \
               graph-diff.h graph-diff.cpp \
+              var2vcf.h var2vcf.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 
