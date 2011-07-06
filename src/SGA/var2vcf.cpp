@@ -137,7 +137,6 @@ int var2vcfMain(int argc, char** argv)
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);    
     
-
     // Read the reference
     ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
     refTable.indexReadsByID();
@@ -183,6 +182,7 @@ void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReade
     std::string refName;
     size_t refStartPos = 0;
     size_t refEndPos = 0;
+    bool bBaseIsRC = false;
 
     if(records.size() != 2)
     {
@@ -201,11 +201,17 @@ void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReade
             const BamTools::RefVector& refVector = pReader->GetReferenceData();
             assert(records[i].RefID < (int)refVector.size());
             refName = refVector[records[i].RefID].RefName;
+            bBaseIsRC = records[i].IsReverseStrand();
         }
 
         if(records[i].Name.find("variant") != std::string::npos)
         {
             varString = records[i].QueryBases;
+
+            // We always keep the variant string in its original
+            // strand, then flip it to match the base
+            if(records[i].IsReverseStrand())
+                varString = reverseComplement(varString);
         }
     }
 
@@ -215,13 +221,16 @@ void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReade
         exit(EXIT_FAILURE);
     }
 
+    // Correct the orientation of the var string to match the base
+    if(bBaseIsRC)
+        varString = reverseComplement(varString);
+
+    // Extract the portion of the reference
     const SeqItem& refItem = pRefTable->getRead(refName);
-
-    WARN_ONCE("FIX HACKY SUBSTR")
     assert(refStartPos < refItem.seq.length() && refEndPos < refItem.seq.length());
+    std::string refString = refItem.seq.substr(refStartPos, refEndPos - refStartPos + 1);
 
-    std::string refString(refItem.seq.getSuffix(refStartPos), refEndPos - refStartPos + 1);
-    printf("Ref: %s coords: [%zu %zu]\n", refName.c_str(), refStartPos, refEndPos);
+    printf("Ref: %s coords: [%zu %zu] Name: %s\n", refName.c_str(), refStartPos, refEndPos, records[0].Name.c_str());
     printf("base: %s\n", baseString.c_str());
     printf(" var: %s\n", varString.c_str());
     printf(" ref: %s\n", refString.c_str());
