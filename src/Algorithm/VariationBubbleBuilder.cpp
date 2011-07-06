@@ -328,7 +328,6 @@ bool VariationBubbleBuilder::classifyWalk(const SGWalk& walk, int& outCoverage) 
         assert(iter != m_vertexCoverageMap.end());
         outCoverage += iter->second;
     }
-
     return branchCol == TARGET_COLOR;
 }
 
