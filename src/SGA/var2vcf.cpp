@@ -184,7 +184,7 @@ void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReade
     size_t refStartPos = 0;
     size_t refEndPos = 0;
 
-    if(records.size() != 2 && false)
+    if(records.size() != 2)
     {
         std::cerr << "Error, expected 2 records (got: " << records.size() << ")\n";
         exit(EXIT_FAILURE);
