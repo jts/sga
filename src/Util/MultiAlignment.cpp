@@ -206,6 +206,29 @@ char MultiAlignment::getSymbol(size_t rowIdx, size_t colIdx) const
     return m_alignData[rowIdx].padded[colIdx];
 }
 
+size_t MultiAlignment::getBaseIdx(size_t rowIdx, size_t colIdx) const
+{
+    assert(rowIdx < m_alignData.size());
+    assert(colIdx < m_alignData[rowIdx].padded.size());
+
+    // Convert the column index to the baseIndex in the sequence at
+
+    // Ensure this is a real base on the target string.
+    assert(getSymbol(rowIdx, colIdx) != '-');
+
+    // Substract the number of padding charcters from the column index to get the 
+    // base index
+    size_t padSyms = 0;
+    for(size_t i = 0; i < colIdx; ++i)
+    {
+        if(getSymbol(rowIdx, i) == '-')
+            padSyms += 1;
+    }
+    assert(padSyms < colIdx);
+    return colIdx - padSyms;
+}
+
+
 //
 std::string MultiAlignment::getPaddedSubstr(size_t rowIdx, size_t start, size_t length) const
 {

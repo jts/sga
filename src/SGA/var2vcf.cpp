@@ -83,6 +83,8 @@ struct VariantGroupReader
 
 
 // Functions
+VCFReturnCode preprocessVariants(const BamRecordVector& records);
+
 VCFReturnCode parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReader, 
                             const BamRecordVector& records, VCFVector& outVCFRecords);
 
@@ -104,6 +106,7 @@ static const char *VAR2VCF_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -r, --reference=FILE             read the reference sequences from FILE\n"
 "      -o, --outfile=FILE               write the results to FILE\n"
+"      -q, --min-quality=Q              discard variants with mapping quality less than Q (default: 0)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -115,10 +118,11 @@ namespace opt
     static std::string outFile;
     static std::string referenceFile;
     static std::string bamFile;
+    static int minQuality = 0;
     static int exactMatchRequired = 21;
 }
 
-static const char* shortopts = "r:ov";
+static const char* shortopts = "r:o:q:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -126,6 +130,7 @@ static const struct option longopts[] = {
     { "verbose",         no_argument,       NULL, 'v' },
     { "refrence",        required_argument, NULL, 'r' },
     { "outfile",         required_argument, NULL, 'o' },
+    { "min-quality",     required_argument, NULL, 'q' },
     { "help",            no_argument,       NULL, OPT_HELP },
     { "version",         no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -168,8 +173,15 @@ int var2vcfMain(int argc, char** argv)
             break;
 
         numGroups += 1;
-        VCFReturnCode code = parseVariants(&refTable, pBamReader, records, vcfRecords);
-        assert(code < (int)returnCodeStats.size());
+        VCFReturnCode code = preprocessVariants(records);
+        if(code != VCF_OK)
+        {
+            // Failed preprocess checks
+            returnCodeStats[code] += 1;
+            continue;
+        }
+        
+        code = parseVariants(&refTable, pBamReader, records, vcfRecords);
         returnCodeStats[code] += 1;
     }
 
@@ -200,6 +212,7 @@ int var2vcfMain(int argc, char** argv)
     printf("Total variant sequences: %zu\n", numGroups);
     printf(" -- Successfully converted: %d\n", returnCodeStats[VCF_OK]);
     printf(" -- Failed due to flanking exact match check: %d\n", returnCodeStats[VCF_EXACT_MATCH_FAILED]);
+    printf(" -- Failed due to low mapping quality: %d\n", returnCodeStats[VCF_MAP_QUALITY_FAILED]);
     printf("\n");
     printf("Totat variants: %zu\n", vcfRecords.size());
     printf(" -- substitutions: %d\n", classificationStats[VCF_SUB]);
@@ -211,6 +224,21 @@ int var2vcfMain(int argc, char** argv)
     return 0;
 }
 
+// Perform sanity checks and filtering of the records
+VCFReturnCode preprocessVariants(const BamRecordVector& records)
+{
+    for(size_t i = 0; i < records.size(); ++i)
+    {
+        // Only check the base sequence's map quality
+        // The variant can potentially be so different from the reference
+        // that it does not map
+        if(records[i].Name.find("base") != std::string::npos && records[i].MapQuality < opt::minQuality)
+            return VCF_MAP_QUALITY_FAILED;
+    }
+    return VCF_OK;
+}
+
+// Perform the actual conversion of the collection of BAM records into a call
 VCFReturnCode parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReader, 
                             const BamRecordVector& records, VCFVector& outVCFRecords)
 {
@@ -295,6 +323,7 @@ void parseVar2VCFOptions(int argc, char** argv)
         {
             case 'o': arg >> opt::outFile; break;
             case 'r': arg >> opt::referenceFile; break;
+            case 'q': arg >> opt::minQuality; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:

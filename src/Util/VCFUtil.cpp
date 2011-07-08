@@ -121,8 +121,10 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
     
     MultiAlignment ma(ref, maVector);
 
+    /*
     std::cout << "\nMultipleAlignment:\n";
     ma.print();
+    */
 
     // Get the row index of the variant and base strings
     size_t baseRow = ma.getIdxByName("base");
@@ -199,13 +201,17 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
                 size_t eventLength = eventEnd - eventStart + 1;
                 std::string refString = StdAlnTools::unpad(ma.getPaddedSubstr(refRow, eventStart, eventLength));
                 std::string varString = StdAlnTools::unpad(ma.getPaddedSubstr(varRow, eventStart, eventLength));
-                
+
+                // Get the base position in the reference string. This is not necessarily the 
+                // same as the eventStart column as the reference may be padded
+                int refBaseOffset = ma.getBaseIdx(refRow, eventStart);
+
                 // Generate VCF Record
                 VCFRecord record;
                 record.refName = refName;
-                record.refPosition = refPosition + eventStart + 1; // VCF uses 1-based coordinates
-                WARN_ONCE("DONT USE COL - USE REFERENCE BASE IDX");
-                printf("Ref start: %d col: %d eventStart: %d vcf pos: %d\n", (int)refPosition, (int)i, (int)eventStart, (int)record.refPosition);
+                record.refPosition = refPosition + refBaseOffset + 1; // VCF uses 1-based coordinates
+
+                //printf("Ref start: %d col: %d eventStart: %d vcf pos: %d\n", (int)refPosition, (int)i, (int)eventStart, (int)record.refPosition);
                 record.refStr = refString;
                 record.varStr = varString;
                 record.addComment("id", varName);

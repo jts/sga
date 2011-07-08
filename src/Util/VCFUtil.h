@@ -27,6 +27,7 @@ enum VCFClassification
 enum VCFReturnCode
 {
     VCF_EXACT_MATCH_FAILED, // failed the flanking-base match test
+    VCF_MAP_QUALITY_FAILED, // mapping quality check failed
     VCF_OK, // VCF generation succeeded
     VCF_NUM_RETURN_CODES
 };

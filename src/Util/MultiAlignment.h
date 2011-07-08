@@ -47,6 +47,9 @@ class MultiAlignment
         // Get the symbol at a particular column and row
         char getSymbol(size_t rowIdx, size_t colIdx) const;
 
+        // Get the index of the base corresponding to colIdx for sequence at rowIdx
+        size_t getBaseIdx(size_t rowIdx, size_t colIdx) const;
+
         // Get a substring of the padded string for the given row
         std::string getPaddedSubstr(size_t rowIdx, size_t start, size_t length) const;
 
