@@ -10,6 +10,7 @@
 #include <iostream>
 #include <algorithm>
 #include <map>
+#include <limits>
 #include "MultiAlignment.h"
 
 struct CigarIter
@@ -109,9 +110,7 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
     rootData.str = rootStr;
     rootData.expandedCigar = std::string(rootStr.size(), 'M');
     rootData.position = 0;
-    rootData.targetID = -1;
-    rootData.targetAlignLength = - 1;
-    rootData.targetPosition = -1;
+    rootData.name = "root";
 
     m_alignData.push_back(rootData);
     m_alignData.insert(m_alignData.end(), inData.begin(), inData.end());
@@ -130,6 +129,7 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             printf("%zu\t%s\n", i+1, iter.pData->expandedCigar.c_str());
     }
 
+    // Build the padded strings by inserting '-' as necessary
     bool done = false;
     while(!done)
     {
@@ -160,9 +160,59 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             m_alignData[i].padded.append(1,outSym);
         }
     }
+}
 
-    std::stable_sort(m_alignData.begin(), m_alignData.end(), MAlignData::sortPosition);
-    //generateConsensus();
+// 
+size_t MultiAlignment::getIdxByName(const std::string& name) const
+{
+    size_t max = std::numeric_limits<size_t>::max();
+    size_t idx = max;
+    for(size_t i = 0; i < m_alignData.size(); ++i)
+    {
+        if(m_alignData[i].name == name)
+        {
+            if(idx == max)
+            {
+                idx = i;
+            }
+            else
+            {
+                std::cerr << "Error in MultiAlignment::getIdxByName: duplicate rows found for " << name << "\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    if(idx == max)
+    {
+        std::cerr << "Error in MultiAlignment::getIdxByName: row not found for " << name << "\n";
+        exit(EXIT_FAILURE);
+    }
+    return idx;
+}
+
+//
+size_t MultiAlignment::getNumColumns() const
+{
+    assert(!m_alignData.empty());
+    return m_alignData.front().padded.size();
+}
+
+//
+char MultiAlignment::getSymbol(size_t rowIdx, size_t colIdx) const
+{
+    assert(rowIdx < m_alignData.size());
+    assert(colIdx < m_alignData[rowIdx].padded.size());
+    return m_alignData[rowIdx].padded[colIdx];
+}
+
+//
+std::string MultiAlignment::getPaddedSubstr(size_t rowIdx, size_t start, size_t length) const
+{
+    assert(rowIdx < m_alignData.size());
+    assert(start < m_alignData[rowIdx].padded.size());
+    assert(start + length < m_alignData[rowIdx].padded.size());
+    return m_alignData[rowIdx].padded.substr(start, length);
 }
 
 // Generate simple consensus string from the multiple alignment
@@ -218,7 +268,12 @@ std::string MultiAlignment::generateConsensus()
 void MultiAlignment::print(const std::string* pConsensus) const
 {
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
-    size_t len = m_alignData[0].padded.size();
+
+    // Create a copy of the m_alignData and sort it by position
+    MAlignDataVector sortedAlignments = m_alignData;
+    std::stable_sort(sortedAlignments.begin(), sortedAlignments.end(), MAlignData::sortPosition);
+
+    size_t len = sortedAlignments[0].padded.size();
     int col_size = 140;
     for(size_t l = 0; l < len; l += col_size)
     {
@@ -232,14 +287,13 @@ void MultiAlignment::print(const std::string* pConsensus) const
                 printf("C\n");
         }
         
-        for(size_t i = 0; i < m_alignData.size(); ++i)
+        for(size_t i = 0; i < sortedAlignments.size(); ++i)
         {
-            const MAlignData& mad = m_alignData[i];
+            const MAlignData& mad = sortedAlignments[i];
             int diff = mad.padded.size() - l;
             int stop = diff < col_size ? diff : col_size;
-            printf("%zu\t%s\t%d,%d,%d\n", i, mad.padded.substr(l, stop).c_str(), mad.targetID, mad.targetPosition, mad.targetAlignLength);
+            printf("%zu\t%s\t%s\n", i, mad.padded.substr(l, stop).c_str(), mad.name.c_str());
         }
-
         std::cout << "\n";
     }
 }

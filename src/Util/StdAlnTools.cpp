@@ -34,6 +34,47 @@ int StdAlnTools::globalAlignment(const std::string& target, const std::string& q
     return score;
 }
 
+// Perform a global alignment between the given strings and return the CIGAR string
+std::string StdAlnTools::globalAlignmentCigar(const std::string& target, const std::string& query)
+{
+    path_t* path;
+    int path_len = 0;
+    int score = 0;
+    createGlobalAlignmentPath(target, query, &path, &path_len, &score);
+    std::string cigar = makeCigar(path, path_len);
+    free(path);
+    return cigar;
+}
+
+// Expand a CIGAR string into a character code for each symbol of the alignment
+std::string StdAlnTools::expandCigar(const std::string& cigar)
+{
+    std::string expanded;
+    std::stringstream parser(cigar);
+    int length;
+    char code;
+    while(parser >> length)
+    {
+        bool success = parser >> code;
+        expanded.append(length, code);
+        assert(success);
+        (void)success;
+    }
+    return expanded;
+}
+
+// Remove padding characters from str
+std::string StdAlnTools::unpad(const std::string& str)
+{
+    std::string out;
+    for(size_t i = 0; i < str.size(); ++i)
+    {
+        if(str[i] != '-')
+            out.push_back(str[i]);   
+    }
+    return out;
+}
+
 // Create a path array representing the global alignment between target and query
 // Caller must free the path
 void StdAlnTools::createGlobalAlignmentPath(const std::string& target, const std::string& query,

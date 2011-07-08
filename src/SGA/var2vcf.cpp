@@ -20,6 +20,7 @@
 #include "api/BamReader.h"
 #include "api/BamWriter.h"
 #include "StdAlnTools.h"
+#include "VCFUtil.h"
 
 //
 typedef std::vector<BamTools::BamAlignment> BamRecordVector;
@@ -82,7 +83,8 @@ struct VariantGroupReader
 
 
 // Functions
-void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReader, const BamRecordVector& records);
+VCFReturnCode parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReader, 
+                            const BamRecordVector& records, VCFVector& outVCFRecords);
 
 //
 // Getopt
@@ -113,6 +115,7 @@ namespace opt
     static std::string outFile;
     static std::string referenceFile;
     static std::string bamFile;
+    static int exactMatchRequired = 21;
 }
 
 static const char* shortopts = "r:ov";
@@ -135,8 +138,6 @@ int var2vcfMain(int argc, char** argv)
 {
     parseVar2VCFOptions(argc, argv);
 
-    Timer* pTimer = new Timer(PROGRAM_IDENT);    
-    
     // Read the reference
     ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
     refTable.indexReadsByID();
@@ -148,37 +149,76 @@ int var2vcfMain(int argc, char** argv)
         std::cerr << "Failed to open BAM file: " << opt::bamFile << "\n";
         exit(EXIT_FAILURE);
     }
-
-    std::cout << "Reading from BAM: " << opt::bamFile << "\n";
-    std::cout << "Reading from ref: " << opt::referenceFile << "\n";
-
+    
+    //
+    // Read the alignments from the BAM file as a group of variants
+    // and convert them to VCF
+    //
     VariantGroupReader groupReader(pBamReader);
+    IntVector returnCodeStats(VCF_NUM_RETURN_CODES, 0);
+ 
+    VCFVector vcfRecords;
+    size_t numGroups = 0;
     while(1)
     {
         BamRecordVector records;
-        if(groupReader.readVariantGroup(records))
-        {
-            parseVariants(&refTable, pBamReader, records);
-        }
-        else
-        {
+
+        bool groupOK = groupReader.readVariantGroup(records);
+        if(!groupOK)
             break;
-        }
+
+        numGroups += 1;
+        VCFReturnCode code = parseVariants(&refTable, pBamReader, records, vcfRecords);
+        assert(code < (int)returnCodeStats.size());
+        returnCodeStats[code] += 1;
     }
 
+    // Sort the VCF records by chromosome then position
+    std::sort(vcfRecords.begin(), vcfRecords.end(), VCFRecord::sort);
+
+    // Output VCF
+
+    // Build program string
+    std::stringstream progSS;
+    progSS << "sga";
+    for(int i = 0; i < argc; ++i)
+        progSS << " " << argv[i];
+
+    IntVector classificationStats(VCF_NUM_CLASSIFICATIONS, 0);
+    std::ostream* pWriter = createWriter(opt::outFile);
+    VCFUtil::writeHeader(pWriter, PROGRAM_IDENT, stripDirectories(opt::bamFile), stripDirectories(opt::referenceFile));
+    for(size_t i = 0; i < vcfRecords.size(); ++i)
+    {
+        VCFClassification code = vcfRecords[i].classify();
+        assert(code < (int)classificationStats.size());
+        classificationStats[code] += 1;
+        *pWriter << vcfRecords[i] << "\n";
+    }
+    delete pWriter;
+
+    // Print stats
+    printf("Total variant sequences: %zu\n", numGroups);
+    printf(" -- Successfully converted: %d\n", returnCodeStats[VCF_OK]);
+    printf(" -- Failed due to flanking exact match check: %d\n", returnCodeStats[VCF_EXACT_MATCH_FAILED]);
+    printf("\n");
+    printf("Totat variants: %zu\n", vcfRecords.size());
+    printf(" -- substitutions: %d\n", classificationStats[VCF_SUB]);
+    printf(" -- deletions: %d\n", classificationStats[VCF_DEL]);
+    printf(" -- insertions: %d\n", classificationStats[VCF_INS]);
+    printf(" -- complex: %d\n", classificationStats[VCF_COMPLEX]);
     pBamReader->Close();
-    delete pTimer;
     delete pBamReader;
     return 0;
 }
 
-void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReader, const BamRecordVector& records)
+VCFReturnCode parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReader, 
+                            const BamRecordVector& records, VCFVector& outVCFRecords)
 {
     // classify the sequences in the vector as base 
     // or variant
     std::string baseString;
     std::string varString;
-
+    std::string varName;
     std::string refName;
     size_t refStartPos = 0;
     size_t refEndPos = 0;
@@ -194,6 +234,12 @@ void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReade
     {
         if(records[i].Name.find("base") != std::string::npos)
         {
+            if(!refName.empty())
+            {
+                std::cerr << "Error: base sequence " << records[i].Name << " does not have a single alignment\n";
+                exit(EXIT_FAILURE);
+            }
+
             assert(records[i].IsMapped());
             baseString = records[i].QueryBases;
             refStartPos = records[i].Position;
@@ -207,6 +253,7 @@ void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReade
         if(records[i].Name.find("variant") != std::string::npos)
         {
             varString = records[i].QueryBases;
+            varName = records[i].Name;
 
             // We always keep the variant string in its original
             // strand, then flip it to match the base
@@ -229,15 +276,10 @@ void parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReade
     const SeqItem& refItem = pRefTable->getRead(refName);
     assert(refStartPos < refItem.seq.length() && refEndPos < refItem.seq.length());
     std::string refString = refItem.seq.substr(refStartPos, refEndPos - refStartPos + 1);
-
-    printf("Ref: %s coords: [%zu %zu] Name: %s\n", refName.c_str(), refStartPos, refEndPos, records[0].Name.c_str());
-    printf("base: %s\n", baseString.c_str());
-    printf(" var: %s\n", varString.c_str());
-    printf(" ref: %s\n", refString.c_str());
-
-    std::cout << "Alignments\n";
-    StdAlnTools::globalAlignment(refString, baseString, true);
-    StdAlnTools::globalAlignment(refString, varString, true);
+    
+    // Perform the actual conversion
+    VCFReturnCode code = VCFUtil::generateVCFFromCancerVariant(refString, baseString, varString, refName, refStartPos, varName, opt::exactMatchRequired, outVCFRecords);
+    return code;
 }
 
 // 

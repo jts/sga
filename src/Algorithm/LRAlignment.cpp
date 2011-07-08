@@ -1072,9 +1072,6 @@ MultiAlignment convertHitsToMultiAlignment(const std::string& query,
         MAlignData maData;
         maData.str = target.substr(t_start_pos, t_end_pos - t_start_pos);
         maData.position = q_start_pos;
-        maData.targetID = hits[i].targetID;
-        maData.targetAlignLength = tl;
-        maData.targetPosition = t_start_pos;
 
         // Add initial padding to cigar
         maData.expandedCigar.append(maData.position, 'S');
