@@ -53,6 +53,11 @@ class MultiAlignment
         // Get a substring of the padded string for the given row
         std::string getPaddedSubstr(size_t rowIdx, size_t start, size_t length) const;
 
+        // Count the length of the homopolymer run in the substring [from, to] inclusive
+        // If to is npos, then it is assumed to be until the end of the string
+        // if to < from, then the count proceeds backwards (towards the beginning of the string.
+        size_t countHomopolymer(size_t rowIdx, int from, int to = -1) const;
+
         // Return the total number of columns in the MA
         size_t getNumColumns() const;
 

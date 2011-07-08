@@ -28,6 +28,9 @@ enum VCFReturnCode
 {
     VCF_EXACT_MATCH_FAILED, // failed the flanking-base match test
     VCF_MAP_QUALITY_FAILED, // mapping quality check failed
+    VCF_BASE_MULTIMAP_FAILED, // mapping quality check failed
+    VCF_BASE_PARTIALMAP_FAILED, // the base sequence did not fully align to the reference
+    VCF_INVALID_MULTIALIGNMENT, // failed because the multiple alignment was not valid
     VCF_OK, // VCF generation succeeded
     VCF_NUM_RETURN_CODES
 };
@@ -83,11 +86,15 @@ namespace VCFUtil
                                                size_t refPosition,
                                                const std::string& varName,
                                                int minExactMatch,
+                                               int verbose,
                                                VCFVector& outRecords);
 
     // Write a VCF header to the given file handle
     void writeHeader(std::ostream* pWriter, const std::string& program, 
                      const std::string& bamFile, const std::string& reference);
+
+    // constants
+    static const int HOMOPOLYMER_ANNOTATE_THRESHOLD = 5;
 
 };
 

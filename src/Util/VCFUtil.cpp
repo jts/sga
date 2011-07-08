@@ -89,6 +89,7 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
                                                     size_t refPosition,
                                                     const std::string& varName,
                                                     int minExactMatch,
+                                                    int verbose,
                                                     VCFVector& outRecords)
 {
     VCFVector tempRecords;
@@ -175,6 +176,7 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
             {
                 // Extend the event
                 assert(eventEnd != -1);
+                std::cout << "Extending\n";
                 eventEnd += 1;
             }
 
@@ -185,36 +187,98 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
             // Check if this is the end of a variant
             if(eventStart != -1)
             {
-                // Extract the substrings of the reference and variant.
-                // If this is an indel event, we start the base one base
-                // upstream of the variant
+                if(verbose > 0)
+                    ma.print();
+
+                // Extract the substrings of the three sequences describing
+                // this event.
+                // If the event is an indel, we move the start point
+                // of the event backwards until all 3 columns are not padding characters.
+                // This is to avoid the following situation:
+                // AATATTT--CGT ref
+                // AATATTTT-CGT base
+                // AATATTTTTCGT var
+                // or 
+                // TTAGGTTTTTTT ref 
+                // TTAGG-TTTTTT base 
+                // TTAGG--TTTTT var
+                //
+                // In the first case, it is a 1 base insertion wrt base but a 2 base insertion wrt to the ref.
+                // So we need to move the event to the first column with all Ts to properly capture what is happening.
+                // In the second case it is a 1 base deletion wrt base and a 2 base deletion wrt to the ref. 
+                // Again, we need to move back to the last full column.
                 if(isIndel)
                 {
-                    if(eventStart == 0)
+                    // It is impossible to extract a reference string if the indel is at the beginning
+                    // or end of th multiple alignment so we just fail out here
+                    if(eventStart == 0 || eventEnd == (int)numCols - 1)
+                        return VCF_INVALID_MULTIALIGNMENT;
+                    
+                    while(eventStart >= 0)
                     {
-                        std::cerr << "VCFUtil error: indel started at position 0\n";
-                        exit(EXIT_FAILURE);
-                    }   
-                    eventStart -= 1;
+                        char rc = ma.getSymbol(refRow, eventStart);
+                        char bc = ma.getSymbol(baseRow, eventStart);
+                        char vc = ma.getSymbol(varRow, eventStart);
+                        if(rc == '-' || bc == '-' || vc == '-')
+                            eventStart -= 1;
+                        else
+                            break;
+                    }
+                    assert(eventStart >= 0);
                 }
 
                 size_t eventLength = eventEnd - eventStart + 1;
                 std::string refString = StdAlnTools::unpad(ma.getPaddedSubstr(refRow, eventStart, eventLength));
+                std::string baseString = StdAlnTools::unpad(ma.getPaddedSubstr(baseRow, eventStart, eventLength));
                 std::string varString = StdAlnTools::unpad(ma.getPaddedSubstr(varRow, eventStart, eventLength));
+
+                if(verbose > 0)
+                {
+                    printf("Ref start: %d col: %d eventStart: %d eventEnd: %d\n", (int)refPosition, (int)i, eventStart, eventEnd);
+                    std::cout << "RefString " << refString << "\n";
+                    std::cout << "baseString " << baseString << "\n";
+                    std::cout << "varString " << varString << "\n";
+                }
+                assert(!refString.empty());
+                //assert(!baseString.empty());
+                assert(!varString.empty());
+                if(baseString.empty())
+                    std::cerr << "Warning: Empty base string\n";
 
                 // Get the base position in the reference string. This is not necessarily the 
                 // same as the eventStart column as the reference may be padded
                 int refBaseOffset = ma.getBaseIdx(refRow, eventStart);
-
+                
                 // Generate VCF Record
                 VCFRecord record;
                 record.refName = refName;
                 record.refPosition = refPosition + refBaseOffset + 1; // VCF uses 1-based coordinates
 
-                //printf("Ref start: %d col: %d eventStart: %d vcf pos: %d\n", (int)refPosition, (int)i, (int)eventStart, (int)record.refPosition);
                 record.refStr = refString;
                 record.varStr = varString;
+
+                // Add a comment with the variant name
                 record.addComment("id", varName);
+
+                // If the base string is not the same as the reference string, not it in the comment
+                // This can happen when a het SNP is mutated or we have some other weird site
+                if(refString != baseString)
+                    record.addComment("NS", baseString);
+
+                // Check if the reference context is a homopolymer
+                int preHP = ma.countHomopolymer(refRow, eventStart, 0);
+                int sufHP = ma.countHomopolymer(refRow, eventEnd);
+                int maxHP = std::max(preHP, sufHP);
+                if(maxHP >= HOMOPOLYMER_ANNOTATE_THRESHOLD)
+                {
+                    std::stringstream hps;
+                    hps << maxHP;
+                    record.addComment("HP", hps.str());
+                }
+
+                if(verbose > 0)
+                    std::cout << record << "\n";
+
                 tempRecords.push_back(record);
 
                 // Reset state

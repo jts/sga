@@ -238,6 +238,48 @@ std::string MultiAlignment::getPaddedSubstr(size_t rowIdx, size_t start, size_t 
     return m_alignData[rowIdx].padded.substr(start, length);
 }
 
+// Count the length of the homopolymer starting at from
+size_t MultiAlignment::countHomopolymer(size_t rowIdx, int from, int to) const
+{
+    assert(rowIdx < m_alignData.size());
+    assert(from < (int)m_alignData[rowIdx].padded.size());
+
+    if(to == -1)
+        to = m_alignData[rowIdx].padded.size() - 1; // inclusive
+
+    // Determine iteration direction
+    int step = from <= to ? 1 : -1;
+
+    // Get the base of the homopolymer
+    // If it is a padding symbol we use the next non-padded base in the sequence
+    char b;
+    while(1)
+    {
+        b = getSymbol(rowIdx, from);
+        if(b == '-')
+            from += step;
+        else
+            break;
+    }
+
+    size_t length = 1;
+    do
+    {
+        from += step;
+        assert(from >= 0 && from < (int)m_alignData[rowIdx].padded.size());
+
+        char s = getSymbol(rowIdx, from);
+        if(s == '-')
+            continue;
+        if(s == b)
+            length += 1;
+        else
+            break;
+    }
+    while(from != to);
+    return length;
+}
+
 // Generate simple consensus string from the multiple alignment
 std::string MultiAlignment::generateConsensus()
 {

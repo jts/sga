@@ -83,7 +83,7 @@ struct VariantGroupReader
 
 
 // Functions
-VCFReturnCode preprocessVariants(const BamRecordVector& records);
+VCFReturnCode preprocessVariants(BamRecordVector& records);
 
 VCFReturnCode parseVariants(const ReadTable* pRefTable, const BamTools::BamReader* pReader, 
                             const BamRecordVector& records, VCFVector& outVCFRecords);
@@ -106,7 +106,7 @@ static const char *VAR2VCF_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -r, --reference=FILE             read the reference sequences from FILE\n"
 "      -o, --outfile=FILE               write the results to FILE\n"
-"      -q, --min-quality=Q              discard variants with mapping quality less than Q (default: 0)\n"
+"      -q, --min-quality=Q              discard variants with mapping quality less than Q (default: 1)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -118,7 +118,7 @@ namespace opt
     static std::string outFile;
     static std::string referenceFile;
     static std::string bamFile;
-    static int minQuality = 0;
+    static int minQuality = 1;
     static int exactMatchRequired = 21;
 }
 
@@ -154,7 +154,7 @@ int var2vcfMain(int argc, char** argv)
         std::cerr << "Failed to open BAM file: " << opt::bamFile << "\n";
         exit(EXIT_FAILURE);
     }
-    
+    WARN_ONCE("Add dust check");
     //
     // Read the alignments from the BAM file as a group of variants
     // and convert them to VCF
@@ -187,8 +187,10 @@ int var2vcfMain(int argc, char** argv)
 
     // Sort the VCF records by chromosome then position
     std::sort(vcfRecords.begin(), vcfRecords.end(), VCFRecord::sort);
-
+    
+    //
     // Output VCF
+    //
 
     // Build program string
     std::stringstream progSS;
@@ -213,6 +215,9 @@ int var2vcfMain(int argc, char** argv)
     printf(" -- Successfully converted: %d\n", returnCodeStats[VCF_OK]);
     printf(" -- Failed due to flanking exact match check: %d\n", returnCodeStats[VCF_EXACT_MATCH_FAILED]);
     printf(" -- Failed due to low mapping quality: %d\n", returnCodeStats[VCF_MAP_QUALITY_FAILED]);
+    printf(" -- Failed due to ambiguous base sequence mappping: %d\n", returnCodeStats[VCF_BASE_MULTIMAP_FAILED]);
+    printf(" -- Failed due to partially mapped base sequence: %d\n", returnCodeStats[VCF_BASE_PARTIALMAP_FAILED]);
+    printf(" -- Failed due to invalid multiple alignment: %d\n", returnCodeStats[VCF_INVALID_MULTIALIGNMENT]);
     printf("\n");
     printf("Totat variants: %zu\n", vcfRecords.size());
     printf(" -- substitutions: %d\n", classificationStats[VCF_SUB]);
@@ -225,16 +230,69 @@ int var2vcfMain(int argc, char** argv)
 }
 
 // Perform sanity checks and filtering of the records
-VCFReturnCode preprocessVariants(const BamRecordVector& records)
+VCFReturnCode preprocessVariants(BamRecordVector& records)
 {
+    // Perform quality check   
     for(size_t i = 0; i < records.size(); ++i)
     {
         // Only check the base sequence's map quality
         // The variant can potentially be so different from the reference
         // that it does not map
-        if(records[i].Name.find("base") != std::string::npos && records[i].MapQuality < opt::minQuality)
-            return VCF_MAP_QUALITY_FAILED;
+        if(records[i].Name.find("base") != std::string::npos)
+        {
+            if(records[i].MapQuality < opt::minQuality)
+                return VCF_MAP_QUALITY_FAILED;
+
+            // Check if the alignment is softclipped
+            assert(!records[i].CigarData.empty());
+            if(records[i].CigarData.front().Type == 'S' || 
+               records[i].CigarData.back().Type == 'S')
+            {
+                return VCF_BASE_PARTIALMAP_FAILED;
+            }
+        }
     }
+
+    // Perform duplicate mapping check
+    int numBaseRecords = 0;
+    int numVariantRecords = 0;
+    for(size_t i = 0; i < records.size(); ++i)
+    {
+        if(records[i].Name.find("base") == 0)
+            numBaseRecords += 1;
+        else if(records[i].Name.find("variant") == 0)
+            numVariantRecords += 1;
+        else
+        {
+            std::cerr << "Error: Unexpected record name: " << records[i].Name << "\n";
+            exit(EXIT_FAILURE);
+        }
+    }
+    
+    // Fail if the base is multimapped
+    if(numBaseRecords > 1)
+        return VCF_BASE_MULTIMAP_FAILED;
+
+    // Map a new copy of the records with only 1 entry for the variant
+    if(numVariantRecords > 1)
+    {
+        BamRecordVector outRecords;
+        // Make a copy of the records with only 1 variant record
+        for(size_t i = 0; i < records.size(); ++i)
+        {
+            if(records[i].Name.find("base") == 0)
+            {
+                outRecords.push_back(records[i]);
+            }
+            else if(records[i].Name.find("variant") == 0)
+            {
+                outRecords.push_back(records[i]);
+                break;
+            }
+        }
+        records = outRecords;
+    }
+
     return VCF_OK;
 }
 
@@ -306,7 +364,7 @@ VCFReturnCode parseVariants(const ReadTable* pRefTable, const BamTools::BamReade
     std::string refString = refItem.seq.substr(refStartPos, refEndPos - refStartPos + 1);
     
     // Perform the actual conversion
-    VCFReturnCode code = VCFUtil::generateVCFFromCancerVariant(refString, baseString, varString, refName, refStartPos, varName, opt::exactMatchRequired, outVCFRecords);
+    VCFReturnCode code = VCFUtil::generateVCFFromCancerVariant(refString, baseString, varString, refName, refStartPos, varName, opt::exactMatchRequired, opt::verbose, outVCFRecords);
     return code;
 }
 

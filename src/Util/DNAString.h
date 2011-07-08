@@ -69,7 +69,7 @@ class DNAString
         // Get the substring of length n starting at position pos
         std::string substr(size_t pos, size_t n) const
         {
-            assert(m_data != NULL && pos < m_len && pos + n < m_len);
+            assert(m_data != NULL && pos < m_len && pos + n <= m_len);
             return std::string(m_data + pos, n);
         }
 
