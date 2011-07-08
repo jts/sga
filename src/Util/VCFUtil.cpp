@@ -176,7 +176,6 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
             {
                 // Extend the event
                 assert(eventEnd != -1);
-                std::cout << "Extending\n";
                 eventEnd += 1;
             }
 
