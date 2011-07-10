@@ -268,7 +268,7 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
             getline(parser, hitsStr);
 
             OverlapVector ov;
-            OverlapCommon::parseHitsString(hitsStr, pRIT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(hitsStr, pRIT, pRIT, pFwdSAI, pRevSAI, true, readIdx, ov, isSubstring);
             
             bool isContained = false;
             if(isSubstring)

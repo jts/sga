@@ -41,7 +41,7 @@ size_t computeHitsParallel(int numThreads, const std::string& prefix, const std:
                            StringVector& filenameVec, std::ostream* pASQGWriter);
 
 //
-void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWriter);
+void convertHitsToASQG(const std::string& indexPrefix, const StringVector& hitsFilenames, std::ostream* pASQGWriter);
 
 
 //
@@ -63,7 +63,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      -t, --threads=NUM                use NUM worker threads to compute the overlaps (default: no threading)\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned (default: exact matches only)\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads (default: 45)\n"
-"      -p, --prefix=PREFIX              use PREFIX instead of the prefix of the reads filename for the input/output files\n"
+"      -f, --target-file=FILE           perform the overlap queries against the reads in FILE\n"
 "      -x, --exhaustive                 output all overlaps, including transitive edges\n"
 "          --exact                      force the use of the exact-mode irreducible block algorithm. This is faster\n"
 "                                       but requires that no substrings are present in the input set.\n"
@@ -85,8 +85,8 @@ namespace opt
     static unsigned int verbose;
     static int numThreads = 1;
     static OutputType outputType = OT_ASQG;
-    static std::string prefix;
     static std::string readsFile;
+    static std::string targetFile;
     static std::string outFile;
     
     static double errorRate = 0.0f;
@@ -98,7 +98,7 @@ namespace opt
     static bool bExactIrreducible = false;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:o:vix";
+static const char* shortopts = "m:d:e:t:l:s:o:f:vix";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_EXACT };
 
@@ -108,6 +108,7 @@ static const struct option longopts[] = {
     { "min-overlap", required_argument, NULL, 'm' },
     { "sample-rate", required_argument, NULL, 'd' },
     { "outfile",     required_argument, NULL, 'o' },
+    { "target-file", required_argument, NULL, 'f' },
     { "prefix",      required_argument, NULL, 'p' },
     { "error-rate",  required_argument, NULL, 'e' },
     { "seed-length", required_argument, NULL, 'l' },
@@ -128,7 +129,6 @@ int overlapMain(int argc, char** argv)
 
     // Prepare the output ASQG file
     assert(opt::outputType == OT_ASQG);
-    (void)opt::outputType;
 
     // Open output file
     std::ostream* pASQGWriter = createWriter(opt::outFile);
@@ -144,8 +144,17 @@ int overlapMain(int argc, char** argv)
 
     // Compute the overlap hits
     StringVector hitsFilenames;
-    BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
-    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
+
+    // Determine which index files to use. If a target file was provided,
+    // use the index of the target reads
+    std::string indexPrefix;
+    if(!opt::targetFile.empty())
+        indexPrefix = stripFilename(opt::targetFile);
+    else
+        indexPrefix = stripFilename(opt::readsFile);
+
+    BWT* pBWT = new BWT(indexPrefix + BWT_EXT, opt::sampleRate);
+    BWT* pRBWT = new BWT(indexPrefix + RBWT_EXT, opt::sampleRate);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, opt::bIrreducibleOnly);
@@ -154,17 +163,26 @@ int overlapMain(int argc, char** argv)
     pOverlapper->setExactModeIrreducible(opt::errorRate <= 0.0001);
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
-
     pBWT->printInfo();
+
+    // Make a prefix for the temporary hits files
+    std::string outPrefix;
+    outPrefix = stripFilename(opt::readsFile);
+    if(!opt::targetFile.empty())
+    {
+        outPrefix.append(1, '.');
+        outPrefix.append(stripFilename(opt::targetFile));
+    }
+
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode overlap computation\n", PROGRAM_IDENT);
-        computeHitsSerial(opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
+        computeHitsSerial(outPrefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
     else
     {
         printf("[%s] starting parallel-mode overlap computation with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        computeHitsParallel(opt::numThreads, opt::prefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
+        computeHitsParallel(opt::numThreads, outPrefix, opt::readsFile, pOverlapper, opt::minOverlap, hitsFilenames, pASQGWriter);
     }
 
     // Get the number of strings in the BWT, this is used to pre-allocated the read table
@@ -173,7 +191,7 @@ int overlapMain(int argc, char** argv)
     delete pRBWT;
 
     // Parse the hits files and write the overlaps to the ASQG file
-    convertHitsToASQG(hitsFilenames, pASQGWriter);
+    convertHitsToASQG(indexPrefix, hitsFilenames, pASQGWriter);
 
     // Cleanup
     delete pASQGWriter;
@@ -240,15 +258,24 @@ size_t computeHitsParallel(int numThreads, const std::string& prefix, const std:
 }
 
 //
-void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWriter)
+void convertHitsToASQG(const std::string& indexPrefix, const StringVector& hitsFilenames, std::ostream* pASQGWriter)
 {
     // Load the suffix array index and the reverse suffix array index
     // Note these are not the full suffix arrays
-    SuffixArray* pFwdSAI = new SuffixArray(opt::prefix + SAI_EXT);
-    SuffixArray* pRevSAI = new SuffixArray(opt::prefix + RSAI_EXT);
+    SuffixArray* pFwdSAI = new SuffixArray(indexPrefix + SAI_EXT);
+    SuffixArray* pRevSAI = new SuffixArray(indexPrefix + RSAI_EXT);
 
-    // Load the ReadInfoTable to look up the ID and lengths of the hits
-    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings());
+    // Load the ReadInfoTable for the queries to look up the ID and lengths of the hits
+    ReadInfoTable* pQueryRIT = new ReadInfoTable(opt::readsFile);
+
+    // If the target file is not the query file, load its ReadInfoTable
+    ReadInfoTable* pTargetRIT;
+    if(!opt::targetFile.empty() && opt::targetFile != opt::readsFile)
+        pTargetRIT = new ReadInfoTable(opt::targetFile);
+    else
+        pTargetRIT = pQueryRIT;
+
+    bool bIsSelfCompare = pTargetRIT == pQueryRIT;
 
     // Convert the hits to overlaps and write them to the asqg file as initial edges
     for(StringVector::const_iterator iter = hitsFilenames.begin(); iter != hitsFilenames.end(); ++iter)
@@ -263,24 +290,25 @@ void convertHitsToASQG(const StringVector& hitsFilenames, std::ostream* pASQGWri
             size_t readIdx;
             bool isSubstring;
             OverlapVector ov;
-            OverlapCommon::parseHitsString(line, pRIT, pFwdSAI, pRevSAI, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(line, pQueryRIT, pTargetRIT, pFwdSAI, pRevSAI, bIsSelfCompare, readIdx, ov, isSubstring);
             for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
             {
                 ASQG::EdgeRecord edgeRecord(*iter);
                 edgeRecord.write(*pASQGWriter);
             }
         }
-
         delete pReader;
 
         // delete the hits file
         unlink(iter->c_str());
     }
 
-    // Delete allocated data
+    // Deallocate data
+    if(pTargetRIT != pQueryRIT)
+        delete pTargetRIT;
     delete pFwdSAI;
     delete pRevSAI;
-    delete pRIT;
+    delete pQueryRIT;
 }
 
 // 
@@ -295,13 +323,13 @@ void parseOverlapOptions(int argc, char** argv)
         switch (c) 
         {
             case 'm': arg >> opt::minOverlap; break;
-            case 'p': arg >> opt::prefix; break;
             case 'o': arg >> opt::outFile; break;
             case 'e': arg >> opt::errorRate; break;
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;
             case 's': arg >> opt::seedStride; break;
             case 'd': arg >> opt::sampleRate; break;
+            case 'f': arg >> opt::targetFile; break;
             case OPT_EXACT: opt::bExactIrreducible = true; break;
             case 'x': opt::bIrreducibleOnly = false; break;
             case '?': die = true; break;
@@ -357,13 +385,14 @@ void parseOverlapOptions(int argc, char** argv)
     // Parse the input filenames
     opt::readsFile = argv[optind++];
 
-    if(opt::prefix.empty())
-    {
-        opt::prefix = stripFilename(opt::readsFile);
-    }
-
     if(opt::outFile.empty())
     {
-        opt::outFile = opt::prefix + ASQG_EXT + GZIP_EXT;
+        std::string prefix = stripFilename(opt::readsFile);
+        if(!opt::targetFile.empty())
+        {
+            prefix.append(1,'.');
+            prefix.append(stripFilename(opt::targetFile));
+        }
+        opt::outFile = prefix + ASQG_EXT + GZIP_EXT;
     }
 }

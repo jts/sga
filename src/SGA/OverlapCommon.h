@@ -20,9 +20,14 @@ namespace OverlapCommon
 {
 
 void parseHitsString(const std::string& hitString, 
-                     const ReadInfoTable* pRIT, 
-                     const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI, 
-                     size_t& readIdx, OverlapVector& outVector, bool& isSubstring);
+                     const ReadInfoTable* pQueryRIT, 
+                     const ReadInfoTable* pTargetRIT, 
+                     const SuffixArray* pFwdSAI, 
+                     const SuffixArray* pRevSAI,
+                     bool bCheckIDs,
+                     size_t& readIdx, 
+                     OverlapVector& outVector, 
+                     bool& isSubstring);
 };
 
 #endif

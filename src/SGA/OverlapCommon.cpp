@@ -14,9 +14,14 @@
 // Only the forward read table is used since we only care about the IDs and length
 // of the read, not the sequence, so that we don't need an explicit reverse read table
 void OverlapCommon::parseHitsString(const std::string& hitString, 
-                                    const ReadInfoTable* pRIT, 
-                                    const SuffixArray* pFwdSAI, const SuffixArray* pRevSAI, 
-                                    size_t& readIdx, OverlapVector& outVector, bool& isSubstring)
+                                    const ReadInfoTable* pQueryRIT, 
+                                    const ReadInfoTable* pTargetRIT, 
+                                    const SuffixArray* pFwdSAI, 
+                                    const SuffixArray* pRevSAI, 
+                                    bool bCheckIDs,
+                                    size_t& readIdx, 
+                                    OverlapVector& outVector, 
+                                    bool& isSubstring)
 {
     OverlapVector outvec;
     std::istringstream convertor(hitString);
@@ -37,12 +42,12 @@ void OverlapCommon::parseHitsString(const std::string& hitString,
         for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
         {
             const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
-            const ReadInfo& queryInfo = pRIT->getReadInfo(readIdx);
+            const ReadInfo& queryInfo = pQueryRIT->getReadInfo(readIdx);
 
             int64_t saIdx = j;
 
             // The index of the second read is given as the position in the SuffixArray index
-            const ReadInfo& targetInfo = pRIT->getReadInfo(pCurrSAI->get(saIdx).getID());
+            const ReadInfo& targetInfo = pTargetRIT->getReadInfo(pCurrSAI->get(saIdx).getID());
 
             // Skip self alignments and non-canonical (where the query read has a lexo. higher name)
             if(queryInfo.id != targetInfo.id)
@@ -53,7 +58,7 @@ void OverlapCommon::parseHitsString(const std::string& hitString,
                 // To avoid this, we skip overlaps where the id of the first coord is lexo. lower than 
                 // the second or the match is a containment and the query is reversed (containments can be 
                 // output up to 4 times total).
-                if(o.id[0] < o.id[1] || (o.match.isContainment() && record.flags.isQueryRev()))
+                if(bCheckIDs && (o.id[0] < o.id[1] || (o.match.isContainment() && record.flags.isQueryRev())))
                     continue;
 
                 outVector.push_back(o);
