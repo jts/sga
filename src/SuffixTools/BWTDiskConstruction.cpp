@@ -106,7 +106,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
         if(pCurrRT->getCount() >= MAX_READS_PER_GROUP || (done && pCurrRT->getCount() > 0))
         {
             // Compute the SA and BWT for this group
-            SuffixArray* pSA = new SuffixArray(pCurrRT, numThreads);
+            SuffixArray* pSA = new SuffixArray(pCurrRT, 1);
 
             // Write the BWT to disk                
             std::string bwt_temp_filename = makeTempName(out_prefix, groupID, bwt_extension);
