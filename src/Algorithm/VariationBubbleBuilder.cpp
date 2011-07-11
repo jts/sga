@@ -17,7 +17,7 @@
 //
 //
 //
-VariationBubbleBuilder::VariationBubbleBuilder() : m_kmerThreshold(1)
+VariationBubbleBuilder::VariationBubbleBuilder() : m_kmerThreshold(1), m_allowedTargetBranches(0)
 {
     m_pGraph = new StringGraph;
 }
@@ -32,6 +32,12 @@ VariationBubbleBuilder::~VariationBubbleBuilder()
 void VariationBubbleBuilder::setKmerThreshold(size_t t)
 {
     m_kmerThreshold = t;
+}
+
+//
+void VariationBubbleBuilder::setAllowedBranches(size_t b)
+{
+    m_allowedTargetBranches = b;
 }
 
 // The source string is the string the bubble starts from
@@ -157,6 +163,8 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
     // Add the antisense join vertex to the extension queue
     m_queue.push(BubbleExtensionNode(m_antisenseJoins.front(), ED_SENSE));
 
+    size_t numBranches = 0;
+
     while(!m_queue.empty())
     {
         BubbleExtensionNode curr = m_queue.front();
@@ -166,7 +174,10 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
         std::string vertStr = curr.pVertex->getSeq().toString();
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction);
 
-        if(extensionCounts.hasDNAChar() && !extensionCounts.hasUniqueDNAChar())    
+        if(extensionCounts.hasDNAChar() && !extensionCounts.hasUniqueDNAChar())
+            numBranches += 1;
+        
+        if(numBranches > m_allowedTargetBranches)
             return BRC_TARGET_BRANCH;
 
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
@@ -182,7 +193,6 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
             if(pVertex == NULL)
             {
                 // Not a join vertex, create a new vertex and add it to the graph and queue
-                
                 // If this vertex already exists, the graph must contain a loop
                 if(m_pGraph->getVertex(newStr) != NULL)
                     return BRC_TARGET_BRANCH;
@@ -208,6 +218,8 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
             
             // Create the new edge in the graph        
             addDeBruijnEdges(curr.pVertex, pVertex, curr.direction);
+
+            // If we've found the join vertex, we have completed the target half of the bubble
             if(joinFound)
                 return BRC_OK;
         }

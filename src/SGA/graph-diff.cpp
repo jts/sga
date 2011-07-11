@@ -49,6 +49,9 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "      -r, --variant=FILE               the variant reads are in FILE\n"
 "      -o, --outfile=FILE               write the strings found to FILE\n"
 "      -k, --kmer=K                     use K as the k-mer size for variant discovery\n"
+"      -x, --kmer-threshold=T           only used kmers seen at least T times\n"
+"      -y, --max-branches=B             allow the search process to branch B times when \n"
+"                                       searching for the completion of a bubble (default: 0)\n"
 "      -t, --threads=NUM                use NUM computation threads\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -60,13 +63,15 @@ namespace opt
     static unsigned int verbose;
     static int numThreads = 1;
     static int kmer = 55;
+    static int kmerThreshold = 2;
+    static int maxBranches = 0;
     static int sampleRate = 128;
     static std::string baseFile;
     static std::string variantFile;
     static std::string outFile = "variants.fa";
 }
 
-static const char* shortopts = "b:r:o:k:t:v";
+static const char* shortopts = "b:r:o:k:t:x:y:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -76,6 +81,8 @@ static const struct option longopts[] = {
     { "base",          required_argument, NULL, 'b' },
     { "variants",      required_argument, NULL, 'r' },
     { "kmer",          required_argument, NULL, 'k' },
+    { "kmer-threshold",required_argument, NULL, 'x' },
+    { "max-branches",  required_argument, NULL, 'y' },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -110,6 +117,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = pSharedBitVector;
     sharedParameters.kmerThreshold = 3;
+    sharedParameters.maxBranches = opt::maxBranches;
 
     if(opt::numThreads <= 1)
     {
@@ -170,10 +178,12 @@ void parseGraphDiffOptions(int argc, char** argv)
         switch (c) 
         {
             case 'k': arg >> opt::kmer; break;
+            case 'x': arg >> opt::kmerThreshold; break;
             case 'b': arg >> opt::baseFile; break;
             case 'r': arg >> opt::variantFile; break;
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
+            case 'y': arg >> opt::maxBranches; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:

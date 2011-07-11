@@ -197,6 +197,7 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
     builder.setTargetIndex(bwts[1 - varIndex], rbwts[1 - varIndex]);
     builder.setSourceString(str, count);
     builder.setKmerThreshold(m_parameters.kmerThreshold);
+    builder.setAllowedBranches(m_parameters.maxBranches);
 
     //
     BubbleResult result = builder.run();

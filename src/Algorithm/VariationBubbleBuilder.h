@@ -73,6 +73,10 @@ class VariationBubbleBuilder
 
         // Set the threshold of kmer occurrences to use it as an edge
         void setKmerThreshold(size_t t);
+    
+        // Set the maximum number of allowed branches when searching
+        // for the completion of the target half of the bubble
+        void setAllowedBranches(size_t b);
 
         // Run the bubble construction process
         // The found strings are placed in the StringVector
@@ -121,8 +125,10 @@ class VariationBubbleBuilder
 
         VertexPtrVec m_senseJoins;
         VertexPtrVec m_antisenseJoins;
-
+        
+        //
         size_t m_kmerThreshold;
+        size_t m_allowedTargetBranches;
 
         static const GraphColor SOURCE_COLOR = GC_BLUE;
         static const GraphColor TARGET_COLOR = GC_RED;

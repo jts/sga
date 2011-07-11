@@ -38,6 +38,7 @@ struct GraphCompareParameters
     const BWT* pVariantRevBWT;
     size_t kmer;
     size_t kmerThreshold;
+    size_t maxBranches;
     BitVector* pBitVector;
 };
 
