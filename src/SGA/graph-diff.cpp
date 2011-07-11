@@ -82,6 +82,7 @@ static const struct option longopts[] = {
     { "threads",       required_argument, NULL, 't' },
     { "base",          required_argument, NULL, 'b' },
     { "variants",      required_argument, NULL, 'r' },
+    { "outfile",       required_argument, NULL, 'o' },
     { "kmer",          required_argument, NULL, 'k' },
     { "kmer-threshold",required_argument, NULL, 'x' },
     { "max-branches",  required_argument, NULL, 'y' },
