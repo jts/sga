@@ -24,6 +24,7 @@
 #include "BitVector.h"
 #include "VariationBubbleBuilder.h"
 #include "SequenceProcessFramework.h"
+#include "BWTIntervalCache.h"
 
 // Structures and typedefs
 typedef std::vector<const BWT*> BWTVector;
@@ -32,10 +33,18 @@ typedef std::vector<const BWT*> BWTVector;
 class GraphCompareAggregateResults;
 struct GraphCompareParameters
 {
+    // BWTS
     const BWT* pBaseBWT; 
     const BWT* pBaseRevBWT;
     const BWT* pVariantBWT;
     const BWT* pVariantRevBWT;
+
+    // FM-index
+    const BWTIntervalCache* pVarBWTCache;
+    const BWTIntervalCache* pVarRevBWTCache;
+    const BWTIntervalCache* pBaseBWTCache;
+    const BWTIntervalCache* pBaseRevBWTCache;
+    
     size_t kmer;
     size_t kmerThreshold;
     size_t maxBranches;

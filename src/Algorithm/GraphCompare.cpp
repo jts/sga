@@ -128,14 +128,14 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         std::string kmer = w.substr(j, m_parameters.kmer);
         
         // Get the interval for this kmer
-        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, kmer);
+        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVarBWTCache, kmer);
 
         // Check if this interval has been marked by a previous iteration of the loop
         assert(interval.isValid());
         if(m_parameters.pBitVector->test(interval.lower))
             continue;
 
-        BWTInterval rc_interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, reverseComplement(kmer));
+        BWTInterval rc_interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVarBWTCache, reverseComplement(kmer));
 
         
         size_t count = interval.size();
@@ -145,7 +145,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         if(count >= m_parameters.kmerThreshold)
         {
             // Check if this k-mer is present in the other base index
-            size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.pBaseBWT);
+            size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
 
             if(base_count == 0)
             {

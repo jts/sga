@@ -66,6 +66,8 @@ namespace opt
     static int kmerThreshold = 2;
     static int maxBranches = 0;
     static int sampleRate = 128;
+    static int cacheLength = 10;
+
     static std::string baseFile;
     static std::string variantFile;
     static std::string outFile = "variants.fa";
@@ -98,26 +100,39 @@ int graphDiffMain(int argc, char** argv)
     // Create BWTS
     std::string basePrefix = stripFilename(opt::baseFile);
     BWT* pBaseBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
-    BWT* pBaseRBWT = new BWT(basePrefix + RBWT_EXT, opt::sampleRate);
+    BWT* pBaseRevBWT = new BWT(basePrefix + RBWT_EXT, opt::sampleRate);
 
     std::string variantPrefix = stripFilename(opt::variantFile);
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
-    BWT* pVariantRBWT = new BWT(variantPrefix + RBWT_EXT, opt::sampleRate);
+    BWT* pVariantRevBWT = new BWT(variantPrefix + RBWT_EXT, opt::sampleRate);
     
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(pVariantBWT->getBWLen());
     GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults();
 
+    // Create interval caches to speed up k-mer lookups
+    BWTIntervalCache varBWTCache(opt::cacheLength, pVariantBWT);
+    BWTIntervalCache varRBWTCache(opt::cacheLength, pVariantRevBWT);
+
+    BWTIntervalCache baseBWTCache(opt::cacheLength, pBaseBWT);
+    BWTIntervalCache baseRBWTCache(opt::cacheLength, pBaseRevBWT);
+
+
     // Set the parameters shared between all threads
     GraphCompareParameters sharedParameters;
     sharedParameters.pVariantBWT = pVariantBWT;
-    sharedParameters.pVariantRevBWT = pVariantRBWT;
+    sharedParameters.pVariantRevBWT = pVariantRevBWT;
     sharedParameters.pBaseBWT = pBaseBWT;
-    sharedParameters.pBaseRevBWT = pBaseRBWT;
+    sharedParameters.pBaseRevBWT = pBaseRevBWT;
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = pSharedBitVector;
     sharedParameters.kmerThreshold = 3;
     sharedParameters.maxBranches = opt::maxBranches;
+
+    sharedParameters.pVarBWTCache = &varBWTCache;
+    sharedParameters.pVarRevBWTCache = &varRBWTCache;
+    sharedParameters.pBaseBWTCache = &baseBWTCache;
+    sharedParameters.pBaseRevBWTCache = &baseRBWTCache;
 
     if(opt::numThreads <= 1)
     {
@@ -154,9 +169,9 @@ int graphDiffMain(int argc, char** argv)
 
     // Cleanup
     delete pBaseBWT;
-    delete pBaseRBWT;
+    delete pBaseRevBWT;
     delete pVariantBWT;
-    delete pVariantRBWT;
+    delete pVariantRevBWT;
     delete pSharedBitVector;
     delete pSharedResults;
 
