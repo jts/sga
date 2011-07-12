@@ -81,6 +81,27 @@ struct VariantGroupReader
         BamTools::BamAlignment m_cachedAlignment;
 };
 
+// Comparator object to sort a VCF file based
+// on the order of the chromosomes/sequences
+// in the header of a BAM file
+struct VCFReferenceSorter
+{
+    public:
+        VCFReferenceSorter(const BamTools::BamReader* pReader) : m_pReader(pReader) {}
+        bool operator()(const VCFRecord& a, const VCFRecord& b)
+        {
+            int a_rid = m_pReader->GetReferenceID(a.refName);
+            int b_rid = m_pReader->GetReferenceID(b.refName);
+            if(a_rid != b_rid)
+                return a_rid < b_rid;
+            else
+                return a.refPosition < b.refPosition;        
+        }
+
+    private:
+        const BamTools::BamReader* m_pReader;
+};
+
 
 // Functions
 VCFReturnCode preprocessVariants(BamRecordVector& records);
@@ -185,8 +206,10 @@ int var2vcfMain(int argc, char** argv)
         returnCodeStats[code] += 1;
     }
 
-    // Sort the VCF records by chromosome then position
-    std::sort(vcfRecords.begin(), vcfRecords.end(), VCFRecord::sort);
+    // Sort the VCF records by chromosome then position based
+    // on the ordering in the input BAM
+    VCFReferenceSorter refSorter(pBamReader);
+    std::sort(vcfRecords.begin(), vcfRecords.end(), refSorter);
     
     //
     // Output VCF

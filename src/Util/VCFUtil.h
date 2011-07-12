@@ -53,7 +53,6 @@ struct VCFRecord
             return a.refPosition < b.refPosition;
     }
 
-
     // data
     std::string refName;
     size_t refPosition;
