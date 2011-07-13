@@ -176,7 +176,7 @@ int var2vcfMain(int argc, char** argv)
         std::cerr << "Failed to open BAM file: " << opt::bamFile << "\n";
         exit(EXIT_FAILURE);
     }
-    WARN_ONCE("Add dust check");
+
     //
     // Read the alignments from the BAM file as a group of variants
     // and convert them to VCF
