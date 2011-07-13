@@ -89,6 +89,7 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
                                                     size_t refPosition,
                                                     const std::string& varName,
                                                     int minExactMatch,
+                                                    double dustThreshold,
                                                     int verbose,
                                                     VCFVector& outRecords)
 {
@@ -187,7 +188,10 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
             if(eventStart != -1)
             {
                 if(verbose > 0)
+                {
+                    std::cout << "\n\nProcessing variant\n";
                     ma.print();
+                }
 
                 // Extract the substrings of the three sequences describing
                 // this event.
@@ -273,6 +277,17 @@ VCFReturnCode VCFUtil::generateVCFFromCancerVariant(const std::string& ref,
                     std::stringstream hps;
                     hps << maxHP;
                     record.addComment("HP", hps.str());
+                }
+
+                // Calculate the highest dust score on the reference sequence
+                // using 64-base windows. 
+                double globalDustScore = maxDustWindow(ref);
+                if(globalDustScore > dustThreshold)
+                {
+                    std::stringstream dts;
+                    dts.precision(2);
+                    dts << globalDustScore;
+                    record.addComment("DT", dts.str());
                 }
 
                 if(verbose > 0)

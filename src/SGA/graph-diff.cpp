@@ -109,7 +109,7 @@ int graphDiffMain(int argc, char** argv)
     
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(pVariantBWT->getBWLen());
-    GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults();
+    GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outFile);
 
     // Create interval caches to speed up k-mer lookups
     BWTIntervalCache varBWTCache(opt::cacheLength, pVariantBWT);

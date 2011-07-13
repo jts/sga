@@ -85,6 +85,7 @@ namespace VCFUtil
                                                size_t refPosition,
                                                const std::string& varName,
                                                int minExactMatch,
+                                               double dustThreshold,
                                                int verbose,
                                                VCFVector& outRecords);
 

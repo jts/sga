@@ -141,6 +141,7 @@ namespace opt
     static std::string bamFile;
     static int minQuality = 1;
     static int exactMatchRequired = 21;
+    static double dustThreshold = 4.0f;
 }
 
 static const char* shortopts = "r:o:q:v";
@@ -387,7 +388,16 @@ VCFReturnCode parseVariants(const ReadTable* pRefTable, const BamTools::BamReade
     std::string refString = refItem.seq.substr(refStartPos, refEndPos - refStartPos + 1);
     
     // Perform the actual conversion
-    VCFReturnCode code = VCFUtil::generateVCFFromCancerVariant(refString, baseString, varString, refName, refStartPos, varName, opt::exactMatchRequired, opt::verbose, outVCFRecords);
+    VCFReturnCode code = VCFUtil::generateVCFFromCancerVariant(refString, 
+                                                               baseString, 
+                                                               varString, 
+                                                               refName, 
+                                                               refStartPos, 
+                                                               varName, 
+                                                               opt::exactMatchRequired, 
+                                                               opt::dustThreshold,
+                                                               opt::verbose, 
+                                                               outVCFRecords);
     return code;
 }
 

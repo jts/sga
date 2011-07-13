@@ -317,10 +317,10 @@ void GraphCompare::updateVariationCount(const BubbleResult& result)
 //
 // GraphCompareAggregateResult
 //
-GraphCompareAggregateResults::GraphCompareAggregateResults() : m_numVariants(0)
+GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& filename) : m_numVariants(0)
 {
     //
-    m_pWriter = createWriter("variants.fa");
+    m_pWriter = createWriter(filename);
 
     // Initialize mutex
     int ret = pthread_mutex_init(&m_mutex, NULL);

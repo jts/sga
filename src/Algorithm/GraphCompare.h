@@ -136,7 +136,7 @@ class GraphCompareAggregateResults
 {
 
     public:
-        GraphCompareAggregateResults();
+        GraphCompareAggregateResults(const std::string& filename);
         ~GraphCompareAggregateResults();
 
         void process(const SequenceWorkItem& item, const GraphCompareResult& result);
