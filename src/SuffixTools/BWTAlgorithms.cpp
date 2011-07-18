@@ -76,6 +76,39 @@ BWTIntervalPair BWTAlgorithms::findIntervalPair(const BWT* pBWT, const BWT* pRev
     return intervals;
 }
 
+// Find the interval pair corresponding to w using a cached intervals for short substrings
+BWTIntervalPair BWTAlgorithms::findIntervalPairWithCache(const BWT* pBWT, 
+                                                         const BWT* pRevBWT, 
+                                                         const BWTIntervalCache* pFwdCache, 
+                                                         const BWTIntervalCache* pRevCache,
+                                                         const std::string& w)
+{
+    size_t cacheLen = pFwdCache->getCachedLength();
+    if(w.size() < cacheLen)
+        return findIntervalPair(pBWT, pRevBWT, w);
+    
+    // Compute the fwd and reverse interval using the cache for the last k bases
+    BWTIntervalPair ip;
+    int len = w.size();
+    int j = len - cacheLen;
+
+    std::string ss = w.substr(j);
+    std::string r_ss = reverse(ss);
+    assert(ss.size() == cacheLen);
+    ip.interval[0] = pFwdCache->lookup(ss.c_str());
+    ip.interval[1] = pRevCache->lookup(r_ss.c_str());
+    
+    // Extend the interval to the full length of w as normal
+    j -= 1;
+    for(;j >= 0; --j)
+    {
+        updateBothL(ip, w[j], pBWT);
+        if(!ip.isValid())
+            return ip;
+    }
+    return ip;
+}
+
 // Count the number of occurrences of string w, including the reverse complement
 size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWT* pBWT)
 {

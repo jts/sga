@@ -28,6 +28,11 @@ BWTInterval findInterval(const BWT* pBWT, const std::string& w);
 BWTInterval findIntervalWithCache(const BWT* pBWT, const BWTIntervalCache* pIntervalCache, const std::string& w);
 
 BWTIntervalPair findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std::string& w);
+BWTIntervalPair findIntervalPairWithCache(const BWT* pBWT, 
+                                          const BWT* pRevBWT, 
+                                          const BWTIntervalCache* pFwdCache, 
+                                          const BWTIntervalCache* pRevCache,
+                                          const std::string& w);
 
 // Count the number of times the sequence w appears in the collection, including
 // its reverse complement
