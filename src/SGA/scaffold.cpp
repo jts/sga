@@ -113,7 +113,8 @@ int scaffoldMain(int argc, char** argv)
     else
     {
         std::cout << "=====\nWARNING -- no a-stat file provided, assuming all vertices are not repeats\n";
-        std::cout << "It is highly suggested that an a-stat file is provided to give copy number estimates of the input sequences\n=====\n\n";
+        std::cout << "It is highly suggested that an a-stat file is provided " <<
+                     "to give copy number estimates of the input sequences\n=====\n\n";
     }
 
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";

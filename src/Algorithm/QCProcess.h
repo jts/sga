@@ -16,6 +16,20 @@
 #include "SequenceWorkItem.h"
 #include "BitVector.h"
 
+// Parameters
+struct QCParameters
+{
+    const BWT* pBWT;
+    const BWT* pRevBWT;
+    BitVector* pSharedBV;
+
+    int kmerLength;
+    int kmerThreshold;
+    bool checkDuplicates;
+    bool checkKmer;
+};
+
+// Results object
 class QCResult
 {
     public:
@@ -25,27 +39,23 @@ class QCResult
         bool dupPassed;
 };
 
-//
+// Perform quality checks on the input stream of reads
 class QCProcess
 {
     public:
-        QCProcess(const BWT* pBWT, const BWT* pRBWT, BitVector* pSharedBV, bool checkDup, bool checkKmer, int kmerLength, int kmerThreshold);
+        QCProcess(QCParameters params); 
         ~QCProcess();
         QCResult process(const SequenceWorkItem& item);
-
+        
+        // Discard reads with low-frequency kmers
         bool performKmerCheck(const SequenceWorkItem& item);
+
+        // Discard reads that are identical to, or a substring of, some other read
         bool performDuplicateCheck(const SequenceWorkItem& item);
 
     private:
         
-        const BWT* m_pBWT;
-        const BWT* m_pRBWT;
-        BitVector* m_pSharedBV;
-
-        bool m_checkDuplicate;
-        bool m_checkKmer;
-        const int m_kmerLength;
-        const int m_kmerThreshold;
+        const QCParameters m_params;
 };
 
 // Write the results from the overlap step to an ASQG file

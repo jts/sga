@@ -39,14 +39,7 @@ struct KmerWindow
 //
 //
 //
-QCProcess::QCProcess(const BWT* pBWT, const BWT* pRBWT, BitVector* pSharedBV, bool checkDup, bool checkKmer, int kmerLength, int kmerThreshold) :
-                     m_pBWT(pBWT),
-                     m_pRBWT(pRBWT),
-                     m_pSharedBV(pSharedBV),
-                     m_checkDuplicate(checkDup),
-                     m_checkKmer(checkKmer),
-                     m_kmerLength(kmerLength),
-                     m_kmerThreshold(kmerThreshold)
+QCProcess::QCProcess(QCParameters params) : m_params(params)
 {
 
 }
@@ -62,13 +55,13 @@ QCResult QCProcess::process(const SequenceWorkItem& workItem)
 {
     QCResult result;
 
-    if(m_checkDuplicate)
+    if(m_params.checkDuplicates)
         result.dupPassed = performDuplicateCheck(workItem);
     else
         result.dupPassed = true;
     
     // Only perform the more expensive k-mer test if the dup check succeeded
-    if(m_checkKmer && result.dupPassed)
+    if(m_params.checkKmer && result.dupPassed)
         result.kmerPassed = performKmerCheck(workItem);
     else
         result.kmerPassed = true;
@@ -94,13 +87,13 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
     std::string w = workItem.read.seq.toString();
 
     // Ensure the read is longer than the k-mer length
-    if((int)w.size() < m_kmerLength)
+    if((int)w.size() < m_params.kmerLength)
         return false;
 
-    int k = m_kmerLength;
+    int k = m_params.kmerLength;
     int n = w.size();
-    int nk = n - m_kmerLength + 1;
-    int threshold = m_kmerThreshold;
+    int nk = n - k + 1;
+    int threshold = m_params.kmerThreshold;
 
     // Are all kmers in the read well-represented?
     bool allSolid = true;
@@ -129,9 +122,9 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
             char cb = complement(b);
 
             if(window.fwdIntervals.interval[0].isValid())
-                BWTAlgorithms::updateBothR(window.fwdIntervals, b, m_pRBWT);
+                BWTAlgorithms::updateBothR(window.fwdIntervals, b, m_params.pRevBWT);
             if(window.rcIntervals.interval[1].isValid())
-                BWTAlgorithms::updateBothR(window.rcIntervals, cb, m_pBWT);
+                BWTAlgorithms::updateBothR(window.rcIntervals, cb, m_params.pBWT);
 
             int64_t count = window.getCount();
             if(count <= threshold)
@@ -153,8 +146,8 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
             // i and its reverse complement
             char b = w[i];
             char cb = complement(b);
-            BWTAlgorithms::initIntervalPair(window.fwdIntervals, b, m_pBWT, m_pRBWT);
-            BWTAlgorithms::initIntervalPair(window.rcIntervals, cb, m_pRBWT, m_pBWT);
+            BWTAlgorithms::initIntervalPair(window.fwdIntervals, b, m_params.pBWT, m_params.pRevBWT);
+            BWTAlgorithms::initIntervalPair(window.rcIntervals, cb, m_params.pRevBWT, m_params.pBWT);
 
             for(int j = i + 1; j < i + k; ++j)
             {
@@ -163,9 +156,9 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
                 cb = complement(b);
 
                 if(window.fwdIntervals.interval[0].isValid())
-                    BWTAlgorithms::updateBothR(window.fwdIntervals, b, m_pRBWT);
+                    BWTAlgorithms::updateBothR(window.fwdIntervals, b, m_params.pRevBWT);
                 if(window.rcIntervals.interval[1].isValid())
-                    BWTAlgorithms::updateBothR(window.rcIntervals, cb, m_pBWT);
+                    BWTAlgorithms::updateBothR(window.rcIntervals, cb, m_params.pBWT);
             }
 
             // record the start/end indices of the kmers spanned by this position
@@ -195,22 +188,22 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
 // Look up the interval of the read in the BWT. If the index of the read
 bool QCProcess::performDuplicateCheck(const SequenceWorkItem& workItem)
 {
-    assert(m_pSharedBV != NULL);
+    assert(m_params.pSharedBV != NULL);
 
     std::string w = workItem.read.seq.toString();
     std::string rc_w = reverseComplement(w);
 
     // Look up the interval of the sequence and its reverse complement
-    BWTIntervalPair fwdIntervals = BWTAlgorithms::findIntervalPair(m_pBWT, m_pRBWT, w);
-    BWTIntervalPair rcIntervals = BWTAlgorithms::findIntervalPair(m_pBWT, m_pRBWT, rc_w);
+    BWTIntervalPair fwdIntervals = BWTAlgorithms::findIntervalPair(m_params.pBWT, m_params.pRevBWT, w);
+    BWTIntervalPair rcIntervals = BWTAlgorithms::findIntervalPair(m_params.pBWT, m_params.pRevBWT, rc_w);
 
     // Check if this read is a substring of any other
     // This is indicated by the presence of a non-$ extension in the left or right direction
-    AlphaCount64 fwdECL = BWTAlgorithms::getExtCount(fwdIntervals.interval[0], m_pBWT);
-    AlphaCount64 fwdECR = BWTAlgorithms::getExtCount(fwdIntervals.interval[1], m_pRBWT);
+    AlphaCount64 fwdECL = BWTAlgorithms::getExtCount(fwdIntervals.interval[0], m_params.pBWT);
+    AlphaCount64 fwdECR = BWTAlgorithms::getExtCount(fwdIntervals.interval[1], m_params.pRevBWT);
 
-    AlphaCount64 rcECL = BWTAlgorithms::getExtCount(rcIntervals.interval[0], m_pBWT);
-    AlphaCount64 rcECR = BWTAlgorithms::getExtCount(rcIntervals.interval[1], m_pRBWT);
+    AlphaCount64 rcECL = BWTAlgorithms::getExtCount(rcIntervals.interval[0], m_params.pBWT);
+    AlphaCount64 rcECR = BWTAlgorithms::getExtCount(rcIntervals.interval[1], m_params.pRevBWT);
 
     if(fwdECL.hasDNAChar() || fwdECR.hasDNAChar() || rcECL.hasDNAChar() || rcECR.hasDNAChar())
     {
@@ -219,8 +212,8 @@ bool QCProcess::performDuplicateCheck(const SequenceWorkItem& workItem)
     }
 
     // Calculate the lexicographic intervals for the fwd and reverse intervals
-    BWTAlgorithms::updateBothL(fwdIntervals, '$', m_pBWT);
-    BWTAlgorithms::updateBothL(rcIntervals, '$', m_pBWT);
+    BWTAlgorithms::updateBothL(fwdIntervals, '$', m_params.pBWT);
+    BWTAlgorithms::updateBothL(rcIntervals, '$', m_params.pBWT);
 
     // Calculate the canonical index for this string - the lowest
     // value in the two lexicographic index
@@ -229,11 +222,11 @@ bool QCProcess::performDuplicateCheck(const SequenceWorkItem& workItem)
     int64_t canonicalIdx = std::min(fi, ri);
 
     // Check if the bit reprsenting the canonical index is set in the shared bit vector
-    if(!m_pSharedBV->test(canonicalIdx))
+    if(!m_params.pSharedBV->test(canonicalIdx))
     {
         // This read is not a duplicate
         // Attempt to atomically set the bit from false to true
-        if(m_pSharedBV->updateCAS(canonicalIdx, false, true))
+        if(m_params.pSharedBV->updateCAS(canonicalIdx, false, true))
         {
             // Call succeed, return that this read is not a duplicate
             return true;

@@ -38,7 +38,8 @@ void ScaffoldAlgorithms::makeScaffolds(ScaffoldGraph* pGraph)
 
         if(terminalVertices.empty())
         {
-            std::cerr << "Warning: scaffold component of size " << component.size() << " does not have a terminal vertex. Skipping\n";
+            std::cerr << "Warning: scaffold component of size " << component.size() << 
+                         " does not have a terminal vertex. Skipping\n";
             continue;
         }
         // Construct a scaffold layout for each terminal vertex of the component

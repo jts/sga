@@ -18,7 +18,7 @@ def runCmd(cmd):
     return subprocess.Popen(cmd, shell=True).wait()
 
 def _align(ref, reads, out):
-    alnCmd = "bwa aln -o 0 %s %s > %s" % (ref, reads, out)
+    alnCmd = "bwa aln -t 8 -o 0 %s %s > %s" % (ref, reads, out)
     runCmd(alnCmd)
 
 # Process commands

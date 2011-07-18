@@ -25,6 +25,13 @@
 #include "BWTDiskConstruction.h"
 #include "BitVector.h"
 
+// Defines
+#define PROCESS_FILTER_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, QCResult, \
+                                                                               QCProcess, QCPostProcess>
+
+#define PROCESS_FILTER_PARALLEL SequenceProcessFramework::processSequencesParallel<SequenceWorkItem, QCResult, \
+                                                                                   QCProcess, QCPostProcess>
+
 // Functions
 
 //
@@ -120,15 +127,21 @@ int filterMain(int argc, char** argv)
     if(opt::dupCheck)
         pSharedBV = new BitVector(pBWT->getNumStrings());
 
+    // Set up QC parameters
+    QCParameters params;
+    params.pBWT = pBWT;
+    params.pRevBWT = pRBWT;
+    params.pSharedBV = pSharedBV;
+    params.checkDuplicates = opt::dupCheck;
+    params.checkKmer = opt::kmerCheck;
+    params.kmerLength = opt::kmerLength;
+    params.kmerThreshold = opt::kmerThreshold;
+
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        QCProcess processor(pBWT, pRBWT, pSharedBV, opt::dupCheck, opt::kmerCheck, opt::kmerLength, opt::kmerThreshold);
-
-        SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
-                                                         QCResult, 
-                                                         QCProcess, 
-                                                         QCPostProcess>(opt::readsFile, &processor, pPostProcessor);
+        QCProcess processor(params);
+        PROCESS_FILTER_SERIAL(opt::readsFile, &processor, pPostProcessor);
     }
     else
     {
@@ -136,14 +149,11 @@ int filterMain(int argc, char** argv)
         std::vector<QCProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            QCProcess* pProcessor = new QCProcess(pBWT, pRBWT, pSharedBV, opt::dupCheck, opt::kmerCheck, opt::kmerLength, opt::kmerThreshold);
+            QCProcess* pProcessor = new QCProcess(params); 
             processorVector.push_back(pProcessor);
         }
         
-        SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
-                                                           QCResult, 
-                                                           QCProcess, 
-                                                           QCPostProcess>(opt::readsFile, processorVector, pPostProcessor);
+        PROCESS_FILTER_PARALLEL(opt::readsFile, processorVector, pPostProcessor);
 
         for(int i = 0; i < opt::numThreads; ++i)
         {
