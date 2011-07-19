@@ -21,6 +21,7 @@ struct QCParameters
 {
     QCParameters() { setDefaults(); }
 
+    // Set reasonable default values for the qc filters
     void setDefaults()
     {
         checkDuplicates = true;
@@ -123,12 +124,14 @@ class QCProcess
         // Discard reads that are identical to, or a substring of, some other read
         bool performDuplicateCheck(const SequenceWorkItem& item);
 
-        // Check if the current read has a homopolymer run. If so, test if 
-        // there is a longer/shorter run with better coverage
+        // Check whether the sequence has a homopolymer sequencing error. This
+        // check finds a kmer covering a homopolymer run then modifies it to check
+        // for a shorter/longer run of higher frequency
         bool performHomopolymerCheck(const SequenceWorkItem& item);
 
-        // Check if the sequence read is degenerate (it consists almost entirely
-        // of a single base)
+        // Check if the sequence read is degenerate
+        // A degenerate read is define to be reads consisting almost
+        // entirely of a single nucleotide
         bool performDegenerateCheck(const SequenceWorkItem& item);
 
     private:
