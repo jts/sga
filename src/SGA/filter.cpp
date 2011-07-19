@@ -60,6 +60,7 @@ static const char *FILTER_USAGE_MESSAGE =
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      --no-duplicate-check             turn off duplicate removal\n"
 "      --no-kmer-check                  turn off the kmer check\n"
+"      --no-homopolymer-check           turn off the homopolymer run length check\n"
 "\nK-mer filter options:\n"
 "      -k, --kmer-size=N                The length of the kmer to use. (default: 27)\n"
 "      -x, --kmer-threshold=N           Require at least N kmer coverage for each kmer in a read. (default: 3)\n"
@@ -80,6 +81,7 @@ namespace opt
 
     static bool dupCheck = true;
     static bool kmerCheck = true;
+    static bool hpCheck = true;
 
     static int kmerLength = 27;
     static int kmerThreshold = 3;
@@ -87,20 +89,21 @@ namespace opt
 
 static const char* shortopts = "p:d:t:o:k:x:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, PT_DISCARD, OPT_NO_RMDUP, OPT_NO_KMER };
+enum { OPT_HELP = 1, OPT_VERSION, PT_DISCARD, OPT_NO_RMDUP, OPT_NO_KMER, OPT_NO_HPRUNS };
 
 static const struct option longopts[] = {
-    { "verbose",            no_argument,       NULL, 'v' },
-    { "threads",            required_argument, NULL, 't' },
-    { "outfile",            required_argument, NULL, 'o' },
-    { "prefix",             required_argument, NULL, 'p' },
-    { "sample-rate",        required_argument, NULL, 'd' },
-    { "kmer-size",          required_argument, NULL, 'k' },
-    { "kmer-threshold",     required_argument, NULL, 'x' },
-    { "help",               no_argument,       NULL, OPT_HELP },
-    { "version",            no_argument,       NULL, OPT_VERSION },
-    { "no-duplicate-check", no_argument,       NULL, OPT_NO_RMDUP },
-    { "no-kmer-check",      no_argument,       NULL, OPT_NO_KMER },
+    { "verbose",               no_argument,       NULL, 'v' },
+    { "threads",               required_argument, NULL, 't' },
+    { "outfile",               required_argument, NULL, 'o' },
+    { "prefix",                required_argument, NULL, 'p' },
+    { "sample-rate",           required_argument, NULL, 'd' },
+    { "kmer-size",             required_argument, NULL, 'k' },
+    { "kmer-threshold",        required_argument, NULL, 'x' },
+    { "help",                  no_argument,       NULL, OPT_HELP },
+    { "version",               no_argument,       NULL, OPT_VERSION },
+    { "no-duplicate-check",    no_argument,       NULL, OPT_NO_RMDUP },
+    { "no-kmer-check",         no_argument,       NULL, OPT_NO_KMER },
+    { "no-homopolymer-check",  no_argument,       NULL, OPT_NO_HPRUNS },
     { NULL, 0, NULL, 0 }
 };
 
@@ -132,10 +135,19 @@ int filterMain(int argc, char** argv)
     params.pBWT = pBWT;
     params.pRevBWT = pRBWT;
     params.pSharedBV = pSharedBV;
+
     params.checkDuplicates = opt::dupCheck;
     params.checkKmer = opt::kmerCheck;
+    params.checkHPRuns = opt::hpCheck;
+    params.verbose = opt::verbose;
+
     params.kmerLength = opt::kmerLength;
     params.kmerThreshold = opt::kmerThreshold;
+
+    params.hpKmerLength = 51;
+    params.hpHardAcceptCount = 10;
+    params.hpMinProportion = 0.1f;
+    params.hpMinLength = 6;
 
     if(opt::numThreads <= 1)
     {
@@ -156,9 +168,7 @@ int filterMain(int argc, char** argv)
         PROCESS_FILTER_PARALLEL(opt::readsFile, processorVector, pPostProcessor);
 
         for(int i = 0; i < opt::numThreads; ++i)
-        {
             delete processorVector[i];
-        }
     }
 
     delete pPostProcessor;
@@ -176,8 +186,8 @@ int filterMain(int argc, char** argv)
     removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
     removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
 
+    // Cleanup
     delete pTimer;
-
     if(opt::numThreads > 1)
         pthread_exit(NULL);
 
@@ -204,6 +214,7 @@ void parseFilterOptions(int argc, char** argv)
             case 'x': arg >> opt::kmerThreshold; break;
             case OPT_NO_RMDUP: opt::dupCheck = false; break;
             case OPT_NO_KMER: opt::kmerCheck = false; break;
+            case OPT_NO_HPRUNS: opt::hpCheck = false; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
@@ -261,7 +272,10 @@ void parseFilterOptions(int argc, char** argv)
     if(opt::outFile.empty())
     {
         opt::outFile = opt::prefix + ".filter.pass.fa";
+        opt::discardFile = opt::prefix + ".discard.fa";
     }
-
-    opt::discardFile = opt::prefix + ".discard.fa";
+    else
+    {
+        opt::discardFile = stripFilename(opt::outFile) + ".discard.fa";
+    }
 }

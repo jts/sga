@@ -130,7 +130,7 @@ int scaffoldMain(int argc, char** argv)
     // Remove polymorphic nodes from the graph
     ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
     while(graph.visit(polyVisitor)) {}
-    
+
     // If requested, collapse structural variation in the graph
     if(opt::maxSVSize > 0)
     {

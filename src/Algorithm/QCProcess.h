@@ -19,24 +19,94 @@
 // Parameters
 struct QCParameters
 {
+    QCParameters() { setDefaults(); }
+
+    void setDefaults()
+    {
+        checkDuplicates = true;
+        checkKmer = true;
+        checkHPRuns = true;
+        checkDegenerate = true;
+        verbose = 0;
+
+        pBWT = NULL;
+        pRevBWT = NULL;
+        pSharedBV = NULL;
+
+        kmerLength = 27;
+        kmerThreshold = 2;
+
+        hpHardAcceptCount = 10;
+        hpMinProportion = 0.1f;
+        hpKmerLength = 51;
+        hpMinLength = 6;
+        hpMinContext = 5;
+
+        degenProportion = 0.90;
+    }
+
     const BWT* pBWT;
     const BWT* pRevBWT;
     BitVector* pSharedBV;
 
-    int kmerLength;
-    int kmerThreshold;
+    // Control parameters
     bool checkDuplicates;
     bool checkKmer;
+    bool checkHPRuns;
+    bool checkDegenerate;
+    int verbose;
+
+    //
+    // Kmer frequency filtering parameters
+    //
+    int kmerLength;
+    int kmerThreshold;
+
+    //
+    // Homopolymer filter parameters
+    //
+
+    // The length a run must be to trigger filtering
+    size_t hpMinLength;
+
+    // If the k-mer covering the HP run is seen
+    // at least this many times, it is accepted
+    size_t hpHardAcceptCount; 
+
+    // The hp run length in the read must be
+    // at least this fraction of the dominant
+    // run length to be kept
+    double hpMinProportion;
+
+    // The context k-mer length for the homopolymer
+    // filter.
+    size_t hpKmerLength;
+    
+    // The minimum amount of sequence around the homopolymer
+    // to trigger filtering
+    size_t hpMinContext;
+
+    //
+    // Degenerate filter parameters
+    //
+
+    // If the most frequent base in the read
+    // makes up more than this proportion, the read
+    // is discarded
+    double degenProportion;
+
 };
 
 // Results object
 class QCResult
 {
     public:
-        QCResult() : kmerPassed(false), dupPassed(false) {}
+        QCResult() : kmerPassed(false), dupPassed(false), hpPassed(false), degenPassed(false) {}
 
         bool kmerPassed;
         bool dupPassed;
+        bool hpPassed;
+        bool degenPassed;
 };
 
 // Perform quality checks on the input stream of reads
@@ -52,6 +122,14 @@ class QCProcess
 
         // Discard reads that are identical to, or a substring of, some other read
         bool performDuplicateCheck(const SequenceWorkItem& item);
+
+        // Check if the current read has a homopolymer run. If so, test if 
+        // there is a longer/shorter run with better coverage
+        bool performHomopolymerCheck(const SequenceWorkItem& item);
+
+        // Check if the sequence read is degenerate (it consists almost entirely
+        // of a single base)
+        bool performDegenerateCheck(const SequenceWorkItem& item);
 
     private:
         
@@ -76,6 +154,8 @@ class QCPostProcess
         size_t m_readsDiscarded;
         size_t m_readsFailedKmer;
         size_t m_readsFailedDup;
+        size_t m_readsFailedHP;
+        size_t m_readsFailedDegen;
 };
 
 #endif
