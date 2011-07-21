@@ -158,13 +158,24 @@ void SGWalk::truncate(const VertexID& id)
 }
 
 // Construct the extension string corresponding to the path
-std::string SGWalk::getString(SGWalkType type) const
+std::string SGWalk::getString(SGWalkType type, SGWalkVertexPlacementVector* pPlacementVector) const
 {
     std::string out;
 
+    // Append the full length of the starting vertex to the walk
     if(type == SGWT_START_TO_END || type == SGWT_INTERNAL)
     {
         out.append(m_pStartVertex->getSeq().toString());
+
+        // Add the first record to the placement vector if required
+        if(pPlacementVector != NULL)
+        {
+            SGWalkVertexPlacement firstPlace;
+            firstPlace.pVertex = m_pStartVertex;
+            firstPlace.position = 0; // 0-based coordinates
+            firstPlace.isRC = false;
+            pPlacementVector->push_back(firstPlace);
+        }
     }
 
     // Determine if the string should go to the end of the last vertex
@@ -182,7 +193,7 @@ std::string SGWalk::getString(SGWalkType type) const
     bool reverseAll = !m_edges.empty() && m_edges[0]->getDir() == ED_ANTISENSE;
     if(reverseAll)
         out = reverse(out);
-
+    
     for(size_t i = 0; i < stop; ++i)
     {
         Edge* pYZ = m_edges[i];
@@ -190,6 +201,9 @@ std::string SGWalk::getString(SGWalkType type) const
         // Append in the extension string
         std::string edge_str = pYZ->getLabel();
         assert(edge_str.size() != 0);
+
+        // Determine whether this node is reverse complement wrt the string
+        // we are building
         if(currComp == EC_REVERSE)
             edge_str = reverseComplement(edge_str);
 
@@ -205,6 +219,17 @@ std::string SGWalk::getString(SGWalkType type) const
             ecXZ = !currComp;
 
         out.append(edge_str);
+        
+        // Add this record into the placement vector
+        if(pPlacementVector != NULL)
+        {
+            SGWalkVertexPlacement placement;
+            placement.pVertex = pYZ->getEnd();
+            placement.isRC = ecXZ == EC_REVERSE;
+            placement.position = out.size() - pYZ->getEnd()->getSeqLen();
+            pPlacementVector->push_back(placement);
+        }
+
         currComp = ecXZ;
     }
 
@@ -212,6 +237,12 @@ std::string SGWalk::getString(SGWalkType type) const
     // perform the truncation now. This needs to be done before the reversal.
     if(type == SGWT_INTERNAL)
     {
+        if(pPlacementVector != NULL)
+        {
+            std::cerr << "Error: Vertex placement not supported for SGWT_INTERNAL walk types\n";
+            exit(EXIT_FAILURE);
+        }
+
         Edge* pFirstEdge = getFirstEdge();
         Edge* pLastEdge = getLastEdge();
         if(pFirstEdge == NULL || pLastEdge == NULL)
@@ -239,9 +270,21 @@ std::string SGWalk::getString(SGWalkType type) const
         std::cout << "No output for walk: " << pathSignature() << "\n";
 
     if(reverseAll)
+    {
         out = reverse(out);
 
-    // truncate 
+        // Reverse the placement vector too, including flipping the alignment coordinates
+        if(pPlacementVector != NULL)
+        {
+            std::reverse(pPlacementVector->begin(), pPlacementVector->end());
+            for(size_t i = 0; i < pPlacementVector->size(); ++i)
+            {
+                SGWalkVertexPlacement& item = pPlacementVector->at(i);
+                item.position = out.size() - item.position - item.pVertex->getSeqLen();
+            }
+        }
+    }
+
     return out;
 }
 

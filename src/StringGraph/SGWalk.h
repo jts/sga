@@ -22,6 +22,15 @@ enum SGWalkType
     SGWT_INTERNAL // do not include the start and end vertex
 };
 
+// Placement data for the position of a vertex sequence in a walk
+struct SGWalkVertexPlacement
+{
+    Vertex* pVertex;
+    int position; // 0-based
+    bool isRC; 
+};
+typedef std::vector<SGWalkVertexPlacement> SGWalkVertexPlacementVector;
+
 class SGWalk
 {
     public:
@@ -59,8 +68,10 @@ class SGWalk
         // Truncate the walk after the first instance of id
         void truncate(const VertexID& id);
 
-        //
-        std::string getString(SGWalkType type) const;
+        // Get the string this walk represents. This function supports multiple different walk types
+        // (see the enum description). If the pointer to the VertexPlacementVector is not NULL,
+        // the position of the vertices within the walk are written there.
+        std::string getString(SGWalkType type, SGWalkVertexPlacementVector* pPlacementVector = NULL) const;
         
         // Get the substring of the full path string starting from position fromX
         // to position toY on the first and last vertices, respectively

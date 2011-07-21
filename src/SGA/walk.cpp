@@ -49,7 +49,7 @@ static const char *WALK_USAGE_MESSAGE =
 "                                       of the graph.\n"
 "      -o,--out-file=FILE               write the walks to FILE in FASTA format (default: walks.fa)\n"
 "      -p, --prefix=PREFIX              write final walks sequence ids starting with PREFIX (default: walk-N)\n"
-"         --description-file=FILE       write the walk descriptions to FILE\n"
+"         --sam=FILE                    write the walk descriptions to FILE in SAM format\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -61,20 +61,20 @@ namespace opt
     static std::string id2;
     static std::string outFile;
     static std::string prefix;
-    static std::string descFile;
+    static std::string samFile;
     static int maxDistance = 500;
     static bool componentWalks = false;
 }
 
 static const char* shortopts = "o:d:s:e:w:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_COMPONENT, OPT_DESCRIPTION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_COMPONENT, OPT_SAM };
 
 static const struct option longopts[] = {
     { "verbose",           no_argument,       NULL, 'v' },
     { "out-file",          required_argument, NULL, 'o' },
     { "prefix",            required_argument, NULL, 'p' },
-    { "description-file",  required_argument, NULL, OPT_DESCRIPTION },
+    { "sam",               required_argument, NULL, OPT_SAM },
     { "distance",          required_argument, NULL, 'd' },
     { "start",             required_argument, NULL, 's' },
     { "end",               required_argument, NULL, 'e' },
@@ -103,44 +103,38 @@ void walk()
     StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, 0, true);
     pGraph->printMemSize();
     std::ostream* pWriter = createWriter(opt::outFile);
-    std::ostream* pDescWriter = NULL;
-    if(!opt::descFile.empty())
-    {
-        pDescWriter = createWriter(opt::descFile);
-    }
+    std::ostream* pSAMWriter = NULL;
+    if(!opt::samFile.empty())
+        pSAMWriter = createWriter(opt::samFile);
 
     // Build walks
     SGWalkVector walkVector;
     if(!opt::id1.empty() && !opt::id2.empty())
-    {
         pairWalk(pGraph, walkVector);
-    }
     else if(!opt::walkStr.empty())
-    {
         explicitWalk(pGraph, walkVector);
-    }
     else if(opt::componentWalks)
-    {
         componentWalk(pGraph, walkVector);
-    }
     else
-    {
         assert(false);
-    }
     
     // Output walks
+    // The first pass over the vector writes the walk sequences to a FASTA
+    // file and builds a vector with their lengths. The second pass
+    // writes a SAM file of the reads making up the walk
+    StringVector walkNames;
     for(size_t i = 0; i < walkVector.size(); ++i)
     {
         SGWalk& walk = walkVector[i];
 
         std::stringstream idSS;
         if(opt::prefix.empty())
-        {
-                idSS << "walk-" << i;
-        } else {
-                idSS << opt::prefix << "-walk-" << i;
-        }
+            idSS << "walk-" << i;
+        else
+            idSS << opt::prefix << "-walk-" << i;
+
         std::string walkID = idSS.str();
+        walkNames.push_back(walkID);
 
         std::string str = walk.getString(SGWT_START_TO_END);
         if(opt::verbose > 0)
@@ -150,20 +144,49 @@ void walk()
             std::cout << "Len: " << str.length() << "\n";
             walk.print();
         }
-
-        if(pDescWriter != NULL)
-        {
-            for(size_t j = 0; j < walk.getNumVertices(); ++j)
-                *pDescWriter << walkID << "\t" << walk.getVertex(j)->getID() << "\n";
-        }
-
         writeFastaRecord(pWriter, walkID, str);
+        
+        // Print a header line to the SAM file
+        if(pSAMWriter != NULL)
+            *pSAMWriter << "@SQ\tSN:" << walkID << "\tLN:" << str.length() << "\n";
+    }
+    
+    // Write the placement of the sequences in the walk as SAM
+    if(pSAMWriter != NULL)
+    {
+        for(size_t i = 0; i < walkVector.size(); ++i)
+        {
+            SGWalk& walk = walkVector[i];
+            SGWalkVertexPlacementVector placementVector;
+            walk.getString(SGWT_START_TO_END, &placementVector);
+
+            for(size_t j = 0; j < placementVector.size(); ++j)
+            {
+                SGWalkVertexPlacement& placement = placementVector[j];
+                *pSAMWriter << placement.pVertex->getID() << "\t"; // read name
+                *pSAMWriter << (placement.isRC ? "16" : "0") << "\t"; // flag
+                *pSAMWriter << walkNames[i] << "\t"; // ref name
+                *pSAMWriter << placement.position + 1 << "\t"; // ref postion, 1-based
+                *pSAMWriter << 99 << "\t"; // map quality
+                *pSAMWriter << placement.pVertex->getSeqLen() << "M\t"; // CIGAR
+                *pSAMWriter << "*\t"; // mate reference
+                *pSAMWriter << "0\t"; // mate position
+                *pSAMWriter << "0\t"; // template length
+                
+                std::string seq = placement.pVertex->getSeq().toString();
+                if(placement.isRC)
+                    seq = reverseComplement(placement.pVertex->getSeq().toString());
+
+                *pSAMWriter << seq << "\t"; // sequence
+                *pSAMWriter << "*"; // quality
+                *pSAMWriter << "\n";
+            }
+        }
+        delete pSAMWriter;
     }
 
     delete pGraph;
     delete pWriter;
-    if(pDescWriter)
-        delete pDescWriter;
 }
 
 // Find walks between a pair of vertices
@@ -292,7 +315,7 @@ void parseWalkOptions(int argc, char** argv)
             case 'w': arg >> opt::walkStr; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
-            case OPT_DESCRIPTION: arg >> opt::descFile; break;
+            case OPT_SAM: arg >> opt::samFile; break;
             case OPT_COMPONENT: opt::componentWalks = true; break;
             case OPT_HELP:
                 std::cout << WALK_USAGE_MESSAGE;
