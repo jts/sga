@@ -259,6 +259,11 @@ bool QCProcess::performHomopolymerCheck(const SequenceWorkItem& item)
     std::string w = item.read.seq.toString();
     size_t k = m_params.hpKmerLength;
 
+    // Skip if the read length is less than the kmer size
+    // used for this test
+    if(w.size() < k)
+        return true;
+
     size_t maxRunLength = 0;
     size_t maxRunStart = 0;
     

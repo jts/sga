@@ -60,7 +60,8 @@ static const char *FILTER_USAGE_MESSAGE =
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      --no-duplicate-check             turn off duplicate removal\n"
 "      --no-kmer-check                  turn off the kmer check\n"
-"      --no-homopolymer-check           turn off the homopolymer run length check\n"
+"      --homopolymer-check              check reads for hompolymer run length sequencing errors\n"
+"      --low-complexity-check           filter out low complexity reads\n"
 "\nK-mer filter options:\n"
 "      -k, --kmer-size=N                The length of the kmer to use. (default: 27)\n"
 "      -x, --kmer-threshold=N           Require at least N kmer coverage for each kmer in a read. (default: 3)\n"
@@ -81,7 +82,8 @@ namespace opt
 
     static bool dupCheck = true;
     static bool kmerCheck = true;
-    static bool hpCheck = true;
+    static bool hpCheck = false;
+    static bool lowComplexityCheck = false;
 
     static int kmerLength = 27;
     static int kmerThreshold = 3;
@@ -89,7 +91,7 @@ namespace opt
 
 static const char* shortopts = "p:d:t:o:k:x:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, PT_DISCARD, OPT_NO_RMDUP, OPT_NO_KMER, OPT_NO_HPRUNS };
+enum { OPT_HELP = 1, OPT_VERSION, PT_DISCARD, OPT_NO_RMDUP, OPT_NO_KMER, OPT_CHECK_HPRUNS, OPT_CHECK_COMPLEXITY };
 
 static const struct option longopts[] = {
     { "verbose",               no_argument,       NULL, 'v' },
@@ -103,7 +105,8 @@ static const struct option longopts[] = {
     { "version",               no_argument,       NULL, OPT_VERSION },
     { "no-duplicate-check",    no_argument,       NULL, OPT_NO_RMDUP },
     { "no-kmer-check",         no_argument,       NULL, OPT_NO_KMER },
-    { "no-homopolymer-check",  no_argument,       NULL, OPT_NO_HPRUNS },
+    { "homopolymer-check",     no_argument,       NULL, OPT_CHECK_HPRUNS },
+    { "low-complexity-check",  no_argument,       NULL, OPT_CHECK_COMPLEXITY },
     { NULL, 0, NULL, 0 }
 };
 
@@ -139,6 +142,8 @@ int filterMain(int argc, char** argv)
     params.checkDuplicates = opt::dupCheck;
     params.checkKmer = opt::kmerCheck;
     params.checkHPRuns = opt::hpCheck;
+    params.checkDegenerate = opt::lowComplexityCheck;
+
     params.verbose = opt::verbose;
 
     params.kmerLength = opt::kmerLength;
@@ -214,7 +219,8 @@ void parseFilterOptions(int argc, char** argv)
             case 'x': arg >> opt::kmerThreshold; break;
             case OPT_NO_RMDUP: opt::dupCheck = false; break;
             case OPT_NO_KMER: opt::kmerCheck = false; break;
-            case OPT_NO_HPRUNS: opt::hpCheck = false; break;
+            case OPT_CHECK_HPRUNS: opt::hpCheck = true; break;
+            case OPT_CHECK_COMPLEXITY: opt::lowComplexityCheck = true; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
