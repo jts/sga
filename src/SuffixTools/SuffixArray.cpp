@@ -59,7 +59,6 @@ void SuffixArray::initialize(size_t num_suffixes, size_t num_strings)
 void SuffixArray::validate(const ReadTable* pRT) const
 {
     size_t maxIdx = pRT->getCount();
-    (void)maxIdx;
     size_t n = m_data.size();
 
     // Exit if there is nothing to do
@@ -78,6 +77,7 @@ void SuffixArray::validate(const ReadTable* pRT) const
     {
         SAElem id1 = m_data[i];
         SAElem id2 = m_data[i+1];
+
         assert(id1.getID() < maxIdx);
         std::string suffix1 = pRT->getRead(id1.getID()).seq.getSuffixString(id1.getPos());
         std::string suffix2 = pRT->getRead(id2.getID()).seq.getSuffixString(id2.getPos());
@@ -88,7 +88,7 @@ void SuffixArray::validate(const ReadTable* pRT) const
         bool suffixValidated = true;
         if(suffix1 == suffix2)
         {
-            suffixValidated = pRT->getRead(id1.getID()).id < pRT->getRead(id2.getID()).id;
+            suffixValidated = id1.getID() < id2.getID();
         }
         else
         {
