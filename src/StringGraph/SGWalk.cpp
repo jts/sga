@@ -288,6 +288,32 @@ std::string SGWalk::getString(SGWalkType type, SGWalkVertexPlacementVector* pPla
     return out;
 }
 
+// Returns a vector of EdgeComps of the orientation of each
+// vertex in the path with respect to the start of the walk
+std::vector<EdgeComp> SGWalk::getOrientationsToStart() const
+{
+    std::vector<EdgeComp> out;
+    if(m_edges.empty())
+        return out;
+    
+    // Tracking variable of the orientation between X (the start)
+    // and the next vertex in the walk
+    EdgeComp compXY = m_edges[0]->getComp();
+    out.push_back(compXY);
+
+    for(size_t i = 1; i < m_edges.size(); ++i)
+    {
+        // Calculate the orientation of XZ using YZ
+        EdgeComp compYZ = m_edges[i]->getComp();
+
+        // The direction flips if the XY/YZ are different
+        EdgeComp compXZ = (compXY == compYZ) ? EC_SAME : EC_REVERSE;
+        out.push_back(compXZ);
+        compXY = compXZ;
+    }
+    return out;
+}
+
 // Get the substring of the full path string starting from position fromX
 // to position toY on the first and last vertices, respectively.
 // dirX is the direction along contig X towards vertex Y, vis-versa for dirY

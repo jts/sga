@@ -168,17 +168,33 @@ bool ScaffoldRecord::graphResolve(const ResolveParams& params, const std::string
     int numWalksClosest = 0;
     int selectedIdx = -1;
     int closestDist = std::numeric_limits<int>::max();
+
+#ifdef DEBUGRESOLVE
+            std::cout << "Attempting graph resolve of link " << startID << " -- " << link.endpointID << " expected distance: " << link.distance << " orientation: " << link.edgeData.getComp() << "\n";
+#endif
     
     // Select the closest walk to the distance estimate
     for(size_t i = 0; i < walks.size(); ++i)
     {
+        // Check that the orientation of the walk is the same as the expected link
+        std::vector<EdgeComp> vertexOrientations = walks[i].getOrientationsToStart();
+        assert(walks[i].getLastEdge()->getEndID() == link.endpointID);
+
+        if(vertexOrientations.back() != link.edgeData.getComp())
+        {
+#ifdef DEBUGRESOLVE
+            std::cout << "SKIPPING WALK OF THE WRONG ORIENTATION\n";
+#endif
+            continue;
+        }
+
         int walkDistance = walks[i].getEndToStartDistance();
         int diff = abs(abs(link.distance - walkDistance));
         if(diff <= threshold)
         {
 
 #ifdef DEBUGRESOLVE
-            std::cout << "Walk distance: " << walkDistance << " diff: " << diff << " threshold: " << threshold << " close: " << closestDist << "\n";
+            std::cout << "  Walk distance: " << walkDistance << " diff: " << diff << " threshold: " << threshold << " close: " << closestDist << "\n";
 #endif
             ++numWalksValid;
             if(diff < closestDist)
@@ -218,7 +234,7 @@ bool ScaffoldRecord::graphResolve(const ResolveParams& params, const std::string
     }
 
 #ifdef DEBUGRESOLVE    
-    std::cout << "Num walks: " << walks.size() << " Num valid: " << numWalksValid << " Num closest: " << numWalksClosest << " using: " << useWalk << "\n";
+    std::cout << "  Num walks: " << walks.size() << " Num valid: " << numWalksValid << " Num closest: " << numWalksClosest << " using: " << useWalk << "\n";
 #endif
 
     // Was an acceptable walk found? 
@@ -251,6 +267,11 @@ bool ScaffoldRecord::overlapResolve(const ResolveParams& params, const std::stri
     // Attempt to find an overlap between these sequences
     int expectedOverlap = -1 * link.distance;
 
+#ifdef DEBUGRESOLVE
+    std::cout << "Attempting overlap resolve of link to " << link.endpointID << " expected distance: " << link.distance << " orientation: " << link.edgeData.getComp() << "\n";
+#endif
+
+
     // If the maximum overlap was not set, set it to the expected overlap * 3 stddev
     int upperBound = 0;
     if(params.maxOverlap == -1)
@@ -263,6 +284,9 @@ bool ScaffoldRecord::overlapResolve(const ResolveParams& params, const std::stri
     bool overlapFound = OverlapTools::boundedOverlapDP(s1, s2, params.minOverlap, upperBound, params.maxErrorRate, match);
     if(overlapFound)
     {
+#ifdef DEBUGRESOLVE
+        std::cout << "Overlap found, length: " << match.coord[1].length() << "\n";
+#endif
         SeqCoord overlapCoord = match.coord[1];
         SeqCoord overhangCoord = overlapCoord.complement();
         outString = overhangCoord.getSubstring(s2);

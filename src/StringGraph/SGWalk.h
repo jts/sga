@@ -52,6 +52,10 @@ class SGWalk
         Vertex* getStartVertex() const;
         Vertex* getLastVertex() const;
 
+        // Returns a vector of EdgeComps of the orientation of each
+        // vertex in the path with respect to the start of the walk
+        std::vector<EdgeComp> getOrientationsToStart() const;
+
         Edge* getFirstEdge() const;
         Edge* getLastEdge() const;
         Edge* getEdge(size_t idx) const;
