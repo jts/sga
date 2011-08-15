@@ -46,5 +46,6 @@ sga_SOURCES = sga.cpp \
               cluster.h cluster.cpp \
               gen-ssa.h gen-ssa.cpp \
               correct-long.h correct-long.cpp \
+              convert-beetl.h convert-beetl.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

@@ -29,6 +29,7 @@
 #include "cluster.h"
 #include "gen-ssa.h"
 #include "correct-long.h"
+#include "convert-beetl.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -55,6 +56,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           oview           view overlap alignments\n"
 "           subgraph        extract a subgraph from a graph\n"
 "           filter          remove reads from a data set\n"
+"           convert-beetl   convert an index file constructed with BEETL into SGA's format\n"
 "\n\nExperimental commands:\n"
 "           gen-ssa         generate a sampled suffix array for the given set of reads\n"
 "           correct-long    correct long reads\n"
@@ -131,6 +133,8 @@ int main(int argc, char** argv)
             genSSAMain(argc - 1, argv + 1);
         else if(command == "correct-long")
             correctLongMain(argc - 1, argv + 1);
+        else if(command == "convert-beetl")
+            convertBeetlMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
