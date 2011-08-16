@@ -15,6 +15,8 @@
 #include "BWT.h"
 #include "BWTWriterBinary.h"
 #include "Timer.h"
+#include "ReadInfoTable.h"
+#include "SampledSuffixArray.h"
 
 //
 // Getopt
@@ -28,8 +30,8 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2011 Wellcome Trust Sanger Institute\n";
 
 static const char *CONVERT_BEETL_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... FILE\n"
-"Convert the bwt given by FILE into the SGA index format\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... BWTFILE READSFILE\n"
+"Convert the BWTFILE constructed from READSFILE into the SGA index format\n"
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
@@ -39,8 +41,9 @@ static const char *CONVERT_BEETL_USAGE_MESSAGE =
 namespace opt
 {
     static unsigned int verbose;
-    static std::string inFile;
-    static std::string prefix = "converted";
+    static std::string inBWTFile;
+    static std::string readsFile;
+    static std::string prefix;
 }
 
 static const char* shortopts = "p:v";
@@ -59,20 +62,27 @@ int convertBeetlMain(int argc, char** argv)
 {
     Timer t("sga beetl-convert");
     parseConvertBeetlOptions(argc, argv);
-    std::cout << "Converting " << opt::inFile << "\n";
+    std::cout << "Converting " << opt::inBWTFile << "\n";
 
     // Read the ASCII bwt beetl file and convert it to the SGA
     // run length encoded binary format
 
     // To write the header of the file, we need to count the number of strings
     // and symbols in the BWT. We do this in an initial pas
-    std::istream* pReader = createReader(opt::inFile);
+    std::istream* pReader = createReader(opt::inBWTFile);
     size_t numSymbols = 0;
     size_t numStrings = 0;
     char c;
     while(*pReader >> c) 
     {
         numSymbols += 1;
+        if(c == 'N')
+        {
+            std::cerr << "Error: ambiguous character found in BWT\n";
+            std::cerr << "sga preprocess must be run on the data\n";
+            exit(EXIT_FAILURE);
+        }
+
         if(c == '$')
             numStrings += 1;
     }
@@ -80,15 +90,31 @@ int convertBeetlMain(int argc, char** argv)
 
     printf("Read %zu symbols and %zu strings from the beetl bwt\n", numSymbols, numStrings);
 
-    // Reopen the file
-    pReader = createReader(opt::inFile);
-    BWTWriterBinary* pWriter = new BWTWriterBinary(opt::prefix + ".bwt");
+    //
+    std::string outBWTName = opt::prefix + BWT_EXT;
+    BWTWriterBinary* pWriter = new BWTWriterBinary(outBWTName);
     pWriter->writeHeader(numStrings, numSymbols, BWF_NOFMI);
+    
+    // Re-read the file, writing out the bw chars
+    pReader = createReader(opt::inBWTFile);
     while(*pReader >> c) 
         pWriter->writeBWChar(c);
     pWriter->finalize();
     delete pWriter;
     delete pReader;
+
+    // Create the suffix array index files using the sampled suffix array machinery
+    std::cout << "Generating lexicographic index (.sai)\n";
+    BWT* pBWT = new BWT(outBWTName); 
+    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile);
+    SampledSuffixArray* pSSA = new SampledSuffixArray();
+
+    pSSA->build(pBWT, pRIT, 8192);
+    pSSA->writeLexicoIndex(opt::prefix + SAI_EXT);
+
+    delete pBWT;
+    delete pRIT;
+    delete pSSA;
     return 0;
 }
 
@@ -115,12 +141,12 @@ void parseConvertBeetlOptions(int argc, char** argv)
         }
     }
 
-    if (argc - optind < 1) 
+    if (argc - optind < 2) 
     {
         std::cerr << SUBPROGRAM ": missing arguments\n";
         die = true;
     } 
-    else if (argc - optind > 1) 
+    else if (argc - optind > 2) 
     {
         std::cerr << SUBPROGRAM ": too many arguments\n";
         die = true;
@@ -133,5 +159,9 @@ void parseConvertBeetlOptions(int argc, char** argv)
     }
 
     // Parse the input filenames
-    opt::inFile = argv[optind++];
+    opt::inBWTFile = argv[optind++];
+    opt::readsFile = argv[optind++];
+
+    if(opt::prefix.empty())
+        opt::prefix = stripFilename(opt::readsFile);
 }
