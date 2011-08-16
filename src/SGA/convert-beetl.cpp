@@ -63,7 +63,6 @@ int convertBeetlMain(int argc, char** argv)
 
     // Read the ASCII bwt beetl file and convert it to the SGA
     // run length encoded binary format
-    BWT* pBWT = new BWT("ecoli.sim.bwt");
 
     // To write the header of the file, we need to count the number of strings
     // and symbols in the BWT. We do this in an initial pas
@@ -73,16 +72,12 @@ int convertBeetlMain(int argc, char** argv)
     char c;
     while(*pReader >> c) 
     {
-//        if(pBWT->getChar(numSymbols) != c)
-//            printf("Validation failed for %zu (%c != %c)\n", numSymbols, pBWT->getChar(numSymbols), c); 
-
         numSymbols += 1;
         if(c == '$')
             numStrings += 1;
     }
     delete pReader;
 
-    printf("SGA index symbols: %zu strings: %zu\n", pBWT->getBWLen(), pBWT->getNumStrings());
     printf("Read %zu symbols and %zu strings from the beetl bwt\n", numSymbols, numStrings);
 
     // Reopen the file
@@ -94,7 +89,6 @@ int convertBeetlMain(int argc, char** argv)
     pWriter->finalize();
     delete pWriter;
     delete pReader;
-    delete pBWT;
     return 0;
 }
 
