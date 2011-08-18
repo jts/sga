@@ -108,6 +108,10 @@ class VariationBubbleBuilder
         // Make the sequence of a new deBruijn vertex using the edge details
         std::string makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction);
         void addDeBruijnEdges(const Vertex* pX, const Vertex* pY, EdgeDir direction);
+
+        // Count the number of extensions of a de Bruijn node that are above
+        // the required k-mer coverage
+        size_t countValidExtensions(const AlphaCount64& ac) const;
         
         //
         // Data

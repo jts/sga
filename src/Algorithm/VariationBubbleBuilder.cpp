@@ -104,7 +104,11 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
         std::string vertStr = curr.pVertex->getSeq().toString();
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pSourceBWT, m_pSourceRevBWT, curr.direction);
 
-        if(extensionCounts.hasDNAChar() && !extensionCounts.hasUniqueDNAChar())
+        // Count the number of branches from this sequence
+        size_t num_branches = countValidExtensions(extensionCounts);
+
+        // Fail due to a high-coverage split occuring
+        if(num_branches > 1)
             return BRC_SOURCE_BRANCH;
 
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
@@ -163,7 +167,7 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
     // Add the antisense join vertex to the extension queue
     m_queue.push(BubbleExtensionNode(m_antisenseJoins.front(), ED_SENSE));
 
-    size_t numBranches = 0;
+    size_t totalBranches = 0;
 
     while(!m_queue.empty())
     {
@@ -173,11 +177,15 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction);
-
-        if(extensionCounts.hasDNAChar() && !extensionCounts.hasUniqueDNAChar())
-            numBranches += 1;
         
-        if(numBranches > m_allowedTargetBranches)
+        // Count the number of branches from this sequence
+        size_t num_branches = countValidExtensions(extensionCounts);
+
+        //
+        if(num_branches > 1)
+            totalBranches += 1;
+        
+        if(totalBranches > m_allowedTargetBranches)
             return BRC_TARGET_BRANCH;
 
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
@@ -407,3 +415,17 @@ std::string VariationBubbleBuilder::makeDeBruijnVertex(const std::string& v, cha
     return w;
 }
 
+// Count the number of extensions of a de Bruijn node that are above
+// the required k-mer coverage
+size_t VariationBubbleBuilder::countValidExtensions(const AlphaCount64& ac) const
+{
+    size_t n = 0;
+    for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
+    {
+        char b = DNA_ALPHABET::getBase(i);
+        size_t count = ac.get(b);
+        if(count >= m_kmerThreshold)
+            n += 1;
+    }
+    return n;
+}
