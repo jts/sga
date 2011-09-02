@@ -152,7 +152,7 @@ int correctMain(int argc, char** argv)
     
     BWTIntervalCache intervalCache(opt::intervalCacheLength, pBWT);
 
-    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, NULL, 
+    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
                                                          opt::errorRate, opt::seedLength, 
                                                          opt::seedStride, false, opt::branchCutoff);
     
