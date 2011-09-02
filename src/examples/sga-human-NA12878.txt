@@ -1,0 +1,228 @@
+#
+# This file contains the instructions for performing an assembly of the NA12878 human
+# genome data released by the Broad Institute. 
+#
+# Basic assumptions:
+# The data has been downloaded from the 1000 Genomes ftp. The BAM file provided
+# has been transformed into 62 FASTQ files (by running Picard RevertSAM, BAMToFastq
+# then using 'split' on the command line) with names like reads.000.fastq ... reads.061.fastq
+# 
+# The following is a guideline of how to perform the assembly - this is not a script.
+# It is up to the user to submit the assembly jobs to a cluster, and make sure they ran 
+# without error. It is highly recommended that you understand how SGA works first. I suggest
+# trying to run the C. elegans example assembly which is in the same directory.
+#
+# These instructions use a script called "submit" which takes a command either as a string
+# or as a batch of commands on stdin (1 command per line) and submits it to the cluter. 
+# The submit script takes in the amount of memory required by the job (eg --mem 16G) and the
+# number of compute cores (--cpu 8). It is the user's responsibility to provide this script.
+#
+# Send questions or comments to js18@sanger.ac.uk
+#
+
+#
+# Step 1. Preprocess in the input data
+#
+
+# Make a directory for the preprocessed data and enter it
+mkdir preprocessed; cd preprocessed;
+
+# Preprocess the raw data, which is assumed to be an a directory called input/
+for i in `ls ../input/reads.*.fastq`; do F=`basename $i .fastq`; submit "sga preprocess -o $F.pp.fastq --pe-mode 2 $i"; done;
+
+# Leave the preprocessed directory
+cd ..
+
+#
+# Step 2. Index the raw data
+#
+
+# Make a directory for the indexed data
+mkdir index_raw; cd index_raw;
+
+# Symlink in the preprocessed data
+ls ../preprocessed/reads.*.pp.fastq | xargs -i ln -s {}
+
+# Build an FM-index for each fastq file
+ls *.fastq | xargs -i submit --mem 8G --cpu 8 "sga index --no-reverse -d 5000000 -t 8 {}"
+
+# Use the sga-mergeDriver.pl script to merge the individual indices together until a single index remains
+
+# Merge round 1
+sga-mergeDriver.pl -t 8 *.fastq | submit --cpu 8 --mem 8G
+
+# Merge round 2
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
+
+# Merge round 3
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
+
+# Rename intermediate files to have a shorter name
+N=0; for i in `ls *.fa*`; do sga-rename.pl $i merged.$N; N=$(($N+1)); done
+
+# Merge round 4
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 16G
+
+# Merge round 5
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 28G
+
+# Merge round 6
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 50G
+
+# Leave the index_raw directory
+cd ..
+
+#
+# Step 3. Error correct the reads using the index that was just built.
+# There should be a file created by the last merge job called "final.bwt"
+#
+
+# Make a new directory to perform the correction in
+mkdir corrected; cd corrected;
+
+# Symlink the preprocessed reads into this directory.
+# I assume the preprocessed reads are in a directory called preprocessed
+ls ../preprocessed/reads.*.pp.fastq | xargs -i ln -s {}
+
+# Symlink the index files
+ln -s ../index_raw/final.bwt
+ln -s ../index_raw/final.fa
+
+# Submit the error correction jobs to the cluster
+# We use a 55-mer for correction. The -d parameter lowers the memory usage
+# of the index. 8 threads are used for the computation.
+ls *.pp.fastq | xargs -i submit --mem 30G --cpu 8 "sga correct -k 55 --learn -d 256 -t 8 -p final {}"
+
+# Leave the correction directory
+cd ..
+
+#
+# Step 4. Index the corrected data.
+#
+
+# Make a directory for the corrected index data
+mkdir index_corrected; cd index_corrected;
+
+# Symlink in the preprocessed data
+ls ../corrected/reads.*.ec.fa | xargs -i ln -s {}
+
+# Build an FM-index for each fastq file
+ls *.fa | xargs -i submit --mem 8G --cpu 8 "sga index -d 5000000 -t 8 {}"
+
+# Use the sga-mergeDriver.pl script to merge the individual indices together until a single index remains
+
+# Merge round 1
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
+
+# Merge round 2
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
+
+# Merge round 3
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
+
+# Rename intermediate files to have a shorter name
+N=0; for i in `ls *.fa*`; do sga-rename.pl $i merged.$N; N=$(($N+1)); done
+
+# Merge round 4
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 16G
+
+# Merge round 5
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 28G
+
+# Merge round 6
+sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 50G
+
+# Merging done, the index is named final.bwt and all the reads are now in final.fa
+
+# 
+# Step 5: Filter the data to remove duplicates and low-quality reads remaining
+# after correction.
+#
+submit --mem 60G --cpu 8 "sga filter -d 256 -x 2 -t 8 final.fa"
+
+#
+# Step 6: Merge together reads that can be unambiguously assembled
+#
+submit --mem 60G --cpu 8 "sga fm-merge -m 65 -t 8 final.filter.pass.fa"
+
+#
+# Step 7: Index the merged sequences
+#
+submit --mem 24G --cpu 8 "sga index -d 2000000 -t 8 final.filter.pass.merged.fa"
+
+#
+# Step 8: Use overlap to construct the string graph of the merged reads
+#
+submit --mem 8G --cpu 8 "sga overlap -m 65 -t 8 final.filter.pass.merged.fa"
+
+#
+# Step 9: Perform the contig assembly
+# The minimum overlap value used is 77. Aggressive variant removal parameters are chosen.
+# Small repeats at the ends of reads are resolved using the -r 10 parameter. The minimum
+# branch length for the trimming algorithm is 200 bp.
+#
+submit --mem 16G "sga assemble -m 77 -d 0.4 -g 0.1 -r 10 -l 200 final.filter.pass.merged.asqg.gz"
+
+#
+# Scaffolding
+#
+
+# Change to a directory to hold the scaffolded assembly
+cd ..
+mkdir pe; cd pe;
+
+# Symlink the assembly from step 9
+ln -s ../index_corrected/*-contigs.fa final-contigs.fa
+ln -s ../index_corrected/*-graph.asqg.gz final-graph.asqg.gz
+
+#
+# Step 10: Index the contigs with bwa
+#
+submit --mem 8G "bwa index -a bwtsw final-contigs.fa"
+
+# Symlink the raw reads files
+ls ../input/reads.*.fastq | xargs -i ln -s {}
+
+#
+# Step 11: Align reads to the contigs and make bam files
+#
+for i in `ls *.fastq`; do F=`basename $i .fastq`; submit --mem 12G "sga-align --name $F final-contigs.fa $i"; done
+
+# Make a directory for the refsorted and unsorted bams
+mkdir initial_sorted_bams
+mv *.refsort.bam initial_sorted_bams
+
+mkdir initial_bams
+mv *.bam initial_bams
+
+# Merge the refsorted bam
+cd initial_sorted_bams
+submit --mem 8G "samtools merge merged.refsort.bam *.refsort.bam"
+
+# Merge the unsorted bam
+cd ../initial_bams
+submit --mem 8G "samtools merge merged.bam *.bam"
+
+# Return to the pe directory
+cd ../
+
+#
+# Step 12: Make the astat file
+#
+
+submit "sga-astat.py -m 200 initial_sorted_bams/merged.refsort.bam > contigs.astat"
+
+#
+# Step 13: Make the distance estimate file
+#
+
+submit "sga-bam2de.pl --prefix pe -n 5 -m 200 initial_bams/merged.bam"
+
+#
+# Step 14: Build scaffolds
+#
+submit --mem 8G "sga scaffold -u 25 -m 200 -a contigs.astat --pe pe.de -o scaffolds.m200.u25.scaf final-contigs.fa"
+
+# Step 15: Convert the scaffolds to a fasta file
+
+submit --mem 16G "sga scaffold2fasta -a final-graph.asqg.gz --write-unplaced -m 200 --use-overlap -o scaffolds.m200.build1.fa scaffolds.m200.u25.scaf"
