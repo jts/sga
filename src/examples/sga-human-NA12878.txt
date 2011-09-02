@@ -5,7 +5,8 @@
 # Basic assumptions:
 # The data has been downloaded from the 1000 Genomes ftp. The BAM file provided
 # has been transformed into 62 FASTQ files (by running Picard RevertSAM, BAMToFastq
-# then using 'split' on the command line) with names like reads.000.fastq ... reads.061.fastq
+# then using 'split' on the command line) with names like reads.000.fastq ... reads.061.fastq.
+# Each file should have 20 million reads each (10 million pairs).
 # 
 # The following is a guideline of how to perform the assembly - this is not a script.
 # It is up to the user to submit the assembly jobs to a cluster, and make sure they ran 
