@@ -11,6 +11,7 @@
 //
 #include "SampledSuffixArray.h"
 #include "SAReader.h"
+#include "SAWriter.h"
 
 static const uint32_t SSA_MAGIC_NUMBER = 77832;
 #define SSA_READ(x) pReader->read(reinterpret_cast<char*>(&(x)), sizeof((x)));
@@ -160,7 +161,7 @@ void SampledSuffixArray::validate(const std::string filename, const BWT* pBWT)
 }
 
 // Save the SA to disc
-void SampledSuffixArray::write(std::string filename)
+void SampledSuffixArray::write(const std::string& filename)
 {
     std::ostream* pWriter = createWriter(filename, std::ios::out | std::ios::binary);
     
@@ -187,7 +188,18 @@ void SampledSuffixArray::write(std::string filename)
     delete pWriter;
 }
 
-void SampledSuffixArray::read(std::string filename)
+// Save just the lexicographic index portion of the SSA to disk as plaintext
+void SampledSuffixArray::writeLexicoIndex(const std::string& filename)
+{
+    SAWriter writer(filename);
+    size_t num_strings = m_saLexoIndex.size();
+    writer.writeHeader(num_strings, num_strings);
+    for(size_t i = 0; i < m_saLexoIndex.size(); ++i)
+        writer.writeElem(m_saLexoIndex[i]);
+}
+
+
+void SampledSuffixArray::read(const std::string& filename)
 {
     std::istream* pReader = createReader(filename, std::ios::binary);
     

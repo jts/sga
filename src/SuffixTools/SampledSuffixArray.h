@@ -37,8 +37,9 @@ class SampledSuffixArray
         void printInfo();
 
         // I/O
-        void write(std::string filename);
-        void read(std::string filename);
+        void write(const std::string& filename);
+        void writeLexicoIndex(const std::string& filename);
+        void read(const std::string& filename);
 
     private:
 
