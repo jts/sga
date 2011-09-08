@@ -43,6 +43,7 @@ namespace opt
     static std::string bwtFile;
     static std::string outFile;
     static std::string readPrefix;
+    static int sampleRate = 256;
 }
 
 static const char* shortopts = "p:o:v";
@@ -63,7 +64,7 @@ int bwt2faMain(int argc, char** argv)
     Timer t("sga bwt2fa");
     parseBWT2FAOptions(argc, argv);
 
-    BWT* pBWT = new BWT(opt::bwtFile);
+    BWT* pBWT = new BWT(opt::bwtFile, opt::sampleRate);
     pBWT->printInfo();
 
     std::ostream* pWriter = createWriter(opt::outFile);
