@@ -47,5 +47,6 @@ sga_SOURCES = sga.cpp \
               gen-ssa.h gen-ssa.cpp \
               correct-long.h correct-long.cpp \
               convert-beetl.h convert-beetl.cpp \
+              bwt2fa.h bwt2fa.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 
