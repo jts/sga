@@ -340,7 +340,7 @@ void Vertex::addEdge(Edge* ep)
             std::cout << "Attempted to add duplicate edge with ID: " << ep->getEndID() 
                         << " to vertex: " << ep->getStartID() << "\n";
             std::cout << "Added in desc: " << ep->getDesc() << " curr desc: " << (*iter)->getDesc() << "\n";
-            assert(false);
+            //assert(false);
         }
     }
 #endif
@@ -489,6 +489,30 @@ EdgePtrVec Vertex::findEdgesTo(VertexID id)
     return outEdges;
 }
 
+// Returns the edge with the longest overlap length
+// in direction dir
+// Returns NULL if the vertex has no edges
+Edge* Vertex::getLongestOverlapEdge(EdgeDir dir) const
+{
+    Edge* pOut = NULL;
+    int maxOL = 0;
+    EdgePtrVecConstIter iter = m_edges.begin();
+    for(; iter != m_edges.end(); ++iter)
+    {
+        if((*iter)->getDir() != dir)
+            continue;
+
+        int currOL = (*iter)->getMatchLength();
+        if(currOL > maxOL)
+        {
+            pOut = *iter;
+            maxOL = currOL;
+        }
+    }
+    return pOut;
+}
+
+
 //
 // Get the edges in a particular direction
 // This preserves the ordering of the edges
@@ -532,6 +556,33 @@ size_t Vertex::countEdges(EdgeDir dir)
     EdgePtrVec ev = getEdges(dir);
     return ev.size();
 }
+
+// Calculate the difference in overlap lengths between
+// the longest and second longest edge
+int Vertex::getOverlapLengthDiff(EdgeDir dir) const
+{
+    int longest_len = 0;
+    int second_longest_len = 0;
+    EdgePtrVecConstIter iter = m_edges.begin();
+    for(; iter != m_edges.end(); ++iter)
+    {
+        if((*iter)->getDir() != dir)
+            continue;
+
+        int currOL = (*iter)->getMatchLength();
+        if(currOL > longest_len)
+        {
+            second_longest_len = longest_len;
+            longest_len = currOL;
+        }
+        else if(currOL > second_longest_len)
+        {
+            second_longest_len = currOL;
+        }
+    }
+    return longest_len - second_longest_len;
+}
+
 
 // Return the amount of memory this vertex is using, in bytes
 size_t Vertex::getMemSize() const

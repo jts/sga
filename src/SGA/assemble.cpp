@@ -186,6 +186,7 @@ void assemble()
     // Resolve small repeats
     if(opt::resolveSmallRepeatLen > 0)
     {
+        Timer smallTimer("SmallRepeat");
         SGSmallRepeatResolveVisitor smallRepeatVisit(opt::resolveSmallRepeatLen);
         std::cout << "Resolving small repeats\n";
 
