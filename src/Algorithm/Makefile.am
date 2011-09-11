@@ -31,4 +31,5 @@ libalgorithm_a_SOURCES = \
         StringThreader.h StringThreader.cpp \
         GraphCompare.h GraphCompare.cpp \
         ExtensionDP.h ExtensionDP.cpp \
+        MetAssembleProcess.h MetAssembleProcess.cpp \
         VariationBubbleBuilder.h VariationBubbleBuilder.cpp

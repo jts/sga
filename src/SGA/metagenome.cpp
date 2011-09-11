@@ -18,14 +18,15 @@
 #include "SequenceProcessFramework.h"
 #include "SGACommon.h"
 #include "BitVector.h"
+#include "MetAssembleProcess.h"
 #include "metagenome.h"
 
 // Defines to clarify awful template function calls
-#define PROCESS_GDIFF_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, GraphCompareResult, \
-                                                                              GraphCompare, GraphCompareAggregateResults>
-
-#define PROCESS_GDIFF_PARALLEL SequenceProcessFramework::processSequencesParallel<SequenceWorkItem, GraphCompareResult, \
-                                                                                  GraphCompare, GraphCompareAggregateResults>
+#define PROCESS_METASSEMBLE_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, MetAssembleResult, \
+                                                                                    MetAssemble, MetAssembleAggregateResults>
+ 
+#define PROCESS_METASSEMBLE_PARALLEL SequenceProcessFramework::processSequencesParallel<SequenceWorkItem, MetAssembleResult, \
+                                                                                        MetAssemble, MetAssembleAggregateResults>
 
    
 //
@@ -103,39 +104,42 @@ int metagenomeMain(int argc, char** argv)
     BWTIntervalCache* pBWTCache = new BWTIntervalCache(opt::cacheLength, pBWT);
     BWTIntervalCache* pRevBWTCache = new BWTIntervalCache(opt::cacheLength, pRevBWT);
 
-#if 0
+    MetAssembleParameters sharedParameters;
+    sharedParameters.pBWT = pBWT;
+    sharedParameters.pRevBWT = pRevBWT;
+    sharedParameters.pBWTCache = pBWTCache;
+    sharedParameters.pRevBWTCache = pRevBWTCache;
+    sharedParameters.kmer = opt::kmer;
+    sharedParameters.kmerThreshold = opt::kmerThreshold;
+    sharedParameters.pBitVector = pSharedBitVector;
+
+    MetAssembleAggregateResults resultsProcess(opt::outFile);
+
     if(opt::numThreads <= 1)
     {
-        printf("[%s] starting serial-mode graph diff\n", PROGRAM_IDENT);
-        GraphCompare graphCompare(sharedParameters); 
-        PROCESS_GDIFF_SERIAL(opt::variantFile, &graphCompare, pSharedResults);
-        graphCompare.updateSharedStats(pSharedResults);
+        printf("[%s] starting serial-mode assembly\n", PROGRAM_IDENT);
+        MetAssemble assembleProcess(sharedParameters); 
+        PROCESS_METASSEMBLE_SERIAL(opt::inFile, &assembleProcess, &resultsProcess);
     }
     else
     {
-        printf("[%s] starting parallel-mode graph diff with %d threads\n", PROGRAM_IDENT, opt::numThreads);
+        printf("[%s] starting parallel-mode assembly with %d threads\n", PROGRAM_IDENT, opt::numThreads);
         
-        std::vector<GraphCompare*> processorVector;
+        std::vector<MetAssemble*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            GraphCompare* pProcessor = new GraphCompare(sharedParameters);
+            MetAssemble* pProcessor = new MetAssemble(sharedParameters);
             processorVector.push_back(pProcessor);
         }
         
-        PROCESS_GDIFF_PARALLEL(opt::variantFile, processorVector, pSharedResults);
+        PROCESS_METASSEMBLE_PARALLEL(opt::inFile, processorVector, &resultsProcess);
         
         for(size_t i = 0; i < processorVector.size(); ++i)
         {
-            // Update the shared stats
-            processorVector[i]->updateSharedStats(pSharedResults);
-
             delete processorVector[i];
             processorVector[i] = NULL;
         }
-
-
     }
-#endif
 
     // Cleanup
     delete pBWT;
