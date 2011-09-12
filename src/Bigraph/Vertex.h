@@ -59,6 +59,7 @@ class Vertex
         Vertex(VertexID id, const std::string& s) : m_id(id), 
                                                     m_seq(s), 
                                                     m_color(GC_WHITE),
+                                                    m_coverage(1),
                                                     m_isContained(false) {}
         ~Vertex();
 
@@ -127,6 +128,7 @@ class Vertex
         size_t getSeqLen() const { return m_seq.length(); }
         size_t getMemSize() const;
         bool isContained() const { return m_isContained; }
+        uint16_t getCoverage() const { return m_coverage; }
 
         // Memory management
         void* operator new(size_t /*size*/, SimpleAllocator<Vertex>* pAllocator)
@@ -159,6 +161,10 @@ class Vertex
         EdgePtrVec m_edges;
         DNAEncodedString m_seq;
         GraphColor m_color;
+
+        // Counter of the number of vertices that have been merged into this one
+        uint16_t m_coverage; 
+
         bool m_isContained;
 };
 

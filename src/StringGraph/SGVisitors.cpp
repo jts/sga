@@ -1042,7 +1042,7 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
         {
             found = true;
             size_t selectedIdx = -1;
-            size_t selectedLength = 0;
+            size_t selectedCoverage = 0;
 
             // Calculate the minimum amount overlapped on the start/end vertex.
             // This is used to properly extract the sequences from walks that represent the variation.
@@ -1054,10 +1054,16 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 if(variantWalks[i].getNumEdges() <= 1)
                     bIsDegenerate = true;
 
-                if(variantWalks[i].getNumEdges() > selectedLength)
+                // Calculate the walk coverage using the internal vertices of the walk. 
+                // The walk with the highest coverage will be retained
+                size_t walkCoverage = 0;
+                for(size_t j = 1; j < variantWalks[i].getNumVertices() - 1; ++j)
+                    walkCoverage += variantWalks[i].getVertex(j)->getCoverage();
+
+                if(walkCoverage > selectedCoverage)
                 {
                     selectedIdx = i;
-                    selectedLength = variantWalks[i].getNumEdges();
+                    selectedCoverage = walkCoverage;
                 }
                 
                 Edge* pFirstEdge = variantWalks[i].getFirstEdge();

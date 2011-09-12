@@ -48,6 +48,9 @@ void Vertex::merge(Edge* pEdge)
         prepend = true;
     }
 
+    // Update the coverage value of the vertex
+    m_coverage += pEdge->getEnd()->getCoverage();
+
     pEdge->extendMatch(label_len);
     pTwin->extendMatchFullLength();
 
