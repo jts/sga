@@ -41,7 +41,13 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
     
     HaplotypeBuilderResult result;
     builder.parseWalks(result);
-    std::cout << "Built " << result.haplotypes.size() << "\n";
+    std::cout << "Built " << result.haplotypes.size() << " candidate haplotypes\n";
+
+    if(result.haplotypes.size() >= 2)
+    {
+        std::cout << "Alignment of first two:\n";
+        StdAlnTools::globalAlignment(result.haplotypes[0], result.haplotypes[1], true);
+    }
 }
 
 // Returns the closest kmer to the provided position with occurrence count greater than the passed in threshold
@@ -68,7 +74,6 @@ std::string HapgenProcess::findAnchorKmer(const std::string& refName, int64_t po
             continue;
 
         size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(testSeq, m_parameters.pBWT, m_parameters.pBWTCache);
-        std::cout << "Testing " << refName << ":" << position << " " << testSeq << " " << count << "\n";
         if(count > m_parameters.kmerThreshold)
             return testSeq;
     }
