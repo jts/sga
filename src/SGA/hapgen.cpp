@@ -61,11 +61,11 @@ namespace opt
     static unsigned int verbose;
     static int numThreads = 1;
     static int kmer = 55;
-    static int kmerThreshold = 2;
+    static int kmerThreshold = 3;
     static int sampleRate = 128;
     static int cacheLength = 10;
 
-    static std::string refFile;
+    static std::string referenceFile;
     static std::string sitesFile;
     static std::string readsFile;
     static std::string outFile = "haplotypes.fa";
@@ -95,7 +95,7 @@ int hapgenMain(int argc, char** argv)
 {
     parseHapgenOptions(argc, argv);
 
-    // Create BWTS
+    // In the BWTs and create interval caches
     std::string basePrefix = stripFilename(opt::readsFile);
     BWT* pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
     BWT* pRevBWT = new BWT(basePrefix + RBWT_EXT, opt::sampleRate);
@@ -104,12 +104,18 @@ int hapgenMain(int argc, char** argv)
     BWTIntervalCache* pBWTCache = new BWTIntervalCache(opt::cacheLength, pBWT);
     BWTIntervalCache* pRevBWTCache = new BWTIntervalCache(opt::cacheLength, pRevBWT);
 
+    // Read in a table of the reference genome
+    ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
+    refTable.indexReadsByID();
+
     HapgenParameters parameters;
     parameters.pBWT = pBWT;
     parameters.pRevBWT = pRevBWT;
     parameters.pBWTCache = pBWTCache;
     parameters.pRevBWTCache = pRevBWTCache;
     parameters.kmer = opt::kmer;
+    parameters.kmerThreshold = opt::kmerThreshold;
+    parameters.pRefTable = &refTable;
 
     HapgenProcess processor(parameters);
 
@@ -187,7 +193,7 @@ void parseHapgenOptions(int argc, char** argv)
             case 'k': arg >> opt::kmer; break;
             case 'x': arg >> opt::kmerThreshold; break;
             case 's': arg >> opt::sitesFile; break;
-            case 'r': arg >> opt::refFile; break;
+            case 'r': arg >> opt::referenceFile; break;
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
@@ -219,7 +225,7 @@ void parseHapgenOptions(int argc, char** argv)
         die = true;
     }
 
-    if(opt::refFile.empty() || opt::sitesFile.empty())
+    if(opt::referenceFile.empty() || opt::sitesFile.empty())
     {
         std::cerr << SUBPROGRAM ": error a --reference and --sites file must be provided\n";
         die = true;

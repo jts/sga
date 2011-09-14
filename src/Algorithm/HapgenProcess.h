@@ -30,10 +30,10 @@ struct HapgenParameters
     // BWTS
     const BWT* pBWT; 
     const BWT* pRevBWT;
-
     const BWTIntervalCache* pBWTCache;
     const BWTIntervalCache* pRevBWTCache;
-    
+ 
+    const ReadTable* pRefTable;
     size_t kmer;
     size_t kmerThreshold;
 };
@@ -56,6 +56,7 @@ class HapgenProcess
 
         // Generate haplotypes from chromosome refName, position [start, end]
         void processSite(const std::string& refName, size_t start, size_t end);
+        std::string findAnchorKmer(const std::string& refName, int64_t start, bool upstream);
 
     private:
         

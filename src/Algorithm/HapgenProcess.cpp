@@ -7,11 +7,13 @@
 // HapgenProcess - Generate candidate haplotypes
 // from an assembly graph for a stream of sites
 //
+#include <algorithm>
 #include "HapgenProcess.h"
 #include "BWTAlgorithms.h"
 #include "SGAlgorithms.h"
 #include "SGSearch.h"
 #include "StdAlnTools.h"
+#include "HaplotypeBuilder.h"
 
 //
 //
@@ -28,5 +30,48 @@ HapgenProcess::~HapgenProcess()
 void HapgenProcess::processSite(const std::string& refName, size_t start, size_t end)
 {
     std::cout << "Processing " << refName << " [" << start << " " << end << "]\n";
+    std::string startSeq = findAnchorKmer(refName, start, true);
+    std::string endSeq = findAnchorKmer(refName, end, false);
+
+    HaplotypeBuilder builder;
+    builder.setTerminals(startSeq, 1, endSeq, 1);
+    builder.setIndex(m_parameters.pBWT, m_parameters.pRevBWT);
+    builder.setKmerParameters(m_parameters.kmer, m_parameters.kmerThreshold);
+    builder.run();
+    
+    HaplotypeBuilderResult result;
+    builder.parseWalks(result);
+    std::cout << "Built " << result.haplotypes.size() << "\n";
 }
 
+// Returns the closest kmer to the provided position with occurrence count greater than the passed in threshold
+std::string HapgenProcess::findAnchorKmer(const std::string& refName, int64_t position, bool upstream)
+{
+    const SeqItem& refItem = m_parameters.pRefTable->getRead(refName);
+    std::string seq;
+
+    int64_t stride = upstream ? -1 : 1;
+    int MAX_DISTANCE = 100;
+    int64_t stop = upstream ? position - MAX_DISTANCE : position + MAX_DISTANCE;
+
+    // Cap the travel distance to avoid out of bounds
+    if(stop < 0)
+        stop = 0;
+    if(stop > (int64_t)refItem.seq.length())
+        stop = refItem.seq.length();
+
+    for(; position != stop; position += stride)
+    {
+        std::string testSeq = refItem.seq.substr(position, m_parameters.kmer);
+        std::transform(testSeq.begin(), testSeq.end(), testSeq.begin(), ::toupper);
+        if(testSeq.find_first_of('N') != std::string::npos)
+            continue;
+
+        size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(testSeq, m_parameters.pBWT, m_parameters.pBWTCache);
+        std::cout << "Testing " << refName << ":" << position << " " << testSeq << " " << count << "\n";
+        if(count > m_parameters.kmerThreshold)
+            return testSeq;
+    }
+
+    return "";
+}

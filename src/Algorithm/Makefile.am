@@ -32,4 +32,5 @@ libalgorithm_a_SOURCES = \
         GraphCompare.h GraphCompare.cpp \
         HapgenProcess.h HapgenProcess.cpp \
         ExtensionDP.h ExtensionDP.cpp \
-        VariationBubbleBuilder.h VariationBubbleBuilder.cpp
+        VariationBubbleBuilder.h VariationBubbleBuilder.cpp \
+        HaplotypeBuilder.h HaplotypeBuilder.cpp
