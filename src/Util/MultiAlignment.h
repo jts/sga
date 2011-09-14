@@ -66,9 +66,18 @@ class MultiAlignment
 
     private:
         
+        // Generate a string representing the columns that differ between the strings
+        std::string generateMatchString() const;
+
         // data
         MAlignDataVector m_alignData;
         int m_verbose;
 };
+
+namespace MultiAlignmentTools
+{
+    // Construct a multiple alignment of the input strings
+    MultiAlignment alignSequences(const StringVector& strings);
+}
 
 #endif

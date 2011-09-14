@@ -12,6 +12,7 @@
 #include <map>
 #include <limits>
 #include "MultiAlignment.h"
+#include "StdAlnTools.h"
 
 struct CigarIter
 {
@@ -329,10 +330,37 @@ std::string MultiAlignment::generateConsensus()
     return consensus;
 }
 
+// Generate a string representing the columns that differ between the strings
+std::string MultiAlignment::generateMatchString() const
+{
+    assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
+
+    std::string matchString;
+
+    size_t num_rows = m_alignData.size();
+    size_t num_cols = m_alignData.front().padded.size();
+    for(size_t i = 0; i < num_cols; ++i)
+    {
+        char rootChar = m_alignData[0].padded[i];
+        bool allMatch = true;
+        for(size_t j = 1; j < num_rows; ++j)
+        {
+            char b = m_alignData[j].padded[i];
+            if(b != rootChar)
+                allMatch = false;
+        }
+        matchString.append(1, allMatch ? '*' : ' ');
+    }
+
+    return matchString;
+}
+
 //
 void MultiAlignment::print(const std::string* pConsensus) const
 {
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
+
+    std::string matchString = generateMatchString();
 
     // Create a copy of the m_alignData and sort it by position
     MAlignDataVector sortedAlignments = m_alignData;
@@ -342,6 +370,7 @@ void MultiAlignment::print(const std::string* pConsensus) const
     int col_size = 140;
     for(size_t l = 0; l < len; l += col_size)
     {
+        // Print the consensus if requested
         if(pConsensus != NULL)
         {
             int diff = pConsensus->size() - l;
@@ -352,6 +381,7 @@ void MultiAlignment::print(const std::string* pConsensus) const
                 printf("C\n");
         }
         
+        // Print each row
         for(size_t i = 0; i < sortedAlignments.size(); ++i)
         {
             const MAlignData& mad = sortedAlignments[i];
@@ -359,6 +389,38 @@ void MultiAlignment::print(const std::string* pConsensus) const
             int stop = diff < col_size ? diff : col_size;
             printf("%zu\t%s\t%s\n", i, mad.padded.substr(l, stop).c_str(), mad.name.c_str());
         }
+    
+        // Print the matched columns
+        int diff = matchString.size() - l;
+        int stop = diff < col_size ? diff : col_size;
+        printf("M\t%s\n", matchString.substr(l, stop).c_str());
+
         std::cout << "\n";
     }
+}
+
+// Construct a multiple alignment of the input strings
+MultiAlignment MultiAlignmentTools::alignSequences(const StringVector& strings)
+{
+    assert(!strings.empty());
+    const std::string& base = strings[0];
+
+    MAlignDataVector madVector;
+    for(size_t i = 1; i < strings.size(); ++i)
+    {
+        std::string cigar = StdAlnTools::globalAlignmentCigar(strings[i], base);
+    
+        // Initialize the multiple alignment data
+        MAlignData maData;
+        maData.position = 0;
+        maData.str = strings[i];
+        maData.expandedCigar = StdAlnTools::expandCigar(cigar);
+
+        std::stringstream nameSS;
+        nameSS << "string-" << i;
+        maData.name = nameSS.str();
+        madVector.push_back(maData);
+    }
+
+    return MultiAlignment(base, madVector);
 }

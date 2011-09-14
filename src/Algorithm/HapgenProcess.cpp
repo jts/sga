@@ -14,6 +14,7 @@
 #include "SGSearch.h"
 #include "StdAlnTools.h"
 #include "HaplotypeBuilder.h"
+#include "MultiAlignment.h"
 
 //
 //
@@ -48,8 +49,8 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
 
     if(result.haplotypes.size() >= 2)
     {
-        std::cout << "Alignment of first two:\n";
-        StdAlnTools::globalAlignment(result.haplotypes[0], result.haplotypes[1], true);
+        MultiAlignment haplotypeAlignment = MultiAlignmentTools::alignSequences(result.haplotypes);
+        haplotypeAlignment.print();
     }
 }
 
