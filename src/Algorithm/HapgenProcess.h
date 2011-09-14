@@ -55,7 +55,7 @@ class HapgenProcess
         //HapgenResult process(const SequenceWorkItem& item);
 
         // Generate haplotypes from chromosome refName, position [start, end]
-        void processSite(const std::string& refName, size_t start, size_t end);
+        void processSite(const std::string& refName, size_t start, size_t end, const std::string& comment);
         std::string findAnchorKmer(const std::string& refName, int64_t start, bool upstream);
 
     private:

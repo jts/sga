@@ -125,10 +125,11 @@ int hapgenMain(int argc, char** argv)
     {
         std::stringstream parser(line);
         std::string refName;
+        std::string comment;
         size_t start;
         size_t end;
-        parser >> refName >> start >> end;
-        processor.processSite(refName, start, end);
+        parser >> refName >> start >> end >> comment;
+        processor.processSite(refName, start, end, comment);
     }
 
     delete pReader;

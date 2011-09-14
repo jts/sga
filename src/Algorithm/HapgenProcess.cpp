@@ -27,11 +27,14 @@ HapgenProcess::~HapgenProcess()
 {
 }
 
-void HapgenProcess::processSite(const std::string& refName, size_t start, size_t end)
+void HapgenProcess::processSite(const std::string& refName, size_t start, size_t end, const std::string& comment)
 {
-    std::cout << "Processing " << refName << " [" << start << " " << end << "]\n";
+    std::cout << "\n\nProcessing " << refName << " [" << start << " " << end << "] " << comment << "\n";
     std::string startSeq = findAnchorKmer(refName, start, true);
     std::string endSeq = findAnchorKmer(refName, end, false);
+
+    if(startSeq.empty() || endSeq.empty())
+        return;
 
     HaplotypeBuilder builder;
     builder.setTerminals(startSeq, 1, endSeq, 1);
@@ -63,8 +66,8 @@ std::string HapgenProcess::findAnchorKmer(const std::string& refName, int64_t po
     // Cap the travel distance to avoid out of bounds
     if(stop < 0)
         stop = 0;
-    if(stop > (int64_t)refItem.seq.length())
-        stop = refItem.seq.length();
+    if(stop > (int64_t)(refItem.seq.length() - m_parameters.kmer))
+        stop = refItem.seq.length() - m_parameters.kmer;
 
     for(; position != stop; position += stride)
     {
