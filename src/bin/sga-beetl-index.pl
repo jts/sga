@@ -8,7 +8,7 @@ use File::Temp;
 use File::Basename;
 
 # Program paths
-my $SGA_BIN = "/nfs/users/nfs_j/js18/work/devel/sga/src/build-lenny/SGA/sga";
+my $SGA_BIN = "~/bin/sga-0.9.14";
 my $BEETL_BIN = "/nfs/team118/js18/software/BEETL-tc/BCRext";
 
 # Options
