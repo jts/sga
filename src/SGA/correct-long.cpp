@@ -47,6 +47,7 @@ static const char *CORRECT_LONG_USAGE_MESSAGE =
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      -z, --z-best=N                   keep N hits at each node.\n"
+"      -t, --threads=NUM                use NUM threads for the computation (default: 1)\n"
 "          --cut=STR                    use STR as the cell pruning heuristic. Options are strata, zbest, score, none.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 

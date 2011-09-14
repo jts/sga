@@ -48,7 +48,7 @@ static const char *CORRECT_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -p, --prefix=PREFIX              use PREFIX for the names of the index files (default: prefix of the input file)\n"
 "      -o, --outfile=FILE               write the corrected reads to FILE (default: READSFILE.ec.fa)\n"
-"      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
+"      -t, --threads=NUM                use NUM threads for the computation (default: 1)\n"
 "          --discard                    detect and discard low-quality reads\n"
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
