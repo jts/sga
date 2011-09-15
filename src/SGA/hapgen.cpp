@@ -52,6 +52,8 @@ static const char *HAPGEN_USAGE_MESSAGE =
 "      -k, --kmer=K                     use K as the k-mer size for variant discovery\n"
 "      -x, --kmer-threshold=T           only used kmers seen at least T times\n"
 "      -t, --threads=NUM                use NUM computation threads\n"
+"      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 //static const char* PROGRAM_IDENT = PACKAGE_NAME "::" SUBPROGRAM;
@@ -71,7 +73,7 @@ namespace opt
     static std::string outFile = "haplotypes.fa";
 }
 
-static const char* shortopts = "o:k:t:r:s:v";
+static const char* shortopts = "o:k:t:r:s:d:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -83,6 +85,7 @@ static const struct option longopts[] = {
     { "outfile",       required_argument, NULL, 'o' },
     { "kmer",          required_argument, NULL, 'k' },
     { "kmer-threshold",required_argument, NULL, 'x' },
+    { "sample-rate",   required_argument, NULL, 'd' },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -99,7 +102,10 @@ int hapgenMain(int argc, char** argv)
     std::string basePrefix = stripFilename(opt::readsFile);
     BWT* pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
     BWT* pRevBWT = new BWT(basePrefix + RBWT_EXT, opt::sampleRate);
+    SampledSuffixArray* pSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
+
     pBWT->printInfo();
+    pSSA->printInfo();
 
     BWTIntervalCache* pBWTCache = new BWTIntervalCache(opt::cacheLength, pBWT);
     BWTIntervalCache* pRevBWTCache = new BWTIntervalCache(opt::cacheLength, pRevBWT);
@@ -111,12 +117,13 @@ int hapgenMain(int argc, char** argv)
     HapgenParameters parameters;
     parameters.pBWT = pBWT;
     parameters.pRevBWT = pRevBWT;
+    parameters.pSSA = pSSA;
     parameters.pBWTCache = pBWTCache;
     parameters.pRevBWTCache = pRevBWTCache;
     parameters.kmer = opt::kmer;
     parameters.kmerThreshold = opt::kmerThreshold;
     parameters.pRefTable = &refTable;
-
+    parameters.verbose = opt::verbose;
     HapgenProcess processor(parameters);
 
     std::istream* pReader = createReader(opt::sitesFile);
@@ -131,48 +138,14 @@ int hapgenMain(int argc, char** argv)
         parser >> refName >> start >> end >> comment;
         processor.processSite(refName, start, end, comment);
     }
-
     delete pReader;
-
-#if 0
-    if(opt::numThreads <= 1)
-    {
-        printf("[%s] starting serial-mode graph diff\n", PROGRAM_IDENT);
-        GraphCompare graphCompare(sharedParameters); 
-        PROCESS_GDIFF_SERIAL(opt::variantFile, &graphCompare, pSharedResults);
-        graphCompare.updateSharedStats(pSharedResults);
-    }
-    else
-    {
-        printf("[%s] starting parallel-mode graph diff with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        
-        std::vector<GraphCompare*> processorVector;
-        for(int i = 0; i < opt::numThreads; ++i)
-        {
-            GraphCompare* pProcessor = new GraphCompare(sharedParameters);
-            processorVector.push_back(pProcessor);
-        }
-        
-        PROCESS_GDIFF_PARALLEL(opt::variantFile, processorVector, pSharedResults);
-        
-        for(size_t i = 0; i < processorVector.size(); ++i)
-        {
-            // Update the shared stats
-            processorVector[i]->updateSharedStats(pSharedResults);
-
-            delete processorVector[i];
-            processorVector[i] = NULL;
-        }
-
-
-    }
-#endif
 
     // Cleanup
     delete pBWT;
     delete pRevBWT;
     delete pBWTCache;
     delete pRevBWTCache;
+    delete pSSA;
 
     if(opt::numThreads > 1)
         pthread_exit(NULL);
@@ -197,6 +170,7 @@ void parseHapgenOptions(int argc, char** argv)
             case 'r': arg >> opt::referenceFile; break;
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
+            case 'd': arg >> opt::sampleRate; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:

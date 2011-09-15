@@ -21,6 +21,7 @@
 #include "VariationBubbleBuilder.h"
 #include "SequenceProcessFramework.h"
 #include "BWTIntervalCache.h"
+#include "SampledSuffixArray.h"
 
 // Structures and typedefs
 
@@ -30,12 +31,16 @@ struct HapgenParameters
     // BWTS
     const BWT* pBWT; 
     const BWT* pRevBWT;
+    const SampledSuffixArray* pSSA;
+
     const BWTIntervalCache* pBWTCache;
     const BWTIntervalCache* pRevBWTCache;
  
     const ReadTable* pRefTable;
     size_t kmer;
     size_t kmerThreshold;
+
+    int verbose;
 };
 
 //
@@ -56,13 +61,16 @@ class HapgenProcess
 
         // Generate haplotypes from chromosome refName, position [start, end]
         void processSite(const std::string& refName, size_t start, size_t end, const std::string& comment);
-        std::string findAnchorKmer(const std::string& refName, int64_t start, bool upstream);
+        std::pair<std::string, int> findAnchorKmer(const std::string& refName, int64_t start, bool upstream);
 
     private:
         
         //
         // Functions
         //
+
+        // Extract the reads from the FM-index that share a kmer with any given haplotype
+        void extractHaplotypeReads(const StringVector& haplotypes, StringVector& reads, bool doReverseComp) const;
 
         //
         // Data
