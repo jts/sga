@@ -70,13 +70,13 @@ int genSSAMain(int argc, char** argv)
     parseGenSSAOptions(argc, argv);
     
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
-    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile);
+    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pBWT->getNumStrings(), RIO_NUMERICID);
     pBWT->printInfo();
 
     SampledSuffixArray* pSSA = new SampledSuffixArray();
     pSSA->build(pBWT, pRIT, opt::sampleRate);
     pSSA->printInfo();
-    pSSA->write(opt::prefix + SSA_EXT);
+    pSSA->writeSSA(opt::prefix + SSA_EXT);
 
     if(opt::validate)
         pSSA->validate(opt::readsFile, pBWT);

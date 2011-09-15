@@ -16,12 +16,18 @@
 #include "BWT.h"
 #include "ReadInfoTable.h"
 
+enum SSAFileType
+{
+    SSA_FT_SSA,
+    SSA_FT_SAI
+};
+
 class SampledSuffixArray
 {
     public:
 
         SampledSuffixArray();
-        SampledSuffixArray(const std::string& filename);
+        SampledSuffixArray(const std::string& filename, SSAFileType filetype = SSA_FT_SSA);
         
         // Calculate the suffix array element for the given index
         SAElem calcSA(int64_t idx, const BWT* pBWT) const;
@@ -37,9 +43,10 @@ class SampledSuffixArray
         void printInfo();
 
         // I/O
-        void write(const std::string& filename);
         void writeLexicoIndex(const std::string& filename);
-        void read(const std::string& filename);
+        void writeSSA(std::string filename);
+        void readSSA(std::string filename);
+        void readSAI(std::string filename);
 
     private:
 

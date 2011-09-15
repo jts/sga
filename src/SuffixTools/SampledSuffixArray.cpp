@@ -26,11 +26,13 @@ SampledSuffixArray::SampledSuffixArray()
 
 }
 
-SampledSuffixArray::SampledSuffixArray(const std::string& filename)
+SampledSuffixArray::SampledSuffixArray(const std::string& filename, SSAFileType filetype)
 {
-    // Read the sampled suffix array from a file
-    read(filename);
-    printInfo();
+    // Read the sampled suffix array from a file - either from a .ssa or .sai file
+    if(filetype == SSA_FT_SSA)
+        readSSA(filename);
+    else
+        readSAI(filename);
 }
 
 // 
@@ -41,7 +43,8 @@ SAElem SampledSuffixArray::calcSA(int64_t idx, const BWT* pBWT) const
 
     while(1)
     {
-        if(idx % m_sampleRate == 0 && !m_saSamples[idx / m_sampleRate].isEmpty())
+        // Check if this position is sampled. If the sample rate is zero we are using the lexo. index only
+        if(m_sampleRate > 0 && idx % m_sampleRate == 0 && !m_saSamples[idx / m_sampleRate].isEmpty())
         {
             // A valid sample is stored for this idx
             elem = m_saSamples[idx / m_sampleRate];
@@ -161,7 +164,7 @@ void SampledSuffixArray::validate(const std::string filename, const BWT* pBWT)
 }
 
 // Save the SA to disc
-void SampledSuffixArray::write(const std::string& filename)
+void SampledSuffixArray::writeSSA(std::string filename)
 {
     std::ostream* pWriter = createWriter(filename, std::ios::out | std::ios::binary);
     
@@ -199,7 +202,7 @@ void SampledSuffixArray::writeLexicoIndex(const std::string& filename)
 }
 
 
-void SampledSuffixArray::read(const std::string& filename)
+void SampledSuffixArray::readSSA(std::string filename)
 {
     std::istream* pReader = createReader(filename, std::ios::binary);
     
@@ -228,6 +231,19 @@ void SampledSuffixArray::read(const std::string& filename)
     SSA_READ_N(m_saSamples.front(), sizeof(SAElem) * n)
 
     delete pReader;
+}
+
+void SampledSuffixArray::readSAI(std::string filename)
+{
+    SAReader reader(filename);
+    size_t num_strings, num_elems;
+    reader.readHeader(num_strings, num_elems);
+    assert(num_strings == num_elems);
+    m_saLexoIndex.reserve(num_strings);
+    reader.readElems(m_saLexoIndex);
+
+    // Set the sample rate to zero to signify there are no samples
+    m_sampleRate = 0;
 }
 
 // Print memory usage information
