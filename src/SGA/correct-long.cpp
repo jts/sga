@@ -98,7 +98,7 @@ int correctLongMain(int argc, char** argv)
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
-    SampledSuffixArray* pSSA = new SampledSuffixArray(opt::prefix + SSA_EXT);
+    SampledSuffixArray* pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
     std::ostream* pWriter = createWriter(opt::outFile);
 
     // Set the long read corrector options
