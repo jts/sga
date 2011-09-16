@@ -669,64 +669,71 @@ void SGSmallRepeatResolveVisitor::previsit(StringGraph*)
 
 }
 
-//
+// Perform the small repeat resolution algorithm on vertex pX
+// The algorithm works as follows.
+// We keep only the longest overlap of a vertex pX
+// (to pY) under the following conditions.
+// 1) pX is the longest overlap for pY
+// 2) The overlap between pX and pY is at least
+//    m_minDiff bases longer than the 2nd longest
 bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
 {
     bool changed = false;
     for(size_t idx = 0; idx < ED_COUNT; idx++)
     {
         EdgeDir dir = EDGE_DIRECTIONS[idx];
-        EdgePtrVec x_edges = pX->getEdges(dir); // These edges are already sorted
+        EdgePtrVec x_edges = pX->getEdges(dir);
+        
+        // Skip this direction if there aren't multiple edges
         if(x_edges.size() < 2)
             continue;
-
-        // Try to eliminate the shortest edge from this vertex (let this be X->Y)
-        // If Y has a longer edge than Y->X in the same direction, we remove X->Y
-
-        // Edges are sorted by length so the last edge is the shortest
-        Edge* pXY = x_edges.back();
-        size_t xy_len =  pXY->getOverlap().getOverlapLength(0);
-        size_t x_longest_len = x_edges.front()->getOverlap().getOverlapLength(0);
-        if(xy_len == x_longest_len)
+        
+        // Get the edge to the longest 
+        Edge* pXY = pX->getLongestOverlapEdge(dir);
+        assert(pXY != NULL);
+        Vertex* pY = pXY->getEnd();
+        
+        // Skip self overlaps
+        if(pX == pY)
             continue;
 
-        Edge* pYX = pXY->getTwin();
-        Vertex* pY = pXY->getEnd();
+        // Get the longest overlap for Y
+        Edge* pYZ = pY->getLongestOverlapEdge(pXY->getTwinDir());
 
-        EdgePtrVec y_edges = pY->getEdges(pYX->getDir());
-        size_t yx_len = pYX->getOverlap().getOverlapLength(0);
+        // This vertex is not resolvable if the longest overlap for Y is not X
+        if(pYZ->getEnd() != pX)
+            continue;
 
-        size_t y_longest_len = 0;
-        for(size_t i = 0; i < y_edges.size(); ++i)
+        // Calculate the difference in overlap length between the longest
+        // and second longest overlaps of x and y
+        int x_diff = pX->getOverlapLengthDiff(dir);
+        int y_diff = pY->getOverlapLengthDiff(dir);
+
+        //printf("XDIFF: %d n_x: %zu\n", x_diff, x_edges.size());
+        //printf("YDIFF: %d\n", y_diff);
+
+        if(x_diff >= m_minDiff && y_diff >= m_minDiff)
         {
-            Edge* pYZ = y_edges[i];
-            if(pYZ == pYX)
-                continue; // skip Y->X
-
-            size_t yz_len = pYZ->getOverlap().getOverlapLength(0);
-            if(yz_len > y_longest_len)
-                y_longest_len = yz_len;
-        }
-
-
-        if(y_longest_len > yx_len)
-        {
-            // Delete the edge if the difference between the shortest and longest is greater than minDiff
-            int x_diff = x_longest_len - xy_len;
-            int y_diff = y_longest_len - yx_len;
-
-            if(x_diff > m_minDiff && y_diff > m_minDiff)
+            // Mark non-selected edges for deletion
+            for(size_t i = 0; i < x_edges.size(); ++i)
             {
-                /*
-                printf("Edge %s -> %s is likely a repeat\n", pX->getID().c_str(), pY->getID().c_str());
-                printf("Actual overlap lengths: %zu and %zu\n", xy_len, yx_len);
-                printf("Spanned by longer edges of size: %zu and %zu\n", x_longest_len, y_longest_len);
-                printf("Differences: %d and %d\n", x_diff, y_diff);
-                */
-                pX->deleteEdge(pXY);
-                pY->deleteEdge(pYX);
-                changed = true;
+                if(x_edges[i] != pXY)
+                {
+                    x_edges[i]->setColor(GC_RED);
+                    x_edges[i]->getTwin()->setColor(GC_RED);
+                }
             }
+
+            EdgePtrVec y_edges = pY->getEdges(pYZ->getDir());
+            for(size_t i = 0; i < y_edges.size(); ++i)
+            {
+                if(y_edges[i] != pYZ)
+                {
+                    y_edges[i]->setColor(GC_RED);
+                    y_edges[i]->getTwin()->setColor(GC_RED);
+                }
+            }
+            changed = true;
         }
     }
 
@@ -734,9 +741,9 @@ bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
 }
 
 //
-void SGSmallRepeatResolveVisitor::postvisit(StringGraph*)
+void SGSmallRepeatResolveVisitor::postvisit(StringGraph* pGraph)
 {
-
+    pGraph->sweepEdges(GC_RED);
 }
 
 //

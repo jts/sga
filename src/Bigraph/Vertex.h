@@ -95,6 +95,7 @@ class Vertex
         void removeEdge(const EdgeDesc& ed);
         void deleteEdge(Edge* pEdge);
         void deleteEdges();
+
         int sweepEdges(GraphColor c);
         bool hasEdge(Edge* pEdge) const;
         bool hasEdge(const EdgeDesc& ed) const;
@@ -106,9 +107,14 @@ class Vertex
         EdgePtrVec getEdges() const;
         EdgePtrVecIter findEdge(const EdgeDesc& ed);
         EdgePtrVecConstIter findEdge(const EdgeDesc& ed) const;
+        Edge* getLongestOverlapEdge(EdgeDir dir) const;
 
         size_t countEdges() const;
         size_t countEdges(EdgeDir dir);
+
+        // Calculate the difference in overlap lengths between
+        // the longest and second longest edge
+        int getOverlapLengthDiff(EdgeDir dir) const;
 
         // Ensure the vertex data is sane
         void validate() const;
