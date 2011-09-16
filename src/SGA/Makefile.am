@@ -51,5 +51,6 @@ sga_SOURCES = sga.cpp \
               graph-diff.h graph-diff.cpp \
               var2vcf.h var2vcf.cpp \
               hapgen.h hapgen.cpp \
+              gapfill.h gapfill.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 
