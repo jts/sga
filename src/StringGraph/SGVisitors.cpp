@@ -707,7 +707,7 @@ bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
         // Calculate the difference in overlap length between the longest
         // and second longest overlaps of x and y
         int x_diff = pX->getOverlapLengthDiff(dir);
-        int y_diff = pY->getOverlapLengthDiff(dir);
+        int y_diff = pY->getOverlapLengthDiff(pYZ->getDir());
 
         //printf("XDIFF: %d n_x: %zu\n", x_diff, x_edges.size());
         //printf("YDIFF: %d\n", y_diff);
@@ -1067,7 +1067,7 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 for(size_t j = 1; j < variantWalks[i].getNumVertices() - 1; ++j)
                     walkCoverage += variantWalks[i].getVertex(j)->getCoverage();
 
-                if(walkCoverage > selectedCoverage)
+                if(walkCoverage > selectedCoverage || selectedCoverage == 0)
                 {
                     selectedIdx = i;
                     selectedCoverage = walkCoverage;

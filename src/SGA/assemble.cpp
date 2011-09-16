@@ -179,20 +179,19 @@ void assemble()
         int numTrims = opt::numTrimRounds;
         while(numTrims-- > 0)
            pGraph->visit(trimVisit);
-        std::cout << "After trimming stats\n";
+        std::cout << "\nAfter trimming stats\n";
         pGraph->visit(statsVisit);
     }
 
     // Resolve small repeats
     if(opt::resolveSmallRepeatLen > 0)
     {
-        Timer smallTimer("SmallRepeat");
         SGSmallRepeatResolveVisitor smallRepeatVisit(opt::resolveSmallRepeatLen);
         std::cout << "Resolving small repeats\n";
 
         while(pGraph->visit(smallRepeatVisit)) {}
         
-        std::cout << "After small repeat resolve graph stats\n";
+        std::cout << "\nAfter small repeat resolve graph stats\n";
         pGraph->visit(statsVisit);
     }
 
