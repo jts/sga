@@ -69,7 +69,7 @@ namespace opt
     static std::string outFile = "scaffolds.gapfill.fa";
 }
 
-static const char* shortopts = "o:k:t:p:s:d:v";
+static const char* shortopts = "o:k:t:x:p:s:d:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 

@@ -39,6 +39,7 @@ void HaplotypeBuilder::setTerminals(const AnchorSequence& leftAnchor, const Anch
     // Create a new vertex for the source sequence
     // As we are creating a de Bruijn graph, we use the sequence
     // of the vertex as its ID
+    assert(leftAnchor.sequence != rightAnchor.sequence);
     Vertex* pLeftVertex = new(m_pGraph->getVertexAllocator()) Vertex(leftAnchor.sequence, leftAnchor.sequence);
     addVertex(pLeftVertex, leftAnchor.count);
 

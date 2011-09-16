@@ -54,7 +54,7 @@ class GapFillProcess
         ~GapFillProcess();
         
         // Generate haplotypes from chromosome refName, position [start, end]
-        void processScaffold(const std::string& scaffold);
+        void processScaffold(const std::string& scaffold) const;
 
     private:
         
@@ -62,10 +62,15 @@ class GapFillProcess
         // Functions
         //
 
+        bool processGap(const std::string& scaffold, int gapStart, int gapEnd) const;
+        AnchorSequence findAnchor(const std::string& scaffold, int64_t position, bool upstream) const;
+
         //
         // Data
         //
         GapFillParameters m_parameters;
+        mutable size_t m_gapsAttempted;
+        mutable size_t m_gapsFilled;
 };
 
 #if 0
