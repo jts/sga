@@ -16,6 +16,22 @@
 #include "VariationBubbleBuilder.h"
 #include <queue>
 
+// Structs
+
+struct AnchorSequence
+{
+    std::string sequence;
+    int position;
+    int count;
+
+    friend std::ostream& operator<<(std::ostream& out, const AnchorSequence& a) 
+    { 
+        out << a.position << " " << a.sequence << " " << a.count; 
+        return out; 
+    }
+};
+typedef std::vector<AnchorSequence> AnchorVector;
+
 // The actual result structure
 struct HaplotypeBuilderResult
 {
@@ -32,7 +48,7 @@ class HaplotypeBuilder
         HaplotypeBuilder();
         ~HaplotypeBuilder();
 
-        void setTerminals(const std::string& leftTerminal, size_t leftCoverage, const std::string& rightTerminal, size_t rightCoverage);
+        void setTerminals(const AnchorSequence& leftAnchor, const AnchorSequence& rightAnchor);
         void setIndex(const BWT* pBWT, const BWT* pRBWT);
 
         // Set the threshold of kmer occurrences to use it as an edge

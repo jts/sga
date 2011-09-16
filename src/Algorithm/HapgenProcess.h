@@ -18,7 +18,7 @@
 #include "SGUtil.h"
 #include "SGWalk.h"
 #include "BitVector.h"
-#include "VariationBubbleBuilder.h"
+#include "HaplotypeBuilder.h"
 #include "SequenceProcessFramework.h"
 #include "BWTIntervalCache.h"
 #include "SampledSuffixArray.h"
@@ -61,7 +61,7 @@ class HapgenProcess
 
         // Generate haplotypes from chromosome refName, position [start, end]
         void processSite(const std::string& refName, size_t start, size_t end, const std::string& comment);
-        std::pair<std::string, int> findAnchorKmer(const std::string& refName, int64_t start, bool upstream);
+        AnchorSequence findAnchorKmer(const std::string& refName, int64_t start, bool upstream);
 
     private:
         

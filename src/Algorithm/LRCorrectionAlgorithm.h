@@ -44,7 +44,11 @@ namespace LRCorrectionAlgorithm
                                    const SampledSuffixArray* /*pTargetSSA*/,
                                    const LRAlignment::LRParams& /*params*/);
 
-
+    //
+    std::string correctDeBruijnPath(const std::string& query,
+                                    const BWT* pTargetBWT, 
+                                    const BWT* pRevTargetBWT,
+                                    bool verbose = false);
 };
 
 #endif

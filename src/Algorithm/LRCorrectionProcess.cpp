@@ -26,11 +26,14 @@ LRCorrectionProcess::~LRCorrectionProcess()
 LRCorrectionResult LRCorrectionProcess::process(const SequenceWorkItem& item)
 {
     LRCorrectionResult result;
-    result.correctedSequence = LRCorrectionAlgorithm::correct(item.read.seq.toString(), 
-                                                              m_params.pBWT, 
-                                                              m_params.pRBWT,
-                                                              m_params.pSSA, 
-                                                              m_params.alignParams);
+    if((int)item.read.seq.length() > m_params.minLength)
+    {
+        result.correctedSequence = LRCorrectionAlgorithm::correct(item.read.seq.toString(), 
+                                                                  m_params.pBWT, 
+                                                                  m_params.pRBWT,
+                                                                  m_params.pSSA, 
+                                                                  m_params.alignParams);
+    }
     return result;
 }
 

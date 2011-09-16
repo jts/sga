@@ -34,16 +34,16 @@ void HaplotypeBuilder::setKmerParameters(size_t k, size_t t)
 }
 
 // The source string is the string the bubble starts from
-void HaplotypeBuilder::setTerminals(const std::string& leftTerminal, size_t leftCoverage, const std::string& rightTerminal, size_t rightCoverage)
+void HaplotypeBuilder::setTerminals(const AnchorSequence& leftAnchor, const AnchorSequence& rightAnchor)
 {
     // Create a new vertex for the source sequence
     // As we are creating a de Bruijn graph, we use the sequence
     // of the vertex as its ID
-    Vertex* pLeftVertex = new(m_pGraph->getVertexAllocator()) Vertex(leftTerminal, leftTerminal);
-    addVertex(pLeftVertex, leftCoverage);
+    Vertex* pLeftVertex = new(m_pGraph->getVertexAllocator()) Vertex(leftAnchor.sequence, leftAnchor.sequence);
+    addVertex(pLeftVertex, leftAnchor.count);
 
-    Vertex* pRightVertex = new(m_pGraph->getVertexAllocator()) Vertex(rightTerminal, rightTerminal);
-    addVertex(pRightVertex, rightCoverage);
+    Vertex* pRightVertex = new(m_pGraph->getVertexAllocator()) Vertex(rightAnchor.sequence, rightAnchor.sequence);
+    addVertex(pRightVertex, rightAnchor.count);
 
     // Add the vertex to the extension queue
     m_queue.push(BubbleExtensionNode(pLeftVertex, ED_SENSE));

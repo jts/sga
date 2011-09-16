@@ -33,10 +33,10 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
     if(m_parameters.verbose > 0)
         std::cout << "\nProcessing " << refName << " [" << start << " " << end << "] " << comment << "\n";
 
-    std::pair<std::string, int> startAnchor = findAnchorKmer(refName, start, true);
-    std::pair<std::string, int> endAnchor = findAnchorKmer(refName, end, false);
+    AnchorSequence startAnchor = findAnchorKmer(refName, start, true);
+    AnchorSequence endAnchor = findAnchorKmer(refName, end, false);
 
-    if(startAnchor.first.empty() || endAnchor.first.empty())
+    if(startAnchor.sequence.empty() || endAnchor.sequence.empty())
     {
         if(m_parameters.verbose > 0)
             std::cout << "Could not anchor to reference\n";
@@ -45,12 +45,12 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
 
     if(m_parameters.verbose > 0)
     {
-        std::cout << "Left anchor depth: " << startAnchor.second << "\n";
-        std::cout << "Right anchor depth: " << endAnchor.second << "\n";
+        std::cout << "Left anchor depth: " << startAnchor.count << "\n";
+        std::cout << "Right anchor depth: " << endAnchor.count << "\n";
     }
 
     HaplotypeBuilder builder;
-    builder.setTerminals(startAnchor.first, startAnchor.second, endAnchor.first, endAnchor.second);
+    builder.setTerminals(startAnchor, endAnchor);
     builder.setIndex(m_parameters.pBWT, m_parameters.pRevBWT);
     builder.setKmerParameters(m_parameters.kmer, m_parameters.kmerThreshold);
     builder.run();
@@ -93,10 +93,10 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
 }
 
 // Returns the closest kmer to the provided position with occurrence count greater than the passed in threshold
-std::pair<std::string, int> HapgenProcess::findAnchorKmer(const std::string& refName, int64_t position, bool upstream)
+AnchorSequence HapgenProcess::findAnchorKmer(const std::string& refName, int64_t position, bool upstream)
 {
     const SeqItem& refItem = m_parameters.pRefTable->getRead(refName);
-    std::pair<std::string, int> anchor;
+    AnchorSequence anchor;
 
     int64_t stride = upstream ? -1 : 1;
     int MAX_DISTANCE = 100;
@@ -118,14 +118,15 @@ std::pair<std::string, int> HapgenProcess::findAnchorKmer(const std::string& ref
         size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(testSeq, m_parameters.pBWT, m_parameters.pBWTCache);
         if(count > m_parameters.kmerThreshold)
         {
-            anchor.first = testSeq;
-            anchor.second = count;
+            anchor.sequence = testSeq;
+            anchor.count = count;
+            anchor.position = position;
             return anchor;
         }
     }
 
-    anchor.first = "";
-    anchor.second = -1;
+    anchor.sequence = "";
+    anchor.count = -1;
     return anchor;
 }
 
