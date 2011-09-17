@@ -51,6 +51,8 @@ enum GapFillReturnCode
     GFRC_OK,
     GFRC_NO_HAPLOTYPE,
     GFRC_NO_ANCHOR,
+    GFRC_AMBIGUOUS,
+    GFRC_BAD_SIZE,
     GFRC_NUM_CODES
 };
 
@@ -82,6 +84,7 @@ class GapFillProcess
         
         // Generate haplotypes from chromosome refName, position [start, end]
         GapFillResult processScaffold(const std::string& scaffold) const;
+        GapFillResult processScaffold2(const std::string& scaffold) const;
 
     private:
         
@@ -89,7 +92,8 @@ class GapFillProcess
         // Functions
         //
 
-        GapFillReturnCode processGap(const std::string& scaffold, int gapStart, int gapEnd, std::string& outSequence) const;
+        GapFillReturnCode processGap(const AnchorSequence& leftAnchor, const AnchorSequence& rightAnchor, std::string& outSequence) const;
+        GapFillReturnCode processGap2(const std::string& scaffold, int gapStart, int gapEnd, std::string& outSequence) const;
         AnchorSequence findAnchor(const std::string& scaffold, int64_t position, bool upstream) const;
 
         //

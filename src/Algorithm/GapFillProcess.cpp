@@ -30,6 +30,8 @@ void GapFillStats::print() const
     printf("Num gaps filled: %zu\n", numGapsFilled);
     printf("    Failed -- no anchor: %zu\n", numFails[GFRC_NO_ANCHOR]);
     printf("    Failed -- no haplotype: %zu\n", numFails[GFRC_NO_HAPLOTYPE]);
+    printf("    Failed -- ambiguous solution: %zu\n", numFails[GFRC_AMBIGUOUS]);
+    printf("    Failed -- assembled size differs from estimate: %zu\n", numFails[GFRC_BAD_SIZE]);
 }
 
 //
@@ -53,67 +55,83 @@ GapFillResult GapFillProcess::processScaffold(const std::string& scaffold) const
     
     GapFillResult result;
 
-    // Find gaps in the scaffold and attempt to build sequence for them
-    int gapStart = -1;
-    int gapEnd = -1;
-    for(size_t i = 0; i < scaffold.length(); ++i)
+    size_t len = scaffold.length();
+    size_t currIdx = 0;
+    while(currIdx < len)
     {
-        char b = scaffold[i];
-        if(b == 'N')
+        char b = scaffold[currIdx];
+
+        if(b != 'N')
         {
-            if(gapStart == -1)
-                gapStart = i; // start a new gap
-            gapEnd = i;
+            // Append this non-gap character into the output scaffold
+            result.scaffold.append(1,b);
+            currIdx += 1;
         }
         else
         {
-            // end a gap
-            if(gapStart != -1)
+            // Found the start of a gap
+            size_t gapLength = 0;
+            while(scaffold[currIdx + gapLength] == 'N')
+                gapLength += 1;
+
+            if(m_parameters.verbose >= 1)
+            printf("Constructing gap at position %zu GapLength: %zu\n", currIdx, gapLength);
+            
+            // Calculate the left-anchor using the sequence of the scaffold already appended
+            AnchorSequence leftAnchor = findAnchor(result.scaffold, result.scaffold.length() - m_parameters.kmer, true);
+
+            // Calculate the right anchor using the sequence of the input scaffold
+            AnchorSequence rightAnchor = findAnchor(scaffold, currIdx + gapLength, false);
+
+            // Attempt to build the gap sequence
+            std::string gapSequence;
+            GapFillReturnCode code = processGap(leftAnchor, rightAnchor, gapSequence);
+            m_stats.numGapsAttempted += 1;
+
+            if(code == GFRC_OK)
             {
-                std::string gapSequence;
-                GapFillReturnCode code = processGap(scaffold, gapStart, gapEnd, gapSequence);
-                m_stats.numGapsAttempted += 1;
+                // Successfully resolved the gap. Calculate the amount of the anchor sequence
+                // that is already present in the scaffold and does not need to be appended in. 
+                size_t trimLength = result.scaffold.length() - leftAnchor.position;
+                result.scaffold.append(gapSequence.substr(trimLength));
 
-                if(code == GFRC_OK)
-                {
-                    result.scaffold.append(gapSequence);
-                    m_stats.numGapsFilled += 1;
-                }
-                else
-                {
-                    m_stats.numFails[code] += 1;
-                    result.scaffold.append(gapEnd - gapStart + 1, 'N');
-                }
-                
-                // Reset gap positions
-                gapStart = gapEnd = -1;
+                // We need to update currIdx to point to the next base in the 
+                // input scaffold that is not already assembled. This is given
+                // by the position of the rightAnchor, plus a kmer
+                currIdx = rightAnchor.position + m_parameters.kmer;
+                m_stats.numGapsFilled += 1;
             }
+            else
+            {
+                // Failed to resolve the gap. Append the gap into the growing scaffold
+                m_stats.numFails[code] += 1;
 
-            // Append in the normal character to the scaffold
-            result.scaffold.append(1, b);
+                while(scaffold[currIdx] == 'N')
+                {
+                    result.scaffold.append(1, 'N');
+                    currIdx += 1;
+                }
+            }
         }
     }
 
-    //StdAlnTools::globalAlignment(scaffold, outScaffold, true);
+    if(m_parameters.verbose >= 2)
+        StdAlnTools::globalAlignment(scaffold, result.scaffold, true);
     return result;
 }
 
 // Fill in the specified gap
-GapFillReturnCode GapFillProcess::processGap(const std::string& scaffold, int gapStart, int gapEnd, std::string& outSequence) const
+GapFillReturnCode GapFillProcess::processGap(const AnchorSequence& startAnchor, const AnchorSequence& endAnchor, std::string& outSequence) const
 {
-    if(m_parameters.verbose > 0)
-        std::cout << "Attempting to fill gap of length " << gapEnd - gapStart + 1 << "\n";
-    AnchorSequence startAnchor = findAnchor(scaffold, gapStart - m_parameters.kmer, true);
-    AnchorSequence endAnchor = findAnchor(scaffold, gapEnd + 1, false);
-
-    if(startAnchor.sequence.empty() || endAnchor.sequence.empty() || startAnchor.sequence == endAnchor.sequence)
-        return GFRC_NO_ANCHOR;
 
     if(m_parameters.verbose > 0)
     {
         std::cout << "\tSTART: " << startAnchor << "\n";
         std::cout << "\tEND: " << endAnchor << "\n";
     }
+
+    if(startAnchor.sequence.empty() || endAnchor.sequence.empty() || startAnchor.sequence == endAnchor.sequence)
+        return GFRC_NO_ANCHOR;
 
     HaplotypeBuilder builder;
     builder.setTerminals(startAnchor, endAnchor);
@@ -124,8 +142,7 @@ GapFillReturnCode GapFillProcess::processGap(const std::string& scaffold, int ga
     HaplotypeBuilderResult result;
     builder.parseWalks(result);
     
-    
-    if(result.haplotypes.size() >= 1)
+    if(result.haplotypes.size() > 0)
     {
         if(m_parameters.verbose > 0)
         {
@@ -135,22 +152,13 @@ GapFillReturnCode GapFillProcess::processGap(const std::string& scaffold, int ga
         }
 
         // Arbitrarily choosing the first haplotype as the sequence
-        std::string& selectedSeq = result.haplotypes[0];
-        
-        // Map the coordinates of the gap start/end onto the haplotype
-        assert(gapStart >= startAnchor.position);
-        assert(gapEnd <= endAnchor.position);
-        int hap_gap_start = (gapStart - startAnchor.position);
-        int hap_gap_end  = selectedSeq.length() - m_parameters.kmer - (endAnchor.position - gapEnd);
-
-        //printf("GapStart: %d GapEnd: %d AnchorStart: %d AnchorEnd: %d\n", gapStart, gapEnd, startAnchor.position, endAnchor.position);
-        //std::cout << "GSL: " << selectedSeq.length() << " HS: " << hap_gap_start << " HE: " << hap_gap_end << "\n";
-
-        // Extract the sequence of the gap
-        outSequence = selectedSeq.substr(hap_gap_start, hap_gap_end - hap_gap_start + 1);
+        outSequence = result.haplotypes[0];
+        return GFRC_OK;
     }
-    
-    return !result.haplotypes.empty() ? GFRC_OK : GFRC_NO_HAPLOTYPE;
+    else 
+    {
+        return result.haplotypes.empty() ? GFRC_NO_HAPLOTYPE : GFRC_AMBIGUOUS;
+    }
 }
 
 AnchorSequence GapFillProcess::findAnchor(const std::string& scaffold, int64_t position, bool upstream) const
