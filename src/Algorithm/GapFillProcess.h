@@ -40,6 +40,27 @@ struct GapFillParameters
     int verbose;
 };
 
+enum GapFillReturnCode
+{
+    GFRC_OK,
+    GFRC_NO_HAPLOTYPE,
+    GFRC_NO_ANCHOR,
+    GFRC_NUM_CODES
+};
+
+// Statistics tracking object
+struct GapFillStats
+{
+    GapFillStats(); 
+    size_t numGapsAttempted;
+    size_t numGapsFilled;
+
+    // Failure stats
+    size_t numFails[GFRC_NUM_CODES];
+
+    void print() const;
+};
+
 //
 //
 //
@@ -62,15 +83,14 @@ class GapFillProcess
         // Functions
         //
 
-        bool processGap(const std::string& scaffold, int gapStart, int gapEnd) const;
+        GapFillReturnCode processGap(const std::string& scaffold, int gapStart, int gapEnd) const;
         AnchorSequence findAnchor(const std::string& scaffold, int64_t position, bool upstream) const;
 
         //
         // Data
         //
         GapFillParameters m_parameters;
-        mutable size_t m_gapsAttempted;
-        mutable size_t m_gapsFilled;
+        mutable GapFillStats m_stats;
 };
 
 #if 0

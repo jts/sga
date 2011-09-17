@@ -16,19 +16,33 @@
 #include "MultiAlignment.h"
 
 //
+GapFillStats::GapFillStats()
+{
+    numGapsAttempted = numGapsFilled = 0;
+    for(size_t i = 0; i < GFRC_NUM_CODES; ++i)
+        numFails[i] = 0;
+}
+
+//
+void GapFillStats::print() const
+{
+    printf("Num gaps attempted: %zu\n", numGapsAttempted);
+    printf("Num gaps filled: %zu\n", numGapsFilled);
+    printf("    Failed -- no anchor: %zu\n", numFails[GFRC_NO_ANCHOR]);
+    printf("    Failed -- no haplotype: %zu\n", numFails[GFRC_NO_HAPLOTYPE]);
+}
+
+//
 //
 //
 GapFillProcess::GapFillProcess(const GapFillParameters& params) : m_parameters(params)
 {
-    m_gapsAttempted = 0;
-    m_gapsFilled = 0;
 }
 
 //
 GapFillProcess::~GapFillProcess()
 {
-    std::cout << "Gaps attempted: " << m_gapsAttempted << "\n";
-    std::cout << "Gaps filled: " << m_gapsFilled << "\n";
+    m_stats.print();
 }
 
 // Process the given scaffold, filling in any gaps found
@@ -54,11 +68,19 @@ void GapFillProcess::processScaffold(const std::string& scaffold) const
             // end a gap
             if(gapStart != -1)
             {
-                bool success = processGap(scaffold, gapStart, gapEnd);
-                m_gapsAttempted += 1;
-                if(success)
-                    m_gapsFilled += 1;
+                GapFillReturnCode code = processGap(scaffold, gapStart, gapEnd);
+                m_stats.numGapsAttempted += 1;
 
+                if(code == GFRC_OK)
+                {
+                    m_stats.numGapsFilled += 1;
+                }
+                else
+                {
+                    m_stats.numFails[code] += 1;
+                }
+                
+                // Reset gap positions
                 gapStart = gapEnd = -1;
             }
         }
@@ -66,14 +88,15 @@ void GapFillProcess::processScaffold(const std::string& scaffold) const
 }
 
 // Fill in the specified gap
-bool GapFillProcess::processGap(const std::string& scaffold, int gapStart, int gapEnd) const
+GapFillReturnCode GapFillProcess::processGap(const std::string& scaffold, int gapStart, int gapEnd) const
 {
     if(m_parameters.verbose > 0)
         std::cout << "Attempting to fill gap of length " << gapEnd - gapStart + 1 << "\n";
     AnchorSequence startAnchor = findAnchor(scaffold, gapStart - m_parameters.kmer, true);
     AnchorSequence endAnchor = findAnchor(scaffold, gapEnd, false);
+
     if(startAnchor.sequence.empty() || endAnchor.sequence.empty() || startAnchor.sequence == endAnchor.sequence)
-        return false;
+        return GFRC_NO_ANCHOR;
 
     if(m_parameters.verbose > 0)
     {
@@ -98,7 +121,7 @@ bool GapFillProcess::processGap(const std::string& scaffold, int gapStart, int g
         haplotypeAlignment.print();
     }
     
-    return !result.haplotypes.empty();
+    return !result.haplotypes.empty() ? GFRC_OK : GFRC_NO_HAPLOTYPE;
 }
 
 AnchorSequence GapFillProcess::findAnchor(const std::string& scaffold, int64_t position, bool upstream) const
