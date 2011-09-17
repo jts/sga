@@ -113,14 +113,19 @@ int gapfillMain(int argc, char** argv)
 
     GapFillProcess processor(parameters);
 
+    std::ostream* pWriter = createWriter(opt::outFile);
+
     SeqReader reader(opt::scaffoldFile, SRF_NO_VALIDATION);
     SeqRecord record;
     while(reader.get(record))
     {
-        processor.processScaffold(record.seq.toString());
+        GapFillResult result = processor.processScaffold(record.seq.toString());
+        record.seq = result.scaffold;
+        record.write(*pWriter);
     }
 
     // Cleanup
+    delete pWriter;
     delete pBWT;
     delete pRevBWT;
     delete pBWTCache;
