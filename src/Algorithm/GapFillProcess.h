@@ -48,6 +48,7 @@ struct GapFillResult
 
 enum GapFillReturnCode
 {
+    GFRC_UNKNOWN,
     GFRC_OK,
     GFRC_NO_HAPLOTYPE,
     GFRC_NO_ANCHOR,
@@ -85,17 +86,26 @@ class GapFillProcess
         
         // Generate haplotypes from chromosome refName, position [start, end]
         GapFillResult processScaffold(const std::string& scaffold) const;
-        GapFillResult processScaffold2(const std::string& scaffold) const;
 
     private:
         
         //
         // Functions
         //
+        
+        // Attempt to fill in the sequence between the two anchors
+        GapFillReturnCode processGap(size_t k, 
+                                     int estimatedSize,
+                                     const AnchorSequence& leftAnchor, 
+                                     const AnchorSequence& rightAnchor, 
+                                     std::string& outSequence) const;
 
-        GapFillReturnCode processGap(const AnchorSequence& leftAnchor, const AnchorSequence& rightAnchor, std::string& outSequence) const;
-        GapFillReturnCode processGap2(const std::string& scaffold, int gapStart, int gapEnd, std::string& outSequence) const;
-        AnchorSequence findAnchor(const std::string& scaffold, int64_t position, bool upstream) const;
+        // Find an anchor sequence to start the process of building the gap sequence
+        AnchorSequence findAnchor(size_t k, const std::string& scaffold, int64_t position, bool upstream) const;
+
+        // Attempt to select one of the passed in strings as the gap sequence. If none fit the constraints,
+        // this sets gapSequence to the empty string and returns an error code
+        GapFillReturnCode selectGapSequence(int estiamtedSize, const StringVector& sequences, std::string& gapSequence) const;
 
         //
         // Data

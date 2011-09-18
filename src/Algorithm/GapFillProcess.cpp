@@ -78,33 +78,47 @@ GapFillResult GapFillProcess::processScaffold(const std::string& scaffold) const
             if(m_parameters.verbose >= 1)
             printf("Constructing gap at position %zu GapLength: %zu\n", currIdx, gapLength);
             
-            // Calculate the left-anchor using the sequence of the scaffold already appended
-            AnchorSequence leftAnchor = findAnchor(result.scaffold, result.scaffold.length() - m_parameters.kmer, true);
+            size_t startKmer = 71;//m_parameters.kmer;
+            size_t endKmer = 51;
+            size_t stride = 10;
+            GapFillReturnCode code = GFRC_UNKNOWN;
 
-            // Calculate the right anchor using the sequence of the input scaffold
-            AnchorSequence rightAnchor = findAnchor(scaffold, currIdx + gapLength, false);
-
-            // Attempt to build the gap sequence
-            std::string gapSequence;
-            GapFillReturnCode code = processGap(leftAnchor, rightAnchor, gapSequence);
-            m_stats.numGapsAttempted += 1;
-
-            if(code == GFRC_OK)
+            // Attempt to fill this gap starting with a long kmer, then relaxing the process
+            for(size_t k = startKmer; k >= endKmer; k -= stride)
             {
-                // Successfully resolved the gap. Calculate the amount of the anchor sequence
-                // that is already present in the scaffold and must be removed. We remove this amount
-                // of sequence from the current scaffold, not the gapSequence, to account
-                // for the case that the gap sequence is significantly different than the sequence
-                // after the left anchor. 
-                size_t trimLength = result.scaffold.length() - leftAnchor.position;
-                assert(result.scaffold.substr(leftAnchor.position, m_parameters.kmer) == gapSequence.substr(0, m_parameters.kmer));
-                result.scaffold.replace(leftAnchor.position, trimLength, gapSequence);
-                    
-                // We need to update currIdx to point to the next base in the 
-                // input scaffold that is not already assembled. This is given
-                // by the position of the rightAnchor, plus a kmer
-                currIdx = rightAnchor.position + m_parameters.kmer;
-                m_stats.numGapsFilled += 1;
+                // Calculate the left-anchor using the sequence of the scaffold already appended
+                AnchorSequence leftAnchor = findAnchor(k, result.scaffold, result.scaffold.length() - k, true);
+
+                // Calculate the right anchor using the sequence of the input scaffold
+                AnchorSequence rightAnchor = findAnchor(k, scaffold, currIdx + gapLength, false);
+
+                // Estimate the size of the assembled sequence, including the flanking anchors
+                int leftFlanking = result.scaffold.length() - leftAnchor.position;
+                int rightFlankingPlusGap = rightAnchor.position + k - currIdx;
+                int estimatedSize = leftFlanking + rightFlankingPlusGap;
+
+                // Attempt to build the gap sequence
+                std::string gapSequence;
+                code = processGap(k, estimatedSize, leftAnchor, rightAnchor, gapSequence);
+
+                if(code == GFRC_OK)
+                {
+                    // Successfully resolved the gap. Calculate the amount of the anchor sequence
+                    // that is already present in the scaffold and must be removed. We remove this amount
+                    // of sequence from the current scaffold, not the gapSequence, to account
+                    // for the case that the gap sequence is significantly different than the sequence
+                    // after the left anchor. 
+                    size_t trimLength = result.scaffold.length() - leftAnchor.position;
+                    assert(result.scaffold.substr(leftAnchor.position, k) == gapSequence.substr(0, k));
+                    result.scaffold.replace(leftAnchor.position, trimLength, gapSequence);
+                        
+                    // We need to update currIdx to point to the next base in the 
+                    // input scaffold that is not already assembled. This is given
+                    // by the position of the rightAnchor, plus a kmer
+                    currIdx = rightAnchor.position + k;
+                    m_stats.numGapsFilled += 1;
+                    break; 
+                }
             }
 
             if(code != GFRC_OK)
@@ -118,6 +132,7 @@ GapFillResult GapFillProcess::processScaffold(const std::string& scaffold) const
                     currIdx += 1;
                 }
             }
+            m_stats.numGapsAttempted += 1;
         }
     }
 
@@ -127,7 +142,7 @@ GapFillResult GapFillProcess::processScaffold(const std::string& scaffold) const
 }
 
 // Fill in the specified gap
-GapFillReturnCode GapFillProcess::processGap(const AnchorSequence& startAnchor, const AnchorSequence& endAnchor, std::string& outSequence) const
+GapFillReturnCode GapFillProcess::processGap(size_t k, int estimatedSize, const AnchorSequence& startAnchor, const AnchorSequence& endAnchor, std::string& outSequence) const
 {
 
     if(m_parameters.verbose > 0)
@@ -142,7 +157,7 @@ GapFillReturnCode GapFillProcess::processGap(const AnchorSequence& startAnchor, 
     HaplotypeBuilder builder;
     builder.setTerminals(startAnchor, endAnchor);
     builder.setIndex(m_parameters.pBWT, m_parameters.pRevBWT);
-    builder.setKmerParameters(m_parameters.kmer, m_parameters.kmerThreshold);
+    builder.setKmerParameters(k, m_parameters.kmerThreshold);
     builder.run();
     
     HaplotypeBuilderResult result;
@@ -157,17 +172,17 @@ GapFillReturnCode GapFillProcess::processGap(const AnchorSequence& startAnchor, 
             haplotypeAlignment.print();
         }
 
-        // Arbitrarily choosing the first haplotype as the sequence
-        outSequence = result.haplotypes[0];
-        return GFRC_OK;
+        // Calculate the estimated size of the sequence, including the anchors
+        return selectGapSequence(estimatedSize, result.haplotypes, outSequence);
     }
     else 
     {
-        return result.haplotypes.empty() ? GFRC_NO_HAPLOTYPE : GFRC_AMBIGUOUS;
+        return GFRC_NO_HAPLOTYPE;
     }
 }
 
-AnchorSequence GapFillProcess::findAnchor(const std::string& scaffold, int64_t position, bool upstream) const
+// Find an anchor sequence to start the process of building the gap sequence
+AnchorSequence GapFillProcess::findAnchor(size_t k, const std::string& scaffold, int64_t position, bool upstream) const
 {
     WARN_ONCE("TODO: deduplicate findAnchor code");
     AnchorSequence anchor;
@@ -178,13 +193,13 @@ AnchorSequence GapFillProcess::findAnchor(const std::string& scaffold, int64_t p
     // Cap the travel distance to avoid out of bounds
     if(stop < 0)
         stop = 0;
-    if(stop > (int64_t)(scaffold.length() - m_parameters.kmer))
-        stop = scaffold.length() - m_parameters.kmer;
+    if(stop > (int64_t)(scaffold.length() - k))
+        stop = scaffold.length() - k;
 
     for(; position != stop; position += stride)
     {
         assert(position >= 0);
-        std::string testSeq = scaffold.substr(position, m_parameters.kmer);
+        std::string testSeq = scaffold.substr(position, k);
         std::transform(testSeq.begin(), testSeq.end(), testSeq.begin(), ::toupper);
         if(testSeq.find_first_of('N') != std::string::npos)
             continue;
@@ -203,3 +218,36 @@ AnchorSequence GapFillProcess::findAnchor(const std::string& scaffold, int64_t p
     anchor.count = -1;
     return anchor;
 }
+
+// Attempt to select one of the passed in strings as the gap sequence. If none fit the constraints,
+// this sets gapSequence to the empty string and returns an error code
+GapFillReturnCode GapFillProcess::selectGapSequence(int estimatedSize, const StringVector& sequences, std::string& gapSequence) const
+{
+    assert(!sequences.empty());
+    int selectedIdx = -1;
+    int selectedSizeDiff = std::numeric_limits<int>::max();
+
+    for(size_t i = 0; i < sequences.size(); ++i)
+    {
+        int diff = abs(sequences[i].size() - estimatedSize);
+        //printf("ES: %d S: %zu D: %d\n", estimatedSize, sequences[i].size(), diff);
+
+        if(diff < selectedSizeDiff)
+        {
+            selectedSizeDiff = diff;
+            selectedIdx = i;
+        }
+    }
+
+    // Perform checks on the quality of the gap sequences
+    int MAX_SIZE_DIFF = 100;
+    if(selectedSizeDiff > MAX_SIZE_DIFF)
+    {
+        gapSequence = "";
+        return GFRC_BAD_SIZE;
+    }
+    
+    gapSequence = sequences[selectedIdx];
+    return GFRC_OK;
+}
+
