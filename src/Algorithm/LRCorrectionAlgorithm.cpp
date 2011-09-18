@@ -188,6 +188,10 @@ std::string correctDeBruijnPath(const std::string& query,
                 std::cout << "Anchor1: " << previousAnchor << "\n";
                 std::cout << "Anchor2: " << currAnchor << "\n";
             }
+            
+            // Skip degenerate anchors, leave the read uncorrected
+            if(previousAnchor.sequence == currAnchor.sequence)
+                return "";
 
             HaplotypeBuilder builder;
             builder.setTerminals(previousAnchor, currAnchor);
