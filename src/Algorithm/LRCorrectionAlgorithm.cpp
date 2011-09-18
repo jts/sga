@@ -142,8 +142,6 @@ std::string correctDeBruijnPath(const std::string& query,
                                 const BWT* pRevTargetBWT,
                                 bool verbose)
 {
-    (void)pRevTargetBWT;
-    
     size_t kmer = 31;
     size_t kmerThreshold = 5;
 

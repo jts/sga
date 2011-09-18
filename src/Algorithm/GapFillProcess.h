@@ -53,6 +53,7 @@ enum GapFillReturnCode
     GFRC_NO_ANCHOR,
     GFRC_AMBIGUOUS,
     GFRC_BAD_SIZE,
+    GFRC_BAD_TRIM,
     GFRC_NUM_CODES
 };
 

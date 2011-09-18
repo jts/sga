@@ -32,6 +32,7 @@ void GapFillStats::print() const
     printf("    Failed -- no haplotype: %zu\n", numFails[GFRC_NO_HAPLOTYPE]);
     printf("    Failed -- ambiguous solution: %zu\n", numFails[GFRC_AMBIGUOUS]);
     printf("    Failed -- assembled size differs from estimate: %zu\n", numFails[GFRC_BAD_SIZE]);
+    printf("    Failed -- anchor sequence mismatch: %zu\n", numFails[GFRC_BAD_TRIM]);
 }
 
 //
@@ -91,17 +92,22 @@ GapFillResult GapFillProcess::processScaffold(const std::string& scaffold) const
             if(code == GFRC_OK)
             {
                 // Successfully resolved the gap. Calculate the amount of the anchor sequence
-                // that is already present in the scaffold and does not need to be appended in. 
+                // that is already present in the scaffold and must be removed. We remove this amount
+                // of sequence from the current scaffold, not the gapSequence, to account
+                // for the case that the gap sequence is significantly different than the sequence
+                // after the left anchor. 
                 size_t trimLength = result.scaffold.length() - leftAnchor.position;
-                result.scaffold.append(gapSequence.substr(trimLength));
-
+                assert(result.scaffold.substr(leftAnchor.position, m_parameters.kmer) == gapSequence.substr(0, m_parameters.kmer));
+                result.scaffold.replace(leftAnchor.position, trimLength, gapSequence);
+                    
                 // We need to update currIdx to point to the next base in the 
                 // input scaffold that is not already assembled. This is given
                 // by the position of the rightAnchor, plus a kmer
                 currIdx = rightAnchor.position + m_parameters.kmer;
                 m_stats.numGapsFilled += 1;
             }
-            else
+
+            if(code != GFRC_OK)
             {
                 // Failed to resolve the gap. Append the gap into the growing scaffold
                 m_stats.numFails[code] += 1;
@@ -177,6 +183,7 @@ AnchorSequence GapFillProcess::findAnchor(const std::string& scaffold, int64_t p
 
     for(; position != stop; position += stride)
     {
+        assert(position >= 0);
         std::string testSeq = scaffold.substr(position, m_parameters.kmer);
         std::transform(testSeq.begin(), testSeq.end(), testSeq.begin(), ::toupper);
         if(testSeq.find_first_of('N') != std::string::npos)
