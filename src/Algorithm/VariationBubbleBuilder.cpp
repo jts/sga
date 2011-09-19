@@ -13,6 +13,7 @@
 #include "BWTAlgorithms.h"
 #include "SGSearch.h"
 #include "SGAlgorithms.h"
+#include "BuilderCommon.h"
 
 //
 //
@@ -51,8 +52,8 @@ void VariationBubbleBuilder::setSourceString(const std::string& str, int coverag
     addVertex(pVertex, coverage);
 
     // Add the vertex to the extension queue
-    m_queue.push(BubbleExtensionNode(pVertex, ED_SENSE));
-    m_queue.push(BubbleExtensionNode(pVertex, ED_ANTISENSE));
+    m_queue.push(BuilderExtensionNode(pVertex, ED_SENSE));
+    m_queue.push(BuilderExtensionNode(pVertex, ED_ANTISENSE));
 }
 
 // The source index is the index that the contains the source string
@@ -97,7 +98,7 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
     assert(!m_queue.empty());
     while(!m_queue.empty())
     {
-        BubbleExtensionNode curr = m_queue.front();
+        BuilderExtensionNode curr = m_queue.front();
         m_queue.pop();
 
         // Calculate de Bruijn extensions for this node
@@ -105,7 +106,7 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pSourceBWT, m_pSourceRevBWT, curr.direction);
 
         // Count the number of branches from this sequence
-        size_t num_branches = countValidExtensions(extensionCounts);
+        size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
 
         // Fail due to a high-coverage split occuring
         if(num_branches > 1)
@@ -118,7 +119,7 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
             if(count < m_kmerThreshold)
                 continue;
 
-            std::string newStr = makeDeBruijnVertex(vertStr, b, curr.direction);
+            std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
             
             // Create the new vertex and edge in the graph
             // If this vertex already exists, the graph must contain a loop
@@ -128,7 +129,7 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
             Vertex* pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
             pVertex->setColor(SOURCE_COLOR);
             addVertex(pVertex, count);
-            addDeBruijnEdges(curr.pVertex, pVertex, curr.direction);
+            BuilderCommon::addSameStrandDeBruijnEdges(m_pGraph, curr.pVertex, pVertex, curr.direction);
             
             // Check if this sequence is present in the FM-index of the target
             // If so, it is the join point of the de Bruijn graph and we extend no further.
@@ -144,7 +145,7 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
             else
             {
                 // Add the vertex to the extension queue
-                m_queue.push(BubbleExtensionNode(pVertex, curr.direction));
+                m_queue.push(BuilderExtensionNode(pVertex, curr.direction));
             }
         }
     }
@@ -165,13 +166,13 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
     assert(m_senseJoins.size() == 1);
 
     // Add the antisense join vertex to the extension queue
-    m_queue.push(BubbleExtensionNode(m_antisenseJoins.front(), ED_SENSE));
+    m_queue.push(BuilderExtensionNode(m_antisenseJoins.front(), ED_SENSE));
 
     size_t totalBranches = 0;
 
     while(!m_queue.empty())
     {
-        BubbleExtensionNode curr = m_queue.front();
+        BuilderExtensionNode curr = m_queue.front();
         m_queue.pop();
 
         // Calculate de Bruijn extensions for this node
@@ -179,7 +180,7 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction);
         
         // Count the number of branches from this sequence
-        size_t num_branches = countValidExtensions(extensionCounts);
+        size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
 
         //
         if(num_branches > 1)
@@ -195,7 +196,7 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
             if(count < m_kmerThreshold)
                 continue;
 
-            std::string newStr = makeDeBruijnVertex(vertStr, b, curr.direction);
+            std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
             Vertex* pVertex = m_pGraph->getVertex(newStr);
             bool joinFound = false;
             if(pVertex == NULL)
@@ -210,7 +211,7 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
                 addVertex(pVertex, count);
 
                 // Add the vertex to the extension queue
-                m_queue.push(BubbleExtensionNode(pVertex, curr.direction));
+                m_queue.push(BuilderExtensionNode(pVertex, curr.direction));
             }
             else
             {
@@ -225,7 +226,7 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
             }
             
             // Create the new edge in the graph        
-            addDeBruijnEdges(curr.pVertex, pVertex, curr.direction);
+            BuilderCommon::addSameStrandDeBruijnEdges(m_pGraph, curr.pVertex, pVertex, curr.direction);
 
             // If we've found the join vertex, we have completed the target half of the bubble
             if(joinFound)
@@ -356,76 +357,4 @@ void VariationBubbleBuilder::addVertex(Vertex* pVertex, int coverage)
 {
     m_pGraph->addVertex(pVertex);
     m_vertexCoverageMap[pVertex->getSeq().toString()] = coverage;
-}
-
-// Add a new edge to the graph denoting the relationship between pX and pY.
-// Assumes pX and pY are already present in the m_pGraph
-void VariationBubbleBuilder::addDeBruijnEdges(const Vertex* pX, const Vertex* pY, EdgeDir direction)
-{
-    assert(pX->getSeq().length() == pY->getSeq().length());
-    
-    // overlap length for a de bruijn edge
-    size_t p = pX->getSeq().length() - 1;
-
-    // Construct an overlap object for this relationship
-    Overlap o;
-    o.id[0] = pX->getID();
-    o.id[1] = pY->getID();
-
-    o.match.isReverse = false;
-    o.match.numDiff = 0;
-
-    if(direction == ED_SENSE)
-    {
-        // pX -> pY
-        o.match.coord[0].interval.start = 1;
-        o.match.coord[1].interval.start = 0;
-    }
-    else
-    {
-        // pY -> pX
-        o.match.coord[0].interval.start = 0;
-        o.match.coord[1].interval.start = 1;
-    }
-
-    o.match.coord[0].interval.end = o.match.coord[0].interval.start + p - 1; // inclusive coordinate
-    o.match.coord[1].interval.end = o.match.coord[1].interval.start + p - 1;
-    o.match.coord[0].seqlen = p + 1;
-    o.match.coord[1].seqlen = p + 1;
-    Edge* e = SGAlgorithms::createEdgesFromOverlap(m_pGraph, o, false);
-    assert(e != NULL);
-}
-
-
-// Make the sequence of a new deBruijn vertex using the edge details
-std::string VariationBubbleBuilder::makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction)
-{
-    std::string w;
-    size_t p = v.size() - 1;
-    if(direction == ED_SENSE)
-    {
-        w = v.substr(1, p);
-        w.append(1, edgeBase);
-    }
-    else
-    {
-        w.append(1, edgeBase);
-        w.append(v.substr(0, p));
-    }
-    return w;
-}
-
-// Count the number of extensions of a de Bruijn node that are above
-// the required k-mer coverage
-size_t VariationBubbleBuilder::countValidExtensions(const AlphaCount64& ac) const
-{
-    size_t n = 0;
-    for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
-    {
-        char b = DNA_ALPHABET::getBase(i);
-        size_t count = ac.get(b);
-        if(count >= m_kmerThreshold)
-            n += 1;
-    }
-    return n;
 }

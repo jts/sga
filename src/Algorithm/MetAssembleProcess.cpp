@@ -13,6 +13,7 @@
 #include "SGAlgorithms.h"
 #include "SGSearch.h"
 #include "StdAlnTools.h"
+#include "MetagenomeBuilder.h"
 
 //
 //
@@ -87,7 +88,9 @@ MetAssembleResult MetAssemble::process(const SequenceWorkItem& item)
         if(count >= m_parameters.kmerThreshold)
         {
             // Process the kmer
-            result.contigs.push_back(processKmer(kmer, count));
+            std::string contig = processKmer(kmer, count);
+            if(contig.size() >= m_parameters.minLength)
+                result.contigs.push_back(processKmer(kmer, count));
         }
 
         // Update the bit vector
@@ -104,8 +107,18 @@ MetAssembleResult MetAssemble::process(const SequenceWorkItem& item)
 //
 std::string MetAssemble::processKmer(const std::string& str, int count)
 {
-    (void)count;
-    return str;
+    MetagenomeBuilder builder;
+    builder.setSource(str, count);
+    builder.setKmerParameters(m_parameters.kmer, m_parameters.kmerThreshold);
+    builder.setIndex(m_parameters.pBWT, m_parameters.pRevBWT);
+    builder.run();
+
+    StringVector contigs;
+    builder.getContigs(contigs);
+    std::string out = contigs.empty() ? "" : contigs.front();
+    //std::cout << "Constructed " << contigs.size() << " contigs from kmer (size: " << out.size() << ")\n";
+    markSequenceKmers(out);
+    return out;
 }
 
 // Update the bit vector with the kmers that were assembled into str

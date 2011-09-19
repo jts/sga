@@ -36,6 +36,7 @@ struct MetAssembleParameters
     
     size_t kmer;
     size_t kmerThreshold;
+    size_t minLength;
     BitVector* pBitVector;
 };
 

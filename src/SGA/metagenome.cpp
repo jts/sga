@@ -62,6 +62,7 @@ namespace opt
     static int kmerThreshold = 4;
     static int sampleRate = 128;
     static int cacheLength = 10;
+    static size_t minLength = 200;
 
     static std::string inFile;
     static std::string outFile = "contigs.fa";
@@ -112,6 +113,7 @@ int metagenomeMain(int argc, char** argv)
     sharedParameters.kmer = opt::kmer;
     sharedParameters.kmerThreshold = opt::kmerThreshold;
     sharedParameters.pBitVector = pSharedBitVector;
+    sharedParameters.minLength = opt::minLength;
 
     MetAssembleAggregateResults resultsProcess(opt::outFile);
 

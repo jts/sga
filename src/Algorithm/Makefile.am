@@ -32,4 +32,6 @@ libalgorithm_a_SOURCES = \
         GraphCompare.h GraphCompare.cpp \
         ExtensionDP.h ExtensionDP.cpp \
         MetAssembleProcess.h MetAssembleProcess.cpp \
+        MetagenomeBuilder.h MetagenomeBuilder.cpp \
+        BuilderCommon.h BuilderCommon.cpp \
         VariationBubbleBuilder.h VariationBubbleBuilder.cpp
