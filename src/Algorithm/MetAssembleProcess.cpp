@@ -89,11 +89,39 @@ MetAssembleResult MetAssemble::process(const SequenceWorkItem& item)
         {
             // Process the kmer
             std::string contig = processKmer(kmer, count);
-            if(contig.size() >= m_parameters.minLength)
-                result.contigs.push_back(processKmer(kmer, count));
+
+            // We must determine if this contig has been assembled by another thread.
+            // Break the contig into lexicographically ordered set of kmers. The lowest kmer is chosen
+            // to represent the contig. If this kmer has been marked as visited, we discard the contig
+            // otherwise we mark all kmers in the contig and output the contig.
+            StringVector kmers = getLexicographicKmers(contig);
+
+            // Get the lowest kmer in the set
+            assert(!kmers.empty());
+            std::string lowest = kmers.front();
+            BWTInterval lowInterval = BWTAlgorithms::findIntervalWithCache(m_parameters.pBWT, m_parameters.pBWTCache, lowest);
+            BWTInterval lowRCInterval = BWTAlgorithms::findIntervalWithCache(m_parameters.pBWT, m_parameters.pBWTCache, reverseComplement(lowest));
+            bool marked = false;
+
+            // If the kmer exists in the read set (the interval is valid), we attempt to mark it
+            // Otherwise, we attempt to mark its reverse complement. If either call succeeds
+            // we output the contig. This block of code gives the synchronization between threads.
+            // If multiple threads attempt to assemble the same contig, marked will be true for only
+            // one of the threads.
+            if(lowInterval.isValid())
+                marked = m_parameters.pBitVector->updateCAS(lowInterval.lower, false, true);
+            else
+                marked = m_parameters.pBitVector->updateCAS(lowRCInterval.lower, false, true);
+
+            if(marked)
+            {
+                markSequenceKmers(contig);
+                if(contig.size() >= m_parameters.minLength)
+                    result.contigs.push_back(processKmer(kmer, count));
+            }
         }
 
-        // Update the bit vector
+        // Update the bit vector for the source kmer
         for(int64_t i = interval.lower; i <= interval.upper; ++i)
             m_parameters.pBitVector->updateCAS(i, false, true);
 
@@ -117,7 +145,6 @@ std::string MetAssemble::processKmer(const std::string& str, int count)
     builder.getContigs(contigs);
     std::string out = contigs.empty() ? "" : contigs.front();
     //std::cout << "Constructed " << contigs.size() << " contigs from kmer (size: " << out.size() << ")\n";
-    markSequenceKmers(out);
     return out;
 }
 
@@ -130,7 +157,7 @@ void MetAssemble::markSequenceKmers(const std::string& str)
     for(size_t i = 0; i < n; ++i)
     {
         std::string kseq = str.substr(i, m_parameters.kmer);
-        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.pBWT, kseq);
+        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pBWT, m_parameters.pBWTCache, kseq);
         if(interval.isValid())
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
@@ -139,13 +166,28 @@ void MetAssemble::markSequenceKmers(const std::string& str)
 
         // Mark the reverse complement k-mers too
         std::string rc_kseq = reverseComplement(kseq);
-        interval = BWTAlgorithms::findInterval(m_parameters.pBWT, rc_kseq);
+        interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pBWT, m_parameters.pBWTCache, rc_kseq);
         if(interval.isValid())
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
                 m_parameters.pBitVector->updateCAS(j, false, true);
         }
     }
+}
+
+// Break a contig into a lexicographically ordered set of kmers
+StringVector MetAssemble::getLexicographicKmers(const std::string& contig) const
+{
+    StringVector out;
+    for(size_t i = 0; i < contig.size() - m_parameters.kmer + 1; ++i)
+    {
+        std::string ks = contig.substr(i, m_parameters.kmer);
+        std::string rs = reverseComplement(ks);
+        out.push_back(ks < rs ? ks : rs);
+    }
+
+    std::sort(out.begin(), out.end());
+    return out;
 }
 
 //

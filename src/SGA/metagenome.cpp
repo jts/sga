@@ -48,6 +48,8 @@ static const char *METAGENOME_USAGE_MESSAGE =
 "      -k, --kmer=K                     use a k-mer size of size K\n"
 "      -x, --kmer-threshold=T           only use kmers seen at least T times\n"
 "      -t, --threads=NUM                use NUM computation threads\n"
+"      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
+"                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      -o, --outfile=FILE               write contigs to FILE (default: contigs.fa)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -68,7 +70,7 @@ namespace opt
     static std::string outFile = "contigs.fa";
 }
 
-static const char* shortopts = "o:k:t:x:v";
+static const char* shortopts = "o:d:k:t:x:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -78,6 +80,7 @@ static const struct option longopts[] = {
     { "outfile",       required_argument, NULL, 'o' },
     { "kmer",          required_argument, NULL, 'k' },
     { "kmer-threshold",required_argument, NULL, 'x' },
+    { "sample-rate",   required_argument, NULL, 'd' },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -171,6 +174,7 @@ void parseMetagenomeOptions(int argc, char** argv)
             case 'x': arg >> opt::kmerThreshold; break;
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
+            case 'd': arg >> opt::sampleRate; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:

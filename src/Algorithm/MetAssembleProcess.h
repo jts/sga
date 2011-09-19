@@ -73,6 +73,9 @@ class MetAssemble
         // Mark all the kmers in str as being visited
         void markSequenceKmers(const std::string& str);
 
+        // Break a contig into a lexicographically ordered set of kmers
+        StringVector getLexicographicKmers(const std::string& contig) const;
+
         //
         // Data
         //
