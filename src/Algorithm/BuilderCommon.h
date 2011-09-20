@@ -20,6 +20,11 @@ namespace BuilderCommon
 // Count the number of extensions above the given threshold
 size_t countValidExtensions(const AlphaCount64& ac, size_t threshold);
 
+// Filter out low counts in AlphaCount using a coverage threshold
+// relative to the most frequent count. Returns the number of
+// surviving counts
+size_t filterLowFrequency(AlphaCount64& ac, double alpha);
+
 // Make a de Bruijn graph string 
 std::string makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction);
 

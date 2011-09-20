@@ -56,6 +56,8 @@ void MetagenomeBuilder::run()
 {
     assert(!m_queue.empty());
     size_t numIters = 0;
+    double frequencyFilter = 0.2;
+
     while(!m_queue.empty())
     {
         numIters += 1;
@@ -72,7 +74,7 @@ void MetagenomeBuilder::run()
                                                                                   m_pRevBWTCache);
 
         // Count the number of branches from this sequence
-        size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
+        size_t num_branches = BuilderCommon::filterLowFrequency(extensionCounts, frequencyFilter);
 
         // Fail due to a high-coverage split occuring
         if(num_branches > 1)
@@ -82,7 +84,7 @@ void MetagenomeBuilder::run()
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-            if(count < m_kmerThreshold)
+            if(count == 0)
                 continue;
 
             std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
@@ -96,7 +98,7 @@ void MetagenomeBuilder::run()
                                                                                         m_pBWTCache, 
                                                                                         m_pRevBWTCache);
 
-            size_t num_branches_in = BuilderCommon::countValidExtensions(extensionCountsIn, m_kmerThreshold);
+            size_t num_branches_in = BuilderCommon::filterLowFrequency(extensionCountsIn, frequencyFilter);
             if(num_branches_in > 1)
                 continue;
 

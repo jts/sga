@@ -24,6 +24,30 @@ size_t BuilderCommon::countValidExtensions(const AlphaCount64& ac, size_t thresh
     return n;
 }
 
+// Filter out low counts in AlphaCount using a coverage threshold
+// relative to the most frequent count. Returns the number of
+// surviving counts
+size_t BuilderCommon::filterLowFrequency(AlphaCount64& ac, double alpha)
+{
+    size_t n = 0;
+    size_t max = ac.getMaxCount();
+    if(max == 0)
+        return 0;
+
+    for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
+    {
+        char b = DNA_ALPHABET::getBase(i);
+        size_t count = ac.get(b);
+        double ratio = (double)count / max;
+        if(ratio >= alpha)
+            n += 1;
+        else
+            ac.set(b,0);
+    }
+    return n;
+}
+
+
 // Make a de Bruijn graph string 
 std::string BuilderCommon::makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction)
 {
