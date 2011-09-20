@@ -12,6 +12,7 @@
 #define METAGENOME_BUILDER_H
 
 #include "BWT.h"
+#include "BWTIntervalCache.h"
 #include "SGUtil.h"
 #include "VariationBubbleBuilder.h"
 
@@ -24,7 +25,11 @@ class MetagenomeBuilder
         
         // Set parameters
         void setSource(const std::string& seq, int coverage);
-        void setIndex(const BWT* pBWT, const BWT* pRevBWT);
+        void setIndex(const BWT* pBWT, 
+                      const BWT* pRevBWT, 
+                      const BWTIntervalCache* pFwdCache, 
+                      const BWTIntervalCache* pRevCache);
+
         void setKmerParameters(size_t k, size_t threshold);
 
         // run the assembly
@@ -47,6 +52,8 @@ class MetagenomeBuilder
 
         const BWT* m_pBWT;
         const BWT* m_pRevBWT;
+        const BWTIntervalCache* m_pBWTCache;
+        const BWTIntervalCache* m_pRevBWTCache;
         size_t m_kmer;
         size_t m_kmerThreshold;
 };

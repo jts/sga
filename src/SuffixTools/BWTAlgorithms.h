@@ -136,7 +136,13 @@ AlphaCount64 calculateExactExtensions(const unsigned int overlapLen, const std::
 
 // Calculate de Bruijn graph extensions of the given sequence
 // Returns an AlphaCount64 with the count of each extension base
-AlphaCount64 calculateDeBruijnExtensions(const std::string str, const BWT* pBWT, const BWT* pRevBWT, EdgeDir direction);
+// This function optionally takes in an interval cache to speed up the computation
+AlphaCount64 calculateDeBruijnExtensions(const std::string str, 
+                                         const BWT* pBWT, 
+                                         const BWT* pRevBWT, 
+                                         EdgeDir direction,
+                                         const BWTIntervalCache* pFwdCache = NULL,
+                                         const BWTIntervalCache* pRevCache = NULL);
 
 // Extract the string at idx from the BWT
 std::string extractString(const BWT* pBWT, size_t idx);

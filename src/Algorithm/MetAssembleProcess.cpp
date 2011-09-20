@@ -138,7 +138,7 @@ std::string MetAssemble::processKmer(const std::string& str, int count)
     MetagenomeBuilder builder;
     builder.setSource(str, count);
     builder.setKmerParameters(m_parameters.kmer, m_parameters.kmerThreshold);
-    builder.setIndex(m_parameters.pBWT, m_parameters.pRevBWT);
+    builder.setIndex(m_parameters.pBWT, m_parameters.pRevBWT, m_parameters.pBWTCache, m_parameters.pRevBWTCache);
     builder.run();
 
     StringVector contigs;

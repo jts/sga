@@ -35,10 +35,13 @@ void MetagenomeBuilder::setSource(const std::string& seq, int coverage)
 }
 
 //
-void MetagenomeBuilder::setIndex(const BWT* pBWT, const BWT* pRevBWT)
+void MetagenomeBuilder::setIndex(const BWT* pBWT, const BWT* pRevBWT, 
+                                 const BWTIntervalCache* pFwdCache, const BWTIntervalCache* pRevCache)
 {
     m_pBWT = pBWT;
     m_pRevBWT = pRevBWT;
+    m_pBWTCache = pFwdCache;
+    m_pRevBWTCache = pRevCache;
 }
 
 //
@@ -61,7 +64,12 @@ void MetagenomeBuilder::run()
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pBWT, m_pRevBWT, curr.direction);
+        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, 
+                                                                                  m_pBWT, 
+                                                                                  m_pRevBWT, 
+                                                                                  curr.direction,
+                                                                                  m_pBWTCache, 
+                                                                                  m_pRevBWTCache);
 
         // Count the number of branches from this sequence
         size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
@@ -81,7 +89,13 @@ void MetagenomeBuilder::run()
          
             // Check if the new sequence to be added into the graph branches in the opposite
             // direction of the assembly. If so, we are entering a repeat and want to stop
-            AlphaCount64 extensionCountsIn = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pBWT, m_pRevBWT, !curr.direction);
+            AlphaCount64 extensionCountsIn = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, 
+                                                                                        m_pBWT, 
+                                                                                        m_pRevBWT, 
+                                                                                        !curr.direction,
+                                                                                        m_pBWTCache, 
+                                                                                        m_pRevBWTCache);
+
             size_t num_branches_in = BuilderCommon::countValidExtensions(extensionCountsIn, m_kmerThreshold);
             if(num_branches_in > 1)
                 continue;
