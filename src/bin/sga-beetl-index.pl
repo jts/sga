@@ -65,8 +65,8 @@ else
 }
 
 # Run BEETL on the flattened input file
-my $time_str = `date`
-print "Starting beetl at $time_str\n"
+my $time_str = `date`;
+print "Starting beetl at $time_str\n";
 $ret = runCmd("$BEETL_BIN $flat_file > /dev/null") if($ret == 0);
 
 # concatenate the beetl output files
@@ -74,8 +74,8 @@ my $beetl_bwt = "beetl.bwt";
 $ret = runCmd("cat bwt-B* > $beetl_bwt") if($ret == 0);
 
 # Run sga convert-beetl
-$time_str = `date`
-print "Starting convert-beetl at $time_str\n"
+$time_str = `date`;
+print "Starting convert-beetl at $time_str\n";
 $ret = runCmd("$SGA_BIN convert-beetl $beetl_bwt $abs_input") if($ret == 0);
 
 # Copy the final files back to the original directory
