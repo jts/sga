@@ -52,8 +52,10 @@ void MetagenomeBuilder::setKmerParameters(size_t k, size_t threshold)
 void MetagenomeBuilder::run()
 {
     assert(!m_queue.empty());
+    size_t numIters = 0;
     while(!m_queue.empty())
     {
+        numIters += 1;
         BuilderExtensionNode curr = m_queue.front();
         m_queue.pop();
 
@@ -76,7 +78,14 @@ void MetagenomeBuilder::run()
                 continue;
 
             std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
-            
+         
+            // Check if the new sequence to be added into the graph branches in the opposite
+            // direction of the assembly. If so, we are entering a repeat and want to stop
+            AlphaCount64 extensionCountsIn = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pBWT, m_pRevBWT, !curr.direction);
+            size_t num_branches_in = BuilderCommon::countValidExtensions(extensionCountsIn, m_kmerThreshold);
+            if(num_branches_in > 1)
+                continue;
+
             // Create the new vertex and edge in the graph
             // If this vertex already exists, the graph must contain a loop
             if(m_pGraph->getVertex(newStr) != NULL)
@@ -90,7 +99,6 @@ void MetagenomeBuilder::run()
             m_queue.push(BuilderExtensionNode(pVertex, curr.direction));
         }
     }
-    
     // Done extension
 }
 

@@ -69,6 +69,7 @@ MetAssembleResult MetAssemble::process(const SequenceWorkItem& item)
     {
         if(visitedKmers[j])
             continue; // skip
+
         std::string kmer = w.substr(j, m_parameters.kmer);
         
         // Get the interval for this kmer
@@ -112,12 +113,11 @@ MetAssembleResult MetAssemble::process(const SequenceWorkItem& item)
                 marked = m_parameters.pBitVector->updateCAS(lowInterval.lower, false, true);
             else
                 marked = m_parameters.pBitVector->updateCAS(lowRCInterval.lower, false, true);
-
+            markSequenceKmers(contig);
             if(marked)
             {
-                markSequenceKmers(contig);
                 if(contig.size() >= m_parameters.minLength)
-                    result.contigs.push_back(processKmer(kmer, count));
+                    result.contigs.push_back(contig);
             }
         }
 
@@ -193,7 +193,7 @@ StringVector MetAssemble::getLexicographicKmers(const std::string& contig) const
 //
 // MetAssembleAggregateResult
 //
-MetAssembleAggregateResults::MetAssembleAggregateResults(const std::string& filename) : m_numContigs(0)
+MetAssembleAggregateResults::MetAssembleAggregateResults(const std::string& filename) : m_numContigs(0), m_basesWritten(0)
 {
     //
     m_pWriter = createWriter(filename);
@@ -214,6 +214,7 @@ void MetAssembleAggregateResults::process(const SequenceWorkItem& /*item*/, cons
         idMaker << "contig-" << m_numContigs++;
 
         SeqItem item = { idMaker.str(), result.contigs[i] };
+        m_basesWritten += result.contigs[i].length();
         item.write(*m_pWriter);
     }
 }

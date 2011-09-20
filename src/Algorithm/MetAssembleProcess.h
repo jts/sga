@@ -96,8 +96,10 @@ class MetAssembleAggregateResults
 
 
     private:
+
         std::ostream* m_pWriter;
         size_t m_numContigs;
+        size_t m_basesWritten;
 };
 
 #endif
