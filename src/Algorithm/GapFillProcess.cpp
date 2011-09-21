@@ -29,7 +29,9 @@ void GapFillStats::print() const
     printf("Num gaps attempted: %zu\n", numGapsAttempted);
     printf("Num gaps filled: %zu\n", numGapsFilled);
     printf("    Failed -- no anchor: %zu\n", numFails[GFRC_NO_ANCHOR]);
-    printf("    Failed -- no haplotype: %zu\n", numFails[GFRC_NO_HAPLOTYPE]);
+    printf("    Failed -- no haplotype path: %zu\n", numFails[GFRC_NO_HAPLOTYPE_PATH]);
+    printf("    Failed -- no haplotype, search aborted: %zu\n", numFails[GFRC_NO_HAPLOTYPE_ABORTED]);
+    printf("    Failed -- no haplotype, walk failed: %zu\n", numFails[GFRC_NO_HAPLOTYPE_WALK_FAIL]);
     printf("    Failed -- ambiguous solution: %zu\n", numFails[GFRC_AMBIGUOUS]);
     printf("    Failed -- assembled size differs from estimate: %zu\n", numFails[GFRC_BAD_SIZE]);
     printf("    Failed -- anchor sequence mismatch: %zu\n", numFails[GFRC_BAD_TRIM]);
@@ -158,13 +160,17 @@ GapFillReturnCode GapFillProcess::processGap(size_t k, int estimatedSize, const 
     builder.setTerminals(startAnchor, endAnchor);
     builder.setIndex(m_parameters.pBWT, m_parameters.pRevBWT);
     builder.setKmerParameters(k, m_parameters.kmerThreshold);
-    builder.run();
+    HaplotypeBuilderReturnCode code = builder.run();
     
     HaplotypeBuilderResult result;
-    builder.parseWalks(result);
-    
-    if(result.haplotypes.size() > 0)
+
+    // The search was successfull, build strings from the walks
+    if(code == HBRC_OK)
+        code = builder.parseWalks(result);
+
+    if(code == HBRC_OK)
     {
+        assert(!result.haplotypes.empty());
         if(m_parameters.verbose > 0)
         {
             std::cout << "Built " << result.haplotypes.size() << " candidate haplotypes\n";
@@ -177,8 +183,18 @@ GapFillReturnCode GapFillProcess::processGap(size_t k, int estimatedSize, const 
     }
     else 
     {
-        return GFRC_NO_HAPLOTYPE;
+        // Map the haplotype builder code to a gap fill code
+        assert(code != HBRC_OK);
+        if(code == HBRC_NO_PATH)
+            return GFRC_NO_HAPLOTYPE_PATH;
+        else if(code == HBRC_TOO_MANY_VERTICES)
+            return GFRC_NO_HAPLOTYPE_ABORTED;
+        else if(code == HBRC_WALK_FAILED)
+            return GFRC_NO_HAPLOTYPE_WALK_FAIL;
     }
+
+    // should not reach here
+    return GFRC_UNKNOWN;
 }
 
 // Find an anchor sequence to start the process of building the gap sequence

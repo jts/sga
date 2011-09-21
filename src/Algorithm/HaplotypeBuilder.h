@@ -38,6 +38,14 @@ struct HaplotypeBuilderResult
     StringVector haplotypes;
 };
 
+enum HaplotypeBuilderReturnCode
+{
+    HBRC_OK,
+    HBRC_TOO_MANY_VERTICES,
+    HBRC_NO_PATH,
+    HBRC_WALK_FAILED,
+};
+
 //
 // Class to build a variant bubble starting at a particular sequence
 //
@@ -56,10 +64,10 @@ class HaplotypeBuilder
     
         // Run the bubble construction process
         // Returns true if the graph was successfully built between the two sequences
-        bool run();
+        HaplotypeBuilderReturnCode run();
         
         // Parse walks from the constructed graph
-        void parseWalks(HaplotypeBuilderResult& results) const;
+        HaplotypeBuilderReturnCode parseWalks(HaplotypeBuilderResult& results) const;
 
     private:
         
