@@ -52,5 +52,6 @@ sga_SOURCES = sga.cpp \
               var2vcf.h var2vcf.cpp \
               hapgen.h hapgen.cpp \
               gapfill.h gapfill.cpp \
+              metagenome.h metagenome.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

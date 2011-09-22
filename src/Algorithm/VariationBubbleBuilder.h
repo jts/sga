@@ -43,14 +43,14 @@ struct BubbleResult
 
 // A directed node in the de Bruijn graph that
 // has not had it's neighbors visited
-struct BubbleExtensionNode
+struct BuilderExtensionNode
 {
-    BubbleExtensionNode(Vertex* pX, EdgeDir d) : pVertex(pX), direction(d) {}
+    BuilderExtensionNode(Vertex* pX, EdgeDir d) : pVertex(pX), direction(d) {}
 
     Vertex* pVertex; // the vertex to extend
     EdgeDir direction; // the direction to extend to
 };
-typedef std::queue<BubbleExtensionNode> BubbleExtensionQueue;
+typedef std::queue<BuilderExtensionNode> BuilderExtensionQueue;
 typedef std::map<std::string, int> StrIntMap;
 
 //
@@ -106,13 +106,8 @@ class VariationBubbleBuilder
         void addVertex(Vertex* pVertex, int coverage);
 
         // Make the sequence of a new deBruijn vertex using the edge details
-        std::string makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction);
         void addDeBruijnEdges(const Vertex* pX, const Vertex* pY, EdgeDir direction);
 
-        // Count the number of extensions of a de Bruijn node that are above
-        // the required k-mer coverage
-        size_t countValidExtensions(const AlphaCount64& ac) const;
-        
         //
         // Data
         //
@@ -125,7 +120,7 @@ class VariationBubbleBuilder
         StringGraph* m_pGraph;
         StrIntMap m_vertexCoverageMap;
 
-        BubbleExtensionQueue m_queue;
+        BuilderExtensionQueue m_queue;
 
         VertexPtrVec m_senseJoins;
         VertexPtrVec m_antisenseJoins;

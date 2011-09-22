@@ -149,4 +149,3 @@ StringGraph* SGUtil::loadFASTA(const std::string& filename)
     }
     return pGraph;
 }
-

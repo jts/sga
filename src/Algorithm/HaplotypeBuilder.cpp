@@ -47,7 +47,7 @@ void HaplotypeBuilder::setTerminals(const AnchorSequence& leftAnchor, const Anch
     addVertex(pRightVertex, rightAnchor.count);
 
     // Add the vertex to the extension queue
-    m_queue.push(BubbleExtensionNode(pLeftVertex, ED_SENSE));
+    m_queue.push(BuilderExtensionNode(pLeftVertex, ED_SENSE));
     
     m_pStartVertex = pLeftVertex;
     m_pJoinVertex = pRightVertex;
@@ -75,7 +75,7 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
         if(m_pGraph->getNumVertices() > MAX_VERTICES)
             return HBRC_TOO_MANY_VERTICES;
 
-        BubbleExtensionNode curr = m_queue.front();
+        BuilderExtensionNode curr = m_queue.front();
         m_queue.pop();
 
         // Calculate de Bruijn extensions for this node
@@ -98,7 +98,7 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
             {
                 pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
                 addVertex(pVertex, count);
-                m_queue.push(BubbleExtensionNode(pVertex, curr.direction));
+                m_queue.push(BuilderExtensionNode(pVertex, curr.direction));
             }
             
             // Create the new edge in the graph

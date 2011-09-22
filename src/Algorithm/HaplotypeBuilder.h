@@ -91,7 +91,7 @@ class HaplotypeBuilder
         StringGraph* m_pGraph;
         StrIntMap m_vertexCoverageMap;
 
-        BubbleExtensionQueue m_queue;
+        BuilderExtensionQueue m_queue;
         Vertex* m_pStartVertex;
         Vertex* m_pJoinVertex;
         

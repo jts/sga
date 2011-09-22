@@ -35,6 +35,7 @@
 #include "hapgen.h"
 #include "var2vcf.h"
 #include "gapfill.h"
+#include "metagenome.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -78,6 +79,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           var2vcf         convert aligned variant sequences found by graph-diff into a VCF file\n"
 "           hapgen          generate candidate haplotypes from an assembly graph\n"
 "           gapfill         fill intra-scaffold gaps\n"
+"           metagenome      assemble contigs from metagenomics data\n"
 "\n\nDeprecated commands:\n"
 "           rmdup           duplicate read removal - superceded by sga filter\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -157,6 +159,8 @@ int main(int argc, char** argv)
             hapgenMain(argc - 1, argv + 1);
         else if(command == "gapfill")
             gapfillMain(argc - 1, argv + 1);
+        else if(command == "metagenome")
+            metagenomeMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
