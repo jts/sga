@@ -46,6 +46,64 @@ std::string StdAlnTools::globalAlignmentCigar(const std::string& target, const s
     return cigar;
 }
 
+// Perform a local alignment
+LocalAlignmentResult StdAlnTools::localAlignment(const std::string& target, const std::string& query)
+{
+    // Set up global alignment parameters and data structures
+    GlobalAlnParams params;
+    int max_path_length = target.size() + query.size();
+    path_t *path = (path_t*)calloc(max_path_length, sizeof(path_t));
+    int path_len;
+
+    AlnParam par;
+    int matrix[25];
+    StdAlnTools::setAlnParam(par, matrix, params);
+
+    // Make a packed version of the query and target
+    uint8_t* pQueryT = createPacked(query);
+    uint8_t* pTargetT = createPacked(target);
+    
+    LocalAlignmentResult result;
+    result.score = aln_local_core(pTargetT, target.size(), pQueryT, query.size(), &par, path, &path_len, 1, 0);
+    assert(path_len <= max_path_length);
+
+    result.cigar = makeCigar(path, path_len);
+
+    // Calculate the aligned coordinates
+    // Same code as bwape.c by Heng Li
+    path_t* p = path + path_len - 1;
+    result.targetStartPosition = (p->i ? p->i : 1) - 1;
+    result.targetEndPosition = path->i;
+    result.queryStartPosition = (p->j ? p->j : 1) - 1;
+    result.queryEndPosition = path->j;
+    
+    // Update cigar
+    if(result.queryStartPosition > 0)
+    {
+        std::stringstream csa;
+        csa << result.queryStartPosition << "S";
+        result.cigar.insert(0, csa.str());
+    }
+
+    if(result.queryEndPosition < (int64_t)query.length())
+    {
+        std::stringstream csa;
+        csa << query.length() - result.queryEndPosition << "S";
+        result.cigar.append(csa.str());
+    }
+
+    //std::string targetSS = target.substr(result.targetStartPosition, result.targetEndPosition - result.targetStartPosition);
+    //std::string querySS = query.substr(result.queryStartPosition, result.queryEndPosition - result.queryStartPosition);
+    //globalAlignment(targetSS, querySS, true);
+
+    // Clean up
+    delete [] pQueryT;
+    delete [] pTargetT;
+    free(path);
+
+    return result;
+}
+
 // Expand a CIGAR string into a character code for each symbol of the alignment
 std::string StdAlnTools::expandCigar(const std::string& cigar)
 {

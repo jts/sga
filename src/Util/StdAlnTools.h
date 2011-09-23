@@ -11,6 +11,7 @@
 
 #include <string>
 #include <inttypes.h>
+#include <iostream>
 #include "stdaln.h"
 
 // Parameters object 
@@ -49,6 +50,22 @@ struct GlobalAlnParams
     int bandwidth;
 };
 
+struct LocalAlignmentResult
+{
+    int64_t targetStartPosition;
+    int64_t targetEndPosition;
+    int64_t queryStartPosition;
+    int64_t queryEndPosition;
+    std::string cigar;
+    int score;
+
+    friend std::ostream& operator<<(std::ostream& out, const LocalAlignmentResult& a)
+    {
+        out << "S:" << a.score << " P:" << a.targetStartPosition << " C:" << a.cigar;
+        return out;
+    }
+};
+
 namespace StdAlnTools
 {
 
@@ -57,9 +74,11 @@ namespace StdAlnTools
     // The alignment score is returned.
     int globalAlignment(const std::string& target, const std::string& query, bool bPrint = false);
 
-
     // Perform a global alignment between the two strings and return a CIGAR string
     std::string globalAlignmentCigar(const std::string& target, const std::string& query);
+
+    // Perform a local alignment
+    LocalAlignmentResult localAlignment(const std::string& target, const std::string& query);
 
     // Expand a Cigar string so there is one symbol per code
     std::string expandCigar(const std::string& cigar);

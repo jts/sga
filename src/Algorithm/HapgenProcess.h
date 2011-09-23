@@ -70,7 +70,8 @@ class HapgenProcess
         //
 
         // Extract the reads from the FM-index that share a kmer with any given haplotype
-        void extractHaplotypeReads(const StringVector& haplotypes, StringVector& reads, bool doReverseComp) const;
+        void extractHaplotypeReads(const StringVector& haplotypes, bool doReverseComp, 
+                                   SeqItemVector* pOutReads, SeqItemVector* pOutMates = NULL) const;
 
         //
         // Data

@@ -87,7 +87,7 @@ struct CigarIter
 
     char getOutputBase(char cigSym)
     {
-        if(cigSym == 'S')
+        if(cigSym == 'S' || cigSym == 'N')
             return '.';
         else
             return pData->str[baseIdx];
@@ -102,7 +102,7 @@ typedef std::vector<CigarIter> CigarIterVector;
 
 MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inData, std::string rootName)
 {
-    m_verbose = 0;
+    m_verbose = 1;
     // Build a padded multiple alignment from the pairwise alignments to the root
     CigarIterVector iterVec;
 
@@ -398,8 +398,9 @@ void MultiAlignment::print(int col_size, const std::string* pConsensus) const
     }
 }
 
-// Construct a multiple alignment of the input strings
-MultiAlignment MultiAlignmentTools::alignSequences(const SeqItemVector& sequences)
+// Construct a multiple alignment of the input strings from global alignments
+// to the first element in the vector
+MultiAlignment MultiAlignmentTools::alignSequencesGlobal(const SeqItemVector& sequences)
 {
     assert(!sequences.empty());
     const std::string& base = sequences[0].seq.toString();
@@ -415,6 +416,41 @@ MultiAlignment MultiAlignmentTools::alignSequences(const SeqItemVector& sequence
         maData.position = 0;
         maData.str = seq;
         maData.expandedCigar = StdAlnTools::expandCigar(cigar);
+
+        maData.name = sequences[i].id;
+        madVector.push_back(maData);
+    }
+
+    return MultiAlignment(base, madVector, sequences[0].id);
+}
+
+// Construct a multiple alignment of the input strings from local alignments
+// to the first element of the vector
+MultiAlignment MultiAlignmentTools::alignSequencesLocal(const SeqItemVector& sequences)
+{
+    assert(!sequences.empty());
+    const std::string& base = sequences[0].seq.toString();
+
+    MAlignDataVector madVector;
+    for(size_t i = 1; i < sequences.size(); ++i)
+    {
+        // The alignment is (slightly counterintuitively) with respect to the 
+        // base string as the query so that all the cigar strings used
+        // are based on edit operations to the base.
+        std::string seq = sequences[i].seq.toString();
+        LocalAlignmentResult result = StdAlnTools::localAlignment(seq,base);
+        
+        // Initialize the multiple alignment data
+        MAlignData maData;
+        maData.position = result.queryStartPosition;
+        // If the non-base sequence overhangs the base, clip it
+        if(result.targetStartPosition > 0)
+            maData.str = seq.substr(result.targetStartPosition);
+        else
+            maData.str = seq;
+
+        // Pad out the cigar with reference skip characters
+        maData.expandedCigar = StdAlnTools::expandCigar(result.cigar);
 
         maData.name = sequences[i].id;
         madVector.push_back(maData);

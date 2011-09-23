@@ -77,7 +77,8 @@ class MultiAlignment
 namespace MultiAlignmentTools
 {
     // Construct a multiple alignment of the input strings
-    MultiAlignment alignSequences(const SeqItemVector& sequences);
+    MultiAlignment alignSequencesGlobal(const SeqItemVector& sequences);
+    MultiAlignment alignSequencesLocal(const SeqItemVector& sequences);
 }
 
 #endif
