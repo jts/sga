@@ -67,7 +67,7 @@ else
 # Run BEETL on the flattened input file
 my $time_str = `date`;
 print "Starting beetl at $time_str\n";
-$ret = runCmd("$BEETL_BIN $flat_file > /dev/null") if($ret == 0);
+$ret = runCmd("$BEETL_BIN $flat_file > beetl.status") if($ret == 0);
 
 # concatenate the beetl output files
 my $beetl_bwt = "beetl.bwt";
