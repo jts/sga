@@ -56,7 +56,7 @@ struct SeqItem
         out << seq.toString() << "\n";
     }    
 };
-
+typedef std::vector<SeqItem> SeqItemVector;
 
 // SeqRecord is a id,sequence pair with an associated quality value
 struct SeqRecord

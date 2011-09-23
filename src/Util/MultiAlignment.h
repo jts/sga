@@ -35,7 +35,7 @@ typedef std::vector<MAlignData> MAlignDataVector;
 class MultiAlignment
 {
     public:
-        MultiAlignment(std::string rootStr, const MAlignDataVector& inData);
+        MultiAlignment(std::string rootStr, const MAlignDataVector& inData, std::string rootName = "root");
 
         // Experimental function to generate a consensus sequence from the MA
         std::string generateConsensus();
@@ -62,7 +62,7 @@ class MultiAlignment
         size_t getNumColumns() const;
 
         // Print the multiple alignment, optionally with a consensus sequence
-        void print(const std::string* pConsensus = NULL) const;
+        void print(int col_size = 80, const std::string* pConsensus = NULL) const;
 
     private:
         
@@ -77,7 +77,7 @@ class MultiAlignment
 namespace MultiAlignmentTools
 {
     // Construct a multiple alignment of the input strings
-    MultiAlignment alignSequences(const StringVector& strings);
+    MultiAlignment alignSequences(const SeqItemVector& sequences);
 }
 
 #endif

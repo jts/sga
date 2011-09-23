@@ -100,7 +100,7 @@ struct CigarIter
 };
 typedef std::vector<CigarIter> CigarIterVector;
 
-MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inData)
+MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inData, std::string rootName)
 {
     m_verbose = 0;
     // Build a padded multiple alignment from the pairwise alignments to the root
@@ -111,7 +111,7 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
     rootData.str = rootStr;
     rootData.expandedCigar = std::string(rootStr.size(), 'M');
     rootData.position = 0;
-    rootData.name = "root";
+    rootData.name = rootName;
 
     m_alignData.push_back(rootData);
     m_alignData.insert(m_alignData.end(), inData.begin(), inData.end());
@@ -325,7 +325,7 @@ std::string MultiAlignment::generateConsensus()
     }
 
     if(m_verbose > 0)
-        print(&paddedConsensus);
+        print(80, &paddedConsensus);
 
     return consensus;
 }
@@ -356,7 +356,7 @@ std::string MultiAlignment::generateMatchString() const
 }
 
 //
-void MultiAlignment::print(const std::string* pConsensus) const
+void MultiAlignment::print(int col_size, const std::string* pConsensus) const
 {
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
 
@@ -367,7 +367,6 @@ void MultiAlignment::print(const std::string* pConsensus) const
     std::stable_sort(sortedAlignments.begin(), sortedAlignments.end(), MAlignData::sortPosition);
 
     size_t len = sortedAlignments[0].padded.size();
-    int col_size = 140;
     for(size_t l = 0; l < len; l += col_size)
     {
         // Print the consensus if requested
@@ -400,27 +399,26 @@ void MultiAlignment::print(const std::string* pConsensus) const
 }
 
 // Construct a multiple alignment of the input strings
-MultiAlignment MultiAlignmentTools::alignSequences(const StringVector& strings)
+MultiAlignment MultiAlignmentTools::alignSequences(const SeqItemVector& sequences)
 {
-    assert(!strings.empty());
-    const std::string& base = strings[0];
+    assert(!sequences.empty());
+    const std::string& base = sequences[0].seq.toString();
 
     MAlignDataVector madVector;
-    for(size_t i = 1; i < strings.size(); ++i)
+    for(size_t i = 1; i < sequences.size(); ++i)
     {
-        std::string cigar = StdAlnTools::globalAlignmentCigar(strings[i], base);
+        std::string seq = sequences[i].seq.toString();
+        std::string cigar = StdAlnTools::globalAlignmentCigar(seq, base);
     
         // Initialize the multiple alignment data
         MAlignData maData;
         maData.position = 0;
-        maData.str = strings[i];
+        maData.str = seq;
         maData.expandedCigar = StdAlnTools::expandCigar(cigar);
 
-        std::stringstream nameSS;
-        nameSS << "string-" << i;
-        maData.name = nameSS.str();
+        maData.name = sequences[i].id;
         madVector.push_back(maData);
     }
 
-    return MultiAlignment(base, madVector);
+    return MultiAlignment(base, madVector, sequences[0].id);
 }

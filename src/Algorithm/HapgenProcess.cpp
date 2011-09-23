@@ -61,9 +61,29 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
     if(m_parameters.verbose > 0)
         std::cout << "Built " << result.haplotypes.size() << " candidate haplotypes\n";
 
+    // Extract the reference sequence spanned by the anchors
+    const SeqItem& refItem = m_parameters.pRefTable->getRead(refName);
+    size_t refStart = startAnchor.position;
+    size_t refEnd = endAnchor.position + m_parameters.kmer;
+    std::string refSubstring = refItem.seq.substr(refStart, refEnd - refStart);
+
     if(result.haplotypes.size() >= 2 && m_parameters.verbose > 0)
     {
-        MultiAlignment haplotypeAlignment = MultiAlignmentTools::alignSequences(result.haplotypes);
+        SeqItemVector seqVector;
+        std::stringstream rssName;
+        rssName << refName << ":" << refStart << "-" << refEnd;
+        SeqItem rsi = { rssName.str(), refSubstring };
+        seqVector.push_back(rsi);
+
+        for(size_t i = 0; i < result.haplotypes.size(); ++i)
+        {
+            std::stringstream namer;
+            namer << "haplotype-" << i;
+            SeqItem hsi = { namer.str(), result.haplotypes[i] };
+            seqVector.push_back(hsi);
+        }
+
+        MultiAlignment haplotypeAlignment = MultiAlignmentTools::alignSequences(seqVector);
         haplotypeAlignment.print();
     }
 
