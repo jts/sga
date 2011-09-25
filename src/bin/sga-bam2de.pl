@@ -56,6 +56,7 @@ sub usage
     print "Options:\n";
     print "                -n N             Minimum number of pairs required to consider two contigs linked\n";
     print "                -m LEN           Only find links between contigs with length at least LEN bp\n";
+    print "                -t NUM           Use NUM threads for computing the distance estimates\n";
     print "                --prefix NAME    Use NAME as the prefix for the outfiles\n";
 }
 
