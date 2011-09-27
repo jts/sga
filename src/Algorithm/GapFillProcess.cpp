@@ -171,13 +171,6 @@ GapFillReturnCode GapFillProcess::processGap(size_t k, int estimatedSize, const 
     if(code == HBRC_OK)
     {
         assert(!result.haplotypes.empty());
-        if(m_parameters.verbose > 0)
-        {
-            std::cout << "Built " << result.haplotypes.size() << " candidate haplotypes\n";
-            MultiAlignment haplotypeAlignment = MultiAlignmentTools::alignSequences(result.haplotypes);
-            haplotypeAlignment.print();
-        }
-
         // Calculate the estimated size of the sequence, including the anchors
         return selectGapSequence(estimatedSize, result.haplotypes, outSequence);
     }
