@@ -78,15 +78,12 @@ GapFillResult GapFillProcess::processScaffold(const std::string& scaffold) const
                 gapLength += 1;
 
             if(m_parameters.verbose >= 1)
-            printf("Constructing gap at position %zu GapLength: %zu\n", currIdx, gapLength);
+                printf("Constructing gap at position %zu GapLength: %zu\n", currIdx, gapLength);
             
-            size_t startKmer = 71;//m_parameters.kmer;
-            size_t endKmer = 51;
-            size_t stride = 10;
             GapFillReturnCode code = GFRC_UNKNOWN;
 
             // Attempt to fill this gap starting with a long kmer, then relaxing the process
-            for(size_t k = startKmer; k >= endKmer; k -= stride)
+            for(size_t k = m_parameters.startKmer; k >= m_parameters.endKmer; k -= m_parameters.stride)
             {
                 // Calculate the left-anchor using the sequence of the scaffold already appended
                 AnchorSequence leftAnchor = findAnchor(k, result.scaffold, result.scaffold.length() - k, true);

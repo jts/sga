@@ -46,7 +46,8 @@ static const char *GAPFILL_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -p, --prefix=NAME                load the FM-index with prefix NAME\n"
-"      -k, --kmer=K                     use K as the k-mer size for variant discovery\n"
+"      -s, --start-kmer=K               First kmer size used to attempt to resolve each gap (default: 91)\n"
+"      -e, --end-kmer=K                 Last kmer size used to attempt to resolve each gap (default: 51)\n"
 "      -x, --kmer-threshold=T           only use kmers seen at least T times\n"
 "      -t, --threads=NUM                use NUM computation threads\n"
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
@@ -59,7 +60,9 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
-    static int kmer = 31;
+    static int startKmer = 91;
+    static int endKmer = 51;
+    static int stride = 10;
     static int kmerThreshold = 3;
     static int sampleRate = 128;
     static int cacheLength = 10;
@@ -69,7 +72,7 @@ namespace opt
     static std::string outFile = "scaffolds.gapfill.fa";
 }
 
-static const char* shortopts = "o:k:t:x:p:s:d:v";
+static const char* shortopts = "o:s:e:t:x:p:s:d:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
@@ -78,7 +81,8 @@ static const struct option longopts[] = {
     { "threads",       required_argument, NULL, 't' },
     { "prefix",        required_argument, NULL, 'p' },
     { "outfile",       required_argument, NULL, 'o' },
-    { "kmer",          required_argument, NULL, 'k' },
+    { "start-kmer",    required_argument, NULL, 's' },
+    { "end-kmer",      required_argument, NULL, 'e' },
     { "kmer-threshold",required_argument, NULL, 'x' },
     { "sample-rate",   required_argument, NULL, 'd' },
     { "help",          no_argument,       NULL, OPT_HELP },
@@ -107,7 +111,9 @@ int gapfillMain(int argc, char** argv)
     parameters.pRevBWT = pRevBWT;
     parameters.pBWTCache = pBWTCache;
     parameters.pRevBWTCache = pRevBWTCache;
-    parameters.kmer = opt::kmer;
+    parameters.startKmer = opt::startKmer;
+    parameters.endKmer = opt::endKmer;
+    parameters.stride = opt::stride;
     parameters.kmerThreshold = opt::kmerThreshold;
     parameters.verbose = opt::verbose;
 
@@ -148,8 +154,8 @@ void parseGapFillOptions(int argc, char** argv)
         std::istringstream arg(optarg != NULL ? optarg : "");
         switch (c) 
         {
-            case 'k': arg >> opt::kmer; break;
-            case 'x': arg >> opt::kmerThreshold; break;
+            case 's': arg >> opt::startKmer; break;
+            case 'e': arg >> opt::endKmer; break;
             case 'p': arg >> opt::prefix; break;
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;

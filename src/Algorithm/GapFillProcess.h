@@ -34,7 +34,9 @@ struct GapFillParameters
     const BWTIntervalCache* pBWTCache;
     const BWTIntervalCache* pRevBWTCache;
     
-    size_t kmer;
+    size_t startKmer;
+    size_t endKmer;
+    size_t stride;
     size_t kmerThreshold;
 
     int verbose;
