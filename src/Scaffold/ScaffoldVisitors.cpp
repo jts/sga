@@ -537,8 +537,8 @@ bool ScaffoldSVVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex
         }
 
         // Keep the first link in the walk and discard all others
-        std::cout << "Walk " << coveringWalkIdx << " contains all links ";
-        walkVector[coveringWalkIdx].print();
+        //std::cout << "Walk " << coveringWalkIdx << " contains all links ";
+        //walkVector[coveringWalkIdx].print();
         
         // Calculate the difference between the distance in the walk and the distance
         // estimate for each linked vertex
