@@ -24,6 +24,7 @@ class LRCorrectionParameters
         const BWT* pRBWT;
         const SampledSuffixArray* pSSA;
         LRAlignment::LRParams alignParams;
+        int minLength;
 };
 
 // Object holding the result of correcting one read

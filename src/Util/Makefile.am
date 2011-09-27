@@ -30,6 +30,7 @@ libutil_a_SOURCES = \
         ClusterReader.h ClusterReader.cpp \
         MultiAlignment.h MultiAlignment.cpp \
 		StdAlnTools.h StdAlnTools.cpp \
+        VCFUtil.h VCFUtil.cpp \
         Timer.h \
         EncodedString.h \
         DNACodec.h \

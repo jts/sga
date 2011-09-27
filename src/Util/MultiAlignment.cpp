@@ -10,7 +10,9 @@
 #include <iostream>
 #include <algorithm>
 #include <map>
+#include <limits>
 #include "MultiAlignment.h"
+#include "StdAlnTools.h"
 
 struct CigarIter
 {
@@ -85,7 +87,7 @@ struct CigarIter
 
     char getOutputBase(char cigSym)
     {
-        if(cigSym == 'S')
+        if(cigSym == 'S' || cigSym == 'N')
             return '.';
         else
             return pData->str[baseIdx];
@@ -98,9 +100,9 @@ struct CigarIter
 };
 typedef std::vector<CigarIter> CigarIterVector;
 
-MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inData)
+MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inData, std::string rootName)
 {
-    m_verbose = 0;
+    m_verbose = 1;
     // Build a padded multiple alignment from the pairwise alignments to the root
     CigarIterVector iterVec;
 
@@ -109,9 +111,7 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
     rootData.str = rootStr;
     rootData.expandedCigar = std::string(rootStr.size(), 'M');
     rootData.position = 0;
-    rootData.targetID = -1;
-    rootData.targetAlignLength = - 1;
-    rootData.targetPosition = -1;
+    rootData.name = rootName;
 
     m_alignData.push_back(rootData);
     m_alignData.insert(m_alignData.end(), inData.begin(), inData.end());
@@ -130,6 +130,7 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             printf("%zu\t%s\n", i+1, iter.pData->expandedCigar.c_str());
     }
 
+    // Build the padded strings by inserting '-' as necessary
     bool done = false;
     while(!done)
     {
@@ -160,9 +161,124 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             m_alignData[i].padded.append(1,outSym);
         }
     }
+}
 
-    std::stable_sort(m_alignData.begin(), m_alignData.end(), MAlignData::sortPosition);
-    //generateConsensus();
+// 
+size_t MultiAlignment::getIdxByName(const std::string& name) const
+{
+    size_t max = std::numeric_limits<size_t>::max();
+    size_t idx = max;
+    for(size_t i = 0; i < m_alignData.size(); ++i)
+    {
+        if(m_alignData[i].name == name)
+        {
+            if(idx == max)
+            {
+                idx = i;
+            }
+            else
+            {
+                std::cerr << "Error in MultiAlignment::getIdxByName: duplicate rows found for " << name << "\n";
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+
+    if(idx == max)
+    {
+        std::cerr << "Error in MultiAlignment::getIdxByName: row not found for " << name << "\n";
+        exit(EXIT_FAILURE);
+    }
+    return idx;
+}
+
+//
+size_t MultiAlignment::getNumColumns() const
+{
+    assert(!m_alignData.empty());
+    return m_alignData.front().padded.size();
+}
+
+//
+char MultiAlignment::getSymbol(size_t rowIdx, size_t colIdx) const
+{
+    assert(rowIdx < m_alignData.size());
+    assert(colIdx < m_alignData[rowIdx].padded.size());
+    return m_alignData[rowIdx].padded[colIdx];
+}
+
+size_t MultiAlignment::getBaseIdx(size_t rowIdx, size_t colIdx) const
+{
+    assert(rowIdx < m_alignData.size());
+    assert(colIdx < m_alignData[rowIdx].padded.size());
+
+    // Convert the column index to the baseIndex in the sequence at
+
+    // Ensure this is a real base on the target string.
+    assert(getSymbol(rowIdx, colIdx) != '-');
+
+    // Substract the number of padding charcters from the column index to get the 
+    // base index
+    size_t padSyms = 0;
+    for(size_t i = 0; i < colIdx; ++i)
+    {
+        if(getSymbol(rowIdx, i) == '-')
+            padSyms += 1;
+    }
+    assert(padSyms < colIdx);
+    return colIdx - padSyms;
+}
+
+
+//
+std::string MultiAlignment::getPaddedSubstr(size_t rowIdx, size_t start, size_t length) const
+{
+    assert(rowIdx < m_alignData.size());
+    assert(start < m_alignData[rowIdx].padded.size());
+    assert(start + length < m_alignData[rowIdx].padded.size());
+    return m_alignData[rowIdx].padded.substr(start, length);
+}
+
+// Count the length of the homopolymer starting at from
+size_t MultiAlignment::countHomopolymer(size_t rowIdx, int from, int to) const
+{
+    assert(rowIdx < m_alignData.size());
+    assert(from < (int)m_alignData[rowIdx].padded.size());
+
+    if(to == -1)
+        to = m_alignData[rowIdx].padded.size() - 1; // inclusive
+
+    // Determine iteration direction
+    int step = from <= to ? 1 : -1;
+
+    // Get the base of the homopolymer
+    // If it is a padding symbol we use the next non-padded base in the sequence
+    char b;
+    while(1)
+    {
+        b = getSymbol(rowIdx, from);
+        if(b == '-')
+            from += step;
+        else
+            break;
+    }
+
+    size_t length = 1;
+    do
+    {
+        from += step;
+        assert(from >= 0 && from < (int)m_alignData[rowIdx].padded.size());
+
+        char s = getSymbol(rowIdx, from);
+        if(s == '-')
+            continue;
+        if(s == b)
+            length += 1;
+        else
+            break;
+    }
+    while(from != to);
+    return length;
 }
 
 // Generate simple consensus string from the multiple alignment
@@ -209,19 +325,51 @@ std::string MultiAlignment::generateConsensus()
     }
 
     if(m_verbose > 0)
-        print(&paddedConsensus);
+        print(80, &paddedConsensus);
 
     return consensus;
 }
 
-//
-void MultiAlignment::print(const std::string* pConsensus) const
+// Generate a string representing the columns that differ between the strings
+std::string MultiAlignment::generateMatchString() const
 {
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
-    size_t len = m_alignData[0].padded.size();
-    int col_size = 140;
+
+    std::string matchString;
+
+    size_t num_rows = m_alignData.size();
+    size_t num_cols = m_alignData.front().padded.size();
+    for(size_t i = 0; i < num_cols; ++i)
+    {
+        char rootChar = m_alignData[0].padded[i];
+        bool allMatch = true;
+        for(size_t j = 1; j < num_rows; ++j)
+        {
+            char b = m_alignData[j].padded[i];
+            if(b != rootChar)
+                allMatch = false;
+        }
+        matchString.append(1, allMatch ? '*' : ' ');
+    }
+
+    return matchString;
+}
+
+//
+void MultiAlignment::print(int col_size, const std::string* pConsensus) const
+{
+    assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
+
+    std::string matchString = generateMatchString();
+
+    // Create a copy of the m_alignData and sort it by position
+    MAlignDataVector sortedAlignments = m_alignData;
+    std::stable_sort(sortedAlignments.begin(), sortedAlignments.end(), MAlignData::sortPosition);
+
+    size_t len = sortedAlignments[0].padded.size();
     for(size_t l = 0; l < len; l += col_size)
     {
+        // Print the consensus if requested
         if(pConsensus != NULL)
         {
             int diff = pConsensus->size() - l;
@@ -232,14 +380,81 @@ void MultiAlignment::print(const std::string* pConsensus) const
                 printf("C\n");
         }
         
-        for(size_t i = 0; i < m_alignData.size(); ++i)
+        // Print each row
+        for(size_t i = 0; i < sortedAlignments.size(); ++i)
         {
-            const MAlignData& mad = m_alignData[i];
+            const MAlignData& mad = sortedAlignments[i];
             int diff = mad.padded.size() - l;
             int stop = diff < col_size ? diff : col_size;
-            printf("%zu\t%s\t%d,%d,%d\n", i, mad.padded.substr(l, stop).c_str(), mad.targetID, mad.targetPosition, mad.targetAlignLength);
+            printf("%zu\t%s\t%s\n", i, mad.padded.substr(l, stop).c_str(), mad.name.c_str());
         }
+    
+        // Print the matched columns
+        int diff = matchString.size() - l;
+        int stop = diff < col_size ? diff : col_size;
+        printf("M\t%s\n", matchString.substr(l, stop).c_str());
 
         std::cout << "\n";
     }
+}
+
+// Construct a multiple alignment of the input strings from global alignments
+// to the first element in the vector
+MultiAlignment MultiAlignmentTools::alignSequencesGlobal(const SeqItemVector& sequences)
+{
+    assert(!sequences.empty());
+    const std::string& base = sequences[0].seq.toString();
+
+    MAlignDataVector madVector;
+    for(size_t i = 1; i < sequences.size(); ++i)
+    {
+        std::string seq = sequences[i].seq.toString();
+        std::string cigar = StdAlnTools::globalAlignmentCigar(seq, base);
+    
+        // Initialize the multiple alignment data
+        MAlignData maData;
+        maData.position = 0;
+        maData.str = seq;
+        maData.expandedCigar = StdAlnTools::expandCigar(cigar);
+
+        maData.name = sequences[i].id;
+        madVector.push_back(maData);
+    }
+
+    return MultiAlignment(base, madVector, sequences[0].id);
+}
+
+// Construct a multiple alignment of the input strings from local alignments
+// to the first element of the vector
+MultiAlignment MultiAlignmentTools::alignSequencesLocal(const SeqItemVector& sequences)
+{
+    assert(!sequences.empty());
+    const std::string& base = sequences[0].seq.toString();
+
+    MAlignDataVector madVector;
+    for(size_t i = 1; i < sequences.size(); ++i)
+    {
+        // The alignment is (slightly counterintuitively) with respect to the 
+        // base string as the query so that all the cigar strings used
+        // are based on edit operations to the base.
+        std::string seq = sequences[i].seq.toString();
+        LocalAlignmentResult result = StdAlnTools::localAlignment(seq,base);
+        
+        // Initialize the multiple alignment data
+        MAlignData maData;
+        maData.position = result.queryStartPosition;
+        // If the non-base sequence overhangs the base, clip it
+        if(result.targetStartPosition > 0)
+            maData.str = seq.substr(result.targetStartPosition);
+        else
+            maData.str = seq;
+
+        // Pad out the cigar with reference skip characters
+        maData.expandedCigar = StdAlnTools::expandCigar(result.cigar);
+
+        maData.name = sequences[i].id;
+        madVector.push_back(maData);
+    }
+
+    return MultiAlignment(base, madVector, sequences[0].id);
 }

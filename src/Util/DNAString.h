@@ -66,6 +66,13 @@ class DNAString
             return m_data[idx];
         }
 
+        // Get the substring of length n starting at position pos
+        std::string substr(size_t pos, size_t n) const
+        {
+            assert(m_data != NULL && pos < m_len && pos + n <= m_len);
+            return std::string(m_data + pos, n);
+        }
+
         // randomly change the 'N' bases to one of ACGT so that the string is not ambiguous
         void disambiguate();
 

@@ -56,7 +56,7 @@ struct SeqItem
         out << seq.toString() << "\n";
     }    
 };
-
+typedef std::vector<SeqItem> SeqItemVector;
 
 // SeqRecord is a id,sequence pair with an associated quality value
 struct SeqRecord
@@ -195,6 +195,7 @@ std::string prefix(const std::string& seq, const unsigned int len);
 std::string suffix(const std::string& seq, const unsigned int len);
 
 // Calculate the dust score for the given sequence
+double maxDustWindow(const std::string& seq, size_t windowSize = 64, size_t minWindow = 64);
 double calculateDustScore(const std::string& seq);
 
 // Count the number of differences between s1 and s2 over the first n chars

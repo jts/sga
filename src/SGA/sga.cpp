@@ -31,6 +31,11 @@
 #include "correct-long.h"
 #include "convert-beetl.h"
 #include "bwt2fa.h"
+#include "graph-diff.h"
+#include "hapgen.h"
+#include "var2vcf.h"
+#include "gapfill.h"
+#include "metagenome.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -60,6 +65,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           bwt2fa          transform a bwt back into a set of sequences\n"
 "           convert-beetl   convert an index file constructed with BEETL into SGA's format\n"
 "\n\nExperimental commands:\n"
+"           graph-diff      find and report strings that differ between two graphs\n"
 "           gen-ssa         generate a sampled suffix array for the given set of reads\n"
 "           correct-long    correct long reads\n"
 "           stats           print useful statistics about the read set\n"
@@ -68,6 +74,10 @@ static const char *SGA_USAGE_MESSAGE =
 "           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
 "           filterBAM       filter out contaminating mate-pair data in a BAM file\n"
 "           cluster         find clusters of reads belonging to the same connected component\n"
+"           var2vcf         convert aligned variant sequences found by graph-diff into a VCF file\n"
+"           hapgen          generate candidate haplotypes from an assembly graph\n"
+"           gapfill         fill intra-scaffold gaps\n"
+"           metagenome      assemble contigs from metagenomics data\n"
 "\n\nDeprecated commands:\n"
 "           rmdup           duplicate read removal - superceded by sga filter\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -139,6 +149,16 @@ int main(int argc, char** argv)
             convertBeetlMain(argc - 1, argv + 1);
         else if(command == "bwt2fa")
             bwt2faMain(argc - 1, argv + 1);
+        else if(command == "graph-diff")
+            graphDiffMain(argc - 1, argv + 1);
+        else if(command == "var2vcf")
+            var2vcfMain(argc - 1, argv + 1);
+        else if(command == "hapgen")
+            hapgenMain(argc - 1, argv + 1);
+        else if(command == "gapfill")
+            gapfillMain(argc - 1, argv + 1);
+        else if(command == "metagenome")
+            metagenomeMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

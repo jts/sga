@@ -454,7 +454,7 @@ void ExtensionDP::printAlignment(const std::string& extendable, const std::strin
 
     // Print the strings
     std::string paddedF, paddedE, paddedMatch;
-    StdAlnTools::makePaddedStrings(fixed, extendable, path, path_len, paddedF, paddedE, paddedMatch);
+    StdAlnTools::makePaddedStringsFromPath(fixed, extendable, path, path_len, paddedF, paddedE, paddedMatch);
     StdAlnTools::printPaddedStrings(paddedF, paddedE, paddedMatch);
 
     std::cout << "CIGAR: " << StdAlnTools::makeCigar(path, path_len) << "\n";

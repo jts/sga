@@ -85,7 +85,25 @@ double calculateDustScore(const std::string& seq)
     }
     return sum / (seq.size() - 2);
 }
- 
+
+// Returns the window over seq with the highest dust score
+double maxDustWindow(const std::string& seq, size_t windowSize, size_t minWindow)
+{
+    double maxScore = 0.0f;
+    for(size_t i = 0; i < seq.size(); i += 1)
+    {
+        size_t r = seq.size() - i;
+        size_t w = r < windowSize ? r : windowSize;
+        if(w >= minWindow) // don't calculate score for small windows
+        {
+            double s = calculateDustScore(seq.substr(i, w));
+            if(s > maxScore)
+                maxScore = s;
+        }
+    }
+    return maxScore;
+}
+
 // count the differences between s1 and s2 over the first n bases
 int countDifferences(const std::string& s1, const std::string& s2, size_t n)
 {

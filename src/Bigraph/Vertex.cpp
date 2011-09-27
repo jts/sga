@@ -604,7 +604,7 @@ void Vertex::writeEdges(std::ostream& out, int dotFlags) const
         {
             if((*iter)->getStartID() < (*iter)->getEndID())
             {
-                out << "\"" << (*iter)->getStart() << "\" -- \"" << (*iter)->getEnd() << "\"";
+                out << "\"" << (*iter)->getStartID() << "\" -- \"" << (*iter)->getEndID() << "\"";
             }
         }
         else

@@ -38,7 +38,9 @@ const EdgeDir EDGE_DIRECTIONS[ED_COUNT] = { ED_SENSE, ED_ANTISENSE };
 enum DotFlags
 {
     DF_UNDIRECTED = 0x01,
-    DF_ANNOTATIONS = 0x02
+    DF_ANNOTATIONS = 0x02,
+    DF_COLORED = 0x04,
+    DF_NOID = 0x08
 };
 
 // GraphColors are generic flags that can be used to indicate state

@@ -18,7 +18,8 @@ def runCmd(cmd):
     return subprocess.Popen(cmd, shell=True).wait()
 
 def _align(ref, reads, out):
-    alnCmd = "bwa aln -o 0 %s %s > %s" % (ref, reads, out)
+    global threads
+    alnCmd = "bwa aln -o 0 -t %d %s %s > %s" % (threads, ref, reads, out)
     runCmd(alnCmd)
 
 # Process commands
@@ -65,10 +66,16 @@ def usage():
     print 'align reads to contigs'
     print 'Options:'
     print '       --name=STR          Use STR as the basename for the output files.'
+    print '       -t,--threads=N      Use N threads when running bwa.'
+
+
+# Variables
+threads = 1
 
 try:
-    opts, args = getopt.gnu_getopt(sys.argv[1:], '', ["name=",
-                                                      "help"])
+    opts, args = getopt.gnu_getopt(sys.argv[1:], 't:', ["name=",
+                                                        "threads=",
+                                                        "help"])
 except getopt.GetoptError, err:
         print str(err)
         usage()
@@ -77,6 +84,8 @@ except getopt.GetoptError, err:
 for (oflag, oarg) in opts:
         if oflag == "--name":
             projectName = oarg
+        elif oflag == "--threads" or oflag == '-t':
+            threads = int(oarg)
         elif oflag == '--help':
             usage()
             sys.exit(1)

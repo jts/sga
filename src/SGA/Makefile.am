@@ -48,5 +48,10 @@ sga_SOURCES = sga.cpp \
               correct-long.h correct-long.cpp \
               convert-beetl.h convert-beetl.cpp \
               bwt2fa.h bwt2fa.cpp \
+              graph-diff.h graph-diff.cpp \
+              var2vcf.h var2vcf.cpp \
+              hapgen.h hapgen.cpp \
+              gapfill.h gapfill.cpp \
+              metagenome.h metagenome.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

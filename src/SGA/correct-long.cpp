@@ -25,7 +25,14 @@
 #include "CorrectionThresholds.h"
 #include "KmerDistribution.h"
 #include "LRCorrectionAlgorithm.h"
-      
+  
+// Defines
+#define PROCESS_LRC_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, LRCorrectionResult, \
+                                                                            LRCorrectionProcess, LRCorrectionPostProcess>
+
+#define PROCESS_LRC_PARALLEL SequenceProcessFramework::processSequencesParallel<SequenceWorkItem, LRCorrectionResult, \
+                                                                                LRCorrectionProcess, LRCorrectionPostProcess>
+    
 //
 // Getopt
 //
@@ -44,6 +51,7 @@ static const char *CORRECT_LONG_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -p, --prefix=PREFIX              use PREFIX for the names of the index files\n"
 "      -o, --outfile=FILE               write the corrected reads to FILE (default: READSFILE.ec.fa)\n"
+"      -m, --min-length=LEN             only process reads with length at least LEN bp (default 200bp)\n"
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      -z, --z-best=N                   keep N hits at each node.\n"
@@ -59,6 +67,7 @@ namespace opt
     static unsigned int verbose;
     static int numThreads = 1;
     static int zBest = -1;
+    static int minLength = 200;
     static std::string prefix;
     static std::string readsFile;
     static std::string outFile;
@@ -67,11 +76,9 @@ namespace opt
 
     static LRAlignment::CutAlgorithm cutAlgorithm = LRAlignment::LRCA_DEFAULT;
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
-    
-    static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
 }
 
-static const char* shortopts = "p:m:d:t:o:z:";
+static const char* shortopts = "p:d:t:o:z:l:";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD, OPT_LEARN, OPT_CUT };
 
@@ -98,7 +105,7 @@ int correctLongMain(int argc, char** argv)
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
-    SampledSuffixArray* pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
+    SampledSuffixArray* pSSA = NULL;//new SampledSuffixArray(opt::prefix + SSA_EXT);
     std::ostream* pWriter = createWriter(opt::outFile);
 
     // Set the long read corrector options
@@ -114,6 +121,7 @@ int correctLongMain(int argc, char** argv)
     params.pRBWT = pRBWT;
     params.pSSA = pSSA;
     params.alignParams = alignParams;
+    params.minLength = opt::minLength;
 
     // Setup post-processor
     LRCorrectionPostProcess postProcessor(pWriter);
@@ -121,11 +129,8 @@ int correctLongMain(int argc, char** argv)
     if(opt::numThreads <= 1)
     {
         // Serial mode
-        LRCorrectionProcess processor(params); 
-        SequenceProcessFramework::processSequencesSerial<SequenceWorkItem,
-                                                         LRCorrectionResult, 
-                                                         LRCorrectionProcess, 
-                                                         LRCorrectionPostProcess>(opt::readsFile, &processor, &postProcessor);
+        LRCorrectionProcess processor(params);
+        PROCESS_LRC_SERIAL(opt::readsFile, &processor, &postProcessor);
     }
     else
     {
@@ -136,10 +141,8 @@ int correctLongMain(int argc, char** argv)
             LRCorrectionProcess* pProcessor = new LRCorrectionProcess(params);
             processorVector.push_back(pProcessor);
         }
-        SequenceProcessFramework::processSequencesParallel<SequenceWorkItem,
-                                                           LRCorrectionResult, 
-                                                           LRCorrectionProcess, 
-                                                           LRCorrectionPostProcess>(opt::readsFile, processorVector, &postProcessor);
+
+        PROCESS_LRC_PARALLEL(opt::readsFile, processorVector, &postProcessor);
 
         for(int i = 0; i < opt::numThreads; ++i)
         {
@@ -149,7 +152,8 @@ int correctLongMain(int argc, char** argv)
 
     delete pBWT;
     delete pRBWT;
-    delete pSSA;
+    assert(pSSA == NULL);
+    //delete pSSA;
     delete pWriter;
 
     if(opt::numThreads > 1)
@@ -170,7 +174,7 @@ void parseCorrectLongOptions(int argc, char** argv)
         std::istringstream arg(optarg != NULL ? optarg : "");
         switch (c) 
         {
-            case 'm': arg >> opt::minOverlap; break;
+            case 'l': arg >> opt::minLength; break;
             case 'p': arg >> opt::prefix; break;
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;

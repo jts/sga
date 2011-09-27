@@ -14,10 +14,46 @@
 // Perform a global alignment between the given strings
 int StdAlnTools::globalAlignment(const std::string& target, const std::string& query, bool bPrint)
 {
+    path_t* path;
+    int path_len = 0;
+    int score = 0;
+    createGlobalAlignmentPath(target, query, &path, &path_len, &score);
+
+    if(bPrint)
+    {
+        std::string paddedTarget, paddedQuery, paddedMatch;
+        makePaddedStringsFromPath(target, query, path, path_len, paddedTarget, paddedQuery, paddedMatch);
+        printPaddedStrings(paddedTarget, paddedQuery, paddedMatch);
+
+        std::cout << "CIGAR: " << makeCigar(path, path_len) << "\n";
+        std::cout << "Global alignment score: " << score << "\n";
+    }
+
+    free(path);
+
+    return score;
+}
+
+// Perform a global alignment between the given strings and return the CIGAR string
+std::string StdAlnTools::globalAlignmentCigar(const std::string& target, const std::string& query)
+{
+    path_t* path;
+    int path_len = 0;
+    int score = 0;
+    createGlobalAlignmentPath(target, query, &path, &path_len, &score);
+    std::string cigar = makeCigar(path, path_len);
+    free(path);
+    return cigar;
+}
+
+// Perform a local alignment
+LocalAlignmentResult StdAlnTools::localAlignment(const std::string& target, const std::string& query)
+{
     // Set up global alignment parameters and data structures
     GlobalAlnParams params;
     int max_path_length = target.size() + query.size();
-    path_t* path = (path_t*)calloc(max_path_length, sizeof(path_t));    
+    path_t *path = (path_t*)calloc(max_path_length, sizeof(path_t));
+    int path_len;
 
     AlnParam par;
     int matrix[25];
@@ -26,26 +62,100 @@ int StdAlnTools::globalAlignment(const std::string& target, const std::string& q
     // Make a packed version of the query and target
     uint8_t* pQueryT = createPacked(query);
     uint8_t* pTargetT = createPacked(target);
-    int path_len = 0;
-    int score = aln_global_core(pTargetT, target.size(), pQueryT, query.size(), &par, path, &path_len);
+    
+    LocalAlignmentResult result;
+    result.score = aln_local_core(pTargetT, target.size(), pQueryT, query.size(), &par, path, &path_len, 1, 0);
     assert(path_len <= max_path_length);
 
-    if(bPrint)
-    {
-        std::string paddedTarget, paddedQuery, paddedMatch;
-        makePaddedStrings(target, query, path, path_len, paddedTarget, paddedQuery, paddedMatch);
-        printPaddedStrings(paddedTarget, paddedQuery, paddedMatch);
+    result.cigar = makeCigar(path, path_len);
 
-        std::cout << "CIGAR: " << makeCigar(path, path_len) << "\n";
-        std::cout << "Global alignment score: " << score << "\n";
+    // Calculate the aligned coordinates
+    // Same code as bwape.c by Heng Li
+    path_t* p = path + path_len - 1;
+    result.targetStartPosition = (p->i ? p->i : 1) - 1;
+    result.targetEndPosition = path->i;
+    result.queryStartPosition = (p->j ? p->j : 1) - 1;
+    result.queryEndPosition = path->j;
+    
+    // Update cigar
+    if(result.queryStartPosition > 0)
+    {
+        std::stringstream csa;
+        csa << result.queryStartPosition << "S";
+        result.cigar.insert(0, csa.str());
     }
+
+    if(result.queryEndPosition < (int64_t)query.length())
+    {
+        std::stringstream csa;
+        csa << query.length() - result.queryEndPosition << "S";
+        result.cigar.append(csa.str());
+    }
+
+    //std::string targetSS = target.substr(result.targetStartPosition, result.targetEndPosition - result.targetStartPosition);
+    //std::string querySS = query.substr(result.queryStartPosition, result.queryEndPosition - result.queryStartPosition);
+    //globalAlignment(targetSS, querySS, true);
 
     // Clean up
     delete [] pQueryT;
     delete [] pTargetT;
     free(path);
 
-    return score;
+    return result;
+}
+
+// Expand a CIGAR string into a character code for each symbol of the alignment
+std::string StdAlnTools::expandCigar(const std::string& cigar)
+{
+    std::string expanded;
+    std::stringstream parser(cigar);
+    int length;
+    char code;
+    while(parser >> length)
+    {
+        bool success = parser >> code;
+        expanded.append(length, code);
+        assert(success);
+        (void)success;
+    }
+    return expanded;
+}
+
+// Remove padding characters from str
+std::string StdAlnTools::unpad(const std::string& str)
+{
+    std::string out;
+    for(size_t i = 0; i < str.size(); ++i)
+    {
+        if(str[i] != '-')
+            out.push_back(str[i]);   
+    }
+    return out;
+}
+
+// Create a path array representing the global alignment between target and query
+// Caller must free the path
+void StdAlnTools::createGlobalAlignmentPath(const std::string& target, const std::string& query,
+                                            path_t** path, int* path_len, int* score)
+{
+    // Set up global alignment parameters and data structures
+    GlobalAlnParams params;
+    int max_path_length = target.size() + query.size();
+    *path = (path_t*)calloc(max_path_length, sizeof(path_t));
+
+    AlnParam par;
+    int matrix[25];
+    StdAlnTools::setAlnParam(par, matrix, params);
+
+    // Make a packed version of the query and target
+    uint8_t* pQueryT = createPacked(query);
+    uint8_t* pTargetT = createPacked(target);
+    *score = aln_global_core(pTargetT, target.size(), pQueryT, query.size(), &par, *path, path_len);
+    assert(*path_len <= max_path_length);
+
+    // Clean up
+    delete [] pQueryT;
+    delete [] pTargetT;
 }
 
 // Convert a std::string into the stdaln required packed format.
@@ -100,10 +210,23 @@ std::string StdAlnTools::makeCigar(path_t* path, int path_len)
     return cigarSS.str();
 }
 
+// Make a pair of padded alignment strings from the pair of sequences
+void StdAlnTools::makePaddedStrings(const std::string& s1, const std::string& s2, 
+                                    std::string& out1, std::string& out2)
+{
+    path_t* path;
+    int path_len = 0;
+    int score = 0;
+    createGlobalAlignmentPath(s1, s2, &path, &path_len, &score);
+    std::string outm;
+    makePaddedStringsFromPath(s1, s2, path, path_len, out1, out2, outm);
+    free(path);
+}
+
 // Convert a dynamic programming path to a set of padded strings
 // Algorithm ported from stdaln.c:aln_stdaln_aux
-void StdAlnTools::makePaddedStrings(const std::string& s1, const std::string& s2, path_t* path, int path_len, 
-                                    std::string& out1, std::string& out2, std::string& outm)
+void StdAlnTools::makePaddedStringsFromPath(const std::string& s1, const std::string& s2, path_t* path, int path_len, 
+                                            std::string& out1, std::string& out2, std::string& outm)
 {
     out1.resize(path_len, 'A');
     out2.resize(path_len, 'A');

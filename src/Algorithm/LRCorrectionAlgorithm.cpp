@@ -9,6 +9,7 @@
 //
 #include "LRCorrectionAlgorithm.h"
 #include "StringThreader.h"
+#include "HaplotypeBuilder.h"
 
 namespace LRCorrectionAlgorithm
 {
@@ -19,10 +20,11 @@ std::string correct(const std::string& query,
                     const SampledSuffixArray* pTargetSSA,
                     const LRAlignment::LRParams& params)
 {
-    if(0)
-        return correctAlignment(query, pTargetBWT, pTargetSSA, params);
-    else
-        return correctGraphThread(query, pTargetBWT, pRevTargetBWT, pTargetSSA, params);
+    (void)pTargetSSA;
+    (void)params;
+    //return correctAlignment(query, pTargetBWT, pTargetSSA, params);
+    //return correctGraphThread(query, pTargetBWT, pRevTargetBWT, pTargetSSA, params);
+    return correctDeBruijnPath(query, pTargetBWT, pRevTargetBWT);
 }
 
 // Correct the read using an alignment-based approach
@@ -132,6 +134,115 @@ std::string correctGraphThread(const std::string& query,
         }
     }
     return bestString;
+}
+
+// Correct the read using a de Bruijn graph threading approach
+std::string correctDeBruijnPath(const std::string& query,
+                                const BWT* pTargetBWT, 
+                                const BWT* pRevTargetBWT,
+                                bool verbose)
+{
+    size_t kmer = 41;
+    size_t kmerThreshold = 5;
+
+    if(verbose)
+        std::cout << "Processing query: " << query << "\n";
+
+    // Compute the set of anchor sequences. These are kmers with frequency
+    // above the given threshold. For non-adjacent anchors, we construct haplotypes
+    // from the graph and use these sequences to correct the read.
+    AnchorVector anchors;
+
+    // Create a table of kmer frequences over the query sequence
+    for(size_t i = 0; i < query.size() - kmer + 1; ++i)
+    {
+        std::string ks = query.substr(i, kmer);
+        size_t count = BWTAlgorithms::countSequenceOccurrences(ks, pTargetBWT);
+
+        AnchorSequence anchor = { ks, i, count };
+        if(verbose)
+            std::cout << anchor << "\n";
+        if(count >= kmerThreshold)
+            anchors.push_back(anchor);
+    }
+
+    // Build haplotypes between non-adjacent anchors
+
+    // If there is zero or one anchor, do nothing
+    if(anchors.size() <= 1)
+        return "";
+
+    AnchorSequence& previousAnchor = anchors.front();
+    std::string correctedSequence = previousAnchor.sequence;
+
+    for(size_t i = 1; i < anchors.size(); ++i)
+    {
+        AnchorSequence& currAnchor = anchors[i];
+        
+        // Check if the anchors are non-adjacent
+        if(currAnchor.position != previousAnchor.position + 1)
+        {
+            // Build haplotypes between anchors
+            if(verbose)
+            {
+                std::cout << "Anchor1: " << previousAnchor << "\n";
+                std::cout << "Anchor2: " << currAnchor << "\n";
+            }
+            
+            // Skip degenerate anchors, leave the read uncorrected
+            if(previousAnchor.sequence == currAnchor.sequence)
+                return "";
+
+            HaplotypeBuilder builder;
+            builder.setTerminals(previousAnchor, currAnchor);
+            builder.setIndex(pTargetBWT, pRevTargetBWT);
+            builder.setKmerParameters(kmer, kmerThreshold);
+
+            HaplotypeBuilderResult result;
+            builder.run();
+            builder.parseWalks(result);
+
+            if(result.haplotypes.empty())
+                return ""; // no correction found
+            
+            if(verbose)
+                std::cout << "Built " << result.haplotypes.size() << " haplotype\n";
+
+            // Take a subsequence of the query that these haplotypes replace
+            size_t queryStart = previousAnchor.position;
+            size_t queryStop = currAnchor.position + kmer - 1;
+            std::string querySub = query.substr(queryStart, queryStop - queryStart + 1);
+            
+            int64_t bestScore = 0;
+            size_t bestIndex = 0;
+            for(size_t j = 0; j < result.haplotypes.size(); ++j)
+            {
+                int score = StdAlnTools::globalAlignment(querySub, result.haplotypes[j], verbose);
+                if(score > bestScore)
+                {
+                    bestScore = score;
+                    bestIndex = j;
+                }
+            }
+
+            // Append in the sequence of the best haplotype
+            // We skip the first k bases as these are part
+            // of the previous anchor, which has already been appended
+            std::string toAppend = result.haplotypes[bestIndex].substr(kmer);
+            correctedSequence.append(toAppend);
+        }
+        else
+        {
+            // Adjancent anchors, append in the last base of the anchor
+            char lastBase = currAnchor.sequence[currAnchor.sequence.size() - 1];
+            correctedSequence.append(1, lastBase);
+        }
+        previousAnchor = currAnchor;
+    }
+
+    if(verbose)
+        StdAlnTools::globalAlignment(query, correctedSequence, true);
+    return correctedSequence;
 }
 
 } // namespace

@@ -29,4 +29,12 @@ libalgorithm_a_SOURCES = \
         LRCorrectionAlgorithm.h LRCorrectionAlgorithm.cpp \
         LRCorrectionProcess.h LRCorrectionProcess.cpp \
         StringThreader.h StringThreader.cpp \
-        ExtensionDP.h ExtensionDP.cpp
+        GraphCompare.h GraphCompare.cpp \
+        HapgenProcess.h HapgenProcess.cpp \
+        ExtensionDP.h ExtensionDP.cpp \
+        VariationBubbleBuilder.h VariationBubbleBuilder.cpp \
+        HaplotypeBuilder.h HaplotypeBuilder.cpp \
+        GapFillProcess.h GapFillProcess.cpp \
+        MetAssembleProcess.h MetAssembleProcess.cpp \
+        MetagenomeBuilder.h MetagenomeBuilder.cpp \
+        BuilderCommon.h BuilderCommon.cpp 
