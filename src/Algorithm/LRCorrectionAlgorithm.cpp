@@ -142,9 +142,7 @@ std::string correctDeBruijnPath(const std::string& query,
                                 const BWT* pRevTargetBWT,
                                 bool verbose)
 {
-    (void)pRevTargetBWT;
-    
-    size_t kmer = 31;
+    size_t kmer = 41;
     size_t kmerThreshold = 5;
 
     if(verbose)
@@ -190,6 +188,10 @@ std::string correctDeBruijnPath(const std::string& query,
                 std::cout << "Anchor1: " << previousAnchor << "\n";
                 std::cout << "Anchor2: " << currAnchor << "\n";
             }
+            
+            // Skip degenerate anchors, leave the read uncorrected
+            if(previousAnchor.sequence == currAnchor.sequence)
+                return "";
 
             HaplotypeBuilder builder;
             builder.setTerminals(previousAnchor, currAnchor);

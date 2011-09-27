@@ -33,4 +33,8 @@ libalgorithm_a_SOURCES = \
         HapgenProcess.h HapgenProcess.cpp \
         ExtensionDP.h ExtensionDP.cpp \
         VariationBubbleBuilder.h VariationBubbleBuilder.cpp \
-        HaplotypeBuilder.h HaplotypeBuilder.cpp
+        HaplotypeBuilder.h HaplotypeBuilder.cpp \
+        GapFillProcess.h GapFillProcess.cpp \
+        MetAssembleProcess.h MetAssembleProcess.cpp \
+        MetagenomeBuilder.h MetagenomeBuilder.cpp \
+        BuilderCommon.h BuilderCommon.cpp 

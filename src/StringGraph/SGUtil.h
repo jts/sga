@@ -27,5 +27,6 @@ StringGraph* loadASQG(const std::string& filename, const unsigned int minOverlap
 // Returns a graph where each sequence in the fasta is a vertex but there are no edges in the graph.
 StringGraph* loadFASTA(const std::string& filename);
 
+
 };
 #endif

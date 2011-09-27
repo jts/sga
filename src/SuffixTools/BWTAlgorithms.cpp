@@ -179,7 +179,12 @@ AlphaCount64 BWTAlgorithms::calculateExactExtensions(const unsigned int overlapL
 
 // Calculate the 1-base de Bruijn graph extensions of str
 // The includes the reverse complement
-AlphaCount64 BWTAlgorithms::calculateDeBruijnExtensions(const std::string str, const BWT* pBWT, const BWT* pRevBWT, EdgeDir direction)
+AlphaCount64 BWTAlgorithms::calculateDeBruijnExtensions(const std::string str, 
+                                                        const BWT* pBWT, 
+                                                        const BWT* pRevBWT, 
+                                                        EdgeDir direction, 
+                                                        const BWTIntervalCache* pFwdCache,
+                                                        const BWTIntervalCache* pRevCache)
 {
     size_t k = str.size();
     size_t p = k - 1;
@@ -195,8 +200,22 @@ AlphaCount64 BWTAlgorithms::calculateDeBruijnExtensions(const std::string str, c
     std::string rc_pmer = reverseComplement(pmer);
 
     // Get the interval for the p-mer and its reverse complement
-    BWTIntervalPair ip = BWTAlgorithms::findIntervalPair(pBWT, pRevBWT, pmer);
-    BWTIntervalPair rc_ip = BWTAlgorithms::findIntervalPair(pBWT, pRevBWT, rc_pmer);
+    BWTIntervalPair ip;
+    BWTIntervalPair rc_ip;
+
+    // If pointers to interval caches are available, use them
+    // to speed up the initial calculation
+    if(pFwdCache != NULL && pRevCache != NULL)
+    {
+        ip = BWTAlgorithms::findIntervalPairWithCache(pBWT, pRevBWT, pFwdCache, pRevCache, pmer);
+        rc_ip = BWTAlgorithms::findIntervalPairWithCache(pBWT, pRevBWT, pFwdCache, pRevCache, rc_pmer);
+    }
+    else
+    {
+        ip = BWTAlgorithms::findIntervalPair(pBWT, pRevBWT, pmer);
+        rc_ip = BWTAlgorithms::findIntervalPair(pBWT, pRevBWT, rc_pmer);
+    }
+
     assert(ip.isValid() || rc_ip.isValid());
 
     // Get the extension bases

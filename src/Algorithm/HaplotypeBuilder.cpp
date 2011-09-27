@@ -39,6 +39,7 @@ void HaplotypeBuilder::setTerminals(const AnchorSequence& leftAnchor, const Anch
     // Create a new vertex for the source sequence
     // As we are creating a de Bruijn graph, we use the sequence
     // of the vertex as its ID
+    assert(leftAnchor.sequence != rightAnchor.sequence);
     Vertex* pLeftVertex = new(m_pGraph->getVertexAllocator()) Vertex(leftAnchor.sequence, leftAnchor.sequence);
     addVertex(pLeftVertex, leftAnchor.count);
 
@@ -46,7 +47,7 @@ void HaplotypeBuilder::setTerminals(const AnchorSequence& leftAnchor, const Anch
     addVertex(pRightVertex, rightAnchor.count);
 
     // Add the vertex to the extension queue
-    m_queue.push(BubbleExtensionNode(pLeftVertex, ED_SENSE));
+    m_queue.push(BuilderExtensionNode(pLeftVertex, ED_SENSE));
     
     m_pStartVertex = pLeftVertex;
     m_pJoinVertex = pRightVertex;
@@ -60,7 +61,7 @@ void HaplotypeBuilder::setIndex(const BWT* pBWT, const BWT* pRBWT)
 }
 
 // Run the bubble construction process
-bool HaplotypeBuilder::run()
+HaplotypeBuilderReturnCode HaplotypeBuilder::run()
 {
     assert(m_queue.size() == 1);
     assert(m_pJoinVertex != NULL);
@@ -72,9 +73,9 @@ bool HaplotypeBuilder::run()
     while(!m_queue.empty())
     {
         if(m_pGraph->getNumVertices() > MAX_VERTICES)
-            return false;
+            return HBRC_TOO_MANY_VERTICES;
 
-        BubbleExtensionNode curr = m_queue.front();
+        BuilderExtensionNode curr = m_queue.front();
         m_queue.pop();
 
         // Calculate de Bruijn extensions for this node
@@ -97,7 +98,7 @@ bool HaplotypeBuilder::run()
             {
                 pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
                 addVertex(pVertex, count);
-                m_queue.push(BubbleExtensionNode(pVertex, curr.direction));
+                m_queue.push(BuilderExtensionNode(pVertex, curr.direction));
             }
             
             // Create the new edge in the graph
@@ -105,17 +106,17 @@ bool HaplotypeBuilder::run()
 
             // If we've found the join vertex, we have completed the target half of the bubble
             if(joinFound)
-                return true;
+                return HBRC_OK;
         }
     }
 
     // no path between the nodes found
-    return false;
+    return HBRC_NO_PATH;
 }
 
 // After the bubble has been built into the graph, this function
 // finds and compares the two sequences
-void HaplotypeBuilder::parseWalks(HaplotypeBuilderResult& results) const
+HaplotypeBuilderReturnCode HaplotypeBuilder::parseWalks(HaplotypeBuilderResult& results) const
 {
     // Parse walks from the graph that go through the bubbles
     SGWalkVector outWalks;
@@ -127,7 +128,7 @@ void HaplotypeBuilder::parseWalks(HaplotypeBuilderResult& results) const
                                        true, // exhaustive search
                                        outWalks);
     if(!success)
-        return;
+        return HBRC_WALK_FAILED;
 
     // Convert the walks into strings
     for(size_t i = 0; i < outWalks.size(); ++i)
@@ -136,7 +137,7 @@ void HaplotypeBuilder::parseWalks(HaplotypeBuilderResult& results) const
         results.haplotypes.push_back(walkStr);
     }
     
-    return;
+    return HBRC_OK;
 }
 
 // Add a vertex to the graph
