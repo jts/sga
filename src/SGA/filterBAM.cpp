@@ -69,6 +69,7 @@ static const char *FILTERBAM_USAGE_MESSAGE =
 "      -o, --out-bam=FILE               write the filtered reads to FILE\n"
 "      -p, --prefix=STR                 load the FM-index with prefix STR\n"
 "      -x, --max-kmer-depth=N           filter out pairs that contain a kmer that has been seen in the FM-index more than N times\n"
+"      -c, --mate-contamination         filter out pairs aligning with FR orientation, which may be contiminates in a mate pair library\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -88,26 +89,31 @@ namespace opt
     static std::string bamFile;
     static std::string fmIndexPrefix;
 
+    bool filterFRContamination = true;
+    int minDistanceToEnd = 500;
+
     static int kmerSize = 31;
     static int maxKmerDepth = -1;
     static int sampleRate = 256;
 }
 
-static const char* shortopts = "d:t:o:q:e:a:p:x:v";
+static const char* shortopts = "d:t:o:q:e:a:p:x:t:c:v";
 
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
-    { "verbose",         no_argument,       NULL, 'v' },
-    { "threads",         required_argument, NULL, 't' },
-    { "asqg-file",       required_argument, NULL, 'a' },
-    { "max-distance",    required_argument, NULL, 'd' },
-    { "error-rate",      required_argument, NULL, 'e' },
-    { "min-quality",     required_argument, NULL, 'q' },
-    { "outfile",         required_argument, NULL, 'o' },
-    { "fmIndexPrefix",   required_argument, NULL, 'p' },
-    { "help",            no_argument,       NULL, OPT_HELP },
-    { "version",         no_argument,       NULL, OPT_VERSION },
+    { "verbose",            no_argument,       NULL, 'v' },
+    { "threads",            required_argument, NULL, 't' },
+    { "asqg-file",          required_argument, NULL, 'a' },
+    { "max-distance",       required_argument, NULL, 'd' },
+    { "error-rate",         required_argument, NULL, 'e' },
+    { "min-quality",        required_argument, NULL, 'q' },
+    { "outfile",            required_argument, NULL, 'o' },
+    { "fmIndexPrefix",      required_argument, NULL, 'p' },
+    { "end-distance",       required_argument, NULL, 't' },
+    { "mate-contamination", required_argument, NULL, 'c' },
+    { "help",               no_argument,       NULL, OPT_HELP },
+    { "version",            no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
 };
 
@@ -142,6 +148,8 @@ int filterBAMMain(int argc, char** argv)
     int numPairsFilteredByDepth = 0;
     int numPairsUnmapped = 0;
     int numPairsWrote = 0;
+    int numPairsFilteredFRContamination = 0;
+    int numPairsTooCloseToEnd = 0;
 
     // Open the bam files for reading/writing
     BamTools::BamReader* pBamReader = new BamTools::BamReader;
@@ -173,9 +181,7 @@ int filterBAMMain(int argc, char** argv)
 
         // Ensure the pairing is correct
         if(record1.Name != record2.Name)
-        {
             std::cout << "NAME FAIL: " << record1.Name << " " << record2.Name << "\n";
-        }
         assert(record1.Name == record2.Name);
         bool bPassedFilters = true;
 
@@ -207,12 +213,60 @@ int filterBAMMain(int argc, char** argv)
             }
         }
 
+        // Filter forward-reverse contimating pairs in a mate pair library
+        if(opt::filterFRContamination)
+        {
+            if(record1.RefID == record2.RefID)
+            {
+                // Check the orientation of the pairs
+                // We discard the pair if they are like this:
+                //  ------1---->
+                //                <------2------
+                BamTools::BamAlignment* pUpstream;
+                BamTools::BamAlignment* pDownstream;
+                if(record1.Position < record2.Position)
+                {
+                    pUpstream = &record1;
+                    pDownstream = &record2;
+                }
+                else
+                {
+                    pUpstream = &record2;
+                    pDownstream = &record1;
+                }
+                
+                // Upstream half of the pair (more 5') should be forward, downstream should be reverse
+                if(!pUpstream->IsReverseStrand() && pDownstream->IsReverseStrand())
+                {
+                    numPairsFilteredFRContamination += 1;
+                    bPassedFilters = false;
+                }
+            }
+
+            if(bPassedFilters && record1.RefID != record2.RefID)
+            {
+                int distanceToLeftEnd1 = record1.Position;
+                int distanceToRightEnd1 = referenceVector[record1.RefID].RefLength - record1.GetEndPosition();
+                int distance1 = std::min(distanceToLeftEnd1, distanceToRightEnd1);
+                
+                int distanceToLeftEnd2 = record2.Position;
+                int distanceToRightEnd2 = referenceVector[record2.RefID].RefLength - record2.GetEndPosition();
+                int distance2 = std::min(distanceToLeftEnd2, distanceToRightEnd2);
+                if(distance1 < opt::minDistanceToEnd || distance2 < opt::minDistanceToEnd)
+                {
+                    bPassedFilters = false;
+                    numPairsTooCloseToEnd += 1;
+                }
+            }
+        }
+
         // Perform short-insert pair check
         if(pGraph != NULL)
         {
             bPassedFilters = bPassedFilters && filterByGraph(pGraph, referenceVector, record1, record2);
             numPairsFilteredByDistance += 1;
         }
+
         if(bPassedFilters)
         {
             pBamWriter->SaveAlignment(record1);
@@ -228,6 +282,8 @@ int filterBAMMain(int argc, char** argv)
     std::cout << "Total filtered by error rate: " << numPairsFilteredByER << "\n";
     std::cout << "Total filtered by quality: " << numPairsFilteredByQuality << "\n";
     std::cout << "Total filtered by depth: " << numPairsFilteredByDepth << "\n";
+    std::cout << "Total filtered by FR orientation: " << numPairsFilteredFRContamination << "\n";
+    std::cout << "Total filtered by alignment too close to contig end: " << numPairsTooCloseToEnd << "\n";
     
     if(pGraph != NULL)
         delete pGraph;
@@ -392,6 +448,7 @@ void parseFilterBAMOptions(int argc, char** argv)
             case 'a': arg >> opt::asqgFile; break;
             case 'p': arg >> opt::fmIndexPrefix; break;
             case 'x': arg >> opt::maxKmerDepth; break;
+            case 'c': opt::filterFRContamination = true; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
@@ -428,7 +485,6 @@ void parseFilterBAMOptions(int argc, char** argv)
 
     // Parse the input filenames
     opt::bamFile = argv[optind++];
-
     if(opt::outFile.empty())
         opt::outFile = "filtered." + opt::bamFile;
 }

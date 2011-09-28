@@ -134,6 +134,7 @@ void ScaffoldLinkValidator::previsit(ScaffoldGraph* pGraph)
 {
     m_numUnique = 0;
     m_numRepeat = 0;
+    m_numCut = 0;
     pGraph->setEdgeColors(GC_WHITE);
 }
 
@@ -186,6 +187,7 @@ bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
                     edgeVec[i]->setColor(GC_BLACK);
                     edgeVec[i]->getEnd()->markEdgesInDir(edgeVec[i]->getTwin()->getDir(), GC_BLACK);
                 }
+                m_numCut += 1;
             }
         }
     }
@@ -195,14 +197,13 @@ bool ScaffoldLinkValidator::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVe
 //
 void ScaffoldLinkValidator::postvisit(ScaffoldGraph* pGraph)
 {
-    std::cerr << "Link validator done\n";
+    printf("ScaffoldLinkValidator removed edges for %zu vertices\n", m_numCut);
     pGraph->deleteEdgesByColor(GC_BLACK);
 }
 
 //
 ScaffoldChainVisitor::ScaffoldChainVisitor(int maxOverlap) : m_maxOverlap(maxOverlap)
 {
-
 }
 
 //
@@ -501,6 +502,7 @@ ScaffoldSVVisitor::ScaffoldSVVisitor(int maxSize) : m_maxSVSize(maxSize)
 void ScaffoldSVVisitor::previsit(ScaffoldGraph* pGraph)
 {
     pGraph->setEdgeColors(GC_WHITE);
+    m_numMarked = 0;
 }
 
 //
@@ -579,6 +581,7 @@ bool ScaffoldSVVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex
             {
                 edgeVec[i]->setColor(GC_BLACK);
                 edgeVec[i]->getTwin()->setColor(GC_BLACK);
+                m_numMarked += 1;
             }
         }
     }
@@ -589,6 +592,7 @@ bool ScaffoldSVVisitor::visit(ScaffoldGraph* /*pGraph*/, ScaffoldVertex* pVertex
 void ScaffoldSVVisitor::postvisit(ScaffoldGraph* pGraph)
 {
     pGraph->deleteEdgesByColor(GC_BLACK);
+    std::cout << "Structural variation resolver marked " << m_numMarked << " edges\n";
 }
 
 //

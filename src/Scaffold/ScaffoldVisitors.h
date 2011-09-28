@@ -76,6 +76,7 @@ class ScaffoldLinkValidator
         double m_threshold;
         size_t m_numUnique;
         size_t m_numRepeat;
+        size_t m_numCut;
         int m_verbose;
 };
 
@@ -132,6 +133,7 @@ class ScaffoldSVVisitor
 
     private:
         int m_maxSVSize;
+        int m_numMarked;
 };
 
 // Remove the vertices with conflicting distance estimates

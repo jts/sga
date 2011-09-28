@@ -48,8 +48,8 @@ namespace opt
 {
     static unsigned int verbose;
     static std::string contigsFile;
-    static std::string peDistanceEstFile;
-    static std::string mateDistanceEstFile;
+    static StringVector peDistanceEstFiles;
+    static StringVector mateDistanceEstFiles;
     static std::string astatFile;
     static std::string outFile;
     static std::string asqgFile;
@@ -96,11 +96,11 @@ int scaffoldMain(int argc, char** argv)
     
     graph.loadVertices(opt::contigsFile, opt::minContigLength);
 
-    if(!opt::peDistanceEstFile.empty())
-        graph.loadDistanceEstimateEdges(opt::peDistanceEstFile, false, opt::verbose);
+    for(size_t i = 0; i < opt::peDistanceEstFiles.size(); ++i)
+        graph.loadDistanceEstimateEdges(opt::peDistanceEstFiles[i], false, opt::verbose);
     
-    if(!opt::mateDistanceEstFile.empty())
-        graph.loadDistanceEstimateEdges(opt::mateDistanceEstFile, true, opt::verbose);
+    for(size_t i = 0; i < opt::mateDistanceEstFiles.size(); ++i)
+        graph.loadDistanceEstimateEdges(opt::mateDistanceEstFiles[i], true, opt::verbose);
 
     // Load the a-stat data and mark vertices as unique and repeat
     if(!opt::astatFile.empty())
@@ -182,10 +182,10 @@ void parseScaffoldOptions(int argc, char** argv)
             case 'c': arg >> opt::minEstCopyNumber; break;
             case OPT_CUTCONFLICT: opt::removeConflicting = true; break;
             case OPT_PE: 
-                arg >> opt::peDistanceEstFile; 
+                opt::peDistanceEstFiles.push_back(arg.str()); 
                 break;
             case OPT_MATEPAIR: 
-                arg >> opt::mateDistanceEstFile; 
+                opt::mateDistanceEstFiles.push_back(arg.str()); 
                 break;
             case OPT_HELP:
                 std::cout << SCAFFOLD_USAGE_MESSAGE;
@@ -222,9 +222,9 @@ void parseScaffoldOptions(int argc, char** argv)
         exit(1);
     }
 
-    if(opt::peDistanceEstFile.empty() && opt::mateDistanceEstFile.empty())
+    if(opt::peDistanceEstFiles.empty() && opt::mateDistanceEstFiles.empty())
     {
-        std::cerr << SUBPROGRAM ": a distance estimation file must be provided using the --pe and/or --mate-pair options\n";
+        std::cerr << SUBPROGRAM ": at least one distance estimation file must be provided using the --pe and/or --mate-pair options\n";
         exit(1);
     }
 

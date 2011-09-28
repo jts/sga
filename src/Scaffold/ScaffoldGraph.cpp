@@ -132,6 +132,7 @@ void ScaffoldGraph::loadVertices(const std::string& filename, int minLength)
 // 
 void ScaffoldGraph::loadDistanceEstimateEdges(const std::string& filename, bool isMatePair, int verbose)
 {
+    std::cout << "Reading distance estimates from " << filename << "\n";
     std::istream* pReader = createReader(filename);
     std::string line;
 
