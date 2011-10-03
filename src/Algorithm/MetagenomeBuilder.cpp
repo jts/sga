@@ -56,7 +56,8 @@ void MetagenomeBuilder::run()
 {
     assert(!m_queue.empty());
     size_t numIters = 0;
-    //double frequencyFilter = 0.5;
+    double frequencyFilter = 0.25;
+    double MIN_COVERAGE = 3.0;
 
     while(!m_queue.empty())
     {
@@ -77,7 +78,7 @@ void MetagenomeBuilder::run()
         //size_t num_branches = BuilderCommon::filterLowFrequency(extensionCounts, frequencyFilter);
         //size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
         size_t node_coverage = m_vertexCoverageMap[vertStr];
-        size_t cov_threshold = std::max(0.25f*node_coverage,3.0f);
+        size_t cov_threshold = std::max(frequencyFilter*node_coverage, MIN_COVERAGE);
 
         bool uniqueExtension = extensionCounts.hasUniqueDNAChar() || 
                                     BuilderCommon::countValidExtensions(extensionCounts, cov_threshold) == 1;
@@ -100,7 +101,7 @@ void MetagenomeBuilder::run()
          
             // Check if the new sequence to be added into the graph branches in the opposite
             // direction of the assembly. If so, we are entering a repeat and want to stop
-            AlphaCount64 extensionCountsIn = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, 
+            AlphaCount64 extensionCountsIn = BWTAlgorithms::calculateDeBruijnExtensions(newStr, 
                                                                                         m_pBWT, 
                                                                                         m_pRevBWT, 
                                                                                         !curr.direction,
@@ -108,14 +109,15 @@ void MetagenomeBuilder::run()
                                                                                         m_pRevBWTCache);
 
             //size_t num_branches_in = BuilderCommon::filterLowFrequency(extensionCountsIn, frequencyFilter);
-            size_t num_branches_in = BuilderCommon::countValidExtensions(extensionCountsIn, cov_threshold);
+            size_t cov_threshold_in = std::max(frequencyFilter*count, MIN_COVERAGE);
+            size_t num_branches_in = BuilderCommon::countValidExtensions(extensionCountsIn, cov_threshold_in);
             if(num_branches_in > 1)
                 break;
 
             // Create the new vertex and edge in the graph
-            // If this vertex already exists, the graph must contain a loop
+            // If this vertex already exists, the graph must contain a loop so we stop
             if(m_pGraph->getVertex(newStr) != NULL)
-                break; // This vertex exists, a loop has been found. Stop extension
+                break;
 
             Vertex* pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
             addVertex(pVertex, count);

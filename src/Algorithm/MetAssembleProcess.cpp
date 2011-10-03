@@ -113,7 +113,11 @@ MetAssembleResult MetAssemble::process(const SequenceWorkItem& item)
                 marked = m_parameters.pBitVector->updateCAS(lowInterval.lower, false, true);
             else
                 marked = m_parameters.pBitVector->updateCAS(lowRCInterval.lower, false, true);
+
+            // Mark all the kmers in the contig so they will not be visited again
             markSequenceKmers(contig);
+
+            // If the collision check passed, output the contig
             if(marked)
             {
                 if(contig.size() >= m_parameters.minLength)
