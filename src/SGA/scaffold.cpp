@@ -42,6 +42,9 @@ static const char *SCAFFOLD_USAGE_MESSAGE =
 "      -o, --outfile=FILE               write the scaffolds to FILE (default: CONTIGSFILE.scaf\n"
 "          --remove-conflicting         if two contigs have multiple distance estimates between them and they do not agree, break the scaffold\n"
 "                                       at this point\n"
+"          --strict                     perform strict consistency checks on the scaffold links. If a vertex X has multiple edges, a path will\n"
+"                                       be searched for that contains every vertex linked to X. If no such path can be found, the edge of X are removed.\n"
+"                                       This builds very conservative scaffolds that should be highly accurate.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -53,6 +56,7 @@ namespace opt
     static std::string astatFile;
     static std::string outFile;
     static std::string asqgFile;
+    static bool strict = false;
     static bool removeConflicting = false;
     static double uniqueAstatThreshold = 20.0f;
     static double minEstCopyNumber = 0.3f;
@@ -62,7 +66,7 @@ namespace opt
 
 static const char* shortopts = "vm:a:u:r:o:g:s:c:";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PE, OPT_MATEPAIR, OPT_CUTCONFLICT };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PE, OPT_MATEPAIR, OPT_CUTCONFLICT, OPT_STRICT };
 
 static const struct option longopts[] = {
     { "verbose",            no_argument,       NULL, 'v' },
@@ -75,6 +79,7 @@ static const struct option longopts[] = {
     { "max-sv-size",        required_argument, NULL, 's' },
     { "min-copy-number",    required_argument, NULL, 'c' },
     { "remove-conflicting", no_argument,       NULL, OPT_CUTCONFLICT },
+    { "strict",             no_argument,       NULL, OPT_STRICT },
     { "pe",                 required_argument, NULL, OPT_PE },
     { "mate-pair",          required_argument, NULL, OPT_MATEPAIR },
     { "help",               no_argument,       NULL, OPT_HELP },
@@ -127,21 +132,33 @@ int scaffoldMain(int argc, char** argv)
         graph.deleteVertices(SVC_REPEAT);
     }
 
-    // Remove polymorphic nodes from the graph
-    ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
-    while(graph.visit(polyVisitor)) {}
-
-    // If requested, collapse structural variation in the graph
-    if(opt::maxSVSize > 0)
+    if(opt::strict)
     {
-        ScaffoldSVVisitor svVisit(opt::maxSVSize);
-        graph.visit(svVisit);
-    }
+        std::cout << "Performing strict resolutions\n";
+        ScaffoldTransitiveReductionVisitor trVisit;
+        graph.visit(trVisit);
 
-    // Break any links in the graph that are inconsistent
-    ScaffoldLinkValidator linkValidator(100, 0.05f, opt::verbose);
-    graph.visit(linkValidator);
-    graph.deleteVertices(SVC_REPEAT);
+        ScaffoldMultiEdgeRemoveVisitor meVisit;
+        graph.visit(meVisit);
+    }
+    else
+    {
+        // Remove polymorphic nodes from the graph
+        ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
+        while(graph.visit(polyVisitor)) {}
+
+        // If requested, collapse structural variation in the graph
+        if(opt::maxSVSize > 0)
+        {
+            ScaffoldSVVisitor svVisit(opt::maxSVSize);
+            graph.visit(svVisit);
+        }
+
+        // Break any links in the graph that are inconsistent
+        ScaffoldLinkValidator linkValidator(100, 0.05f, opt::verbose);
+        graph.visit(linkValidator);
+        graph.deleteVertices(SVC_REPEAT);
+    }
 
     // Check for cycles in the graph
     ScaffoldAlgorithms::removeCycles(&graph);
@@ -181,6 +198,7 @@ void parseScaffoldOptions(int argc, char** argv)
             case 's': arg >> opt::maxSVSize; break;
             case 'c': arg >> opt::minEstCopyNumber; break;
             case OPT_CUTCONFLICT: opt::removeConflicting = true; break;
+            case OPT_STRICT: opt::strict = true; break;
             case OPT_PE: 
                 opt::peDistanceEstFiles.push_back(arg.str()); 
                 break;

@@ -360,7 +360,7 @@ bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* /*pGraph*/, Scaffo
         // Search the graph for a variation walk that contains a common
         // endpoint for all links
         ScaffoldWalkVector walkVector;
-        ScaffoldSearch::findVariantWalks(pVertex, dir, 10000, 100, walkVector);
+        ScaffoldSearch::findVariantWalks(pVertex, dir, 1000000, 100, walkVector);
 
         // Search the walks to see if one contains all the links.
         int walkIdx = -1;
@@ -404,10 +404,11 @@ bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* /*pGraph*/, Scaffo
         }
 
         // Keep the first link in the walk and discard all others
+        /*
         std::cout << "Walk " << walkIdx << " contains all links ";
         walkVector[walkIdx].print();
         std::cout << "keeping link: " << lowestIdxInVec << " " << edgeVec[lowestIdxInVec]->getLink() << "\n";
-
+        */
         // Mark the links that should not be deleted
         for(int i = 0; i < (int)edgeVec.size(); ++i)
         {
