@@ -19,8 +19,9 @@
 //
 //
 //
-HapgenProcess::HapgenProcess(const HapgenParameters& params) : m_parameters(params)
+HapgenProcess::HapgenProcess(const HapgenParameters& params) : m_parameters(params), m_vcfFile(params.vcfOutfile,"w")
 {
+
 }
 
 //
@@ -114,7 +115,7 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
     DindelRealignParameters dRealignParameters;
     DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
     
-
+    dRealignWindow.run("hmm",this->m_vcfFile);
 
 
 
