@@ -44,6 +44,9 @@ class MetagenomeBuilder
         // Add a vertex to the graph
         void addVertex(Vertex* pVertex, int coverage);
 
+        // Calculate the best vertex linked to the passed in vertex
+        std::pair<std::string, int> getBestEdgeNode(const std::string& nodeX, size_t nodeCoverage, EdgeDir direction);
+
         // Data
 
         StringGraph* m_pGraph;
@@ -56,6 +59,9 @@ class MetagenomeBuilder
         const BWTIntervalCache* m_pRevBWTCache;
         size_t m_kmer;
         size_t m_kmerThreshold;
+
+        double m_frequencyFilter;
+        int m_hardMinCoverage;
 };
 
 #endif

@@ -15,6 +15,8 @@
 //
 MetagenomeBuilder::MetagenomeBuilder()
 {
+    m_frequencyFilter = 0.5;
+    m_hardMinCoverage = 3;
     m_pGraph = new StringGraph;
 }
 
@@ -56,8 +58,6 @@ void MetagenomeBuilder::run()
 {
     assert(!m_queue.empty());
     size_t numIters = 0;
-    double frequencyFilter = 0.25;
-    double MIN_COVERAGE = 3.0;
 
     while(!m_queue.empty())
     {
@@ -66,68 +66,77 @@ void MetagenomeBuilder::run()
         m_queue.pop();
 
         // Calculate de Bruijn extensions for this node
-        std::string vertStr = curr.pVertex->getSeq().toString();
-        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, 
-                                                                                  m_pBWT, 
-                                                                                  m_pRevBWT, 
-                                                                                  curr.direction,
-                                                                                  m_pBWTCache, 
-                                                                                  m_pRevBWTCache);
+        std::string strX = curr.pVertex->getSeq().toString();
 
         // Count the number of branches from this sequence
-        //size_t num_branches = BuilderCommon::filterLowFrequency(extensionCounts, frequencyFilter);
-        //size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
-        size_t node_coverage = m_vertexCoverageMap[vertStr];
-        size_t cov_threshold = std::max(frequencyFilter*node_coverage, MIN_COVERAGE);
+        std::pair<std::string, int> nodeY = getBestEdgeNode(strX, m_vertexCoverageMap[strX], curr.direction);
+        std::string& strY = nodeY.first;
+        int coverageY = nodeY.second;
 
-        bool uniqueExtension = extensionCounts.hasUniqueDNAChar() || 
-                                    BuilderCommon::countValidExtensions(extensionCounts, cov_threshold) == 1;
-
-        // Fail due to a high-coverage split occuring
-        if(!uniqueExtension)
+        if(strY != "")
         {
-            //std::cout << "NONUNIQUE " << extensionCounts << " ct: " << cov_threshold << "\n";
-            break;
-        }
-
-        for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
-        {
-            char b = DNA_ALPHABET::getBase(i);
-            size_t count = extensionCounts.get(b);
-            if(!uniqueExtension || count < cov_threshold)
+            // Get the best node in the opposite direction for 
+            std::pair<std::string, int> nodeZ = getBestEdgeNode(strY, coverageY, !curr.direction);
+            std::string& strZ = nodeZ.first;
+            if(strZ == "" || strZ != strX)
+            {
+                // Either Y does not have an unambiguous best connection or it is
+                // not X. Either way, we stop the extension.
                 continue;
-
-            std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
-         
-            // Check if the new sequence to be added into the graph branches in the opposite
-            // direction of the assembly. If so, we are entering a repeat and want to stop
-            AlphaCount64 extensionCountsIn = BWTAlgorithms::calculateDeBruijnExtensions(newStr, 
-                                                                                        m_pBWT, 
-                                                                                        m_pRevBWT, 
-                                                                                        !curr.direction,
-                                                                                        m_pBWTCache, 
-                                                                                        m_pRevBWTCache);
-
-            //size_t num_branches_in = BuilderCommon::filterLowFrequency(extensionCountsIn, frequencyFilter);
-            size_t cov_threshold_in = std::max(frequencyFilter*count, MIN_COVERAGE);
-            size_t num_branches_in = BuilderCommon::countValidExtensions(extensionCountsIn, cov_threshold_in);
-            if(num_branches_in > 1)
-                break;
-
-            // Create the new vertex and edge in the graph
-            // If this vertex already exists, the graph must contain a loop so we stop
-            if(m_pGraph->getVertex(newStr) != NULL)
-                break;
-
-            Vertex* pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
-            addVertex(pVertex, count);
-            BuilderCommon::addSameStrandDeBruijnEdges(m_pGraph, curr.pVertex, pVertex, curr.direction);
-            
-            // Add the vertex to the extension queue
-            m_queue.push(BuilderExtensionNode(pVertex, curr.direction));
+            }
         }
+        else
+        {
+            continue;
+        }
+
+        // Create the new vertex and edge in the graph
+        // If this vertex already exists, the graph must contain a loop so we stop
+        if(m_pGraph->getVertex(strY) != NULL)
+            break;
+
+        Vertex* pNewVertex = new(m_pGraph->getVertexAllocator()) Vertex(strY, strY);
+        addVertex(pNewVertex, coverageY);
+        BuilderCommon::addSameStrandDeBruijnEdges(m_pGraph, curr.pVertex, pNewVertex, curr.direction);
+            
+        // Add the vertex to the extension queue
+        m_queue.push(BuilderExtensionNode(pNewVertex, curr.direction));
     }
     // Done extension
+}
+
+// Get the best de Bruijn graph node connected to nodeX
+// If ambiguous, the empty string is returned
+std::pair<std::string, int> MetagenomeBuilder::getBestEdgeNode(const std::string& nodeX, size_t nodeCoverage, EdgeDir direction)
+{
+    AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(nodeX, 
+                                                                              m_pBWT, 
+                                                                              m_pRevBWT, 
+                                                                              direction,
+                                                                              m_pBWTCache, 
+                                                                              m_pRevBWTCache);
+
+    size_t cov_threshold = std::max(m_frequencyFilter * nodeCoverage, (double)m_hardMinCoverage);
+    bool uniqueExtension = extensionCounts.hasUniqueDNAChar() || 
+                                BuilderCommon::countValidExtensions(extensionCounts, cov_threshold) == 1;
+
+    std::pair<std::string, int> ret;
+    // Fail due to ambiguity
+    if(!uniqueExtension)
+        return ret;
+
+    // Output the sequence of the vertex linked
+    for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
+    {
+        char b = DNA_ALPHABET::getBase(i);
+        size_t count = extensionCounts.get(b);
+        if(!uniqueExtension || count < cov_threshold)
+            continue; 
+        ret.first = BuilderCommon::makeDeBruijnVertex(nodeX, b, direction);
+        ret.second = count;
+        return ret;
+    }
+    return ret;
 }
 
 void MetagenomeBuilder::getContigs(StringVector& contigs)
