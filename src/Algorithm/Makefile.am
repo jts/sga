@@ -37,4 +37,6 @@ libalgorithm_a_SOURCES = \
         GapFillProcess.h GapFillProcess.cpp \
         MetAssembleProcess.h MetAssembleProcess.cpp \
         MetagenomeBuilder.h MetagenomeBuilder.cpp \
-        BuilderCommon.h BuilderCommon.cpp 
+        BuilderCommon.h BuilderCommon.cpp \
+	DindelRealignWindow.h DindelRealignWindow.cpp \
+	DindelHMM.h DindelHMM.cpp

@@ -116,6 +116,8 @@ void DindelHMM::getSeedPositions(std::set<int> & positions)
 	    if (c>=2) break;
     }
 
+    /*
+     * doesn't work any more if reads don't come from a BAM file
     if (positions.empty())
     {
 	// try the mapper coordinates
@@ -128,6 +130,7 @@ void DindelHMM::getSeedPositions(std::set<int> & positions)
 		positions.insert(end-m_pRead->length()-m_pHaplotype->getRefStart());
 	} 
     }
+    */
 }
 
 ReadHaplotypeAlignment DindelHMM::getAlignment()

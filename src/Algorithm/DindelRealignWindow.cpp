@@ -309,13 +309,13 @@ void DindelVariant::setup()
     m_id = m_chrom+"_"+posStr.str()+"_"+m_ref+"_"+m_alt;
 }
 
-int DindelVariant::getLeftUnique() const
+int DindelVariant::getHaplotypeLeftUnique() const
 {
     if (m_leftUniquePos==-1) throw std::string("DindelVariant::call_determineLeftRightUnique_first");
     return m_leftUniquePos;
 }
 
-int DindelVariant::getRightUnique() const
+int DindelVariant::getHaplotypeRightUnique() const
 {
     if (m_rightUniquePos==-1) throw std::string("DindelVariant::call_determineLeftRightUnique_first");
     return m_rightUniquePos;
@@ -342,9 +342,79 @@ DindelHaplotype::DindelHaplotype(const std::string & refSeq, int refSeqStart, bo
     initHaplotype();
 }
 
-DindelHaplotype::DindelHaplotype(const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, int varRow, int refRow)
+DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, int varRow, int refRow)
 {
-    size_t numCols = ma.get
+    size_t numCols = ma.getNumColumns();
+
+    this->m_seq = StdAlnTools::unpad(ma.getPaddedSubstr(varRow,0,numCols));
+    assert(refSeq == StdAlnTools::unpad(ma.getPaddedSubstr(refRow,0,numCols)));
+
+    m_refPos = std::vector<int>(m_seq.size(), 0);
+    determineHomopolymerLengths();
+    m_sequenceHash=DindelSequenceHash(m_seq);
+
+    this->m_isReference = false;
+
+
+    // set m_refPos
+    int hidx=-1, ridx=-1, hDelStart=-1;
+    bool inRefDeletion = false;
+    bool leftOverhang = true;
+
+    for(size_t i = 0; i < numCols; ++i)
+    {
+        char rs = ma.getSymbol(refRow,i);
+        char vs = ma.getSymbol(varRow,i);
+        
+        if (rs != '-') ridx++;
+        if (vs != '-') hidx++;
+
+        if (leftOverhang && rs != '-')
+        {
+            // end of left overhang of haplotype with reference
+            for (size_t j=0;j<i;j++) m_refPos[j]= LEFTOVERHANG;
+            leftOverhang = false;
+        }
+        if (!leftOverhang)
+        {
+            if (rs == '-' && vs != '-') m_refPos[hidx] = INSERTION;
+            if (rs != '-' && vs != '-') m_refPos[hidx] = ma.getBaseIdx(refRow, i);
+            if (rs == '-' && !inRefDeletion)
+            {
+                inRefDeletion = true;
+                hDelStart = hidx;
+            }
+            if (rs != '-') inRefDeletion = false;
+        }
+    }
+
+    if (inRefDeletion)
+    {
+        // ref deletion extends to end of alignment, right overhang.
+        assert(hDelStart>0);
+        assert(m_refPos[hDelStart-1] >=0);
+        for(int h = hDelStart; h < int(m_refPos.size()); h++)
+        {
+            m_refPos[h] = RIGHTOVERHANG;
+        }
+    }
+
+
+
+
+
+    int verbose = 1;
+
+    int leftExactMatch = 0;
+    int rightExactMatch = 0;
+
+    int eventStart = -1;
+    int eventEnd = -1;
+    bool isIndel = false;
+    bool isComplex = false;
+
+    bool inLeftExact = true;
+
     for(size_t i = 0; i < numCols; ++i)
     {
         char refSymbol = ma.getSymbol(refRow, i);
@@ -441,9 +511,12 @@ DindelHaplotype::DindelHaplotype(const std::string & refSeq, int refSeqStart, co
                 std::string refString = StdAlnTools::unpad(ma.getPaddedSubstr(refRow, eventStart, eventLength));
                 std::string varString = StdAlnTools::unpad(ma.getPaddedSubstr(varRow, eventStart, eventLength));
 
+                int hap_start = int(ma.getBaseIdx(varRow, eventStart));
+                int hap_end = int(ma.getBaseIdx(varRow,eventStart+eventLength-1));
+                
                 if(verbose > 0)
                 {
-                    printf("Ref start: %d col: %d eventStart: %d eventEnd: %d\n", (int)refHapStart, (int)i, eventStart, eventEnd);
+                    printf("Ref start: %d col: %d eventStart: %d eventEnd: %d\n", (int)refSeqStart, (int)i, eventStart, eventEnd);
                     std::cout << "RefString " << refString << "\n";
 
                     std::cout << "varString " << varString << "\n";
@@ -474,7 +547,8 @@ DindelHaplotype::DindelHaplotype(const std::string & refSeq, int refSeqStart, co
                     // create candidate haplotype with just this variant removed
                     assert(varString.size()==1+size_t(indelLength));
 
-                    std::string changeHaplotype = ma.getPaddedSubstr(varRow,0,numCols).replace(eventStart,refString,eventLength);
+                    std::string changeHaplotype = ma.getPaddedSubstr(varRow,0,numCols);
+		    changeHaplotype.replace(eventStart, eventLength, refString);
                     std::string indelSeq = varString.substr(1,indelLength);
 
                     for(int j=0;j<int(numCols)-indelLength;j++) if (ma.getSymbol(varRow, j)!='-')
@@ -496,12 +570,12 @@ DindelHaplotype::DindelHaplotype(const std::string & refSeq, int refSeqStart, co
 
                         } else
                         {
-                            alt.insert(size_t(j),indelSeq)
+                            alt.insert(size_t(j),indelSeq);
                             numModified=indelLength;
                         }
 
                         std::string altUnpadded = StdAlnTools::unpad(alt);
-                        if(numModified == indelLength && altUnpadded == haplotypeSequences[h])
+                        if(numModified == indelLength && altUnpadded == m_seq)
                         {
                             if(j<minPos) minPos = j;
                             if(j>maxPos) maxPos = j;
@@ -518,8 +592,12 @@ DindelHaplotype::DindelHaplotype(const std::string & refSeq, int refSeqStart, co
                 int varBaseOffsetMinPos = ma.getBaseIdx(varRow, minPos);
                 int varBaseOffsetMaxPos = ma.getBaseIdx(varRow, maxPos);
 
+                DindelVariant var(refName, refString, varString, refBaseOffset+refSeqStart);
+                var.setHaplotypeUnique(varBaseOffsetMinPos, varBaseOffsetMaxPos);
+                m_variants.push_back(var);
 
-
+                std::pair < std::tr1::unordered_map<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  m_variant_to_pos.insert( std::tr1::unordered_map<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(hap_start, hap_end)));
+                assert (ins_pair.second == true);
                 // Reset state
                 eventStart = -1;
                 eventEnd = -1;
@@ -893,6 +971,8 @@ DindelWindow::DindelWindow(const std::vector<DindelVariant> & variants, const st
     
     m_windowPad = windowPad;
 
+    m_pHaplotype_ma = NULL;
+
     m_candHapAlgorithm = LINEAR;
 
     // get refseq and set reference haplotype
@@ -915,10 +995,10 @@ DindelWindow::DindelWindow(const std::vector<DindelVariant> & variants, const st
 DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::string & refHap, int refHapStart, const std::string & refName)
 {
 
-    int verbose = 0;
 
     // setup reference haplotype. Will be the first in the vector
     setupRefSeq(refHap, refHapStart);
+    m_chrom = refName;
 
 
     // globally align haplotypes to the reference sequence
@@ -939,8 +1019,8 @@ DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences, 
         maVector.push_back(ma);
     }
 
-    m_haplotype_ma = MultiAlignment(refHap, maVector);
-    MultiAlignment & ma = m_haplotype_ma;
+    m_pHaplotype_ma = new MultiAlignment(refHap, maVector);
+    MultiAlignment & ma = *m_pHaplotype_ma;
 
     // get row indices for candidate haplotypes.
     size_t numHaplotypes = haplotypeSequences.size();
@@ -956,24 +1036,21 @@ DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences, 
 
 
      // Iterate over every column of the multiple alignment and detect variants
-    int leftExactMatch = 0;
-    int rightExactMatch = 0;
-
-    int eventStart = -1;
-    int eventEnd = -1;
-    bool isIndel = false;
-    bool isComplex = false;
-
-    bool inLeftExact = true;
 
     for(size_t h = 0;h != numHaplotypes; h++)
     {
         size_t varRow = rowIdx[h];
-
+        addHaplotype(DindelHaplotype(m_chrom, m_refSeq, refHapStart, *m_pHaplotype_ma, varRow, refRow));
+    }
         
         
 
 
+}
+
+DindelWindow::~DindelWindow()
+{
+    if (m_pHaplotype_ma!=NULL) delete m_pHaplotype_ma;
 }
 
 void DindelWindow::generateCandidateHaplotypesFromMultiAlignment()
@@ -2946,127 +3023,8 @@ void DindelRealignParameters::initFromString(const std::string& paramString)
     checkAndInit();
 }
 
-DindelRealignAlgorithm::DindelRealignAlgorithm(const std::string & bamFilesFile, const std::string& candidatesFile,
-        const std::string& refFile, const std::string & prefix, 
-        const std::string& algorithm, const OverlapperOptions & overlapperOptions, const DindelRealignParameters & dindelRealignParameters) :
-        m_prefix(prefix), m_overlapperOptions(overlapperOptions),
-        m_dindelRealignParameters(dindelRealignParameters),
-        m_vcfFile(prefix+".calls.vcf","w"),
-        m_vcfCandidateFile(candidatesFile, "r")
-{
-
-    // initalize fasta reference sequence
-    m_pFasta = new Fasta(refFile);
-
-    // set algorithm
-    m_algorithm = algorithm;
-
-    // initialize read buffer
-    m_bamFilesFile = bamFilesFile;
-
-    m_pReadBuffer = new DindelBAMReadBuffer(m_bamFilesFile, m_dindelRealignParameters.windowReadBuffer, m_dindelRealignParameters.maxNumReads, m_dindelRealignParameters.excludeSamplesFile, m_overlapperOptions);
-
-    if (m_dindelRealignParameters.genotyping)
-    {
-        m_vcfFile.setSamples(m_pReadBuffer->getSamples());
-    }
-
-    // initialize vcf file 
-    m_vcfFile.outputHeader(refFile, m_dindelRealignParameters.getParamString());
-
-    // init window
-    m_currChrom = "-1";
-    m_currPos = -1;
-
-}
 
 
-
-
-void DindelRealignAlgorithm()
-{
-
-    std::vector<DindelVariant> variants;
-
-    while (true)
-    {
-
-        std::string message = "OK";
-        bool skipped=false;
-        try
-        {
-            
-            getNextWindow(variants);
-
-            if (1 || !QUIET || DINDEL_DEBUG)
-            {
-                std::cerr << std::endl;
-                std::cerr << "DindelRealignAlgorithm::run Read " << variants.size() << " candidate variants " << std::endl;
-            }
-	    if (DINDEL_DEBUG || 0)
-	    {
-		std::cerr << "WINDOWVARIANTS: " << std::endl;
-		for (size_t x=0;x<variants.size();x++) variants[x].write(std::cerr);
-	    }
-
-            if (variants.empty()) {
-		    std::cerr << "exiting run loop" << std::endl;
-		   
-		    break;
-	    }
-	    
-            DindelWindow dindelWindow(variants, m_pFasta, m_dindelRealignParameters.haplotypeWidth);
-            std::vector<DindelRead> & reads = m_pReadBuffer->getReads(dindelWindow.getChrom(), dindelWindow.getLeft(), dindelWindow.getRight());
-            if (int(reads.size())>m_dindelRealignParameters.maxNumReadsWindow) throw std::string("#reads_exceeds_user_threshold");
-
-	    if (reads.size()>=2) {
-	    	DindelRealignWindow dindelRealignWindow(&dindelWindow, reads, m_pReadBuffer->getOverlapper(), m_pFasta, m_dindelRealignParameters);
-	    	dindelRealignWindow.run(m_algorithm, m_vcfFile);
-	    }
-        
-    	}
-        catch (std::string _dindel_exception)
-        {
-            message = _dindel_exception;
-            std::cerr << "ERROR: ";
-            std::cerr << message << std::endl;
-            m_pReadBuffer->reset();
-            skipped = true;
-        }
-        catch (std::bad_alloc) {
-            message = std::string("error_bad_alloc");
-	    std::cerr << "ERROR: " << message << std::endl;
-            m_pReadBuffer->reset();
-            skipped = true;
-        }
-        catch (std::exception& e) {
-            message = std::string("error_exception_");
-            message.append(e.what());
-	    std::cerr << "ERROR: " << message << std::endl;
-            m_pReadBuffer->reset();
-            skipped = true;
-        }
-        if (skipped)
-        {
-            std::cerr << "SKIPPING ";
-            if (variants.size()>=1) std::cerr << variants[0].getChrom() << " " << variants[0].getPos() << " " << variants[0].getRef() << " " << variants[0].getAlt();
-            int idx = int(variants.size())-1;
-            if (variants.size()>=2) std::cerr << " --- " << variants[idx].getChrom() << " " << variants[idx].getPos() << " " << variants[idx].getRef() << " " << variants[idx].getAlt();
-            std::cerr << std::endl;
-        }
-
-    }
-
-    
-}
-
-
-DindelRealignAlgorithm::~DindelRealignAlgorithm()
-{
-    delete m_pFasta;
-
-    delete m_pReadBuffer;
-}
 
 
 

@@ -12,8 +12,12 @@
 #define	DINDELREALIGNWINDOW_H
 #include <fstream>
 #include "Util.h"
+#include "HashMap.h"
+#include "MultiAlignment.h"
 #include <iomanip>
 #include <list>
+#include <set>
+#include <map>
 enum DindelWindowCandHapAlgorithm {LINEAR} ;
 
 const size_t DINDEL_HASH_SIZE=8;
@@ -162,10 +166,10 @@ class DindelVariant
 
         // checks ref and pos against reference sequence
         //void check(Fasta *pFasta);
-        void determineLeftRightUnique(const std::string refSeq, int refStart);
-        void realign(const std::string refSeq, int refStart);
-        int getLeftUnique() const;
-        int getRightUnique() const;
+        // set min and max positions in haplotype where variant may be positioned without affecting the sequence
+        void setHaplotypeUnique(int leftUniquePos, int rightUniquePos) { m_leftUniquePos = leftUniquePos; m_rightUniquePos = rightUniquePos; };
+        int getHaplotypeLeftUnique() const;
+        int getHaplotypeRightUnique() const;
         int getLengthDifference() const { return m_dlen; };
         //int getIndex() const;
         //void setIndex(int idx);
@@ -255,6 +259,8 @@ const int DELETION_NOVEL_SEQUENCE = -1;
 const int SNP = -2;
 const int MULTINUCLEOTIDE_RUN = -3;
 const int INSERTION = -4;
+const int LEFTOVERHANG = -5;
+const int RIGHTOVERHANG = -6;
 const int ADDVARIANT_DEBUG = -9;
 
 class DindelHaplotype
@@ -263,6 +269,7 @@ class DindelHaplotype
         // a DindelHaplotype must be constructed starting from the reference haplotype.
         // Differences with the reference can be added by calling addVariant
         DindelHaplotype(const std::string & refSeq, int refSeqStart, bool isReference);
+        DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, int varRow, int refRow);
 	DindelHaplotype(const DindelHaplotype & haplotype, int copyOptions);
         bool addVariant(const DindelVariant & var);
         const std::vector<DindelVariant> getVariants() const { return m_variants; }
@@ -320,7 +327,7 @@ class DindelWindow
         // Create window from a set of haplotypes and a reference sequence.
         // Uses SGA MultiAlignment to annotate the variations in the haplotypes with respect to the reference sequence.
         DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::string & refHap, int refHapStart, const std::string & refName);
-	
+	~DindelWindow();
 	const std::vector<DindelHaplotype> & getHaplotypes() const { return haplotypes; }
         const std::string getChrom() const { return m_chrom; }
         int getLeft() const { return m_leftRef; }
@@ -355,7 +362,7 @@ class DindelWindow
 
         int m_windowPad;
         DindelWindowCandHapAlgorithm m_candHapAlgorithm;
-        MultiAlignment m_haplotype_ma;
+        MultiAlignment *m_pHaplotype_ma;
 };
 class DindelRealignWindow;
 
