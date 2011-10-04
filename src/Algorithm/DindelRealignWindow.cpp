@@ -136,13 +136,14 @@ std::vector<std::string> SplitString(const std::string & str, char sep)
  *
  */
 
-DindelRead::DindelRead(const SeqItem* pSeqItem, const SampleName & sampleName, double mappingQual, int fixedBaseQual) : m_pSeqItem(pSeqItem)
+DindelRead::DindelRead(const SeqItem & seqItem, const SampleName & sampleName, double mappingQual, int fixedBaseQual, bool isForward) : m_seqItem(seqItem)
 {
     m_mappingQual = mappingQual;
     m_fixedBaseQual = fixedBaseQual;
     m_rcRead = false;
     m_sampleName = sampleName;
     m_setupHash = false;
+    m_isForward = isForward;
 }
 
 void DindelRead::getLogProbCorrectError(std::vector<double>& lpCorrect, std::vector<double>& lpError) const

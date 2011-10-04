@@ -108,24 +108,25 @@ class VariantPriors
 class DindelRead
 {
     public:
-        DindelRead(const SeqItem* pSeqItem, const SampleName & sampleName, double mappingQual, int fixedBaseQual);
-        const std::string  getSequence() const { return m_pSeqItem->seq.toString(); }
+        DindelRead(const SeqItem & seqItem, const SampleName & sampleName, double mappingQual, int fixedBaseQual, bool isForward);
+        const std::string  getSequence() const { return m_seqItem.seq.toString(); }
+
         const std::vector<double> getBaseQuals() const;
-        const std::string getID() const { return m_pSeqItem->id; }
+        const std::string getID() const { return m_seqItem.id; }
         double getMappingQual() const { return m_mappingQual; } //return double(bam->core.qual); }
         double getLogProbNotMapping() const { return m_mappingQual*0.23026; }
-	bool isForward() const { return true; } //FIXME
-        bool mateIsForward() const { return false; } //FIXME
+	bool isForward() const { return m_isForward; } //FIXME
+        bool mateIsForward() const { assert(false); return false; } //FIXME
         //BAM bool BAMCigarHasIndel() const;
         //BAM int getBamStartPos() const { return bam->core.pos; }
         //BAM int getBamStartPosAdjusted() const;
         //BAM int getBAMEnd() const { return bam->core.n_cigar? bam_calend(&bam->core, bam1_cigar(bam)) : bam->core.pos + 1; }
         //BAM int getBAMEndAdjusted() const;
-        bool isUnmapped() const { return false; } //FIXME
-        bool mateIsUnmapped() const { return false; } //FIXME
-        char getBase(int b) const { return m_pSeqItem->seq.get(size_t(b)); }
+        bool isUnmapped() const { assert(false); return false; } //FIXME
+        bool mateIsUnmapped() const { assert(false); return false; } //FIXME
+        char getBase(int b) const { return m_seqItem.seq.get(size_t(b)); }
         int getQual(int b) const { b=1; return m_fixedBaseQual; }
-        int length() const { return int(m_pSeqItem->seq.length()); }
+        int length() const { return int(m_seqItem.seq.length()); }
         //BAM const bam1_t *getBam() const { return bam; }
 
         void setMappingQuality(double mappingQual) { m_mappingQual=mappingQual; }
@@ -140,9 +141,9 @@ class DindelRead
         //BAM const DindelBAM *m_pDindelBAM;
         double m_mappingQual;
         int m_fixedBaseQual;
-        bool m_rcRead, m_setupHash; // reverse-complement the read. Intended for unmapped reads. Determined using the status of the mate.
+        bool m_rcRead, m_isForward, m_setupHash; // reverse-complement the read. Intended for unmapped reads. Determined using the status of the mate.
         SampleName m_sampleName;
-        const SeqItem *m_pSeqItem;
+        SeqItem m_seqItem;
         
         std::vector<unsigned int> m_hashKeys; // stores hashes for the read
 
