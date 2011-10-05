@@ -122,7 +122,7 @@ class DindelRead
         //BAM int getBamStartPosAdjusted() const;
         //BAM int getBAMEnd() const { return bam->core.n_cigar? bam_calend(&bam->core, bam1_cigar(bam)) : bam->core.pos + 1; }
         //BAM int getBAMEndAdjusted() const;
-        bool isUnmapped() const { assert(false); return false; } //FIXME
+        bool isUnmapped() const {  return false; } //FIXME
         bool mateIsUnmapped() const { assert(false); return false; } //FIXME
         char getBase(int b) const { return m_seqItem.seq.get(size_t(b)); }
         int getQual(int b) const { b=1; return m_fixedBaseQual; }
@@ -270,7 +270,7 @@ class DindelHaplotype
         // a DindelHaplotype must be constructed starting from the reference haplotype.
         // Differences with the reference can be added by calling addVariant
         DindelHaplotype(const std::string & refSeq, int refSeqStart, bool isReference);
-        DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, int varRow, int refRow);
+        DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, size_t varRow, size_t refRow);
 	DindelHaplotype(const DindelHaplotype & haplotype, int copyOptions);
         bool addVariant(const DindelVariant & var);
         const std::vector<DindelVariant> getVariants() const { return m_variants; }

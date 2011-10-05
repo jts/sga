@@ -110,7 +110,9 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
 
     // create Dindel window
 
-    DindelWindow dWindow(result.haplotypes, refSubstring, int(refStart), refName );
+    std::string dindelRef = refSubstring;
+    int dindelRefStart = int(refStart);
+    DindelWindow dWindow(result.haplotypes, dindelRef, dindelRefStart, refName );
 
     DindelRealignParameters dRealignParameters;
     DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);

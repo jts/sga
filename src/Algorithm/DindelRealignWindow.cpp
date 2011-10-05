@@ -26,7 +26,7 @@ const int DINDEL_DEBUG=1;
 const int QUIET=1;
 const int ADDSNPS=1;
 const int ALWAYS_REALIGN=1;
-const int DEBUG_CALLINDEL=1;
+const int DEBUG_CALLINDEL=0;
 const int REPOSITION_INDEL_WINDOW=1000;
 //#define OVERLAPPER // build overlapper
 
@@ -343,12 +343,23 @@ DindelHaplotype::DindelHaplotype(const std::string & refSeq, int refSeqStart, bo
     initHaplotype();
 }
 
-DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, int varRow, int refRow)
+DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, size_t varRow, size_t refRow)
 {
     size_t numCols = ma.getNumColumns();
+    if (DINDEL_DEBUG) std::cout << "DindelHaplotype::DindelHaplotype numCols: " << numCols << std::endl;
+
+    
 
     this->m_seq = StdAlnTools::unpad(ma.getPaddedSubstr(varRow,0,numCols));
+    if (DINDEL_DEBUG)
+    {
+        ma.print();
+        std::cout << "REFSEQ: " << refSeq << "\n";
+        std::cout << "UNPAD:  " << StdAlnTools::unpad(ma.getPaddedSubstr(refRow,0,numCols)) << "\n";
+    }
     assert(refSeq == StdAlnTools::unpad(ma.getPaddedSubstr(refRow,0,numCols)));
+
+    
 
     m_refPos = std::vector<int>(m_seq.size(), 0);
     determineHomopolymerLengths();
@@ -359,8 +370,16 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
 
     // set m_refPos
     int hidx=-1, ridx=-1, hDelStart=-1;
+    size_t numLeftOverhang = 0, numRightOverhang = 0;
     bool inRefDeletion = false;
     bool leftOverhang = true;
+     
+    /*
+      note that the following case still needs to be dealt with if left or right overhang is allowed
+    0       TGCTATTCTCTCCAACAAGACCGTTGAAC----------A        REF.chr10
+    1       TGCTATTCTCTCCAACAAGACCGTTGAACAATTGGGGCAA        haplotype-1
+    2       TGCTATTCTCTCCAACAAGACCGTTGAACAATTGGGGCAA        haplotype-2
+    */
 
     for(size_t i = 0; i < numCols; ++i)
     {
@@ -373,13 +392,14 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         if (leftOverhang && rs != '-')
         {
             // end of left overhang of haplotype with reference
+            numLeftOverhang = i;
             for (size_t j=0;j<i;j++) m_refPos[j]= LEFTOVERHANG;
             leftOverhang = false;
         }
         if (!leftOverhang)
         {
             if (rs == '-' && vs != '-') m_refPos[hidx] = INSERTION;
-            if (rs != '-' && vs != '-') m_refPos[hidx] = ma.getBaseIdx(refRow, i);
+            if (rs != '-' && vs != '-') m_refPos[hidx] = refSeqStart+ma.getBaseIdx(refRow, i);
             if (rs == '-' && !inRefDeletion)
             {
                 inRefDeletion = true;
@@ -397,10 +417,18 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         for(int h = hDelStart; h < int(m_refPos.size()); h++)
         {
             m_refPos[h] = RIGHTOVERHANG;
+            numRightOverhang++;
         }
     }
 
+    assert(numLeftOverhang == 0 && numRightOverhang == 0);
 
+    if(DINDEL_DEBUG)
+    {
+        std::cout << "m_refPos: ";
+        for (size_t i = 0; i < m_refPos.size(); i++) std::cout << "[" << i << " " << m_refPos[i] << "]";
+        std::cout << "\n";
+    }
 
 
 
@@ -422,7 +450,7 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         char varSymbol = ma.getSymbol(varRow, i);
         bool isVariant = (varSymbol != refSymbol);
 
-
+        if (DINDEL_DEBUG) std::cout << " ** i: " << i << " isVariant: " << isVariant << " refSymbol: " << refSymbol << " varSymbol: " << varSymbol << std::endl;
 
 
         // Update the counter of the number of exact matches for the leftmost and rightmost bases
@@ -489,116 +517,138 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
                 // So we need to move the event to the first column with all Ts to properly capture what is happening.
                 // In the second case it is a 1 base deletion wrt base and a 2 base deletion wrt to the ref.
                 // Again, we need to move back to the last full column.
-                if(isIndel)
-                {
-                    // It is impossible to extract a reference string if the indel is at the beginning
-                    // or end of th multiple alignment so we just fail out here
-                    if(eventStart == 0 || eventEnd == (int)numCols - 1)
-                        break;
 
-                    while(eventStart >= 0)
+                bool okEvent = true;
+                if(isIndel && (eventStart == 0 || eventEnd == (int)numCols - 1) ) okEvent = false;
+
+                if(okEvent)
+                {
+                    if(isIndel)
                     {
-                        char rc = ma.getSymbol(refRow, eventStart);
-                        char vc = ma.getSymbol(varRow, eventStart);
-                        if(rc == '-' || vc == '-')
-                            eventStart -= 1;
-                        else
-                            break;
-                    }
-                    assert(eventStart >= 0);
-                }
+                        // It is impossible to extract a reference string if the indel is at the beginning
+                        // or end of th multiple alignment so we just fail out here
 
-                size_t eventLength = eventEnd - eventStart + 1;
-                std::string refString = StdAlnTools::unpad(ma.getPaddedSubstr(refRow, eventStart, eventLength));
-                std::string varString = StdAlnTools::unpad(ma.getPaddedSubstr(varRow, eventStart, eventLength));
-
-                int hap_start = int(ma.getBaseIdx(varRow, eventStart));
-                int hap_end = int(ma.getBaseIdx(varRow,eventStart+eventLength-1));
-                
-                if(verbose > 0)
-                {
-                    printf("Ref start: %d col: %d eventStart: %d eventEnd: %d\n", (int)refSeqStart, (int)i, eventStart, eventEnd);
-                    std::cout << "RefString " << refString << "\n";
-
-                    std::cout << "varString " << varString << "\n";
-                }
-                assert(!refString.empty());
-                //assert(!baseString.empty());
-                assert(!varString.empty());
-
-                // minPos and maxPos are coordinates of window in MultiAlignment where variant can be ambiguously positioned
-                int minPos = eventStart, maxPos = eventStart;
-
-                if(isIndel)
-                {
-                    // If it is a clean indel event, see how far it can be moved to the left or right
-                    bool isDeletion = refString.size() > varString.size();
-                    std::string refPadded = ma.getPaddedSubstr(refRow,0,numCols);
-                    int indelLength = int(eventLength) - 1;
-                    assert(indelLength>=1);
-
-                    // ---AT-GAATCG-T-- REF  There might be multiple events
-                    // ATCATCGA--CGATCG ALT
-
-                    // ignore overlaps of the haplotype with the reference at the ends
-
-                    minPos = refPadded.size()-1;
-                    maxPos = 0;
-
-                    // create candidate haplotype with just this variant removed
-                    assert(varString.size()==1+size_t(indelLength));
-
-                    std::string changeHaplotype = ma.getPaddedSubstr(varRow,0,numCols);
-		    changeHaplotype.replace(eventStart, eventLength, refString);
-                    std::string indelSeq = varString.substr(1,indelLength);
-
-                    for(int j=0;j<int(numCols)-indelLength;j++) if (ma.getSymbol(varRow, j)!='-')
-                    {
-                        std::string alt(changeHaplotype);
-
-                        int k=0,numModified=0;
-                        if (isDeletion)
+                        while(eventStart >= 0)
                         {
-                            while (numModified<indelLength && j+k<int(numCols))
+                            char rc = ma.getSymbol(refRow, eventStart);
+                            char vc = ma.getSymbol(varRow, eventStart);
+                            if(rc == '-' || vc == '-')
+                                eventStart -= 1;
+                            else
+                                break;
+                        }
+                        assert(eventStart >= 0);
+                    }
+
+                    size_t eventLength = eventEnd - eventStart + 1;
+                    std::string refStringPadded = ma.getPaddedSubstr(refRow, eventStart, eventLength);
+                    std::string varStringPadded = ma.getPaddedSubstr(varRow, eventStart, eventLength);
+                    std::string refString = StdAlnTools::unpad(refStringPadded);
+                    std::string varString = StdAlnTools::unpad(varStringPadded);
+
+
+                    int hap_start = int(ma.getBaseIdx(varRow, eventStart));
+                    int hap_end = int(ma.getBaseIdx(varRow,eventStart+eventLength));
+
+                    if(verbose > 0)
+                    {
+                        printf("Ref start: %d col: %d eventStart: %d eventEnd: %d\n", (int)refSeqStart, (int)i, eventStart, eventEnd);
+                        std::cout << "RefString " << refString << "\n";
+
+                        std::cout << "varString " << varString << "\n";
+                    }
+                    assert(!refString.empty());
+                    //assert(!baseString.empty());
+                    assert(!varString.empty());
+
+                    // minPos and maxPos are coordinates of window in MultiAlignment where variant can be ambiguously positioned
+                    int minPos = eventStart, maxPos = eventStart;
+
+                    if(isIndel)
+                    {
+                        // If it is a clean indel event, see how far it can be moved to the left or right
+                        bool isDeletion = refString.size() > varString.size();
+                        std::string refPadded = ma.getPaddedSubstr(refRow,0,numCols);
+                        int indelLength = int(eventLength) - 1;
+                        assert(indelLength>=1);
+
+                        // ---AT-GAATCG-T-- REF  There might be multiple events
+                        // ATCATCGA--CGATCG ALT
+
+                        // ignore overlaps of the haplotype with the reference at the ends
+
+                        minPos = refPadded.size()-1;
+                        maxPos = 0;
+
+                        // create candidate haplotype with just this variant removed
+                        
+
+                        std::string changeHaplotype = ma.getPaddedSubstr(varRow,0,numCols);
+                        changeHaplotype.replace(eventStart, eventLength, ma.getPaddedSubstr(refRow, eventStart, eventLength));
+                        std::string indelSeq = isDeletion ? refStringPadded.substr(1,indelLength) : varStringPadded.substr(1,indelLength) ;
+
+                        if (DINDEL_DEBUG) std::cout << "CHANGEHAPLOTYPE: " << changeHaplotype << std::endl;
+                        
+
+                        for(int j=0;j<int(numCols)-indelLength;j++) if (ma.getSymbol(refRow, j)!='-')
+                        {
+                            std::string alt(changeHaplotype);
+
+                            int k=0,numModified=0;
+                            if (isDeletion)
                             {
-                                if(alt[j+k]!='-')
+                                while (numModified<indelLength && j+k<int(numCols))
                                 {
-                                    alt[j+k]='-';
-                                    numModified++;
+                                    if(alt[j+k]!='-')
+                                    {
+                                        alt[j+k]='-';
+                                        numModified++;
+                                    }
+                                    k++;
                                 }
-                                k++;
+
+                            } else
+                            {
+                                alt.insert(size_t(j),indelSeq);
+                                numModified=indelLength;
                             }
 
-                        } else
-                        {
-                            alt.insert(size_t(j),indelSeq);
-                            numModified=indelLength;
+                            std::string altUnpadded = StdAlnTools::unpad(alt);
+                            if(numModified == indelLength && altUnpadded == m_seq)
+                            {
+                                if (DINDEL_DEBUG) std::cout << "CHANGEHAPLOTYPE equal " << j << std::endl;
+                                if(j<minPos) minPos = j;
+                                if(j>maxPos) maxPos = j;
+                            }
                         }
 
-                        std::string altUnpadded = StdAlnTools::unpad(alt);
-                        if(numModified == indelLength && altUnpadded == m_seq)
-                        {
-                            if(j<minPos) minPos = j;
-                            if(j>maxPos) maxPos = j;
-                        }
+
                     }
 
+                    // Get the base position in the reference string. This is not necessarily the
+                    // same as the eventStart column as the reference may be padded
+                    // int refBaseOffset = ma.getBaseIdx(refRow, eventStart);
+                    // get positions in haplotype where indel variant may be ambiguously positioned
 
+                    int refBaseOffsetMinPos = ma.getBaseIdx(refRow, minPos);
+                    
+
+                    while (minPos>0 && ma.getSymbol(varRow, minPos)== '-' ) minPos--;
+                    while (maxPos<int(numCols)-1 && ma.getSymbol(varRow, maxPos)== '-' ) maxPos++;
+
+                    int varBaseOffsetMinPos = ma.getBaseIdx(varRow, minPos);
+                    int varBaseOffsetMaxPos = ma.getBaseIdx(varRow, maxPos);
+
+                    // Use leftmost position for the variant (which can only be change for an insertion or deletion)
+                    DindelVariant var(refName, refString, varString, refBaseOffsetMinPos+refSeqStart);
+                    var.setPriorProb(0.001); //FIXME
+                    if (DINDEL_DEBUG) std::cout << "VARIANT: " << refName << " " << refString << "/" << varString << " pos: " << refBaseOffsetMinPos+refSeqStart << " varBaseOffsetMinPos: " << varBaseOffsetMinPos << " varBaseOffsetMaxPos: " << varBaseOffsetMaxPos << std::endl;
+                    var.setHaplotypeUnique(varBaseOffsetMinPos, varBaseOffsetMaxPos);
+                    m_variants.push_back(var);
+
+                    std::pair < std::tr1::unordered_map<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  m_variant_to_pos.insert( std::tr1::unordered_map<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(hap_start, hap_end)));
+                    assert (ins_pair.second == true);
                 }
-
-                // Get the base position in the reference string. This is not necessarily the
-                // same as the eventStart column as the reference may be padded
-                int refBaseOffset = ma.getBaseIdx(refRow, eventStart);
-                // get positions in haplotype where indel variant may be ambiguously positioned
-                int varBaseOffsetMinPos = ma.getBaseIdx(varRow, minPos);
-                int varBaseOffsetMaxPos = ma.getBaseIdx(varRow, maxPos);
-
-                DindelVariant var(refName, refString, varString, refBaseOffset+refSeqStart);
-                var.setHaplotypeUnique(varBaseOffsetMinPos, varBaseOffsetMaxPos);
-                m_variants.push_back(var);
-
-                std::pair < std::tr1::unordered_map<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  m_variant_to_pos.insert( std::tr1::unordered_map<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(hap_start, hap_end)));
-                assert (ins_pair.second == true);
                 // Reset state
                 eventStart = -1;
                 eventEnd = -1;
@@ -1000,27 +1050,35 @@ DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences, 
     // setup reference haplotype. Will be the first in the vector
     setupRefSeq(refHap, refHapStart);
     m_chrom = refName;
-
+    m_pHaplotype_ma = NULL;
 
     // globally align haplotypes to the reference sequence
     std::vector< MAlignData > maVector;
 
+    
+    
+    std::set<std::string> uniqueHaplotypes;
+    for (size_t h=0;h<haplotypeSequences.size();h++) uniqueHaplotypes.insert(haplotypeSequences[h]);
+    assert(uniqueHaplotypes.size() == haplotypeSequences.size());
 
     for (size_t h=0;h<haplotypeSequences.size();h++)
     {
-        MAlignData ma;
-        ma.position = 0;
-        ma.str = haplotypeSequences[h];
+        MAlignData _ma;
+        _ma.position = 0;
+        _ma.str = haplotypeSequences[h];
 
-        std::stringstream ss; ss << "haplotype_" << h+1;
+        std::stringstream ss; ss << "haplotype-" << h+1;
 
-        ma.name = ss.str();
-        ma.expandedCigar = StdAlnTools::globalAlignmentCigar(haplotypeSequences[h], refHap);
+        _ma.name = ss.str();
+        _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(haplotypeSequences[h], refHap));
+
+        if (DINDEL_DEBUG) std::cout << "DindelWindow::DindelWindow globalAlignmentCigar " << h << " vs root: " << _ma.expandedCigar << std::endl;
         
-        maVector.push_back(ma);
+        maVector.push_back(_ma);
     }
 
-    m_pHaplotype_ma = new MultiAlignment(refHap, maVector);
+    m_pHaplotype_ma = new MultiAlignment(refHap, maVector, refName);
+
     MultiAlignment & ma = *m_pHaplotype_ma;
 
     // get row indices for candidate haplotypes.
@@ -1041,10 +1099,12 @@ DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences, 
     for(size_t h = 0;h != numHaplotypes; h++)
     {
         size_t varRow = rowIdx[h];
+        if (DINDEL_DEBUG) std::cout << "DindelWindow::DindelWindow Adding haplotype " << h << " in varRow " << varRow << std::endl;
         addHaplotype(DindelHaplotype(m_chrom, m_refSeq, refHapStart, *m_pHaplotype_ma, varRow, refRow));
     }
         
-        
+    delete m_pHaplotype_ma;
+    m_pHaplotype_ma = NULL;
 
 
 }
@@ -3117,8 +3177,10 @@ VCFFile::VCFFile(const std::string& fileName, const std::string & mode)
 
     if (!m_isOpen)
     {
-        std::string msg = "WindowFile::WindowFile::cannot_open_file_";
+        std::string msg = "VCFFile::VCFFile: Cannot open file: '";
         msg.append(fileName);
+        msg.append("'");
+        if(fileName.empty()) msg.append("EMPTY FILE");
         throw msg;
     }
     m_mode = mode;

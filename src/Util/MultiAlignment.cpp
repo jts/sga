@@ -161,6 +161,12 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             m_alignData[i].padded.append(1,outSym);
         }
     }
+
+    // replace trailing '.'
+    for(size_t i = 0; i < iterVec.size(); ++i)
+    {
+        for(size_t j = m_alignData[i].padded.size(); j > 0 && m_alignData[i].padded[--j] == '.';) m_alignData[i].padded[j]='-';
+    }
 }
 
 // 
@@ -225,7 +231,7 @@ size_t MultiAlignment::getBaseIdx(size_t rowIdx, size_t colIdx) const
         if(getSymbol(rowIdx, i) == '-')
             padSyms += 1;
     }
-    assert(padSyms < colIdx);
+    assert(padSyms <= colIdx);
     return colIdx - padSyms;
 }
 
@@ -235,7 +241,7 @@ std::string MultiAlignment::getPaddedSubstr(size_t rowIdx, size_t start, size_t 
 {
     assert(rowIdx < m_alignData.size());
     assert(start < m_alignData[rowIdx].padded.size());
-    assert(start + length < m_alignData[rowIdx].padded.size());
+    assert(start + length <= m_alignData[rowIdx].padded.size());
     return m_alignData[rowIdx].padded.substr(start, length);
 }
 
