@@ -116,7 +116,7 @@ std::pair<std::string, int> MetagenomeBuilder::getBestEdgeNode(const std::string
                                                                               m_pBWTCache, 
                                                                               m_pRevBWTCache);
 
-    size_t cov_threshold = std::max(m_frequencyFilter * nodeCoverage, (double)m_hardMinCoverage);
+    size_t cov_threshold = static_cast<size_t>(std::max(m_frequencyFilter * nodeCoverage, (double)m_hardMinCoverage));
     bool uniqueExtension = extensionCounts.hasUniqueDNAChar() || 
                                 BuilderCommon::countValidExtensions(extensionCounts, cov_threshold) == 1;
 
