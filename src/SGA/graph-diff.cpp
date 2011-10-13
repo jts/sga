@@ -47,6 +47,7 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -b, --base=FILE                  the baseline reads are in FILE\n"
 "      -r, --variant=FILE               the variant reads are in FILE\n"
+"          --reference=FILE             the reference FILE\n"
 "      -o, --outfile=FILE               write the strings found to FILE\n"
 "      -k, --kmer=K                     use K as the k-mer size for variant discovery\n"
 "      -x, --kmer-threshold=T           only used kmers seen at least T times\n"
@@ -68,6 +69,7 @@ namespace opt
     static int sampleRate = 128;
     static int cacheLength = 10;
 
+    static std::string referenceFile;
     static std::string baseFile;
     static std::string variantFile;
     static std::string outFile = "variants.fa";
@@ -75,7 +77,7 @@ namespace opt
 
 static const char* shortopts = "b:r:o:k:t:x:y:v";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE };
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -86,6 +88,7 @@ static const struct option longopts[] = {
     { "kmer",          required_argument, NULL, 'k' },
     { "kmer-threshold",required_argument, NULL, 'x' },
     { "max-branches",  required_argument, NULL, 'y' },
+    { "references",    required_argument, NULL, OPT_REFERENCE },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -107,6 +110,11 @@ int graphDiffMain(int argc, char** argv)
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     BWT* pVariantRevBWT = new BWT(variantPrefix + RBWT_EXT, opt::sampleRate);
     
+    // Create reference BWTs
+    std::string refPrefix = stripFilename(opt::referenceFile);
+    BWT* pRefBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
+    BWT* pRefRevBWT = new BWT(refPrefix + RBWT_EXT, opt::sampleRate);
+
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(pVariantBWT->getBWLen());
     GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outFile);
@@ -173,6 +181,8 @@ int graphDiffMain(int argc, char** argv)
     delete pBaseRevBWT;
     delete pVariantBWT;
     delete pVariantRevBWT;
+    delete pRefBWT;
+    delete pRefRevBWT;
     delete pSharedBitVector;
     delete pSharedResults;
 
@@ -197,6 +207,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'x': arg >> opt::kmerThreshold; break;
             case 'b': arg >> opt::baseFile; break;
             case 'r': arg >> opt::variantFile; break;
+            case OPT_REFERENCE: arg >> opt::referenceFile; break;
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
             case 'y': arg >> opt::maxBranches; break;
@@ -227,6 +238,12 @@ void parseGraphDiffOptions(int argc, char** argv)
     if(opt::baseFile.empty() || opt::variantFile.empty())
     {
         std::cerr << SUBPROGRAM ": error a --base and --variant file must be provided\n";
+        die = true;
+    }
+
+    if(opt::referenceFile.empty())
+    {
+        std::cerr << SUBPROGRAM ": error, a --reference file must be provided\n";
         die = true;
     }
 
