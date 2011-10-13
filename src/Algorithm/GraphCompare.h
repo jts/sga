@@ -25,6 +25,7 @@
 #include "VariationBubbleBuilder.h"
 #include "SequenceProcessFramework.h"
 #include "BWTIntervalCache.h"
+#include "SampledSuffixArray.h"
 
 // Structures and typedefs
 typedef std::vector<const BWT*> BWTVector;
@@ -38,8 +39,11 @@ struct GraphCompareParameters
     const BWT* pBaseRevBWT;
     const BWT* pVariantBWT;
     const BWT* pVariantRevBWT;
+    const BWT* pReferenceBWT;
+    const BWT* pReferenceRevBWT;
+    const SampledSuffixArray* pReferenceSSA;
 
-    // FM-index
+    // Cached FM-index intervals to speed up lookups
     const BWTIntervalCache* pVarBWTCache;
     const BWTIntervalCache* pVarRevBWTCache;
     const BWTIntervalCache* pBaseBWTCache;

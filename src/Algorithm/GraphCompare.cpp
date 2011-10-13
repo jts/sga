@@ -16,6 +16,7 @@
 #include "SGAlgorithms.h"
 #include "SGSearch.h"
 #include "StdAlnTools.h"
+#include "LRAlignment.h"
 
 //
 // GraphCompareStats
@@ -165,7 +166,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
                     result.baseStrings.push_back(bubbleResult.targetString);
                     result.baseCoverages.push_back(bubbleResult.targetCoverage);
-
                 }
             }
         }
@@ -176,9 +176,23 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
         for(int64_t i = rc_interval.lower; i <= rc_interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
-        
     }
-        
+    
+    /*
+    // Align the results to the reference
+    for(size_t i = 0; i < result.baseStrings.size(); ++i)
+    {
+        std::cout << "Aligning base string " << i << " to reference\n";
+        LRAlignment::LRHitVector hits;
+        LRAlignment::LRParams params;
+        for(size_t j = 0; j <= 1; ++j)
+        {
+            std::string query = (j == 0) ? result.baseStrings[i] : reverseComplement(result.baseStrings[i]);
+            LRAlignment::bwaswAlignment(query, m_parameters.pReferenceBWT, m_parameters.pReferenceSSA, params, hits);
+        }
+        std::cout << "   " << hits.size() << " hits found\n";
+    }
+    */
     return result;
 }
 

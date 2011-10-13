@@ -13,6 +13,7 @@
 #include <iterator>
 #include "Util.h"
 #include "SuffixArray.h"
+#include "SampledSuffixArray.h"
 #include "BWT.h"
 #include "Timer.h"
 #include "BWTAlgorithms.h"
@@ -114,6 +115,7 @@ int graphDiffMain(int argc, char** argv)
     std::string refPrefix = stripFilename(opt::referenceFile);
     BWT* pRefBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
     BWT* pRefRevBWT = new BWT(refPrefix + RBWT_EXT, opt::sampleRate);
+    SampledSuffixArray* pRefSSA = new SampledSuffixArray(refPrefix + SSA_EXT);
 
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(pVariantBWT->getBWLen());
@@ -126,13 +128,16 @@ int graphDiffMain(int argc, char** argv)
     BWTIntervalCache baseBWTCache(opt::cacheLength, pBaseBWT);
     BWTIntervalCache baseRBWTCache(opt::cacheLength, pBaseRevBWT);
 
-
     // Set the parameters shared between all threads
     GraphCompareParameters sharedParameters;
     sharedParameters.pVariantBWT = pVariantBWT;
     sharedParameters.pVariantRevBWT = pVariantRevBWT;
     sharedParameters.pBaseBWT = pBaseBWT;
     sharedParameters.pBaseRevBWT = pBaseRevBWT;
+    sharedParameters.pReferenceBWT = pRefBWT;
+    sharedParameters.pReferenceRevBWT = pRefRevBWT;
+    sharedParameters.pReferenceSSA = pRefSSA;
+
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = pSharedBitVector;
     sharedParameters.kmerThreshold = 3;
@@ -183,6 +188,7 @@ int graphDiffMain(int argc, char** argv)
     delete pVariantRevBWT;
     delete pRefBWT;
     delete pRefRevBWT;
+    delete pRefSSA;
     delete pSharedBitVector;
     delete pSharedResults;
 
