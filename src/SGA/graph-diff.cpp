@@ -117,6 +117,13 @@ int graphDiffMain(int argc, char** argv)
     BWT* pRefRevBWT = new BWT(refPrefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pRefSSA = new SampledSuffixArray(refPrefix + SSA_EXT);
 
+    // Read in the reference 
+    ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
+    refTable.indexReadsByID();
+
+    // Validate that the reference genome read in matches the BWT/SSA
+    WARN_ONCE("Test reference file matches BWT/SSA");    
+
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(pVariantBWT->getBWLen());
     GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outFile);
@@ -137,6 +144,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.pReferenceBWT = pRefBWT;
     sharedParameters.pReferenceRevBWT = pRefRevBWT;
     sharedParameters.pReferenceSSA = pRefSSA;
+    sharedParameters.pRefTable = &refTable;
 
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = pSharedBitVector;

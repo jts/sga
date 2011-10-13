@@ -178,21 +178,32 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             m_parameters.pBitVector->set(i, true);
     }
     
-    /*
     // Align the results to the reference
     for(size_t i = 0; i < result.baseStrings.size(); ++i)
     {
         std::cout << "Aligning base string " << i << " to reference\n";
-        LRAlignment::LRHitVector hits;
         LRAlignment::LRParams params;
         for(size_t j = 0; j <= 1; ++j)
         {
+            LRAlignment::LRHitVector hits;
             std::string query = (j == 0) ? result.baseStrings[i] : reverseComplement(result.baseStrings[i]);
             LRAlignment::bwaswAlignment(query, m_parameters.pReferenceBWT, m_parameters.pReferenceSSA, params, hits);
+            std::cout << "   " << hits.size() << " hits found isRC? " << j << "\n";
+
+            if(!hits.empty())
+            {
+                std::cout << "       First hit chrID: " << hits[0].targetID << " p: " << hits[0].t_start << "\n";
+
+                // Extract reference region
+                const SeqItem& refItem = m_parameters.pRefTable->getRead(hits[0].targetID);
+                size_t refStart = hits[0].t_start;
+                size_t refEnd = refStart + hits[0].length;
+                std::string refSubstring = refItem.seq.substr(refStart, refEnd - refStart);
+                StdAlnTools::globalAlignment(query, refSubstring, true);
+            }
         }
-        std::cout << "   " << hits.size() << " hits found\n";
     }
-    */
+    
     return result;
 }
 

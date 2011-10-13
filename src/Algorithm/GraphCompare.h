@@ -42,6 +42,7 @@ struct GraphCompareParameters
     const BWT* pReferenceBWT;
     const BWT* pReferenceRevBWT;
     const SampledSuffixArray* pReferenceSSA;
+    const ReadTable* pRefTable;
 
     // Cached FM-index intervals to speed up lookups
     const BWTIntervalCache* pVarBWTCache;
