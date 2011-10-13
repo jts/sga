@@ -584,6 +584,9 @@ class DindelRealignParameters
     double addSNPMinLogBaseQual;
 
     double singleSampleHetThreshold, singleSampleHomThreshold;
+
+    double EMtol;
+    int EMmaxiter;
 };
 
 // Realigns reads in a given window.
@@ -643,7 +646,9 @@ class DindelRealignWindow
     	};
 
         void printReadAlignments(int readIdx, std::ostream & out, int offset, bool supportAlt);
+        void doEM(const std::vector< std::vector<double> > & hrLik, const std::vector<int> & calledHaplotypes, std::vector<double> & haplotypeFrequencies);
     	DindelRealignWindowResult estimateHaplotypeFrequencies(double minLogLikAlignToRef, double minLogLikAlignToAlt, bool capUsingMappingQuality, bool print);
+        DindelRealignWindowResult estimateHaplotypeFrequenciesModelSelection(double minLogLikAlignToRef, double minLogLikAlignToAlt, bool capUsingMappingQuality, bool print);
 	double getHaplotypePrior(const DindelHaplotype & h1, const DindelHaplotype & h2) const;
         // this is a function that hides how the read information is actually stored in the various ReadTables
         const DindelRead & getRead(size_t readIndex) const { return (*m_pDindelReads)[readIndex]; }

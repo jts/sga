@@ -106,8 +106,11 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
     // make a vector of Dindel reads
     std::vector<DindelRead> dReads;
     for(size_t i = 0; i < reads.size(); ++i) dReads.push_back(DindelRead(reads[i],std::string("SAMPLE"), mappingQual, fixedBaseQual, true ));
-    for(size_t i = 0; i < rcReads.size(); ++i) dReads.push_back(DindelRead(rcReads[i],std::string("SAMPLE"), mappingQual, fixedBaseQual, false ));
-
+    for(size_t i = 0; i < rcReads.size(); ++i)
+    {
+        rcReads[i].seq.reverseComplement();
+        dReads.push_back(DindelRead(rcReads[i],std::string("SAMPLE"), mappingQual, fixedBaseQual, false ));
+    }
     // create Dindel window
 
     std::string dindelRef = refSubstring;
