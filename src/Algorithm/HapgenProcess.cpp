@@ -99,7 +99,6 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
     extractHaplotypeReads(result.haplotypes, true, &rcReads, &rcReadMates);
 
     // FIXME
-
     double mappingQual = 40.0;
     int fixedBaseQual = 20;
 

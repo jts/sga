@@ -399,7 +399,11 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         if (!leftOverhang)
         {
             if (rs == '-' && vs != '-') m_refPos[hidx] = INSERTION;
-            if (rs != '-' && vs != '-') m_refPos[hidx] = refSeqStart+ma.getBaseIdx(refRow, i);
+            if (rs != '-' && vs != '-')
+            {
+                if(rs!=vs) m_refPos[hidx] = SNP; else m_refPos[hidx] = refSeqStart+ma.getBaseIdx(refRow, i);
+
+            }
             if (rs == '-' && !inRefDeletion)
             {
                 inRefDeletion = true;
@@ -1016,12 +1020,11 @@ void DindelSequenceHash::makeHash(const std::string & sequence)
  */
 
 
-DindelWindow::DindelWindow(const std::vector<DindelVariant> & variants, const std::string & refHap, int refHapStart, int windowPad)
+DindelWindow::DindelWindow(const std::vector<DindelVariant> & variants, const std::string & refHap, int refHapStart)
 {
 
     
-    m_windowPad = windowPad;
-
+  
     m_pHaplotype_ma = NULL;
 
     m_candHapAlgorithm = LINEAR;
@@ -1193,8 +1196,11 @@ void DindelWindow::setupRefSeq(const std::string & refHap, int refHapStart)
 DindelHaplotype DindelWindow::makeAltHapFromReference(const DindelVariant & var)
 {
     int relPos = var.getPos() - m_leftRef;
-    if (relPos<-m_windowPad) throw std::string("DindelWindow::generate_candidate_haplotypes_window_error");
-
+    if (relPos<0)
+    {
+        std::cerr << "relPos: " << relPos << " var.getPos(): " << var.getPos() << " m_leftRef: " << m_leftRef << std::endl;
+        assert("DindelWindow::generate_candidate_haplotypes_window_error");
+    }
     // check if reference part of variant is consistent with its position
     if (m_refSeq.compare(relPos, var.getRef().length(), var.getRef())!=0)
     {
@@ -1645,8 +1651,11 @@ void DindelRealignWindow::algorithm_hmm(VCFFile & vcfFile)
     }
 
     // estimate haplotype frequencies using user specified max mapping thresholds
-    DindelRealignWindowResult result = estimateHaplotypeFrequenciesModelSelection(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, true);
-
+    DindelRealignWindowResult result;
+    if (realignParameters.doEM)
+        result = estimateHaplotypeFrequenciesModelSelection(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, true);
+    else
+        result = estimateHaplotypeFrequencies(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, true);
     // estimate variant qualities using the standard q40 and q60 thresholds
     int maxMapQuals[] = { 25, 80 };
     if (0) for (int m=0;m<2;m++)
@@ -3508,8 +3517,8 @@ DindelRealignParameters::DindelRealignParameters(const std::string & paramString
 std::string DindelRealignParameters::getDefaultParameters() const
 {
      std::string paramString = "genotyping:0,maxNumReads:100000,maxNumReadsWindow:100000,showCallReads:0,minNumHaplotypeOverlaps:0,maxNumCandidatesPerWindow:32,windowReadBuffer:500,minVariantSep:10,haplotypeWidth:60,minCandidateAlleleCount:0,probSNP:0.001,probINDEL:0.0001,probMNP:0.00001";
-     paramString += ",maxMappingQuality:80,addSNPMaxSNPs:3,addSNPMaxMismatches:3,addSNPMinMappingQual:40,addSNPMinBaseQual:20,addSNPMinCount:2,minPostProbLastReadBaseForUngapped:0.95";
-     paramString += ",singleSampleHetThreshold:20,singleSampleHomThreshold:20,EMtol:0.0001,EMmaxiter:200";
+     paramString += ",maxMappingQuality:80,addSNPMaxSNPs:3,addSNPMaxMismatches:3,addSNPMinMappingQual:30,addSNPMinBaseQual:20,addSNPMinCount:2,minPostProbLastReadBaseForUngapped:0.95";
+     paramString += ",singleSampleHetThreshold:20,singleSampleHomThreshold:20,EMtol:0.0001,EMmaxiter:200,doEM:1";
      return paramString; 
 }	   
 
@@ -3548,7 +3557,7 @@ void DindelRealignParameters::checkAndInit()
     os << ",singleSampleHomThreshold:" << int(singleSampleHomThreshold);
     os << ",EMtol:" << EMtol;
     os << ",EMmaxiter:" << int(EMmaxiter);
-
+    os << ",doEM:" << int(doEM);
     if (print) 
     {
 	    std::cout << "Realignment parameters:\n";
@@ -3624,6 +3633,7 @@ void DindelRealignParameters::initFromString(const std::string& paramString)
             else if (k == "singleSampleHomThreshold") { if (!from_string<double>(singleSampleHomThreshold,0, 1000, v, std::dec)) fail = true; }
             else if (k == "EMtol") { if (!from_string<double>(EMtol,0, 1, v, std::dec)) fail = true; }
             else if (k == "EMmaxiter") { if (!from_string<int>(EMmaxiter,0, 10000, v, std::dec)) fail = true; }
+            else if (k == "doEM") { if (!from_string<int>(doEM,0, 1, v, std::dec)) fail = true; }
             else throw std::string("Unrecognized parameter: "+k);
 
             if (fail) throw std::string("Cannot determine value for parameter " + k + " from "+v);
@@ -3730,7 +3740,7 @@ VCFFile::VCFFile(const std::string& fileName, const std::string & mode)
         std::string msg = "VCFFile::VCFFile: Cannot open file: '";
         msg.append(fileName);
         msg.append("'");
-        if(fileName.empty()) msg.append("EMPTY FILE");
+        if(fileName.empty()) msg.append("EMPTY FILENAME");
         throw msg;
     }
     m_mode = mode;

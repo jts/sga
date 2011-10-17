@@ -322,7 +322,7 @@ class DindelWindow
 {
     public:
 
-        DindelWindow(const std::vector<DindelVariant> & variants, const std::string & refHap, int refHapStart, int windowPad);
+        DindelWindow(const std::vector<DindelVariant> & variants, const std::string & refHap, int refHapStart);
         //~DindelWindow();
 
         // Create window from a set of haplotypes and a reference sequence.
@@ -361,7 +361,6 @@ class DindelWindow
 
         //parameters
 
-        int m_windowPad;
         DindelWindowCandHapAlgorithm m_candHapAlgorithm;
         MultiAlignment *m_pHaplotype_ma;
 };
@@ -508,6 +507,10 @@ class CandidateSNP
 	size_t getBaseIdx(char base) const { switch(base) { case 'A' : return 0; case 'C' : return 1; case 'G' : return 2; case 'T' : return 3; case 'N' : throw std::string("N not allowed"); }; return 0; }
 	void addRead(char refBase, char altBase, size_t readIndex)
 	{
+            if (m_refBase!=refBase)
+            {
+                std::cerr << "ERROR: m_refBase: " << m_refBase << " refBase: " << refBase << std::endl;
+            }
 	    assert(m_refBase==refBase);
 	    baseToReads[getBaseIdx(altBase)].insert(readIndex);
 	}
@@ -585,6 +588,7 @@ class DindelRealignParameters
 
     double singleSampleHetThreshold, singleSampleHomThreshold;
 
+    int doEM;
     double EMtol;
     int EMmaxiter;
 };
