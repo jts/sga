@@ -37,4 +37,5 @@ libalgorithm_a_SOURCES = \
         GapFillProcess.h GapFillProcess.cpp \
         MetAssembleProcess.h MetAssembleProcess.cpp \
         MetagenomeBuilder.h MetagenomeBuilder.cpp \
+        HapgenUtil.h HapgenUtil.cpp \
         BuilderCommon.h BuilderCommon.cpp 

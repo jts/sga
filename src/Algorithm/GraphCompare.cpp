@@ -17,6 +17,7 @@
 #include "SGSearch.h"
 #include "StdAlnTools.h"
 #include "LRAlignment.h"
+#include "HapgenUtil.h"
 
 //
 // GraphCompareStats
@@ -182,26 +183,14 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     for(size_t i = 0; i < result.baseStrings.size(); ++i)
     {
         std::cout << "Aligning base string " << i << " to reference\n";
-        LRAlignment::LRParams params;
-        for(size_t j = 0; j <= 1; ++j)
-        {
-            LRAlignment::LRHitVector hits;
-            std::string query = (j == 0) ? result.baseStrings[i] : reverseComplement(result.baseStrings[i]);
-            LRAlignment::bwaswAlignment(query, m_parameters.pReferenceBWT, m_parameters.pReferenceSSA, params, hits);
-            std::cout << "   " << hits.size() << " hits found isRC? " << j << "\n";
+        HapgenAlignmentVector alignments = HapgenUtil::alignHaplotypeToReference(result.baseStrings[i],
+                                                                                 m_parameters.pReferenceBWT, 
+                                                                                 m_parameters.pReferenceSSA);
 
-            if(!hits.empty())
-            {
-                std::cout << "       First hit chrID: " << hits[0].targetID << " p: " << hits[0].t_start << "\n";
+        std::cout << "Found " << alignments.size() << " alignments\n";
 
-                // Extract reference region
-                const SeqItem& refItem = m_parameters.pRefTable->getRead(hits[0].targetID);
-                size_t refStart = hits[0].t_start;
-                size_t refEnd = refStart + hits[0].length;
-                std::string refSubstring = refItem.seq.substr(refStart, refEnd - refStart);
-                StdAlnTools::globalAlignment(query, refSubstring, true);
-            }
-        }
+        for(size_t j = 0; j < alignments.size(); ++j)
+            HapgenUtil::printAlignment(result.baseStrings[i], alignments[j], m_parameters.pRefTable);
     }
     
     return result;
