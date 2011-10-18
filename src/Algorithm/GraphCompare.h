@@ -26,6 +26,7 @@
 #include "SequenceProcessFramework.h"
 #include "BWTIntervalCache.h"
 #include "SampledSuffixArray.h"
+#include "DindelRealignWindow.h"
 
 // Structures and typedefs
 typedef std::vector<const BWT*> BWTVector;
@@ -142,6 +143,9 @@ class GraphCompare
 
         // Results stats
         GraphCompareStats m_stats;
+
+        // Temporary output file
+        VCFFile m_vcfFile;
 };
 
 // Shared result object that the threaded

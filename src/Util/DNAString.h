@@ -77,6 +77,7 @@ class DNAString
         void disambiguate();
 
         void reverse();
+        void reverseComplement();
         std::string getSuffixString(size_t idx) const;
         std::string toString() const;
 

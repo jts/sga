@@ -18,6 +18,7 @@
 #include "StdAlnTools.h"
 #include "LRAlignment.h"
 #include "HapgenUtil.h"
+#include "DindelRealignWindow.h"
 
 //
 // GraphCompareStats
@@ -75,7 +76,7 @@ void GraphCompareStats::print() const
 //
 //
 //
-GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params)
+GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params), m_vcfFile("testing.vcf","w")
 {
     m_stats.clear();
 }
@@ -205,49 +206,72 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     }
 
                     // Extract all read pairs that match a k-mer to any haplotype
-                    SeqItemVector reads;
-                    SeqItemVector readMates;
-                    SeqItemVector rcReads;
-                    SeqItemVector rcReadMates;
+                    if(candidateAlignments.size() > 0 && flankingHaplotypes.size() > 0 && success)
+                    {
+                        SeqItemVector reads;
+                        SeqItemVector readMates;
+                        SeqItemVector rcReads;
+                        SeqItemVector rcReadMates;
+                        
+                        // Extract reads from the base BWT
+                        HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache,
+                                                          m_parameters.pBaseSSA, m_parameters.kmer, false, &reads, &readMates);
+
+                        HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache,
+                                                          m_parameters.pBaseSSA, m_parameters.kmer, true, &rcReads, &rcReadMates);
+
+                        // Extract reads from the variant BWT
+                        HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache,
+                                                          m_parameters.pVariantSSA, m_parameters.kmer, false, &reads, &readMates);
+
+                        HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache,
+                                                          m_parameters.pVariantSSA, m_parameters.kmer, true, &rcReads, &rcReadMates);
+
+                        //
+                        // Run Dindel
+                        //
+
+                        double MAP_QUAL = 40.0;
+                        int BASE_QUAL = 20;
+                        std::vector<DindelRead> dReads;
+
+                        for(size_t i = 0; i < reads.size(); ++i) 
+                            dReads.push_back(DindelRead(reads[i],std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
+
+                        for(size_t i = 0; i < rcReads.size(); ++i)
+                        {
+                            rcReads[i].seq.reverseComplement();
+                            dReads.push_back(DindelRead(rcReads[i],std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
+                        }
                     
-                    // Extract reads from the base BWT
-                    HapgenUtil::extractHaplotypeReads(inHaplotypes, 
-                                                      m_parameters.pBaseBWT, 
-                                                      m_parameters.pBaseBWTCache,
-                                                      m_parameters.pBaseSSA,
-                                                      m_parameters.kmer,
-                                                      false, 
-                                                      &reads, 
-                                                      &readMates);
+                        // We need at least 2 haplotypes
+                        assert(flankingHaplotypes.size() >= 2);
+                        assert(flankingHaplotypes[0].size() > 0);
 
-                    HapgenUtil::extractHaplotypeReads(inHaplotypes, 
-                                                      m_parameters.pBaseBWT, 
-                                                      m_parameters.pBaseBWTCache,
-                                                      m_parameters.pBaseSSA,
-                                                      m_parameters.kmer,
-                                                      true, 
-                                                      &rcReads, 
-                                                      &rcReadMates);
+                        std::string dindelRef = flankingHaplotypes[0]; // First flanking haplotype is of the reference
+                        
+                        // The first base of the haplotype sequences on the reference
+                        int dindelRefStart = 0; 
+                        // Debug: Separate the non-reference haplotypes from the reference
+                        try
+                        {
+                            StringVector nonReference(flankingHaplotypes.begin()+1, flankingHaplotypes.end());
+                            std::cout << "Running dindel on " << nonReference.size() << " haplotypes and " << dReads.size() << " reads\n";
+                            DindelWindow dWindow(nonReference, dindelRef, dindelRefStart, "unknown" );
 
-                    // Extract reads from the variant BWT
-                    HapgenUtil::extractHaplotypeReads(inHaplotypes, 
-                                                      m_parameters.pVariantBWT, 
-                                                      m_parameters.pVariantBWTCache,
-                                                      m_parameters.pVariantSSA,
-                                                      m_parameters.kmer,
-                                                      false, 
-                                                      &reads, 
-                                                      &readMates);
+                            DindelRealignParameters dRealignParameters;
+                            DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
 
-                    HapgenUtil::extractHaplotypeReads(inHaplotypes, 
-                                                      m_parameters.pVariantBWT, 
-                                                      m_parameters.pVariantBWTCache,
-                                                      m_parameters.pVariantSSA,
-                                                      m_parameters.kmer,
-                                                      true, 
-                                                      &rcReads, 
-                                                      &rcReadMates);
+                            dRealignWindow.run("hmm", this->m_vcfFile);
+                        }
+                        catch(std::string e)
+                        {
+                            std::cerr << "Dindel Exception: " << e << "\n";
+                            exit(EXIT_FAILURE);
+                        }
+                    }
                 }
+                             
             }
         }
 

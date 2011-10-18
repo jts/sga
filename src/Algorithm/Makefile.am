@@ -38,4 +38,6 @@ libalgorithm_a_SOURCES = \
         MetAssembleProcess.h MetAssembleProcess.cpp \
         MetagenomeBuilder.h MetagenomeBuilder.cpp \
         HapgenUtil.h HapgenUtil.cpp \
-        BuilderCommon.h BuilderCommon.cpp 
+        BuilderCommon.h BuilderCommon.cpp \
+        DindelRealignWindow.h DindelRealignWindow.cpp \
+        DindelHMM.h DindelHMM.cpp

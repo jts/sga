@@ -15,12 +15,13 @@
 #include "StdAlnTools.h"
 #include "HaplotypeBuilder.h"
 #include "MultiAlignment.h"
-
+#include "DindelRealignWindow.h"
 //
 //
 //
-HapgenProcess::HapgenProcess(const HapgenParameters& params) : m_parameters(params)
+HapgenProcess::HapgenProcess(const HapgenParameters& params) : m_parameters(params), m_vcfFile(params.vcfOutfile,"w")
 {
+
 }
 
 //
@@ -96,6 +97,34 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
 
     extractHaplotypeReads(result.haplotypes, false, &reads, &readMates);
     extractHaplotypeReads(result.haplotypes, true, &rcReads, &rcReadMates);
+
+    // FIXME
+    double mappingQual = 40.0;
+    int fixedBaseQual = 20;
+
+    // make a vector of Dindel reads
+    std::vector<DindelRead> dReads;
+    for(size_t i = 0; i < reads.size(); ++i) dReads.push_back(DindelRead(reads[i],std::string("SAMPLE"), mappingQual, fixedBaseQual, true ));
+    for(size_t i = 0; i < rcReads.size(); ++i)
+    {
+        rcReads[i].seq.reverseComplement();
+        dReads.push_back(DindelRead(rcReads[i],std::string("SAMPLE"), mappingQual, fixedBaseQual, false ));
+    }
+    // create Dindel window
+
+    std::string dindelRef = refSubstring;
+    int dindelRefStart = int(refStart);
+    DindelWindow dWindow(result.haplotypes, dindelRef, dindelRefStart, refName );
+
+    DindelRealignParameters dRealignParameters;
+    DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
+    
+    dRealignWindow.run("hmm",this->m_vcfFile);
+
+
+
+
+
 
     if(m_parameters.verbose > 0)
     {
@@ -174,6 +203,8 @@ AnchorSequence HapgenProcess::findAnchorKmer(const std::string& refName, int64_t
 void HapgenProcess::extractHaplotypeReads(const StringVector& haplotypes, bool doReverseComp, 
                                          SeqItemVector* pOutReads, SeqItemVector* pOutMates) const
 {
+    WARN_ONCE("HapgenProcess::extractHaplotypeReads is depracated")
+    assert(false);
     // Extract the set of reads that have at least one kmer shared with these haplotypes
     // This is a bit of a roundabout procedure with a few steps:
     // 1) extract all the kmers in the haplotypes
