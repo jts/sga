@@ -130,14 +130,14 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         std::string kmer = w.substr(j, m_parameters.kmer);
         
         // Get the interval for this kmer
-        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVarBWTCache, kmer);
+        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, kmer);
 
         // Check if this interval has been marked by a previous iteration of the loop
         assert(interval.isValid());
         if(m_parameters.pBitVector->test(interval.lower))
             continue;
 
-        BWTInterval rc_interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVarBWTCache, reverseComplement(kmer));
+        BWTInterval rc_interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, reverseComplement(kmer));
 
         
         size_t count = interval.size();
@@ -167,6 +167,86 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
                     result.baseStrings.push_back(bubbleResult.targetString);
                     result.baseCoverages.push_back(bubbleResult.targetCoverage);
+                    
+                    // We have found a variant sequence
+                    // Perform the Dindel realignment and inference framework
+                    StringVector inHaplotypes;
+                    inHaplotypes.push_back(bubbleResult.sourceString);
+                    inHaplotypes.push_back(bubbleResult.targetString);
+
+                    // First, calculate alignments of the input haplotypes to the reference
+                    HapgenAlignmentVector candidateAlignments;
+                    for(size_t i = 0; i < inHaplotypes.size(); ++i)
+                    {
+                        HapgenUtil::alignHaplotypeToReference(inHaplotypes[i],
+                                                              m_parameters.pReferenceBWT, 
+                                                              m_parameters.pReferenceSSA,
+                                                              candidateAlignments);
+                    }
+
+                    // Remove duplicate or bad alignment pairs
+                    HapgenUtil::coalesceAlignments(candidateAlignments);
+                    std::cout << "Found " << candidateAlignments.size() << " alignments for all strings\n";
+
+                    // Join each haplotype with flanking sequence from the reference genome for each alignment
+                    // This function also adds a haplotype (with flanking sequence) for the piece of the reference
+                    bool success = true;
+                    int FLANKING_SIZE = 500;
+                    StringVector flankingHaplotypes;
+                    for(size_t i = 0; i < candidateAlignments.size(); ++i)
+                    {
+                        success = HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i], 
+                                                                     m_parameters.pRefTable, 
+                                                                     FLANKING_SIZE, 
+                                                                     inHaplotypes,
+                                                                     flankingHaplotypes);
+                        if(!success)
+                            break;
+                    }
+
+                    // Extract all read pairs that match a k-mer to any haplotype
+                    SeqItemVector reads;
+                    SeqItemVector readMates;
+                    SeqItemVector rcReads;
+                    SeqItemVector rcReadMates;
+                    
+                    // Extract reads from the base BWT
+                    HapgenUtil::extractHaplotypeReads(inHaplotypes, 
+                                                      m_parameters.pBaseBWT, 
+                                                      m_parameters.pBaseBWTCache,
+                                                      m_parameters.pBaseSSA,
+                                                      m_parameters.kmer,
+                                                      false, 
+                                                      &reads, 
+                                                      &readMates);
+
+                    HapgenUtil::extractHaplotypeReads(inHaplotypes, 
+                                                      m_parameters.pBaseBWT, 
+                                                      m_parameters.pBaseBWTCache,
+                                                      m_parameters.pBaseSSA,
+                                                      m_parameters.kmer,
+                                                      true, 
+                                                      &rcReads, 
+                                                      &rcReadMates);
+
+                    // Extract reads from the variant BWT
+                    HapgenUtil::extractHaplotypeReads(inHaplotypes, 
+                                                      m_parameters.pVariantBWT, 
+                                                      m_parameters.pVariantBWTCache,
+                                                      m_parameters.pVariantSSA,
+                                                      m_parameters.kmer,
+                                                      false, 
+                                                      &reads, 
+                                                      &readMates);
+
+                    HapgenUtil::extractHaplotypeReads(inHaplotypes, 
+                                                      m_parameters.pVariantBWT, 
+                                                      m_parameters.pVariantBWTCache,
+                                                      m_parameters.pVariantSSA,
+                                                      m_parameters.kmer,
+                                                      true, 
+                                                      &rcReads, 
+                                                      &rcReadMates);
                 }
             }
         }
@@ -177,20 +257,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
         for(int64_t i = rc_interval.lower; i <= rc_interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
-    }
-    
-    // Align the results to the reference
-    for(size_t i = 0; i < result.baseStrings.size(); ++i)
-    {
-        std::cout << "Aligning base string " << i << " to reference\n";
-        HapgenAlignmentVector alignments = HapgenUtil::alignHaplotypeToReference(result.baseStrings[i],
-                                                                                 m_parameters.pReferenceBWT, 
-                                                                                 m_parameters.pReferenceSSA);
-
-        std::cout << "Found " << alignments.size() << " alignments\n";
-
-        for(size_t j = 0; j < alignments.size(); ++j)
-            HapgenUtil::printAlignment(result.baseStrings[i], alignments[j], m_parameters.pRefTable);
     }
     
     return result;

@@ -76,7 +76,7 @@ namespace opt
     static std::string outFile = "variants.fa";
 }
 
-static const char* shortopts = "b:r:o:k:t:x:y:v";
+static const char* shortopts = "b:r:o:k:d:t:x:y:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE };
 
@@ -89,6 +89,7 @@ static const struct option longopts[] = {
     { "kmer",          required_argument, NULL, 'k' },
     { "kmer-threshold",required_argument, NULL, 'x' },
     { "max-branches",  required_argument, NULL, 'y' },
+    { "sample-rate",   required_argument, NULL, 'd' },
     { "references",    required_argument, NULL, OPT_REFERENCE },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
@@ -102,16 +103,24 @@ int graphDiffMain(int argc, char** argv)
 {
     parseGraphDiffOptions(argc, argv);
 
-    // Create BWTS
+    // Create indices for the base reads
     std::string basePrefix = stripFilename(opt::baseFile);
     BWT* pBaseBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
     BWT* pBaseRevBWT = new BWT(basePrefix + RBWT_EXT, opt::sampleRate);
+    SampledSuffixArray* pBaseSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
 
+    // Create indices for the variant reads
     std::string variantPrefix = stripFilename(opt::variantFile);
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     BWT* pVariantRevBWT = new BWT(variantPrefix + RBWT_EXT, opt::sampleRate);
+    SampledSuffixArray* pVariantSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
     
-    // Create reference BWTs
+    std::cout << "Variant index memory info\n";
+    pVariantBWT->printInfo();
+    pVariantRevBWT->printInfo();
+    pVariantSSA->printInfo();
+
+    // Create indices for the reference
     std::string refPrefix = stripFilename(opt::referenceFile);
     BWT* pRefBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
     BWT* pRefRevBWT = new BWT(refPrefix + RBWT_EXT, opt::sampleRate);
@@ -137,10 +146,19 @@ int graphDiffMain(int argc, char** argv)
 
     // Set the parameters shared between all threads
     GraphCompareParameters sharedParameters;
-    sharedParameters.pVariantBWT = pVariantBWT;
-    sharedParameters.pVariantRevBWT = pVariantRevBWT;
+
     sharedParameters.pBaseBWT = pBaseBWT;
     sharedParameters.pBaseRevBWT = pBaseRevBWT;
+    sharedParameters.pBaseBWTCache = &baseBWTCache;
+    sharedParameters.pBaseRevBWTCache = &baseRBWTCache;
+    sharedParameters.pBaseSSA = pBaseSSA;
+
+    sharedParameters.pVariantBWT = pVariantBWT;
+    sharedParameters.pVariantRevBWT = pVariantRevBWT;
+    sharedParameters.pVariantBWTCache = &varBWTCache;
+    sharedParameters.pVariantRevBWTCache = &varRBWTCache;
+    sharedParameters.pVariantSSA = pVariantSSA;
+
     sharedParameters.pReferenceBWT = pRefBWT;
     sharedParameters.pReferenceRevBWT = pRefRevBWT;
     sharedParameters.pReferenceSSA = pRefSSA;
@@ -151,10 +169,6 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.kmerThreshold = 3;
     sharedParameters.maxBranches = opt::maxBranches;
 
-    sharedParameters.pVarBWTCache = &varBWTCache;
-    sharedParameters.pVarRevBWTCache = &varRBWTCache;
-    sharedParameters.pBaseBWTCache = &baseBWTCache;
-    sharedParameters.pBaseRevBWTCache = &baseRBWTCache;
 
     if(opt::numThreads <= 1)
     {
@@ -192,11 +206,16 @@ int graphDiffMain(int argc, char** argv)
     // Cleanup
     delete pBaseBWT;
     delete pBaseRevBWT;
+    delete pBaseSSA;
+
     delete pVariantBWT;
     delete pVariantRevBWT;
+    delete pVariantSSA;
+
     delete pRefBWT;
     delete pRefRevBWT;
     delete pRefSSA;
+
     delete pSharedBitVector;
     delete pSharedResults;
 
@@ -225,6 +244,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
             case 'y': arg >> opt::maxBranches; break;
+            case 'd': arg >> opt::sampleRate; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:

@@ -10,6 +10,7 @@
 #define STDALNTOOLS_H
 
 #include <string>
+#include <vector>
 #include <inttypes.h>
 #include <iostream>
 #include "stdaln.h"
@@ -65,6 +66,7 @@ struct LocalAlignmentResult
         return out;
     }
 };
+typedef std::vector<LocalAlignmentResult> LocalAlignmentResultVector;
 
 namespace StdAlnTools
 {

@@ -35,25 +35,35 @@ class GraphCompareAggregateResults;
 struct GraphCompareParameters
 {
     // BWTS
+
+    // Indices for the base reads
     const BWT* pBaseBWT; 
     const BWT* pBaseRevBWT;
+    const BWTIntervalCache* pBaseBWTCache;
+    const BWTIntervalCache* pBaseRevBWTCache;
+    const SampledSuffixArray* pBaseSSA;
+    
+    // Indices for the variant reads
     const BWT* pVariantBWT;
     const BWT* pVariantRevBWT;
+    const BWTIntervalCache* pVariantBWTCache;
+    const BWTIntervalCache* pVariantRevBWTCache;
+    const SampledSuffixArray* pVariantSSA;
+    
+    // Reference genome
     const BWT* pReferenceBWT;
     const BWT* pReferenceRevBWT;
     const SampledSuffixArray* pReferenceSSA;
     const ReadTable* pRefTable;
 
-    // Cached FM-index intervals to speed up lookups
-    const BWTIntervalCache* pVarBWTCache;
-    const BWTIntervalCache* pVarRevBWTCache;
-    const BWTIntervalCache* pBaseBWTCache;
-    const BWTIntervalCache* pBaseRevBWTCache;
-    
+    // Bitvector to mark used kmers
+    BitVector* pBitVector;
+ 
+    // Parameters
     size_t kmer;
     size_t kmerThreshold;
     size_t maxBranches;
-    BitVector* pBitVector;
+
 };
 
 //

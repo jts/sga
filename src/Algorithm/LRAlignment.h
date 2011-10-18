@@ -42,7 +42,7 @@ struct LRParams
         alnParams.setDefaults();
         zBest = 20;
         percentCutoff = 0.90f;
-        cutTailAlgorithm = LRCA_Z_BEST_STRATA;
+        cutTailAlgorithm = LRCA_Z_BEST;
     }
 
     //
