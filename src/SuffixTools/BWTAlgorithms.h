@@ -134,7 +134,7 @@ inline AlphaCount64 getExtCount(const BWTInterval& interval, const BWT* pBWT)
 // appears in the FM-index for all i s.t. length(w[i, l]) >= minOverlap.
 AlphaCount64 calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT);
 
-// Calculate de Bruijn graph extensions of the given sequence
+// Calculate de Bruijn graph extensions of the given sequence using an index pair
 // Returns an AlphaCount64 with the count of each extension base
 // This function optionally takes in an interval cache to speed up the computation
 AlphaCount64 calculateDeBruijnExtensions(const std::string str, 
@@ -143,6 +143,16 @@ AlphaCount64 calculateDeBruijnExtensions(const std::string str,
                                          EdgeDir direction,
                                          const BWTIntervalCache* pFwdCache = NULL,
                                          const BWTIntervalCache* pRevCache = NULL);
+
+// Calculate de Bruijn graph extensions of the given sequence using a single index
+// This version is more computationally expensive than above but allows
+// only one index to be held in memory. 
+// Returns an AlphaCount64 with the count of each extension base
+// This function optionally takes in an interval cache to speed up the computation
+AlphaCount64 calculateDeBruijnExtensionsSingleIndex(const std::string str, 
+                                                    const BWT* pBWT, 
+                                                    EdgeDir direction,
+                                                    const BWTIntervalCache* pFwdCache = NULL);
 
 // Extract the string at idx from the BWT
 std::string extractString(const BWT* pBWT, size_t idx);

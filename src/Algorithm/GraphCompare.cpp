@@ -251,7 +251,6 @@ void GraphCompare::runDindelIndividual(const std::string& normalString, const st
         //
         // Run Dindel
         //
-
         double MAP_QUAL = 40.0;
         int BASE_QUAL = 20;
         std::vector<DindelRead> dReads;

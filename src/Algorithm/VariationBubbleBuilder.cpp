@@ -103,7 +103,7 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pSourceBWT, m_pSourceRevBWT, curr.direction);
+        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_pSourceBWT, curr.direction);
 
         // Count the number of branches from this sequence
         size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
@@ -177,7 +177,7 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pTargetBWT, m_pTargetRevBWT, curr.direction);
+        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_pTargetBWT, curr.direction);
         
         // Count the number of branches from this sequence
         size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
