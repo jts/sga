@@ -5,9 +5,10 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// DindelHMM Realigns read against haplotype using the homopolymer aware HMM described in Albers et al. (2010) Genome Research
+// DindelHMM Realigns read against haplotype using 
+// the homopolymer aware HMM described in 
+// Albers et al. (2010) Genome Research
 //
-
 #ifndef DINDELHMM_H
 #define	DINDELHMM_H
 #include "DindelRealignWindow.h"
@@ -19,23 +20,33 @@ typedef double Float;
 class DindelHMM
 {
     public:
+
+        // Constructor
         DindelHMM(DindelRead & read, const DindelHaplotype & haplotype);
+
+        // Functions
         ReadHaplotypeAlignment getAlignment();
         
-//        static ReadHaplotypeAlignment DindelHMMForward(const DindelRead & read, const DindelHaplotype & haplotype, int hFirstBase, bool rcRead);
     private:
+
+        //
         void getSeedPositions(std::set<int> & positions);
 
-        DindelRead * m_pRead;
+        // Data
+        DindelRead* m_pRead;
         const DindelHaplotype * m_pHaplotype;
 };
 
-template<int BandWidth> ReadHaplotypeAlignment DindelHMMForward(const DindelRead * pRead, const DindelHaplotype * pHaplotype, int hFirstBase, bool rcRead)
+template<int BandWidth> ReadHaplotypeAlignment DindelHMMForward(const DindelRead * pRead, 
+                                                                const DindelHaplotype * pHaplotype, 
+                                                                int hFirstBase, 
+                                                                bool rcRead)
 {
 	// code for aligning assuming last base of read is aligned to the haplotype
 	// hFirstBase gives relative haplotype base of first base in read
 	
-	if (DEBUGDINDELHMM) std::cerr << " _hmm bandwidth: " << BandWidth << " hFirstBase: " << hFirstBase << std::endl;
+	if (DEBUGDINDELHMM) 
+        std::cerr << " _hmm bandwidth: " << BandWidth << " hFirstBase: " << hFirstBase << std::endl;
 	
 	double hp[] = { 2.9e-5, 2.9e-5,2.9e-5, 2.9e-5, 4.3e-5, 1.1e-4, 2.4e-4, 5.7e-4, 1.0e-3, 1.4e-3 };
 	const int MAXHP = 10;
@@ -244,10 +255,11 @@ template<int BandWidth> ReadHaplotypeAlignment DindelHMMForward(const DindelRead
 	return rha;
 }
 
-
-
-ReadHaplotypeAlignment DindelHMMForward(const DindelRead & read, const DindelHaplotype & haplotype, int hFirstBase, bool rcRead, int BandWidth);
-
+ReadHaplotypeAlignment DindelHMMForward(const DindelRead & read, 
+                                        const DindelHaplotype & haplotype, 
+                                        int hFirstBase, 
+                                        bool rcRead, 
+                                        int BandWidth);
 
 #endif	/* DINDELHMM_H */
 

@@ -5,9 +5,10 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// DindelHMM Realigns read against haplotype using the homopolymer aware HMM described in Albers et al. (2010) Genome Research
+// DindelHMM Realigns read against haplotype using 
+// the homopolymer aware HMM described in 
+// Albers et al. (2010) Genome Research
 //
-
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -57,7 +58,7 @@ void DindelHMM::getSeedPositions(std::set<int> & positions)
 
     const DindelSequenceHash & hapHash = m_pHaplotype->getHash();
 
-    std::tr1::unordered_map<int, int> pos_to_freq;
+    HashMap<int, int> pos_to_freq;
     std::map<int, std::list<int> > freq_to_pos;
     for (int x=0;x<int(readKeys.size());x++)
     {
@@ -67,7 +68,7 @@ void DindelHMM::getSeedPositions(std::set<int> & positions)
             int numHits=0;
             for (std::list<int>::const_iterator hpos = hpos_set.begin();hpos!=hpos_set.end() && numHits<4;++hpos,++numHits) {
                 int rpos = *hpos-x;
-                std::tr1::unordered_map<int, int>::iterator it = pos_to_freq.find(rpos);
+                HashMap<int, int>::iterator it = pos_to_freq.find(rpos);
                 if (it == pos_to_freq.end()) pos_to_freq[rpos]=1; else it->second++;
             }
         }
@@ -75,7 +76,7 @@ void DindelHMM::getSeedPositions(std::set<int> & positions)
 
     // convert
 
-    for (std::tr1::unordered_map<int, int>::const_iterator it = pos_to_freq.begin();it!=pos_to_freq.end();it++)
+    for (HashMap<int, int>::const_iterator it = pos_to_freq.begin();it!=pos_to_freq.end();it++)
 	    freq_to_pos[it->second].push_back(it->first);
 
     // output two best hits
