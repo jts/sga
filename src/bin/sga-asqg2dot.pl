@@ -7,22 +7,13 @@ my $attrFile = "";
 
 # Params
 my $bDirected = 1;
-my $bUseShapes = 1;
 my $bUseLabels = 0;
+my $bUseShapes = 0;
 my $defaultShape = "circle";
-GetOptions("attribute=s" => \$attrFile);
-
-my $small_size = 0.4;
-my $medium_size = 0.6;
-my $large_size = 1.0;
 
 my %vertexColors;
 my %vertexShapes;
 my %vertexSizes;
-if($attrFile ne "")
-{
-    loadVertexAttributes($attrFile);
-}
 
 my $graphAttr;
 if($bDirected)
@@ -44,13 +35,7 @@ while(<>)
         my $id = $record[1];
         my $len = length($record[2]);
         my @attributes;
-        #push @attributes, makeAttribute("label", quoteStr($id)) if $bUseLabels;
         push @attributes, makeAttribute("label", quoteStr($id));
-        #push @attributes, makeAttribute("shape", getVertexShape($id)) if $bUseShapes;
-        #push @attributes, makeAttribute("fillcolor", getVertexColor($id));
-        #push @attributes, makeAttribute("style", "filled");
-        #push @attributes, makeAttribute("width", getVertexSize($id));
-        #push @attributes, makeAttribute("fixedsize", 1);
         my $attrStr = attributes2string(@attributes);
         print quoteStr($id) . " " . $attrStr . ";\n"    
     }
@@ -65,7 +50,6 @@ while(<>)
 
         my $edgeStr = quoteStr($record[1]) . " " . getArrow() . " " . quoteStr($record[2]);
         
-#        push @attributes, makeAttribute("label", $ol);
         push @attributes, makeAttribute("color", getEdgeColor($s1));
         my $attrStr = attributes2string(@attributes);
 
@@ -130,57 +114,6 @@ sub getEdgeColor
     else
     {
         return "black";
-    }
-}
-
-sub loadVertexAttributes
-{
-    my($file) = @_;
-    open(F, $file);
-    while(<F>)
-    {
-        chomp;
-        next if /ID/; #skip header
-        next if $_ eq ""; #skip blank
-
-        my @fields = split;
-        my $id = $fields[0];
-        my $len = $fields[1];
-        my $f1 = $fields[5];
-        my $f2 = $fields[6];
-        
-        my $color = "gray";
-        if($f1 > 0.75)
-        {
-            $color = "brown1";
-        }
-        elsif($f2 > 0.75)
-        {
-            $color = "skyblue1";
-        }
-        else
-        {
-            $color = "gray";
-        }
-
-        $vertexColors{$id} = $color;
-
-        # Compute the shape of the vertex
-        $vertexShapes{$id} = $defaultShape;
-
-        # Compute vertex size
-        if($len > 1000)
-        {
-            $vertexSizes{$id} = $large_size;
-        }
-        if($len > 500)
-        {
-            $vertexSizes{$id} = $medium_size;
-        }
-        else
-        {
-            $vertexSizes{$id} = $small_size;
-        }
     }
 }
 
