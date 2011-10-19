@@ -38,9 +38,9 @@ print "$graphAttr G {\n";
 
 while(<>)
 {
-	if(/VT/)
-	{
-		my @record = split;
+    if(/VT/)
+    {
+        my @record = split;
         my $id = $record[1];
         my $len = length($record[2]);
         my @attributes;
@@ -52,13 +52,13 @@ while(<>)
         #push @attributes, makeAttribute("width", getVertexSize($id));
         #push @attributes, makeAttribute("fixedsize", 1);
         my $attrStr = attributes2string(@attributes);
-		print quoteStr($id) . " " . $attrStr . ";\n" 	
-	}
+        print quoteStr($id) . " " . $attrStr . ";\n"    
+    }
 
-	if(/ED/)
-	{
-		my @record = split;
-		my $ol = $record[4] - $record[3] + 1;
+    if(/ED/)
+    {
+        my @record = split;
+        my $ol = $record[4] - $record[3] + 1;
         my $s1 = $record[3];
         my $s2 = $record[6];
         my @attributes; 
@@ -69,32 +69,32 @@ while(<>)
         push @attributes, makeAttribute("color", getEdgeColor($s1));
         my $attrStr = attributes2string(@attributes);
 
-		print $edgeStr . " " . $attrStr . ";\n";
+        print $edgeStr . " " . $attrStr . ";\n";
         if($bDirected)
         {
             print quoteStr($record[2]) . " " . getArrow() . " " . quoteStr($record[1]) . " " . makeLabel($ol, getEdgeColor($s2)) . ";\n";
         }
-	}
+    }
 }
 
 print "}\n";
 
 sub quoteStr
 {
-	my ($s) = @_;
-	return qq(") . $s . qq(");
+    my ($s) = @_;
+    return qq(") . $s . qq(");
 }
 
 sub makeLabel
 {
-	my($l, $color) = @_;
+    my($l, $color) = @_;
     my $c_str;
     if($color ne "")
     {
         $c_str = "color=\"$color\"";
     }
-	my $str = qq([label=") . $l . qq(" ) . $c_str. qq(]);
-	return $str;
+    my $str = qq([label=") . $l . qq(" ) . $c_str. qq(]);
+    return $str;
 }
 
 sub makeAttribute
