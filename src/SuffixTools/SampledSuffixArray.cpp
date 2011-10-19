@@ -60,7 +60,8 @@ SAElem SampledSuffixArray::calcSA(int64_t idx, const BWT* pBWT) const
             // idx (before the update) corresponds to the start of a read.
             // We can directly look up the saElem for idx from the lexicographic index
             assert(idx < (int64_t)m_saLexoIndex.size());
-            elem = m_saLexoIndex[idx];
+            elem.setID(m_saLexoIndex[idx]);
+            elem.setPos(0);
             break;
         }
         else
@@ -77,7 +78,7 @@ SAElem SampledSuffixArray::calcSA(int64_t idx, const BWT* pBWT) const
 // Returns the ID of the read with lexicographic rank r
 size_t SampledSuffixArray::lookupLexoRank(size_t r) const
 {
-    return m_saLexoIndex[r].getID();
+    return m_saLexoIndex[r];
 }
 
 // 
@@ -87,6 +88,15 @@ void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int s
 
     size_t numStrings = pRIT->getCount();
     m_saLexoIndex.resize(numStrings);
+
+    size_t MAX_ELEMS = std::numeric_limits<SSA_INT_TYPE>::max();
+    if(numStrings > MAX_ELEMS)
+    {
+        std::cerr << "Error: Only " << MAX_ELEMS << " reads are allowed in the sampled suffix array\n";
+        std::cerr << "Number of reads in your index: " << numStrings << "\n";
+        std::cerr << "Contact sga-users@googlegroups.com for help\n";
+        exit(EXIT_FAILURE);
+    }
 
     // Set the size of the sampled vector
     size_t numElems = (pBWT->getBWLen() / m_sampleRate) + 1;
@@ -123,8 +133,11 @@ void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int s
                 // in the lexicographic index
                 if(elem.getPos() != 0)
                     std::cout << "elem: " << elem << " i: " << i << "\n";
+
                 assert(elem.getPos() == 0);
-                m_saLexoIndex[idx] = elem;
+                size_t id = elem.getID();
+                assert(id < MAX_ELEMS);
+                m_saLexoIndex[idx] = id;
                 break; // done;
             }
             else
@@ -250,7 +263,7 @@ void SampledSuffixArray::readSAI(std::string filename)
 void SampledSuffixArray::printInfo()
 {
     double mb = (double)(1024*1024);
-    double lexoSize = (double)(sizeof(SAElem) * m_saLexoIndex.capacity()) / mb;
+    double lexoSize = (double)(sizeof(SSA_INT_TYPE) * m_saLexoIndex.capacity()) / mb;
     double sampleSize = (double)(sizeof(SAElem) * m_saSamples.capacity()) / mb;
     
     printf("SampledSuffixArray info:\n");

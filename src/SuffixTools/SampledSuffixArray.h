@@ -16,6 +16,8 @@
 #include "BWT.h"
 #include "ReadInfoTable.h"
 
+typedef uint32_t SSA_INT_TYPE;
+
 enum SSAFileType
 {
     SSA_FT_SSA,
@@ -50,11 +52,16 @@ class SampledSuffixArray
 
     private:
 
-        // SAElems indicating the start of every read in the
+        // Unsigned integers indicating the start of every read in the
         // sequence collection. These elements are in lexicographic order
         // based on the whole read sequence. Tracing a read backwards through
-        // the suffix array necessarily ends at one of these positions.
-        SAElemVector m_saLexoIndex;
+        // the suffix array necessarily ends at one of these positions. These
+        // are nominally SAElems representing the full length suffix but
+        // we store them here as unsigned integers to save 4 bytes per entry.
+        // This limits the SampledSuffixArray to represent at most 2**32 strings.
+        // To improve this we could use a polymorphic vector with a runtime-determined
+        // size.
+        std::vector<SSA_INT_TYPE> m_saLexoIndex;
 
         static const int DEFAULT_SA_SAMPLE_RATE = 64;
         int m_sampleRate;
