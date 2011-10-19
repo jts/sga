@@ -25,6 +25,8 @@ AC_ARG_WITH(bamtools, AS_HELP_STRING([--with-bamtools=PATH],
 if test "$with_bamtools" -a -d "$with_bamtools"; then
     bamtools_ldflags="-Wl,-rpath,$with_bamtools/lib -L$with_bamtools/lib -lbamtools"
     bamtools_include="-I$with_bamtools/include"
+else
+    bamtools_ldflags="-lbamtools"
 fi
 
 # Check for the hoard memory allocator 
