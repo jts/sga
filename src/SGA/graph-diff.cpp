@@ -106,18 +106,15 @@ int graphDiffMain(int argc, char** argv)
     // Create indices for the base reads
     std::string basePrefix = stripFilename(opt::baseFile);
     BWT* pBaseBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
-    BWT* pBaseRevBWT = new BWT(basePrefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pBaseSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
 
     // Create indices for the variant reads
     std::string variantPrefix = stripFilename(opt::variantFile);
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
-    BWT* pVariantRevBWT = new BWT(variantPrefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pVariantSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
     
     std::cout << "Variant index memory info\n";
     pVariantBWT->printInfo();
-    pVariantRevBWT->printInfo();
     pVariantSSA->printInfo();
 
     // Create indices for the reference
@@ -139,24 +136,18 @@ int graphDiffMain(int argc, char** argv)
 
     // Create interval caches to speed up k-mer lookups
     BWTIntervalCache varBWTCache(opt::cacheLength, pVariantBWT);
-    BWTIntervalCache varRBWTCache(opt::cacheLength, pVariantRevBWT);
 
     BWTIntervalCache baseBWTCache(opt::cacheLength, pBaseBWT);
-    BWTIntervalCache baseRBWTCache(opt::cacheLength, pBaseRevBWT);
 
     // Set the parameters shared between all threads
     GraphCompareParameters sharedParameters;
 
     sharedParameters.pBaseBWT = pBaseBWT;
-    sharedParameters.pBaseRevBWT = pBaseRevBWT;
     sharedParameters.pBaseBWTCache = &baseBWTCache;
-    sharedParameters.pBaseRevBWTCache = &baseRBWTCache;
     sharedParameters.pBaseSSA = pBaseSSA;
 
     sharedParameters.pVariantBWT = pVariantBWT;
-    sharedParameters.pVariantRevBWT = pVariantRevBWT;
     sharedParameters.pVariantBWTCache = &varBWTCache;
-    sharedParameters.pVariantRevBWTCache = &varRBWTCache;
     sharedParameters.pVariantSSA = pVariantSSA;
 
     sharedParameters.pReferenceBWT = pRefBWT;
@@ -205,15 +196,12 @@ int graphDiffMain(int argc, char** argv)
 
     // Cleanup
     delete pBaseBWT;
-    delete pBaseRevBWT;
     delete pBaseSSA;
 
     delete pVariantBWT;
-    delete pVariantRevBWT;
     delete pVariantSSA;
 
     delete pRefBWT;
-    delete pRefRevBWT;
     delete pRefSSA;
 
     delete pSharedBitVector;

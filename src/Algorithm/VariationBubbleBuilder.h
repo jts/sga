@@ -66,10 +66,10 @@ class VariationBubbleBuilder
         void setSourceString(const std::string& str, int coverage);
 
         // The source index is the index that the contains the source string
-        void setSourceIndex(const BWT* pBWT, const BWT* pRBWT);
+        void setSourceIndex(const BWT* pBWT);
 
         // The target index is the index that we try to build the bubble onto
-        void setTargetIndex(const BWT* pBWT, const BWT* pRBWT);
+        void setTargetIndex(const BWT* pBWT);
 
         // Set the threshold of kmer occurrences to use it as an edge
         void setKmerThreshold(size_t t);
@@ -112,10 +112,7 @@ class VariationBubbleBuilder
         // Data
         //
         const BWT* m_pSourceBWT;
-        const BWT* m_pSourceRevBWT;
-
         const BWT* m_pTargetBWT;
-        const BWT* m_pTargetRevBWT;
 
         StringGraph* m_pGraph;
         StrIntMap m_vertexCoverageMap;

@@ -39,16 +39,12 @@ struct GraphCompareParameters
 
     // Indices for the base reads
     const BWT* pBaseBWT; 
-    const BWT* pBaseRevBWT;
     const BWTIntervalCache* pBaseBWTCache;
-    const BWTIntervalCache* pBaseRevBWTCache;
     const SampledSuffixArray* pBaseSSA;
     
     // Indices for the variant reads
     const BWT* pVariantBWT;
-    const BWT* pVariantRevBWT;
     const BWTIntervalCache* pVariantBWTCache;
-    const BWTIntervalCache* pVariantRevBWTCache;
     const SampledSuffixArray* pVariantSSA;
     
     // Reference genome
@@ -128,7 +124,7 @@ class GraphCompare
 
         // When a kmer that is found in only one index, this function is called to attempt to build the full variation
         // string
-        BubbleResult processVariantKmer(const std::string& str, int count, const BWTVector& bwts, const BWTVector& rbwts, int varIndex);
+        BubbleResult processVariantKmer(const std::string& str, int count, const BWTVector& bwts, int varIndex);
         
         // Run the dindel model on each string individually
         void runDindelIndividual(const std::string& normalString, const std::string& variantString);

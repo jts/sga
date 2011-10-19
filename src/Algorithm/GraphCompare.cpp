@@ -156,10 +156,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 bwts.push_back(m_parameters.pBaseBWT);
                 bwts.push_back(m_parameters.pVariantBWT);
 
-                BWTVector rbwts;
-                rbwts.push_back(m_parameters.pBaseRevBWT);
-                rbwts.push_back(m_parameters.pVariantRevBWT);
-                BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, rbwts, 1);
+                BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, 1);
+
                 if(bubbleResult.returnCode == BRC_OK)
                 {
                     result.varStrings.push_back(bubbleResult.sourceString);
@@ -409,12 +407,12 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 }
 
 //
-BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count, const BWTVector& bwts, const BWTVector& rbwts, int varIndex)
+BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count, const BWTVector& bwts, int varIndex)
 {
     assert(varIndex == 0 || varIndex == 1);
     VariationBubbleBuilder builder;
-    builder.setSourceIndex(bwts[varIndex], rbwts[varIndex]);
-    builder.setTargetIndex(bwts[1 - varIndex], rbwts[1 - varIndex]);
+    builder.setSourceIndex(bwts[varIndex]);
+    builder.setTargetIndex(bwts[1 - varIndex]);
     builder.setSourceString(str, count);
     builder.setKmerThreshold(m_parameters.kmerThreshold);
     builder.setAllowedBranches(m_parameters.maxBranches);

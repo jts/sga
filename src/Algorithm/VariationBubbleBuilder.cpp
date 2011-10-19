@@ -57,17 +57,15 @@ void VariationBubbleBuilder::setSourceString(const std::string& str, int coverag
 }
 
 // The source index is the index that the contains the source string
-void VariationBubbleBuilder::setSourceIndex(const BWT* pBWT, const BWT* pRBWT)
+void VariationBubbleBuilder::setSourceIndex(const BWT* pBWT)
 {
     m_pSourceBWT = pBWT;
-    m_pSourceRevBWT = pRBWT;
 }
 
 // The target index is the index that we try to build the bubble onto
-void VariationBubbleBuilder::setTargetIndex(const BWT* pBWT, const BWT* pRBWT)
+void VariationBubbleBuilder::setTargetIndex(const BWT* pBWT)
 {
     m_pTargetBWT = pBWT;
-    m_pTargetRevBWT = pRBWT;
 }
 
 // Run the bubble construction process
