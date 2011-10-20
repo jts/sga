@@ -147,7 +147,8 @@ class GraphCompare
         GraphCompareStats m_stats;
 
         // Temporary output file
-        VCFFile m_vcfFile;
+        VCFFile m_baseVCFFile;
+        VCFFile m_variantVCFFile;
 };
 
 // Shared result object that the threaded

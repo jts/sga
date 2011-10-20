@@ -76,8 +76,12 @@ void GraphCompareStats::print() const
 //
 //
 //
-GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params), m_vcfFile("testing.vcf","w")
+GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params), 
+                                                                   m_baseVCFFile("base.vcf","w"),
+                                                                   m_variantVCFFile("variant.vcf","w")
 {
+    m_baseVCFFile.outputHeader("stub", "stub");
+    m_variantVCFFile.outputHeader("stub", "stub");
     m_stats.clear();
 }
 
@@ -268,9 +272,9 @@ void GraphCompare::runDindelIndividual(const std::string& normalString, const st
         
         // The first base of the haplotype sequences on the reference
         assert(FLANKING_SIZE == 0); // the following is only valid if no flanking sequence was used
-        int dindelRefStart = candidateAlignments[0].position;
+        int dindelRefStart = candidateAlignments[0].position + 1; // VCF coordinates are 1-based
         std::stringstream refName;
-        refName << m_parameters.pRefTable->getRead(candidateAlignments[0].referenceID).id << "-" << (i == 0 ? "base" : "variant");
+        refName << m_parameters.pRefTable->getRead(candidateAlignments[0].referenceID).id;
 
         // Debug: Separate the non-reference haplotypes from the reference
         std::string dindelRef = flankingHaplotypes[0]; // First flanking haplotype is of the reference
@@ -281,10 +285,10 @@ void GraphCompare::runDindelIndividual(const std::string& normalString, const st
         {
             DindelWindow dWindow(nonReference, dindelRef, dindelRefStart, refName.str() );
 
-            DindelRealignParameters dRealignParameters;
+            DindelRealignParameters dRealignParameters("addSNPMaxSNPs:0");
             DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
 
-            dRealignWindow.run("hmm", this->m_vcfFile);
+            dRealignWindow.run("hmm", i == 0 ? m_baseVCFFile : m_variantVCFFile);
         }
         catch(std::string e)
         {
@@ -323,6 +327,7 @@ void GraphCompare::runDindelFull(const std::string& normalString, const std::str
     StringVector flankingHaplotypes;
     for(size_t i = 0; i < candidateAlignments.size(); ++i)
     {
+        std::cout << "Score: " << candidateAlignments[i].score << "\n";
         success = HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i], 
                                                      m_parameters.pRefTable, 
                                                      FLANKING_SIZE, 
@@ -386,10 +391,11 @@ void GraphCompare::runDindelFull(const std::string& normalString, const std::str
             std::cout << "Running dindel on " << nonReference.size() << " haplotypes and " << dReads.size() << " reads\n";
             DindelWindow dWindow(nonReference, dindelRef, dindelRefStart, "unknown" );
 
-            DindelRealignParameters dRealignParameters;
+            DindelRealignParameters dRealignParameters("addSNPMaxSNPs:0");
+
             DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
 
-            dRealignWindow.run("hmm", this->m_vcfFile);
+            dRealignWindow.run("hmm", m_variantVCFFile);
         }
         catch(std::string e)
         {

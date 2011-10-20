@@ -34,7 +34,7 @@ void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
             // Skip non-complete alignments
             if((int)haplotype.length() == q_alignment_length)
             {
-                HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, i == 1);
+                HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, hits[j].G, i == 1);
                 outAlignments.push_back(aln);
             }
             else

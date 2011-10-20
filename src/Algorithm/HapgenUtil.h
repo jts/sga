@@ -21,7 +21,7 @@ struct HapgenAlignment
 {
 
     //
-    HapgenAlignment(const int& id, int p, int l, bool rc) : referenceID(id), position(p), length(l), isRC(rc) {}
+    HapgenAlignment(const int& id, int p, int l, int s, bool rc) : referenceID(id), position(p), length(l), score(s), isRC(rc) {}
 
     // Sort
     friend bool operator<(const HapgenAlignment& a, const HapgenAlignment& b)
@@ -43,6 +43,7 @@ struct HapgenAlignment
     int referenceID;
     int position;
     int length; // alignment length
+    int score;
     bool isRC;
 };
 typedef std::vector<HapgenAlignment> HapgenAlignmentVector;
