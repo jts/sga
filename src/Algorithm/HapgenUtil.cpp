@@ -268,7 +268,7 @@ void HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
             mateName << "idx-" << mateIdx;
             SeqItem mateItem;
             mateItem.id = mateName.str();
-            mateItem.seq = BWTAlgorithms::extractString(pBWT, idx);
+            mateItem.seq = BWTAlgorithms::extractString(pBWT, mateIdx);
             pOutMates->push_back(mateItem);
         }
     }    
