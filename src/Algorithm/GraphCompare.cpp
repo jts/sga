@@ -193,90 +193,155 @@ void GraphCompare::runDindelIndividual(const std::string& normalString, const st
     inHaplotypes.push_back(normalString);
     inHaplotypes.push_back(variantString);
 
+    // Extract the reads from the normal and variant data sets that match each haplotype
+    
+    // Normal reads
+    SeqItemVector normalReads;
+    SeqItemVector normalReadMates;
+    SeqItemVector normalRCReads;
+    SeqItemVector normalRCReadMates;
+        
+    HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache,
+                                      m_parameters.pBaseSSA, m_parameters.kmer, false, &normalReads, &normalReadMates);
+
+    HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache,
+                                      m_parameters.pBaseSSA, m_parameters.kmer, true, &normalRCReads, &normalRCReadMates);
+
+    // Variant reads
+    SeqItemVector variantReads;
+    SeqItemVector variantReadMates;
+    SeqItemVector variantRCReads;
+    SeqItemVector variantRCReadMates;
+
+    HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache,
+                                      m_parameters.pVariantSSA, m_parameters.kmer, false, &variantReads, &variantReadMates);
+
+    HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache,
+                                      m_parameters.pVariantSSA, m_parameters.kmer, true, &variantRCReads, &variantRCReadMates);
+
+    // Align the haplotypes to the reference genome to generate candidate alignments
+    HapgenAlignmentVector candidateAlignments;
+    for(size_t i = 0; i < inHaplotypes.size(); ++i)
+    {
+        HapgenUtil::alignHaplotypeToReference(inHaplotypes[i], m_parameters.pReferenceBWT, 
+                                              m_parameters.pReferenceSSA, candidateAlignments);
+    }
+
+    // Remove duplicate or bad alignment pairs
+    HapgenUtil::coalesceAlignments(candidateAlignments);
+
+    // Score each candidate alignment against the mates of all the variant reads
+    int bestCandidate = -1;
+    double bestAverageScoreFrac = 0.0f;
+    double secondBest = 0.0f;
+    for(size_t i = 0; i < candidateAlignments.size(); ++i)
+    {
+        // Compute the average score of the reads' mates to the flanking sequence
+        StringVector referenceFlanking;
+        std::cout << "Processing " << candidateAlignments[i] << "\n";
+        HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i], m_parameters.pRefTable, 
+                                           1000, inHaplotypes, referenceFlanking);
+
+
+        // If valid flanking haplotypes could not be made, skip this alignment
+        if(referenceFlanking.empty())
+            continue;
+
+        // Realign the mates
+        LocalAlignmentResultVector localAlignments = HapgenUtil::alignReadsLocally(referenceFlanking[0], variantReadMates);
+        LocalAlignmentResultVector localAlignmentsRC = HapgenUtil::alignReadsLocally(referenceFlanking[0], variantRCReadMates);
+
+        // Merge alignments
+        localAlignments.insert(localAlignments.end(), localAlignmentsRC.begin(), localAlignmentsRC.end());
+
+        double sum = 0.0f;
+        double count = 0.0f;
+
+        for(size_t j = 0; j < localAlignments.size(); ++j)
+        {
+            double max_score = localAlignments[j].queryEndPosition - localAlignments[j].queryStartPosition;
+            double frac = (double)localAlignments[j].score / max_score;
+            //printf("Score: %d frac: %lf\n", localAlignments[j].score, frac);
+            sum += frac;
+            count += 1;
+        }
+
+        double score = sum / count;
+        if(score > bestAverageScoreFrac)
+        {
+            secondBest = bestAverageScoreFrac;
+            bestAverageScoreFrac = score;
+            bestCandidate = i;
+        }
+        else if(score > secondBest)
+        {
+            secondBest = score;
+        }
+
+        printf("Alignment %zu mate-score: %lf\n", i, score);
+    }
+
+    printf("total alignments: %zu best score: %lf\n", candidateAlignments.size(), bestAverageScoreFrac);
+
+    if(bestCandidate == -1)
+    {
+        std::cout << "No good alignment candidate\n";
+        return;
+    }
+
+    if(bestAverageScoreFrac < 0.9f)
+    {
+        std::cout << "Skipping marginal pair alignment\n";
+        return;
+    }
+
+    if(bestAverageScoreFrac - secondBest < 0.05f)
+    {
+        std::cout << "Best score too close to second best\n";
+        return;
+    }
+
+    //
+    // Run dindel against the haplotypes for the best alignment position
+    // We do this for the normal and variant reads separately
+    //
+
+    // Generate the input haplotypes for dindel
+    int FLANKING_SIZE = 0;
+    StringVector flankingHaplotypes;
+    HapgenUtil::makeFlankingHaplotypes(candidateAlignments[bestCandidate], m_parameters.pRefTable, 
+                                       FLANKING_SIZE, inHaplotypes, flankingHaplotypes);
+
+    // We need at least 2 haplotypes
+    assert(flankingHaplotypes.size() >= 2);
+    assert(flankingHaplotypes[0].size() > 0);
+
+    //
+    // Run Dindel
+    //
+    double MAP_QUAL = 40.0;
+    int BASE_QUAL = 20;
+
     for(size_t i = 0; i <= 1; ++i)
     {
-        const std::string& queryHaplotype = inHaplotypes[0]; // query using the normal string
+        SeqItemVector& fwdReads = (i == 0) ? normalReads : variantReads;
+        SeqItemVector& rcReads = (i == 0) ? normalRCReads : variantRCReads;
 
-        // Alignments the normal string to the reference to get a candidate location
-        HapgenAlignmentVector candidateAlignments;
-        HapgenUtil::alignHaplotypeToReference(queryHaplotype, m_parameters.pReferenceBWT, 
-                                              m_parameters.pReferenceSSA, candidateAlignments);
-
-
-        // Remove duplicate or bad alignment pairs
-        HapgenUtil::coalesceAlignments(candidateAlignments);
-        
-        //
-        if(candidateAlignments.empty())
-        {
-            std::cerr << "No alignments\n";
-            return;
-        }
-
-        // Skip if more than 1 alignment
-        if(candidateAlignments.size() > 1)
-        {
-            std::cout << "Skipping multi-alignment\n";
-            return;
-        }
-
-        // Join each haplotype with flanking sequence from the reference genome for each alignment
-        // This function also adds a haplotype (with flanking sequence) for the piece of the reference
-        int FLANKING_SIZE = 0;
-        StringVector flankingHaplotypes;
-        HapgenUtil::makeFlankingHaplotypes(candidateAlignments[0], m_parameters.pRefTable, 
-                                           FLANKING_SIZE, inHaplotypes, flankingHaplotypes);
-
-        SeqItemVector reads;
-        SeqItemVector readMates;
-        SeqItemVector rcReads;
-        SeqItemVector rcReadMates;
-        
-        // In the first iteration test the haplotypes against the normal reads
-        if(i == 0)
-        {
-            HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache,
-                                              m_parameters.pBaseSSA, m_parameters.kmer, false, &reads, &readMates);
-
-            HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache,
-                                              m_parameters.pBaseSSA, m_parameters.kmer, true, &rcReads, &rcReadMates);
-        }
-        else // second iteration test the variant reads
-        {
-            HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache,
-                                              m_parameters.pVariantSSA, m_parameters.kmer, false, &reads, &readMates);
-
-            HapgenUtil::extractHaplotypeReads(inHaplotypes, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache,
-                                              m_parameters.pVariantSSA, m_parameters.kmer, true, &rcReads, &rcReadMates);
-        }
-
-        //
-        // Run Dindel
-        //
-        double MAP_QUAL = 40.0;
-        int BASE_QUAL = 20;
+        // Create dindel reads for the normal reads
         std::vector<DindelRead> dReads;
-
-        for(size_t j = 0; j < reads.size(); ++j) 
-            dReads.push_back(DindelRead(reads[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
+        for(size_t j = 0; j < fwdReads.size(); ++j) 
+            dReads.push_back(DindelRead(fwdReads[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
 
         for(size_t j = 0; j < rcReads.size(); ++j)
         {
             rcReads[j].seq.reverseComplement();
             dReads.push_back(DindelRead(rcReads[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
         }
-    
-        // We need at least 2 haplotypes
-        assert(flankingHaplotypes.size() >= 2);
-        assert(flankingHaplotypes[0].size() > 0);
-        
-        // The first base of the haplotype sequences on the reference
-        assert(FLANKING_SIZE == 0); // the following is only valid if no flanking sequence was used
-        int dindelRefStart = candidateAlignments[0].position + 1; // VCF coordinates are 1-based
-        std::stringstream refName;
-        refName << m_parameters.pRefTable->getRead(candidateAlignments[0].referenceID).id;
 
-        // Debug: Separate the non-reference haplotypes from the reference
+        int dindelRefStart = candidateAlignments[bestCandidate].position + 1; // VCF coordinates are 1-based
+        std::stringstream refName;
+        refName << m_parameters.pRefTable->getRead(candidateAlignments[bestCandidate].referenceID).id;
+
         std::string dindelRef = flankingHaplotypes[0]; // First flanking haplotype is of the reference
         StringVector nonReference(flankingHaplotypes.begin()+1, flankingHaplotypes.end());
         std::cout << "Running dindel on " << nonReference.size() << " haplotypes and " << dReads.size() << " reads\n";

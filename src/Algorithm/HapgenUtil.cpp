@@ -116,6 +116,9 @@ void HapgenUtil::extractReferenceSubstrings(const HapgenAlignment& aln,
     if(upstreamFlankStart < 0)
         upstreamFlankStart = 0;
 
+    if((size_t)definedEnd + flanking > refItem.seq.length())
+        flanking = refItem.seq.length() - definedEnd - 1;
+
     outUpstream = refItem.seq.substr(upstreamFlankStart, definedStart - upstreamFlankStart);
     outDefined = refItem.seq.substr(definedStart, definedEnd - definedStart);
     outDownstream = refItem.seq.substr(definedEnd, flanking);
@@ -272,6 +275,19 @@ void HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
             pOutMates->push_back(mateItem);
         }
     }    
+}
+
+// Align a bunch of reads locally to a sequence
+LocalAlignmentResultVector HapgenUtil::alignReadsLocally(const std::string& target, const SeqItemVector& reads)
+{
+    LocalAlignmentResultVector results;
+    for(size_t i = 0; i < reads.size(); ++i)
+    {
+        LocalAlignmentResult fwdAR = StdAlnTools::localAlignment(target, reads[i].seq.toString());
+        LocalAlignmentResult rcAR = StdAlnTools::localAlignment(target, reverseComplement(reads[i].seq.toString()));
+        results.push_back(fwdAR.score > rcAR.score ? fwdAR : rcAR);
+    }
+    return results;
 }
 
 // Print an alignment to a reference

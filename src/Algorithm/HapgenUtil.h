@@ -14,6 +14,7 @@
 #include "BWT.h"
 #include "BWTIntervalCache.h"
 #include "SampledSuffixArray.h"
+#include "StdAlnTools.h"
 
 // Simple alignment object representing
 // the placement of a string onto a reference genome
@@ -93,6 +94,9 @@ namespace HapgenUtil
                                bool doReverse,
                                SeqItemVector* pOutReads, 
                                SeqItemVector* pOutMates);
+
+    // Compute the best local alignment for each read in the array to the given sequence
+    LocalAlignmentResultVector alignReadsLocally(const std::string& target, const SeqItemVector& reads);
 
     // Check that all the strings in the vector align to the same coordinates
     // of the passed in sequence
