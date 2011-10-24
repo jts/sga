@@ -14,6 +14,7 @@
 #include <queue>
 #include "GraphCompare.h"
 #include "DindelRealignWindow.h"
+#include "DindelUtil.h"
 
 //
 //
@@ -41,6 +42,8 @@ class VCFTester
         // Data
         //
         GraphCompareParameters m_parameters;
+
+        int m_returnCodes[DRC_NUM_CODES];
 
         // Output file
         VCFFile m_baseVCFFile;

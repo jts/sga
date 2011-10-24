@@ -18,11 +18,14 @@ VCFTester::VCFTester(const GraphCompareParameters& params) : m_parameters(params
 {
     m_baseVCFFile.outputHeader("stub", "stub");
     m_variantVCFFile.outputHeader("stub", "stub");
+    DindelUtil::initializeCodeCounts(m_returnCodes);
 }
 
 //
 VCFTester::~VCFTester()
 {
+    std::cout << "Done testing variants\n";
+    DindelUtil::printReturnReport(m_returnCodes);
 }
 
 void VCFTester::process(const VCFFile::VCFEntry& record)
@@ -50,11 +53,13 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     StdAlnTools::globalAlignment(refStr, varStr, true);
 
     // Run dindel
-    DindelUtil::runDindelPair(refStr,
-                              varStr,
-                              m_parameters,
-                              m_baseVCFFile,
-                              m_variantVCFFile);
+    DindelReturnCode code = DindelUtil::runDindelPair(refStr,
+                                                      varStr,
+                                                      m_parameters,
+                                                      m_baseVCFFile,
+                                                      m_variantVCFFile);
+
+    m_returnCodes[code] += 1;
     
 }
 

@@ -129,6 +129,10 @@ DindelReturnCode DindelUtil::computeBestAlignment(const StringVector& inHaplotyp
                                                   const GraphCompareParameters& parameters,
                                                   HapgenAlignment& bestAlignment)
 {
+    size_t MAX_DEPTH = 2000;
+    if(variantMates.size() + variantRCMates.size() > MAX_DEPTH)
+        return DRC_OVER_DEPTH;
+
     //
     // Align the haplotypes to the reference genome to generate candidate alignments
     //
@@ -212,3 +216,27 @@ DindelReturnCode DindelUtil::computeBestAlignment(const StringVector& inHaplotyp
     bestAlignment = candidateAlignments[bestCandidate];
     return DRC_OK;
 }
+
+// Initialize an array of code counts
+void DindelUtil::initializeCodeCounts(int counts[DRC_NUM_CODES])
+{
+    for(int i = 0; i < DRC_NUM_CODES; ++i)
+        counts[i] = 0;
+}
+
+// Print a report of the dindel return codes
+void DindelUtil::printReturnReport(const int counts[DRC_NUM_CODES])
+{
+    // Sum the total number of haplotype sets processed
+    int sum = 0;
+    for(int i = 0; i < DRC_NUM_CODES; ++i)
+        sum += counts[i];
+
+    printf("Total variants processed: %d\n", sum);
+    printf("    number failed due to depth check: %d\n", counts[DRC_OVER_DEPTH]);
+    printf("    number failed due to no alignment: %d\n", counts[DRC_NO_ALIGNMENT]);
+    printf("    number failed due to poor alignment: %d\n", counts[DRC_POOR_ALIGNMENT]);
+    printf("    number failed due to ambiguous alignment: %d\n", counts[DRC_AMBIGUOUS_ALIGNMENT]);
+    printf("    number passed to dindel: %d\n", counts[DRC_OK]);
+}
+

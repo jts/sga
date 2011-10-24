@@ -189,17 +189,26 @@ void runVCFTester(GraphCompareParameters& parameters)
     (void)parameters;
     std::cout << "Testing variants in " << opt::inputVCFFile << "\n";
     std::string line;
-    VCFTester tester(parameters);
-    VCFFile input(opt::inputVCFFile, "r");
-    VCFFile::VCFEntry record;
 
-    while(1)
+    VCFTester tester(parameters);
+    try
     {
-        record = input.getNextEntry();
-        if(record.isEmpty())
-            break;
-        else
-            tester.process(record);
+        VCFFile input(opt::inputVCFFile, "r");
+        VCFFile::VCFEntry record;
+
+        while(1)
+        {
+            record = input.getNextEntry();
+            if(record.isEmpty())
+                break;
+            else
+                tester.process(record);
+        }
+    }
+    catch(std::string e)
+    {
+        std::cerr << "Exception: " << e << "\n";
+        exit(EXIT_FAILURE);
     }
 }
 

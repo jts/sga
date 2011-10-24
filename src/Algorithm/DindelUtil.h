@@ -8,9 +8,13 @@
 // DindelUtil - Wrappers and utility functions
 // for the dindel haplotype scoring functions
 //
+#ifndef DINDEL_UTIL_H
+#define DINDEL_UTIL_H
+
 #include "GraphCompare.h"
 #include "DindelRealignWindow.h"
 #include "HapgenUtil.h"
+
 
 enum DindelReturnCode
 {
@@ -18,6 +22,7 @@ enum DindelReturnCode
     DRC_NO_ALIGNMENT,
     DRC_POOR_ALIGNMENT,
     DRC_AMBIGUOUS_ALIGNMENT,
+    DRC_OVER_DEPTH,
     DRC_NUM_CODES
 };
 
@@ -37,4 +42,8 @@ namespace DindelUtil
                                           const GraphCompareParameters& parameters,
                                           HapgenAlignment& bestAlignment);
 
+    void initializeCodeCounts(int counts[DRC_NUM_CODES]);
+    void printReturnReport(const int counts[DRC_NUM_CODES]);
 };
+
+#endif
