@@ -3705,7 +3705,7 @@ template<class T> bool VCFFile::VCFEntry::fromInfoTag(T & val, const std::string
     return true;
 }
 
-void VCFFile::VCFEntry::write(std::ostream & out)
+void VCFFile::VCFEntry::write(std::ostream & out) const
 {
     out << chrom << " " << ref << " " << alt << " " << infoString << std::endl;
 

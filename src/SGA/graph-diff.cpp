@@ -20,7 +20,13 @@
 #include "SequenceProcessFramework.h"
 #include "SGACommon.h"
 #include "GraphCompare.h"
+#include "VCFTester.h"
+#include "DindelRealignWindow.h"
 #include "graph-diff.h"
+
+// Functions
+void runVCFTester(GraphCompareParameters& parameters);
+void runGraphDiff(GraphCompareParameters& parameters);
 
 // Defines to clarify awful template function calls
 #define PROCESS_GDIFF_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, GraphCompareResult, \
@@ -55,6 +61,7 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "      -y, --max-branches=B             allow the search process to branch B times when \n"
 "                                       searching for the completion of a bubble (default: 0)\n"
 "      -t, --threads=NUM                use NUM computation threads\n"
+"          --test=VCF                   test the variants in the provided VCF file\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -73,12 +80,13 @@ namespace opt
     static std::string referenceFile;
     static std::string baseFile;
     static std::string variantFile;
+    static std::string inputVCFFile;
     static std::string outFile = "variants.fa";
 }
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF };
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -91,6 +99,7 @@ static const struct option longopts[] = {
     { "max-branches",  required_argument, NULL, 'y' },
     { "sample-rate",   required_argument, NULL, 'd' },
     { "references",    required_argument, NULL, OPT_REFERENCE },
+    { "test"      ,    required_argument, NULL, OPT_TESTVCF },
     { "help",          no_argument,       NULL, OPT_HELP },
     { "version",       no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -127,13 +136,6 @@ int graphDiffMain(int argc, char** argv)
     ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
     refTable.indexReadsByID();
 
-    // Validate that the reference genome read in matches the BWT/SSA
-    WARN_ONCE("Test reference file matches BWT/SSA");    
-
-    // Create the shared bit vector and shared results aggregator
-    BitVector* pSharedBitVector = new BitVector(pVariantBWT->getBWLen());
-    GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outFile);
-
     // Create interval caches to speed up k-mer lookups
     BWTIntervalCache varBWTCache(opt::cacheLength, pVariantBWT);
 
@@ -156,15 +158,64 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.pRefTable = &refTable;
 
     sharedParameters.kmer = opt::kmer;
-    sharedParameters.pBitVector = pSharedBitVector;
+    sharedParameters.pBitVector = NULL;
     sharedParameters.kmerThreshold = 3;
     sharedParameters.maxBranches = opt::maxBranches;
 
+    // If a VCF file was provided, just test the variants in the file without any discovery
+    if(!opt::inputVCFFile.empty())
+        runVCFTester(sharedParameters);
+    else
+        runGraphDiff(sharedParameters);
+
+    // Cleanup
+    delete pBaseBWT;
+    delete pBaseSSA;
+
+    delete pVariantBWT;
+    delete pVariantSSA;
+
+    delete pRefBWT;
+    delete pRefSSA;
+
+    if(opt::numThreads > 1)
+        pthread_exit(NULL);
+
+    return 0;
+}
+
+void runVCFTester(GraphCompareParameters& parameters)
+{
+    (void)parameters;
+    std::cout << "Testing variants in " << opt::inputVCFFile << "\n";
+    std::string line;
+    VCFTester tester(parameters);
+    VCFFile input(opt::inputVCFFile, "r");
+    VCFFile::VCFEntry record;
+
+    while(1)
+    {
+        record = input.getNextEntry();
+        if(record.isEmpty())
+            break;
+        else
+            tester.process(record);
+    }
+}
+
+void runGraphDiff(GraphCompareParameters& parameters)
+{
+    // Create the shared bit vector and shared results aggregator
+    BitVector* pSharedBitVector = new BitVector(parameters.pVariantBWT->getBWLen());
+    GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outFile);
+    
+    // Set the bit vector
+    parameters.pBitVector = pSharedBitVector;
 
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode graph diff\n", PROGRAM_IDENT);
-        GraphCompare graphCompare(sharedParameters); 
+        GraphCompare graphCompare(parameters); 
         PROCESS_GDIFF_SERIAL(opt::variantFile, &graphCompare, pSharedResults);
         graphCompare.updateSharedStats(pSharedResults);
     }
@@ -175,7 +226,7 @@ int graphDiffMain(int argc, char** argv)
         std::vector<GraphCompare*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            GraphCompare* pProcessor = new GraphCompare(sharedParameters);
+            GraphCompare* pProcessor = new GraphCompare(parameters);
             processorVector.push_back(pProcessor);
         }
         
@@ -189,28 +240,14 @@ int graphDiffMain(int argc, char** argv)
             delete processorVector[i];
             processorVector[i] = NULL;
         }
-
-
     }
+
     pSharedResults->printStats();
-
-    // Cleanup
-    delete pBaseBWT;
-    delete pBaseSSA;
-
-    delete pVariantBWT;
-    delete pVariantSSA;
-
-    delete pRefBWT;
-    delete pRefSSA;
-
+    
     delete pSharedBitVector;
+    parameters.pBitVector = NULL;
+
     delete pSharedResults;
-
-    if(opt::numThreads > 1)
-        pthread_exit(NULL);
-
-    return 0;
 }
 
 // 
@@ -235,6 +272,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'd': arg >> opt::sampleRate; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
             case OPT_HELP:
                 std::cout << GRAPH_DIFF_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

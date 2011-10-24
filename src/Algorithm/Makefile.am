@@ -39,5 +39,6 @@ libalgorithm_a_SOURCES = \
         MetagenomeBuilder.h MetagenomeBuilder.cpp \
         HapgenUtil.h HapgenUtil.cpp \
         BuilderCommon.h BuilderCommon.cpp \
+        VCFTester.h VCFTester.cpp \
         DindelRealignWindow.h DindelRealignWindow.cpp \
         DindelHMM.h DindelHMM.cpp

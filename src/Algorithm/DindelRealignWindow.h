@@ -459,7 +459,7 @@ class VCFFile
                                  std::ios_base& (*f)(std::ios_base&));
 
                 void setFilters(const std::string & str);
-                void write(std::ostream & out);
+                void write(std::ostream & out) const;
 
                 // Data
                 std::string chrom, ref, alt, id, infoString;
