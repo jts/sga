@@ -53,13 +53,13 @@ while( ($lb = <B>) && ($lv = <V>) )
 }
 
 #
-print STDERR "Filter stats for variant file\n";
+print STDERR "Filter stats for base file\n";
 foreach my $k (keys %baseCounts)
 {
     print STDERR "Num $k in base file: " . $baseCounts{$k} . "\n";
 }
 
-print STDERR "Filter stats for base file\n";
+print STDERR "Filter stats for variant file\n";
 foreach my $k (keys %variantCounts)
 {
     print STDERR "Num $k in variant file: " . $variantCounts{$k} . "\n";

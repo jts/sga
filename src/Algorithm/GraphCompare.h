@@ -107,7 +107,7 @@ class GraphCompare
         //
         // Functions
         //
-        GraphCompare(const GraphCompareParameters& params);
+        GraphCompare(const std::string& outPrefix, const GraphCompareParameters& params);
         ~GraphCompare();
         
         // Process a read and all its kmers

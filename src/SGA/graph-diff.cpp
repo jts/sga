@@ -56,6 +56,7 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "      -r, --variant=FILE               the variant reads are in FILE\n"
 "          --reference=FILE             the reference FILE\n"
 "      -o, --outfile=FILE               write the strings found to FILE\n"
+"      -p, --prefix=NAME                prefix the output files with NAME\n"
 "      -k, --kmer=K                     use K as the k-mer size for variant discovery\n"
 "      -x, --kmer-threshold=T           only used kmers seen at least T times\n"
 "      -y, --max-branches=B             allow the search process to branch B times when \n"
@@ -77,6 +78,7 @@ namespace opt
     static int sampleRate = 128;
     static int cacheLength = 10;
 
+    static std::string outPrefix = "graphdiff";
     static std::string referenceFile;
     static std::string baseFile;
     static std::string variantFile;
@@ -84,7 +86,7 @@ namespace opt
     static std::string outFile = "variants.fa";
 }
 
-static const char* shortopts = "b:r:o:k:d:t:x:y:v";
+static const char* shortopts = "b:r:o:k:d:t:x:y:p:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF };
 
@@ -98,6 +100,7 @@ static const struct option longopts[] = {
     { "kmer-threshold",required_argument, NULL, 'x' },
     { "max-branches",  required_argument, NULL, 'y' },
     { "sample-rate",   required_argument, NULL, 'd' },
+    { "prefix",        required_argument, NULL, 'p' },
     { "references",    required_argument, NULL, OPT_REFERENCE },
     { "test"      ,    required_argument, NULL, OPT_TESTVCF },
     { "help",          no_argument,       NULL, OPT_HELP },
@@ -224,7 +227,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode graph diff\n", PROGRAM_IDENT);
-        GraphCompare graphCompare(parameters); 
+        GraphCompare graphCompare(opt::outPrefix, parameters); 
         PROCESS_GDIFF_SERIAL(opt::variantFile, &graphCompare, pSharedResults);
         graphCompare.updateSharedStats(pSharedResults);
     }
@@ -235,7 +238,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
         std::vector<GraphCompare*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            GraphCompare* pProcessor = new GraphCompare(parameters);
+            GraphCompare* pProcessor = new GraphCompare(opt::outPrefix, parameters);
             processorVector.push_back(pProcessor);
         }
         
@@ -279,6 +282,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'y': arg >> opt::maxBranches; break;
             case 'd': arg >> opt::sampleRate; break;
+            case 'p': arg >> opt::outPrefix; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;

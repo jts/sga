@@ -77,9 +77,10 @@ void GraphCompareStats::print() const
 //
 //
 //
-GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params), 
-                                                                   m_baseVCFFile("base.vcf","w"),
-                                                                   m_variantVCFFile("variant.vcf","w")
+GraphCompare::GraphCompare(const std::string& prefix,
+                           const GraphCompareParameters& params) : m_parameters(params), 
+                                                                   m_baseVCFFile(prefix + ".base.vcf","w"),
+                                                                   m_variantVCFFile(prefix + ".variant.vcf","w")
 {
     m_baseVCFFile.outputHeader("stub", "stub");
     m_variantVCFFile.outputHeader("stub", "stub");
