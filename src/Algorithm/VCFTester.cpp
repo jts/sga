@@ -8,7 +8,7 @@
 //
 #include "VCFTester.h"
 #include "StdAlnTools.h"
-
+#include "DindelUtil.h"
 //
 //
 //
@@ -48,6 +48,14 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     record.write(std::cout);
 
     StdAlnTools::globalAlignment(refStr, varStr, true);
+
+    // Run dindel
+    DindelUtil::runDindelPair(refStr,
+                              varStr,
+                              m_parameters,
+                              m_baseVCFFile,
+                              m_variantVCFFile);
+    
 }
 
 std::string VCFTester::applyVariant(const std::string& in, int pos,

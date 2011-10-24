@@ -126,12 +126,6 @@ class GraphCompare
         // string
         BubbleResult processVariantKmer(const std::string& str, int count, const BWTVector& bwts, int varIndex);
         
-        // Run the dindel model on each string individually
-        void runDindelIndividual(const std::string& normalString, const std::string& variantString);
-
-        // Run the full dindel model on the pair of assembled strings
-        void runDindelFull(const std::string& normalString, const std::string& variantString);
-
         // Mark all the kmers in str as being visited
         void markVariantSequenceKmers(const std::string& str);
 

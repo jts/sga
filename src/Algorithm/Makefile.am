@@ -40,5 +40,6 @@ libalgorithm_a_SOURCES = \
         HapgenUtil.h HapgenUtil.cpp \
         BuilderCommon.h BuilderCommon.cpp \
         VCFTester.h VCFTester.cpp \
+        DindelUtil.h DindelUtil.cpp \
         DindelRealignWindow.h DindelRealignWindow.cpp \
         DindelHMM.h DindelHMM.cpp
