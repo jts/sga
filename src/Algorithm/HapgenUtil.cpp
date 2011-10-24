@@ -127,7 +127,7 @@ void HapgenUtil::extractReferenceSubstrings(const HapgenAlignment& aln,
 bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln, 
                                         const ReadTable* pRefTable, 
                                         int flanking,
-                                        StringVector& inHaplotypes,
+                                        const StringVector& inHaplotypes,
                                         StringVector& outHaplotypes)
 {
     std::string upstream;

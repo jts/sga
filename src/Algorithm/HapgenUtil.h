@@ -22,6 +22,7 @@ struct HapgenAlignment
 {
 
     //
+    HapgenAlignment() : referenceID(-1), position(-1), length(0), score(-1), isRC(false) {}
     HapgenAlignment(const int& id, int p, int l, int s, bool rc) : referenceID(id), position(p), length(l), score(s), isRC(rc) {}
 
     // Sort
@@ -81,7 +82,7 @@ namespace HapgenUtil
     bool makeFlankingHaplotypes(const HapgenAlignment& aln, 
                                 const ReadTable* pRefTable, 
                                 int flanking,
-                                StringVector& inHaplotypes,
+                                const StringVector& inHaplotypes,
                                 StringVector& outHaplotypes);
 
 
