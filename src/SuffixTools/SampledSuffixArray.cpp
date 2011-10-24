@@ -13,7 +13,7 @@
 #include "SAReader.h"
 #include "SAWriter.h"
 
-static const uint32_t SSA_MAGIC_NUMBER = 77832;
+static const uint32_t SSA_MAGIC_NUMBER = 12412;
 #define SSA_READ(x) pReader->read(reinterpret_cast<char*>(&(x)), sizeof((x)));
 #define SSA_READ_N(x,n) pReader->read(reinterpret_cast<char*>(&(x)), (n));
 
