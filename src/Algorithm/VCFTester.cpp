@@ -10,6 +10,7 @@
 #include "StdAlnTools.h"
 #include "DindelUtil.h"
 #include "BWTAlgorithms.h"
+#include "HaplotypeBuilder.h"
 
 //
 //
@@ -71,6 +72,7 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     std::vector<int> vv;
 
     size_t k = m_parameters.kmer;
+    std::string variantKmer;
     for(size_t i = 0; i < varStr.size() - k + 1; ++i)
     {
         std::string ks = varStr.substr(i, k);
@@ -80,9 +82,12 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
 
         bv.push_back(baseCount > 9 ? 9 : baseCount);
         vv.push_back(varCount > 9 ? 9 : varCount);
+
+        if(baseCount == 0 && varCount > 0)
+            variantKmer = ks;
     }
 
-    std::cout << "Debugging variant (" << record.chrom << "-" << record.pos << ")\n";
+    std::cout << "Debugging variant (" << record.chrom << "-" << record.pos << " " << record.ref << "/" << record.alt << ")\n";
     std::cout<< " B:\t";
     
     bool baseHasZero = false;
@@ -106,6 +111,76 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
 
     bool canAssemble = baseHasZero && variantIsComplete;
     std::cout << "Can assemble? " << canAssemble << "\n";
+    
+    //
+    // Attempt HaplotypeBuilder assembly
+    //
+    AnchorSequence startAnchor;
+    startAnchor.sequence = varStr.substr(0,k);
+    startAnchor.count = 0;
+    startAnchor.position = 0;
+
+    AnchorSequence endAnchor;
+    endAnchor.sequence = varStr.substr(varStr.size() - k, k);
+    endAnchor.count = 0;
+    endAnchor.position = 0;
+
+
+    HaplotypeBuilderResult baseResult;
+    {
+        HaplotypeBuilder builder;
+        builder.setTerminals(startAnchor, endAnchor);
+        builder.setIndex(m_parameters.pBaseBWT, NULL);
+        builder.setKmerParameters(k, m_parameters.kmerThreshold);
+        HaplotypeBuilderReturnCode code = builder.run();
+        HaplotypeBuilderResult result;
+
+        // The search was successfull, build strings from the walks
+        if(code == HBRC_OK)
+            code = builder.parseWalks(baseResult);
+
+        std::cout << "HBB Base: " << code << " nw: " << baseResult.haplotypes.size() << "\n";
+    }
+
+    HaplotypeBuilderResult variantResult;
+    {
+        HaplotypeBuilder builder;
+        builder.setTerminals(startAnchor, endAnchor);
+        builder.setIndex(m_parameters.pVariantBWT, NULL);
+        builder.setKmerParameters(k, m_parameters.kmerThreshold);
+        HaplotypeBuilderReturnCode code = builder.run();
+        HaplotypeBuilderResult result;
+
+        // The search was successfull, build strings from the walks
+        if(code == HBRC_OK)
+            code = builder.parseWalks(variantResult);
+        std::cout << "HBB Variant: " << code << " nw: " << variantResult.haplotypes.size() << "\n";
+
+        if(baseResult.haplotypes.size() == 1 && variantResult.haplotypes.size() <= 2)
+        {
+            StdAlnTools::globalAlignment(refStr, baseResult.haplotypes.front(), true);
+
+            for(size_t i = 0; i < variantResult.haplotypes.size(); ++i)
+                StdAlnTools::globalAlignment(baseResult.haplotypes.front(), variantResult.haplotypes[i], true);
+        }
+    }
+
+    // Attempt assembly with the variation bubble builder
+    if(canAssemble)
+    {
+        VariationBubbleBuilder builder;
+        builder.setSourceIndex(m_parameters.pVariantBWT);
+        builder.setTargetIndex(m_parameters.pBaseBWT);
+        builder.setSourceString(variantKmer, 5);
+        builder.setKmerThreshold(m_parameters.kmerThreshold);
+        builder.setAllowedBranches(m_parameters.maxBranches);
+
+        //
+        BubbleResult result = builder.run();
+        std::cout << "VBB return: " << result.returnCode << "\n";
+    }
+
+
 }
 
 std::string VCFTester::applyVariant(const std::string& in, int pos,

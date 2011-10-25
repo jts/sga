@@ -1323,7 +1323,7 @@ void DindelWindow::filterHaplotypes(const std::vector<bool> & filterHaplotype)
  */
 
 // Need to add pointer to VCF Header instance
-void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, VCFFile & vcfFile) const
+void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, std::ostream& out) const
 {
     int iqual = (qual<0.0)?0:int(qual);
     std::string filter="NoCall";
@@ -1338,7 +1338,6 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     hps.insert(result.m_pDindelRealignWindow->getDindelWindow().getHaplotypes()[0].getHomopolymerLengthRefPos(var.getPos()-1));
     int hp = *hps.rbegin();
 
-    std::ostream & out = vcfFile.getOutputStream();
     out.precision(5);
     out.setf(std::ios::fixed,std::ios::floatfield);
     out << var.getChrom() << "\t" << var.getPos() << "\t.\t" << var.getRef() << "\t" << var.getAlt() << "\t" << ( iqual ) << "\t" << filter << "\t";
@@ -1389,6 +1388,9 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
 
     if (result.outputGenotypes)
     {
+        // JS: This has been hacked out since we now output to an ostream instead of a VCFFile
+        assert(false);
+#if 0
         out << "\tGT:GQ:GL";
         const std::vector<std::string> & samples = vcfFile.getSamples();
         for (size_t x=0;x<samples.size();x++)
@@ -1413,6 +1415,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
                 out << "."; // no call
             }
         }
+#endif
     }
     out << std::endl;
 }
@@ -1490,13 +1493,13 @@ void DindelRealignWindowResult::Inference::addMapQToHistogram(double mappingQual
     if (bin>=0) histMapQ[bin]++;
 }
 
-void DindelRealignWindowResult::outputVCF(VCFFile & vcfFile)
+void DindelRealignWindowResult::outputVCF(std::ostream& out)
 {
     VarToInference::const_iterator iter = variantInference.begin();
 
     for (;iter!=variantInference.end();iter++)
     {
-        iter->second.outputAsVCF(iter->first, *this, vcfFile);
+        iter->second.outputAsVCF(iter->first, *this, out);
     }    
 }
 
@@ -1572,11 +1575,11 @@ DindelRealignWindow::DindelRealignWindow(const DindelWindow* pDindelWindow,
     std::cerr << "numReads: " << dindelReads.size() << std::endl;
 }
 
-void DindelRealignWindow::run(const std::string & algorithm, VCFFile & vcfFile)
+void DindelRealignWindow::run(const std::string & algorithm, std::ostream& out)
 {
     if (algorithm == "hmm")
     {
-        algorithm_hmm(vcfFile);
+        algorithm_hmm(out);
     }
     else
     {
@@ -1629,7 +1632,7 @@ void DindelRealignWindow::addSNPsToHaplotypes()
 
 
 
-void DindelRealignWindow::algorithm_hmm(VCFFile & vcfFile)
+void DindelRealignWindow::algorithm_hmm(std::ostream& out)
 {
     if (DINDEL_DEBUG) std::cerr << "DindelRealignWindow::algorithm_hmm STARTED" << std::endl;
 
@@ -1693,7 +1696,7 @@ void DindelRealignWindow::algorithm_hmm(VCFFile & vcfFile)
 
 
     // output the results. result does marginalization over haplotypes
-    result.outputVCF(vcfFile);
+    result.outputVCF(out);
 
     if (DINDEL_DEBUG) std::cerr << "DindelRealignWindow::algorithm_hmm DONE" << std::endl;
 

@@ -119,12 +119,7 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
     DindelRealignParameters dRealignParameters;
     DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
     
-    dRealignWindow.run("hmm",this->m_vcfFile);
-
-
-
-
-
+    dRealignWindow.run("hmm", m_vcfFile.getOutputStream());
 
     if(m_parameters.verbose > 0)
     {

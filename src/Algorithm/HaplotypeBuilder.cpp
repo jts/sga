@@ -66,7 +66,6 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
     assert(m_queue.size() == 1);
     assert(m_pJoinVertex != NULL);
     assert(m_pBWT != NULL);
-    assert(m_pRevBWT != NULL);
 
     size_t MAX_VERTICES = 2000;
 
@@ -80,8 +79,12 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pBWT, m_pRevBWT, curr.direction);
-        
+        AlphaCount64 extensionCounts;
+        if(m_pRevBWT != NULL)
+            extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pBWT, m_pRevBWT, curr.direction);
+        else
+            extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_pBWT, curr.direction);
+                
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);

@@ -471,6 +471,7 @@ class VCFFile
                 // Data
                 bool m_isEmpty;
         };
+        typedef std::vector<VCFEntry> VCFEntryVector;
 
         // Constructors
         VCFFile();
@@ -541,7 +542,7 @@ class DindelRealignWindowResult
                 // Functions
                 void outputAsVCF(const DindelVariant & var, 
                                  const DindelRealignWindowResult & result, 
-                                 VCFFile & vcfFile) const;
+                                 std::ostream& out) const;
 
                 static double computeStrandBias(int numForward, int numReverse);
                 
@@ -599,7 +600,7 @@ class DindelRealignWindowResult
         DindelRealignWindowResult(const DindelRealignWindow & dindelRealignWindow) : m_pDindelRealignWindow(&dindelRealignWindow){ };
     
         // Functions
-        void outputVCF(VCFFile & vcfFile);
+        void outputVCF(std::ostream& out);
 
         // Data
         std::vector<DindelHaplotype> haplotypes;
@@ -799,7 +800,7 @@ class DindelRealignWindow
                             const DindelRealignParameters & realignParameters);
         
         // Functions
-        void run(const std::string & algorithm, VCFFile & vcfFile);
+        void run(const std::string & algorithm, std::ostream& out);
 
         const DindelWindow & getDindelWindow() const { return  m_dindelWindow; }
         const std::vector< std::vector< ReadHaplotypeAlignment > > & getHapReadAlignments() const 
@@ -928,7 +929,7 @@ class DindelRealignWindow
         // algorithms
 
         // initial try: ungapped alignment of read to candidate haplotype, doesn't use base qualities
-        void algorithm_hmm(VCFFile & vcfFile);
+        void algorithm_hmm(std::ostream& out);
 };
 
 //

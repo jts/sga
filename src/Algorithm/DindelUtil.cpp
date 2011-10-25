@@ -110,7 +110,11 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
             DindelRealignParameters dRealignParameters("addSNPMaxSNPs:0");
             DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
 
-            dRealignWindow.run("hmm", i == 0 ? baseVCFFile : variantVCFFile);
+            VCFFile::VCFEntryVector variants;
+            VCFFile& currVCF = i == 0 ? baseVCFFile : variantVCFFile;
+            (void)currVCF;
+
+            dRealignWindow.run("hmm", /*currVCF.getOutputStream()*/ std::cout);
         }
         catch(std::string e)
         {
