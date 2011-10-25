@@ -11,6 +11,7 @@
 #include "DindelUtil.h"
 #include "BWTAlgorithms.h"
 #include "HaplotypeBuilder.h"
+#include <sstream>
 
 //
 //
@@ -56,11 +57,14 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     StdAlnTools::globalAlignment(refStr, varStr, true);
 
     // Run dindel
+    std::stringstream baseSS;
+    std::stringstream variantSS;
+
     DindelReturnCode code = DindelUtil::runDindelPair(refStr,
                                                       varStr,
                                                       m_parameters,
-                                                      m_baseVCFFile,
-                                                      m_variantVCFFile);
+                                                      baseSS,
+                                                      variantSS);
 
     m_returnCodes[code] += 1;
 
@@ -88,6 +92,8 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     }
 
     std::cout << "Debugging variant (" << record.chrom << "-" << record.pos << " " << record.ref << "/" << record.alt << ")\n";
+    std::cout << "base: " << baseSS.str();
+    std::cout << "variant: " << variantSS.str();
     std::cout<< " B:\t";
     
     bool baseHasZero = false;

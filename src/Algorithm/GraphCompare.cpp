@@ -175,8 +175,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     DindelUtil::runDindelPair(bubbleResult.sourceString,
                                               bubbleResult.targetString,
                                               m_parameters,
-                                              m_baseVCFFile,
-                                              m_variantVCFFile);
+                                              m_baseVCFFile.getOutputStream(),
+                                              m_variantVCFFile.getOutputStream());
                 }
             }
         }

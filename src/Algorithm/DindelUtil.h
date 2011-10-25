@@ -32,8 +32,8 @@ namespace DindelUtil
     DindelReturnCode runDindelPair(const std::string& normalString, 
                                    const std::string& variantString, 
                                    const GraphCompareParameters& parameters,
-                                   VCFFile& baseVCFFile,
-                                   VCFFile& variantVCFFile);
+                                   std::ostream& baseOut,
+                                   std::ostream& variantOut);
 
     // Compute the best alignment 
     DindelReturnCode computeBestAlignment(const StringVector& inHaplotypes, 

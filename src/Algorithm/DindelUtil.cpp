@@ -15,8 +15,8 @@
 DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString, 
                                            const std::string& variantString, 
                                            const GraphCompareParameters& parameters,
-                                           VCFFile& baseVCFFile,
-                                           VCFFile& variantVCFFile)
+                                           std::ostream& baseOut,
+                                           std::ostream& variantOut)
 {
     StringVector inHaplotypes;
     inHaplotypes.push_back(normalString);
@@ -110,11 +110,8 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
             DindelRealignParameters dRealignParameters("addSNPMaxSNPs:0");
             DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
 
-            VCFFile::VCFEntryVector variants;
-            VCFFile& currVCF = i == 0 ? baseVCFFile : variantVCFFile;
-            (void)currVCF;
-
-            dRealignWindow.run("hmm", /*currVCF.getOutputStream()*/ std::cout);
+            std::ostream& currOut = i == 0 ? baseOut : variantOut;
+            dRealignWindow.run("hmm", currOut);
         }
         catch(std::string e)
         {
