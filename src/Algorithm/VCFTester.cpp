@@ -115,7 +115,7 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     }
     std::cout << "\n";
 
-    bool canAssemble = baseHasZero && variantIsComplete;
+    bool canAssemble = !variantKmer.empty();
     std::cout << "Can assemble? " << canAssemble << "\n";
     
     //
@@ -185,11 +185,13 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
         BubbleResult result = builder.run();
         std::cout << "VBB return: " << result.returnCode << "\n";
 
+        /*
         DindelUtil::runDindelPair(result.targetString,
                                   result.sourceString,
                                   m_parameters,
                                   baseSS,
                                   variantSS);        
+        */
     }
 
 

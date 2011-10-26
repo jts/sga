@@ -173,10 +173,13 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
     // Add the antisense join vertex to the extension queue
     m_queue.push(BuilderExtensionNode(m_antisenseJoins.front(), ED_SENSE));
 
-    size_t totalBranches = 0;
+    size_t MAX_SIMULTANEOUS_BRANCHES = 20;
 
     while(!m_queue.empty())
     {
+        if(m_queue.size() > MAX_SIMULTANEOUS_BRANCHES)
+            return BRC_TARGET_BRANCH;
+
         BuilderExtensionNode curr = m_queue.front();
         m_queue.pop();
 
@@ -184,16 +187,6 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
         std::string vertStr = curr.pVertex->getSeq().toString();
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_pTargetBWT, curr.direction);
         
-        // Count the number of branches from this sequence
-        size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
-
-        //
-        if(num_branches > 1)
-            totalBranches += 1;
-        
-        if(totalBranches > m_allowedTargetBranches)
-            return BRC_TARGET_BRANCH;
-
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
@@ -376,8 +369,8 @@ bool VariationBubbleBuilder::classifyWalk(const SGWalk& walk, int& outCoverage) 
     size_t numVertices = walk.getNumVertices();
     if(numVertices <= 2)
     {
-        std::cerr << "VariationBubbleBuilder error: degenerate bubble found\n";
-        exit(EXIT_FAILURE);
+        std::cerr << "VariationBubbleBuilder warning: degenerate bubble found\n";
+        return false;
     }
 
     outCoverage = 0;

@@ -96,6 +96,9 @@ struct GraphCompareResult
     StringVector baseStrings;
     DoubleVector varCoverages;
     DoubleVector baseCoverages;
+
+    StringVector baseVCFStrings;
+    StringVector variantVCFStrings;
 };
 
 //
@@ -108,7 +111,7 @@ class GraphCompare
         //
         // Functions
         //
-        GraphCompare(const std::string& outPrefix, const GraphCompareParameters& params);
+        GraphCompare(const GraphCompareParameters& params);
         ~GraphCompare();
         
         // Process a read and all its kmers
@@ -141,9 +144,6 @@ class GraphCompare
         // Results stats
         GraphCompareStats m_stats;
 
-        // Temporary output file
-        VCFFile m_baseVCFFile;
-        VCFFile m_variantVCFFile;
 };
 
 // Shared result object that the threaded
@@ -153,7 +153,7 @@ class GraphCompareAggregateResults
 {
 
     public:
-        GraphCompareAggregateResults(const std::string& filename);
+        GraphCompareAggregateResults(const std::string& fileprefix);
         ~GraphCompareAggregateResults();
 
         void process(const SequenceWorkItem& item, const GraphCompareResult& result);
@@ -164,7 +164,14 @@ class GraphCompareAggregateResults
     private:
         pthread_mutex_t m_mutex;
         GraphCompareStats m_stats;
+        
+        // Fasta output file
         std::ostream* m_pWriter;
+        
+        // VCF output files
+        VCFFile m_baseVCFFile;
+        VCFFile m_variantVCFFile;
+
         size_t m_numVariants;
 };
 

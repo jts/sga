@@ -32,13 +32,18 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
     SeqItemVector normalRCReads;
     SeqItemVector normalRCReadMates;
     
+    // Set the value to use for extracting reads that potentially match the haplotype
+    // Do not use a kmer greater than 41
+    size_t KMER_CEILING = 51;
+    size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
+
     // Reads on the same strand as the haplotype    
     HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                      parameters.pBaseSSA, parameters.kmer, false, &normalReads, &normalReadMates);
+                                      parameters.pBaseSSA, extractionKmer, false, &normalReads, &normalReadMates);
 
     // Reads on the reverse strand
     HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                      parameters.pBaseSSA, parameters.kmer, true, &normalRCReads, &normalRCReadMates);
+                                      parameters.pBaseSSA, extractionKmer, true, &normalRCReads, &normalRCReadMates);
 
     // Variant reads
     SeqItemVector variantReads;
@@ -47,10 +52,10 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
     SeqItemVector variantRCReadMates;
 
     HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
-                                      parameters.pVariantSSA, parameters.kmer, false, &variantReads, &variantReadMates);
+                                      parameters.pVariantSSA, extractionKmer, false, &variantReads, &variantReadMates);
 
     HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
-                                      parameters.pVariantSSA, parameters.kmer, true, &variantRCReads, &variantRCReadMates);
+                                      parameters.pVariantSSA, extractionKmer, true, &variantRCReads, &variantRCReadMates);
 
 
     //
@@ -101,7 +106,6 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
 
         std::string dindelRef = flankingHaplotypes[0]; // First flanking haplotype is of the reference
         StringVector nonReference(flankingHaplotypes.begin()+1, flankingHaplotypes.end());
-        std::cout << "Running dindel on " << nonReference.size() << " haplotypes and " << dReads.size() << " reads\n";
 
         try
         {
@@ -160,7 +164,6 @@ DindelReturnCode DindelUtil::computeBestAlignment(const StringVector& inHaplotyp
     {
         // Compute the average score of the reads' mates to the flanking sequence
         StringVector referenceFlanking;
-        std::cout << "Processing " << candidateAlignments[i] << "\n";
         HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i], parameters.pRefTable, 
                                            1000, inHaplotypes, referenceFlanking);
 
@@ -200,10 +203,10 @@ DindelReturnCode DindelUtil::computeBestAlignment(const StringVector& inHaplotyp
             secondBest = score;
         }
 
-        printf("Alignment %zu mate-score: %lf\n", i, score);
+        //printf("Alignment %zu mate-score: %lf\n", i, score);
     }
 
-    printf("total alignments: %zu best score: %lf\n", candidateAlignments.size(), bestAverageScoreFrac);
+    //printf("total alignments: %zu best score: %lf\n", candidateAlignments.size(), bestAverageScoreFrac);
 
     if(bestCandidate == -1)
         return DRC_NO_ALIGNMENT;

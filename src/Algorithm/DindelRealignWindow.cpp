@@ -433,9 +433,7 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         std::cout << "\n";
     }
 
-
-
-    int verbose = 1;
+    int verbose = 0;
 
     int leftExactMatch = 0;
     int rightExactMatch = 0;
@@ -1573,7 +1571,6 @@ DindelRealignWindow::DindelRealignWindow(const DindelWindow* pDindelWindow,
 { 
     if (DINDEL_DEBUG) std::cout << "DindelRealignWindow::DindelRealignWindow STARTED" << std::endl;
     if (DINDEL_DEBUG) std::cout << "DindelRealignWindow::DindelRealignWindow DONE" << std::endl;    
-    std::cerr << "numReads: " << dindelReads.size() << std::endl;
 }
 
 void DindelRealignWindow::run(const std::string & algorithm, std::ostream& out)
@@ -1644,7 +1641,6 @@ void DindelRealignWindow::algorithm_hmm(std::ostream& out)
     size_t numHaps = m_dindelWindow.getHaplotypes().size();
     assert(numHaps>=1);
 
-    std::cerr << "numHaplotypes: " << numHaps << std::endl;
     // process the user-defined haplotypes
     computeReadHaplotypeAlignmentsUsingHMM(0, numHaps-1);
 
@@ -3532,10 +3528,9 @@ std::string DindelRealignParameters::getDefaultParameters() const
 
 void DindelRealignParameters::checkAndInit()
 {
-    bool print = true; 
+    bool print = false; 
     this->minLogLikAlignToAlt=-double(this->maxMappingQuality)*.2302585-log(double(DINDEL_HMM_BANDWIDTH)); // note last term accounts for base prior in HMM.
     this->minLogLikAlignToRef=this->minLogLikAlignToAlt;
-    std::cout << "minLogLikAlignToRef/Alt: " << minLogLikAlignToRef << std::endl; 
     this->addSNPMinLogBaseQual=log(pow(10.0, -this->addSNPMinBaseQual/10.0));
 
     std::ostringstream os;
@@ -3593,8 +3588,6 @@ void DindelRealignParameters::initFromString(const std::string& paramString)
     }
 
     std::vector<std::string> pairs = SplitString(paramString,',');
-
-    std::cout << "DindelRealign parameters " << paramString << std::endl;
 
     for (size_t p=0;p<pairs.size();p++)
     {

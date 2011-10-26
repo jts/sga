@@ -80,13 +80,8 @@ void GraphCompareStats::print() const
 //
 //
 //
-GraphCompare::GraphCompare(const std::string& prefix,
-                           const GraphCompareParameters& params) : m_parameters(params), 
-                                                                   m_baseVCFFile(prefix + ".base.vcf","w"),
-                                                                   m_variantVCFFile(prefix + ".variant.vcf","w")
+GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params)
 {
-    m_baseVCFFile.outputHeader("stub", "stub");
-    m_variantVCFFile.outputHeader("stub", "stub");
     m_stats.clear();
 }
 
@@ -179,15 +174,16 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     result.baseStrings.push_back(bubbleResult.targetString);
                     result.baseCoverages.push_back(bubbleResult.targetCoverage);
  
-
-                    std::cout << "Running dindel\n";
-                    StdAlnTools::globalAlignment(bubbleResult.targetString, bubbleResult.sourceString, true);
-
+                    std::stringstream baseVCFSS;
+                    std::stringstream variantVCFSS;
                     DindelUtil::runDindelPair(bubbleResult.sourceString,
                                               bubbleResult.targetString,
                                               m_parameters,
-                                              m_baseVCFFile.getOutputStream(),
-                                              m_variantVCFFile.getOutputStream());
+                                              baseVCFSS,
+                                              variantVCFSS);
+
+                    result.baseVCFStrings.push_back(baseVCFSS.str());
+                    result.variantVCFStrings.push_back(variantVCFSS.str());
                 }
             }
         }
@@ -341,10 +337,16 @@ void GraphCompare::updateVariationCount(const BubbleResult& result)
 //
 // GraphCompareAggregateResult
 //
-GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& filename) : m_numVariants(0)
+GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
+                                                                                            m_variantVCFFile(fileprefix + ".variant.vcf","w"),
+                                                                                            m_numVariants(0)
 {
     //
-    m_pWriter = createWriter(filename);
+    m_pWriter = createWriter(fileprefix + ".strings.fa");
+    
+    //
+    m_baseVCFFile.outputHeader("stub", "stub");
+    m_variantVCFFile.outputHeader("stub", "stub");
 
     // Initialize mutex
     int ret = pthread_mutex_init(&m_mutex, NULL);
@@ -397,6 +399,13 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
         SeqItem item2 = { varIDMaker.str(), result.varStrings[i] };
         item2.write(*m_pWriter, varMeta.str());
         m_numVariants += 1;
+    }
+
+    assert(result.baseVCFStrings.size() == result.variantVCFStrings.size());
+    for(size_t i = 0; i < result.baseVCFStrings.size(); ++i)
+    {
+        m_baseVCFFile.getOutputStream() << result.baseVCFStrings[i];
+        m_variantVCFFile.getOutputStream() << result.variantVCFStrings[i];
     }
 }
 

@@ -83,7 +83,7 @@ namespace opt
     static std::string baseFile;
     static std::string variantFile;
     static std::string inputVCFFile;
-    static std::string outFile = "variants.fa";
+//    static std::string outFile = "variants.fa";
 }
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:v";
@@ -219,7 +219,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
 {
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(parameters.pVariantBWT->getBWLen());
-    GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outFile);
+    GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outPrefix);
     
     // Set the bit vector
     parameters.pBitVector = pSharedBitVector;
@@ -227,7 +227,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode graph diff\n", PROGRAM_IDENT);
-        GraphCompare graphCompare(opt::outPrefix, parameters); 
+        GraphCompare graphCompare(parameters); 
         PROCESS_GDIFF_SERIAL(opt::variantFile, &graphCompare, pSharedResults);
         graphCompare.updateSharedStats(pSharedResults);
     }
@@ -238,7 +238,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
         std::vector<GraphCompare*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            GraphCompare* pProcessor = new GraphCompare(opt::outPrefix, parameters);
+            GraphCompare* pProcessor = new GraphCompare(parameters);
             processorVector.push_back(pProcessor);
         }
         
@@ -278,7 +278,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'b': arg >> opt::baseFile; break;
             case 'r': arg >> opt::variantFile; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
-            case 'o': arg >> opt::outFile; break;
+//            case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
             case 'y': arg >> opt::maxBranches; break;
             case 'd': arg >> opt::sampleRate; break;
