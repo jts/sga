@@ -162,7 +162,7 @@ int graphDiffMain(int argc, char** argv)
 
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = NULL;
-    sharedParameters.kmerThreshold = 3;
+    sharedParameters.kmerThreshold = opt::kmerThreshold;
     sharedParameters.maxBranches = opt::maxBranches;
 
     // If a VCF file was provided, just test the variants in the file without any discovery

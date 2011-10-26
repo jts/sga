@@ -14,6 +14,7 @@
 #include "SGSearch.h"
 #include "SGAlgorithms.h"
 #include "BuilderCommon.h"
+#include "HaplotypeBuilder.h"
 
 //
 //
@@ -88,41 +89,45 @@ BubbleResult VariationBubbleBuilder::run()
     return result;
 }
 
-// Build the portion of the graph from the source vertex
-// until it meets the target graph. Returns true
-// if a path to the target graph was found.
+// Perform a breadth-first search from the variant kmer
+// until it meets the common portion of the graph. This 
+// function will generate de bruijn graph to the  closest
+// common vertices.
 BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
 {
     assert(!m_queue.empty());
+
+    // We search until we find the first common vertex in each direction
+    bool joinFound[ED_COUNT];
+    joinFound[ED_SENSE] = false;
+    joinFound[ED_ANTISENSE] = false;
+
     while(!m_queue.empty())
     {
         BuilderExtensionNode curr = m_queue.front();
         m_queue.pop();
 
+        // We have found a join in this direction, stop the search
+        if(joinFound[curr.direction])
+            continue;
+
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_pSourceBWT, curr.direction);
-
-        // Count the number of branches from this sequence
-        size_t num_branches = BuilderCommon::countValidExtensions(extensionCounts, m_kmerThreshold);
-
-        // Fail due to a high-coverage split occuring
-        if(num_branches > 1)
-            return BRC_SOURCE_BRANCH;
-
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-            if(count < m_kmerThreshold)
+            bool acceptExt = count >= m_kmerThreshold || (count > 0 && extensionCounts.hasUniqueDNAChar());
+            if(!acceptExt)
                 continue;
 
             std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
             
             // Create the new vertex and edge in the graph
-            // If this vertex already exists, the graph must contain a loop
+            // Skip if the vertex already exists
             if(m_pGraph->getVertex(newStr) != NULL)
-                return BRC_SOURCE_BRANCH;
+                continue;
 
             Vertex* pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
             pVertex->setColor(SOURCE_COLOR);
@@ -139,6 +144,8 @@ BubbleResultCode VariationBubbleBuilder::buildSourceBubble()
                     m_senseJoins.push_back(pVertex);
                 else
                     m_antisenseJoins.push_back(pVertex);
+
+                joinFound[curr.direction] = true;
             }
             else
             {
@@ -191,7 +198,8 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-            if(count < m_kmerThreshold)
+            bool acceptExt = count >= m_kmerThreshold || (count > 0 && extensionCounts.hasUniqueDNAChar());
+            if(!acceptExt)
                 continue;
 
             std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
@@ -199,11 +207,6 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
             bool joinFound = false;
             if(pVertex == NULL)
             {
-                // Not a join vertex, create a new vertex and add it to the graph and queue
-                // If this vertex already exists, the graph must contain a loop
-                if(m_pGraph->getVertex(newStr) != NULL)
-                    return BRC_TARGET_BRANCH;
-
                 pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
                 pVertex->setColor(TARGET_COLOR);
                 addVertex(pVertex, count);
@@ -213,14 +216,8 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
             }
             else
             {
-                if(pVertex->getColor() != JOIN_COLOR)
-                {
-                    // Vertex exists but it is not the join vertex
-                    // This means a simple loop has been found in the target
-                    return BRC_TARGET_BRANCH;
-                }
-
-                joinFound = true;
+                if(pVertex->getColor() == JOIN_COLOR)
+                    joinFound = true;
             }
             
             // Create the new edge in the graph        
@@ -234,6 +231,70 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
 
     // no path found
     return BRC_TARGET_BROKEN;
+}
+
+// Build the target half of the bubble using the haplotype builder
+BubbleResultCode VariationBubbleBuilder::buildTargetBubbleHB()
+{
+    assert(false); // currently not functional
+    assert(m_queue.empty());
+    assert(m_antisenseJoins.size() == 1);
+    assert(m_senseJoins.size() == 1);
+
+    // Set the start/end points of the haplotype builder
+    AnchorSequence startAnchor;
+    startAnchor.sequence = m_antisenseJoins.front()->getSeq().toString();
+    startAnchor.count = 0;
+    startAnchor.position = 0;
+
+    AnchorSequence endAnchor;
+    endAnchor.sequence = m_senseJoins.front()->getSeq().toString();
+    endAnchor.count = 0;
+    endAnchor.position = 0;
+
+    // Set HB parameters
+    size_t k = startAnchor.sequence.length();
+
+    HaplotypeBuilder builder;
+    builder.setTerminals(startAnchor, endAnchor);
+    builder.setIndex(m_pTargetBWT, NULL);
+    builder.setKmerParameters(k, m_kmerThreshold);
+
+    // Run the builder
+    HaplotypeBuilderReturnCode code = builder.run();
+    HaplotypeBuilderResult result;
+
+    // The search was successfull, build strings from the walks
+    BubbleResultCode bubbleCode = BRC_HB_FAILED;
+    if(code == HBRC_OK)
+    {
+        code = builder.parseWalks(result);
+
+        if(!result.haplotypes.empty())
+        {
+            // Parse the first walk the haplotype builder produced
+            // and connect it to the graph
+            std::string hbwalk = result.haplotypes.front();
+            Vertex* pPrevVertex = m_antisenseJoins.front();
+
+            for(size_t i = 1; i < hbwalk.size() - k + 1; ++i)
+            {
+                std::string ks = hbwalk.substr(i, k);
+                Vertex* pVertex = m_pGraph->getVertex(ks);
+                if(pVertex == NULL)
+                {
+                    pVertex = new(m_pGraph->getVertexAllocator()) Vertex(ks, ks);
+                    pVertex->setColor(TARGET_COLOR);
+                    addVertex(pVertex, -1);
+                }
+                BuilderCommon::addSameStrandDeBruijnEdges(m_pGraph, pPrevVertex, pVertex, ED_SENSE);
+                pPrevVertex = pVertex;
+            }
+            bubbleCode = BRC_OK;
+        }
+    }
+
+    return bubbleCode;
 }
 
 // After the bubble has been built into the graph, this function

@@ -451,7 +451,10 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
     {
         char refSymbol = ma.getSymbol(refRow, i);
         char varSymbol = ma.getSymbol(varRow, i);
-        bool isVariant = (varSymbol != refSymbol);
+
+        // JS 25/10/11 Keep considering the event to be a variant if the var or ref
+        // sequence has a gap here
+        bool isVariant = (varSymbol != refSymbol || varSymbol == '-' || refSymbol == '-');
 
         if (DINDEL_DEBUG) std::cout << " ** i: " << i << " isVariant: " << isVariant << " refSymbol: " << refSymbol << " varSymbol: " << varSymbol << std::endl;
 
@@ -540,6 +543,7 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
                             else
                                 break;
                         }
+
                         assert(eventStart >= 0);
                     }
 
@@ -548,11 +552,8 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
                     std::string varStringPadded = ma.getPaddedSubstr(varRow, eventStart, eventLength);
                     std::string refString = StdAlnTools::unpad(refStringPadded);
                     std::string varString = StdAlnTools::unpad(varStringPadded);
-
-
                     int hap_start = int(ma.getBaseIdx(varRow, eventStart));
                     int hap_end = int(ma.getBaseIdx(varRow,eventStart+eventLength));
-
                     if(verbose > 0)
                     {
                         printf("Ref start: %d col: %d eventStart: %d eventEnd: %d\n", (int)refSeqStart, (int)i, eventStart, eventEnd);

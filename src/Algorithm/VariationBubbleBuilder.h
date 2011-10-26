@@ -28,6 +28,7 @@ enum BubbleResultCode
     BRC_TARGET_BROKEN,
     BRC_TARGET_BRANCH,
     BRC_WALK_FAILED,
+    BRC_HB_FAILED,
     BRC_NO_SOLUTION
 };
 
@@ -93,6 +94,9 @@ class VariationBubbleBuilder
 
         // Build the target portion of the graph
         BubbleResultCode buildTargetBubble();
+
+        // Build the target portion of the graph using haplotype builder
+        BubbleResultCode buildTargetBubbleHB();
 
         // After the bubble has been built into the graph, this function
         // finds and compares the two sequences

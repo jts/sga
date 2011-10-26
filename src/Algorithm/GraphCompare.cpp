@@ -33,6 +33,7 @@ void GraphCompareStats::clear()
     numTargetBroken = 0;
     numSourceBroken = 0;
     numWalkFailed = 0;
+    numHBFailed = 0;
     numNoSolution = 0;
 
     numInsertions = 0;
@@ -50,6 +51,7 @@ void GraphCompareStats::add(const GraphCompareStats& other)
     numTargetBroken += other.numTargetBroken;
     numSourceBroken += other.numSourceBroken;
     numWalkFailed += other.numWalkFailed;
+    numHBFailed += other.numHBFailed;
     numNoSolution += other.numNoSolution;
 
     numInsertions += other.numInsertions;
@@ -66,6 +68,7 @@ void GraphCompareStats::print() const
     printf("Failed - source branched: %d\n", numSourceBranched);
     printf("Failed - target broken: %d\n", numTargetBroken);
     printf("Failed - source broken: %d\n", numSourceBroken);
+    printf("Failed - haplotype builder failed: %d\n", numHBFailed);
     printf("Failed - no walk: %d\n", numWalkFailed);
     printf("Failed - no solution: %d\n", numNoSolution);
     
@@ -137,14 +140,18 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         std::string kmer = w.substr(j, m_parameters.kmer);
         
         // Get the interval for this kmer
-        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, kmer);
+        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
+                                                                    m_parameters.pVariantBWTCache, 
+                                                                    kmer);
 
         // Check if this interval has been marked by a previous iteration of the loop
         assert(interval.isValid());
         if(m_parameters.pBitVector->test(interval.lower))
             continue;
 
-        BWTInterval rc_interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, reverseComplement(kmer));
+        BWTInterval rc_interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
+                                                                       m_parameters.pVariantBWTCache, 
+                                                                       reverseComplement(kmer));
         
         size_t count = interval.size();
         if(rc_interval.isValid())
@@ -172,6 +179,10 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     result.baseStrings.push_back(bubbleResult.targetString);
                     result.baseCoverages.push_back(bubbleResult.targetCoverage);
  
+
+                    std::cout << "Running dindel\n";
+                    StdAlnTools::globalAlignment(bubbleResult.targetString, bubbleResult.sourceString, true);
+
                     DindelUtil::runDindelPair(bubbleResult.sourceString,
                                               bubbleResult.targetString,
                                               m_parameters,
@@ -251,6 +262,9 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
             break;
         case BRC_WALK_FAILED:
             m_stats.numWalkFailed += 1;
+            break;
+        case BRC_HB_FAILED:
+            m_stats.numHBFailed += 1;
             break;
         case BRC_NO_SOLUTION:
             m_stats.numNoSolution += 1;

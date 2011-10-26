@@ -82,6 +82,7 @@ struct GraphCompareStats
     int numTargetBroken;
     int numSourceBroken;
     int numWalkFailed;
+    int numHBFailed;
     int numNoSolution;
 
     int numInsertions;

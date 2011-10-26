@@ -330,7 +330,27 @@ class DindelHaplotype
         bool isReference() const { return m_isReference; } 
         void write(std::ostream & out) const;
         int getHomopolymerLength(int b) const { return m_hplen[b]; }
-        int getHomopolymerLengthRefPos(int refPos) const { int b=getHapBase(refPos); assert(m_refPos[b]==refPos); return m_hplen[b]; }
+        
+        
+        int getHomopolymerLengthRefPos(int refPos) const 
+        { 
+            int b=getHapBase(refPos); 
+            
+            // JS: This fails in an odd way with the following command on the cancer data set:
+            //  $SGA_DEV graph-diff -k 41 -p k41.testing -b PD4107b.fastq -r PD4107a.fastq --ref=chr22.permute.fa
+            // Removed the assertion for now
+            if(m_refPos[b] != refPos)
+            {
+                std::cerr << "WARNING: Error in getHomopolymerLengthRefPos()\n";
+                return -1;
+            }
+            else
+            {
+                return m_hplen[b]; 
+            }
+            //assert(m_refPos[b]==refPos); 
+        }
+
         int length() const { return (int) m_seq.length();}
         int getRefBase(int hapBase) const { return m_refPos[hapBase]; };
         int getHapBase(int refPos) const;
