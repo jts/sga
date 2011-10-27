@@ -120,7 +120,8 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
         catch(std::string e)
         {
             std::cerr << "Dindel Exception: " << e << "\n";
-            exit(EXIT_FAILURE);
+            return DRC_EXCEPTION;
+            //exit(EXIT_FAILURE);
         }
     }
 
@@ -241,6 +242,7 @@ void DindelUtil::printReturnReport(const int counts[DRC_NUM_CODES])
     printf("    number failed due to no alignment: %d\n", counts[DRC_NO_ALIGNMENT]);
     printf("    number failed due to poor alignment: %d\n", counts[DRC_POOR_ALIGNMENT]);
     printf("    number failed due to ambiguous alignment: %d\n", counts[DRC_AMBIGUOUS_ALIGNMENT]);
+    printf("    number failed due to dindel exception: %d\n", counts[DRC_EXCEPTION]);
     printf("    number passed to dindel: %d\n", counts[DRC_OK]);
 }
 

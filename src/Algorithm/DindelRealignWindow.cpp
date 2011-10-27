@@ -424,7 +424,9 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         }
     }
 
-    assert(numLeftOverhang == 0 && numRightOverhang == 0);
+    if(numLeftOverhang > 0 || numRightOverhang > 0)
+        throw std::string("DindelHaplotype::DindelHaplotype No overhanging bases");
+    //assert(numLeftOverhang == 0 && numRightOverhang == 0);
 
     if(DINDEL_DEBUG)
     {

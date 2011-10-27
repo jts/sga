@@ -163,7 +163,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 BWTVector bwts;
                 bwts.push_back(m_parameters.pBaseBWT);
                 bwts.push_back(m_parameters.pVariantBWT);
-
                 BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, 1);
 
                 if(bubbleResult.returnCode == BRC_OK)
@@ -181,7 +180,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                                               m_parameters,
                                               baseVCFSS,
                                               variantVCFSS);
-
+                    
                     result.baseVCFStrings.push_back(baseVCFSS.str());
                     result.variantVCFStrings.push_back(variantVCFSS.str());
                 }

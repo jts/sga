@@ -299,8 +299,8 @@ void VariationBubbleBuilder::parseBubble(BubbleResult& result)
     bool success = SGSearch::findWalks(m_antisenseJoins.front(),
                                        m_senseJoins.front(),
                                        ED_SENSE,
-                                       10000000, // max distance to search
-                                       10000000, // max nodes to search
+                                       100000, // max distance to search
+                                       10000, // max nodes to search
                                        true, // exhaustive search
                                        outWalks);
     if(!success)

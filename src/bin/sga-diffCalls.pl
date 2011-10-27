@@ -48,7 +48,9 @@ while( ($lb = <B>) && ($lv = <V>) )
     # Output variants that PASS in the variant vcf and are no call in the base
     if($fb[6] eq "NoCall" && $fv[6] eq "PASS")
     {
-        print $lv . "\n";
+        # Add the quality of the normal as an additional tag
+        $fv[7] .= ";BQ=". $fb[5];
+        print join("\t", @fv) . "\n";
     }
 }
 

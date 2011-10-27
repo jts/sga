@@ -125,15 +125,28 @@ int graphDiffMain(int argc, char** argv)
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     SampledSuffixArray* pVariantSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
     
-    std::cout << "Variant index memory info\n";
-    pVariantBWT->printInfo();
-    pVariantSSA->printInfo();
 
     // Create indices for the reference
     std::string refPrefix = stripFilename(opt::referenceFile);
     BWT* pRefBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
     BWT* pRefRevBWT = new BWT(refPrefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pRefSSA = new SampledSuffixArray(refPrefix + SSA_EXT);
+
+    // 
+    std::cout << "Base index memory info\n";
+    pBaseBWT->printInfo();
+    pBaseSSA->printInfo();
+
+    //
+    std::cout << "Variant index memory info\n";
+    pVariantBWT->printInfo();
+    pVariantSSA->printInfo();
+
+    //
+    std::cout << "Reference index memory info\n";
+    pRefBWT->printInfo();
+    pRefRevBWT->printInfo();
+    pRefSSA->printInfo();
 
     // Read in the reference 
     ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
@@ -221,6 +234,8 @@ void runGraphDiff(GraphCompareParameters& parameters)
     BitVector* pSharedBitVector = new BitVector(parameters.pVariantBWT->getBWLen());
     GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outPrefix);
     
+    std::cout << "Bit vector capacity: " << pSharedBitVector->capacity() << "\n";
+
     // Set the bit vector
     parameters.pBitVector = pSharedBitVector;
 
