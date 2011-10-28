@@ -61,6 +61,7 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "                                       de novo genome assembly, you probably do not want this.\n"
 "      --dust-threshold=FLOAT           filter out reads that have a dust score higher than FLOAT (default: 4.0).\n"
 "                                       This option implies --dust\n"
+"      --suffix=SUFFIX                  append SUFFIX to each read ID\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 enum QualityScaling
@@ -88,6 +89,7 @@ namespace opt
     static bool bFilterGC = false;
     static bool bDustFilter = false;
     static double dustThreshold = 4.0f;
+    static std::string suffix;
     static double minGC = 0.0f;
     static double maxGC = 1.0;
     static bool bIlluminaScaling = false;
@@ -95,7 +97,7 @@ namespace opt
 
 static const char* shortopts = "o:q:m:h:p:s:f:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, OPT_DUST, OPT_DUST_THRESHOLD, OPT_PHRED64 };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, OPT_PHRED64 };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -108,6 +110,7 @@ static const struct option longopts[] = {
     { "sample",                 required_argument, NULL, 's' },
     { "dust",                   no_argument,       NULL, OPT_DUST},
     { "dust-threshold",         required_argument, NULL, OPT_DUST_THRESHOLD },
+    { "suffix",                 required_argument, NULL, OPT_SUFFIX },
     { "phred64",                no_argument, NULL, OPT_PHRED64},
     { "min-gc",                 required_argument, NULL, OPT_MINGC},
     { "max-gc",                 required_argument, NULL, OPT_MAXGC},
@@ -153,6 +156,9 @@ int preprocessMain(int argc, char** argv)
         std::cerr << "Discarding sequences with ambiguous bases\n";
     if(opt::bDustFilter)
         std::cerr << "Dust threshold: " << opt::dustThreshold << "\n";
+    if(!opt::suffix.empty())
+        std::cerr << "Suffix: " << opt::suffix << "\n";
+
     // Seed the RNG
     srand(time(NULL));
 
@@ -183,6 +189,9 @@ int preprocessMain(int argc, char** argv)
                 bool passed = processRead(record);
                 if(passed && samplePass())
                 {
+                    if(!opt::suffix.empty())
+                        record.id.append(opt::suffix);
+
                     record.write(*pWriter);
                     ++s_numReadsKept;
                     s_numBasesKept += record.seq.length();
@@ -233,6 +242,12 @@ int preprocessMain(int argc, char** argv)
                 // If the names of the records are the same, append a /1 and /2 to them
                 if(record1.id == record2.id)
                 {
+                    if(!opt::suffix.empty()) 
+                    {
+                        record1.id.append(opt::suffix);
+                        record2.id.append(opt::suffix);
+                    }
+
                     record1.id.append("/1");
                     record2.id.append("/2");
                 }
@@ -513,6 +528,7 @@ void parsePreprocessOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case OPT_DUST: opt::bDustFilter = true; break;
             case OPT_DUST_THRESHOLD: arg >> opt::dustThreshold; opt::bDustFilter = true; break;
+            case OPT_SUFFIX: arg >> opt::suffix; break;
             case OPT_PERMUTE: opt::bDiscardAmbiguous = false; break;
             case OPT_MINGC: arg >> opt::minGC; opt::bFilterGC = true; break;
             case OPT_MAXGC: arg >> opt::maxGC; opt::bFilterGC = true; break;
