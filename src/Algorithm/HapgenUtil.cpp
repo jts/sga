@@ -37,10 +37,6 @@ void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
                 HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, hits[j].G, i == 1);
                 outAlignments.push_back(aln);
             }
-            else
-            {
-                std::cerr << "Skipped partial alignment (" << q_alignment_length << " of " << haplotype.length() << ")\n";
-            }
         }
     }
 }

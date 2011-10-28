@@ -75,8 +75,12 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
                                        FLANKING_SIZE, inHaplotypes, flankingHaplotypes);
 
     // We need at least 2 haplotypes
-    assert(flankingHaplotypes.size() >= 2);
-    assert(flankingHaplotypes[0].size() > 0);
+    if(flankingHaplotypes.size() < 2)
+        return DRC_NO_ALIGNMENT;
+    
+    // 
+    if(flankingHaplotypes[0].size() == 0)
+        return DRC_NO_ALIGNMENT;
 
     //
     // Run Dindel
