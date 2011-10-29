@@ -341,7 +341,7 @@ class DindelHaplotype
             // Removed the assertion for now
             if(m_refPos[b] != refPos)
             {
-                std::cerr << "WARNING: Error in getHomopolymerLengthRefPos()\n";
+                throw std::string("WARNING: Error in getHomopolymerLengthRefPos()");
                 return -1;
             }
             else
