@@ -175,14 +175,17 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
  
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-                    DindelUtil::runDindelPair(bubbleResult.sourceString,
-                                              bubbleResult.targetString,
-                                              m_parameters,
-                                              baseVCFSS,
-                                              variantVCFSS);
+                    DindelReturnCode drc = DindelUtil::runDindelPair(bubbleResult.sourceString,
+                                                                     bubbleResult.targetString,
+                                                                     m_parameters,
+                                                                     baseVCFSS,
+                                                                     variantVCFSS);
                     
-                    result.baseVCFStrings.push_back(baseVCFSS.str());
-                    result.variantVCFStrings.push_back(variantVCFSS.str());
+                    if(drc == DRC_OK)
+                    {
+                        result.baseVCFStrings.push_back(baseVCFSS.str());
+                        result.variantVCFStrings.push_back(variantVCFSS.str());
+                    }
                 }
             }
         }

@@ -68,6 +68,25 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
     if(retCode != DRC_OK)
         return retCode;
 
+    // If the best alignment is to the reverse strand, flip everything
+    if(bestAlignment.isRC)
+    {
+        // Flip haplotypes
+        for(size_t i = 0; i < inHaplotypes.size(); ++i)
+            inHaplotypes[i] = reverseComplement(inHaplotypes[i]);
+
+        // Flip alignment strand bit
+        // Alignment coordinates do not need to change
+        bestAlignment.isRC = false;
+
+        // Swap read vectors
+        normalReads.swap(normalRCReads);
+        normalReadMates.swap(normalRCReadMates);
+
+        variantReads.swap(variantRCReads);
+        variantReadMates.swap(variantRCReadMates);
+    }
+
     // Generate the input haplotypes for dindel
     int FLANKING_SIZE = 0;
     StringVector flankingHaplotypes;
