@@ -102,6 +102,10 @@ class VariationBubbleBuilder
         // finds and compares the two sequences
         void parseBubble(BubbleResult& result);
 
+        // After the bubble has been built into the graph, this function
+        // parses the sequence corresponding to the source sequence
+        void parseStringsHB(BubbleResult& result);
+
         // Returns true if the walk is the part of the target sequence
         // Also calculates the kmer coverage of the walk
         bool classifyWalk(const SGWalk& walk, int& outCoverage) const;
@@ -126,6 +130,9 @@ class VariationBubbleBuilder
         VertexPtrVec m_senseJoins;
         VertexPtrVec m_antisenseJoins;
         
+        //
+        StringVector m_targetStrings;
+
         //
         size_t m_kmerThreshold;
         size_t m_allowedTargetBranches;

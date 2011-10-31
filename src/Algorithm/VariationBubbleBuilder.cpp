@@ -72,20 +72,42 @@ void VariationBubbleBuilder::setTargetIndex(const BWT* pBWT)
 // Run the bubble construction process
 BubbleResult VariationBubbleBuilder::run()
 {
+
+
     BubbleResult result;
     result.returnCode = BRC_UNKNOWN;
 
-    // Build the source half of the bubble
-    result.returnCode = buildSourceBubble();
-    if(result.returnCode != BRC_OK)
-        return result;
-    
-    // Build the target half of the bubble
-    result.returnCode = buildTargetBubble();
-    if(result.returnCode != BRC_OK)
-        return result;
+    bool useHaplotypeBuilder = false;
 
-    parseBubble(result);
+
+    if(!useHaplotypeBuilder)
+    {
+        // Build the source half of the bubble
+        result.returnCode = buildSourceBubble();
+        if(result.returnCode != BRC_OK)
+            return result;
+        
+        // Build the target half of the bubble
+        result.returnCode = buildTargetBubble();
+        if(result.returnCode != BRC_OK)
+            return result;
+
+        parseBubble(result);
+    }
+    else
+    {
+        // Build the source half of the bubble
+        result.returnCode = buildSourceBubble();
+        if(result.returnCode != BRC_OK)
+            return result;
+        
+        // Build the target half of the bubble
+        result.returnCode = buildTargetBubbleHB();
+        if(result.returnCode != BRC_OK)
+            return result;
+
+        parseStringsHB(result);
+    }
     return result;
 }
 
@@ -229,60 +251,46 @@ BubbleResultCode VariationBubbleBuilder::buildTargetBubble()
 // Build the target half of the bubble using the haplotype builder
 BubbleResultCode VariationBubbleBuilder::buildTargetBubbleHB()
 {
-    assert(false); // currently not functional
     assert(m_queue.empty());
     assert(m_antisenseJoins.size() == 1);
     assert(m_senseJoins.size() == 1);
 
     // Set the start/end points of the haplotype builder
+    std::string startSource = m_antisenseJoins.front()->getSeq().toString();
+    std::string endSource = m_senseJoins.front()->getSeq().toString();
+
+    size_t TARGET_KMER = 31;
+    assert(startSource.size() >= TARGET_KMER);
+    std::string startAnchorSeq = startSource.substr(0, TARGET_KMER);
+    std::string endAnchorSeq = endSource.substr(endSource.size() - TARGET_KMER);
+
     AnchorSequence startAnchor;
-    startAnchor.sequence = m_antisenseJoins.front()->getSeq().toString();
+    startAnchor.sequence = startAnchorSeq;
     startAnchor.count = 0;
     startAnchor.position = 0;
 
     AnchorSequence endAnchor;
-    endAnchor.sequence = m_senseJoins.front()->getSeq().toString();
+    endAnchor.sequence = endAnchorSeq;
     endAnchor.count = 0;
     endAnchor.position = 0;
-
-    // Set HB parameters
-    size_t k = startAnchor.sequence.length();
 
     HaplotypeBuilder builder;
     builder.setTerminals(startAnchor, endAnchor);
     builder.setIndex(m_pTargetBWT, NULL);
-    builder.setKmerParameters(k, m_kmerThreshold);
+    builder.setKmerParameters(TARGET_KMER, m_kmerThreshold);
 
     // Run the builder
     HaplotypeBuilderReturnCode code = builder.run();
     HaplotypeBuilderResult result;
 
-    // The search was successfull, build strings from the walks
+    // The search was successful, build strings from the walks
     BubbleResultCode bubbleCode = BRC_HB_FAILED;
     if(code == HBRC_OK)
     {
         code = builder.parseWalks(result);
-
-        if(!result.haplotypes.empty())
+        if(code == HBRC_OK)
         {
-            // Parse the first walk the haplotype builder produced
-            // and connect it to the graph
-            std::string hbwalk = result.haplotypes.front();
-            Vertex* pPrevVertex = m_antisenseJoins.front();
-
-            for(size_t i = 1; i < hbwalk.size() - k + 1; ++i)
-            {
-                std::string ks = hbwalk.substr(i, k);
-                Vertex* pVertex = m_pGraph->getVertex(ks);
-                if(pVertex == NULL)
-                {
-                    pVertex = new(m_pGraph->getVertexAllocator()) Vertex(ks, ks);
-                    pVertex->setColor(TARGET_COLOR);
-                    addVertex(pVertex, -1);
-                }
-                BuilderCommon::addSameStrandDeBruijnEdges(m_pGraph, pPrevVertex, pVertex, ED_SENSE);
-                pPrevVertex = pVertex;
-            }
+            m_targetStrings = result.haplotypes;
             bubbleCode = BRC_OK;
         }
     }
@@ -339,6 +347,52 @@ void VariationBubbleBuilder::parseBubble(BubbleResult& result)
         result.sourceString = sourceStrings.front();
         result.targetCoverage = targetCoverages.front();
         result.sourceCoverage = sourceCoverages.front();
+    }
+    else
+    {
+        result.returnCode = BRC_NO_SOLUTION;
+    }
+    return;
+}
+
+// Parse strings from the graph and the haplotype builder process
+void VariationBubbleBuilder::parseStringsHB(BubbleResult& result)
+{
+    // Parse the source strings directly out of the graph
+    SGWalkVector outWalks;
+    bool success = SGSearch::findWalks(m_antisenseJoins.front(),
+                                       m_senseJoins.front(),
+                                       ED_SENSE,
+                                       100000, // max distance to search
+                                       10000, // max nodes to search
+                                       true, // exhaustive search
+                                       outWalks);
+    if(!success)
+    {
+        result.returnCode = BRC_WALK_FAILED;
+        return;
+    }
+
+    // Convert the walks into strings
+    StringVector sourceStrings;
+    DoubleVector sourceCoverages;
+
+    for(size_t i = 0; i < outWalks.size(); ++i)
+    {
+        std::string walkStr = outWalks[i].getString(SGWT_START_TO_END);
+        int walkCoverage = 0;
+        classifyWalk(outWalks[i], walkCoverage);
+        sourceStrings.push_back(walkStr);
+        sourceCoverages.push_back((double)walkCoverage / outWalks[i].getNumVertices());
+    }
+    
+    if(sourceStrings.size() == 1 && m_targetStrings.size() == 1)
+    {   
+        result.returnCode = BRC_OK;
+        result.sourceCoverage = sourceCoverages.front();
+        result.sourceString = sourceStrings.front();
+        result.targetString = m_targetStrings.front();
+        result.targetCoverage = -1;
     }
     else
     {
