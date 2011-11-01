@@ -72,42 +72,20 @@ void VariationBubbleBuilder::setTargetIndex(const BWT* pBWT)
 // Run the bubble construction process
 BubbleResult VariationBubbleBuilder::run()
 {
-
-
     BubbleResult result;
     result.returnCode = BRC_UNKNOWN;
 
-    bool useHaplotypeBuilder = false;
+    // Build the source half of the bubble
+    result.returnCode = buildSourceBubble();
+    if(result.returnCode != BRC_OK)
+        return result;
+    
+    // Build the target half of the bubble
+    result.returnCode = buildTargetBubble();
+    if(result.returnCode != BRC_OK)
+        return result;
 
-
-    if(!useHaplotypeBuilder)
-    {
-        // Build the source half of the bubble
-        result.returnCode = buildSourceBubble();
-        if(result.returnCode != BRC_OK)
-            return result;
-        
-        // Build the target half of the bubble
-        result.returnCode = buildTargetBubble();
-        if(result.returnCode != BRC_OK)
-            return result;
-
-        parseBubble(result);
-    }
-    else
-    {
-        // Build the source half of the bubble
-        result.returnCode = buildSourceBubble();
-        if(result.returnCode != BRC_OK)
-            return result;
-        
-        // Build the target half of the bubble
-        result.returnCode = buildTargetBubbleHB();
-        if(result.returnCode != BRC_OK)
-            return result;
-
-        parseStringsHB(result);
-    }
+    parseBubble(result);
     return result;
 }
 
