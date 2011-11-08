@@ -227,6 +227,16 @@ void explicitWalk(StringGraph* pGraph, SGWalkVector& outWalks)
 // Find all walks through the largest component of the graph
 void componentWalk(StringGraph* pGraph, SGWalkVector& outWalks)
 {
+    // Perform some simplifications on the graph
+    
+    std::cout << "Component walK: Removing contained vertices and lingering transitive edges\n";
+    SGContainRemoveVisitor containVisit;
+    pGraph->visit(containVisit);
+
+    SGTransitiveReductionVisitor trVisit;
+    pGraph->visit(trVisit);
+    pGraph->stats();
+
     typedef std::vector<VertexPtrVec> ComponentVector;
     VertexPtrVec allVertices = pGraph->getAllVertices();
     ComponentVector components;
@@ -273,8 +283,10 @@ void componentWalk(StringGraph* pGraph, SGWalkVector& outWalks)
         {
             Vertex* pX = terminals[i];
             Vertex* pY = terminals[j];
-            SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000, false, tempWalks);
-            SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000, false, tempWalks);   
+            bool r = SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000000, false, tempWalks);
+            std::cout << "Walk " << pX->getID() << " - " << pY->getID() << " SENSE: " << r << "\n";
+            r = SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000000, false, tempWalks);   
+            std::cout << "Walk " << pX->getID() << " - " << pY->getID() << " ANTISENSE: " << r << "\n";
         }
     }
 

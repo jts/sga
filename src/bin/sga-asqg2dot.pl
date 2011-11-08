@@ -10,6 +10,9 @@ my $bDirected = 1;
 my $bUseLabels = 0;
 my $bUseShapes = 0;
 my $defaultShape = "circle";
+my $noVertexNames = 0;
+
+GetOptions("suppress-labels" => \$noVertexNames);
 
 my %vertexColors;
 my %vertexShapes;
@@ -35,7 +38,8 @@ while(<>)
         my $id = $record[1];
         my $len = length($record[2]);
         my @attributes;
-        push @attributes, makeAttribute("label", quoteStr($id));
+        my $label = $noVertexNames ? quoteStr("") : quoteStr($id);
+        push @attributes, makeAttribute("label", $label);
         my $attrStr = attributes2string(@attributes);
         print quoteStr($id) . " " . $attrStr . ";\n"    
     }
