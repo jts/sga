@@ -23,10 +23,8 @@ AC_ARG_WITH(bamtools, AS_HELP_STRING([--with-bamtools=PATH],
 	[specify directory containing the bamtools library (http://github.com/pezmaster31/bamtools)]))
 
 if test "$with_bamtools" -a -d "$with_bamtools"; then
-    bamtools_ldflags="-Wl,-rpath,$with_bamtools/lib -L$with_bamtools/lib -lbamtools"
+    bamtools_ldflags="-Wl,-rpath,$with_bamtools/lib -L$with_bamtools/lib"
     bamtools_include="-I$with_bamtools/include"
-else
-    bamtools_ldflags="-lbamtools"
 fi
 
 # Check for the hoard memory allocator 
@@ -51,6 +49,9 @@ AC_SUBST(CXXFLAGS, "-O3")
 AC_SUBST(CFLAGS, "-O3")
 AC_SUBST(CPPFLAGS, "$CPPFLAGS $sparsehash_include $bamtools_include")
 AC_SUBST(LDFLAGS, "$hoard_ldflags $bamtools_ldflags $LDFLAGS")
+
+# We always need to specify to link in bamtools
+AC_SUBST(LIBS, "$LIBS -lbamtools")
 
 #
 if test "$enable_hoard"; then
