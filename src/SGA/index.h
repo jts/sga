@@ -13,7 +13,8 @@
 #include "SuffixArray.h"
 
 int indexMain(int argc, char** argv);
-void indexInMemory();
+void indexInMemorySAIS();
+void indexInMemoryBCR();
 void indexOnDisk();
 void buildIndexForTable(std::string outfile, const ReadTable* pRT, bool isReverse);
 void parseIndexOptions(int argc, char** argv);

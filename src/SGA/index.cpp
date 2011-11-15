@@ -86,21 +86,51 @@ int indexMain(int argc, char** argv)
     Timer t("sga index");
     parseIndexOptions(argc, argv);
     if(!opt::bDiskAlgo)
-        indexInMemory();
+    {
+        //indexInMemorySAIS();
+        indexInMemoryBCR();
+    }
     else
+    {
         indexOnDisk();
+    }
     return 0;
 }
 
 //
-void indexInMemory()
+void indexInMemoryBCR()
+{
+    std::cout << "Building index for " << opt::readsFile << " in memory using BCR\n";
+
+    // Parse the initial read table
+    std::vector<DNAEncodedString> readSequences;
+    SeqReader reader(opt::readsFile);
+    SeqRecord sr;
+    while(reader.get(sr))
+        readSequences.push_back(sr.seq.toString());
+    
+    BWTCA::runBauerCoxRosone(&readSequences);
+    exit(EXIT_SUCCESS);
+
+    /*
+    if(opt::bBuildReverse)
+    {
+        // Reverse all the reads
+        pRT->reverseAll();
+
+        // Build the reverse suffix array
+        buildIndexForTable(opt::prefix, pRT, true);
+    }
+    */
+}
+
+//
+void indexInMemorySAIS()
 {
     std::cout << "Building index for " << opt::readsFile << " in memory\n";
 
     // Parse the initial read table
     ReadTable* pRT = new ReadTable(opt::readsFile);
-    BWTCA::runBauerCoxRosone(pRT);
-    exit(EXIT_SUCCESS);
 
     // Create and write the suffix array for the forward reads
     buildIndexForTable(opt::prefix, pRT, false);

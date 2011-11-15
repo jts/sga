@@ -312,4 +312,7 @@ Codec EncodedString<Codec>::s_codec;
 typedef EncodedString<DNACodec> DNAEncodedString;
 typedef EncodedString<BWT4Codec> BWTString;
 typedef EncodedString<NoCodec> NoEncodingString;
+
+typedef std::vector<DNAEncodedString> DNAEncodedStringVector;
+
 #endif

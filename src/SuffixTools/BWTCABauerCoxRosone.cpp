@@ -12,15 +12,19 @@
 #include <algorithm>
 #include <iterator>
 
-void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
+void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences)
 {
-    size_t num_reads = pRT->getCount();
-    size_t num_symbols = pRT->countSumLengths() + num_reads; // include 1 sentinel per read
+    size_t num_reads = pReadSequences->size();
+
+    size_t num_symbols = 0;
+    for(size_t i = 0; i < num_reads; ++i)
+        num_symbols += pReadSequences->at(i).length();
+    num_symbols += num_reads; // include 1 sentinal per read
     printf("Constructing bwt for %zu symbols, %zu reads\n", num_symbols, num_reads);
 
     // Allocate two working BWTs
-    BWTString read_bwt;
-    BWTString write_bwt;
+    DNAEncodedString read_bwt;
+    DNAEncodedString write_bwt;
 
     read_bwt.resize(num_symbols);
     write_bwt.resize(num_symbols);
@@ -37,18 +41,17 @@ void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
     // Iteration 1:
     // Output a BWT with the last symbol of every read, in the order they appear in the read table.
     // This is the ordering of all suffixes that start with the sentinel character
-    outputInitialCycle(pRT, bcrVector, write_bwt, suffixStartCounts);
+    outputInitialCycle(pReadSequences, bcrVector, write_bwt, suffixStartCounts);
     write_bwt.swap(read_bwt);
 
     // Iteration 2...n, create new bwts from the bwt of the previous cycle
-    size_t partial_bwt_length = pRT->getCount();
+    size_t partial_bwt_length = num_reads;
     Timer timer("cycles");
 
-    // In the last iteration (at read length + 1) we insert the final '$' symbols into the bwt
-    size_t maxCycles = pRT->getReadLength(0) + 1;
+    size_t maxCycles = pReadSequences->at(0).length();
     for(size_t cycle = 2; cycle <= maxCycles; ++cycle)
     {
-        std::cout << "Starting cycle " << cycle << " " << timer.getElapsedWallTime() << "\n";
+        std::cout << "Starting cycle " << cycle << "\n";
         
         // Convert relative positions to absolute positions
         calculateAbsolutePositions(bcrVector, suffixStartCounts);
@@ -57,13 +60,8 @@ void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
         std::sort(bcrVector.begin(), bcrVector.end());
         std::cout << "  done sorting..." << timer.getElapsedWallTime() << "\n";
 
-        /*
-        std::cout << "BCRVector absolute:\n";
-        std::copy(bcrVector.begin(), bcrVector.end(), std::ostream_iterator<NElem>(std::cout, "\n"));
-        */
-
         // Output the BWT for this cycle and update the vector and suffix start count
-        partial_bwt_length = outputPartialCycle(cycle, pRT, bcrVector, read_bwt, partial_bwt_length, write_bwt, suffixStartCounts);
+        partial_bwt_length = outputPartialCycle(cycle, pReadSequences, bcrVector, read_bwt, partial_bwt_length, write_bwt, suffixStartCounts);
         std::cout << "  done writing..." << timer.getElapsedWallTime() << "\n";
 
         // Swap the in/out bwt
@@ -73,19 +71,22 @@ void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
     // Write the resulting bwt
     BWTWriterBinary writer("bcr.bwt");
     writer.writeHeader(num_reads, num_symbols, BWF_NOFMI);
-    for(size_t i = 0; i < num_symbols; ++i)
-        writer.writeBWChar(read_bwt.get(i));
-    writer.finalize();
+
+    // Calculate the positions of the final insertion symbols and write them directly to the file
+    calculateAbsolutePositions(bcrVector, suffixStartCounts);
+    std::sort(bcrVector.begin(), bcrVector.end());
+    size_t num_wrote = outputFinalBWT(bcrVector, read_bwt, partial_bwt_length, &writer);
+    assert(num_wrote == num_symbols);
 }
 
 // Write out the next BWT for the next cycle. This updates BCRVector
 // and suffixSymbolCounts. Returns the number of symbols written to writeBWT
 size_t BWTCA::outputPartialCycle(int cycle,
-                                 const ReadTable* pRT,
+                                 const DNAEncodedStringVector* pReadSequences,
                                  BCRVector& bcrVector, 
-                                 const BWTString& readBWT, 
+                                 const DNAEncodedString& readBWT, 
                                  size_t total_read_symbols,
-                                 BWTString& writeBWT, 
+                                 DNAEncodedString& writeBWT, 
                                  AlphaCount64& suffixStartCounts)
 {
     // We track the rank of each symbol as it is copied/inserted
@@ -110,13 +111,13 @@ size_t BWTCA::outputPartialCycle(int cycle,
         }
 
         // Now insert the incoming symbol
-        int rl = pRT->getReadLength(ne.index);
+        int rl = pReadSequences->at(ne.index).length();
         char c = '$';
 
         // If the cycle number is greater than the read length, we are
         // on the final iteration and we just add in the '$' characters
         if(cycle <= rl)
-            c = pRT->getChar(ne.index, rl - cycle);
+            c = pReadSequences->at(ne.index).get(rl - cycle);
         //std::cout << "Inserting " << c << " at position " << num_copied + num_inserted << "\n";
         writeBWT.set(num_wrote++, c);
         num_inserted += 1;
@@ -136,24 +137,53 @@ size_t BWTCA::outputPartialCycle(int cycle,
     while(num_copied < total_read_symbols)
         writeBWT.set(num_wrote++, readBWT.get(num_copied++));
 
-//    printf("Wrote: %zu Copied: %zu Inserted: %zu\n", num_wrote, num_copied, num_inserted);
-//    std::cout << "new bwt: " << writeBWT.substr(0, num_wrote) << "\n";
-    
     return num_wrote;
+}
+
+// Write the final BWT to a file.
+size_t BWTCA::outputFinalBWT(BCRVector& bcrVector, 
+                             const DNAEncodedString& readBWT, 
+                             size_t partial_bwt_symbols,
+                             BWTWriterBinary* pWriter)
+{
+
+    // Counters
+    size_t num_copied = 0;
+    size_t num_inserted = 0;
+
+    for(size_t i = 0; i < bcrVector.size(); ++i)
+    {
+        BCRElem& ne = bcrVector[i];
+        
+        // Copy elements from the read bwt until we reach the target position
+        while(num_copied + num_inserted < ne.position)
+            pWriter->writeBWChar(readBWT.get(num_copied++));
+        
+        // Write a single $, terminating this string
+        pWriter->writeBWChar('$');
+        num_inserted += 1;
+    }
+
+    // Copy any remaining symbols in the bwt
+    while(num_copied < partial_bwt_symbols)
+        pWriter->writeBWChar(readBWT.get(num_copied++));
+
+    pWriter->finalize();
+    return num_copied + num_inserted;
 }
 
 // Update N and the output BWT for the initial cycle, corresponding to the sentinel suffixes
 // the symbolCounts vector is updated to hold the number of times each symbol has been inserted
 // into the bwt
-void BWTCA::outputInitialCycle(const ReadTable* pRT, BCRVector& bcrVector, BWTString& bwt, AlphaCount64& suffixSymbolCounts)
+void BWTCA::outputInitialCycle(const DNAEncodedStringVector* pReadSequences, BCRVector& bcrVector, DNAEncodedString& bwt, AlphaCount64& suffixSymbolCounts)
 {
     AlphaCount64 incomingSymbolCounts;
 
-    size_t n = pRT->getCount();
-    size_t first_read_len = pRT->getReadLength(0);
+    size_t n = pReadSequences->size();
+    size_t first_read_len = pReadSequences->at(0).length();
     for(size_t i = 0; i < n; ++i)
     {
-        size_t rl = pRT->getReadLength(i);
+        size_t rl =  pReadSequences->at(i).length();
         
         // Check that all reads are the same length
         if(rl != first_read_len)
@@ -162,7 +192,7 @@ void BWTCA::outputInitialCycle(const ReadTable* pRT, BCRVector& bcrVector, BWTSt
             exit(EXIT_FAILURE);
         }
 
-        char c = pRT->getChar(i, rl - 1);
+        char c = pReadSequences->at(i).get(rl - 1);
         bwt.set(i, c);
 
         assert(rl > 1);

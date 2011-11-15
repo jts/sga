@@ -12,6 +12,7 @@
 #include "ReadTable.h"
 #include "Alphabet.h"
 #include "EncodedString.h"
+#include "BWTWriterBinary.h"
 
 namespace BWTCA
 {
@@ -42,21 +43,22 @@ namespace BWTCA
     };
     typedef std::vector<BCRElem> BCRVector;
 
-    // Construct the burrows-wheeler transform of the table of reads
-    void runBauerCoxRosone(const ReadTable* pRT);
+    // Construct the burrows-wheeler transform of the set of reads
+    void runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences);
     
     // Run the initial special first iteration of the algorithm
-    void outputInitialCycle(const ReadTable* pRT, BCRVector& bcrVector, BWTString& bwt, AlphaCount64& suffixSymbolCounts);
+    void outputInitialCycle(const DNAEncodedStringVector* pReadSequences, BCRVector& bcrVector, DNAEncodedString& bwt, AlphaCount64& suffixSymbolCounts);
 
     // Run the last iteration of the algorithm
-//    void outputFinalCycle(BCRVector& bcrVector, const BWTString& readBWT, size_t total_read_symbols, BWTString& writeBWT);
+    size_t outputFinalBWT(BCRVector& bcrVector, const DNAEncodedString& readBWT, size_t partial_bwt_symbols, BWTWriterBinary* pWriter);
 
+    // Output an intermediate bwt 
     size_t outputPartialCycle(int cycle,
-                             const ReadTable* pRT, 
+                             const DNAEncodedStringVector* pReadSequences, 
                              BCRVector& bcrVector, 
-                             const BWTString& readBWT, 
-                             size_t total_read_symbols,
-                             BWTString& writeBWT, 
+                             const DNAEncodedString& readBWT, 
+                             size_t partial_bwt_symbols,
+                             DNAEncodedString& writeBWT, 
                              AlphaCount64& suffixStartCounts);
 
     // Calculate absolute position for each element of the nvector
