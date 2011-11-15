@@ -15,46 +15,49 @@
 
 namespace BWTCA
 {
-    // Element of the N array
-    struct NElem
+    // This structure tracks the state of each read
+    // It contains a position field, which stores the relative/absolute
+    // position to insert the next symbol of a read into the partial BWT.
+    // It also stores the read index and the symbol to insert
+    struct BCRElem
     {
-        NElem() : index(0), sym('\0') {}
+        BCRElem() : index(0), sym('\0') {}
 
         // Comparator. Sort first on the symbol, then break ties using the index
-        friend bool operator<(const NElem& a, const NElem& b)
+        friend bool operator<(const BCRElem& a, const BCRElem& b)
         {
             return a.position < b.position;
         }
 
-        friend std::ostream& operator<<(std::ostream& out, const NElem& elem)
+        friend std::ostream& operator<<(std::ostream& out, const BCRElem& elem)
         {
             out << "I: " << elem.index << " S: " << elem.sym << " P: " << elem.position;
             return out;
         }
 
         // Data
+        uint64_t position; // the relative position into the next partial bwt to insert a symbol
         uint32_t index; // the read index this entry represents
-        uint32_t position; // the relative position into the next partial bwt to insert a symbol
         char sym; // a symbol to be inserted
     };
-    typedef std::vector<NElem> NVector;
+    typedef std::vector<BCRElem> BCRVector;
 
     // Construct the burrows-wheeler transform of the table of reads
     void runBauerCoxRosone(const ReadTable* pRT);
     
     // Run the initial special first iteration of the algorithm
-    void outputInitialCycle(const ReadTable* pRT, NVector& n_vector, BWTString& bwt, AlphaCount64& suffixSymbolCounts);
+    void outputInitialCycle(const ReadTable* pRT, BCRVector& bcrVector, BWTString& bwt, AlphaCount64& suffixSymbolCounts);
 
     size_t outputPartialCycle(int cycle,
                              const ReadTable* pRT, 
-                             NVector& n_vector, 
+                             BCRVector& bcrVector, 
                              const BWTString& readBWT, 
                              size_t total_read_symbols,
                              BWTString& writeBWT, 
                              AlphaCount64& suffixStartCounts);
 
     // Calculate absolute position for each element of the nvector
-    void calculateAbsolutePositions(NVector& n_vector, const AlphaCount64& suffixSymbolCounts);
+    void calculateAbsolutePositions(BCRVector& bcrVector, const AlphaCount64& suffixSymbolCounts);
 };
 
 #endif

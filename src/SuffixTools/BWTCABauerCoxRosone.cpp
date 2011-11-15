@@ -24,24 +24,26 @@ void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
     out_bwt.resize(num_symbols);
     temp_bwt.resize(num_symbols);
 
+    std::cout << "nelem size: " << sizeof(BCRElem) << "\n";
+
     // Allocate the N array, which stores the indices of the reads, in the order
     // in which they should be inserted for the next round
 
-    // Allocate the P array, which stores the actual position of the inserting symbol
-    // in the merged BWT
-    NVector n_vector(num_reads);
+
+    BCRVector bcrVector(num_reads);
     
     //
     // Algorithm
     // 
 
+    // Track the number of suffixes that start with a given symbol
+    AlphaCount64 suffixStartCounts;
+
     // Iteration 0:
     // Output a BWT with the last symbol of every read, in the order they appear in the read table.
     // This is the ordering of all suffixes that start with the sentinel character
 
-    // Track the number of suffixes that start with a given symbol
-    AlphaCount64 suffixStartCounts;
-    outputInitialCycle(pRT, n_vector, out_bwt, suffixStartCounts);
+    outputInitialCycle(pRT, bcrVector, out_bwt, suffixStartCounts);
 
     size_t maxCycles = pRT->getReadLength(0);
     size_t partial_bwt_length = pRT->getCount();
@@ -49,24 +51,21 @@ void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
     for(size_t cycle = 2; cycle <= maxCycles; ++cycle)
     {
         std::cout << "Starting cycle " << cycle << " " << timer.getElapsedWallTime() << "\n";
-        /*
-        std::cout << "NVector relative:\n";
-        std::copy(n_vector.begin(), n_vector.end(), std::ostream_iterator<NElem>(std::cout, "\n"));
-        */
+        
         // Convert relative positions to absolute positions
-        calculateAbsolutePositions(n_vector, suffixStartCounts);
+        calculateAbsolutePositions(bcrVector, suffixStartCounts);
        
         // Sort nvector by the absolute position to insert the symbol
-        std::sort(n_vector.begin(), n_vector.end());
+        std::sort(bcrVector.begin(), bcrVector.end());
         std::cout << "  done sorting..." << timer.getElapsedWallTime() << "\n";
 
         /*
-        std::cout << "NVector absolute:\n";
-        std::copy(n_vector.begin(), n_vector.end(), std::ostream_iterator<NElem>(std::cout, "\n"));
+        std::cout << "BCRVector absolute:\n";
+        std::copy(bcrVector.begin(), bcrVector.end(), std::ostream_iterator<NElem>(std::cout, "\n"));
         */
 
         // Output the BWT for this cycle and update the vector and suffix start count
-        partial_bwt_length = outputPartialCycle(cycle, pRT, n_vector, out_bwt, partial_bwt_length, temp_bwt, suffixStartCounts);
+        partial_bwt_length = outputPartialCycle(cycle, pRT, bcrVector, out_bwt, partial_bwt_length, temp_bwt, suffixStartCounts);
         std::cout << "  done writing..." << timer.getElapsedWallTime() << "\n";
 
         // Swap the in/out bwt
@@ -74,11 +73,11 @@ void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
     }
 }
 
-// Write out the next BWT for the next cycle. This updates NVector
+// Write out the next BWT for the next cycle. This updates BCRVector
 // and suffixSymbolCounts. Returns the number of symbols written to writeBWT
 size_t BWTCA::outputPartialCycle(int cycle,
                                const ReadTable* pRT,
-                               NVector& n_vector, 
+                               BCRVector& bcrVector, 
                                const BWTString& readBWT, 
                                size_t total_read_symbols,
                                BWTString& writeBWT, 
@@ -93,9 +92,9 @@ size_t BWTCA::outputPartialCycle(int cycle,
     size_t num_inserted = 0;
     size_t num_wrote = 0;
 
-    for(size_t i = 0; i < n_vector.size(); ++i)
+    for(size_t i = 0; i < bcrVector.size(); ++i)
     {
-        NElem& ne = n_vector[i];
+        BCRElem& ne = bcrVector[i];
         
         // Copy elements from the read bwt until we reach the target position
         while(num_copied + num_inserted < ne.position)
@@ -128,7 +127,7 @@ size_t BWTCA::outputPartialCycle(int cycle,
         writeBWT.set(num_wrote++, readBWT.get(num_copied++));
 
 //    printf("Wrote: %zu Copied: %zu Inserted: %zu\n", num_wrote, num_copied, num_inserted);
-    std::cout << "new bwt: " << writeBWT.substr(0, num_wrote) << "\n";
+//    std::cout << "new bwt: " << writeBWT.substr(0, num_wrote) << "\n";
     
     return num_wrote;
 }
@@ -136,7 +135,7 @@ size_t BWTCA::outputPartialCycle(int cycle,
 // Update N and the output BWT for the initial cycle, corresponding to the sentinel suffixes
 // the symbolCounts vector is updated to hold the number of times each symbol has been inserted
 // into the bwt
-void BWTCA::outputInitialCycle(const ReadTable* pRT, NVector& n_vector, BWTString& bwt, AlphaCount64& suffixSymbolCounts)
+void BWTCA::outputInitialCycle(const ReadTable* pRT, BCRVector& bcrVector, BWTString& bwt, AlphaCount64& suffixSymbolCounts)
 {
     AlphaCount64 incomingSymbolCounts;
 
@@ -150,11 +149,11 @@ void BWTCA::outputInitialCycle(const ReadTable* pRT, NVector& n_vector, BWTStrin
         assert(rl > 1);
 
         // Load the elements of the N vector with the next symbol
-        n_vector[i].sym = c;
-        n_vector[i].index = i;
+        bcrVector[i].sym = c;
+        bcrVector[i].index = i;
 
         // Set the relative position of the symbol that is being inserted
-        n_vector[i].position = incomingSymbolCounts.get(c);
+        bcrVector[i].position = incomingSymbolCounts.get(c);
 
         // Increment the count of the first base of the suffix of the
         // incoming strings. This is $ for the initial cycle
@@ -167,7 +166,7 @@ void BWTCA::outputInitialCycle(const ReadTable* pRT, NVector& n_vector, BWTStrin
     suffixSymbolCounts += incomingSymbolCounts;
 }
 
-void BWTCA::calculateAbsolutePositions(NVector& n_vector, const AlphaCount64& suffixSymbolCounts)
+void BWTCA::calculateAbsolutePositions(BCRVector& bcrVector, const AlphaCount64& suffixSymbolCounts)
 {
     // Calculate a predecessor array from the suffix symbol counts
     AlphaCount64 predCounts;
@@ -178,7 +177,7 @@ void BWTCA::calculateAbsolutePositions(NVector& n_vector, const AlphaCount64& su
         predCounts.set(b, pc);
     }
 
-    for(size_t i = 0; i < n_vector.size(); ++i)
-        n_vector[i].position += predCounts.get(n_vector[i].sym);
+    for(size_t i = 0; i < bcrVector.size(); ++i)
+        bcrVector[i].position += predCounts.get(bcrVector[i].sym);
 }
 
