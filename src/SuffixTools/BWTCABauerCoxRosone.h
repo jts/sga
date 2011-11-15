@@ -36,7 +36,7 @@ namespace BWTCA
         }
 
         // Data
-        uint64_t position; // the relative position into the next partial bwt to insert a symbol
+        uint64_t position; // the relative or absolute position into the next partial bwt to insert a symbol
         uint32_t index; // the read index this entry represents
         char sym; // a symbol to be inserted
     };
@@ -47,6 +47,9 @@ namespace BWTCA
     
     // Run the initial special first iteration of the algorithm
     void outputInitialCycle(const ReadTable* pRT, BCRVector& bcrVector, BWTString& bwt, AlphaCount64& suffixSymbolCounts);
+
+    // Run the last iteration of the algorithm
+//    void outputFinalCycle(BCRVector& bcrVector, const BWTString& readBWT, size_t total_read_symbols, BWTString& writeBWT);
 
     size_t outputPartialCycle(int cycle,
                              const ReadTable* pRT, 
