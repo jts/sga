@@ -156,10 +156,25 @@ void indexInMemorySAIS()
 void indexOnDisk()
 {
     std::cout << "Building index for " << opt::readsFile << " on disk\n";
-    buildBWTDisk(opt::readsFile, opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
+    BWTDiskParameters parameters;
+    parameters.inFile = opt::readsFile;
+    parameters.outPrefix = opt::prefix;
+    parameters.bwtExtension = BWT_EXT;
+    parameters.saiExtension = SAI_EXT;
+    parameters.numReadsPerBatch = opt::numReadsPerBatch;
+    parameters.numThreads = opt::numThreads;
+    parameters.storageLevel = opt::gapArrayStorage;
+    parameters.bBuildReverse = false;
+    parameters.bUseBCR = (opt::algorithm == "bcr");
+    buildBWTDisk(parameters);
     
     if(opt::bBuildReverse)
-        buildBWTDisk(opt::readsFile, opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::numReadsPerBatch, opt::gapArrayStorage);
+    {
+        parameters.bwtExtension = RBWT_EXT;
+        parameters.saiExtension = RSAI_EXT;
+        parameters.bBuildReverse = true;
+        buildBWTDisk(parameters);
+    }
 }
 
 //

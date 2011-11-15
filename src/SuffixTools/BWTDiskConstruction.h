@@ -18,11 +18,22 @@
 #include "SuffixArray.h"
 #include "BWT.h"
 
+struct BWTDiskParameters
+{
+    std::string inFile;
+    std::string outPrefix;
+    std::string bwtExtension;
+    std::string saiExtension;
+    size_t numReadsPerBatch;
+    int numThreads;
+    int storageLevel;
+    bool bBuildReverse;
+    bool bUseBCR;
+};
+
 // Construct the burrows-wheeler transform of reads in in_filename
 // using the disk storage algorithm
-void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
-                  const std::string& bwt_extension, const std::string& sai_extension,
-                  bool doReverse, int numThreads, int numReadsPerBatch, int storageLevel);
+void buildBWTDisk(const BWTDiskParameters& parameters);
 
 // Merge the indices for the readsFile1 and readsFile2
 void mergeIndependentIndices(const std::string& readsFile1, const std::string& readsFile2, 

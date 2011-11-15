@@ -22,7 +22,7 @@ void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences,
     for(size_t i = 0; i < num_reads; ++i)
         num_symbols += pReadSequences->at(i).length();
     num_symbols += num_reads; // include 1 sentinal per read
-    printf("Constructing bwt for %zu symbols, %zu reads\n", num_symbols, num_reads);
+    printf("Running BCR on %zu symbols, %zu reads\n", num_symbols, num_reads);
 
     // Allocate two working BWTs
     DNAEncodedString read_bwt;
@@ -30,8 +30,6 @@ void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences,
 
     read_bwt.resize(num_symbols);
     write_bwt.resize(num_symbols);
-
-    std::cout << "nelem size: " << sizeof(BCRElem) << "\n";
 
     // Allocate the bcr vector, which tracks the state of the algorithm
     BCRVector bcrVector(num_reads);
@@ -47,7 +45,7 @@ void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences,
 
     // Iteration 2...n, create new bwts from the bwt of the previous cycle
     size_t partial_bwt_length = num_reads;
-    Timer timer("cycles");
+    Timer timer("cycles", false);
 
     size_t maxCycles = pReadSequences->at(0).length();
     for(size_t cycle = 2; cycle <= maxCycles; ++cycle)
@@ -59,11 +57,11 @@ void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences,
        
         // Sort nvector by the absolute position to insert the symbol
         std::sort(bcrVector.begin(), bcrVector.end());
-        std::cout << "  done sorting..." << timer.getElapsedWallTime() << "\n";
+        //std::cout << "  done sorting..." << timer.getElapsedWallTime() << "\n";
 
         // Output the BWT for this cycle and update the vector and suffix start count
         partial_bwt_length = outputPartialCycle(cycle, pReadSequences, bcrVector, read_bwt, partial_bwt_length, write_bwt, suffixStartCounts);
-        std::cout << "  done writing..." << timer.getElapsedWallTime() << "\n";
+        //std::cout << "  done writing..." << timer.getElapsedWallTime() << "\n";
 
         // Swap the in/out bwt
         read_bwt.swap(write_bwt);
