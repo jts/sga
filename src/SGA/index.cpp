@@ -17,6 +17,7 @@
 #include "BWTDiskConstruction.h"
 #include "BWT.h"
 #include "Timer.h"
+#include "BWTCABauerCoxRosone.h"
 
 //
 // Getopt
@@ -98,7 +99,9 @@ void indexInMemory()
 
     // Parse the initial read table
     ReadTable* pRT = new ReadTable(opt::readsFile);
-    
+    BWTCA::runBauerCoxRosone(pRT);
+    exit(EXIT_SUCCESS);
+
     // Create and write the suffix array for the forward reads
     buildIndexForTable(opt::prefix, pRT, false);
     

@@ -7,7 +7,9 @@
 // BWTCABauerCoxRosone - In-memory version of Illumina's
 // BWT construction algorithm
 #include "BWTCABauerCoxRosone.h"
+#include "Timer.h"
 #include <algorithm>
+#include <iterator>
 
 void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
 {
@@ -16,8 +18,11 @@ void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
     printf("Constructing bwt for %zu symbols, %zu reads\n", num_symbols, num_reads);
 
     // Allocate two working BWTs
-    std::string out_bwt(num_symbols, '\0');
-    std::string temp_bwt(num_symbols, '\0');
+    BWTString out_bwt;
+    BWTString temp_bwt;
+
+    out_bwt.resize(num_symbols);
+    temp_bwt.resize(num_symbols);
 
     // Allocate the N array, which stores the indices of the reads, in the order
     // in which they should be inserted for the next round
@@ -33,34 +38,147 @@ void BWTCA::runBauerCoxRosone(const ReadTable* pRT)
     // Iteration 0:
     // Output a BWT with the last symbol of every read, in the order they appear in the read table.
     // This is the ordering of all suffixes that start with the sentinel character
-    outputInitialCycle(pRT, n_vector, out_bwt);
 
-    // Sort the n vector by the symbol of the next cycle (which is the symbol 
-    // the next suffix to insert starts with). By using a stable sort here,
-    // we implicitly sort suffixes that begin with the same symbol by their
-    // previously determined order
-    std::stable_sort(n_vector.begin(), n_vector.end());
+    // Track the number of suffixes that start with a given symbol
+    AlphaCount64 suffixStartCounts;
+    outputInitialCycle(pRT, n_vector, out_bwt, suffixStartCounts);
 
-    // Iterations 1-k:
-    // Output 
+    size_t maxCycles = pRT->getReadLength(0);
+    size_t partial_bwt_length = pRT->getCount();
+    Timer timer("cycles");
+    for(size_t cycle = 2; cycle <= maxCycles; ++cycle)
+    {
+        std::cout << "Starting cycle " << cycle << " " << timer.getElapsedWallTime() << "\n";
+        /*
+        std::cout << "NVector relative:\n";
+        std::copy(n_vector.begin(), n_vector.end(), std::ostream_iterator<NElem>(std::cout, "\n"));
+        */
+        // Convert relative positions to absolute positions
+        calculateAbsolutePositions(n_vector, suffixStartCounts);
+       
+        // Sort nvector by the absolute position to insert the symbol
+        std::sort(n_vector.begin(), n_vector.end());
+        std::cout << "  done sorting..." << timer.getElapsedWallTime() << "\n";
 
+        /*
+        std::cout << "NVector absolute:\n";
+        std::copy(n_vector.begin(), n_vector.end(), std::ostream_iterator<NElem>(std::cout, "\n"));
+        */
+
+        // Output the BWT for this cycle and update the vector and suffix start count
+        partial_bwt_length = outputPartialCycle(cycle, pRT, n_vector, out_bwt, partial_bwt_length, temp_bwt, suffixStartCounts);
+        std::cout << "  done writing..." << timer.getElapsedWallTime() << "\n";
+
+        // Swap the in/out bwt
+        out_bwt.swap(temp_bwt);
+    }
+}
+
+// Write out the next BWT for the next cycle. This updates NVector
+// and suffixSymbolCounts. Returns the number of symbols written to writeBWT
+size_t BWTCA::outputPartialCycle(int cycle,
+                               const ReadTable* pRT,
+                               NVector& n_vector, 
+                               const BWTString& readBWT, 
+                               size_t total_read_symbols,
+                               BWTString& writeBWT, 
+                               AlphaCount64& suffixStartCounts)
+{
+    // We track the rank of each symbol as it is copied/inserted
+    // into the new bwt
+    AlphaCount64 rank;
+
+    // Counters
+    size_t num_copied = 0;
+    size_t num_inserted = 0;
+    size_t num_wrote = 0;
+
+    for(size_t i = 0; i < n_vector.size(); ++i)
+    {
+        NElem& ne = n_vector[i];
+        
+        // Copy elements from the read bwt until we reach the target position
+        while(num_copied + num_inserted < ne.position)
+        {
+            char c = readBWT.get(num_copied++);
+            writeBWT.set(num_wrote++, c);
+            rank.increment(c);
+        }
+
+        // Now insert the incoming symbol
+        size_t rl = pRT->getReadLength(ne.index);
+        char c = pRT->getChar(ne.index, rl - cycle);
+        //std::cout << "Inserting " << c << " at position " << num_copied + num_inserted << "\n";
+        writeBWT.set(num_wrote++, c);
+        num_inserted += 1;
+
+        // Update the nvector element
+        ne.sym = c;
+
+        // Record the rank of the inserted symbol
+        ne.position = rank.get(c);
+
+        // Update the rank and the number of suffixes that start with c
+        rank.increment(c);
+        suffixStartCounts.increment(c);
+    }
+
+    // Copy any remaining symbols in the bwt
+    while(num_copied < total_read_symbols)
+        writeBWT.set(num_wrote++, readBWT.get(num_copied++));
+
+//    printf("Wrote: %zu Copied: %zu Inserted: %zu\n", num_wrote, num_copied, num_inserted);
+    std::cout << "new bwt: " << writeBWT.substr(0, num_wrote) << "\n";
+    
+    return num_wrote;
 }
 
 // Update N and the output BWT for the initial cycle, corresponding to the sentinel suffixes
-void BWTCA::outputInitialCycle(const ReadTable* pRT, NVector& n_vector, std::string& bwt)
+// the symbolCounts vector is updated to hold the number of times each symbol has been inserted
+// into the bwt
+void BWTCA::outputInitialCycle(const ReadTable* pRT, NVector& n_vector, BWTString& bwt, AlphaCount64& suffixSymbolCounts)
 {
+    AlphaCount64 incomingSymbolCounts;
+
     size_t n = pRT->getCount();
     for(size_t i = 0; i < n; ++i)
     {
         size_t rl = pRT->getReadLength(i);
         char c = pRT->getChar(i, rl - 1);
-        bwt[i] = c;
+        bwt.set(i, c);
 
         assert(rl > 1);
 
         // Load the elements of the N vector with the next symbol
         n_vector[i].sym = c;
         n_vector[i].index = i;
+
+        // Set the relative position of the symbol that is being inserted
+        n_vector[i].position = incomingSymbolCounts.get(c);
+
+        // Increment the count of the first base of the suffix of the
+        // incoming strings. This is $ for the initial cycle
+        suffixSymbolCounts.increment('$');
+
+        // Update the inserted symbols
+        incomingSymbolCounts.increment(c);
     }
+
+    suffixSymbolCounts += incomingSymbolCounts;
+}
+
+void BWTCA::calculateAbsolutePositions(NVector& n_vector, const AlphaCount64& suffixSymbolCounts)
+{
+    // Calculate a predecessor array from the suffix symbol counts
+    AlphaCount64 predCounts;
+    for(int i = 0; i < BWT_ALPHABET::size; ++i)
+    {
+        char b = RANK_ALPHABET[i];
+        int64_t pc = suffixSymbolCounts.getLessThan(b);
+        predCounts.set(b, pc);
+    }
+
+    for(size_t i = 0; i < n_vector.size(); ++i)
+        n_vector[i].position += predCounts.get(n_vector[i].sym);
 }
 
