@@ -50,7 +50,7 @@ void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences,
     size_t maxCycles = pReadSequences->at(0).length();
     for(size_t cycle = 2; cycle <= maxCycles; ++cycle)
     {
-        std::cout << "Starting cycle " << cycle << "\n";
+        //std::cout << "Starting cycle " << cycle << "\n";
         
         // Convert relative positions to absolute positions
         calculateAbsolutePositions(bcrVector, suffixStartCounts);
