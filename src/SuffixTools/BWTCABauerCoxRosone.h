@@ -9,6 +9,7 @@
 #ifndef BWTCA_COX_BAUER_ROSONE_H
 #define BWTCA_COX_BAUER_ROSONE_H
 
+#include "SAWriter.h"
 #include "ReadTable.h"
 #include "Alphabet.h"
 #include "EncodedString.h"
@@ -44,13 +45,19 @@ namespace BWTCA
     typedef std::vector<BCRElem> BCRVector;
 
     // Construct the burrows-wheeler transform of the set of reads
-    void runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences);
+    void runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences, 
+                           const std::string& bwt_out_name, 
+                           const std::string& sai_out_name);
     
     // Run the initial special first iteration of the algorithm
     void outputInitialCycle(const DNAEncodedStringVector* pReadSequences, BCRVector& bcrVector, DNAEncodedString& bwt, AlphaCount64& suffixSymbolCounts);
 
-    // Run the last iteration of the algorithm
-    size_t outputFinalBWT(BCRVector& bcrVector, const DNAEncodedString& readBWT, size_t partial_bwt_symbols, BWTWriterBinary* pWriter);
+    // Write the final bwt to a file
+    size_t outputFinalBWT(BCRVector& bcrVector, 
+                          const DNAEncodedString& readBWT, 
+                          size_t partial_bwt_symbols, 
+                          BWTWriterBinary* pBWTWriter,
+                          SAWriter* pSAWriter);
 
     // Output an intermediate bwt 
     size_t outputPartialCycle(int cycle,

@@ -12,7 +12,9 @@
 #include <algorithm>
 #include <iterator>
 
-void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences)
+void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences,
+                              const std::string& bwt_out_name, 
+                              const std::string& sai_out_name)
 {
     size_t num_reads = pReadSequences->size();
 
@@ -36,7 +38,6 @@ void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences)
     
     // Track the number of suffixes that start with a given symbol
     AlphaCount64 suffixStartCounts;
-
 
     // Iteration 1:
     // Output a BWT with the last symbol of every read, in the order they appear in the read table.
@@ -68,15 +69,61 @@ void BWTCA::runBauerCoxRosone(const DNAEncodedStringVector* pReadSequences)
         read_bwt.swap(write_bwt);
     }
 
-    // Write the resulting bwt
-    BWTWriterBinary writer("bcr.bwt");
-    writer.writeHeader(num_reads, num_symbols, BWF_NOFMI);
+    // Write the resulting bwt and suffix array index
+    BWTWriterBinary bwtWriter(bwt_out_name);
+    bwtWriter.writeHeader(num_reads, num_symbols, BWF_NOFMI);
+
+    SAWriter saWriter(sai_out_name);
+    saWriter.writeHeader(num_reads, num_reads);
 
     // Calculate the positions of the final insertion symbols and write them directly to the file
     calculateAbsolutePositions(bcrVector, suffixStartCounts);
     std::sort(bcrVector.begin(), bcrVector.end());
-    size_t num_wrote = outputFinalBWT(bcrVector, read_bwt, partial_bwt_length, &writer);
+    size_t num_wrote = outputFinalBWT(bcrVector, read_bwt, partial_bwt_length, &bwtWriter, &saWriter);
     assert(num_wrote == num_symbols);
+}
+
+// Update N and the output BWT for the initial cycle, corresponding to the sentinel suffixes
+// the symbolCounts vector is updated to hold the number of times each symbol has been inserted
+// into the bwt
+void BWTCA::outputInitialCycle(const DNAEncodedStringVector* pReadSequences, BCRVector& bcrVector, DNAEncodedString& bwt, AlphaCount64& suffixSymbolCounts)
+{
+    AlphaCount64 incomingSymbolCounts;
+
+    size_t n = pReadSequences->size();
+    size_t first_read_len = pReadSequences->at(0).length();
+    for(size_t i = 0; i < n; ++i)
+    {
+        size_t rl =  pReadSequences->at(i).length();
+        
+        // Check that all reads are the same length
+        if(rl != first_read_len)
+        {
+            std::cout << "Error: This implementation of BCR requires all reads to be the same length\n";
+            exit(EXIT_FAILURE);
+        }
+
+        char c = pReadSequences->at(i).get(rl - 1);
+        bwt.set(i, c);
+
+        assert(rl > 1);
+
+        // Load the elements of the N vector with the next symbol
+        bcrVector[i].sym = c;
+        bcrVector[i].index = i;
+
+        // Set the relative position of the symbol that is being inserted
+        bcrVector[i].position = incomingSymbolCounts.get(c);
+
+        // Increment the count of the first base of the suffix of the
+        // incoming strings. This is $ for the initial cycle
+        suffixSymbolCounts.increment('$');
+
+        // Update the inserted symbols
+        incomingSymbolCounts.increment(c);
+    }
+
+    suffixSymbolCounts += incomingSymbolCounts;
 }
 
 // Write out the next BWT for the next cycle. This updates BCRVector
@@ -144,7 +191,8 @@ size_t BWTCA::outputPartialCycle(int cycle,
 size_t BWTCA::outputFinalBWT(BCRVector& bcrVector, 
                              const DNAEncodedString& readBWT, 
                              size_t partial_bwt_symbols,
-                             BWTWriterBinary* pWriter)
+                             BWTWriterBinary* pBWTWriter,
+                             SAWriter* pSAWriter)
 {
 
     // Counters
@@ -157,63 +205,22 @@ size_t BWTCA::outputFinalBWT(BCRVector& bcrVector,
         
         // Copy elements from the read bwt until we reach the target position
         while(num_copied + num_inserted < ne.position)
-            pWriter->writeBWChar(readBWT.get(num_copied++));
+            pBWTWriter->writeBWChar(readBWT.get(num_copied++));
         
         // Write a single $, terminating this string
-        pWriter->writeBWChar('$');
+        pBWTWriter->writeBWChar('$');
+        pSAWriter->writeElem(SAElem(ne.index, 0));
         num_inserted += 1;
     }
 
     // Copy any remaining symbols in the bwt
     while(num_copied < partial_bwt_symbols)
-        pWriter->writeBWChar(readBWT.get(num_copied++));
+        pBWTWriter->writeBWChar(readBWT.get(num_copied++));
 
-    pWriter->finalize();
+    pBWTWriter->finalize();
     return num_copied + num_inserted;
 }
 
-// Update N and the output BWT for the initial cycle, corresponding to the sentinel suffixes
-// the symbolCounts vector is updated to hold the number of times each symbol has been inserted
-// into the bwt
-void BWTCA::outputInitialCycle(const DNAEncodedStringVector* pReadSequences, BCRVector& bcrVector, DNAEncodedString& bwt, AlphaCount64& suffixSymbolCounts)
-{
-    AlphaCount64 incomingSymbolCounts;
-
-    size_t n = pReadSequences->size();
-    size_t first_read_len = pReadSequences->at(0).length();
-    for(size_t i = 0; i < n; ++i)
-    {
-        size_t rl =  pReadSequences->at(i).length();
-        
-        // Check that all reads are the same length
-        if(rl != first_read_len)
-        {
-            std::cout << "Error: This implementation of BCR requires all reads to be the same length\n";
-            exit(EXIT_FAILURE);
-        }
-
-        char c = pReadSequences->at(i).get(rl - 1);
-        bwt.set(i, c);
-
-        assert(rl > 1);
-
-        // Load the elements of the N vector with the next symbol
-        bcrVector[i].sym = c;
-        bcrVector[i].index = i;
-
-        // Set the relative position of the symbol that is being inserted
-        bcrVector[i].position = incomingSymbolCounts.get(c);
-
-        // Increment the count of the first base of the suffix of the
-        // incoming strings. This is $ for the initial cycle
-        suffixSymbolCounts.increment('$');
-
-        // Update the inserted symbols
-        incomingSymbolCounts.increment(c);
-    }
-
-    suffixSymbolCounts += incomingSymbolCounts;
-}
 
 void BWTCA::calculateAbsolutePositions(BCRVector& bcrVector, const AlphaCount64& suffixSymbolCounts)
 {
