@@ -192,7 +192,7 @@ void SampledSuffixArray::writeSSA(std::string filename)
     SSA_WRITE(n)
 
     // Write lexo index
-    SSA_WRITE_N(m_saLexoIndex.front(), sizeof(SAElem) * n)
+    SSA_WRITE_N(m_saLexoIndex.front(), sizeof(SSA_INT_TYPE) * n)
     
     // Write number of samples
     n = m_saSamples.size();
@@ -233,7 +233,7 @@ void SampledSuffixArray::readSSA(std::string filename)
     m_saLexoIndex.resize(n);
 
     // Read lexo index
-    SSA_READ_N(m_saLexoIndex.front(), sizeof(SAElem) * n)
+    SSA_READ_N(m_saLexoIndex.front(), sizeof(SSA_INT_TYPE) * n)
     
     // Read number of samples
     n = 0;
