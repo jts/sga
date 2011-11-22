@@ -35,8 +35,6 @@ typedef std::vector<const BWT*> BWTVector;
 class GraphCompareAggregateResults;
 struct GraphCompareParameters
 {
-    // BWTS
-
     // Indices for the base reads
     const BWT* pBaseBWT; 
     const BWTIntervalCache* pBaseBWTCache;
@@ -60,7 +58,7 @@ struct GraphCompareParameters
     size_t kmer;
     size_t kmerThreshold;
     size_t maxBranches;
-
+    bool bReferenceMode;
 };
 
 //
@@ -129,12 +127,20 @@ class GraphCompare
         // When a kmer that is found in only one index, this function is called to attempt to build the full variation
         // string
         BubbleResult processVariantKmer(const std::string& str, int count, const BWTVector& bwts, int varIndex);
+        BubbleResult processVariantKmerAggressive(const std::string& str, int count);
         
         // Mark all the kmers in str as being visited
         void markVariantSequenceKmers(const std::string& str);
 
         // Update statistics 
         void updateVariationCount(const BubbleResult& result);
+
+        // Debug/testing functions
+        bool buildVariantStringGreedy(const std::string& startingKmer, std::string& outString, size_t& flanking_k_length);
+        bool buildVariantStringConservative(const std::string& startingKmer, std::string& outString, size_t& flanking_k_length);
+        bool transformVariantString(const std::string& inStr, std::string& outStr);
+        IntVector makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max);
+
 
         //
         // Data

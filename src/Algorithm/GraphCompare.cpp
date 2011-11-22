@@ -20,6 +20,7 @@
 #include "HapgenUtil.h"
 #include "DindelRealignWindow.h"
 #include "DindelUtil.h"
+#include "HaplotypeBuilder.h"
 
 //
 // GraphCompareStats
@@ -164,6 +165,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 bwts.push_back(m_parameters.pBaseBWT);
                 bwts.push_back(m_parameters.pVariantBWT);
                 BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, 1);
+                //BubbleResult bubbleResult = processVariantKmerAggressive(kmer, count);
 
                 if(bubbleResult.returnCode == BRC_OK)
                 {
@@ -183,6 +185,9 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     
                     if(drc == DRC_OK)
                     {
+                        std::cout << baseVCFSS.str() << "\n";
+                        std::cout << variantVCFSS.str() << "\n";
+
                         result.baseVCFStrings.push_back(baseVCFSS.str());
                         result.variantVCFStrings.push_back(variantVCFSS.str());
                     }
@@ -272,6 +277,391 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
     return result;
 }
 
+//
+BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, int /*count*/)
+{
+
+    //
+    std::string variant_str;
+    size_t flanking_k_length = 0;
+    bool found_variant_string = buildVariantStringConservative(str, variant_str, flanking_k_length);
+    
+    if(found_variant_string)
+    {
+        std::string transformed_str;
+        bool found_transformed = transformVariantString(variant_str, transformed_str);
+        if(found_transformed)
+        {
+            std::cout << "Transformed string!\n";
+            StdAlnTools::globalAlignment(transformed_str, variant_str, true);
+        }
+    }
+
+    BubbleResult result;
+    result.returnCode = BRC_UNKNOWN;
+
+    size_t hb_k = flanking_k_length;
+
+    if(found_variant_string)
+    {
+        // Make a kmer count profile for the putative variant string
+
+        std::cout << "VProfile(" << m_parameters.kmer << "):";
+        IntVector countProfile = makeCountProfile(variant_str, m_parameters.kmer, m_parameters.pVariantBWT, 9);
+        std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
+        std::cout << "\n";
+
+
+        std::cout << "BProfile(" << m_parameters.kmer << "):";
+        countProfile = makeCountProfile(variant_str, m_parameters.kmer, m_parameters.pBaseBWT, 9);
+        std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
+        std::cout << "\n";
+
+        std::cout << "BProfile(31): ";
+        countProfile = makeCountProfile(variant_str, 31, m_parameters.pBaseBWT, 9);
+        std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
+        std::cout << "\n";
+
+        // Run haplotype builder
+        // Set the start/end points of the haplotype builder
+        std::string startAnchorSeq = variant_str.substr(0, hb_k); 
+        std::string endAnchorSeq = variant_str.substr(variant_str.length() - hb_k);
+
+        AnchorSequence startAnchor;
+        startAnchor.sequence = startAnchorSeq;
+        startAnchor.count = 0;
+        startAnchor.position = 0;
+
+        AnchorSequence endAnchor;
+        endAnchor.sequence = endAnchorSeq;
+        endAnchor.count = 0;
+        endAnchor.position = 0;
+
+        HaplotypeBuilder builder;
+        builder.setTerminals(startAnchor, endAnchor);
+        builder.setIndex(m_parameters.pBaseBWT, NULL);
+        builder.setKmerParameters(hb_k, m_parameters.bReferenceMode ? 1 : 2);
+
+        // Run the builder
+        HaplotypeBuilderReturnCode hbCode = builder.run();
+        std::cout << "HBC: " << hbCode << "\n";
+        HaplotypeBuilderResult hbResult;
+
+        // The search was successful, build strings from the walks
+        //BubbleResultCode bubbleCode = BRC_HB_FAILED;
+        if(hbCode == HBRC_OK)
+        {
+            printf("Haplotype builder success\n");
+            
+            hbCode = builder.parseWalks(hbResult);
+            if(hbCode == HBRC_OK)
+            {
+                std::string base_str = hbResult.haplotypes.front();
+                StdAlnTools::globalAlignment(base_str, variant_str, true);
+                result.returnCode = BRC_OK;
+                result.targetString = base_str;
+                result.sourceString = variant_str;
+                markVariantSequenceKmers(variant_str);
+            }
+        }
+    }
+
+    return result;
+}
+
+//
+bool GraphCompare::buildVariantStringGreedy(const std::string& startingKmer, std::string& outString, size_t& flanking_k_length)
+{
+    bool bLeftMatch = false;
+    bool bRightMatch = false;
+
+    size_t left_extensions = 0;
+    size_t right_extensions = 0;
+
+    // Iteratively extend the input kmer to the left and right until the ending kmer matches the reference
+    size_t check_k = m_parameters.kmer;
+    size_t extend_start_k = m_parameters.kmer;
+    size_t extend_end_k = extend_start_k;
+    size_t k_step = 5;
+    size_t base_threshold = m_parameters.kmerThreshold;
+    size_t extension_max = 200;
+
+    assert(check_k <= m_parameters.kmer);
+
+    outString = startingKmer;
+    flanking_k_length = check_k;
+
+    // Left extend
+    while(!bLeftMatch)
+    {
+        if(left_extensions > extension_max)
+            break;
+
+        // Check if the first CHECK_K bases are found in the base index
+        std::string checkMer = outString.substr(0, check_k);
+        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(checkMer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
+
+        if(base_count >= base_threshold)
+        {
+            bLeftMatch = true;
+            break;
+        }
+        else
+        {
+            // Extend the string by 1 base
+            // Start with the highest kmer and relax the kmer until a match is found
+            bool extended = false;
+            for(size_t curr_k = extend_start_k; curr_k >= extend_end_k; curr_k -= k_step)
+            {
+                std::string kstr = outString.substr(0, curr_k);
+                AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kstr, m_parameters.pVariantBWT, ED_ANTISENSE);
+                if(extensionCounts.hasDNAChar())
+                {
+                    char b = extensionCounts.getMaxDNABase();
+                    outString.insert(0, 1, b);
+                    left_extensions += 1;
+                    extended = true;
+                    break;
+                }
+            }
+
+            if(!extended)
+                break;
+        }
+    }
+
+    // Right extend
+    while(!bRightMatch)
+    {
+        if(right_extensions > extension_max)
+            break;
+
+        // Check if the last check_l bases are found in the base index
+        std::string checkMer = outString.substr(outString.length() - check_k, check_k);
+        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(checkMer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
+
+        if(base_count >= base_threshold)
+        {
+            bRightMatch = true;
+            break;
+        }
+        else
+        {
+            // Extend the string by 1 base
+            // Start with the highest kmer and relax the kmer until a match is found
+            bool extended = false;
+            for(size_t curr_k = extend_start_k; curr_k >= extend_end_k; curr_k -= k_step)
+            {
+                std::string kstr = outString.substr(outString.length() - curr_k, curr_k);
+                AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kstr, m_parameters.pVariantBWT, ED_SENSE);
+                if(extensionCounts.hasDNAChar())
+                {
+                    char b = extensionCounts.getMaxDNABase();
+                    outString.append(1, b);
+                    right_extensions += 1;
+                    extended = true;
+                    break;
+                }
+            }
+
+            if(!extended)
+                break;
+        }
+    }
+
+    if(bLeftMatch && bRightMatch)
+        printf("Extension %s [%zu %zu] %s\n", bLeftMatch && bRightMatch ? "success" : "failed", left_extensions, right_extensions, outString.c_str());
+    return bLeftMatch && bRightMatch;
+}
+
+//
+bool GraphCompare::buildVariantStringConservative(const std::string& startingKmer, std::string& outString, size_t& flanking_k_length)
+{
+    bool bLeftMatch = false;
+    bool bRightMatch = false;
+
+    size_t left_extensions = 0;
+    size_t right_extensions = 0;
+
+    // Iteratively extend the input kmer to the left and right until the ending kmer matches the reference
+    size_t check_k = m_parameters.kmer;
+    size_t extend_start_k = m_parameters.kmer;
+    size_t extend_end_k = extend_start_k;
+    size_t k_step = 5;
+    size_t base_threshold = 1;//m_parameters.kmerThreshold;
+    size_t extension_max = 200;
+
+    assert(check_k <= m_parameters.kmer);
+
+    outString = startingKmer;
+    flanking_k_length = check_k;
+
+    // Left extend
+    while(!bLeftMatch)
+    {
+        if(left_extensions > extension_max)
+            break;
+
+        // Check if the first CHECK_K bases are found in the base index
+        std::string checkMer = outString.substr(0, check_k);
+        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(checkMer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
+
+        if(base_count >= base_threshold)
+        {
+            bLeftMatch = true;
+            break;
+        }
+
+        // Extend the string by 1 base
+        // Start with the highest kmer and relax the kmer until a match is found
+        bool extended = false;
+        for(size_t curr_k = extend_start_k; curr_k >= extend_end_k; curr_k -= k_step)
+        {
+            std::string kstr = outString.substr(0, curr_k);
+            AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kstr, m_parameters.pVariantBWT, ED_ANTISENSE);
+
+            // Search a unique extension
+            char ext = '\0';
+            int extCount = -1;
+            bool bUniqueExt = extensionCounts.hasUniqueDNAChar();
+
+            for(int i = 0; i < DNA_ALPHABET::size; ++i)
+            {
+                char b = DNA_ALPHABET::getBase(i);
+                size_t ec = extensionCounts.get(b);
+                if((ec > 0 && bUniqueExt) || ec >= m_parameters.kmerThreshold)
+                {
+                    extCount = ec;
+
+                    // Check if we have set extIdx already
+                    // If so this is a high-coverage branch and we stop
+                    if(ext != '\0')
+                    {
+                        ext = '\0';
+                        break;
+                    }
+                    ext = b;
+                }
+            }
+
+            if(ext != '\0')
+            {
+                outString.insert(0, 1, ext);
+                left_extensions += 1;
+                extended = true;
+                break;
+            }
+        }
+
+        if(!extended)
+            break;
+    }
+
+    // Right extend
+    while(!bRightMatch)
+    {
+        if(right_extensions > extension_max)
+            break;
+
+        // Check if the last check_l bases are found in the base index
+        std::string checkMer = outString.substr(outString.length() - check_k, check_k);
+        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(checkMer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
+
+        if(base_count >= base_threshold)
+        {
+            bRightMatch = true;
+            break;
+        }
+
+        // Extend the string by 1 base
+        // Start with the highest kmer and relax the kmer until a match is found
+        bool extended = false;
+        for(size_t curr_k = extend_start_k; curr_k >= extend_end_k; curr_k -= k_step)
+        {
+            std::string kstr = outString.substr(outString.length() - curr_k, curr_k);
+            AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kstr, m_parameters.pVariantBWT, ED_SENSE);
+
+            // Search a unique extension
+            char ext = '\0';
+            int extCount = -1;
+            bool bUniqueExt = extensionCounts.hasUniqueDNAChar();
+
+            for(int i = 0; i < DNA_ALPHABET::size; ++i)
+            {
+                char b = DNA_ALPHABET::getBase(i);
+                size_t ec = extensionCounts.get(b);
+                if((ec > 0 && bUniqueExt) || ec >= m_parameters.kmerThreshold)
+                {
+                    extCount = ec;
+
+                    // Check if we have set extIdx already
+                    // If so this is a high-coverage branch and we stop
+                    if(ext != '\0')
+                    {
+                        ext = '\0';
+                        break;
+                    }
+                    ext = b;
+                }
+            }
+
+            if(ext != '\0')
+            {
+                outString.append(1, ext);
+                right_extensions += 1;
+                extended = true;
+                break;
+            }
+        }
+
+        if(!extended)
+            break;
+    }
+
+    if(bLeftMatch && bRightMatch)
+        printf("Extension %s [%zu %zu] %s\n", bLeftMatch && bRightMatch ? "success" : "failed", left_extensions, right_extensions, outString.c_str());
+    return bLeftMatch && bRightMatch;
+}
+
+// Transform inStr by substituting bases until all kmers covering it are found in the normal bwt
+bool GraphCompare::transformVariantString(const std::string& inStr, std::string& outStr)
+{
+    size_t k = m_parameters.kmer;
+    std::string inCopy = inStr;
+    for(size_t i = k; i < inStr.size() - k + 1; ++i)
+    {
+        char cb = inStr[i];
+        for(size_t j = 0; j < DNA_ALPHABET_SIZE; ++j)
+        {
+            char tb = DNA_ALPHABET::getBase(j);
+            if(cb == tb)
+                continue;
+            inCopy[i] = tb;
+
+            IntVector profile = makeCountProfile(inCopy, k, m_parameters.pBaseBWT, 100);
+            bool allOK = true;
+            for(size_t m = 0; m < profile.size(); ++m)
+            {
+                if(profile[m] < (int)m_parameters.kmerThreshold)
+                {
+                    allOK = false;
+                    break;
+                }
+            }
+
+            if(allOK)
+            {
+                outStr = inCopy;
+                return true;
+            }
+        }
+
+        inCopy[i] = cb;
+    }
+
+    return false;
+}
+
 // Update the bit vector with the kmers that were assembled into str
 void GraphCompare::markVariantSequenceKmers(const std::string& str)
 {
@@ -334,6 +724,20 @@ void GraphCompare::updateVariationCount(const BubbleResult& result)
         inIns = tsM[i] == '-';
         inDel = vsM[i] == '-';
     }
+}
+
+IntVector GraphCompare::makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max)
+{
+    IntVector out;
+    if(str.size() < k)
+        return out;
+
+    for(size_t i = 0; i < str.size() - k + 1; ++i)
+    {
+        int count = BWTAlgorithms::countSequenceOccurrences(str.substr(i, k), pBWT);
+        out.push_back(count > max ? max : count);
+    }
+    return out;
 }
 
 //

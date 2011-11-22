@@ -77,6 +77,7 @@ namespace opt
     static int maxBranches = 0;
     static int sampleRate = 128;
     static int cacheLength = 10;
+    static bool referenceMode = false;
 
     static std::string outPrefix = "graphdiff";
     static std::string referenceFile;
@@ -115,22 +116,33 @@ int graphDiffMain(int argc, char** argv)
 {
     parseGraphDiffOptions(argc, argv);
 
-    // Create indices for the base reads
-    std::string basePrefix = stripFilename(opt::baseFile);
-    BWT* pBaseBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
-    SampledSuffixArray* pBaseSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
-
     // Create indices for the variant reads
     std::string variantPrefix = stripFilename(opt::variantFile);
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     SampledSuffixArray* pVariantSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
-    
 
     // Create indices for the reference
     std::string refPrefix = stripFilename(opt::referenceFile);
     BWT* pRefBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
     BWT* pRefRevBWT = new BWT(refPrefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pRefSSA = new SampledSuffixArray(refPrefix + SSA_EXT);
+
+    // Create indices for the base
+    // If in reference mode, we just make these point to the reference BWT loaded above
+    BWT* pBaseBWT;
+    SampledSuffixArray* pBaseSSA;
+
+    if(!opt::referenceMode)
+    {
+        std::string basePrefix = stripFilename(opt::baseFile);
+        pBaseBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
+        pBaseSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
+    }
+    else
+    {
+        pBaseBWT = pRefBWT;
+        pBaseSSA = pRefSSA;
+    }
 
     // 
     std::cout << "Base index memory info\n";
@@ -177,6 +189,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.pBitVector = NULL;
     sharedParameters.kmerThreshold = opt::kmerThreshold;
     sharedParameters.maxBranches = opt::maxBranches;
+    sharedParameters.bReferenceMode = opt::referenceMode;
 
     // If a VCF file was provided, just test the variants in the file without any discovery
     if(!opt::inputVCFFile.empty())
@@ -185,8 +198,11 @@ int graphDiffMain(int argc, char** argv)
         runGraphDiff(sharedParameters);
 
     // Cleanup
-    delete pBaseBWT;
-    delete pBaseSSA;
+    if(!opt::referenceMode)
+    {
+        delete pBaseBWT;
+        delete pBaseSSA;
+    }
 
     delete pVariantBWT;
     delete pVariantSSA;

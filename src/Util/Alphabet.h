@@ -290,6 +290,23 @@ class AlphaCount
             return base;
         }
 
+        // 
+        inline char getMaxDNABase() const
+        {
+            Storage max = 0;
+            int maxIdx = 0;
+            for(int i = 1; i < ALPHABET_SIZE; ++i)
+            {
+                if(m_counts[i] > max)
+                {
+                    max = m_counts[i];
+                    maxIdx = i;
+                }
+            }
+
+            assert(max > 0);
+            return RANK_ALPHABET[maxIdx];
+        }
         //
         inline Storage getMaxCount() const
         {

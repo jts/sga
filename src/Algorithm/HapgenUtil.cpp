@@ -217,6 +217,9 @@ void HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
     for(size_t i = 0; i < haplotypes.size(); ++i)
     {
         const std::string& h = haplotypes[i];
+        if((int)h.size() < k)
+            continue;
+
         for(size_t j = 0; j < h.size() - k + 1; ++j)
         {
             std::string ks = h.substr(j, k);

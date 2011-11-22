@@ -38,12 +38,15 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
 
     // Reads on the same strand as the haplotype    
-    HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                      parameters.pBaseSSA, extractionKmer, false, &normalReads, &normalReadMates);
+    if(!parameters.bReferenceMode)
+    {
+        HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
+                                          parameters.pBaseSSA, extractionKmer, false, &normalReads, &normalReadMates);
 
-    // Reads on the reverse strand
-    HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                      parameters.pBaseSSA, extractionKmer, true, &normalRCReads, &normalRCReadMates);
+        // Reads on the reverse strand
+        HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
+                                          parameters.pBaseSSA, extractionKmer, true, &normalRCReads, &normalRCReadMates);
+    }
 
     // Variant reads
     SeqItemVector variantReads;
