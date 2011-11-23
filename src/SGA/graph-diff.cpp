@@ -208,6 +208,7 @@ int graphDiffMain(int argc, char** argv)
     delete pVariantSSA;
 
     delete pRefBWT;
+    delete pRefRevBWT;
     delete pRefSSA;
 
     if(opt::numThreads > 1)
@@ -339,10 +340,16 @@ void parseGraphDiffOptions(int argc, char** argv)
         die = true;
     }
 
-    if(opt::baseFile.empty() || opt::variantFile.empty())
+    if(opt::variantFile.empty())
     {
         std::cerr << SUBPROGRAM ": error a --base and --variant file must be provided\n";
         die = true;
+    }
+
+    if(opt::baseFile.empty())
+    {
+        std::cerr << SUBPROGRAM ": reference-based calling enabled\n";
+        opt::referenceMode = true;
     }
 
     if(opt::referenceFile.empty())

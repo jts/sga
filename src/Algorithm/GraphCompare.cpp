@@ -164,8 +164,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 BWTVector bwts;
                 bwts.push_back(m_parameters.pBaseBWT);
                 bwts.push_back(m_parameters.pVariantBWT);
-                BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, 1);
-                //BubbleResult bubbleResult = processVariantKmerAggressive(kmer, count);
+                //BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, 1);
+                BubbleResult bubbleResult = processVariantKmerAggressive(kmer, count);
 
                 if(bubbleResult.returnCode == BRC_OK)
                 {
@@ -281,6 +281,7 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
 BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, int /*count*/)
 {
 
+    std::cout << "VARIANT KMER: " << str << "\n";
     //
     std::string variant_str;
     size_t flanking_k_length = 0;
@@ -327,6 +328,9 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
         std::string startAnchorSeq = variant_str.substr(0, hb_k); 
         std::string endAnchorSeq = variant_str.substr(variant_str.length() - hb_k);
 
+        if(startAnchorSeq == endAnchorSeq)
+            return result;
+
         AnchorSequence startAnchor;
         startAnchor.sequence = startAnchorSeq;
         startAnchor.count = 0;
@@ -339,7 +343,7 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
 
         HaplotypeBuilder builder;
         builder.setTerminals(startAnchor, endAnchor);
-        builder.setIndex(m_parameters.pBaseBWT, NULL);
+        builder.setIndex(m_parameters.pReferenceBWT, NULL);
         builder.setKmerParameters(hb_k, m_parameters.bReferenceMode ? 1 : 2);
 
         // Run the builder
@@ -488,7 +492,7 @@ bool GraphCompare::buildVariantStringConservative(const std::string& startingKme
     size_t extend_start_k = m_parameters.kmer;
     size_t extend_end_k = extend_start_k;
     size_t k_step = 5;
-    size_t base_threshold = 1;//m_parameters.kmerThreshold;
+    size_t base_threshold = m_parameters.bReferenceMode ? 1 : m_parameters.kmerThreshold;
     size_t extension_max = 200;
 
     assert(check_k <= m_parameters.kmer);

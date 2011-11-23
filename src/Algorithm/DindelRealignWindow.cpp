@@ -1528,7 +1528,7 @@ DindelRealignWindow::ReadSamples::ReadSamples(const std::vector<DindelRead>& din
         readIndices.push_back(-1);
     }
 
-    int numSamples = int(samples.size());
+    int numSamples = std::max(1, int(samples.size()));
     // compute number of states
     std::vector<double> Q1(numSamples*2+1,0.0),Q2(numSamples*2+1,0.0); 
     const double lc = log(2.0);
