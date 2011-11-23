@@ -343,7 +343,7 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
 
         HaplotypeBuilder builder;
         builder.setTerminals(startAnchor, endAnchor);
-        builder.setIndex(m_parameters.pReferenceBWT, NULL);
+        builder.setIndex(m_parameters.pBaseBWT, NULL);
         builder.setKmerParameters(hb_k, m_parameters.bReferenceMode ? 1 : 2);
 
         // Run the builder
@@ -490,7 +490,7 @@ bool GraphCompare::buildVariantStringConservative(const std::string& startingKme
     // Iteratively extend the input kmer to the left and right until the ending kmer matches the reference
     size_t check_k = m_parameters.kmer;
     size_t extend_start_k = m_parameters.kmer;
-    size_t extend_end_k = extend_start_k;
+    size_t extend_end_k = 41;//extend_start_k;
     size_t k_step = 5;
     size_t base_threshold = m_parameters.bReferenceMode ? 1 : m_parameters.kmerThreshold;
     size_t extension_max = 200;
