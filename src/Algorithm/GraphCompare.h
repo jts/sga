@@ -59,6 +59,8 @@ struct GraphCompareParameters
     size_t kmerThreshold;
     size_t maxBranches;
     bool bReferenceMode;
+
+    DindelRealignParameters dindelRealignParameters;
 };
 
 //

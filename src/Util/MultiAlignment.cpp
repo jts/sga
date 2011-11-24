@@ -364,6 +364,7 @@ std::string MultiAlignment::generateMatchString() const
 //
 void MultiAlignment::print(int col_size, const std::string* pConsensus) const
 {
+    col_size = 10000;
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
 
     std::string matchString = generateMatchString();
@@ -398,9 +399,10 @@ void MultiAlignment::print(int col_size, const std::string* pConsensus) const
         // Print the matched columns
         int diff = matchString.size() - l;
         int stop = diff < col_size ? diff : col_size;
+        
         printf("M\t%s\n", matchString.substr(l, stop).c_str());
-
         std::cout << "\n";
+        std::cout << "diff: " << diff << " stop: " << stop << " col_size: " << col_size << "\n";
     }
 }
 

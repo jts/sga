@@ -44,7 +44,7 @@ char complement(char b) { return b;}
 #endif
 
 
-DindelHMM::DindelHMM(DindelRead & read, const DindelHaplotype & haplotype) : m_pRead(&read), m_pHaplotype(& haplotype)
+DindelHMM::DindelHMM(DindelRead & read, const DindelMultiHaplotype & haplotype) : m_pRead(&read), m_pHaplotype(& haplotype)
 {
         
 	if (DINDEL_DEBUG) std::cerr << "CALLED DindelHMM::DindelHMM " << std::endl;
@@ -90,7 +90,7 @@ void DindelHMM::getSeedPositions(std::set<int> & positions)
 	    {
 		if (DINDEL_DEBUG) 
 		{
-			std::cerr << " (" << *it2 << " " << *it2+m_pHaplotype->getRefStart() << ")\n";
+			std::cerr << " (" << *it2 << " " << *it2+m_pHaplotype->getSingleMappingHaplotype(0).getRefStart() << ")\n";
 			std::cerr << m_pHaplotype->getSequence() << " isREF " << m_pHaplotype->isReference() << std::endl;
 			int start = *it2;
 			  std::string pad;
@@ -110,11 +110,11 @@ void DindelHMM::getSeedPositions(std::set<int> & positions)
 
 	    	positions.insert(*it2);
 		c++;
-		if (c>=2) break;
+		if (c>=3) break;
 	    }
     	    if (DINDEL_DEBUG) std::cerr << " done\n";
 
-	    if (c>=2) break;
+	    if (c>=3) break;
     }
 
     /*
@@ -141,7 +141,11 @@ ReadHaplotypeAlignment DindelHMM::getAlignment()
     std::set<int> positions;
 
     getSeedPositions(positions);
-    
+
+    if (DINDEL_DEBUG && positions.empty()) std::cerr << "WARNING: HMM seed positions empty" << std::endl;
+	
+    // std::cerr << "seed positions: " << positions.size() << std::endl;
+
     ReadHaplotypeAlignment best(-1000.0, -1);
     double max_ll = -1000.0;
 

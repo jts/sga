@@ -131,17 +131,25 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
         refName << parameters.pRefTable->getRead(bestAlignment.referenceID).id;
 
         std::string dindelRef = flankingHaplotypes[0]; // First flanking haplotype is of the reference
-        StringVector nonReference(flankingHaplotypes.begin()+1, flankingHaplotypes.end());
+        
+        std::vector< std::vector<DindelReferenceMapping> > dRefMappings(flankingHaplotypes.size());
+
+        // FIXME Set haplotype mapping quality properly
+        DindelReferenceMapping dRefMapping(refName.str(), dindelRef, dindelRefStart, 60.0, false);
+        for(size_t j = 0; j < flankingHaplotypes.size(); ++j) dRefMappings[j].push_back(dRefMapping);
+
+
 
         try
         {
-            DindelWindow dWindow(nonReference, dindelRef, dindelRefStart, refName.str() );
 
-            DindelRealignParameters dRealignParameters("addSNPMaxSNPs:0");
+            DindelWindow dWindow(flankingHaplotypes, dRefMappings);
+
+            DindelRealignParameters dRealignParameters;
             DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
 
-            std::ostream& currOut = i == 0 ? baseOut : variantOut;
-            dRealignWindow.run("hmm", currOut);
+            dRealignWindow.run("hmm", (i==0) ? baseOut : variantOut);
+
         }
         catch(std::string e)
         {
@@ -152,6 +160,273 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
     }
 
     return DRC_OK;
+}
+
+// Run dindel on a pair of samples
+DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalString,
+                                           const std::string& variantString,
+                                           const GraphCompareParameters& parameters,
+                                           std::ostream& baseOut,
+                                           std::ostream& variantOut)
+{
+    StringVector inHaplotypes;
+    inHaplotypes.push_back(normalString);
+    inHaplotypes.push_back(variantString);
+
+    //
+    // First, extract the reads from the normal and variant data sets that match each haplotype
+    //
+
+    // Normal reads
+    SeqItemVector normalReads;
+    SeqItemVector normalReadMates;
+    SeqItemVector normalRCReads;
+    SeqItemVector normalRCReadMates;
+
+    // Set the value to use for extracting reads that potentially match the haplotype
+    // Do not use a kmer greater than 41
+    size_t KMER_CEILING = 51;
+    size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
+
+    // Reads on the same strand as the haplotype
+    if(!parameters.bReferenceMode)
+    {
+        HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
+                                          parameters.pBaseSSA, extractionKmer, false, &normalReads, &normalReadMates);
+
+        // Reads on the reverse strand
+        HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
+                                          parameters.pBaseSSA, extractionKmer, true, &normalRCReads, &normalRCReadMates);
+    }
+    // Variant reads
+    SeqItemVector variantReads;
+    SeqItemVector variantReadMates;
+    SeqItemVector variantRCReads;
+    SeqItemVector variantRCReadMates;
+
+    HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
+                                      parameters.pVariantSSA, extractionKmer, false, &variantReads, &variantReadMates);
+
+    HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
+                                      parameters.pVariantSSA, extractionKmer, true, &variantRCReads, &variantRCReadMates);
+
+
+
+    // get canidate alignments for the input haplotypes
+
+    HapgenAlignmentVector  candidateAlignments;
+
+    for(size_t i = 0; i < inHaplotypes.size(); ++i)
+    {
+        HapgenAlignmentVector thisCandidateAlignments;
+        HapgenUtil::alignHaplotypeToReference(inHaplotypes[i],
+                                              parameters.pReferenceBWT,
+                                              parameters.pReferenceSSA,
+                                              thisCandidateAlignments);
+        std::cout << "Alignments for haplotype " << i << "\n";
+        for(size_t j = 0; j < thisCandidateAlignments.size(); ++j)
+            std::cout << thisCandidateAlignments[j] << "\n";
+        candidateAlignments.insert(candidateAlignments.end(), thisCandidateAlignments.begin(), thisCandidateAlignments.end());
+
+    }
+    
+    // Remove duplicate or bad alignment pairs
+    HapgenUtil::coalesceAlignments(candidateAlignments);
+    std::cout << "Found " << candidateAlignments.size() << " alignments for haplotypez\n";
+
+
+    // Join each haplotype with flanking sequence from the reference genome for each alignment
+    // This function also adds a haplotype (with flanking sequence) for the piece of the reference
+
+    bool success = true;
+    int FLANKING_SIZE = 500;
+    StringVector flankingHaplotypes;
+    size_t totFlankingHaplotypes = 0;
+
+    for(size_t i = 0; i < candidateAlignments.size(); ++i)
+    {
+        // FIXME. Maybe should use only inHaplotypes[i]???
+        success = HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i],
+                                                     parameters.pRefTable,
+                                                     FLANKING_SIZE,
+                                                     inHaplotypes,
+                                                     flankingHaplotypes);
+    
+    }
+    totFlankingHaplotypes = flankingHaplotypes.size();
+
+
+    // Generate the input haplotypes for dindel
+    // We need at least 2 haplotypes
+    if(totFlankingHaplotypes < 2)
+        return DRC_NO_ALIGNMENT;
+    if(flankingHaplotypes[0].size() == 0)
+        return DRC_NO_ALIGNMENT;
+
+    // make Dindel referenceMappings
+    std::vector< std::vector<DindelReferenceMapping> > dindelRefMappings(flankingHaplotypes.size());
+    StringVector dindelHaplotypes;
+
+
+    std::set<DindelReferenceMapping> refMappings;
+    // iterate over all alignments for inHaplotypes[i]
+    for(size_t i = 0; i < candidateAlignments.size(); ++i)
+    {
+        std::string upstream, defined, downstream;
+        std::string refName = parameters.pRefTable->getRead(candidateAlignments[i].referenceID).id;
+
+        HapgenUtil::extractReferenceSubstrings(candidateAlignments[i],parameters.pRefTable, FLANKING_SIZE, upstream, defined, downstream);
+        std::string refSeq = upstream + defined + downstream;
+        // FIXME. This probably needs to happen somewhere else.
+        if (candidateAlignments[i].isRC) refSeq = reverseComplement(refSeq);
+
+        std::cout << "\n ================================================\n";
+        std::cout << "candidateAlignments[" << i << "]" << candidateAlignments[i] << "\n";
+        if(0)
+        {
+            std::cout << "refSeq: " << upstream << " " << defined << " " << downstream << "\n";
+            for (size_t k = 0; k < inHaplotypes.size(); ++k)
+            {
+            std::cout << "        " << std::string(downstream.size(),' ') << " " << inHaplotypes[k] << "\n";
+            }
+            for (size_t k = 0; k < flankingHaplotypes[i].size(); ++k)
+            {
+            std::cout << "        " << " " << flankingHaplotypes[i][k] << "\n";
+            }
+        }
+        int refStart = candidateAlignments[i].position-int(downstream.size());
+        // Here the score is used as an estimate of how unique "defined" is in the reference sequence.
+        // "defined" is not the reference sequence but a candidate haplotype.
+        // It is conservative because the flanking sequence is not used in this estimation.
+        DindelReferenceMapping rm(refName, refSeq, refStart, double(candidateAlignments[i].score), candidateAlignments[i].isRC);
+        std::set<DindelReferenceMapping>::iterator rmit = refMappings.find(rm);
+        if(rmit == refMappings.end())
+            refMappings.insert(rm);
+        else
+        {
+            if(rm.referenceAlignmentScore > rmit->referenceAlignmentScore) rmit->referenceAlignmentScore = rm.referenceAlignmentScore;
+        }
+    }
+    
+
+    std::cout << "REFERENCE MAPPINGS: \n";
+    int c = 0;
+    for (std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++)
+        std::cout << c << " " << it->refName << " start: " << it->refStart << " end: " << it->refStart + it->refSeq.size()-1 << " score: " << it->referenceAlignmentScore << "\n";
+
+    for(size_t i = 0; i < flankingHaplotypes.size(); ++i)
+    {
+        dindelHaplotypes.push_back(flankingHaplotypes[i]);
+        dindelRefMappings[i] = std::vector<DindelReferenceMapping>(refMappings.begin(),refMappings.end());
+    }
+
+    //
+    // Run Dindel
+    //
+    double MAP_QUAL = 40.0;
+    int BASE_QUAL = 20;
+    size_t start_i = parameters.bReferenceMode ? 1 : 0;
+    for(size_t i = start_i; i <= 1; ++i)
+    {
+        if (i==0) std::cout << "NORMAL\n"; else std::cout << "VARIANT\n";
+        SeqItemVector& fwdReads = (i == 0) ? normalReads : variantReads;
+        SeqItemVector& fwdReadMates = (i == 0) ? normalReadMates : variantReadMates;
+        SeqItemVector& rcReads = (i == 0) ? normalRCReads : variantRCReads;
+        SeqItemVector& rcReadMates = (i == 0) ? normalRCReadMates : variantRCReadMates;
+
+        // Create dindel reads
+        // Mates must be at the end of the array.
+        std::vector<DindelRead> dReads;
+        for(size_t j = 0; j < fwdReads.size(); ++j)
+            dReads.push_back(DindelRead(fwdReads[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
+
+        for(size_t j = 0; j < rcReads.size(); ++j)
+        {
+            rcReads[j].seq.reverseComplement();
+            dReads.push_back(DindelRead(rcReads[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
+        }
+
+        for(size_t j = 0; j < fwdReadMates.size(); ++j)
+        {           
+            fwdReadMates[j].seq.reverseComplement();
+            dReads.push_back(DindelRead(fwdReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
+        }
+
+        for(size_t j = 0; j < rcReadMates.size(); ++j)
+        {       
+            //rcReadMates[j].seq.reverseComplement();
+            dReads.push_back(DindelRead(rcReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
+        }
+
+        std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
+        doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
+
+        try
+        {
+            DindelWindow dWindow(dindelHaplotypes, dindelRefMappings);
+            DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
+            dRealignWindow.run("hmm", std::cout);
+        }
+        catch(std::string e)
+        {
+            std::cerr << "Dindel Exception: " << e << "\n";
+            exit(DRC_EXCEPTION);
+        }
+
+        baseOut.flush();
+        variantOut.flush();
+
+    }
+
+
+    return DRC_OK;
+}
+
+
+void DindelUtil::doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> & dReads,
+                                                  const StringVector & haplotypes)
+{
+
+    // globally align haplotypes to the first haplotype (arbitrary)
+    std::vector< MAlignData > maVector;
+
+    assert(haplotypes.size()>0);
+    const std::string  rootSequence = haplotypes[0];
+
+    for (size_t h = 0; h < haplotypes.size(); ++h)
+    {
+        MAlignData _ma;
+        _ma.position = 0;
+        _ma.str = haplotypes[h];
+
+        std::stringstream ss; ss << "haplotype-" << h;
+
+        _ma.name = ss.str();
+        _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(haplotypes[h], rootSequence));
+        maVector.push_back(_ma);
+    }
+
+    for(size_t r = 0; r < dReads.size(); ++r)
+    {
+        MAlignData _ma;
+        _ma.position = 0;
+        _ma.str = dReads[r].getSequence();
+
+        std::stringstream ss; 
+        if (r<dReads.size()/2) ss << "read-" << r; else ss << "MATE read-" << r;
+
+        _ma.name = ss.str();
+        _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(dReads[r].getSequence(), rootSequence));
+        maVector.push_back(_ma);
+    }
+    
+
+    MultiAlignment MA(rootSequence, maVector, std::string("haplotype-0"));
+    std::string consensus = MA.generateConsensus();
+    MA.print(100000, &consensus);
+
+
+
 }
 
 // Compute the best alignment of the haplotype collection to the reference

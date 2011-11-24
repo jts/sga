@@ -201,7 +201,7 @@ class DindelVariant
         const std::string & getAlt() const { return m_alt; }
 
         int getPos() const { return m_pos; }
-        bool operator<(const DindelVariant & v) const { if (m_chrom<v.m_chrom) return true; else if (m_pos<v.m_pos) return true; else return m_id<v.m_id; }
+        bool operator<(const DindelVariant & v) const { if (m_chrom!=v.m_chrom) return m_chrom<v.m_chrom; else if (m_pos!=v.m_pos) return m_pos<v.m_pos; else return m_id<v.m_id; }
         //bool operator<(const DindelVariant & v) const { return m_id < v.m_id; }
 
         // checks ref and pos against reference sequence
@@ -309,23 +309,54 @@ class DindelSequenceHash
         std::list<int> emptyList;
 };
 
+// TODO: Integrate with SGA data type?
+// DindelReferenceMapping
+class DindelReferenceMapping
+{
+public:
+    DindelReferenceMapping() { refName = ""; refSeq = ""; refStart = 0; referenceAlignmentScore = 0; isRC = false; probMapCorrect = 0.0; };
+    DindelReferenceMapping(const std::string & _refName, const std::string & _refSeq, int _refStart, int _referenceAlignmentScore, bool _isRC) : refName(_refName),
+                                                                                                                                                refSeq(_refSeq),
+                                                                                                                                                refStart(_refStart),
+                                                                                                                                                referenceAlignmentScore(_referenceAlignmentScore),
+                                                                                                                                                isRC(_isRC){};
+    std::string refName, refSeq;
+    int refStart;
+    mutable int referenceAlignmentScore;
+    bool isRC;
+
+    // probability that mapping is correct. Can only be computed by estimateMappingProbabilities()
+    double probMapCorrect;
+    friend bool operator<(const DindelReferenceMapping & a, const DindelReferenceMapping & b)
+    {
+        if (a.refName != b.refName) return a.refName<b.refName;
+        else if (a.refStart != b.refStart) return a.refStart<b.refStart;
+        else return a.refSeq<b.refSeq;
+        //else return a.referenceAlignmentScore<b.referenceAlignmentScore;
+    }
+
+};
+
 //
 // DindelHaplotype
 //
 class DindelHaplotype
 {
+    friend class DindelMultiHaplotype;
     public:
 
         // Constructors
         // a DindelHaplotype must be constructed starting from the reference haplotype.
         // Differences with the reference can be added by calling addVariant
-        DindelHaplotype(const std::string & refSeq, int refSeqStart, bool isReference);
-        DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, size_t varRow, size_t refRow);
+        // DindelHaplotype(const std::string & refSeq, int refSeqStart, bool isReference);
+        //DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, size_t varRow, size_t refRow);
+        DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping);
         DindelHaplotype(const DindelHaplotype & haplotype, int copyOptions);
-
+        DindelHaplotype(const DindelHaplotype & haplotype);
+        ~DindelHaplotype();
         // Functions
         bool addVariant(const DindelVariant & var);
-        const std::vector<DindelVariant> getVariants() const { return m_variants; }
+        const std::vector<DindelVariant> & getVariants() const { return m_variants; }
         const std::string & getSequence() const { return m_seq; }
         bool isReference() const { return m_isReference; } 
         void write(std::ostream & out) const;
@@ -354,20 +385,19 @@ class DindelHaplotype
         int length() const { return (int) m_seq.length();}
         int getRefBase(int hapBase) const { return m_refPos[hapBase]; };
         int getHapBase(int refPos) const;
-        int getRefStart() const { return m_hapRefStart; }
+        int getRefStart() const { return m_refPos[0]; }
         bool hasVariant(const DindelVariant & variant) const ;
         int getClosestDistance(const DindelVariant & variant, int hapPos1, int hapPos2) const;
-        const DindelSequenceHash & getHash() const { return m_sequenceHash; }
-
-    private:
         
+    private:
+        void copy(const DindelHaplotype & haplotype, int copyOptions);
         // Functions
 
         // initializes haplotype from reference sequence
         // sets homopolymer length vector
-        void initHaplotype();
+        void alignHaplotype();
+        void extractVariants();
         void determineHomopolymerLengths();
-        void updateHaplotype();
         
         // Data
         std::string m_seq;
@@ -378,14 +408,47 @@ class DindelHaplotype
         std::vector<DindelVariant> m_variants;
         HashMap<std::string, std::pair<int, int> > m_variant_to_pos;
 
-        // position of leftmost haplotype base on reference sequence
-        int m_hapRefStart;
-
+  
         bool m_isReference;
     
         // constants for m_refPos
-        DindelSequenceHash m_sequenceHash;
+        
+        MultiAlignment *m_pMA;
+        bool m_deleteMA;
+        DindelReferenceMapping m_refMapping;
+
+
 };
+
+
+
+
+// Haplotype aligned to multiple positions in the reference sequence
+
+class DindelMultiHaplotype
+{
+public:
+    DindelMultiHaplotype(const std::vector< DindelReferenceMapping > & referenceMappings, const std::string & haplotypeSequence  );
+    const std::string & getSequence() const { return m_seq; }
+    const std::vector<DindelVariant> & getVariants(int refIdx) const { return m_haplotypes[refIdx].getVariants(); }
+    int getNumReferenceMappings() const { return int(m_referenceMappings.size()); }
+    const DindelHaplotype & getSingleMappingHaplotype(int refIdx) const { return m_haplotypes[refIdx]; }
+    int getHomopolymerLength(int b) const { return getSingleMappingHaplotype(0).getHomopolymerLength(b); }
+    int length() const { return getSingleMappingHaplotype(0).length(); } 
+    bool isReference() const { return false; } //FIXME allow reference haplotypes?
+    double getLogMappingProbability(int refIdx) const { return m_haplotypes[refIdx].m_refMapping.probMapCorrect; }
+    
+    // stores DindelVariants for each reference location the haplotype has been aligned to.
+    const DindelSequenceHash & getHash() const { return m_sequenceHash; }
+
+private:
+    void estimateMappingProbabilities();
+    std::vector< DindelHaplotype > m_haplotypes;
+    std::vector< DindelReferenceMapping > m_referenceMappings;
+    std::string m_seq;
+    DindelSequenceHash m_sequenceHash;
+};
+
 
 //
 // DindelWindow contains a list of variants, the candidate haplotypes generated from those variants, and the relationships
@@ -397,45 +460,29 @@ class DindelWindow
 {
     public:
         
-        // Constructor
-        DindelWindow(const std::vector<DindelVariant> & variants, const std::string & refHap, int refHapStart);
-
+        
         // Create window from a set of haplotypes and a reference sequence.
         // Uses SGA MultiAlignment to annotate the variations in the haplotypes with respect to the reference sequence.
-        DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::string & refHap, int refHapStart, const std::string & refName);
-
+        DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::vector< std::vector<DindelReferenceMapping> > & referenceMappings);
+        DindelWindow(const DindelWindow & window);
         ~DindelWindow();
 
         // Functions
   
-        const std::vector<DindelHaplotype> & getHaplotypes() const { return haplotypes; }
-        const std::string getChrom() const { return m_chrom; }
-        int getLeft() const { return m_leftRef; }
-        int getRight() const { return m_rightRef; }
-        void addVariant(const DindelVariant & variant, bool addToAll);
-        void filterHaplotypes(const std::vector<bool> & filterHaplotype);
-
+        const std::vector<DindelMultiHaplotype> & getHaplotypes() const { return m_haplotypes; }
+        void addVariant(const DindelVariant& variant, bool addToAll);
+        
     private:
     
-        // Functions
-        void makeWindow(const std::vector<DindelVariant> & variants);
-        DindelHaplotype makeAltHapFromReference(const DindelVariant & var );
-        void generateCandidateHaplotypes(const std::vector<DindelVariant> & variants);
-        void setupRefSeq(const std::string & refHap, int refHapStart);
-        bool addHaplotype(const DindelHaplotype & haplotype);
-        void generateCandidateHaplotypesFromMultiAlignment();
+        void initHaplotypes(const std::vector<std::string> & haplotypeSequences, const std::vector< std::vector<DindelReferenceMapping> > & referenceMappings);
+        void doMultipleHaplotypeAlignment();
+        void copy(const DindelWindow & window);
 
         // Data
         
         // candidate haplotypes
-        std::vector<DindelHaplotype> haplotypes; 
+        std::vector<DindelMultiHaplotype> m_haplotypes;
       
-        // leftmost and rightmost coordinates of window on reference sequence
-        int m_leftRef, m_rightRef;
-        
-        // reference sequence for [m_leftRef, m_rightRef]
-        std::string m_refSeq;
-        std::string m_chrom;
 
         // links variant to haplotype
         // std::vector<std::vector<int> > m_variantToHaplotype;
@@ -447,7 +494,9 @@ class DindelWindow
 
         //parameters
         DindelWindowCandHapAlgorithm m_candHapAlgorithm;
+        
         MultiAlignment *m_pHaplotype_ma;
+        bool m_deleteMA;
 };
 
 //
@@ -517,35 +566,6 @@ class VCFFile
 
 };
 
-//
-// CoalescentResult
-//
-struct CoalescentResult
-{
-    // Constructors
-    CoalescentResult() { qual = -1.0; mapFreq = -1.0; singleSampleCall = false; }
-    
-    CoalescentResult(double _qual, double _mapFreq)
-    {
-        qual = _qual;
-        mapFreq = _mapFreq;
-        singleSampleCall = false;
-        singleSampleQual = -1.0;
-    }
-
-    CoalescentResult(double _qual, double _mapFreq, bool _isSingleSampleCall, double _singleSampleQual)
-    {
-        qual = _qual;
-        mapFreq = _mapFreq;
-        singleSampleCall = _isSingleSampleCall;
-        singleSampleQual = _singleSampleQual;
-    }
-
-    // Data
-    double qual, singleSampleQual;
-    double mapFreq; // MAP frequency of haplotype
-    bool singleSampleCall; // call based on simply thresholding individual sample genotype/haplotype likelihoods.
-};
 
 //
 // DindelRealignWindowResult
@@ -555,6 +575,15 @@ class DindelRealignWindowResult
     public:
 
         //
+        class HaplotypeProperties
+        {
+        public:
+            HaplotypeProperties(double _logMappingProb, double _haplotypeQual, double _freq) : logMappingProb(_logMappingProb), qual(_haplotypeQual), freq(_freq) {};
+            double logMappingProb;
+            double qual;
+            double freq;
+        };
+
         class Inference
         {
             public:
@@ -577,8 +606,6 @@ class DindelRealignWindowResult
                 double qual;
                 double freq;
                 double strandBias;
-                // std::set<int> readsForward, readsForwardZeroMismatch;
-                // std::set<int> readsReverse, readsReverseZeroMismatch;
                 int numReadsForward;
                 int numReadsReverse;
                 int numReadsForwardZeroMismatch;
@@ -587,9 +614,10 @@ class DindelRealignWindowResult
                 int numLibraries;
                 int numReadNames;
                 
-                bool isSingleSampleCall;
-                double singleSampleQual;
 
+                // these are properties that only apply to reference-based variants
+                std::set<int> readIndex, haplotypeIndex;
+                std::vector<HaplotypeProperties> haplotypeProperties;
                 std::vector<int> histDistance; // histogram for distances to variant
                 std::vector<int> histAlignLik; // histogram for read-haplotype alignment likelihoods
                 std::vector<int> histMapQ; // histogram for mapping qualities
@@ -611,6 +639,7 @@ class DindelRealignWindowResult
         };
 
         // Typedefs
+
         typedef std::map<DindelVariant, Inference> VarToInference;
         typedef std::map<DindelVariant, GenotypeCall> VarToGenotypeCall;
         typedef HashMap<std::string, VarToGenotypeCall> SampleToGenotypes;
@@ -630,12 +659,15 @@ class DindelRealignWindowResult
         VarToInference variantInference; 
         SampleToGenotypes sampleToGenotypes;
         
-        // Number of reads that were used to call variants 
-        // (that map well to one haplotype but not another)
-        int numHapSpecificReads; 
+        // haplotype results
 
-        // number of inferred haplotypes
-        int numHaplotypes; 
+
+        typedef HashMap<int, Inference> HapIdxToInference;
+        HapIdxToInference hapIdxToInference;
+        int numHapSpecificReads;
+
+        // number of called haplotypes
+        int numCalledHaplotypes;
         bool outputGenotypes;
         
     private:
@@ -690,9 +722,9 @@ class CandidateSNP
 };
 
 //
-// PosToCandidateSNP
+// MaPosToCandidateSNP
 //
-class PosToCandidateSNP : public HashMap<int, CandidateSNP >
+class MaPosToCandidateSNP : public HashMap<int, CandidateSNP >
 {
     public:
         void addSNP(int readIndex, int refPos, char refBase, char altBase);
@@ -781,6 +813,7 @@ class DindelRealignParameters
         int maxNumCandidatesPerWindow;
         double theta_snp;
         double theta_indel;
+        double logPriorAddHaplotype;
 
         VariantPriors variantPriors;
         int maxMappingQuality;
@@ -806,6 +839,8 @@ class DindelRealignParameters
         int doEM;
         double EMtol;
         int EMmaxiter;
+
+        int realignMatePairs; // compute a joint likelihood for the alignment of a read pair to the candidate haplotype
 };
 
 // Realigns reads in a given window.
@@ -837,7 +872,7 @@ class DindelRealignWindow
         std::vector<int> m_readMapsToReference;
 
         // HAPLOTYPE ALIGNMENT BUSINESS
-        PosToCandidateSNP m_posToCandidateSNP;
+        MaPosToCandidateSNP m_maPosToCandidateSNP;
 
         // Functions
         void filterHaplotypes();
@@ -846,7 +881,7 @@ class DindelRealignWindow
 
         // convert seed positions into a likelihood given the candidate haplotype
         ReadHaplotypeAlignment computeReadHaplotypeAlignment(size_t readIndex, 
-                                                             const DindelHaplotype& haplotype, 
+                                                             const DindelMultiHaplotype& haplotype, 
                                                              int start, 
                                                              int end, 
                                                              const std::vector<double> & lpError, 
@@ -904,6 +939,10 @@ class DindelRealignWindow
                                                                              double minLogLikAlignToAlt, 
                                                                              bool capUsingMappingQuality, 
                                                                              bool print);
+        DindelRealignWindowResult estimateHaplotypeFrequenciesModelSelectionMatePairs(double minLogLikAlignToRef, 
+                                                                                      double minLogLikAlignToAlt, 
+                                                                                      bool capUsingMappingQuality,
+                                                                                      bool print);
 
         double getHaplotypePrior(const DindelHaplotype & h1, const DindelHaplotype & h2) const;
 
@@ -919,30 +958,6 @@ class DindelRealignWindow
         void computeReadHaplotypeAlignmentsUsingHMM(size_t firstHap, size_t lastHap);
         void addDiploidGenotypes(DindelRealignWindowResult & result, bool useEstimatedHaplotypeFrequencies);
 
-        typedef HashMap<int, CoalescentResult> HapIdxToCoalescentResult;
-
-        class ReadSamples
-        {
-            public:
-        
-                //
-                ReadSamples(const std::vector<DindelRead> & dindelReads);
-                
-                // Data
-                std::vector<std::string> samples;
-                std::vector<int> readIndices;
-                std::vector<double> logNumStates;
-            private:
-
-                const std::vector<DindelRead> *m_pDindelReads;
-        };
-
-        ReadSamples m_readSamples;
-
-        HapIdxToCoalescentResult computeHaplotypesCoalescent(std::list<int> & calledHaplotypes, 
-                                                             std::vector<double> & calledFreqs, 
-                                                             std::list<int> candidateHaplotypes, 
-                                                             double minLogLik);
         // result
         DindelRealignWindowResult m_result;
 
