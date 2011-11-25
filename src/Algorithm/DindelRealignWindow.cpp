@@ -890,7 +890,7 @@ void DindelMultiHaplotype::estimateMappingProbabilities()
         double vscore = 0.0;
         for (size_t j = 0; j < vars.size(); ++j)
         {
-            std::cout << "\ti: " << i << " " << vars[j].getID() << "\n";
+            //std::cout << "\ti: " << i << " " << vars[j].getID() << "\n";
             const std::string & type = vars[j].getType();
             if (type == "SNP") vscore -= 3.0;
             else if (type == "MNP") vscore -= 3.0*double(vars[j].getAlt().length());
@@ -1081,6 +1081,10 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     double vcfQual = -10.0*log10(vp);
     
     int hapMappingQual = int(round(-10.0*log10(hnm)));
+
+    // FIXME Add this as a parameter?
+    if (hapMappingQual == 0) return;
+
     int iqual = (vcfQual<0.0)?0:int(vcfQual);
     std::string filter="NoCall";
     if (iqual>10 && qual<20)
@@ -2423,13 +2427,11 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
        {
            for (int r=0;r<numReadPairs;r++)
            {
-               std::vector<double> tmpLik(numHaps, 0.0);
-
                for (int h=0;h<numHaps;h++)
                {
-                   double max_ll = -HUGE_VAL;
-                   for (int h1=0;h1<numHaps;h1++) if (h1!=h && hrLik[r][h1]>max_ll) max_ll = hrLik[r][h1];
-                   double dH = (hrLik[r][h] - max_ll); //(-(*m_pDindelReads)[r].getMappingQual()*.23026-2.0*log(double(DINDEL_HMM_BANDWIDTH)));
+                   //double max_ll = -HUGE_VAL;
+                   //for (int h1=0;h1<numHaps;h1++) if (h1!=h && hrLik[r][h1]>max_ll) max_ll = hrLik[r][h1];
+                   double dH = (hrLik[r][h] - ( - (*m_pDindelReads)[r].getMappingQual()*.23026-2.0*log(double(DINDEL_HMM_BANDWIDTH))));
                    if (dH>2.0) addReads[h].insert(r);
                    if (dH>0.0) addLL[h] += dH;
                }

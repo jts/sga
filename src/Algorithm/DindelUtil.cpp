@@ -294,7 +294,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
             std::cout << "        " << " " << flankingHaplotypes[i][k] << "\n";
             }
         }
-        int refStart = candidateAlignments[i].position-int(downstream.size());
+        int refStart = candidateAlignments[i].position-int(downstream.size())+1;
         // Here the score is used as an estimate of how unique "defined" is in the reference sequence.
         // "defined" is not the reference sequence but a candidate haplotype.
         // It is conservative because the flanking sequence is not used in this estimation.
@@ -388,42 +388,52 @@ void DindelUtil::doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> 
 {
 
     // globally align haplotypes to the first haplotype (arbitrary)
-    std::vector< MAlignData > maVector;
-
-    assert(haplotypes.size()>0);
-    const std::string  rootSequence = haplotypes[0];
-
-    for (size_t h = 0; h < haplotypes.size(); ++h)
-    {
-        MAlignData _ma;
-        _ma.position = 0;
-        _ma.str = haplotypes[h];
-
-        std::stringstream ss; ss << "haplotype-" << h;
-
-        _ma.name = ss.str();
-        _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(haplotypes[h], rootSequence));
-        maVector.push_back(_ma);
-    }
-
-    for(size_t r = 0; r < dReads.size(); ++r)
-    {
-        MAlignData _ma;
-        _ma.position = 0;
-        _ma.str = dReads[r].getSequence();
-
-        std::stringstream ss; 
-        if (r<dReads.size()/2) ss << "read-" << r; else ss << "MATE read-" << r;
-
-        _ma.name = ss.str();
-        _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(dReads[r].getSequence(), rootSequence));
-        maVector.push_back(_ma);
-    }
     
 
-    MultiAlignment MA(rootSequence, maVector, std::string("haplotype-0"));
-    std::string consensus = MA.generateConsensus();
-    MA.print(100000, &consensus);
+    assert(haplotypes.size()>0);
+    for (size_t h = 0; h < haplotypes.size(); ++h)
+    {
+        std::cout << "ALIGNING EVERYTHING AGAINST HAPLOTYPE " << h << "\n";
+        std::vector< MAlignData > maVector;
+        const std::string  rootSequence = haplotypes[h];
+        std::string hid;
+        for (size_t j = 0; j < haplotypes.size(); j++)
+        {
+            MAlignData _ma;
+            _ma.position = 0;
+            _ma.str = haplotypes[j];
+
+            std::stringstream ss;
+            if (j!=h)
+                ss << "haplotype-" << j;
+            else
+                ss << "HAPLOTYPE-" << j;
+            _ma.name = ss.str();
+            
+            _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(haplotypes[j], rootSequence));
+            maVector.push_back(_ma);
+        }
+    
+
+        for(size_t r = 0; r < dReads.size(); ++r)
+        {
+            MAlignData _ma;
+            _ma.position = 0;
+            _ma.str = dReads[r].getSequence();
+
+            std::stringstream ss;
+            if (r<dReads.size()/2) ss << "read-" << r; else ss << "MATE read-" << r;
+
+            _ma.name = ss.str();
+            _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(dReads[r].getSequence(), rootSequence));
+            maVector.push_back(_ma);
+        }
+
+
+        MultiAlignment MA(rootSequence, maVector, hid);
+        std::string consensus = MA.generateConsensus();
+        MA.print(100000, &consensus);
+    }
 
 
 
