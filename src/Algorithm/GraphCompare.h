@@ -114,6 +114,7 @@ class GraphCompare
         
         // Process a read and all its kmers
         GraphCompareResult process(const SequenceWorkItem& item);
+        void debug(const std::string& debugFilename);
         
         //
         void updateSharedStats(GraphCompareAggregateResults* pSharedStats);
@@ -136,8 +137,9 @@ class GraphCompare
         void updateVariationCount(const BubbleResult& result);
 
         // Debug/testing functions
-        bool buildVariantStringGreedy(const std::string& startingKmer, std::string& outString, size_t& flanking_k_length);
         bool buildVariantStringConservative(const std::string& startingKmer, std::string& outString, size_t& flanking_k_length);
+        bool buildVariantStringGraph(const std::string& startingKmer, std::string& outString);
+
         bool transformVariantString(const std::string& inStr, std::string& outStr);
         IntVector makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max);
 

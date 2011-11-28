@@ -27,6 +27,7 @@
 // Functions
 void runVCFTester(GraphCompareParameters& parameters);
 void runGraphDiff(GraphCompareParameters& parameters);
+void runDebug(GraphCompareParameters& parameters);
 
 // Defines to clarify awful template function calls
 #define PROCESS_GDIFF_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, GraphCompareResult, \
@@ -80,6 +81,8 @@ namespace opt
     static bool referenceMode = false;
 
     static std::string outPrefix = "graphdiff";
+    //static std::string debugFile = "debug.var1.txt";
+    static std::string debugFile;
     static std::string referenceFile;
     static std::string baseFile;
     static std::string variantFile;
@@ -191,11 +194,18 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.maxBranches = opt::maxBranches;
     sharedParameters.bReferenceMode = opt::referenceMode;
 
-    // If a VCF file was provided, just test the variants in the file without any discovery
-    if(!opt::inputVCFFile.empty())
-        runVCFTester(sharedParameters);
+    if(!opt::debugFile.empty())
+    {
+        runDebug(sharedParameters);
+    }
     else
-        runGraphDiff(sharedParameters);
+    {
+        // If a VCF file was provided, just test the variants in the file without any discovery
+        if(!opt::inputVCFFile.empty())
+            runVCFTester(sharedParameters);
+        else
+            runGraphDiff(sharedParameters);
+    }
 
     // Cleanup
     if(!opt::referenceMode)
@@ -249,8 +259,18 @@ void runGraphDiff(GraphCompareParameters& parameters)
 {
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(parameters.pVariantBWT->getBWLen());
-    GraphCompareAggregateResults* pSharedResults = new GraphCompareAggregateResults(opt::outPrefix);
-    
+
+    // This call can throw via dindel
+    GraphCompareAggregateResults* pSharedResults;
+    try {
+        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix);
+    }
+    catch(std::string e)
+    {
+        std::cout << "Exception: " << e << "\n";
+        exit(EXIT_FAILURE);
+    }
+
     std::cout << "Bit vector capacity: " << pSharedBitVector->capacity() << "\n";
 
     // Set the bit vector
@@ -292,6 +312,30 @@ void runGraphDiff(GraphCompareParameters& parameters)
     parameters.pBitVector = NULL;
 
     delete pSharedResults;
+}
+
+// Run in debug mode
+void runDebug(GraphCompareParameters& parameters)
+{
+    // Create the shared bit vector and shared results aggregator
+    BitVector* pSharedBitVector = new BitVector(parameters.pVariantBWT->getBWLen());
+
+    // This call can throw via dindel
+    GraphCompareAggregateResults* pSharedResults;
+    try {
+        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix);
+    }
+    catch(std::string e)
+    {
+        std::cout << "Exception: " << e << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    // Set the bit vector
+    parameters.pBitVector = pSharedBitVector;
+
+    GraphCompare graphCompare(parameters); 
+    graphCompare.debug(opt::debugFile);
 }
 
 // 
