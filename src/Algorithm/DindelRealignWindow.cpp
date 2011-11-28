@@ -651,6 +651,8 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
                     m_variants.push_back(var);
 
                     std::pair < HashMap<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  m_variant_to_pos.insert( HashMap<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(hap_start, hap_end)));
+                    if(ins_pair.second != true)
+                        throw std::string("DindelException? duplicate variant");
                     assert (ins_pair.second == true);
                 }
                 // Reset state

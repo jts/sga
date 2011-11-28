@@ -233,17 +233,16 @@ DindelReturnCode DindelUtil::computeBestAlignment(const StringVector& inHaplotyp
         //printf("Alignment %zu mate-score: %lf\n", i, score);
     }
 
-    //printf("total alignments: %zu best score: %lf\n", candidateAlignments.size(), bestAverageScoreFrac);
-
     if(bestCandidate == -1)
         return DRC_NO_ALIGNMENT;
 
+    /*
     if(bestAverageScoreFrac < 0.9f)
         return DRC_POOR_ALIGNMENT;
 
     if(bestAverageScoreFrac - secondBest < 0.05f)
         return DRC_AMBIGUOUS_ALIGNMENT;
-
+    */
     bestAlignment = candidateAlignments[bestCandidate];
     return DRC_OK;
 }

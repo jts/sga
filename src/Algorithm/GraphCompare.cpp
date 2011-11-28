@@ -23,6 +23,8 @@
 #include "HaplotypeBuilder.h"
 #include "BuilderCommon.h"
 
+//#define GRAPH_DIFF_DEBUG 1
+
 //
 // GraphCompareStats
 //
@@ -186,9 +188,10 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     
                     if(drc == DRC_OK)
                     {
+#ifdef GRAPH_DIFF_DEBUG
                         std::cout << baseVCFSS.str() << "\n";
                         std::cout << variantVCFSS.str() << "\n";
-
+#endif
                         result.baseVCFStrings.push_back(baseVCFSS.str());
                         result.variantVCFStrings.push_back(variantVCFSS.str());
                     }
@@ -281,8 +284,9 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
 //
 BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, int /*count*/)
 {
-
-    std::cout << "VARIANT KMER: " << str << "\n";
+#ifdef GRAPH_DIFF_DEBUG
+    std::cout << "Variant Kmer: " << str << "\n";
+#endif
     //
     std::string variant_str;
     bool found_variant_string = buildVariantStringGraph(str, variant_str);
@@ -294,6 +298,7 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
 
     if(found_variant_string)
     {
+#ifdef GRAPH_DIFF_DEBUG
         // Make a kmer count profile for the putative variant string
         std::cout << "VProfile(" << m_parameters.kmer << "):";
         IntVector countProfile = makeCountProfile(variant_str, m_parameters.kmer, m_parameters.pVariantBWT, 9);
@@ -310,7 +315,7 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
         countProfile = makeCountProfile(variant_str, 31, m_parameters.pBaseBWT, 9);
         std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
         std::cout << "\n";
-
+#endif
         // Run haplotype builder
         // Set the start/end points of the haplotype builder
         std::string startAnchorSeq = variant_str.substr(0, hb_k); 
@@ -336,20 +341,22 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
 
         // Run the builder
         HaplotypeBuilderReturnCode hbCode = builder.run();
+#ifdef GRAPH_DIFF_DEBUG
         std::cout << "HBC: " << hbCode << "\n";
+#endif
         HaplotypeBuilderResult hbResult;
 
         // The search was successful, build strings from the walks
-        //BubbleResultCode bubbleCode = BRC_HB_FAILED;
         if(hbCode == HBRC_OK)
         {
-            printf("Haplotype builder success\n");
-            
             hbCode = builder.parseWalks(hbResult);
             if(hbCode == HBRC_OK)
             {
                 std::string base_str = hbResult.haplotypes.front();
+                
+#ifdef GRAPH_DIFF_DEBUG
                 StdAlnTools::globalAlignment(base_str, variant_str, true);
+#endif
                 result.returnCode = BRC_OK;
                 result.targetString = base_str;
                 result.sourceString = variant_str;
@@ -357,10 +364,12 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
             }
         }
     }
+#ifdef GRAPH_DIFF_DEBUG
     else
     {
         std::cout << "Variant string not assembled\n";
     }
+#endif
     return result;
 }
 
@@ -585,7 +594,7 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
             // Check if this sequence is present in the FM-index of the target
             // If so, it is the join point of the de Bruijn graph and we extend no further.
             size_t targetCount = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.pBaseBWT);
-            if(targetCount > 0)
+            if(targetCount >= 2)
             {
                 if(curr.direction == ED_SENSE)
                     pSenseJoin = pVertex;
@@ -600,14 +609,15 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
             }
         }
 
+#ifdef GRAPH_DIFF_DEBUG
         std::cout << vertStr << " " << curr.direction << " " << extensionCounts << extensionsUsed << "\n";
+#endif
     }
 
     // Check if a unique join path was found
     outString = "";
     if(pSenseJoin != NULL && pAntisenseJoin != NULL)
     {
-        std::cout << "Graph successfully built\n";
         SGWalkVector outWalks;
         SGSearch::findWalks(pAntisenseJoin,
                             pSenseJoin,
@@ -769,7 +779,30 @@ void GraphCompare::debug(const std::string& debugFilename)
             }
          
             if(!kmerVector.empty())
-                processVariantKmerAggressive(kmerVector[kmerVector.size() / 2], 0);
+            {
+                BubbleResult bubbleResult = processVariantKmerAggressive(kmerVector[kmerVector.size() / 2], 0);
+
+                if(bubbleResult.returnCode == BRC_OK)
+                {
+                    std::stringstream baseVCFSS;
+                    std::stringstream variantVCFSS;
+                    DindelReturnCode drc = DindelUtil::runDindelPair(bubbleResult.sourceString,
+                                                                     bubbleResult.targetString,
+                                                                     m_parameters,
+                                                                     baseVCFSS,
+                                                                     variantVCFSS);
+                    
+                    if(drc == DRC_OK)
+                    {
+                        std::cout << baseVCFSS.str() << "\n";
+                        std::cout << variantVCFSS.str() << "\n";
+                    }
+                    else
+                    {
+                        std::cout << "Dindel fail: " << drc << "\n";
+                    }
+                }
+            }
             kmerVector.clear();
         }
         else if(fields.size() == 4)
