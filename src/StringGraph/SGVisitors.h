@@ -255,7 +255,7 @@ struct SGGraphStatsVisitor
     int num_island;
     int num_monobranch;
     int num_dibranch;
-    int num_transitive;
+    int num_simple;
     int num_edges;
     int num_vertex;
     size_t sum_edgeLen;
