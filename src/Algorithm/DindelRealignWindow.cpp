@@ -594,39 +594,40 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
                         if (DINDEL_DEBUG) std::cout << "CHANGEHAPLOTYPE: " << changeHaplotype << std::endl;
                         
 
-                        for(int j=0;j<int(numCols)-indelLength;j++) if (ma.getSymbol(refRow, j)!='-')
+                        for(int j=0;j<int(numCols)-indelLength;j++) 
                         {
-                            std::string alt(changeHaplotype);
-
-                            int k=0,numModified=0;
-                            if (isDeletion)
+                            if (ma.getSymbol(refRow, j)!='-')
                             {
-                                while (numModified<indelLength && j+k<int(numCols))
+                                std::string alt(changeHaplotype);
+
+                                int k=0,numModified=0;
+                                if (isDeletion)
                                 {
-                                    if(alt[j+k]!='-')
+                                    while (numModified<indelLength && j+k<int(numCols))
                                     {
-                                        alt[j+k]='-';
-                                        numModified++;
+                                        if(alt[j+k]!='-')
+                                        {
+                                            alt[j+k]='-';
+                                            numModified++;
+                                        }
+                                        k++;
                                     }
-                                    k++;
+
+                                } else
+                                {
+                                    alt.insert(size_t(j),indelSeq);
+                                    numModified=indelLength;
                                 }
 
-                            } else
-                            {
-                                alt.insert(size_t(j),indelSeq);
-                                numModified=indelLength;
-                            }
-
-                            std::string altUnpadded = StdAlnTools::unpad(alt);
-                            if(numModified == indelLength && altUnpadded == m_seq)
-                            {
-                                if (DINDEL_DEBUG) std::cout << "CHANGEHAPLOTYPE equal " << j << std::endl;
-                                if(j<minPos) minPos = j;
-                                if(j>maxPos) maxPos = j;
+                                std::string altUnpadded = StdAlnTools::unpad(alt);
+                                if(numModified == indelLength && altUnpadded == m_seq)
+                                {
+                                    if (DINDEL_DEBUG) std::cout << "CHANGEHAPLOTYPE equal " << j << std::endl;
+                                    if(j<minPos) minPos = j;
+                                    if(j>maxPos) maxPos = j;
+                                }
                             }
                         }
-
-
                     }
 
                     // Get the base position in the reference string. This is not necessarily the
@@ -636,9 +637,13 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
 
                     int refBaseOffsetMinPos = ma.getBaseIdx(refRow, minPos);
                     
-
                     while (minPos>0 && ma.getSymbol(varRow, minPos)== '-' ) minPos--;
                     while (maxPos<int(numCols)-1 && ma.getSymbol(varRow, maxPos)== '-' ) maxPos++;
+
+                    // Check if the symbol for these variant positions are '-'
+                    // They should not be, so we throw an exception if they are
+                    if(ma.getSymbol(varRow, minPos) == '-' || ma.getSymbol(varRow, maxPos) == '-')
+                        throw std::string("Dindel Exception: Putative variant starts or ends in a gap");
 
                     int varBaseOffsetMinPos = ma.getBaseIdx(varRow, minPos);
                     int varBaseOffsetMaxPos = ma.getBaseIdx(varRow, maxPos);
@@ -1087,7 +1092,6 @@ DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences, 
     }
 
     m_pHaplotype_ma = new MultiAlignment(refHap, maVector, refName);
-
     MultiAlignment & ma = *m_pHaplotype_ma;
 
     // get row indices for candidate haplotypes.

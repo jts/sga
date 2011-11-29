@@ -230,7 +230,6 @@ int graphDiffMain(int argc, char** argv)
 
 void runVCFTester(GraphCompareParameters& parameters)
 {
-    (void)parameters;
     std::cout << "Testing variants in " << opt::inputVCFFile << "\n";
     std::string line;
 
