@@ -114,29 +114,18 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
 
     std::string dindelRef = refSubstring;
     int dindelRefStart = int(refStart);
-    DindelWindow dWindow(result.haplotypes, dindelRef, dindelRefStart, refName );
+    std::vector< std::vector<DindelReferenceMapping> > dRefMappings(result.haplotypes.size());
+
+    // FIXME Set haplotype mapping quality properly
+    DindelReferenceMapping dRefMapping(refName, dindelRef, dindelRefStart, 100.0, false);
+    for(size_t i = 0; i < result.haplotypes.size(); ++i) dRefMappings[i].push_back(dRefMapping);
+
+    DindelWindow dWindow(result.haplotypes, dRefMappings);
 
     DindelRealignParameters dRealignParameters;
     DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
-    
     dRealignWindow.run("hmm", m_vcfFile.getOutputStream());
 
-    if(m_parameters.verbose > 0)
-    {
-        printf("Found %zu reads matching a kmer with a haplotype\n", reads.size());
-        printf("Found %zu reads matching a reverse-complement kmer with a haplotype\n", rcReads.size());
-        
-        if(!result.haplotypes.empty())
-        {
-            std::cout << "Printing multi alignments of forward reads to haplotype 0\n";
-            SeqItemVector readPlusHap;
-            SeqItem hsi = { "haplotype-0", result.haplotypes[0] };
-            readPlusHap.push_back(hsi);
-            readPlusHap.insert(readPlusHap.end(), reads.begin(), reads.end());
-            MultiAlignment readAlignment = MultiAlignmentTools::alignSequencesLocal(readPlusHap);
-            readAlignment.print();
-        }            
-    }
 
     if(m_parameters.verbose > 0)
     {

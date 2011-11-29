@@ -37,7 +37,7 @@ struct HapgenAlignment
     // Output
     friend std::ostream& operator<<(std::ostream& o, const HapgenAlignment& align) 
     { 
-        o << "R_ID: " << align.referenceID << " P: [" << align.position << ", " << align.position + align.length << "]"; 
+        o << "R_ID: " << align.referenceID << " P: [" << align.position << ", " << align.position + align.length << "]" << " length: " << align.length << " score: " << align.score;
         return o; 
     }
 

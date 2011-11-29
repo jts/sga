@@ -398,9 +398,10 @@ void MultiAlignment::print(int col_size, const std::string* pConsensus) const
         // Print the matched columns
         int diff = matchString.size() - l;
         int stop = diff < col_size ? diff : col_size;
+        
         printf("M\t%s\n", matchString.substr(l, stop).c_str());
-
         std::cout << "\n";
+        std::cout << "diff: " << diff << " stop: " << stop << " col_size: " << col_size << "\n";
     }
 }
 

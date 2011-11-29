@@ -22,7 +22,7 @@ class DindelHMM
     public:
 
         // Constructor
-        DindelHMM(DindelRead & read, const DindelHaplotype & haplotype);
+        DindelHMM(DindelRead & read, const DindelMultiHaplotype & haplotype);
 
         // Functions
         ReadHaplotypeAlignment getAlignment();
@@ -34,11 +34,11 @@ class DindelHMM
 
         // Data
         DindelRead* m_pRead;
-        const DindelHaplotype * m_pHaplotype;
+        const DindelMultiHaplotype * m_pHaplotype;
 };
 
 template<int BandWidth> ReadHaplotypeAlignment DindelHMMForward(const DindelRead * pRead, 
-                                                                const DindelHaplotype * pHaplotype, 
+                                                                const DindelMultiHaplotype * pHaplotype, 
                                                                 int hFirstBase, 
                                                                 bool rcRead)
 {

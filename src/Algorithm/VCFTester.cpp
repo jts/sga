@@ -60,7 +60,7 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     std::stringstream baseSS;
     std::stringstream variantSS;
 
-    DindelReturnCode code = DindelUtil::runDindelPair(refStr,
+    DindelReturnCode code = DindelUtil::runDindelPairMatePair(refStr,
                                                       varStr,
                                                       m_parameters,
                                                       baseSS,

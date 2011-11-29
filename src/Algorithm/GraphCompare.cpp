@@ -180,7 +180,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
  
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-                    DindelReturnCode drc = DindelUtil::runDindelPair(bubbleResult.sourceString,
+                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(bubbleResult.sourceString,
                                                                      bubbleResult.targetString,
                                                                      m_parameters,
                                                                      baseVCFSS,
