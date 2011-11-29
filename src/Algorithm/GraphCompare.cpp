@@ -287,6 +287,7 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
 #ifdef GRAPH_DIFF_DEBUG
     std::cout << "Variant Kmer: " << str << "\n";
 #endif
+
     //
     std::string variant_str;
     bool found_variant_string = buildVariantStringGraph(str, variant_str);

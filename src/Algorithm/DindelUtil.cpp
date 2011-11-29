@@ -33,7 +33,7 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
     SeqItemVector normalRCReadMates;
     
     // Set the value to use for extracting reads that potentially match the haplotype
-    size_t KMER_CEILING = 51;
+    size_t KMER_CEILING = 31;
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
 
     // Reads on the same strand as the haplotype    

@@ -345,9 +345,8 @@ DindelHaplotype::DindelHaplotype(const std::string & refSeq, int refSeqStart, bo
 DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, size_t varRow, size_t refRow)
 {
     size_t numCols = ma.getNumColumns();
-    if (DINDEL_DEBUG) std::cout << "DindelHaplotype::DindelHaplotype numCols: " << numCols << std::endl;
-
-    
+    if (DINDEL_DEBUG) 
+        std::cout << "DindelHaplotype::DindelHaplotype numCols: " << numCols << std::endl;
 
     this->m_seq = StdAlnTools::unpad(ma.getPaddedSubstr(varRow,0,numCols));
     if (DINDEL_DEBUG)
@@ -358,14 +357,11 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
     }
     assert(refSeq == StdAlnTools::unpad(ma.getPaddedSubstr(refRow,0,numCols)));
 
-    
-
-    m_refPos = std::vector<int>(m_seq.size(), 0);
+    m_refPos.resize(m_seq.size(), 0);
     determineHomopolymerLengths();
     m_sequenceHash=DindelSequenceHash(m_seq);
 
     this->m_isReference = false;
-
 
     // set m_refPos
     int hidx=-1, ridx=-1, hDelStart=-1;
@@ -391,24 +387,31 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         if (leftOverhang && rs != '-')
         {
             // end of left overhang of haplotype with reference
+            // JTS: The below code is broken in the case that there is a left overhang
+            // and the number of columns is greater than the refSeq size
             numLeftOverhang = i;
-            for (size_t j=0;j<i;j++) m_refPos[j]= LEFTOVERHANG;
+            for (size_t j=0;j<i;j++) 
+                m_refPos.at(j)= LEFTOVERHANG;
             leftOverhang = false;
         }
         if (!leftOverhang)
         {
-            if (rs == '-' && vs != '-') m_refPos[hidx] = INSERTION;
+            if (rs == '-' && vs != '-') 
+                m_refPos.at(hidx) = INSERTION;
             if (rs != '-' && vs != '-')
             {
-                if(rs!=vs) m_refPos[hidx] = SNP; else m_refPos[hidx] = refSeqStart+ma.getBaseIdx(refRow, i);
-
+                if(rs!=vs) 
+                    m_refPos.at(hidx) = SNP; 
+                else 
+                    m_refPos.at(hidx) = refSeqStart+ma.getBaseIdx(refRow, i);
             }
             if (rs == '-' && !inRefDeletion)
             {
                 inRefDeletion = true;
                 hDelStart = hidx;
             }
-            if (rs != '-') inRefDeletion = false;
+            if (rs != '-') 
+                inRefDeletion = false;
         }
     }
 
@@ -419,19 +422,23 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         assert(m_refPos[hDelStart-1] >=0);
         for(int h = hDelStart; h < int(m_refPos.size()); h++)
         {
-            m_refPos[h] = RIGHTOVERHANG;
+            m_refPos.at(h) = RIGHTOVERHANG;
             numRightOverhang++;
         }
     }
 
     if(numLeftOverhang > 0 || numRightOverhang > 0)
+    {
+        std::cout << "Throwing due to no overlap\n";
         throw std::string("DindelHaplotype::DindelHaplotype No overhanging bases");
+    }
     //assert(numLeftOverhang == 0 && numRightOverhang == 0);
 
     if(DINDEL_DEBUG)
     {
         std::cout << "m_refPos: ";
-        for (size_t i = 0; i < m_refPos.size(); i++) std::cout << "[" << i << " " << m_refPos[i] << "]";
+        for (size_t i = 0; i < m_refPos.size(); i++) 
+            std::cout << "[" << i << " " << m_refPos[i] << "]";
         std::cout << "\n";
     }
 
@@ -456,7 +463,8 @@ DindelHaplotype::DindelHaplotype(const std::string & refName, const std::string 
         // sequence has a gap here
         bool isVariant = (varSymbol != refSymbol || varSymbol == '-' || refSymbol == '-');
 
-        if (DINDEL_DEBUG) std::cout << " ** i: " << i << " isVariant: " << isVariant << " refSymbol: " << refSymbol << " varSymbol: " << varSymbol << std::endl;
+        if (DINDEL_DEBUG) 
+            std::cout << " ** i: " << i << " isVariant: " << isVariant << " refSymbol: " << refSymbol << " varSymbol: " << varSymbol << std::endl;
 
 
         // Update the counter of the number of exact matches for the leftmost and rightmost bases
@@ -1065,8 +1073,6 @@ DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences, 
     // globally align haplotypes to the reference sequence
     std::vector< MAlignData > maVector;
 
-    
-    
     std::set<std::string> uniqueHaplotypes;
     for (size_t h=0;h<haplotypeSequences.size();h++) uniqueHaplotypes.insert(haplotypeSequences[h]);
 
@@ -1107,15 +1113,22 @@ DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences, 
 
 
 
-     // Iterate over every column of the multiple alignment and detect variants
-
-    for(size_t h = 0;h != numHaplotypes; h++)
+    // Iterate over every column of the multiple alignment and detect variants
+    // The addHaplotype/DindelHaplotype code can throw so we must catch here
+    try
     {
-        size_t varRow = rowIdx[h];
-        if (DINDEL_DEBUG) std::cout << "DindelWindow::DindelWindow Adding haplotype " << h << " in varRow " << varRow << std::endl;
-        addHaplotype(DindelHaplotype(m_chrom, m_refSeq, refHapStart, *m_pHaplotype_ma, varRow, refRow));
+        for(size_t h = 0;h != numHaplotypes; h++)
+        {
+            size_t varRow = rowIdx[h];
+            if (DINDEL_DEBUG) std::cout << "DindelWindow::DindelWindow Adding haplotype " << h << " in varRow " << varRow << std::endl;
+                addHaplotype(DindelHaplotype(m_chrom, m_refSeq, refHapStart, *m_pHaplotype_ma, varRow, refRow));
+        }
     }
-        
+    catch(...)
+    {
+        std::cerr << "DindelHaplotype constructor threw an exception\n";
+    }
+     
     delete m_pHaplotype_ma;
     m_pHaplotype_ma = NULL;
 
