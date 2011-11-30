@@ -590,9 +590,9 @@ void DindelHaplotype::extractVariants()
                     {
                         printf("Ref start: %d col: %d eventStart: %d eventEnd: %d\n", (int) m_refMapping.refStart, (int)i, eventStart, eventEnd);
                         std::cout << "RefString " << refString << "\n";
-
                         std::cout << "varString " << varString << "\n";
                     }
+
                     assert(!refString.empty());
                     //assert(!baseString.empty());
                     assert(!varString.empty());

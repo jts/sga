@@ -787,16 +787,16 @@ void GraphCompare::debug(const std::string& debugFilename)
                 {
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-                    DindelReturnCode drc = DindelUtil::runDindelPair(bubbleResult.sourceString,
-                                                                     bubbleResult.targetString,
-                                                                     m_parameters,
-                                                                     baseVCFSS,
-                                                                     variantVCFSS);
+                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(bubbleResult.sourceString,
+                                                                             bubbleResult.targetString,
+                                                                             m_parameters,
+                                                                             baseVCFSS,
+                                                                             variantVCFSS);
                     
                     if(drc == DRC_OK)
                     {
-                        std::cout << baseVCFSS.str() << "\n";
-                        std::cout << variantVCFSS.str() << "\n";
+                        std::cout << "BASE: " << baseVCFSS.str() << "\n";
+                        std::cout << "VAR: " << variantVCFSS.str() << "\n";
                     }
                     else
                     {
