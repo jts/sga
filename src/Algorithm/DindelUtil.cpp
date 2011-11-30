@@ -232,7 +232,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
     // Join each haplotype with flanking sequence from the reference genome for each alignment
     // This function also adds a haplotype (with flanking sequence) for the piece of the reference
     bool success = true;
-    int FLANKING_SIZE = 500;
+    int FLANKING_SIZE = 2000;
     StringVector flankingHaplotypes;
 
     for(size_t i = 0; i < candidateAlignments.size(); ++i)
@@ -276,7 +276,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
         if(candidateAlignments[i].isRC) 
             refSeq = reverseComplement(refSeq);
 
-        if(0)
+        if(1)
         {
             std::cout << "\n ================================================\n";
             std::cout << "candidateAlignments[" << i << "]" << candidateAlignments[i] << "\n";
@@ -306,12 +306,10 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
         }
     }
     
-    /*
     std::cout << "REFERENCE MAPPINGS: \n";
     int c = 0;
     for(std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++)
         std::cout << c << " " << it->refName << " start: " << it->refStart << " end: " << it->refStart + it->refSeq.size()-1 << " score: " << it->referenceAlignmentScore << "\n";
-    */
 
     for(size_t i = 0; i < flankingHaplotypes.size(); ++i)
     {
@@ -358,8 +356,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
             dReads.push_back(DindelRead(rcReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
         }
 
-        //std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
-        //doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
+        std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
+        doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
 
         try
         {
