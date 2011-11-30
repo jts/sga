@@ -45,7 +45,7 @@ const int REPOSITIONVARIANTSSLOW=0; // uses slow code to reposition indels.
 //#define OVERLAPPER // build overlapper
 
 #include <iostream>
-
+//#define DEBUG_NEW
 
 long long int combinations(const int n, const int k)
 {
@@ -233,8 +233,8 @@ DindelVariant::DindelVariant()
 DindelVariant::DindelVariant(const std::string & chrom, const std::string & ref, const std::string & alt, int pos)
 {
     if (ref.empty() || alt.empty() || chrom.empty()) throw std::string("DindelVariant::zero_length_chrom_ref_alt_string");
-    if (pos<0) throw std::string("DindelVariant::negative_variant_position");
-
+    //if (pos<0) throw std::string("DindelVariant::negative_variant_position");
+    assert(pos>=0);
     m_chrom = chrom;
     m_ref = ref;
     m_alt = alt;
@@ -359,7 +359,7 @@ void DindelHaplotype::alignHaplotype()
     m_pMA = new MultiAlignment(rootSequence, maVector, std::string("haplotype-0"));
     m_deleteMA = true;
     
-    if (DINDEL_DEBUG)
+    if (DINDEL_DEBUG || 0)
     {
         std::cout << "DindelHaplotype::alignHaplotype:\n";
         std::string h0 = m_pMA->getPaddedSubstr(0,0,m_pMA->getNumColumns());
@@ -677,9 +677,10 @@ void DindelHaplotype::extractVariants()
                     int varBaseOffsetMaxPos = ma.getBaseIdx(varRow, maxPos);
 
                     // Use leftmost position for the variant (which can only be change for an insertion or deletion)
+                    if (DINDEL_DEBUG || 0) std::cout << "VARIANT: " << m_refMapping.refName << " " << refString << "/" << varString << " pos: " << refBaseOffsetMinPos+m_refMapping.refStart << " varBaseOffsetMinPos: " << varBaseOffsetMinPos << " varBaseOffsetMaxPos: " << varBaseOffsetMaxPos << " m_refMapping.refStart: " << m_refMapping.refStart << std::endl;
                     DindelVariant var(m_refMapping.refName, refString, varString, refBaseOffsetMinPos+m_refMapping.refStart);
                     var.setPriorProb(0.001); //FIXME
-                    if (DINDEL_DEBUG) std::cout << "VARIANT: " << m_refMapping.refName << " " << refString << "/" << varString << " pos: " << refBaseOffsetMinPos+m_refMapping.refStart << " varBaseOffsetMinPos: " << varBaseOffsetMinPos << " varBaseOffsetMaxPos: " << varBaseOffsetMaxPos << std::endl;
+                    
                     var.setHaplotypeUnique(varBaseOffsetMinPos, varBaseOffsetMaxPos);
                     m_variants.push_back(var);
 
@@ -705,7 +706,7 @@ DindelHaplotype::DindelHaplotype(const std::string & haplotypeSequence, const Di
     // initialize
     m_pMA = NULL;
     m_deleteMA = false;
-    
+ 
     m_seq = haplotypeSequence;
     m_refMapping = refMapping;
 #ifdef DEBUG_NEW
@@ -2693,6 +2694,31 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
 
 
    // Uncalled variants
+   for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
+   {
+       if (!added[hapIdx])
+       {
+            
+            for (int refIdx = 0; refIdx < haplotypes[hapIdx].getNumReferenceMappings(); ++refIdx)
+            {
+                const std::vector<DindelVariant> & vars = haplotypes[hapIdx].getVariants(refIdx);
+
+                for (size_t x = 0; x < vars.size(); x++) if (result.variantInference.find(vars[x]) == result.variantInference.end())
+                {
+                    // should set quality and freq to zero.
+                    DindelRealignWindowResult::Inference varInf;
+
+                    double hapQual = haplotypeQual[hapIdx]/.23026;
+                    double hapFreq = 0.0;
+                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, hapFreq));
+                    result.variantInference[vars[x]] = varInf;
+                }
+            }
+       }
+   }
+
+
+   /*
    for (VariantToHaplotype::const_iterator iter=variantToHaplotype.begin();iter!=variantToHaplotype.end();iter++)
    {
        if (result.variantInference.find(iter->first)==result.variantInference.end())
@@ -2739,6 +2765,7 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
        }
 
    }
+   */
 
   // assign result
 

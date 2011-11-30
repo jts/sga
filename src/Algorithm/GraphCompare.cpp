@@ -23,7 +23,7 @@
 #include "HaplotypeBuilder.h"
 #include "BuilderCommon.h"
 
-//#define GRAPH_DIFF_DEBUG 1
+// #define GRAPH_DIFF_DEBUG 1
 
 //
 // GraphCompareStats
@@ -188,10 +188,10 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     
                     if(drc == DRC_OK)
                     {
-#ifdef GRAPH_DIFF_DEBUG
+//#ifdef GRAPH_DIFF_DEBUG
                         std::cout << baseVCFSS.str() << "\n";
                         std::cout << variantVCFSS.str() << "\n";
-#endif
+//#endif
                         result.baseVCFStrings.push_back(baseVCFSS.str());
                         result.variantVCFStrings.push_back(variantVCFSS.str());
                     }

@@ -282,13 +282,13 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
             std::cout << "candidateAlignments[" << i << "]" << candidateAlignments[i] << "\n";
             std::cout << "refSeq: " << upstream << " " << defined << " " << downstream << "\n";
             for (size_t k = 0; k < inHaplotypes.size(); ++k)
-               std::cout << "        " << std::string(downstream.size(),' ') << " " << inHaplotypes[k] << "\n";
+               std::cout << "        " << std::string(upstream.size(),' ') << " " << inHaplotypes[k] << "\n";
 
-            for (size_t k = 0; k < flankingHaplotypes[i].size(); ++k)
-                std::cout << "        " << " " << flankingHaplotypes[i][k] << "\n";
+            for (size_t k = 0; k < flankingHaplotypes.size(); ++k)
+                std::cout << "        " << " " << flankingHaplotypes[k] << "\n";
         }
 
-        int refStart = candidateAlignments[i].position - int(downstream.size()) + 1;
+        int refStart = candidateAlignments[i].position - int(upstream.size()) + 1;
 
         // Here the score is used as an estimate of how unique "defined" is in the reference sequence.
         // "defined" is not the reference sequence but a candidate haplotype.
