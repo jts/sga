@@ -589,6 +589,7 @@ class DindelRealignWindowResult
             public:
 
                 // Functions
+                Inference() : qual(0.0), freq(0.0), strandBias(0.0),numReadsForward(0), numReadsReverse(0), numReadsForwardZeroMismatch(0), numReadsReverseZeroMismatch(0), numUnmapped(0), numLibraries(0), numReadNames(0) {};
                 void outputAsVCF(const DindelVariant & var, 
                                  const DindelRealignWindowResult & result, 
                                  std::ostream& out) const;

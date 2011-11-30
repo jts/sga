@@ -82,7 +82,7 @@ namespace opt
 
     static std::string outPrefix = "graphdiff";
     //static std::string debugFile = "debug.var1.txt";
-//    static std::string debugFile = "badalign.debug";
+    //static std::string debugFile = "badalign.debug";
     static std::string debugFile;
     static std::string referenceFile;
     static std::string baseFile;
