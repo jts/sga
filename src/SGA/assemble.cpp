@@ -191,7 +191,7 @@ void assemble()
         std::cout << "Resolving small repeats\n";
 
         int totalSmallRepeatRounds = 0;
-        while(pGraph->visit(smallRepeatVisit)) 
+        while(pGraph->visit(smallRepeatVisit))
             std::cout << "Finished small repeat resolve round " << totalSmallRepeatRounds++ << "\n";
         
         std::cout << "\n[Stats] After small repeat resolution:\n";

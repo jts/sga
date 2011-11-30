@@ -19,12 +19,16 @@ AC_CHECK_HEADER([zlib.h])
 AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
 
 # Check for the bamtools library path
+# Bamtools has two different path formats
+# If it is built in place the files will be in {path}/lib/ and {path}/include/
+# If it is installed (with make install) it will be in {path}/include/bamtools
+# and {path}/lib/bamtools. Both variants are handled here
 AC_ARG_WITH(bamtools, AS_HELP_STRING([--with-bamtools=PATH],
 	[specify directory containing the bamtools library (http://github.com/pezmaster31/bamtools)]))
 
 if test "$with_bamtools" -a -d "$with_bamtools"; then
-    bamtools_ldflags="-Wl,-rpath,$with_bamtools/lib -L$with_bamtools/lib"
-    bamtools_include="-I$with_bamtools/include"
+    bamtools_ldflags="-Wl,-rpath,$with_bamtools/lib -L$with_bamtools/lib -Wl,-rpath,$with_bamtools/lib/bamtools -L$with_bamtools/lib/bamtools"
+    bamtools_include="-I$with_bamtools/include -I$with_bamtools/include/bamtools"
 fi
 
 # Check for the hoard memory allocator 
