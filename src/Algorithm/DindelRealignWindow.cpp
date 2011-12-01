@@ -349,12 +349,17 @@ void DindelHaplotype::alignHaplotype()
     // globally align haplotypes to the first haplotype (arbitrary)
     std::vector< MAlignData > maVector;
     const std::string  rootSequence = m_refMapping.refSeq;
+    std::string alignSeq;
+    if (m_refMapping.isRC)
+        alignSeq = reverseComplement(m_seq);
+    else
+        alignSeq = m_seq;
 
     MAlignData _ma;
     _ma.position = 0;
-    _ma.str = m_seq;
+    _ma.str = alignSeq;
     _ma.name = std::string("haplotype-1");
-    _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(m_seq, rootSequence));
+    _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(alignSeq, rootSequence));
     maVector.push_back(_ma);
     m_pMA = new MultiAlignment(rootSequence, maVector, std::string("haplotype-0"));
     m_deleteMA = true;
@@ -364,7 +369,7 @@ void DindelHaplotype::alignHaplotype()
         std::cout << "DindelHaplotype::alignHaplotype:\n";
         std::string h0 = m_pMA->getPaddedSubstr(0,0,m_pMA->getNumColumns());
         m_pMA->print(80, &h0);
-        std::cout << "DindelHaplotype::DindelHaplotype globalAlignmentCigar " << m_seq << " vs root: " << _ma.expandedCigar << std::endl;
+        std::cout << "DindelHaplotype::DindelHaplotype globalAlignmentCigar " << alignSeq << " vs root: " << _ma.expandedCigar << std::endl;
     }
 }
 
@@ -449,9 +454,18 @@ void DindelHaplotype::extractVariants()
     if (inRefDeletion)
     {
         // ref deletion extends to end of alignment, right overhang.
-	// std::cout << "hDelStart: " << hDelStart << "m_refPos[hDelStart-1]: " << m_refPos[hDelStart-1] << std::endl;
+	// 
+        if (!(m_refPos[hDelStart-1] >=0))
+        {
+            std::cout << "hDelStart: " << hDelStart << "m_refPos[hDelStart-1]: " << m_refPos[hDelStart-1] << std::endl;
+            std::string consensus = m_pMA->generateConsensus();
+            m_pMA->print(1000, &consensus);
+        }
+
         assert(hDelStart>0);
         assert(m_refPos[hDelStart-1] >=0);
+
+
         for(int h = hDelStart; h < int(m_refPos.size()); h++)
         {
             m_refPos[h] = RIGHTOVERHANG;
@@ -584,8 +598,6 @@ void DindelHaplotype::extractVariants()
                     std::string varStringPadded = ma.getPaddedSubstr(varRow, eventStart, eventLength);
                     std::string refString = StdAlnTools::unpad(refStringPadded);
                     std::string varString = StdAlnTools::unpad(varStringPadded);
-                    int hap_start = int(ma.getBaseIdx(varRow, eventStart));
-                    int hap_end = int(ma.getBaseIdx(varRow,eventStart+eventLength));
                     if(verbose > 0)
                     {
                         printf("Ref start: %d col: %d eventStart: %d eventEnd: %d\n", (int) m_refMapping.refStart, (int)i, eventStart, eventEnd);
@@ -598,7 +610,7 @@ void DindelHaplotype::extractVariants()
                     assert(!varString.empty());
 
                     // minPos and maxPos are coordinates of window in MultiAlignment where variant can be ambiguously positioned
-                    int minPos = eventStart, maxPos = eventStart;
+                    int minPos = eventStart, maxPos = eventStart+eventLength-1;
 
                     if(isIndel && !isComplex && REPOSITIONVARIANTSSLOW)
                     {
@@ -676,6 +688,24 @@ void DindelHaplotype::extractVariants()
                     int varBaseOffsetMinPos = ma.getBaseIdx(varRow, minPos);
                     int varBaseOffsetMaxPos = ma.getBaseIdx(varRow, maxPos);
 
+                    // if the haplotype was aligned to the reverse strand of the reference sequenced, then we need to reverse these coordinates back.
+                    if(m_refMapping.isRC)
+                    {
+                        varBaseOffsetMinPos = int(m_seq.length())-1-varBaseOffsetMinPos;
+                        varBaseOffsetMaxPos = int(m_seq.length())-1-varBaseOffsetMaxPos;
+
+                        if(!(varBaseOffsetMaxPos<int(m_seq.length())))
+                        {
+                            std::cout << "varBaseOffsetMinPos: " << varBaseOffsetMinPos << " varBaseOffsetMaxPos: " << varBaseOffsetMaxPos << " length: " << m_seq.length() << " minPos: " << minPos << " maxPos: " << maxPos << " ma.getBaseIdx(varRow, minPos):" << ma.getBaseIdx(varRow, minPos) << " ma.getBaseIdx(varRow, maxPos); " << ma.getBaseIdx(varRow, maxPos) << "\n";
+                            std::string consensus = m_pMA->generateConsensus();
+                            m_pMA->print(1000, &consensus);
+                        }
+
+                        assert(varBaseOffsetMinPos>=0);
+                        assert(varBaseOffsetMaxPos<int(m_seq.length()));
+                    }
+
+
                     // Use leftmost position for the variant (which can only be change for an insertion or deletion)
                     if (DINDEL_DEBUG || 0) std::cout << "VARIANT: " << m_refMapping.refName << " " << refString << "/" << varString << " pos: " << refBaseOffsetMinPos+m_refMapping.refStart << " varBaseOffsetMinPos: " << varBaseOffsetMinPos << " varBaseOffsetMaxPos: " << varBaseOffsetMaxPos << " m_refMapping.refStart: " << m_refMapping.refStart << std::endl;
                     DindelVariant var(m_refMapping.refName, refString, varString, refBaseOffsetMinPos+m_refMapping.refStart);
@@ -683,8 +713,8 @@ void DindelHaplotype::extractVariants()
                     
                     var.setHaplotypeUnique(varBaseOffsetMinPos, varBaseOffsetMaxPos);
                     m_variants.push_back(var);
-
-                    std::pair < HashMap<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  m_variant_to_pos.insert( HashMap<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(hap_start, hap_end)));
+                    // this will be used in getClosestDistance
+                    std::pair < HashMap<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  m_variant_to_pos.insert( HashMap<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(varBaseOffsetMinPos, varBaseOffsetMaxPos)));
                     assert (ins_pair.second == true);
                 }
                 // Reset state
