@@ -182,7 +182,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
     // Do not use a kmer greater than 41
     size_t KMER_CEILING = 51;
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
-
+    
     // Reads on the same strand as the haplotype
     if(!parameters.bReferenceMode)
     {
@@ -205,6 +205,14 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
 
     HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
                                       parameters.pVariantSSA, extractionKmer, true, &variantRCReads, &variantRCReadMates);
+
+    size_t total_reads = normalReads.size() + normalReadMates.size() + normalRCReads.size() + normalRCReadMates.size();
+    total_reads += variantReads.size() + variantReadMates.size() + variantRCReads.size() + variantRCReadMates.size();
+
+    size_t MAX_READS = 1000;
+
+    if(total_reads > MAX_READS)
+        return DRC_OVER_DEPTH;
 
     // Get canidate alignments for the input haplotypes
     HapgenAlignmentVector candidateAlignments;
