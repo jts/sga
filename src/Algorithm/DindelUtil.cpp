@@ -271,11 +271,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
 
         HapgenUtil::extractReferenceSubstrings(candidateAlignments[i],parameters.pRefTable, FLANKING_SIZE, upstream, defined, downstream);
         std::string refSeq = upstream + defined + downstream;
-
-        // FIXME. This probably needs to happen somewhere else.
-        if(candidateAlignments[i].isRC) 
-            refSeq = reverseComplement(refSeq);
-
+       
         if(0)
         {
             std::cout << "\n ================================================\n";
@@ -358,14 +354,15 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
             dReads.push_back(DindelRead(rcReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
         }
 
-        //std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
-        //doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
+        // std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
+        // doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
 
         try
         {
             DindelWindow dWindow(dindelHaplotypes, dindelRefMappings);
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
             dRealignWindow.run("hmm", (i==0) ? baseOut : variantOut);
+	    //dRealignWindow.run("hmm", std::cout);
         }
         catch(std::string e)
         {

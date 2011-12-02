@@ -371,7 +371,7 @@ void MultiAlignment::print(int col_size, const std::string* pConsensus) const
     // Create a copy of the m_alignData and sort it by position
     MAlignDataVector sortedAlignments = m_alignData;
     std::stable_sort(sortedAlignments.begin(), sortedAlignments.end(), MAlignData::sortPosition);
-
+    col_size = 100000;
     size_t len = sortedAlignments[0].padded.size();
     for(size_t l = 0; l < len; l += col_size)
     {
