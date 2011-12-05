@@ -62,7 +62,7 @@ class MultiAlignment
         size_t getNumColumns() const;
 
         // Print the multiple alignment, optionally with a consensus sequence
-        void print(int col_size = 80, const std::string* pConsensus = NULL) const;
+        void print(int col_size = 80, const std::string* pConsensus = NULL, bool sorted = true, bool masked = false) const;
 
     private:
         

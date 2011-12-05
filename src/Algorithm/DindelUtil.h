@@ -43,6 +43,13 @@ namespace DindelUtil
                                    std::ostream& baseOut,
                                    std::ostream& variantOut);
 
+    // Run a naive caller
+    DindelReturnCode runNaiveCaller(const std::string& normalString,
+                                    const std::string& variantString,
+                                    const GraphCompareParameters& parameters,
+                                    std::ostream& baseOut,
+                                    std::ostream& variantOut);
+
     // show multiple alignment of all reads and all haplotypes
     void doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> & dReads,
                                           const StringVector & haplotypes);

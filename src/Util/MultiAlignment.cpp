@@ -362,7 +362,7 @@ std::string MultiAlignment::generateMatchString() const
 }
 
 //
-void MultiAlignment::print(int col_size, const std::string* pConsensus) const
+void MultiAlignment::print(int col_size, const std::string* pConsensus, bool sorted, bool masked) const
 {
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
 
@@ -370,7 +370,8 @@ void MultiAlignment::print(int col_size, const std::string* pConsensus) const
 
     // Create a copy of the m_alignData and sort it by position
     MAlignDataVector sortedAlignments = m_alignData;
-    std::stable_sort(sortedAlignments.begin(), sortedAlignments.end(), MAlignData::sortPosition);
+    if(sorted)
+        std::stable_sort(sortedAlignments.begin(), sortedAlignments.end(), MAlignData::sortPosition);
     col_size = 100000;
     size_t len = sortedAlignments[0].padded.size();
     for(size_t l = 0; l < len; l += col_size)
@@ -392,7 +393,20 @@ void MultiAlignment::print(int col_size, const std::string* pConsensus) const
             const MAlignData& mad = sortedAlignments[i];
             int diff = mad.padded.size() - l;
             int stop = diff < col_size ? diff : col_size;
-            printf("%zu\t%s\t%s\n", i, mad.padded.substr(l, stop).c_str(), mad.name.c_str());
+
+            std::string s = mad.padded.substr(l, stop).c_str();
+            if(masked)
+            {
+                for(size_t j = 0; j < s.size(); ++j)
+                {
+                    // get base row symbol
+                    char rb = getSymbol(0, l + j);
+                    if(s[j] == rb && s[j] != '-')
+                        s[j] = '=';
+                }
+            }
+            
+            printf("%zu\t%s\t%s\n", i, s.c_str(), mad.name.c_str());
         }
     
         // Print the matched columns

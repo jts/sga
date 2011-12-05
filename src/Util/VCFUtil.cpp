@@ -17,6 +17,12 @@
 // 
 // VCFRecord
 //
+VCFRecord::VCFRecord()
+{
+    passStr = "PASS";
+    quality = 20.0f;
+}
+
 void VCFRecord::addComment(const std::string& key, const std::string& value)
 {
     std::string out = key;
@@ -25,6 +31,23 @@ void VCFRecord::addComment(const std::string& key, const std::string& value)
 
 
     comments.push_back(out);
+}
+
+void VCFRecord::addComment(const std::string& key, const int& value)
+{
+    std::stringstream v_str;
+    v_str << value;
+    addComment(key, v_str.str());
+}
+
+void VCFRecord::setPassStr(const std::string str)
+{
+    passStr = str;
+}
+
+void VCFRecord::setQuality(const double q)
+{
+    quality = q;
 }
 
 void VCFRecord::printVerbose() const
@@ -43,8 +66,8 @@ std::ostream& operator<<(std::ostream& o, VCFRecord& record)
     o << ".\t"; // ID not supported
     o << record.refStr << "\t";
     o << record.varStr << "\t";
-    o << ".\t"; // QUAL not supported
-    o << "PASS\t"; // everything passes
+    o << record.quality << "\t";
+    o << record.passStr << "\t";
     std::copy( record.comments.begin(), record.comments.end(), 
                std::ostream_iterator<std::string>(o, ";")); // comments 
     return o;
