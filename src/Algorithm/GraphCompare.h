@@ -57,6 +57,7 @@ struct GraphCompareParameters
     // Parameters
     size_t kmer;
     size_t kmerThreshold;
+    size_t maxKmerThreshold; // skip kmers seen this many times or more
     size_t maxBranches;
     bool bReferenceMode;
 

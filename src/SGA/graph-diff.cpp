@@ -75,6 +75,7 @@ namespace opt
     static int numThreads = 1;
     static int kmer = 55;
     static int kmerThreshold = 2;
+    static int maxKmerThreshold = 100;
     static int maxBranches = 0;
     static int sampleRate = 128;
     static int cacheLength = 10;
@@ -170,7 +171,6 @@ int graphDiffMain(int argc, char** argv)
 
     // Create interval caches to speed up k-mer lookups
     BWTIntervalCache varBWTCache(opt::cacheLength, pVariantBWT);
-
     BWTIntervalCache baseBWTCache(opt::cacheLength, pBaseBWT);
 
     // Set the parameters shared between all threads
@@ -192,6 +192,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = NULL;
     sharedParameters.kmerThreshold = opt::kmerThreshold;
+    sharedParameters.maxKmerThreshold = opt::maxKmerThreshold;
     sharedParameters.maxBranches = opt::maxBranches;
     sharedParameters.bReferenceMode = opt::referenceMode;
 

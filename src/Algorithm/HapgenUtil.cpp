@@ -12,6 +12,7 @@
 #include "HapgenUtil.h"
 #include "LRAlignment.h"
 #include "Interval.h"
+#include "Profiler.h"
 
 // Align the haplotype to the reference genome represented by the BWT/SSA pair
 void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
@@ -196,15 +197,20 @@ bool HapgenUtil::checkAlignmentsAreConsistent(const std::string& refString, cons
 }
 
 // Extract reads from an FM-index that have a k-mer match to any given haplotypes
-void HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes, 
+// Returns true if the reads were successfully extracted, false if there are 
+// more reads than maxReads
+bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes, 
                                        const BWT* pBWT,
                                        const BWTIntervalCache* pBWTCache,
                                        const SampledSuffixArray* pSSA,
                                        int k,
                                        bool doReverse,
+                                       size_t maxReads,
                                        SeqItemVector* pOutReads, 
                                        SeqItemVector* pOutMates)
 {
+    PROFILE_FUNC("extractHaplotypeReads")
+
     // Extract the set of reads that have at least one kmer shared with these haplotypes
     // This is a bit of a lengthy procedure with a few steps:
     // 1) extract all the kmers in the haplotypes
@@ -229,11 +235,24 @@ void HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
         }
     }
 
-    // Compute the set of reads ids 
-    std::set<int64_t> readIndices;
+    // Compute suffix array intervals for the kmers
+    size_t totalReads = 0;
+    std::vector<BWTInterval> intervals;
     for(std::set<std::string>::const_iterator iter = kmerSet.begin(); iter != kmerSet.end(); ++iter)
     {
         BWTInterval interval = BWTAlgorithms::findIntervalWithCache(pBWT, pBWTCache, *iter);
+        intervals.push_back(interval);
+        totalReads += interval.size();
+    }
+
+    if(totalReads > maxReads)
+        return false;
+
+    // Compute the set of reads ids 
+    std::set<int64_t> readIndices;
+    for(size_t i = 0; i < intervals.size(); ++i)
+    {
+        BWTInterval interval = intervals[i];
         for(int64_t j = interval.lower; j <= interval.upper; ++j)
         {
             // Get index from sampled suffix array
@@ -273,7 +292,9 @@ void HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
             mateItem.seq = BWTAlgorithms::extractString(pBWT, mateIdx);
             pOutMates->push_back(mateItem);
         }
-    }    
+    }
+
+    return true;
 }
 
 // Align a bunch of reads locally to a sequence

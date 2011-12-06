@@ -11,6 +11,7 @@
 #include "DindelUtil.h"
 #include "HapgenUtil.h"
 #include "VCFUtil.h"
+#include "Profiler.h"
 
 // Run dindel on a pair of samples
 DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString, 
@@ -19,6 +20,7 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
                                            std::ostream& baseOut,
                                            std::ostream& variantOut)
 {
+    assert(false); // deprecated 
     StringVector inHaplotypes;
     inHaplotypes.push_back(normalString);
     inHaplotypes.push_back(variantString);
@@ -36,16 +38,16 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
     // Set the value to use for extracting reads that potentially match the haplotype
     size_t KMER_CEILING = 51;
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
-
+    size_t MAX_READS = 1000;
     // Reads on the same strand as the haplotype    
     if(!parameters.bReferenceMode)
     {
         HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                          parameters.pBaseSSA, extractionKmer, false, &normalReads, &normalReadMates);
+                                          parameters.pBaseSSA, extractionKmer, false, MAX_READS, &normalReads, &normalReadMates);
 
         // Reads on the reverse strand
         HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                          parameters.pBaseSSA, extractionKmer, true, &normalRCReads, &normalRCReadMates);
+                                          parameters.pBaseSSA, extractionKmer, true, MAX_READS, &normalRCReads, &normalRCReadMates);
     }
 
     // Variant reads
@@ -55,10 +57,10 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
     SeqItemVector variantRCReadMates;
 
     HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
-                                      parameters.pVariantSSA, extractionKmer, false, &variantReads, &variantReadMates);
+                                      parameters.pVariantSSA, extractionKmer, false, MAX_READS, &variantReads, &variantReadMates);
 
     HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
-                                      parameters.pVariantSSA, extractionKmer, true, &variantRCReads, &variantRCReadMates);
+                                      parameters.pVariantSSA, extractionKmer, true, MAX_READS, &variantRCReads, &variantRCReadMates);
 
 
     //
@@ -165,6 +167,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
                                            std::ostream& baseOut,
                                            std::ostream& variantOut)
 {
+    PROFILE_FUNC("runDindelPairMatePair")
+
     StringVector inHaplotypes;
     inHaplotypes.push_back(normalString);
     inHaplotypes.push_back(variantString);
@@ -172,6 +176,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
     //
     // First, extract the reads from the normal and variant data sets that match each haplotype
     //
+    size_t MAX_READS = 1000;
 
     // Normal reads
     SeqItemVector normalReads;
@@ -180,19 +185,26 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
     SeqItemVector normalRCReadMates;
 
     // Set the value to use for extracting reads that potentially match the haplotype
-    // Do not use a kmer greater than 41
+    // Do not use a kmer for extraction greater than this value
     size_t KMER_CEILING = 51;
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
     
+    bool extractOK = true;
     // Reads on the same strand as the haplotype
     if(!parameters.bReferenceMode)
     {
-        HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                          parameters.pBaseSSA, extractionKmer, false, &normalReads, &normalReadMates);
+        extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
+                                                      parameters.pBaseSSA, extractionKmer, false, MAX_READS, &normalReads, &normalReadMates);
+
+        if(!extractOK)
+            return DRC_OVER_DEPTH;
 
         // Reads on the reverse strand
-        HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                          parameters.pBaseSSA, extractionKmer, true, &normalRCReads, &normalRCReadMates);
+        extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
+                                                      parameters.pBaseSSA, extractionKmer, true, MAX_READS, &normalRCReads, &normalRCReadMates);
+
+        if(!extractOK)
+            return DRC_OVER_DEPTH;
     }
 
     // Variant reads
@@ -201,19 +213,21 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
     SeqItemVector variantRCReads;
     SeqItemVector variantRCReadMates;
 
-    HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
-                                      parameters.pVariantSSA, extractionKmer, false, &variantReads, &variantReadMates);
+    extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
+                                                  parameters.pVariantSSA, extractionKmer, false, MAX_READS, &variantReads, &variantReadMates);
 
-    HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
-                                      parameters.pVariantSSA, extractionKmer, true, &variantRCReads, &variantRCReadMates);
+    if(!extractOK)
+        return DRC_OVER_DEPTH;
+
+
+    extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
+                                                  parameters.pVariantSSA, extractionKmer, true, MAX_READS, &variantRCReads, &variantRCReadMates);
+
+    if(!extractOK)
+        return DRC_OVER_DEPTH;
 
     size_t total_reads = normalReads.size() + normalReadMates.size() + normalRCReads.size() + normalRCReadMates.size();
     total_reads += variantReads.size() + variantReadMates.size() + variantRCReads.size() + variantRCReadMates.size();
-
-    size_t MAX_READS = 1000;
-
-    if(total_reads > MAX_READS)
-        return DRC_OVER_DEPTH;
 
     // Get canidate alignments for the input haplotypes
     HapgenAlignmentVector candidateAlignments;
@@ -382,7 +396,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
         baseOut.flush();
         variantOut.flush();
     }
-
     return DRC_OK;
 }
 
@@ -450,16 +463,24 @@ DindelReturnCode DindelUtil::runNaiveCaller(const std::string& normalString,
     // Do not use a kmer greater than 41
     size_t KMER_CEILING = 51;
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
-    
+    size_t MAX_READS = 1000;
+
+    bool extractOK = true;
     // Reads on the same strand as the haplotype
     if(!parameters.bReferenceMode)
     {
-        HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                          parameters.pBaseSSA, extractionKmer, false, &normalReads, &normalReadMates);
+        extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
+                                                      parameters.pBaseSSA, extractionKmer, false, MAX_READS, &normalReads, &normalReadMates);
+
+        if(!extractOK)
+            return DRC_OVER_DEPTH;
 
         // Reads on the reverse strand
-        HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
-                                          parameters.pBaseSSA, extractionKmer, true, &normalRCReads, &normalRCReadMates);
+        extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
+                                                      parameters.pBaseSSA, extractionKmer, true, MAX_READS, &normalRCReads, &normalRCReadMates);
+
+        if(!extractOK)
+            return DRC_OVER_DEPTH;
     }
 
     // Variant reads
@@ -468,20 +489,19 @@ DindelReturnCode DindelUtil::runNaiveCaller(const std::string& normalString,
     SeqItemVector variantRCReads;
     SeqItemVector variantRCReadMates;
 
-    HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
-                                      parameters.pVariantSSA, extractionKmer, false, &variantReads, &variantReadMates);
+    extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
+                                                  parameters.pVariantSSA, extractionKmer, false, MAX_READS, &variantReads, &variantReadMates);
 
-    HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
-                                      parameters.pVariantSSA, extractionKmer, true, &variantRCReads, &variantRCReadMates);
-
-    size_t total_reads = normalReads.size() + normalReadMates.size() + normalRCReads.size() + normalRCReadMates.size();
-    total_reads += variantReads.size() + variantReadMates.size() + variantRCReads.size() + variantRCReadMates.size();
-
-    size_t MAX_READS = 1000;
-
-    if(total_reads > MAX_READS)
+    if(!extractOK)
         return DRC_OVER_DEPTH;
-    
+
+
+    extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pVariantBWT, parameters.pVariantBWTCache,
+                                                  parameters.pVariantSSA, extractionKmer, true, MAX_READS, &variantRCReads, &variantRCReadMates);
+
+    if(!extractOK)
+        return DRC_OVER_DEPTH;
+
     //
     // Construct a multiple alignment between the reference, the assembled haplotypes and all the reads
     // 

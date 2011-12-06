@@ -22,6 +22,7 @@
 #include "DindelUtil.h"
 #include "HaplotypeBuilder.h"
 #include "BuilderCommon.h"
+#include "Profiler.h"
 
 // #define GRAPH_DIFF_DEBUG 1
 
@@ -156,7 +157,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         if(rc_interval.isValid())
             count += rc_interval.size();
 
-        if(count >= m_parameters.kmerThreshold)
+        if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold)
         {
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
@@ -290,11 +291,14 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
 }
 
 //
-BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, int /*count*/)
+BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, int count)
 {
+    PROFILE_FUNC("processVariantKmerAggressive")
+
 #ifdef GRAPH_DIFF_DEBUG
-    std::cout << "Variant Kmer: " << str << "\n";
+    std::cout << "Processing variant kmer " << str << " with depth: " << count << "\n";
 #endif
+    (void)count;
 
     //
     std::string variant_str;
@@ -544,10 +548,15 @@ bool GraphCompare::buildVariantStringConservative(const std::string& startingKme
 // Graph-based method of building a variant string until it meets the graph of the normal
 bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std::string& outString)
 {
+    PROFILE_FUNC("buildVariantStringGraph")
     // We search until we find the first common vertex in each direction
     bool joinFound[ED_COUNT];
     joinFound[ED_SENSE] = false;
     joinFound[ED_ANTISENSE] = false;
+
+    size_t MIN_TARGET_COUNT = m_parameters.bReferenceMode ? 1 : 2;
+    size_t MAX_ITERATIONS = 10000;
+    size_t MAX_SIMULTANEOUS = 20;
 
     StringGraph* pGraph = new StringGraph;
     BuilderExtensionQueue queue;
@@ -562,8 +571,9 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
 
     Vertex* pSenseJoin = NULL;
     Vertex* pAntisenseJoin = NULL;
+    size_t iterations = 0;
 
-    while(!queue.empty())
+    while(!queue.empty() && iterations++ < MAX_ITERATIONS && queue.size() < MAX_SIMULTANEOUS)
     {
         BuilderExtensionNode curr = queue.front();
         queue.pop();
@@ -603,7 +613,7 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
             // Check if this sequence is present in the FM-index of the target
             // If so, it is the join point of the de Bruijn graph and we extend no further.
             size_t targetCount = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.pBaseBWT);
-            if(targetCount >= 2)
+            if(targetCount >= MIN_TARGET_COUNT)
             {
                 if(curr.direction == ED_SENSE)
                     pSenseJoin = pVertex;
@@ -623,6 +633,9 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
 #endif
     }
 
+    if(iterations >= MAX_ITERATIONS)
+        std::cerr << "Warning iteration limit hit\n";
+
     // Check if a unique join path was found
     outString = "";
     if(pSenseJoin != NULL && pAntisenseJoin != NULL)
@@ -639,7 +652,7 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
         if(!outWalks.empty())
             outString = outWalks.front().getString(SGWT_START_TO_END);
     }
-
+    
     delete pGraph;
     return !outString.empty();
 }

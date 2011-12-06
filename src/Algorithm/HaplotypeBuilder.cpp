@@ -11,6 +11,7 @@
 #include "BWTAlgorithms.h"
 #include "SGSearch.h"
 #include "SGAlgorithms.h"
+#include "Profiler.h"
 
 //
 //
@@ -63,12 +64,13 @@ void HaplotypeBuilder::setIndex(const BWT* pBWT, const BWT* pRBWT)
 // Run the bubble construction process
 HaplotypeBuilderReturnCode HaplotypeBuilder::run()
 {
+    PROFILE_FUNC("HaplotypeBuilder::run")
     assert(m_queue.size() == 1);
     assert(m_pJoinVertex != NULL);
     assert(m_pBWT != NULL);
 
     size_t MAX_VERTICES = 2000;
-
+    
     while(!m_queue.empty())
     {
         if(m_pGraph->getNumVertices() > MAX_VERTICES)
