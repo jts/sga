@@ -136,8 +136,10 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     {
         if(visitedKmers[j])
             continue; // skip
-        std::string kmer = w.substr(j, m_parameters.kmer);
-        
+        //std::string kmer = w.substr(j, m_parameters.kmer);
+        //std::string kmer = "TCCCAGCACTTTGGGTGGCCGAGGTGGGCGGGTCACAATGTCAGGAGATCG";
+        std::string kmer = "CATCAAACAGCAAGCAGACCCTCCGGAGTTTACCTTTTCATGGATGTGATG";
+
         // Get the interval for this kmer
         BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
                                                                     m_parameters.pVariantBWTCache, 
@@ -180,18 +182,23 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
  
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(bubbleResult.sourceString,
-                                                                     bubbleResult.targetString,
-                                                                     m_parameters,
-                                                                     baseVCFSS,
-                                                                     variantVCFSS);
+//#endif
+                    std::cout << "@@@@@======================================================\n";
+                    std::cout << "Dindeling kmer: " << kmer << "\n";
+
+                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
+                                                                             bubbleResult.sourceString,
+                                                                             bubbleResult.targetString,
+                                                                             m_parameters,
+                                                                             baseVCFSS,
+                                                                             variantVCFSS);
+                    std::cout << "base:    " << baseVCFSS.str() << "\n";
+                    std::cout << "variant: " << variantVCFSS.str() << "\n";
                     
                     if(drc == DRC_OK)
                     {
-#ifdef GRAPH_DIFF_DEBUG
-                        std::cout << baseVCFSS.str() << "\n";
-                        std::cout << variantVCFSS.str() << "\n";
-#endif
+//#ifdef GRAPH_DIFF_DEBUG
+                        
                         result.baseVCFStrings.push_back(baseVCFSS.str());
                         result.variantVCFStrings.push_back(variantVCFSS.str());
                     }
@@ -205,6 +212,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
         for(int64_t i = rc_interval.lower; i <= rc_interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
+
+        exit(0);
     }
     
     return result;
@@ -787,7 +796,9 @@ void GraphCompare::debug(const std::string& debugFilename)
                 {
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(bubbleResult.sourceString,
+                    std::string kmer = ".";
+                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
+                                                                             bubbleResult.sourceString,
                                                                              bubbleResult.targetString,
                                                                              m_parameters,
                                                                              baseVCFSS,

@@ -26,12 +26,15 @@ struct HapgenAlignment
     HapgenAlignment(const int& id, int p, int l, int s, bool rc) : referenceID(id), position(p), length(l), score(s), isRC(rc) {}
 
     // Sort
+    // Kees: added sorting on alignment score
     friend bool operator<(const HapgenAlignment& a, const HapgenAlignment& b)
     {
-        if(a.referenceID == b.referenceID)
+        if(a.referenceID != b.referenceID)
+            return a.referenceID < b.referenceID;
+        else if(a.position != b.position)
             return a.position < b.position;
         else
-            return a.referenceID < b.referenceID;
+            return a.score < b.score;
     }
 
     // Output

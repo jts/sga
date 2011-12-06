@@ -57,9 +57,10 @@ void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
     // previous alignment, add it to the output collection.
     
     // First alignment is always ok
-    outAlignments.push_back(alignments[0]);
+    outAlignments.push_back(alignments[alignments.size()-1]);
 
-    for(size_t i = 1; i < alignments.size(); ++i)
+    // Kees: start from back because alignments are sorted in order of increasing score
+    for(size_t i = alignments.size()-1; i-- > 0;)
     {
         // Check this alignment against the last alignment added to the output set
         const HapgenAlignment& prevAlign = outAlignments.back();

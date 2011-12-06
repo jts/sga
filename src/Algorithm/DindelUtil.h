@@ -37,11 +37,12 @@ namespace DindelUtil
                                    std::ostream& variantOut);
 
     // Run dindel on a pair of samples
-    DindelReturnCode runDindelPairMatePair(const std::string& normalString,
-                                   const std::string& variantString,
-                                   const GraphCompareParameters& parameters,
-                                   std::ostream& baseOut,
-                                   std::ostream& variantOut);
+    DindelReturnCode runDindelPairMatePair(const std::string& id,
+                                           const std::string& normalString,
+                                           const std::string& variantString,
+                                           const GraphCompareParameters& parameters,
+                                           std::ostream& baseOut,
+                                           std::ostream& variantOut);
 
     // show multiple alignment of all reads and all haplotypes
     void doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> & dReads,

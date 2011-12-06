@@ -589,7 +589,7 @@ class DindelRealignWindowResult
             public:
 
                 // Functions
-                Inference() : qual(0.0), freq(0.0), strandBias(0.0),numReadsForward(0), numReadsReverse(0), numReadsForwardZeroMismatch(0), numReadsReverseZeroMismatch(0), numUnmapped(0), numLibraries(0), numReadNames(0) {};
+                Inference() :  strandBias(0.0),numReadsForward(0), numReadsReverse(0), numReadsForwardZeroMismatch(0), numReadsReverseZeroMismatch(0), numUnmapped(0), numLibraries(0), numReadNames(0) {};
                 void outputAsVCF(const DindelVariant & var, 
                                  const DindelRealignWindowResult & result, 
                                  std::ostream& out) const;
@@ -604,8 +604,8 @@ class DindelRealignWindowResult
                 // Data
 
                 // Phred-scaled posterior prob
-                double qual;
-                double freq;
+                //double qual;
+                //double freq;
                 double strandBias;
                 int numReadsForward;
                 int numReadsReverse;
@@ -655,6 +655,7 @@ class DindelRealignWindowResult
         // Data
         std::vector<DindelHaplotype> haplotypes;
         std::vector<double> haplotypeFrequencies;
+        std::string outputID;
         
         // integrates same variants across different haplotypes
         VarToInference variantInference; 
@@ -857,6 +858,10 @@ class DindelRealignWindow
         
         // Functions
         void run(const std::string & algorithm, std::ostream& out);
+        void run(const std::string & algorithm,
+                 std::ostream& out,
+                 const std::string id);
+
 
         const DindelWindow & getDindelWindow() const { return  m_dindelWindow; }
         const std::vector< std::vector< ReadHaplotypeAlignment > > & getHapReadAlignments() const 
@@ -871,6 +876,7 @@ class DindelRealignWindow
         std::vector<DindelRead> *m_pDindelReads;
         DindelRealignParameters realignParameters;
         std::vector<int> m_readMapsToReference;
+        std::string m_outputID; // to be output in VCF
 
         // HAPLOTYPE ALIGNMENT BUSINESS
         MaPosToCandidateSNP m_maPosToCandidateSNP;

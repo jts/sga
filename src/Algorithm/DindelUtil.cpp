@@ -158,11 +158,12 @@ DindelReturnCode DindelUtil::runDindelPair(const std::string& normalString,
 }
 
 // Run dindel on a pair of samples
-DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalString,
-                                           const std::string& variantString,
-                                           const GraphCompareParameters& parameters,
-                                           std::ostream& baseOut,
-                                           std::ostream& variantOut)
+DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
+                                                   const std::string& normalString,
+                                                   const std::string& variantString,
+                                                   const GraphCompareParameters& parameters,
+                                                   std::ostream& baseOut,
+                                                   std::ostream& variantOut)
 {
     StringVector inHaplotypes;
     inHaplotypes.push_back(normalString);
@@ -302,18 +303,19 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
         }
     }
     
-    /*
+    
     std::cout << "REFERENCE MAPPINGS: \n";
     int c = 0;
     for(std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++)
         std::cout << c << " " << it->refName << " start: " << it->refStart << " end: " << it->refStart + it->refSeq.size()-1 << " score: " << it->referenceAlignmentScore << "\n";
-    */
+    
 
     for(size_t i = 0; i < flankingHaplotypes.size(); ++i)
     {
         dindelHaplotypes.push_back(flankingHaplotypes[i]);
         dindelRefMappings[i] = std::vector<DindelReferenceMapping>(refMappings.begin(),refMappings.end());
     }
+    DindelWindow dWindow(dindelHaplotypes, dindelRefMappings);
 
     //
     // Run Dindel
@@ -354,14 +356,13 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
             dReads.push_back(DindelRead(rcReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
         }
 
-        // std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
-        // doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
+        //std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
+        //doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
 
         try
         {
-            DindelWindow dWindow(dindelHaplotypes, dindelRefMappings);
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
-            dRealignWindow.run("hmm", (i==0) ? baseOut : variantOut);
+            dRealignWindow.run("hmm", (i==0) ? baseOut : variantOut, id);
 	    //dRealignWindow.run("hmm", std::cout);
         }
         catch(std::string e)
