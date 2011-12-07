@@ -22,6 +22,9 @@ void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
 {
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReference")
     LRAlignment::LRParams params;
+
+    params.zBest = 5;
+
     for(size_t i = 0; i <= 1; ++i)
     {
         LRAlignment::LRHitVector hits;
@@ -210,8 +213,6 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
                                        SeqItemVector* pOutReads, 
                                        SeqItemVector* pOutMates)
 {
-    PROFILE_FUNC("HapgenUtil::extractHaplotypeReads")
-
     // Extract the set of reads that have at least one kmer shared with these haplotypes
     // This is a bit of a lengthy procedure with a few steps:
     // 1) extract all the kmers in the haplotypes

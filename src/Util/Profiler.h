@@ -12,7 +12,7 @@
 #include <time.h>
 #include <iostream>
 
-#define USE_PROFILER 1
+//#define USE_PROFILER 1
 #if defined(HAVE_CLOCK_GETTIME) && defined(USE_PROFILER)
 
 // This class writes the lifespan of the object
@@ -44,7 +44,7 @@ class TimeTracker
 };
 
 // Change this to determine how often the profile should print
-#define PROFILE_TICKS_BEFORE_PRINT 100
+#define PROFILE_TICKS_BEFORE_PRINT 10000
 
 // Place this macros at the start of the function you wish the profile
 // The static variable updates are done via atomic compare and swaps so

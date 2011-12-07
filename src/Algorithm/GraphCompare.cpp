@@ -134,6 +134,14 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     }
     
     // Process the kmers that have not been previously visited
+    // We only try to find variants from one k-mer per read. 
+    // This heurestic handles the situation where we process a kmer,
+    // spend a lot of time trying to assemble it into a string and fail,
+    // then try again with the next k-mer in the read. Since all the k-mers
+    // in a read are connected in the de Bruijn graph, if the first attempt
+    // to assemble a k-mer into a variant fails, it is very unlikely that
+    // subsequent attempts will succeed.
+    bool variantAttempted = false;
     for(j = 0; j < num_kmers; ++j)
     {
         if(visitedKmers[j])
@@ -158,7 +166,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         if(rc_interval.isValid())
             count += rc_interval.size();
 
-        if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold)
+        if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold && !variantAttempted)
         {
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
@@ -166,6 +174,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             if(base_count == 0)
             {
                 // This is a variant kmer
+                variantAttempted = true;
                 BWTVector bwts;
                 bwts.push_back(m_parameters.pBaseBWT);
                 bwts.push_back(m_parameters.pVariantBWT);
@@ -356,7 +365,7 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
         // Run the builder
         HaplotypeBuilderReturnCode hbCode = builder.run();
 #ifdef GRAPH_DIFF_DEBUG
-        std::cout << "HBC: " << hbCode << "\n";
+        std::cout << "HBC: " << hbCode << " VS: " << variant_str << "\n";
 #endif
         HaplotypeBuilderResult hbResult;
 
@@ -556,9 +565,16 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
     joinFound[ED_ANTISENSE] = false;
 
     size_t MIN_TARGET_COUNT = m_parameters.bReferenceMode ? 1 : 2;
-    size_t MAX_ITERATIONS = 1000;
-    size_t MAX_SIMULTANEOUS = 20;
+    size_t MAX_ITERATIONS = 2000;
+    size_t MAX_SIMULTANEOUS_BRANCHES = 20;
+    size_t MAX_TOTAL_BRANCHES = 50;
 
+    // Tracking stats
+    size_t max_simul_branches_used = 0;
+    size_t total_branches = 0;
+    size_t iterations = 0;
+
+    // Initialize the graph
     StringGraph* pGraph = new StringGraph;
     BuilderExtensionQueue queue;
 
@@ -572,10 +588,14 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
 
     Vertex* pSenseJoin = NULL;
     Vertex* pAntisenseJoin = NULL;
-    size_t iterations = 0;
 
-    while(!queue.empty() && iterations++ < MAX_ITERATIONS && queue.size() < MAX_SIMULTANEOUS)
+    // Perform the extension. The while conditions are heuristics to avoid searching
+    // the graph too much 
+    while(!queue.empty() && iterations++ < MAX_ITERATIONS && queue.size() < MAX_SIMULTANEOUS_BRANCHES && total_branches < MAX_TOTAL_BRANCHES)
     {
+        if(queue.size() > max_simul_branches_used)
+            max_simul_branches_used = queue.size();
+
         BuilderExtensionNode curr = queue.front();
         queue.pop();
 
@@ -604,11 +624,13 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
             // Skip if the vertex already exists
             if(pGraph->getVertex(newStr) != NULL)
                 continue;
-
+            
+            // Allocate the new vertex and add it to the graph
             Vertex* pVertex = new(pGraph->getVertexAllocator()) Vertex(newStr, newStr);
             pVertex->setColor(GC_BLACK);
             pGraph->addVertex(pVertex);
 
+            // Add edges
             BuilderCommon::addSameStrandDeBruijnEdges(pGraph, curr.pVertex, pVertex, curr.direction);
             
             // Check if this sequence is present in the FM-index of the target
@@ -628,16 +650,19 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
                 queue.push(BuilderExtensionNode(pVertex, curr.direction));
             }
         }
-
-#ifdef GRAPH_DIFF_DEBUG
-        std::cout << vertStr << " " << curr.direction << " " << extensionCounts << extensionsUsed << "\n";
-#endif
+        
+        // Update the total number of times we branches the search
+        if(!extensionsUsed.empty())
+            total_branches += extensionsUsed.size() - 1;
     }
 
-    if(iterations >= MAX_ITERATIONS)
-        std::cerr << "Warning iteration limit hit\n";
-
-    // Check if a unique join path was found
+    /*
+    std::string result_str = (pSenseJoin != NULL && pAntisenseJoin != NULL) ? "OK" : "FAIL";
+    printf("VariantStringGraph\t%s\tMS:%zu\tTB:%zu\tNI:%zu\n", result_str.c_str(), max_simul_branches, total_branches, iterations);
+    */
+    
+    // If the graph construction was successful, walk the graph
+    // between the endpoints to make a string
     outString = "";
     if(pSenseJoin != NULL && pAntisenseJoin != NULL)
     {

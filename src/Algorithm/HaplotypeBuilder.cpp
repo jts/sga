@@ -69,13 +69,20 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
     assert(m_pJoinVertex != NULL);
     assert(m_pBWT != NULL);
 
-    size_t MAX_VERTICES = 1000;
-    
+    size_t MAX_ITERATIONS = 2000;
+    size_t MAX_SIMULTANEOUS_BRANCHES = 20;
+    size_t MAX_TOTAL_BRANCHES = 50;
+   
+    // Tracking stats
+    size_t total_branches = 0;
+    size_t iterations = 0;
+
     while(!m_queue.empty())
     {
-        if(m_pGraph->getNumVertices() > MAX_VERTICES)
+        if(iterations > MAX_ITERATIONS || m_queue.size() > MAX_SIMULTANEOUS_BRANCHES || total_branches > MAX_TOTAL_BRANCHES)
             return HBRC_TOO_MANY_VERTICES;
 
+        iterations += 1;
         BuilderExtensionNode curr = m_queue.front();
         m_queue.pop();
 
@@ -86,7 +93,8 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
             extensionCounts = BWTAlgorithms::calculateDeBruijnExtensions(vertStr, m_pBWT, m_pRevBWT, curr.direction);
         else
             extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_pBWT, curr.direction);
-                
+        
+        size_t num_added = 0;
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
@@ -104,6 +112,7 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
                 pVertex = new(m_pGraph->getVertexAllocator()) Vertex(newStr, newStr);
                 addVertex(pVertex, count);
                 m_queue.push(BuilderExtensionNode(pVertex, curr.direction));
+                num_added += 1;
             }
             
             // Create the new edge in the graph
@@ -113,6 +122,9 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
             if(joinFound)
                 return HBRC_OK;
         }
+
+        if(num_added > 0)
+            total_branches += (num_added - 1);
     }
 
     // no path between the nodes found
