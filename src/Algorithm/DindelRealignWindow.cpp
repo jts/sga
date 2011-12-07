@@ -1201,20 +1201,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     double hapVarQual = 0.0; // this is the quality score of the haplotype this variant was called from.
     double varFreq = 0.0;
 
-    // compute variant quality weighted by mapping quality
-    double sumLogMappingProb = -HUGE_VAL;
-    for(size_t i = 0; i < haplotypeProperties.size(); ++i) sumLogMappingProb = addLogs(sumLogMappingProb, haplotypeProperties[i].logMappingProb);
-
-    double sumLogMapVarQualProb = -HUGE_VAL;
-    for(size_t i = 0; i < haplotypeProperties.size(); ++i)
-    {
-        double hq = haplotypeProperties[i].qual;
-        if(hq < 0.0) hq = 0.0;
-        double vprob = 1.0 - pow(10.0,-hq/10.0);
-        if (vprob<1e-100) vprob = 1e-100;
-        sumLogMapVarQualProb = addLogs(sumLogMapVarQualProb, haplotypeProperties[i].logMappingProb-sumLogMappingProb + log(vprob));
-    }
-
+  
     double logProbNoHaplotypeMaps = 0.0;
     bool isEmpty = true;
     bool hasHighMappingQualityVariants = false;
@@ -1225,7 +1212,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
         double vprob = 1.0 - pow(10.0,-hq/10.0);
         if (vprob<1e-100) vprob = 1e-100;
         hapVarQual += exp(haplotypeProperties[i].logMappingProb) * hq;
-        varFreq += exp(haplotypeProperties[i].logMappingProb - sumLogMappingProb - sumLogMapVarQualProb) * vprob * haplotypeProperties[i].freq ;
+        varFreq += exp(haplotypeProperties[i].logMappingProb) * vprob * haplotypeProperties[i].freq ;
 
         // probability that at least one haplotype maps with high probability to this position in the reference
         double probHaplotypeDoesNotMap = 1.0-exp(haplotypeProperties[i].logMappingProb);
@@ -1236,8 +1223,6 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
         if (hmq>0) hasHighMappingQualityVariants = true;
 
         logProbNoHaplotypeMaps += log(probHaplotypeDoesNotMap);
-
-
 
         // set values in hapPropString
         if(hmq>0)
