@@ -272,19 +272,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
         HapgenUtil::extractReferenceSubstrings(candidateAlignments[i],parameters.pRefTable, FLANKING_SIZE, upstream, defined, downstream);
         std::string refSeq = upstream + defined + downstream;
-       
-        if(0)
-        {
-            std::cout << "\n ================================================\n";
-            std::cout << "candidateAlignments[" << i << "]" << candidateAlignments[i] << "\n";
-            std::cout << "refSeq: " << upstream << " " << defined << " " << downstream << "\n";
-            for (size_t k = 0; k < inHaplotypes.size(); ++k)
-               std::cout << "        " << std::string(upstream.size(),' ') << " " << inHaplotypes[k] << "\n";
-
-            for (size_t k = 0; k < flankingHaplotypes.size(); ++k)
-                std::cout << "        " << " " << flankingHaplotypes[k] << "\n";
-        }
-
+     
         int refStart = candidateAlignments[i].position - int(upstream.size()) + 1;
 
         // Here the score is used as an estimate of how unique "defined" is in the reference sequence.
@@ -303,12 +291,12 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         }
     }
     
-    
+    /*
     std::cout << "REFERENCE MAPPINGS: \n";
     int c = 0;
     for(std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++)
         std::cout << c << " " << it->refName << " start: " << it->refStart << " end: " << it->refStart + it->refSeq.size()-1 << " score: " << it->referenceAlignmentScore << "\n";
-    
+    */
 
     for(size_t i = 0; i < flankingHaplotypes.size(); ++i)
     {
@@ -325,8 +313,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     size_t start_i = parameters.bReferenceMode ? 1 : 0;
     for(size_t i = start_i; i <= 1; ++i)
     {
-        //std::cout << (i == 0 ? "NORMAL\n" : "VARIANT\n");
-
         SeqItemVector& fwdReads = (i == 0) ? normalReads : variantReads;
         SeqItemVector& fwdReadMates = (i == 0) ? normalReadMates : variantReadMates;
         SeqItemVector& rcReads = (i == 0) ? normalRCReads : variantRCReads;

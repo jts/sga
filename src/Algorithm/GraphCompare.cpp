@@ -136,10 +136,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     {
         if(visitedKmers[j])
             continue; // skip
-        //std::string kmer = w.substr(j, m_parameters.kmer);
-        //std::string kmer = "TCCCAGCACTTTGGGTGGCCGAGGTGGGCGGGTCACAATGTCAGGAGATCG";
-        std::string kmer = "CATCAAACAGCAAGCAGACCCTCCGGAGTTTACCTTTTCATGGATGTGATG";
-
+        std::string kmer = w.substr(j, m_parameters.kmer);
+        
         // Get the interval for this kmer
         BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
                                                                     m_parameters.pVariantBWTCache, 
@@ -182,23 +180,18 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
  
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-//#endif
-                    std::cout << "@@@@@======================================================\n";
-                    std::cout << "Dindeling kmer: " << kmer << "\n";
-
+               
                     DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
                                                                              bubbleResult.sourceString,
                                                                              bubbleResult.targetString,
                                                                              m_parameters,
                                                                              baseVCFSS,
                                                                              variantVCFSS);
-                    std::cout << "base:    " << baseVCFSS.str() << "\n";
-                    std::cout << "variant: " << variantVCFSS.str() << "\n";
+                    //std::cout << "base:    " << baseVCFSS.str() << "\n";
+                    //std::cout << "variant: " << variantVCFSS.str() << "\n";
                     
                     if(drc == DRC_OK)
-                    {
-//#ifdef GRAPH_DIFF_DEBUG
-                        
+                    {                        
                         result.baseVCFStrings.push_back(baseVCFSS.str());
                         result.variantVCFStrings.push_back(variantVCFSS.str());
                     }

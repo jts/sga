@@ -26,7 +26,7 @@ enum DindelWindowCandHapAlgorithm {LINEAR} ;
 
 // Constants
 const size_t DINDEL_HASH_SIZE=8;
-const int DINDEL_HMM_BANDWIDTH=6;
+const int DINDEL_HMM_BANDWIDTH=8;
 
 // Event types
 const int DELETION_NOVEL_SEQUENCE = -1;
@@ -388,6 +388,7 @@ class DindelHaplotype
         int getRefStart() const { return m_refPos[0]; }
         bool hasVariant(const DindelVariant & variant) const ;
         int getClosestDistance(const DindelVariant & variant, int hapPos1, int hapPos2) const;
+        int getClosestDistance(const DindelVariant& variant, int hapPosStartRead, int hapPosEndRead, const DindelRead & read) const;
         
     private:
         void copy(const DindelHaplotype & haplotype, int copyOptions);
