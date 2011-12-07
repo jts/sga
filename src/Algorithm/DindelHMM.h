@@ -178,12 +178,12 @@ template<int BandWidth> ReadHaplotypeAlignment DindelHMMForward(const DindelRead
     			for (int x=0;x<BandWidth-2;++x) next[x+2] += 0.232622*gap_prob[x]*curr[x];
     			for (int x=0;x<BandWidth-3;++x) next[x+3] += 0.085577*gap_prob[x]*curr[x];
     			for (int x=0;x<BandWidth-4;++x) next[x+4] += 0.031482*gap_prob[x]*curr[x];
-			/*
+			
     			for (int x=0;x<BandWidth-5;++x) next[x+5] += 0.011582*gap_prob[x]*curr[x];
     			for (int x=0;x<BandWidth-6;++x) next[x+6] += 0.004261*gap_prob[x]*curr[x];
     			for (int x=0;x<BandWidth-7;++x) next[x+7] += 0.001567*gap_prob[x]*curr[x];
     			for (int x=0;x<BandWidth-8;++x) next[x+8] += 0.000577*gap_prob[x]*curr[x];
-			*/
+			
 		}
 		else
 		{

@@ -14,11 +14,12 @@
 #include "Profiler.h"
 
 // Run dindel on a pair of samples
-DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalString,
-                                           const std::string& variantString,
-                                           const GraphCompareParameters& parameters,
-                                           std::ostream& baseOut,
-                                           std::ostream& variantOut)
+DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
+                                                   const std::string& normalString,
+                                                   const std::string& variantString,
+                                                   const GraphCompareParameters& parameters,
+                                                   std::ostream& baseOut,
+                                                   std::ostream& variantOut)
 {
     PROFILE_FUNC("runDindelPairMatePair")
 
@@ -147,19 +148,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
 
         HapgenUtil::extractReferenceSubstrings(candidateAlignments[i],parameters.pRefTable, FLANKING_SIZE, upstream, defined, downstream);
         std::string refSeq = upstream + defined + downstream;
-       
-        if(0)
-        {
-            std::cout << "\n ================================================\n";
-            std::cout << "candidateAlignments[" << i << "]" << candidateAlignments[i] << "\n";
-            std::cout << "refSeq: " << upstream << " " << defined << " " << downstream << "\n";
-            for (size_t k = 0; k < inHaplotypes.size(); ++k)
-               std::cout << "        " << std::string(upstream.size(),' ') << " " << inHaplotypes[k] << "\n";
-
-            for (size_t k = 0; k < flankingHaplotypes.size(); ++k)
-                std::cout << "        " << " " << flankingHaplotypes[k] << "\n";
-        }
-
+     
         int refStart = candidateAlignments[i].position - int(upstream.size()) + 1;
 
         // Here the score is used as an estimate of how unique "defined" is in the reference sequence.
@@ -190,6 +179,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
         dindelHaplotypes.push_back(flankingHaplotypes[i]);
         dindelRefMappings[i] = std::vector<DindelReferenceMapping>(refMappings.begin(),refMappings.end());
     }
+    DindelWindow dWindow(dindelHaplotypes, dindelRefMappings);
 
     //
     // Run Dindel
@@ -199,8 +189,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
     size_t start_i = parameters.bReferenceMode ? 1 : 0;
     for(size_t i = start_i; i <= 1; ++i)
     {
-        //std::cout << (i == 0 ? "NORMAL\n" : "VARIANT\n");
-
         SeqItemVector& fwdReads = (i == 0) ? normalReads : variantReads;
         SeqItemVector& fwdReadMates = (i == 0) ? normalReadMates : variantReadMates;
         SeqItemVector& rcReads = (i == 0) ? normalRCReads : variantRCReads;
@@ -230,14 +218,13 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& normalStri
             dReads.push_back(DindelRead(rcReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
         }
 
-        // std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
-        // doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
+        //std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
+        //doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
 
         try
         {
-            DindelWindow dWindow(dindelHaplotypes, dindelRefMappings);
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
-            dRealignWindow.run("hmm", (i==0) ? baseOut : variantOut);
+            dRealignWindow.run("hmm", (i==0) ? baseOut : variantOut, id);
 	    //dRealignWindow.run("hmm", std::cout);
         }
         catch(std::string e)

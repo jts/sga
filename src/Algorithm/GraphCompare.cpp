@@ -191,12 +191,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
  
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-
-                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(bubbleResult.targetString,
-                                                                     bubbleResult.sourceString,
-                                                                     m_parameters,
-                                                                     baseVCFSS,
-                                                                     variantVCFSS);
+                    
                     /*
                     DindelReturnCode drc = DindelUtil::runNaiveCaller(bubbleResult.targetString,
                                                                       bubbleResult.sourceString,
@@ -205,12 +200,17 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                                                                       variantVCFSS);
                     */
 
+                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
+                                                                             bubbleResult.sourceString,
+                                                                             bubbleResult.targetString,
+                                                                             m_parameters,
+                                                                             baseVCFSS,
+                                                                             variantVCFSS);
+                    //std::cout << "base:    " << baseVCFSS.str() << "\n";
+                    //std::cout << "variant: " << variantVCFSS.str() << "\n";
+                    
                     if(drc == DRC_OK)
-                    {
-#ifdef GRAPH_DIFF_DEBUG
-                        std::cout << baseVCFSS.str() << "\n";
-                        std::cout << variantVCFSS.str() << "\n";
-#endif
+                    {                        
                         result.baseVCFStrings.push_back(baseVCFSS.str());
                         result.variantVCFStrings.push_back(variantVCFSS.str());
                     }
@@ -675,7 +675,9 @@ void GraphCompare::debug(const std::string& debugFilename)
                 {
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(bubbleResult.sourceString,
+                    std::string kmer = ".";
+                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
+                                                                             bubbleResult.sourceString,
                                                                              bubbleResult.targetString,
                                                                              m_parameters,
                                                                              baseVCFSS,
