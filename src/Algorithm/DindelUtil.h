@@ -30,13 +30,6 @@ enum DindelReturnCode
 namespace DindelUtil
 {
     // Run dindel on a pair of samples
-    DindelReturnCode runDindelPair(const std::string& normalString, 
-                                   const std::string& variantString, 
-                                   const GraphCompareParameters& parameters,
-                                   std::ostream& baseOut,
-                                   std::ostream& variantOut);
-
-    // Run dindel on a pair of samples
     DindelReturnCode runDindelPairMatePair(const std::string& normalString,
                                    const std::string& variantString,
                                    const GraphCompareParameters& parameters,

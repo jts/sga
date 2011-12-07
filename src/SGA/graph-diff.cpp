@@ -75,7 +75,7 @@ namespace opt
     static int numThreads = 1;
     static int kmer = 55;
     static int kmerThreshold = 2;
-    static int maxKmerThreshold = 100;
+    static int maxKmerThreshold = 400;
     static int maxBranches = 0;
     static int sampleRate = 128;
     static int cacheLength = 10;

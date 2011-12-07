@@ -238,17 +238,15 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
     }
 
     // Compute suffix array intervals for the kmers
-    size_t totalReads = 0;
     std::vector<BWTInterval> intervals;
     for(std::set<std::string>::const_iterator iter = kmerSet.begin(); iter != kmerSet.end(); ++iter)
     {
         BWTInterval interval = BWTAlgorithms::findIntervalWithCache(pBWT, pBWTCache, *iter);
-        intervals.push_back(interval);
-        totalReads += interval.size();
-    }
+        if(interval.size() > (int64_t)maxReads)
+            return false;
 
-    if(totalReads > maxReads)
-        return false;
+        intervals.push_back(interval);
+    }
 
     // Compute the set of reads ids 
     std::set<int64_t> readIndices;
@@ -262,6 +260,10 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
             readIndices.insert(elem.getID());
         }
     }
+
+    // Check if we have hit the limit of extracting too many reads
+    if(readIndices.size() > maxReads)
+        return false;
 
     for(std::set<int64_t>::const_iterator iter = readIndices.begin(); iter != readIndices.end(); ++iter)
     {
