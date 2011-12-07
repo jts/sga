@@ -291,7 +291,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         }
     }
     
-    /*
+    /* 
     std::cout << "REFERENCE MAPPINGS: \n";
     int c = 0;
     for(std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++)

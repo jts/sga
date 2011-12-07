@@ -42,7 +42,7 @@ const int DEBUG_CALLINDEL=0;
 const int REPOSITION_INDEL_WINDOW=1000;
 const int SHOWHAPFREQ=0;
 const int REPOSITIONVARIANTSSLOW=0; // uses slow code to reposition indels.
-const int DINDEL_DEBUG_3 = 0;
+const int DINDEL_DEBUG_3 = 0; // useful debugging
 //#define OVERLAPPER // build overlapper
 
 #include <iostream>
@@ -365,12 +365,12 @@ void DindelHaplotype::alignHaplotype()
     m_pMA = new MultiAlignment(rootSequence, maVector, std::string("haplotype-0"));
     m_deleteMA = true;
     
-    if (DINDEL_DEBUG || 0)
+    if (DINDEL_DEBUG || DINDEL_DEBUG_3)
     {
         std::cout << "DindelHaplotype::alignHaplotype:\n";
         std::string h0 = m_pMA->getPaddedSubstr(0,0,m_pMA->getNumColumns());
         m_pMA->print(80, &h0);
-        std::cout << "DindelHaplotype::DindelHaplotype globalAlignmentCigar " << alignSeq << " vs root: " << _ma.expandedCigar << std::endl;
+        //std::cout << "DindelHaplotype::DindelHaplotype globalAlignmentCigar " << alignSeq << " vs root: " << _ma.expandedCigar << std::endl;
     }
 }
 
@@ -916,10 +916,10 @@ int DindelHaplotype::getClosestDistance(const DindelVariant& variant, int hapPos
             if (startRead < 0) startRead = 0;
             if (startRead>read.length()-1) return -1; // ignore this case
 
-            if (DINDEL_DEBUG)
+            if (DINDEL_DEBUG_3)
             {
                 std::cout << "\n";
-                std::cout << "s: " << s << " e: " << e  << "\n";
+                std::cout << "variant: " << variant.getID() << " s: " << s << " e: " << e  << "\n";
                 std::cout << "hapPosStartRead: " << hapPosStartRead << " hapPosEndRead: " << hapPosEndRead  << "\n";
 
                 int spacer = 0;
@@ -1020,7 +1020,7 @@ void DindelMultiHaplotype::estimateMappingProbabilities()
             const std::string & type = vars[j].getType();
             if (type == "SNP") vscore -= 3.0;
             else if (type == "MNP") vscore -= 3.0*double(vars[j].getAlt().length());
-            else if (type == "INDEL") vscore -= double(5 + 2*vars[j].getLengthDifference());
+            else if (type == "INDEL") vscore -= double( (5 + 2*abs(vars[j].getLengthDifference()) ) );
             else assert(1==0);
         }
 
@@ -1031,10 +1031,19 @@ void DindelMultiHaplotype::estimateMappingProbabilities()
     // normalize and set log mapping probability
     for(size_t i = 0; i < m_haplotypes.size(); ++i)
     {
-        if (DINDEL_DEBUG_3)
-            std::cout << "Haplotypes[" << i << "]: refSCore: " << m_referenceMappings[i].referenceAlignmentScore << " scores[i] " << scores[i] << " sumScore: " << sumScore << " probMapCorrect: " << scores[i] - sumScore << std::endl;
-
         m_haplotypes[i].m_refMapping.probMapCorrect = scores[i] - sumScore;
+        if (DINDEL_DEBUG_3)
+	{
+            std::cout << "\tHaplotypes[" << i << "]: refSCore: " << m_referenceMappings[i].referenceAlignmentScore << " scores[i] " << scores[i] << " sumScore: " << sumScore << " probMapCorrect: " << scores[i] - sumScore << std::endl;
+            if(m_haplotypes[i].m_refMapping.probMapCorrect>-5.0)
+            {
+                 const std::vector<DindelVariant> & vars = m_haplotypes[i].getVariants();
+		 for (size_t j = 0; j < vars.size(); ++j)
+                     std::cout << "\t\t" << vars[j].getID() << "\n";
+			     
+            }
+        }
+
     }
 }
 
@@ -1129,6 +1138,8 @@ void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequ
     {
         if(m_hashAltHaps.find(haplotypeSequences[i]) == m_hashAltHaps.end())
         {
+            if (DINDEL_DEBUG_3)
+                std::cout << "DindelWindow::MultiHaplotype " << m_haplotypes.size() << "\n";
             m_haplotypes.push_back(DindelMultiHaplotype(referenceMappings[i], haplotypeSequences[i]));
         }
     }
@@ -1164,10 +1175,12 @@ void DindelWindow::doMultipleHaplotypeAlignment()
 
     m_pHaplotype_ma = new MultiAlignment(rootSequence, maVector, std::string("haplotype-0"));
 
-    if (DINDEL_DEBUG)
+    if (DINDEL_DEBUG_3)
     {
         std::cout << "DindelWindow::doMultipleHaplotypeAlignment:\n";
-        m_pHaplotype_ma->print(80, &rootSequence);
+        std::string consensus = m_pHaplotype_ma->generateConsensus();
+        m_pHaplotype_ma->print(80, &consensus);
+        std::cout << "\n";
 
     }
     m_deleteMA = true;
