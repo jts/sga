@@ -32,6 +32,7 @@
 #include "DindelRealignWindow.h"
 #include "BWT.h"
 #include "DindelHMM.h"
+#include "Profiler.h"
 #include <cmath>
 
 const int DINDEL_DEBUG=0;
@@ -1318,6 +1319,8 @@ DindelRealignWindow::DindelRealignWindow(const DindelWindow* pDindelWindow,
 
 void DindelRealignWindow::run(const std::string & algorithm, std::ostream& out)
 {
+    PROFILE_FUNC("DindelRealignWindow::run")
+
     if (algorithm == "hmm")
     {
         algorithm_hmm(out);

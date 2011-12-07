@@ -5,7 +5,6 @@
 //-----------------------------------------------
 //
 // Profiler.h -- Lightweight macro-based function profiler.
-// Currently not thread safe
 //
 #ifndef PROFILER_H
 #define PROFILER_H
@@ -13,7 +12,7 @@
 #include <time.h>
 #include <iostream>
 
-//#define USE_PROFILER 1
+#define USE_PROFILER 1
 #if defined(HAVE_CLOCK_GETTIME) && defined(USE_PROFILER)
 
 // This class writes the lifespan of the object
@@ -34,8 +33,9 @@ class TimeTracker
              clock_gettime(CLOCK_REALTIME, &end);
              size_t end_ns = end.tv_sec * 1000000000 + end.tv_nsec;
 
-             // Update the result
-             m_output += end_ns - m_start_ns;
+             // Update the result using an atomic compare and swap
+             size_t diff = end_ns - m_start_ns;
+             while(!__sync_bool_compare_and_swap(&m_output, m_output, m_output + diff)) {}
         }
 
     private:
@@ -43,24 +43,25 @@ class TimeTracker
         size_t& m_output;
 };
 
-// Place the following macros before/after the code in which you want to profile
-// Example:
-// PROFILE_START("my_function")
-// ... some code
-// PROFILE_END
+// Change this to determine how often the profile should print
 #define PROFILE_TICKS_BEFORE_PRINT 100
 
+// Place this macros at the start of the function you wish the profile
+// The static variable updates are done via atomic compare and swaps so
+// the profiling should be threadsafe
 #define PROFILE_FUNC(x) static std::string __profile_name = x; \
-                         static size_t __profile_iterations = 0; \
-                         static size_t __profile_total_nanoseconds = 0; \
-                         double milli_seconds = (double)__profile_total_nanoseconds / 1000000.0f; \
-                         double avg_per_iteration = milli_seconds / __profile_iterations; \
-                         if(__profile_iterations++ % PROFILE_TICKS_BEFORE_PRINT == 0) \
-                             printf("[Profile %s] count: %zu time: %.0lf ms avg: %.0lf ms\n", __profile_name.c_str(), __profile_iterations, milli_seconds, avg_per_iteration); \
-                         TimeTracker __profile_timer(__profile_total_nanoseconds);
+                        static size_t __profile_iterations = 0; \
+                        static size_t __profile_total_nanoseconds = 0; \
+                        double milli_seconds = (double)__profile_total_nanoseconds / 1000000.0f; \
+                        double avg_per_iteration = milli_seconds / __profile_iterations; \
+                        while(!__sync_bool_compare_and_swap(&__profile_iterations, __profile_iterations, __profile_iterations + 1)) { } \
+                        if(__profile_iterations % PROFILE_TICKS_BEFORE_PRINT == 0) \
+                            printf("[Profile] count: %zu time: %.0lf ms avg: %.0lf ms func: %s\n", __profile_iterations, milli_seconds, avg_per_iteration, __profile_name.c_str()); \
+                        TimeTracker __profile_timer(__profile_total_nanoseconds);
                          
 #else
 
+// Eliminate the macro
 #define PROFILE_FUNC(x)
 
 #endif // #ifdef HAVE_CLOCK_GETTIME

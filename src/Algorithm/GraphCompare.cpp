@@ -97,6 +97,7 @@ GraphCompare::~GraphCompare()
 
 GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 {
+    PROFILE_FUNC("GraphCompare::process")
     GraphCompareResult result;
     SeqRecord currRead = item.read;
     std::string w = item.read.seq.toString();
@@ -293,7 +294,7 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
 //
 BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, int count)
 {
-    PROFILE_FUNC("processVariantKmerAggressive")
+    PROFILE_FUNC("GraphCompare::processVariantKmerAggressive")
 
 #ifdef GRAPH_DIFF_DEBUG
     std::cout << "Processing variant kmer " << str << " with depth: " << count << "\n";
@@ -548,14 +549,14 @@ bool GraphCompare::buildVariantStringConservative(const std::string& startingKme
 // Graph-based method of building a variant string until it meets the graph of the normal
 bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std::string& outString)
 {
-    PROFILE_FUNC("buildVariantStringGraph")
+    PROFILE_FUNC("GraphCompare::buildVariantStringGraph")
     // We search until we find the first common vertex in each direction
     bool joinFound[ED_COUNT];
     joinFound[ED_SENSE] = false;
     joinFound[ED_ANTISENSE] = false;
 
     size_t MIN_TARGET_COUNT = m_parameters.bReferenceMode ? 1 : 2;
-    size_t MAX_ITERATIONS = 10000;
+    size_t MAX_ITERATIONS = 1000;
     size_t MAX_SIMULTANEOUS = 20;
 
     StringGraph* pGraph = new StringGraph;

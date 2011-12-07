@@ -69,7 +69,7 @@ HaplotypeBuilderReturnCode HaplotypeBuilder::run()
     assert(m_pJoinVertex != NULL);
     assert(m_pBWT != NULL);
 
-    size_t MAX_VERTICES = 2000;
+    size_t MAX_VERTICES = 1000;
     
     while(!m_queue.empty())
     {
