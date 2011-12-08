@@ -148,7 +148,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             continue; // skip
         std::string kmer = w.substr(j, m_parameters.kmer);
         
-        // Get the interval for this kmer
+	// Get the interval for this kmer
         BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
                                                                     m_parameters.pVariantBWTCache, 
                                                                     kmer);
@@ -206,9 +206,10 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                                                                              m_parameters,
                                                                              baseVCFSS,
                                                                              variantVCFSS);
-                    //std::cout << "base:    " << baseVCFSS.str() << "\n";
-                    //std::cout << "variant: " << variantVCFSS.str() << "\n";
-                    
+                    /*
+		    std::cout << "base:    " << baseVCFSS.str() << "\n";
+                    std::cout << "variant: " << variantVCFSS.str() << "\n";
+                    */
                     if(drc == DRC_OK)
                     {                        
                         result.baseVCFStrings.push_back(baseVCFSS.str());
