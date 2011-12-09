@@ -118,6 +118,7 @@ class GraphCompare
         // Process a read and all its kmers
         GraphCompareResult process(const SequenceWorkItem& item);
         void debug(const std::string& debugFilename);
+        void testKmersFromFile(const std::string& kmerFilename);
         
         //
         void updateSharedStats(GraphCompareAggregateResults* pSharedStats);

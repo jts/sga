@@ -590,7 +590,7 @@ class DindelRealignWindowResult
             public:
 
                 // Functions
-                Inference() :  strandBias(0.0),numReadsForward(0), numReadsReverse(0), numReadsForwardZeroMismatch(0), numReadsReverseZeroMismatch(0), numUnmapped(0), numLibraries(0), numReadNames(0) {};
+                Inference() :  strandBias(0.0),numReadsForward(0), numReadsReverse(0), numReadsForwardZeroMismatch(0), numReadsReverseZeroMismatch(0), numUnmapped(0), numLibraries(0), numReadNames(0), numRealignedReads(0), numCalledHaplotypes(0) {};
                 void outputAsVCF(const DindelVariant & var, 
                                  const DindelRealignWindowResult & result, 
                                  std::ostream& out) const;
@@ -615,7 +615,8 @@ class DindelRealignWindowResult
                 int numUnmapped;
                 int numLibraries;
                 int numReadNames;
-                
+                int numRealignedReads; 
+                int numCalledHaplotypes;
 
                 // these are properties that only apply to reference-based variants
                 std::set<int> readIndex, haplotypeIndex;

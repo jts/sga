@@ -147,6 +147,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         if(visitedKmers[j])
             continue; // skip
         std::string kmer = w.substr(j, m_parameters.kmer);
+        //std::string kmer = "CAAACAACCCCATCAAAAAGTGGGCGACGGACATGAACAGACACTTCTCAA";
         
 	// Get the interval for this kmer
         BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
@@ -206,10 +207,10 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                                                                              m_parameters,
                                                                              baseVCFSS,
                                                                              variantVCFSS);
-                    /*
-		    std::cout << "base:    " << baseVCFSS.str() << "\n";
-                    std::cout << "variant: " << variantVCFSS.str() << "\n";
-                    */
+                    
+		    // std::cout << "base:    " << baseVCFSS.str() << "\n";
+                    // std::cout << "variant: " << variantVCFSS.str() << "\n";
+                    
                     if(drc == DRC_OK)
                     {                        
                         result.baseVCFStrings.push_back(baseVCFSS.str());
@@ -225,6 +226,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
         for(int64_t i = rc_interval.lower; i <= rc_interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
+        
     }
     
     return result;
@@ -709,6 +711,59 @@ void GraphCompare::debug(const std::string& debugFilename)
 
     
 }
+
+// test kmers from a file
+void GraphCompare::testKmersFromFile(const std::string& kmerFilename)
+{
+    std::cout << "Kmer file: " << kmerFilename << "\n";
+    std::istream* pReader = createReader(kmerFilename);
+
+    std::string line;
+    while(getline(*pReader, line))
+    {
+        std::cout << "Processing " << line << "\n";
+        StringVector fields = split(line, '\t');
+        std::string kmer = fields[0];
+
+        if(kmer.size() != m_parameters.kmer)
+        {
+            std::cout << "Incorrect kmer size: " << kmer << " kmer size: " << kmer.size() << " kmer length parameter: " << m_parameters.kmer << "\n";
+            continue;
+        }
+
+        int count = 1;
+        BubbleResult bubbleResult = processVariantKmerAggressive(kmer, count);
+
+        if(bubbleResult.returnCode == BRC_OK)
+        {
+            std::cout << "BubbleResult: OK\n";
+            
+            std::stringstream baseVCFSS;
+            std::stringstream variantVCFSS;
+
+            DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
+                                                                     bubbleResult.sourceString,
+                                                                     bubbleResult.targetString,
+                                                                     m_parameters,
+                                                                     baseVCFSS,
+                                                                     variantVCFSS);
+            
+            std::cout << "base:    " << baseVCFSS.str() << "\n";
+            std::cout << "variant: " << variantVCFSS.str() << "\n";
+            
+            if(drc == DRC_OK)
+                std::cout << "DINDEL says: OK.\n";
+            else
+                std::cout << "DINDEL error: " << drc <<"\n";
+        } else 
+        {
+            std::cout << "Error. BubbleResult.returncode: " << bubbleResult.returnCode << "\n";
+        }
+
+    }
+}
+
+
 
 //
 // GraphCompareAggregateResult
