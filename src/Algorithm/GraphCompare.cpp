@@ -737,7 +737,28 @@ void GraphCompare::testKmersFromFile(const std::string& kmerFilename)
         if(bubbleResult.returnCode == BRC_OK)
         {
             std::cout << "BubbleResult: OK\n";
-            
+            std::cout << "Variant string: " << bubbleResult.sourceString << "\n";
+            std::cout << "Base    string: " << bubbleResult.targetString << "\n";
+
+            IntVector cpBase = makeCountProfile(bubbleResult.sourceString, 21, m_parameters.pBaseBWT, 9);
+            IntVector cpVar = makeCountProfile(bubbleResult.sourceString, 21, m_parameters.pVariantBWT, 9);
+            std::cout << "CP-Var : ";
+            std::copy(cpVar.begin(), cpVar.end(), std::ostream_iterator<int>(std::cout, ""));
+            std::cout << "\n";
+            std::cout << "CP-Base: ";
+            std::copy(cpBase.begin(), cpBase.end(), std::ostream_iterator<int>(std::cout, ""));
+            std::cout << "\n";
+
+            StdAlnTools::globalAlignment(bubbleResult.sourceString, bubbleResult.targetString, true);
+
+            for(size_t i = 0; i < bubbleResult.sourceString.size() - m_parameters.kmer + 1; ++i)
+            {
+                std::string ss_kmer = bubbleResult.sourceString.substr(i, m_parameters.kmer);
+                AlphaCount64 aec = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(ss_kmer, m_parameters.pVariantBWT, ED_ANTISENSE);
+                AlphaCount64 sec = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(ss_kmer, m_parameters.pVariantBWT, ED_SENSE);
+                std::cout << aec << "\t" << ss_kmer << "\t" << sec << "\n";
+            }
+
             std::stringstream baseVCFSS;
             std::stringstream variantVCFSS;
 

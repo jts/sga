@@ -84,6 +84,7 @@ namespace opt
     static std::string outPrefix = "graphdiff";
     //static std::string debugFile = "debug.var1.txt";
     //static std::string debugFile = "badalign.debug";
+    //static std::string debugFile = "kmer.debug";
     static std::string debugFile;
     static std::string referenceFile;
     static std::string baseFile;
@@ -94,7 +95,7 @@ namespace opt
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG };
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -107,6 +108,7 @@ static const struct option longopts[] = {
     { "max-branches",  required_argument, NULL, 'y' },
     { "sample-rate",   required_argument, NULL, 'd' },
     { "prefix",        required_argument, NULL, 'p' },
+    { "debug",         required_argument, NULL, OPT_DEBUG },
     { "references",    required_argument, NULL, OPT_REFERENCE },
     { "test"      ,    required_argument, NULL, OPT_TESTVCF },
     { "help",          no_argument,       NULL, OPT_HELP },
@@ -336,7 +338,8 @@ void runDebug(GraphCompareParameters& parameters)
     parameters.pBitVector = pSharedBitVector;
 
     GraphCompare graphCompare(parameters); 
-    graphCompare.debug(opt::debugFile);
+//    graphCompare.debug(opt::debugFile);
+    graphCompare.testKmersFromFile(opt::debugFile);
 }
 
 // 
@@ -362,6 +365,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'p': arg >> opt::outPrefix; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_DEBUG: arg >> opt::debugFile; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
             case OPT_HELP:
                 std::cout << GRAPH_DIFF_USAGE_MESSAGE;
