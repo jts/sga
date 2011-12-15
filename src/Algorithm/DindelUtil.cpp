@@ -40,7 +40,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
     // Set the value to use for extracting reads that potentially match the haplotype
     // Do not use a kmer for extraction greater than this value
-    size_t KMER_CEILING = 51;
+    size_t KMER_CEILING = 41;
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
     
     bool extractOK = true;
@@ -109,7 +109,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // Join each haplotype with flanking sequence from the reference genome for each alignment
     // This function also adds a haplotype (with flanking sequence) for the piece of the reference
     bool success = true;
-    int FLANKING_SIZE = 2000;
+    int FLANKING_SIZE = 1000;
     StringVector flankingHaplotypes;
 
     for(size_t i = 0; i < candidateAlignments.size(); ++i)
@@ -624,7 +624,7 @@ void DindelUtil::doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> 
 
             std::stringstream ss;
             if (r<dReads.size()/2) 
-                ss << "read-" << r; 
+                ss << "read-" << r << "("  << dReads[r].getID() << ")"; 
             else 
                 ss << "MATE read-" << r;
 
@@ -634,8 +634,8 @@ void DindelUtil::doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> 
         }
 
         MultiAlignment MA(rootSequence, maVector, hid);
-        std::string consensus = MA.generateConsensus();
-        MA.print(100000, &consensus);
+        //std::string consensus = MA.generateConsensus();
+        MA.print(100000, NULL, true, true);
     }
 }
 

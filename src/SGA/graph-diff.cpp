@@ -197,6 +197,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.maxKmerThreshold = opt::maxKmerThreshold;
     sharedParameters.maxBranches = opt::maxBranches;
     sharedParameters.bReferenceMode = opt::referenceMode;
+    sharedParameters.maxSingletons = 5;
 
     if(!opt::debugFile.empty())
     {

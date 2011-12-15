@@ -147,9 +147,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         if(visitedKmers[j])
             continue; // skip
         std::string kmer = w.substr(j, m_parameters.kmer);
-        //std::string kmer = "CAAACAACCCCATCAAAAAGTGGGCGACGGACATGAACAGACACTTCTCAA";
         
-	// Get the interval for this kmer
+    	// Get the interval for this kmer
         BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
                                                                     m_parameters.pVariantBWTCache, 
                                                                     kmer);
@@ -403,6 +402,9 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
 bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std::string& outString)
 {
     PROFILE_FUNC("GraphCompare::buildVariantStringGraph")
+
+    std::map<std::string, int> kmerCountMap;
+
     // We search until we find the first common vertex in each direction
     bool joinFound[ED_COUNT];
     joinFound[ED_SENSE] = false;
@@ -463,7 +465,8 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
 
             extensionsUsed.push_back(b);
             std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
-            
+            kmerCountMap[newStr] = count;
+
             // Create the new vertex and edge in the graph
             // Skip if the vertex already exists
             if(pGraph->getVertex(newStr) != NULL)
@@ -520,7 +523,24 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
                             outWalks);
 
         if(!outWalks.empty())
+        {
             outString = outWalks.front().getString(SGWT_START_TO_END);
+            
+            // Calculate the number of points along the string that have coverage
+            // by singleton kmers
+            int singletons = 0;
+
+            for(size_t i = 0; i < outString.size() - m_parameters.kmer + 1; ++i)
+            {
+                std::string ss_kmer = outString.substr(i, m_parameters.kmer);
+                if(kmerCountMap[ss_kmer] == 1)
+                    singletons += 1;
+            }
+
+//            std::cout << startingKmer << " singletons: " << singletons << " avg: " << avg_depth << "\n";
+            //if(singletons > m_parameters.maxSingletons)
+            //    outString.clear();
+        }
     }
     
     delete pGraph;
@@ -776,7 +796,8 @@ void GraphCompare::testKmersFromFile(const std::string& kmerFilename)
                 std::cout << "DINDEL says: OK.\n";
             else
                 std::cout << "DINDEL error: " << drc <<"\n";
-        } else 
+        } 
+        else 
         {
             std::cout << "Error. BubbleResult.returncode: " << bubbleResult.returnCode << "\n";
         }
