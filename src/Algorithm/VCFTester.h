@@ -42,6 +42,7 @@ class VCFTester
         // Data
         //
         GraphCompareParameters m_parameters;
+        GraphCompare m_graphComparer;
 
         int m_returnCodes[DRC_NUM_CODES];
 

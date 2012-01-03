@@ -16,7 +16,8 @@
 //
 //
 //
-VCFTester::VCFTester(const GraphCompareParameters& params) : m_parameters(params), 
+VCFTester::VCFTester(const GraphCompareParameters& params) : m_parameters(params),
+                                                             m_graphComparer(params),
                                                              m_baseVCFFile("vtest.base.vcf","w"),
                                                              m_variantVCFFile("vtest.variant.vcf","w")
 {
@@ -51,6 +52,9 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     int relative_pos = zeroBasedPos - start;
     std::string varStr = applyVariant(refStr, relative_pos, record.ref, record.alt);
 
+    std::cout << "\n**************************************\n";
+    std::cout << "Debugging variant (" << record.chrom << "-" << record.pos << " " << record.ref << "/" << record.alt << ")\n";
+
     std::cout << "Running dindel on variant";
     record.write(std::cout);
 
@@ -60,17 +64,20 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     std::stringstream baseSS;
     std::stringstream variantSS;
     std::string id = ".";
+
+    StringVector ref_haplotypes;
+    ref_haplotypes.push_back(refStr);
+
+    StringVector var_haplotypes;
+    var_haplotypes.push_back(varStr);
     DindelReturnCode code = DindelUtil::runDindelPairMatePair(id,
-                                                              refStr,
-                                                              varStr,
+                                                              ref_haplotypes,
+                                                              var_haplotypes,
                                                               m_parameters,
                                                               baseSS,
                                                               variantSS);
 
     m_returnCodes[code] += 1;
-
-    if(code != DRC_OK)
-        return;
 
     // Try to find out why we didn't find it in the graph
     std::vector<int> bv;
@@ -92,9 +99,12 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
             variantKmer = ks;
     }
 
-    std::cout << "Debugging variant (" << record.chrom << "-" << record.pos << " " << record.ref << "/" << record.alt << ")\n";
-    std::cout << "base: " << baseSS.str();
-    std::cout << "variant: " << variantSS.str();
+
+
+    /*
+    std::cout << "base: " << baseSS.str() << "\n";
+    std::cout << "variant: " << variantSS.str() << "\n";
+    */
     std::cout<< " B:\t";
     
     bool baseHasZero = false;
@@ -132,70 +142,9 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     endAnchor.count = 0;
     endAnchor.position = 0;
 
-
-    HaplotypeBuilderResult baseResult;
-    {
-        HaplotypeBuilder builder;
-        builder.setTerminals(startAnchor, endAnchor);
-        builder.setIndex(m_parameters.pBaseBWT, NULL);
-        builder.setKmerParameters(k, m_parameters.kmerThreshold);
-        HaplotypeBuilderReturnCode code = builder.run();
-        HaplotypeBuilderResult result;
-
-        // The search was successfull, build strings from the walks
-        if(code == HBRC_OK)
-            code = builder.parseWalks(baseResult);
-
-        std::cout << "HBB Base: " << code << " nw: " << baseResult.haplotypes.size() << "\n";
-    }
-
-    HaplotypeBuilderResult variantResult;
-    {
-        HaplotypeBuilder builder;
-        builder.setTerminals(startAnchor, endAnchor);
-        builder.setIndex(m_parameters.pVariantBWT, NULL);
-        builder.setKmerParameters(k, m_parameters.kmerThreshold);
-        HaplotypeBuilderReturnCode code = builder.run();
-        HaplotypeBuilderResult result;
-
-        // The search was successfull, build strings from the walks
-        if(code == HBRC_OK)
-            code = builder.parseWalks(variantResult);
-        std::cout << "HBB Variant: " << code << " nw: " << variantResult.haplotypes.size() << "\n";
-
-        if(baseResult.haplotypes.size() == 1 && variantResult.haplotypes.size() <= 2)
-        {
-            StdAlnTools::globalAlignment(refStr, baseResult.haplotypes.front(), true);
-
-            for(size_t i = 0; i < variantResult.haplotypes.size(); ++i)
-                StdAlnTools::globalAlignment(baseResult.haplotypes.front(), variantResult.haplotypes[i], true);
-        }
-    }
-
-    // Attempt assembly with the variation bubble builder
+    // Attempt the actual GraphCompare assembly process
     if(canAssemble)
-    {
-        VariationBubbleBuilder builder;
-        builder.setSourceIndex(m_parameters.pVariantBWT);
-        builder.setTargetIndex(m_parameters.pBaseBWT);
-        builder.setSourceString(variantKmer, 5);
-        builder.setKmerThreshold(m_parameters.kmerThreshold);
-        builder.setAllowedBranches(m_parameters.maxBranches);
-
-        //
-        BubbleResult result = builder.run();
-        std::cout << "VBB return: " << result.returnCode << "\n";
-
-        /*
-        DindelUtil::runDindelPair(result.targetString,
-                                  result.sourceString,
-                                  m_parameters,
-                                  baseSS,
-                                  variantSS);        
-        */
-    }
-
-
+        m_graphComparer.testKmer(variantKmer);
 }
 
 std::string VCFTester::applyVariant(const std::string& in, int pos,

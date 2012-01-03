@@ -31,8 +31,8 @@ namespace DindelUtil
 {
     // Run dindel on a pair of samples
     DindelReturnCode runDindelPairMatePair(const std::string& id,
-                                           const std::string& normalString,
-                                           const std::string& variantString,
+                                           const StringVector& base_haplotypes,
+                                           const StringVector& variant_haplotypes,
                                            const GraphCompareParameters& parameters,
                                            std::ostream& baseOut,
                                            std::ostream& variantOut);

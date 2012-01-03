@@ -179,19 +179,27 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 bwts.push_back(m_parameters.pBaseBWT);
                 bwts.push_back(m_parameters.pVariantBWT);
                 //BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, 1);
-                BubbleResult bubbleResult = processVariantKmerAggressive(kmer, count);
+                GraphBuildResult build_result = processVariantKmerAggressive(kmer, count);
 
-                if(bubbleResult.returnCode == BRC_OK)
+                // Mark the kmers of the variant haplotypes as being visited
+                for(size_t vhi = 0; vhi < build_result.variant_haplotypes.size(); ++vhi)
+                    markVariantSequenceKmers(build_result.variant_haplotypes[vhi]);
+                
+                //printf("Build %zu var haps %zu base haps\n", variant_haplotypes.size(), base_haplotypes.size());
+
+                if(build_result.variant_haplotypes.size() > 0 && build_result.base_haplotypes.size() > 0)
                 {
+                    /*
                     result.varStrings.push_back(bubbleResult.sourceString);
                     result.varCoverages.push_back(bubbleResult.sourceCoverage);
 
                     result.baseStrings.push_back(bubbleResult.targetString);
                     result.baseCoverages.push_back(bubbleResult.targetCoverage);
- 
+                    */
+
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
-                    
+
                     /*
                     DindelReturnCode drc = DindelUtil::runNaiveCaller(bubbleResult.targetString,
                                                                       bubbleResult.sourceString,
@@ -201,8 +209,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     */
 
                     DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
-                                                                             bubbleResult.sourceString,
-                                                                             bubbleResult.targetString,
+                                                                             build_result.base_haplotypes,
+                                                                             build_result.variant_haplotypes,
                                                                              m_parameters,
                                                                              baseVCFSS,
                                                                              variantVCFSS);
@@ -303,7 +311,7 @@ BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count,
 }
 
 //
-BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, int count)
+GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& str, int count)
 {
     PROFILE_FUNC("GraphCompare::processVariantKmerAggressive")
 
@@ -313,79 +321,80 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
     (void)count;
 
     //
-    std::string variant_str;
-    bool found_variant_string = buildVariantStringGraph(str, variant_str);
+    GraphBuildResult result;
+    bool found_variant_string = buildVariantStringGraph(str, result.variant_haplotypes);
     
-    BubbleResult result;
-    result.returnCode = BRC_UNKNOWN;
-
     size_t hb_k = m_parameters.kmer;
 
     if(found_variant_string)
     {
-#ifdef GRAPH_DIFF_DEBUG
-        // Make a kmer count profile for the putative variant string
-        std::cout << "VProfile(" << m_parameters.kmer << "):";
-        IntVector countProfile = makeCountProfile(variant_str, m_parameters.kmer, m_parameters.pVariantBWT, 9);
-        std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
-        std::cout << "\n";
-
-
-        std::cout << "BProfile(" << m_parameters.kmer << "):";
-        countProfile = makeCountProfile(variant_str, m_parameters.kmer, m_parameters.pBaseBWT, 9);
-        std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
-        std::cout << "\n";
-
-        std::cout << "BProfile(31): ";
-        countProfile = makeCountProfile(variant_str, 31, m_parameters.pBaseBWT, 9);
-        std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
-        std::cout << "\n";
-#endif
         // Run haplotype builder
         // Set the start/end points of the haplotype builder
-        std::string startAnchorSeq = variant_str.substr(0, hb_k); 
-        std::string endAnchorSeq = variant_str.substr(variant_str.length() - hb_k);
-
-        if(startAnchorSeq == endAnchorSeq)
-            return result;
-
-        AnchorSequence startAnchor;
-        startAnchor.sequence = startAnchorSeq;
-        startAnchor.count = 0;
-        startAnchor.position = 0;
-
-        AnchorSequence endAnchor;
-        endAnchor.sequence = endAnchorSeq;
-        endAnchor.count = 0;
-        endAnchor.position = 0;
-
-        HaplotypeBuilder builder;
-        builder.setTerminals(startAnchor, endAnchor);
-        builder.setIndex(m_parameters.pBaseBWT, NULL);
-        builder.setKmerParameters(hb_k, m_parameters.bReferenceMode ? 1 : 2);
-
-        // Run the builder
-        HaplotypeBuilderReturnCode hbCode = builder.run();
-#ifdef GRAPH_DIFF_DEBUG
-        std::cout << "HBC: " << hbCode << " VS: " << variant_str << "\n";
-#endif
-        HaplotypeBuilderResult hbResult;
-
-        // The search was successful, build strings from the walks
-        if(hbCode == HBRC_OK)
+        for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
         {
-            hbCode = builder.parseWalks(hbResult);
-            if(hbCode == HBRC_OK)
-            {
-                std::string base_str = hbResult.haplotypes.front();
-                
+            const std::string& current_variant_haplotype = result.variant_haplotypes[i];
+
+            std::string startAnchorSeq = current_variant_haplotype.substr(0, hb_k); 
+            std::string endAnchorSeq = current_variant_haplotype.substr(current_variant_haplotype.length() - hb_k);
+
 #ifdef GRAPH_DIFF_DEBUG
-                StdAlnTools::globalAlignment(base_str, variant_str, true);
+            // Make a kmer count profile for the putative variant string
+            std::cout << "VProfile(" << m_parameters.kmer << "):";
+            IntVector countProfile = makeCountProfile(current_variant_haplotype, m_parameters.kmer, m_parameters.pVariantBWT, 9);
+            std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
+            std::cout << "\n";
+
+
+            std::cout << "BProfile(" << m_parameters.kmer << "):";
+            countProfile = makeCountProfile(current_variant_haplotype, m_parameters.kmer, m_parameters.pBaseBWT, 9);
+            std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
+            std::cout << "\n";
+
+            std::cout << "BProfile(31): ";
+            countProfile = makeCountProfile(current_variant_haplotype, 31, m_parameters.pBaseBWT, 9);
+            std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
+            std::cout << "\n";
+
+
+            std::cout << "Mapping locations for start: " << startAnchorSeq << "\n";
+            showMappingLocations(startAnchorSeq);
+            std::cout << "Mapping locations for end: " << endAnchorSeq << "\n";
+            showMappingLocations(endAnchorSeq);
 #endif
-                result.returnCode = BRC_OK;
-                result.targetString = base_str;
-                result.sourceString = variant_str;
-                markVariantSequenceKmers(variant_str);
+
+            if(startAnchorSeq == endAnchorSeq)
+                continue; // degenerate sequence, skip
+
+            AnchorSequence startAnchor;
+            startAnchor.sequence = startAnchorSeq;
+            startAnchor.count = 0;
+            startAnchor.position = 0;
+
+            AnchorSequence endAnchor;
+            endAnchor.sequence = endAnchorSeq;
+            endAnchor.count = 0;
+            endAnchor.position = 0;
+
+            HaplotypeBuilder builder;
+            builder.setTerminals(startAnchor, endAnchor);
+            builder.setIndex(m_parameters.pBaseBWT, NULL);
+            builder.setKmerParameters(hb_k, m_parameters.bReferenceMode ? 1 : 2);
+
+            // Run the builder
+            HaplotypeBuilderReturnCode hbCode = builder.run();
+#ifdef GRAPH_DIFF_DEBUG
+            std::cout << "HBC: " << hbCode << " VS: " << current_variant_haplotype << "\n";
+#endif
+            HaplotypeBuilderResult hbResult;
+
+            // The search was successful, build strings from the walks
+            if(hbCode == HBRC_OK) {
+    
+                hbCode = builder.parseWalks(hbResult);
+                if(hbCode == HBRC_OK) {
+                    result.base_haplotypes.insert(result.base_haplotypes.end(), hbResult.haplotypes.begin(), hbResult.haplotypes.end());
+                
+                }
             }
         }
     }
@@ -395,20 +404,18 @@ BubbleResult GraphCompare::processVariantKmerAggressive(const std::string& str, 
         std::cout << "Variant string not assembled\n";
     }
 #endif
+
     return result;
 }
 
 // Graph-based method of building a variant string until it meets the graph of the normal
-bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std::string& outString)
+bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, StringVector& haplotypes)
 {
     PROFILE_FUNC("GraphCompare::buildVariantStringGraph")
 
     std::map<std::string, int> kmerCountMap;
 
     // We search until we find the first common vertex in each direction
-    bool joinFound[ED_COUNT];
-    joinFound[ED_SENSE] = false;
-    joinFound[ED_ANTISENSE] = false;
 
     size_t MIN_TARGET_COUNT = m_parameters.bReferenceMode ? 1 : 2;
     size_t MAX_ITERATIONS = 2000;
@@ -432,8 +439,8 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
     queue.push(BuilderExtensionNode(pVertex, ED_SENSE));
     queue.push(BuilderExtensionNode(pVertex, ED_ANTISENSE));
 
-    Vertex* pSenseJoin = NULL;
-    Vertex* pAntisenseJoin = NULL;
+    std::vector<Vertex*> sense_join_vector;
+    std::vector<Vertex*> antisense_join_vector;
 
     // Perform the extension. The while conditions are heuristics to avoid searching
     // the graph too much 
@@ -445,9 +452,11 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
         BuilderExtensionNode curr = queue.front();
         queue.pop();
 
+        /*
         // We have found a join in this direction, do not continue
         if(joinFound[curr.direction])
             continue;
+        */
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
@@ -459,7 +468,7 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
             //bool acceptExt = count >= m_parameters.kmerThreshold || (count > 0 && extensionCounts.hasUniqueDNAChar());
-            bool acceptExt = count > 0;
+            bool acceptExt = count >= m_parameters.minKmerThreshold;
             if(!acceptExt)
                 continue;
 
@@ -486,10 +495,9 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
             if(targetCount >= MIN_TARGET_COUNT)
             {
                 if(curr.direction == ED_SENSE)
-                    pSenseJoin = pVertex;
+                    sense_join_vector.push_back(pVertex);
                 else
-                    pAntisenseJoin = pVertex;
-                joinFound[curr.direction] = true;
+                    antisense_join_vector.push_back(pVertex);
             }
             else
             {
@@ -510,41 +518,25 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, std:
 
     // If the graph construction was successful, walk the graph
     // between the endpoints to make a string
-    outString = "";
-    if(pSenseJoin != NULL && pAntisenseJoin != NULL)
-    {
-        SGWalkVector outWalks;
-        SGSearch::findWalks(pAntisenseJoin,
-                            pSenseJoin,
-                            ED_SENSE,
-                            100000, // max distance to search
-                            10000, // max nodes to search
-                            true, // exhaustive search
-                            outWalks);
+    // Generate haplotypes between every pair of antisense/sense join vertices
+    for(size_t i = 0; i < antisense_join_vector.size(); ++i) {
+        for(size_t j = 0; j < sense_join_vector.size(); ++j) {
+            SGWalkVector outWalks;
+            SGSearch::findWalks(antisense_join_vector[i],
+                                sense_join_vector[j],
+                                ED_SENSE,
+                                100000, // max distance to search
+                                10000, // max nodes to search
+                                true, // exhaustive search
+                                outWalks);
 
-        if(!outWalks.empty())
-        {
-            outString = outWalks.front().getString(SGWT_START_TO_END);
-            
-            // Calculate the number of points along the string that have coverage
-            // by singleton kmers
-            int singletons = 0;
-
-            for(size_t i = 0; i < outString.size() - m_parameters.kmer + 1; ++i)
-            {
-                std::string ss_kmer = outString.substr(i, m_parameters.kmer);
-                if(kmerCountMap[ss_kmer] == 1)
-                    singletons += 1;
-            }
-
-//            std::cout << startingKmer << " singletons: " << singletons << " avg: " << avg_depth << "\n";
-            //if(singletons > m_parameters.maxSingletons)
-            //    outString.clear();
+            for(size_t k = 0; k < outWalks.size(); ++k)
+                haplotypes.push_back(outWalks[k].getString(SGWT_START_TO_END));
         }
     }
     
     delete pGraph;
-    return !outString.empty();
+    return !haplotypes.empty();
 }
 
 
@@ -667,6 +659,8 @@ IntVector GraphCompare::makeCountProfile(const std::string& str, size_t k, const
 
 void GraphCompare::debug(const std::string& debugFilename)
 {
+        (void)debugFilename;
+#if 0
     std::cout << "Debug file: " << debugFilename << "\n";   
     std::istream* pReader = createReader(debugFilename);
     
@@ -728,7 +722,7 @@ void GraphCompare::debug(const std::string& debugFilename)
             std::cout << "Processing " << line << "\n";
         }
     }
-
+#endif
     
 }
 
@@ -750,62 +744,75 @@ void GraphCompare::testKmersFromFile(const std::string& kmerFilename)
             std::cout << "Incorrect kmer size: " << kmer << " kmer size: " << kmer.size() << " kmer length parameter: " << m_parameters.kmer << "\n";
             continue;
         }
-
-        int count = 1;
-        BubbleResult bubbleResult = processVariantKmerAggressive(kmer, count);
-
-        if(bubbleResult.returnCode == BRC_OK)
-        {
-            std::cout << "BubbleResult: OK\n";
-            std::cout << "Variant string: " << bubbleResult.sourceString << "\n";
-            std::cout << "Base    string: " << bubbleResult.targetString << "\n";
-
-            IntVector cpBase = makeCountProfile(bubbleResult.sourceString, 21, m_parameters.pBaseBWT, 9);
-            IntVector cpVar = makeCountProfile(bubbleResult.sourceString, 21, m_parameters.pVariantBWT, 9);
-            std::cout << "CP-Var : ";
-            std::copy(cpVar.begin(), cpVar.end(), std::ostream_iterator<int>(std::cout, ""));
-            std::cout << "\n";
-            std::cout << "CP-Base: ";
-            std::copy(cpBase.begin(), cpBase.end(), std::ostream_iterator<int>(std::cout, ""));
-            std::cout << "\n";
-
-            StdAlnTools::globalAlignment(bubbleResult.sourceString, bubbleResult.targetString, true);
-
-            for(size_t i = 0; i < bubbleResult.sourceString.size() - m_parameters.kmer + 1; ++i)
-            {
-                std::string ss_kmer = bubbleResult.sourceString.substr(i, m_parameters.kmer);
-                AlphaCount64 aec = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(ss_kmer, m_parameters.pVariantBWT, ED_ANTISENSE);
-                AlphaCount64 sec = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(ss_kmer, m_parameters.pVariantBWT, ED_SENSE);
-                std::cout << aec << "\t" << ss_kmer << "\t" << sec << "\n";
-            }
-
-            std::stringstream baseVCFSS;
-            std::stringstream variantVCFSS;
-
-            DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
-                                                                     bubbleResult.sourceString,
-                                                                     bubbleResult.targetString,
-                                                                     m_parameters,
-                                                                     baseVCFSS,
-                                                                     variantVCFSS);
-            
-            std::cout << "base:    " << baseVCFSS.str() << "\n";
-            std::cout << "variant: " << variantVCFSS.str() << "\n";
-            
-            if(drc == DRC_OK)
-                std::cout << "DINDEL says: OK.\n";
-            else
-                std::cout << "DINDEL error: " << drc <<"\n";
-        } 
-        else 
-        {
-            std::cout << "Error. BubbleResult.returncode: " << bubbleResult.returnCode << "\n";
-        }
-
+        testKmer(kmer);
     }
 }
 
+void GraphCompare::testKmer(const std::string& kmer)
+{
+    int count = 1;
+    GraphBuildResult build_result = processVariantKmerAggressive(kmer, count);
 
+    if(build_result.variant_haplotypes.size() > 0 && build_result.base_haplotypes.size() > 0)
+    {
+        std::cout << "Haplotypes successfully built. Aligning first pair.\n";
+        StdAlnTools::globalAlignment(build_result.base_haplotypes.front(), build_result.variant_haplotypes.front(), true);
+
+#if 0
+        std::cout << "BubbleResult: OK\n";
+        std::cout << "Variant string: " << bubbleResult.sourceString << "\n";
+        std::cout << "Base    string: " << bubbleResult.targetString << "\n";
+
+        IntVector cpBase = makeCountProfile(bubbleResult.sourceString, 21, m_parameters.pBaseBWT, 9);
+        IntVector cpVar = makeCountProfile(bubbleResult.sourceString, 21, m_parameters.pVariantBWT, 9);
+        std::cout << "CP-Var : ";
+        std::copy(cpVar.begin(), cpVar.end(), std::ostream_iterator<int>(std::cout, ""));
+        std::cout << "\n";
+        std::cout << "CP-Base: ";
+        std::copy(cpBase.begin(), cpBase.end(), std::ostream_iterator<int>(std::cout, ""));
+        std::cout << "\n";
+
+        StdAlnTools::globalAlignment(bubbleResult.sourceString, bubbleResult.targetString, true);
+
+        for(size_t i = 0; i < bubbleResult.sourceString.size() - m_parameters.kmer + 1; ++i)
+        {
+            std::string ss_kmer = bubbleResult.sourceString.substr(i, m_parameters.kmer);
+            AlphaCount64 aec = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(ss_kmer, m_parameters.pVariantBWT, ED_ANTISENSE);
+            AlphaCount64 sec = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(ss_kmer, m_parameters.pVariantBWT, ED_SENSE);
+            std::cout << aec << "\t" << ss_kmer << "\t" << sec << "\n";
+        }
+#endif
+        std::stringstream baseVCFSS;
+        std::stringstream variantVCFSS;
+
+        DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
+                                                                 build_result.base_haplotypes,
+                                                                 build_result.variant_haplotypes,
+                                                                 m_parameters,
+                                                                 baseVCFSS,
+                                                                 variantVCFSS);
+        
+        std::cout << "base:    " << baseVCFSS.str() << "\n";
+        std::cout << "variant: " << variantVCFSS.str() << "\n";
+        
+        if(drc == DRC_OK)
+            std::cout << "DINDEL says: OK.\n";
+        else
+            std::cout << "DINDEL error: " << drc <<"\n";
+    } 
+    else 
+    {
+        
+        std::cout << "Error. Not enough haplotypes VH:" << build_result.variant_haplotypes.size() << " BH: " << build_result.base_haplotypes.size() << "\n";
+    }
+}
+
+void GraphCompare::showMappingLocations(const std::string& str)
+{
+    BWTInterval ref_interval = BWTAlgorithms::findInterval(m_parameters.pReferenceBWT, str);
+    for(int64_t i = ref_interval.lower; i <= ref_interval.upper; ++i)
+        std::cout << "Location: " << m_parameters.pReferenceSSA->calcSA(i, m_parameters.pReferenceBWT) << "\n";
+}
 
 //
 // GraphCompareAggregateResult

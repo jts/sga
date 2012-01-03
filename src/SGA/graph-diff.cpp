@@ -79,6 +79,8 @@ namespace opt
     static int maxBranches = 0;
     static int sampleRate = 128;
     static int cacheLength = 10;
+    static int minKmerThreshold = 1;
+
     static bool referenceMode = false;
 
     static std::string outPrefix = "graphdiff";
@@ -95,7 +97,7 @@ namespace opt
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_THRESHOLD };
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -108,6 +110,7 @@ static const struct option longopts[] = {
     { "max-branches",  required_argument, NULL, 'y' },
     { "sample-rate",   required_argument, NULL, 'd' },
     { "prefix",        required_argument, NULL, 'p' },
+    { "min-threshold", required_argument, NULL, OPT_MIN_THRESHOLD },
     { "debug",         required_argument, NULL, OPT_DEBUG },
     { "references",    required_argument, NULL, OPT_REFERENCE },
     { "test"      ,    required_argument, NULL, OPT_TESTVCF },
@@ -198,6 +201,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.maxBranches = opt::maxBranches;
     sharedParameters.bReferenceMode = opt::referenceMode;
     sharedParameters.maxSingletons = 5;
+    sharedParameters.minKmerThreshold = opt::minKmerThreshold;
 
     if(!opt::debugFile.empty())
     {
@@ -366,6 +370,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'p': arg >> opt::outPrefix; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_MIN_THRESHOLD: arg >> opt::minKmerThreshold; break;
             case OPT_DEBUG: arg >> opt::debugFile; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
             case OPT_HELP:

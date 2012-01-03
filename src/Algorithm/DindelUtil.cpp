@@ -15,8 +15,8 @@
 
 // Run dindel on a pair of samples
 DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
-                                                   const std::string& normalString,
-                                                   const std::string& variantString,
+                                                   const StringVector& base_haplotypes,
+                                                   const StringVector& variant_haplotypes,
                                                    const GraphCompareParameters& parameters,
                                                    std::ostream& baseOut,
                                                    std::ostream& variantOut)
@@ -24,13 +24,13 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     PROFILE_FUNC("runDindelPairMatePair")
 
     StringVector inHaplotypes;
-    inHaplotypes.push_back(normalString);
-    inHaplotypes.push_back(variantString);
+    inHaplotypes.insert(inHaplotypes.end(), base_haplotypes.begin(), base_haplotypes.end());
+    inHaplotypes.insert(inHaplotypes.end(), variant_haplotypes.begin(), variant_haplotypes.end());
 
     //
     // First, extract the reads from the normal and variant data sets that match each haplotype
     //
-    size_t MAX_READS = 1000;
+    size_t MAX_READS = 4000;
 
     // Normal reads
     SeqItemVector normalReads;

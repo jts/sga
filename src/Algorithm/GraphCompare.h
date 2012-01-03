@@ -60,9 +60,16 @@ struct GraphCompareParameters
     size_t maxKmerThreshold; // skip kmers seen this many times or more
     size_t maxBranches;
     int maxSingletons; // the maximum number of times we can use k-mers with count = 1 in the extension
+    size_t minKmerThreshold;
     bool bReferenceMode;
 
     DindelRealignParameters dindelRealignParameters;
+};
+
+struct GraphBuildResult
+{
+    StringVector variant_haplotypes;
+    StringVector base_haplotypes;
 };
 
 //
@@ -120,7 +127,8 @@ class GraphCompare
         GraphCompareResult process(const SequenceWorkItem& item);
         void debug(const std::string& debugFilename);
         void testKmersFromFile(const std::string& kmerFilename);
-        
+        void testKmer(const std::string& kmer);
+
         //
         void updateSharedStats(GraphCompareAggregateResults* pSharedStats);
 
@@ -133,7 +141,7 @@ class GraphCompare
         // When a kmer that is found in only one index, this function is called to attempt to build the full variation
         // string
         BubbleResult processVariantKmer(const std::string& str, int count, const BWTVector& bwts, int varIndex);
-        BubbleResult processVariantKmerAggressive(const std::string& str, int count);
+        GraphBuildResult processVariantKmerAggressive(const std::string& str, int count);
         
         // Mark all the kmers in str as being visited
         void markVariantSequenceKmers(const std::string& str);
@@ -142,11 +150,11 @@ class GraphCompare
         void updateVariationCount(const BubbleResult& result);
 
         // Debug/testing functions
-        bool buildVariantStringGraph(const std::string& startingKmer, std::string& outString);
+        bool buildVariantStringGraph(const std::string& startingKmer, StringVector& haplotypes);
 
         bool transformVariantString(const std::string& inStr, std::string& outStr);
         IntVector makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max);
-
+        void showMappingLocations(const std::string& str);
 
         //
         // Data
