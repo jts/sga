@@ -548,3 +548,9 @@ void SGWalk::printSimple() const
     std::cout << pathSignature() << "\n";
 }
 
+// 
+bool SGWalk::compareByTotalLength(const SGWalk& a, const SGWalk& b)
+{
+    return a.getStartToEndDistance() > b.getStartToEndDistance();
+}
+
