@@ -8,7 +8,6 @@
 // for a sequence work item
 //
 #include "ErrorCorrectProcess.h"
-#include "ErrorCorrect.h"
 #include "CorrectionThresholds.h"
 
 //#define KMER_TESTING 1
