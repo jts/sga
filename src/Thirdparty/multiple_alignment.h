@@ -57,10 +57,19 @@ struct MultipleAlignmentElement
     // Returns the sequence with all padding characters removed
     std::string getUnpaddedSequence() const;
 
+    // Return a substring of this element that can be used to print the full multiple
+    // alignment. The leading/trailing columns will be returned as spaces so
+    // that all the elements line up.
+    std::string getPrintableSubstring(size_t start_column, size_t num_columns) const;
+
     // Returns the position in the padded string of the base at index idx of
     // the unpadded sequence.
     // Precondition: idx is less than the number of sequence bases
     int getPaddedPositionOfBase(size_t idx) const;
+
+    // Returns the column index for the first/last base of the sequence
+    size_t getStartColumn() const;
+    size_t getEndColumn() const;
 
     // Insert a new gap before the specified column
     void insertGapBeforeColumn(size_t column_index);
@@ -109,10 +118,16 @@ class MultipleAlignment
                           const std::string& incoming_quality,
                           const SequenceOverlap& previous_incoming_overlap);
 
+        // Calculate a new consensus sequence for the base sequence of the multiple alignment
+        // A base call is changed only if it has been seen in less than min_call_coverage sequences
+        // Leading/trailing bases are trimmed from the consensus sequence if there is less than
+        // min_trim_coverage depth at the ends of the base sequence.
+        std::string calculateBaseConsensus(int min_call_coverage, int min_trim_coverage);
+
         // Print the alignment to stdout. If the number of columns
         // is greater than max_columns, it will be printed in multiple 
         // segments
-        void print(int max_columns = 120) const;
+        void print(size_t max_columns = 80) const;
     
         // Print a pileup of the base symbol for each column of the alignment
         void printPileup() const;
@@ -135,8 +150,16 @@ class MultipleAlignment
         // of run length encoding
         std::string expandCigar(const std::string& cigar);
 
+        // Returns the index of a symbol over the alphabet "ACGTN-"
+        int symbol2index(char symbol) const;
+        
+        // Return a vector of counts for each base call for the given column
+        std::vector<int> getColumnBaseCounts(size_t idx) const;
+
         // Data
         std::vector<MultipleAlignmentElement> m_sequences;
+        static const size_t m_alphabet_size = 6;
+        static const char* m_alphabet;
 };
 
 #endif  // MULTIPLE_ALIGNMENT_H_

@@ -9,6 +9,7 @@
 //
 #include "ErrorCorrectProcess.h"
 #include "CorrectionThresholds.h"
+#include "multiple_alignment.h"
 
 //#define KMER_TESTING 1
 
@@ -55,7 +56,7 @@ ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem
         }
         case ECA_OVERLAP:
         {
-            return overlapCorrection(workItem);
+            return overlapCorrectionNew(workItem);
             break;
         }
         default:
@@ -146,6 +147,107 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
     
     return result;
 }
+
+// Helper struct to hold an index that some read matches
+// and whether the match is to the opposite strand
+struct KmerMatch
+{
+    int64_t read_index:63;
+    int64_t is_reverse:1;
+
+    friend bool operator<(const KmerMatch& a, const KmerMatch& b)
+    {
+        if(a.read_index == b.read_index)
+            return a.is_reverse < b.is_reverse;
+        else
+            return a.read_index < b.read_index;
+    }
+};
+typedef std::set<KmerMatch> KmerMatchSet;
+
+ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkItem& workItem)
+{
+    assert(m_params.pBWT != NULL);
+    assert(m_params.pSSA != NULL);
+
+    // DEBUG: Skip intervals that are too large
+    int max_interval_size = 500;
+
+    // Overlap based correction
+    ErrorCorrectResult result;
+    SeqRecord currRead = workItem.read;
+    std::string originalRead = workItem.read.seq.toString();
+
+    // Using the FM-index, lookup the index of each read that shares a k-mer
+    // match with the query sequence
+    KmerMatchSet matches;
+    size_t num_kmers = originalRead.size() - m_params.kmerLength + 1;
+    for(size_t i = 0; i < num_kmers; ++i)
+    {
+        std::string kmer = originalRead.substr(i, m_params.kmerLength);
+        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_params.pBWT, m_params.pIntervalCache, kmer);
+        if(interval.isValid() && interval.size() < max_interval_size) 
+        {
+            for(int64_t j = interval.lower; j <= interval.upper; ++j)
+            {
+                SAElem elem = m_params.pSSA->calcSA(j, m_params.pBWT);
+                KmerMatch match = { elem.getID(), false };
+                matches.insert(match);
+            }
+        }
+
+        kmer = reverseComplement(kmer);
+        interval = BWTAlgorithms::findIntervalWithCache(m_params.pBWT, m_params.pIntervalCache, kmer);
+        if(interval.isValid() && interval.size() < max_interval_size) 
+        {
+            for(int64_t j = interval.lower; j <= interval.upper; ++j)
+            {
+                SAElem elem = m_params.pSSA->calcSA(j, m_params.pBWT);
+                KmerMatch match = { elem.getID(), true };
+                matches.insert(match);
+            }
+        }
+    }
+
+    // Refine the matches by computing proper overlaps between the sequences
+    // Use the overlaps that meet the thresholds to build a multiple alignment
+    MultipleAlignment multiple_alignment;
+    multiple_alignment.addBaseSequence("base", originalRead, "");
+
+    for(KmerMatchSet::iterator iter = matches.begin(); iter != matches.end(); ++iter)
+    {
+        if(iter->read_index == (int64_t)workItem.idx)
+            continue; // Do not overlap the read with itself
+
+        std::string match_sequence = BWTAlgorithms::extractString(m_params.pBWT, iter->read_index);
+        if(iter->is_reverse)
+            match_sequence = reverseComplement(match_sequence);
+        
+        SequenceOverlap overlap = Overlapper::computeOverlap(originalRead, match_sequence);
+        bool bPassedOverlap = overlap.getOverlapLength() >= m_params.minOverlap;
+        bool bPassedIdentity = overlap.getPercentIdentity() / 100 >= m_params.minIdentity;
+
+        if(bPassedOverlap && bPassedIdentity)
+            multiple_alignment.addOverlap("noname", match_sequence, "", overlap);
+    }
+
+    if(m_params.printOverlaps)
+        multiple_alignment.print();
+
+    std::string consensus = multiple_alignment.calculateBaseConsensus(m_params.conflictCutoff, m_params.conflictCutoff);
+    if(!consensus.empty())
+    {
+        result.correctSequence = consensus;
+        result.overlapQC = true;
+    }
+    else
+    {
+        result.correctSequence = "";
+        result.overlapQC = false;
+    }
+    return result;
+}
+
 
 // Correct a read with a k-mer based corrector
 ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& workItem)
