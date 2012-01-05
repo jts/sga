@@ -9,6 +9,7 @@
 //
 #include "ErrorCorrectProcess.h"
 #include "CorrectionThresholds.h"
+#include "HashMap.h"
 #include "multiple_alignment.h"
 
 //#define KMER_TESTING 1
@@ -148,22 +149,36 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
     return result;
 }
 
-// Helper struct to hold an index that some read matches
-// and whether the match is to the opposite strand
+// Struct to hold a partial match in the FM-index
+// The index field is an index into the BWT. 
+// The is_reverse flag indicates the strand of the partial match
 struct KmerMatch
 {
-    int64_t read_index:63;
+    int64_t index:63;
     int64_t is_reverse:1;
 
     friend bool operator<(const KmerMatch& a, const KmerMatch& b)
     {
-        if(a.read_index == b.read_index)
+        if(a.index == b.index)
             return a.is_reverse < b.is_reverse;
         else
-            return a.read_index < b.read_index;
+            return a.index < b.index;
+    }
+
+    friend bool operator==(const KmerMatch& a, const KmerMatch& b)
+    {
+        return a.index == b.index && a.is_reverse == b.is_reverse;
     }
 };
+
+// Return a hash key for a KmerMatch
+struct KmerMatchKey
+{
+    size_t operator()(const KmerMatch& a) const { return a.index; }
+};
+
 typedef std::set<KmerMatch> KmerMatchSet;
+typedef HashMap<KmerMatch, bool, KmerMatchKey> KmerMatchMap;
 
 ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkItem& workItem)
 {
@@ -172,15 +187,18 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
 
     // DEBUG: Skip intervals that are too large
     int max_interval_size = 500;
-
-    // Overlap based correction
     ErrorCorrectResult result;
     SeqRecord currRead = workItem.read;
     std::string originalRead = workItem.read.seq.toString();
 
-    // Using the FM-index, lookup the index of each read that shares a k-mer
-    // match with the query sequence
-    KmerMatchSet matches;
+    // Use the FM-index to look up intervals for each kmer of the read. Each index
+    // in the interval is stored individually in the KmerMatchMap. We then
+    // backtrack to map these kmer indices to read IDs. As reads can share
+    // multiple kmers, we use the map to avoid redundant lookups.
+    // There is likely a faster algorithm which performs direct decompression
+    // of the read sequences without having to expand the intervals to individual
+    // indices. The current algorithm suffices for now.
+    KmerMatchMap prematchMap;
     size_t num_kmers = originalRead.size() - m_params.kmerLength + 1;
     for(size_t i = 0; i < num_kmers; ++i)
     {
@@ -190,9 +208,8 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
             {
-                SAElem elem = m_params.pSSA->calcSA(j, m_params.pBWT);
-                KmerMatch match = { elem.getID(), false };
-                matches.insert(match);
+                KmerMatch match = { j, false };
+                prematchMap.insert(std::make_pair(match, false));
             }
         }
 
@@ -202,9 +219,49 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
             {
-                SAElem elem = m_params.pSSA->calcSA(j, m_params.pBWT);
-                KmerMatch match = { elem.getID(), true };
-                matches.insert(match);
+                KmerMatch match = { j, true };
+                prematchMap.insert(std::make_pair(match, false));
+            }
+        }
+    }
+
+    // Backtrack through the kmer indices to turn them into read indices.
+    // This mirrors the calcSA function in SampledSuffixArray except we mark each entry
+    // as visited once it is processed.
+    KmerMatchSet matches;
+    for(KmerMatchMap::iterator iter = prematchMap.begin(); iter != prematchMap.end(); ++iter)
+    {
+        // This index has been visited
+        if(iter->second)
+            continue;
+
+        // Mark this as visited
+        iter->second = true;
+
+        // Backtrack the index until we hit the starting symbol
+        KmerMatch out_match = iter->first;
+        while(1) 
+        {
+            char b = m_params.pBWT->getChar(out_match.index);
+            out_match.index = m_params.pBWT->getPC(b) + m_params.pBWT->getOcc(b, out_match.index - 1);
+
+            // Check if the hash indicates we have visited this index. If so, stop the backtrack
+            KmerMatchMap::iterator find_iter = prematchMap.find(out_match);
+            if(find_iter != prematchMap.end())
+            {
+                // We have processed this index already
+                if(find_iter->second)
+                    break;
+                else
+                    find_iter->second = true;
+            }
+
+            if(b == '$')
+            {
+                // We've found the lexicographic index for this read. Turn it into a proper ID
+                out_match.index = m_params.pSSA->lookupLexoRank(out_match.index);
+                matches.insert(out_match);
+                break;
             }
         }
     }
@@ -216,10 +273,10 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
 
     for(KmerMatchSet::iterator iter = matches.begin(); iter != matches.end(); ++iter)
     {
-        if(iter->read_index == (int64_t)workItem.idx)
+        if(iter->index == (int64_t)workItem.idx)
             continue; // Do not overlap the read with itself
 
-        std::string match_sequence = BWTAlgorithms::extractString(m_params.pBWT, iter->read_index);
+        std::string match_sequence = BWTAlgorithms::extractString(m_params.pBWT, iter->index);
         if(iter->is_reverse)
             match_sequence = reverseComplement(match_sequence);
         

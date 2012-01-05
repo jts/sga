@@ -163,7 +163,6 @@ int correctMain(int argc, char** argv)
             CorrectionThresholds::Instance().setBaseMinSupport(threshold);
     }
 
-
     // Open outfiles and start a timer
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
