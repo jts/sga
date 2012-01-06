@@ -251,7 +251,7 @@ void MultipleAlignment::_addSequence(const std::string& name,
             // If we are in a incoming sequence insertion
             // (cigar D) then we are adding a base into a known
             // gap. Add the current incoming base to the output
-            if(expanded_cigar[cigar_index] == 'D') {
+            if(expanded_cigar[cigar_index] == 'I') {
                 padded_output.push_back(sequence[incoming_index]);
                 if(!quality.empty())
                     padded_quality.push_back(quality[incoming_index]);
@@ -281,7 +281,7 @@ void MultipleAlignment::_addSequence(const std::string& name,
                     template_index += 1;
                     cigar_index += 1;
                     break;
-                case 'D':
+                case 'I':
                     insertGapBeforeColumn(template_index + template_leading);
                     padded_output.push_back(sequence[incoming_index]);
                     if(!quality.empty())
@@ -291,7 +291,7 @@ void MultipleAlignment::_addSequence(const std::string& name,
                     cigar_index += 1;
                     template_index += 1; // skip the newly introduced gap
                     break;
-                case 'I':
+                case 'D':
                     padded_output.push_back('-');
                     if(!quality.empty())
                         padded_quality.push_back('-');
@@ -323,8 +323,6 @@ std::string MultipleAlignment::calculateBaseConsensus(int min_call_coverage, int
     // This index records the last base in the consensus that had coverage greater than
     // min_trim_coverage. After the consensus calculation the read is trimmed back to this position
     int last_good_base = -1;
-
-    std::string printable = base_element.getPrintableSubstring(start_column, end_column - start_column + 1);
 
     for(size_t c = start_column; c <= end_column; ++c) {
         std::vector<int> counts = getColumnBaseCounts(c);
@@ -400,7 +398,10 @@ void MultipleAlignment::print(size_t max_columns) const
         size_t slice_size = max_columns < remaining ? max_columns : remaining;
         for(size_t i = 0; i < m_sequences.size(); ++i) {
             std::string slice =  m_sequences[i].getPrintableSubstring(c, slice_size);
-            printf("\t%s\t%s\n", slice.c_str(), m_sequences[i].name.c_str());
+
+            // Check if this string is blank, if so don't print it
+            if(slice.find_first_not_of(" ") != std::string::npos)
+                printf("\t%s\t%s\n", slice.c_str(), m_sequences[i].name.c_str());
         }
         printf("\n\n");
     }

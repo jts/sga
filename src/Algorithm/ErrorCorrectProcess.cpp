@@ -289,7 +289,10 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
     }
 
     if(m_params.printOverlaps)
+    {
         multiple_alignment.print();
+        multiple_alignment.printPileup();
+    }
 
     std::string consensus = multiple_alignment.calculateBaseConsensus(m_params.conflictCutoff, m_params.conflictCutoff);
     if(!consensus.empty())

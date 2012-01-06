@@ -95,12 +95,12 @@ void SequenceOverlap::printAlignment(const std::string& s1, const std::string& s
             current_1 += length;
             current_2 += length;
         }
-        else if(code == 'I') {
+        else if(code == 'D') {
             out_1.append(s1.substr(current_1, length));
             out_2.append(length, '-');
             current_1 += length;
         }
-        else if(code == 'D') {
+        else if(code == 'I') {
             out_1.append(length, '-');
             out_2.append(s2.substr(current_2, length));
             current_2 += length;
@@ -127,7 +127,9 @@ void SequenceOverlap::printAlignment(const std::string& s1, const std::string& s
         std::cout << "S2\t" << sub_2 << "\n";
         std::cout << "\n";
     }
+    std::cout << "Cigar: " << cigar << "\n";
     std::cout << "Score: " << score << "\n";
+
     printf("Identity: %2.2lf\n", getPercentIdentity());
 }
 
@@ -232,28 +234,29 @@ SequenceOverlap Overlapper::computeOverlap(const std::string& s1, const std::str
         int idx_2 = j - 1;
 
         bool is_match = s1[idx_1] == s2[idx_2];
-
         int diagonal = score_matrix[i - 1][j - 1] + (is_match ? MATCH_SCORE : MISMATCH_PENALTY);
         int up = score_matrix[i][j-1] + GAP_PENALTY;
         int left = score_matrix[i-1][j] + GAP_PENALTY;
 
-        if(score_matrix[i][j] == diagonal) {
+        // If there are multiple possible paths to this cell
+        // we break ties in order of insertion,deletion,match
+        // this helps left-justify matches for homopolymer runs
+        // of unequal lengths
+        if(score_matrix[i][j] == up) {
+            cigar.push_back('I');
+            j -= 1;
+            output.edit_distance += 1;
+        } else if(score_matrix[i][j] == left) {
+            cigar.push_back('D');
+            i -= 1;
+            output.edit_distance += 1;
+        } else {
+            assert(score_matrix[i][j] == diagonal);
             if(!is_match)
                 output.edit_distance += 1;
             cigar.push_back('M');
             i -= 1;
             j -= 1;
-        }
-        else if(score_matrix[i][j] == up) {
-            cigar.push_back('D');
-            j -= 1;
-            output.edit_distance += 1;
-        }
-        else {
-            assert(score_matrix[i][j] == left);
-            cigar.push_back('I');
-            i -= 1;
-            output.edit_distance += 1;
         }
 
         output.total_columns += 1;

@@ -91,6 +91,18 @@ struct SequenceOverlap
     int score;
     int edit_distance;
     int total_columns;
+
+    // The cigar string follows the sam convention with s1 being the "reference":
+    // I is an insertion into s1
+    // D is a deletion from s1
+
+    // A-C s1
+    // AAC s2
+    // C: 1M1I1M
+    //
+    // ATC s1
+    // A-C s2
+    // C: 1M1D1M
     std::string cigar;
 
 };
