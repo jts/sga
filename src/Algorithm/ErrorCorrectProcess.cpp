@@ -287,14 +287,16 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
         if(bPassedOverlap && bPassedIdentity)
             multiple_alignment.addOverlap("noname", match_sequence, "", overlap);
     }
+    
+    std::string consensus = multiple_alignment.calculateBaseConsensus(10000, 3);
 
     if(m_params.printOverlaps)
     {
         multiple_alignment.print();
-        multiple_alignment.printPileup();
+        //multiple_alignment.printPileup();
+        std::cout << "Consensus: " << consensus << "\n";
     }
 
-    std::string consensus = multiple_alignment.calculateBaseConsensus(m_params.conflictCutoff, m_params.conflictCutoff);
     if(!consensus.empty())
     {
         result.correctSequence = consensus;
@@ -302,7 +304,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
     }
     else
     {
-        result.correctSequence = "";
+        result.correctSequence = originalRead;
         result.overlapQC = false;
     }
     return result;
