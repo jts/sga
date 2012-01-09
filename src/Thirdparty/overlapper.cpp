@@ -351,16 +351,16 @@ SequenceOverlap Overlapper::extendMatch(const std::string& s1, const std::string
     for(int i = 1; i < num_columns; ++i) {
         int j = band_origin + i; // start row of this band
         int end_row = j + band_width;
-        if(end_row <= 0 || j >= num_rows)
-            continue; // nothing to do for this column
 
         // Trim band coordinates to only compute valid positions
         if(j < 1)
             j = 1;
         if(end_row > num_rows)
             end_row = num_rows;
-        if(j == end_row)
-            continue;
+
+        if(end_row <= 0 || j >= num_rows || j >= end_row)
+            continue; // nothing to do for this column
+
 #ifdef DEBUG_EXTEND
         printf("Filling column %d rows [%d %d]\n", i, j, end_row);
 #endif
