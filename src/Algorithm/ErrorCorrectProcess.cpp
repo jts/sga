@@ -150,11 +150,13 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
 }
 
 // Struct to hold a partial match in the FM-index
+// The position field is the location in the query sequence of this kmer.
 // The index field is an index into the BWT. 
 // The is_reverse flag indicates the strand of the partial match
 struct KmerMatch
 {
-    int64_t index:63;
+    int64_t position:16;
+    int64_t index:47;
     int64_t is_reverse:1;
 
     friend bool operator<(const KmerMatch& a, const KmerMatch& b)
@@ -208,7 +210,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
             {
-                KmerMatch match = { j, false };
+                KmerMatch match = { i, j, false };
                 prematchMap.insert(std::make_pair(match, false));
             }
         }
@@ -219,7 +221,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
             {
-                KmerMatch match = { j, true };
+                KmerMatch match = { i, j, true };
                 prematchMap.insert(std::make_pair(match, false));
             }
         }
@@ -280,7 +282,30 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
         if(iter->is_reverse)
             match_sequence = reverseComplement(match_sequence);
         
-        SequenceOverlap overlap = Overlapper::computeOverlap(originalRead, match_sequence);
+        // Compute the overlap. If the kmer match occurs a single time in each sequence we use
+        // the banded extension overlap strategy. Otherwise we use the slow O(M*N) overlapper.
+        SequenceOverlap overlap;
+        std::string match_kmer = originalRead.substr(iter->position, m_params.kmerLength);
+        size_t pos_0 = originalRead.find(match_kmer);
+        size_t pos_1 = match_sequence.find(match_kmer);
+        assert(pos_0 != std::string::npos && pos_1 != std::string::npos);
+
+        /*
+        std::cout << "S1: " << originalRead << "\n";
+        std::cout << "S2: " << match_sequence << "\n";
+        std::cout << "P1: " << pos_0 << "\n";
+        std::cout << "P1: " << pos_1 << "\n";
+        */
+
+        // Check for secondary occurrences
+        if(originalRead.find(match_kmer, pos_0 + 1) != std::string::npos || 
+           match_sequence.find(match_kmer, pos_1 + 1) != std::string::npos) {
+            // One of the reads has a second occurrence of the kmer. Use
+            // the slow overlapper.
+            overlap = Overlapper::computeOverlap(originalRead, match_sequence);
+        } else {
+            overlap = Overlapper::extendMatch(originalRead, match_sequence, pos_0, pos_1, 20);
+        }
         bool bPassedOverlap = overlap.getOverlapLength() >= m_params.minOverlap;
         bool bPassedIdentity = overlap.getPercentIdentity() / 100 >= m_params.minIdentity;
 
@@ -337,7 +362,6 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     int n = readSequence.size();
     int nk = n - m_params.kmerLength + 1;
     
-
     // Are all kmers in the read well-represented?
     bool allSolid = false;
     bool done = false;

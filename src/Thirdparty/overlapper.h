@@ -115,6 +115,12 @@ namespace Overlapper
 // This is a naive O(M*N) algorithm
 SequenceOverlap computeOverlap(const std::string& s1, const std::string& s2);
 
+// Extend a match between s1 and s2 into a full overlap using banded dynamic programming.
+// start_1/start_2 give the starting positions of the current partial alignment. These coordinates
+// are used to estimate where the overlap begins. The estimated alignment is refined by calculating
+// the overlap with banded dynamic programming
+SequenceOverlap extendMatch(const std::string& s1, const std::string& s2, int start_1, int start_2, int bandwidth);
+
 }
 
 #endif
