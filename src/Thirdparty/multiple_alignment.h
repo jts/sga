@@ -123,6 +123,9 @@ class MultipleAlignment
         // Leading/trailing bases are trimmed from the consensus sequence if there is less than
         // min_trim_coverage depth at the ends of the base sequence.
         std::string calculateBaseConsensus(int min_call_coverage, int min_trim_coverage);
+        
+        // Returns a formatted string with the number of times each base has been seen for the given column
+        std::string getColumnCountString(size_t column) const; 
 
         // Print the alignment to stdout. If the number of columns
         // is greater than max_columns, it will be printed in multiple 

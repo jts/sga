@@ -417,6 +417,7 @@ void MultipleAlignment::printPileup() const
     size_t num_columns = m_sequences.front().getNumColumns();
     size_t num_sequences = m_sequences.size();
     for(size_t i = 0; i < num_columns; ++i) {
+        std::string counts_str = getColumnCountString(i);
         std::string pileup;
         std::string quality;
         for(size_t j = 0; j < num_sequences; ++j) {
@@ -431,7 +432,7 @@ void MultipleAlignment::printPileup() const
                 quality.push_back(quality_symbol);
 
         }
-        printf("%zu\t%s\t%s\n", i, pileup.c_str(), quality.c_str());
+        printf("%zu\t%s\t%s\t%s\n", i, pileup.c_str(), quality.c_str(), counts_str.c_str());
     }
 }
 
@@ -489,4 +490,15 @@ std::vector<int> MultipleAlignment::getColumnBaseCounts(size_t idx) const
     }
     return out;
 }
+
+std::string MultipleAlignment::getColumnCountString(size_t column) const
+{
+    std::vector<int> counts = getColumnBaseCounts(column);
+    std::stringstream out;
+    for(size_t i = 0; i < m_alphabet_size; ++i) {
+        out << m_alphabet[i] << ":" << counts[i] << " ";
+    }
+    return out.str();
+}
+
 

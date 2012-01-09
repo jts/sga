@@ -293,7 +293,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
     if(m_params.printOverlaps)
     {
         multiple_alignment.print();
-        //multiple_alignment.printPileup();
+        multiple_alignment.printPileup();
         std::cout << "Consensus: " << consensus << "\n";
     }
 
