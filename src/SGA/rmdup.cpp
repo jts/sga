@@ -260,6 +260,7 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
             std::string sequence;
             std::string hitsStr;
             size_t readIdx;
+            size_t numCopies;
             bool isSubstring;
 
             std::stringstream parser(line);
@@ -268,7 +269,7 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
             getline(parser, hitsStr);
 
             OverlapVector ov;
-            OverlapCommon::parseHitsString(hitsStr, pRIT, pRIT, pFwdSAI, pRevSAI, true, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(hitsStr, pRIT, pRIT, pFwdSAI, pRevSAI, true, readIdx, numCopies, ov, isSubstring);
             
             bool isContained = false;
             if(isSubstring)
@@ -291,6 +292,9 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
             }
 
             SeqItem item = {id, sequence};
+            std::stringstream meta;
+            meta << id << " NumDuplicates=" << numCopies;
+
             if(isContained)
             {
                 // The read's index in the sequence data base
@@ -302,15 +306,13 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
                 item.id = newID.str();
 
                 // Write some metadata with the fasta record
-                std::stringstream meta;
-                meta << id << " NumOverlaps: " << ov.size();
                 item.write(*pDupWriter, meta.str());
             }
             else
             {
                 ++kept;
                 // Write the read
-                item.write(*pWriter);
+                item.write(*pWriter, meta.str());
             }
         }
     }
