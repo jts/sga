@@ -132,7 +132,7 @@ int graphDiffMain(int argc, char** argv)
     SampledSuffixArray* pVariantSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
 
     // Create indices for the reference
-    std::string refPrefix = stripFilename(opt::referenceFile);
+    std::string refPrefix = stripExtension(opt::referenceFile);
     BWT* pRefBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
     BWT* pRefRevBWT = new BWT(refPrefix + RBWT_EXT, opt::sampleRate);
     SampledSuffixArray* pRefSSA = new SampledSuffixArray(refPrefix + SSA_EXT);
