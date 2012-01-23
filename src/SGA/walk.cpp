@@ -286,8 +286,8 @@ void componentWalk(StringGraph* pGraph, SGWalkVector& outWalks)
         {
             Vertex* pX = terminals[i];
             Vertex* pY = terminals[j];
-            bool r = SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000000, false, tempWalks);
-            r = SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000000, false, tempWalks);   
+            SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000000, false, tempWalks);
+            SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000000, false, tempWalks);   
         }
     }
 
