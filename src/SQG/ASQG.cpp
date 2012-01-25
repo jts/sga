@@ -266,6 +266,13 @@ void EdgeRecord::parse(const std::string& record)
     // Tokenize record
     StringVector tokens = SQG::tokenizeRecord(record);
 
+    if(tokens.size() < 2)
+    {
+        std::cerr << "Error: Edge record is incomplete.\n";
+        std::cerr << "Record: " << record << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
     // Ensure the first token indicates this is a valid edge record
     if(tokens[0].compare(EDGE_TAG) != 0)
     {
