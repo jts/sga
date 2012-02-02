@@ -31,7 +31,7 @@ if test "$with_bamtools" -a -d "$with_bamtools"; then
     bamtools_include="-I$with_bamtools/include -I$with_bamtools/include/bamtools"
 fi
 
-# Check for the hoard memory allocator 
+# Check for the hoard memory allocator
 AC_ARG_WITH(hoard, AS_HELP_STRING([--with-hoard=PATH],
 	[specify directory containing the hoard memory allocator library]))
 if test "$with_hoard" -a -d "$with_hoard"; then
@@ -45,6 +45,15 @@ AC_ARG_WITH(sparsehash, AS_HELP_STRING([--with-sparsehash=PATH],
 
 if test "$with_sparsehash" -a -d "$with_sparsehash"; then
     sparsehash_include="-I$with_sparsehash/include"
+fi
+
+# macosx does not implement unnamed semaphores (functions sem_init() and sem_destroy()),
+AC_MSG_CHECKING(for host type)
+host="`uname -a | awk '{print $1}'`";
+if test "$host" = Darwin;then
+  AC_MSG_WARN(un-named pthread semaphores are not supported by OSX. You will not be able to merge BWTs.)
+else
+  AC_MSG_WARN(You are fine this is not osx.);
 fi
 
 # Set compiler flags.
