@@ -47,13 +47,13 @@ if test "$with_sparsehash" -a -d "$with_sparsehash"; then
     sparsehash_include="-I$with_sparsehash/include"
 fi
 
-# macosx does not implement unnamed semaphores (functions sem_init() and sem_destroy()),
+# Warn that multithreading is not available on macosx, since it does not implement unnamed semaphores
 AC_MSG_CHECKING(for host type)
 host="`uname -a | awk '{print $1}'`";
 if test "$host" = Darwin;then
-  AC_MSG_WARN(un-named pthread semaphores are not supported by OSX. You will not be able to merge BWTs.)
+  AC_MSG_RESULT(warning: multi-threading is not available since OSX does not support un-named pthread semaphores.)
 else
-  AC_MSG_WARN(You are fine this is not osx.);
+  AC_MSG_RESULT(you are not using osx so multi-threading should work.);
 fi
 
 # Set compiler flags.
