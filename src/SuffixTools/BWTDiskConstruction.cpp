@@ -18,6 +18,7 @@
 #include "GapArray.h"
 #include "RankProcess.h"
 #include "SequenceProcessFramework.h"
+#include "BWTCABauerCoxRosone.h"
 
 // Definitions and structures
 static const bool USE_GZ = false;
@@ -46,6 +47,9 @@ int64_t merge(SeqReader* pReader,
               const std::string& bwt_outname, const std::string& sai_outname,
               bool doReverse, int numThreads, int storageLevel);
 
+// Initial BWT construction algorithms
+MergeVector computeInitialSAIS(const BWTDiskParameters& parameters); 
+MergeVector computeInitialBCR(const BWTDiskParameters& parameters); 
 
 //
 void writeMergedIndex(const BWT* pBWTInternal, const MergeItem& externalItem, 
@@ -70,83 +74,31 @@ std::string makeFilename(const std::string& prefix, const std::string& extension
 // the input reads. These are created independently and written
 // to disk. They are then merged either sequentially or pairwise
 // to create the final BWT
-void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix, 
-                  const std::string& bwt_extension, const std::string& sai_extension,
-                  bool doReverse, int numThreads, int numReadsPerBatch, int storageLevel)
+void buildBWTDisk(const BWTDiskParameters& parameters)
 {
-    size_t MAX_READS_PER_GROUP = numReadsPerBatch;
-
-    SeqReader* pReader = new SeqReader(in_filename);
-    SeqRecord record;
-
-    int groupID = 0;
-    size_t numReadTotal = 0;
-
+    // Build the initial bwts for subsets of the data
     MergeVector mergeVector;
-    MergeItem mergeItem;
-    mergeItem.start_index = 0;
-
-    // Phase 1: Compute the initial BWTs
-    ReadTable* pCurrRT = new ReadTable;
-    bool done = false;
-    while(!done)
-    {
-        done = !pReader->get(record);
-
-        if(!done)
-        {
-            // the read is valid
-            SeqItem item = record.toSeqItem();
-            if(doReverse)
-                item.seq.reverse();
-            pCurrRT->addRead(item);
-            ++numReadTotal;
-        }
-
-        if(pCurrRT->getCount() >= MAX_READS_PER_GROUP || (done && pCurrRT->getCount() > 0))
-        {
-            // Compute the SA and BWT for this group
-            SuffixArray* pSA = new SuffixArray(pCurrRT, 1);
-
-            // Write the BWT to disk                
-            std::string bwt_temp_filename = makeTempName(out_prefix, groupID, bwt_extension);
-            pSA->writeBWT(bwt_temp_filename, pCurrRT);
-
-            std::string sai_temp_filename = makeTempName(out_prefix, groupID, sai_extension);
-            pSA->writeIndex(sai_temp_filename);
-
-            // Push the merge info
-            mergeItem.end_index = numReadTotal - 1; // inclusive
-            mergeItem.reads_filename = in_filename;
-            mergeItem.bwt_filename = bwt_temp_filename;
-            mergeItem.sai_filename = sai_temp_filename;
-            mergeVector.push_back(mergeItem);
-
-            // Cleanup
-            delete pSA;
-
-            // Start the new group
-            mergeItem.start_index = numReadTotal;
-            ++groupID;
-            pCurrRT->clear();
-        }
-    }
-    delete pCurrRT;
-    delete pReader;
+    if(parameters.bUseBCR)
+        mergeVector = computeInitialBCR(parameters);
+    else
+        mergeVector = computeInitialSAIS(parameters);
 
     // Phase 2: Pairwise merge the BWTs
+    int groupID = mergeVector.size(); // Initial the name of the next intermediate bwt
     int round = 1;
     MergeVector nextMergeRound;
     while(mergeVector.size() > 1)
     {
         std::cout << "Starting round " << round << "\n";
-        pReader = new SeqReader(in_filename);
+        SeqReader* pReader = new SeqReader(parameters.inFile);
+        SeqRecord record;
+
         for(size_t i = 0; i < mergeVector.size(); i+=2)
         {
             if(i + 1 != mergeVector.size())
             {
-                std::string bwt_merged_name = makeTempName(out_prefix, groupID, bwt_extension);
-                std::string sai_merged_name = makeTempName(out_prefix, groupID, sai_extension);
+                std::string bwt_merged_name = makeTempName(parameters.outPrefix, groupID, parameters.bwtExtension);
+                std::string sai_merged_name = makeTempName(parameters.outPrefix, groupID, parameters.saiExtension);
 
                 MergeItem item1 = mergeVector[i];
                 MergeItem item2 = mergeVector[i+1];
@@ -154,7 +106,7 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
                 // Perform the actual merge
                 int64_t curr_idx = merge(pReader, item1, item2, 
                                          bwt_merged_name, sai_merged_name, 
-                                         doReverse, numThreads, storageLevel);
+                                         parameters.bBuildReverse, parameters.numThreads, parameters.storageLevel);
 
                 // pReader now points to the end of item1's block of 
                 // reads. Skip item2's reads
@@ -198,14 +150,130 @@ void buildBWTDisk(const std::string& in_filename, const std::string& out_prefix,
 
     // Done, rename the files to their final name
     std::stringstream bwt_ss;
-    bwt_ss << out_prefix << bwt_extension << (USE_GZ ? ".gz" : "");
+    bwt_ss << parameters.outPrefix << parameters.bwtExtension << (USE_GZ ? ".gz" : "");
     std::string bwt_final_filename = bwt_ss.str();
     rename(mergeVector.front().bwt_filename.c_str(), bwt_final_filename.c_str());
 
     std::stringstream sai_ss;
-    sai_ss << out_prefix << sai_extension << (USE_GZ ? ".gz" : "");
+    sai_ss << parameters.outPrefix << parameters.saiExtension << (USE_GZ ? ".gz" : "");
     std::string sai_final_filename = sai_ss.str();
     rename(mergeVector.front().sai_filename.c_str(), sai_final_filename.c_str());
+}
+
+// Compute the initial BWTs for the input file split into blocks of records using the SAIS algorithm
+MergeVector computeInitialSAIS(const BWTDiskParameters& parameters)
+{
+    SeqReader* pReader = new SeqReader(parameters.inFile);
+    SeqRecord record;
+
+    int groupID = 0;
+    size_t numReadTotal = 0;
+
+    MergeVector mergeVector;
+    MergeItem mergeItem;
+    mergeItem.start_index = 0;
+
+    // Phase 1: Compute the initial BWTs
+    ReadTable* pCurrRT = new ReadTable;
+    bool done = false;
+    while(!done)
+    {
+        done = !pReader->get(record);
+
+        if(!done)
+        {
+            // the read is valid
+            SeqItem item = record.toSeqItem();
+            if(parameters.bBuildReverse)
+                item.seq.reverse();
+            pCurrRT->addRead(item);
+            ++numReadTotal;
+        }
+
+        if(pCurrRT->getCount() >= parameters.numReadsPerBatch || (done && pCurrRT->getCount() > 0))
+        {
+            // Compute the SA and BWT for this group
+            SuffixArray* pSA = new SuffixArray(pCurrRT, 1);
+
+            // Write the BWT to disk                
+            std::string bwt_temp_filename = makeTempName(parameters.outPrefix, groupID, parameters.bwtExtension);
+            pSA->writeBWT(bwt_temp_filename, pCurrRT);
+
+            std::string sai_temp_filename = makeTempName(parameters.outPrefix, groupID, parameters.saiExtension);
+            pSA->writeIndex(sai_temp_filename);
+
+            // Push the merge info
+            mergeItem.end_index = numReadTotal - 1; // inclusive
+            mergeItem.reads_filename = parameters.inFile;
+            mergeItem.bwt_filename = bwt_temp_filename;
+            mergeItem.sai_filename = sai_temp_filename;
+            mergeVector.push_back(mergeItem);
+
+            // Cleanup
+            delete pSA;
+
+            // Start the new group
+            mergeItem.start_index = numReadTotal;
+            ++groupID;
+            pCurrRT->clear();
+        }
+    }
+    delete pCurrRT;
+    delete pReader;
+    return mergeVector;
+}
+
+// Compute the initial BWTs for the input file split into blocks of records using the BCR algorithm
+MergeVector computeInitialBCR(const BWTDiskParameters& parameters)
+{
+    SeqReader* pReader = new SeqReader(parameters.inFile);
+    SeqRecord record;
+
+    int groupID = 0;
+    size_t numReadTotal = 0;
+
+    MergeVector mergeVector;
+    MergeItem mergeItem;
+    mergeItem.start_index = 0;
+
+    // Phase 1: Compute the initial BWTs
+    DNAEncodedStringVector readSequences;
+    bool done = false;
+    while(!done)
+    {
+        done = !pReader->get(record);
+
+        if(!done)
+        {
+            // the read is valid
+            SeqItem item = record.toSeqItem();
+            if(parameters.bBuildReverse)
+                item.seq.reverse();
+            readSequences.push_back(item.seq.toString());
+            ++numReadTotal;
+        }
+
+        if(readSequences.size() >= parameters.numReadsPerBatch || (done && readSequences.size() > 0))
+        {
+            std::string bwt_temp_filename = makeTempName(parameters.outPrefix, groupID, parameters.bwtExtension);
+            std::string sai_temp_filename = makeTempName(parameters.outPrefix, groupID, parameters.saiExtension);
+            BWTCA::runBauerCoxRosone(&readSequences, bwt_temp_filename, sai_temp_filename);
+
+            // Push the merge info
+            mergeItem.end_index = numReadTotal - 1; // inclusive
+            mergeItem.reads_filename = parameters.inFile;
+            mergeItem.bwt_filename = bwt_temp_filename;
+            mergeItem.sai_filename = sai_temp_filename;
+            mergeVector.push_back(mergeItem);
+
+            // Start the new group
+            mergeItem.start_index = numReadTotal;
+            ++groupID;
+            readSequences.clear();
+        }
+    }
+    delete pReader;
+    return mergeVector;
 }
 
 // Merge the indices for the two independent sets of reads in readsFile1 and readsFile2
