@@ -55,6 +55,7 @@ struct QCParameters
     bool checkKmer;
     bool checkHPRuns;
     bool checkDegenerate;
+    bool substringOnly;
     int verbose;
 
     //
@@ -110,6 +111,13 @@ class QCResult
         bool degenPassed;
 };
 
+enum DuplicateCheckResult
+{
+    DCR_UNIQUE,
+    DCR_SUBSTRING,
+    DCR_FULL_LENGTH_DUPLICATE
+};
+
 // Perform quality checks on the input stream of reads
 class QCProcess
 {
@@ -122,7 +130,7 @@ class QCProcess
         bool performKmerCheck(const SequenceWorkItem& item);
 
         // Discard reads that are identical to, or a substring of, some other read
-        bool performDuplicateCheck(const SequenceWorkItem& item);
+        DuplicateCheckResult performDuplicateCheck(const SequenceWorkItem& item);
 
         // Check whether the sequence has a homopolymer sequencing error. This
         // check finds a kmer covering a homopolymer run then modifies it to check
