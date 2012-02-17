@@ -187,7 +187,7 @@ ls ../input/reads.*.fastq | xargs -i ln -s {}
 #
 # Step 11: Align reads to the contigs and make bam files
 #
-for i in `ls *.fastq`; do F=`basename $i .fastq`; submit --mem 12G "sga-align --name $F final-contigs.fa $i"; done
+for i in `ls *.fastq`; do F=`basename $i .fastq`; submit --cpu 8 --mem 12G "sga-align -t 8 --name $F final-contigs.fa $i"; done
 
 # Make a directory for the refsorted and unsorted bams
 mkdir initial_sorted_bams

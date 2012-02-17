@@ -35,7 +35,7 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
 {
     ReadCluster cluster(m_pOverlapper, m_minOverlap);
     ClusterNode node = cluster.addSeed(item.read.seq.toString(), true);
-    
+    assert(node.interval.isValid());
     // Check if this read is already part of a cluster. If so, return an empty result
     for(int64_t i = node.interval.lower; i <= node.interval.upper; ++i)
     {

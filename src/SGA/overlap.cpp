@@ -288,9 +288,10 @@ void convertHitsToASQG(const std::string& indexPrefix, const StringVector& hitsF
         while(getline(*pReader, line))
         {
             size_t readIdx;
+            size_t totalEntries;
             bool isSubstring;
             OverlapVector ov;
-            OverlapCommon::parseHitsString(line, pQueryRIT, pTargetRIT, pFwdSAI, pRevSAI, bIsSelfCompare, readIdx, ov, isSubstring);
+            OverlapCommon::parseHitsString(line, pQueryRIT, pTargetRIT, pFwdSAI, pRevSAI, bIsSelfCompare, readIdx, totalEntries, ov, isSubstring);
             for(OverlapVector::iterator iter = ov.begin(); iter != ov.end(); ++iter)
             {
                 ASQG::EdgeRecord edgeRecord(*iter);

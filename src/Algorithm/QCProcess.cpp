@@ -54,10 +54,20 @@ QCProcess::~QCProcess()
 QCResult QCProcess::process(const SequenceWorkItem& workItem)
 {
     QCResult result;
-    if(m_params.checkDuplicates)
-        result.dupPassed = performDuplicateCheck(workItem);
+
+    if(m_params.checkDuplicates) 
+    {
+        DuplicateCheckResult dupCheckResult = performDuplicateCheck(workItem);
+        if(!m_params.substringOnly) 
+            result.dupPassed = dupCheckResult == DCR_UNIQUE;
+        else
+            result.dupPassed = dupCheckResult != DCR_SUBSTRING;
+    }
     else
+    {
         result.dupPassed = true;
+    }
+        
 
     // Only perform the more expensive k-mer test if the dup check succeeded
     if(m_params.checkKmer && result.dupPassed)
@@ -194,7 +204,7 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
 
 // Perform duplicate check
 // Look up the interval of the read in the BWT. If the index of the read
-bool QCProcess::performDuplicateCheck(const SequenceWorkItem& workItem)
+DuplicateCheckResult QCProcess::performDuplicateCheck(const SequenceWorkItem& workItem)
 {
     assert(m_params.pSharedBV != NULL);
 
@@ -216,7 +226,7 @@ bool QCProcess::performDuplicateCheck(const SequenceWorkItem& workItem)
     if(fwdECL.hasDNAChar() || fwdECR.hasDNAChar() || rcECL.hasDNAChar() || rcECR.hasDNAChar())
     {
         // Substring reads are always removed so no need to update the bit vector
-        return false;
+        return DCR_SUBSTRING;
     }
 
     // Calculate the lexicographic intervals for the fwd and reverse intervals
@@ -237,19 +247,19 @@ bool QCProcess::performDuplicateCheck(const SequenceWorkItem& workItem)
         if(m_params.pSharedBV->updateCAS(canonicalIdx, false, true))
         {
             // Call succeed, return that this read is not a duplicate
-            return true;
+            return DCR_UNIQUE;
         }
         else
         {
             // Call failed, some other thread set the bit before
             // this thread. Return that the reead is a duplicate
-            return false;
+            return DCR_FULL_LENGTH_DUPLICATE;
         }
     }
     else
     {
         // this read is duplicate
-        return false;
+        return DCR_FULL_LENGTH_DUPLICATE;
     }
 }
 

@@ -82,6 +82,8 @@ class SGWalk
         std::string getFragmentString(const Vertex* pX, const Vertex* pY,
                                       int fromX, int toY, 
                                       EdgeDir dirX, EdgeDir dirY) const;
+
+        // Return a string identifying the path through the graph this walk represents
         std::string pathSignature() const;
 
         // distance calculations
@@ -89,6 +91,10 @@ class SGWalk
         int getEndToEndDistance() const;
         int getStartToEndDistance() const;
         int getEndToStartDistance() const;
+
+        // Compare a pair of walks by the total string length
+        // Returns true if the walk of a is longer than the walk of b
+        static bool compareByTotalLength(const SGWalk& a, const SGWalk& b);
 
         void print() const;
         void printSimple() const;

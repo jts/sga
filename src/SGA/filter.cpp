@@ -54,11 +54,12 @@ static const char *FILTER_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -p, --prefix=PREFIX              use PREFIX for the names of the index files (default: prefix of the input file)\n"
-"      -o, --outfile=FILE               write the qc-passed reads to FILE (default: READSFILE.ec.fa)\n"
+"      -o, --outfile=FILE               write the qc-passed reads to FILE (default: READSFILE.filter.pass.fa)\n"
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "      -d, --sample-rate=N              use occurrence array sample rate of N in the FM-index. Higher values use significantly\n"
 "                                       less memory at the cost of higher runtime. This value must be a power of 2 (default: 128)\n"
 "      --no-duplicate-check             turn off duplicate removal\n"
+"      --substring-only                 when removing duplicates, only remove substring sequences, not full-length matches\n"
 "      --no-kmer-check                  turn off the kmer check\n"
 "      --homopolymer-check              check reads for hompolymer run length sequencing errors\n"
 "      --low-complexity-check           filter out low complexity reads\n"
@@ -81,6 +82,7 @@ namespace opt
     static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
 
     static bool dupCheck = true;
+    static bool substringOnly = false;
     static bool kmerCheck = true;
     static bool hpCheck = false;
     static bool lowComplexityCheck = false;
@@ -91,7 +93,7 @@ namespace opt
 
 static const char* shortopts = "p:d:t:o:k:x:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, PT_DISCARD, OPT_NO_RMDUP, OPT_NO_KMER, OPT_CHECK_HPRUNS, OPT_CHECK_COMPLEXITY };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_SUBSTRING_ONLY, OPT_NO_RMDUP, OPT_NO_KMER, OPT_CHECK_HPRUNS, OPT_CHECK_COMPLEXITY };
 
 static const struct option longopts[] = {
     { "verbose",               no_argument,       NULL, 'v' },
@@ -107,6 +109,7 @@ static const struct option longopts[] = {
     { "no-kmer-check",         no_argument,       NULL, OPT_NO_KMER },
     { "homopolymer-check",     no_argument,       NULL, OPT_CHECK_HPRUNS },
     { "low-complexity-check",  no_argument,       NULL, OPT_CHECK_COMPLEXITY },
+    { "substring-only",        no_argument,       NULL, OPT_SUBSTRING_ONLY },
     { NULL, 0, NULL, 0 }
 };
 
@@ -140,6 +143,7 @@ int filterMain(int argc, char** argv)
     params.pSharedBV = pSharedBV;
 
     params.checkDuplicates = opt::dupCheck;
+    params.substringOnly = opt::substringOnly;
     params.checkKmer = opt::kmerCheck;
     params.checkHPRuns = opt::hpCheck;
     params.checkDegenerate = opt::lowComplexityCheck;
@@ -221,6 +225,7 @@ void parseFilterOptions(int argc, char** argv)
             case OPT_NO_KMER: opt::kmerCheck = false; break;
             case OPT_CHECK_HPRUNS: opt::hpCheck = true; break;
             case OPT_CHECK_COMPLEXITY: opt::lowComplexityCheck = true; break;
+            case OPT_SUBSTRING_ONLY: opt::substringOnly = true; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:

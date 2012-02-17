@@ -19,6 +19,7 @@
 namespace OverlapCommon
 {
 
+// Parse a line from a .hits file into a variety of overlap-related data
 void parseHitsString(const std::string& hitString, 
                      const ReadInfoTable* pQueryRIT, 
                      const ReadInfoTable* pTargetRIT, 
@@ -26,6 +27,7 @@ void parseHitsString(const std::string& hitString,
                      const SuffixArray* pRevSAI,
                      bool bCheckIDs,
                      size_t& readIdx, 
+                     size_t& sumBlockSize,
                      OverlapVector& outVector, 
                      bool& isSubstring);
 };

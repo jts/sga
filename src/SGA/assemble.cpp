@@ -37,7 +37,7 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -o, --out-prefix=NAME            use NAME as the prefix of the output files (output files will be NAME-contigs.fa, etc)\n"
 "      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
-
+"          --transitive-reduction       remove transitive edges from the graph. Off by default.\n"
 "\nBubble/Variation removal parameters:\n"
 "      -b, --bubble=N                   perform N bubble removal steps (default: 3)\n"
 "      -d, --max-divergence=F           only remove variation if the divergence between sequences is less than F (default: 0.05)\n"
@@ -81,30 +81,32 @@ namespace opt
     static int coverageCutoff = 0;
     static bool bValidate;
     static bool bExact = true;
+    static bool bPerformTR = false;
 }
 
 static const char* shortopts = "p:o:m:d:g:b:a:c:r:x:l:sv";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT, OPT_MAXINDEL };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT, OPT_MAXINDEL, OPT_TR };
 
 static const struct option longopts[] = {
-    { "verbose",            no_argument,       NULL, 'v' },
-    { "out-prefix",         required_argument, NULL, 'o' },
-    { "min-overlap",        required_argument, NULL, 'm' },
-    { "bubble",             required_argument, NULL, 'b' },
-    { "cut-terminal",       required_argument, NULL, 'x' },
-    { "min-branch-length",  required_argument, NULL, 'l' },
-    { "resolve-small",      required_argument, NULL, 'r' },
-    { "coverage",           required_argument, NULL, 'c' },    
-    { "max-divergence",     required_argument, NULL, 'd' },
-    { "max-gap-divergence", required_argument, NULL, 'g' },
-    { "max-indel",          required_argument, NULL, OPT_MAXINDEL },
-    { "smooth",             no_argument,       NULL, 's' },
-    { "edge-stats",         no_argument,       NULL, OPT_EDGESTATS },
-    { "exact",              no_argument,       NULL, OPT_EXACT },
-    { "help",               no_argument,       NULL, OPT_HELP },
-    { "version",            no_argument,       NULL, OPT_VERSION },
-    { "validate",           no_argument,       NULL, OPT_VALIDATE},
+    { "verbose",               no_argument,       NULL, 'v' },
+    { "out-prefix",            required_argument, NULL, 'o' },
+    { "min-overlap",           required_argument, NULL, 'm' },
+    { "bubble",                required_argument, NULL, 'b' },
+    { "cut-terminal",          required_argument, NULL, 'x' },
+    { "min-branch-length",     required_argument, NULL, 'l' },
+    { "resolve-small",         required_argument, NULL, 'r' },
+    { "coverage",              required_argument, NULL, 'c' },    
+    { "max-divergence",        required_argument, NULL, 'd' },
+    { "max-gap-divergence",    required_argument, NULL, 'g' },
+    { "max-indel",             required_argument, NULL, OPT_MAXINDEL },
+    { "smooth",                no_argument,       NULL, 's' },
+    { "transitive-reduction",  no_argument,       NULL, OPT_TR },
+    { "edge-stats",            no_argument,       NULL, OPT_EDGESTATS },
+    { "exact",                 no_argument,       NULL, OPT_EXACT },
+    { "help",                  no_argument,       NULL, OPT_HELP },
+    { "version",               no_argument,       NULL, OPT_VERSION },
+    { "validate",              no_argument,       NULL, OPT_VALIDATE},
     { NULL, 0, NULL, 0 }
 };
 
@@ -143,21 +145,24 @@ void assemble()
     SGValidateStructureVisitor validationVisit;
 
     // Pre-assembly graph stats
-    std::cout << "Initial graph stats\n";
+    std::cout << "[Stats] Input graph:\n";
     pGraph->visit(statsVisit);    
 
     // Remove containments from the graph
-    std::cout << "Removing contained vertices\n";
+    std::cout << "Removing contained vertices from graph\n";
     while(pGraph->hasContainment())
         pGraph->visit(containVisit);
 
     // Pre-assembly graph stats
-    std::cout << "Post-contain removal graph stats\n";
+    std::cout << "[Stats] After removing contained vertices:\n";
     pGraph->visit(statsVisit);    
 
     // Remove any extraneous transitive edges that may remain in the graph
-    std::cout << "Removing transitive edges\n";
-    pGraph->visit(trVisit);
+    if(opt::bPerformTR)
+    {
+        std::cout << "Removing transitive edges\n";
+        pGraph->visit(trVisit);
+    }
 
     // Compact together unbranched chains of vertices
     pGraph->simplify();
@@ -168,10 +173,6 @@ void assemble()
         pGraph->visit(validationVisit);
     }
 
-    //
-    std::cout << "Pre-remodelling graph stats\n";
-    pGraph->visit(statsVisit);
-
     // Remove dead-end branches from the graph
     if(opt::numTrimRounds > 0)
     {
@@ -179,7 +180,7 @@ void assemble()
         int numTrims = opt::numTrimRounds;
         while(numTrims-- > 0)
            pGraph->visit(trimVisit);
-        std::cout << "\nAfter trimming stats\n";
+        std::cout << "\n[Stats] Graph after trimming:\n";
         pGraph->visit(statsVisit);
     }
 
@@ -189,9 +190,11 @@ void assemble()
         SGSmallRepeatResolveVisitor smallRepeatVisit(opt::resolveSmallRepeatLen);
         std::cout << "Resolving small repeats\n";
 
-        while(pGraph->visit(smallRepeatVisit)) {}
+        int totalSmallRepeatRounds = 0;
+        while(pGraph->visit(smallRepeatVisit))
+            std::cout << "Finished small repeat resolve round " << totalSmallRepeatRounds++ << "\n";
         
-        std::cout << "\nAfter small repeat resolve graph stats\n";
+        std::cout << "\n[Stats] After small repeat resolution:\n";
         pGraph->visit(statsVisit);
     }
 
@@ -221,7 +224,7 @@ void assemble()
     
     pGraph->renameVertices("contig-");
 
-    std::cout << "\nFinal graph stats\n";
+    std::cout << "\n[Stats] Final graph:\n";
     pGraph->visit(statsVisit);
 
     // Rename the vertices to have contig IDs instead of read IDs
@@ -262,6 +265,7 @@ void parseAssembleOptions(int argc, char** argv)
             case 'x': arg >> opt::numTrimRounds; break;
             case 'c': arg >> opt::coverageCutoff; break;
             case 'r': arg >> opt::resolveSmallRepeatLen; break;
+            case OPT_TR: opt::bPerformTR = true; break;
             case OPT_MAXINDEL: arg >> opt::maxIndelLength; break;
             case OPT_EXACT: opt::bExact = true; break;
             case OPT_EDGESTATS: opt::bEdgeStats = true; break;

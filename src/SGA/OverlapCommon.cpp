@@ -19,13 +19,15 @@ void OverlapCommon::parseHitsString(const std::string& hitString,
                                     const SuffixArray* pFwdSAI, 
                                     const SuffixArray* pRevSAI, 
                                     bool bCheckIDs,
-                                    size_t& readIdx, 
+                                    size_t& readIdx,
+                                    size_t& sumBlockSize,
                                     OverlapVector& outVector, 
                                     bool& isSubstring)
 {
     OverlapVector outvec;
     std::istringstream convertor(hitString);
 
+    sumBlockSize = 0;
     // Read the overlap blocks for a read
     size_t numBlocks;
     convertor >> readIdx >> isSubstring >> numBlocks;
@@ -41,6 +43,7 @@ void OverlapCommon::parseHitsString(const std::string& hitString,
         // Iterate through the range and write the overlaps
         for(int64_t j = record.ranges.interval[0].lower; j <= record.ranges.interval[0].upper; ++j)
         {
+            sumBlockSize += 1;
             const SuffixArray* pCurrSAI = (record.flags.isTargetRev()) ? pRevSAI : pFwdSAI;
             const ReadInfo& queryInfo = pQueryRIT->getReadInfo(readIdx);
 

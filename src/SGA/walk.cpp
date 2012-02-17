@@ -47,6 +47,7 @@ static const char *WALK_USAGE_MESSAGE =
 "                                       STR should be a comma delimited list of IDs\n"
 "         --component-walks             find all possible walks through the largest connected component\n"
 "                                       of the graph.\n"
+"         --longest-n=NUM               when using --component-walks, only output the longest NUM walks\n"
 "      -o,--out-file=FILE               write the walks to FILE in FASTA format (default: walks.fa)\n"
 "      -p, --prefix=PREFIX              write final walks sequence ids starting with PREFIX (default: walk-N)\n"
 "         --sam=FILE                    write the walk descriptions to FILE in SAM format\n"
@@ -64,11 +65,12 @@ namespace opt
     static std::string samFile;
     static int maxDistance = 500;
     static bool componentWalks = false;
+    static int numOutputWalks = -1;
 }
 
 static const char* shortopts = "o:d:s:e:w:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_COMPONENT, OPT_SAM };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_COMPONENT, OPT_SAM, OPT_LONGEST_N };
 
 static const struct option longopts[] = {
     { "verbose",           no_argument,       NULL, 'v' },
@@ -80,6 +82,7 @@ static const struct option longopts[] = {
     { "end",               required_argument, NULL, 'e' },
     { "walk-str",          required_argument, NULL, 'w' },
     { "component-walks",   no_argument,       NULL, OPT_COMPONENT },
+    { "longest-n",         required_argument, NULL, OPT_LONGEST_N },
     { "help",              no_argument,       NULL, OPT_HELP },
     { "version",           no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -227,6 +230,16 @@ void explicitWalk(StringGraph* pGraph, SGWalkVector& outWalks)
 // Find all walks through the largest component of the graph
 void componentWalk(StringGraph* pGraph, SGWalkVector& outWalks)
 {
+    // Perform some simplifications on the graph
+    
+    std::cout << "Component walK: Removing contained vertices and lingering transitive edges\n";
+    SGContainRemoveVisitor containVisit;
+    pGraph->visit(containVisit);
+
+    SGTransitiveReductionVisitor trVisit;
+    pGraph->visit(trVisit);
+    pGraph->stats();
+
     typedef std::vector<VertexPtrVec> ComponentVector;
     VertexPtrVec allVertices = pGraph->getAllVertices();
     ComponentVector components;
@@ -273,8 +286,8 @@ void componentWalk(StringGraph* pGraph, SGWalkVector& outWalks)
         {
             Vertex* pX = terminals[i];
             Vertex* pY = terminals[j];
-            SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000, false, tempWalks);
-            SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000, false, tempWalks);   
+            SGSearch::findWalks(pX, pY, ED_SENSE, opt::maxDistance, 1000000, false, tempWalks);
+            SGSearch::findWalks(pX, pY, ED_ANTISENSE, opt::maxDistance, 1000000, false, tempWalks);   
         }
     }
 
@@ -288,8 +301,15 @@ void componentWalk(StringGraph* pGraph, SGWalkVector& outWalks)
 
     // Copy unique walks to the output
     for(std::map<std::string, SGWalk>::iterator mapIter = walkMap.begin(); mapIter != walkMap.end(); ++mapIter)
-    {
         outWalks.push_back(mapIter->second);
+
+    // Sort the walks by string length
+    std::sort(outWalks.begin(), outWalks.end(), SGWalk::compareByTotalLength);
+
+    if(opt::numOutputWalks > 0 && opt::numOutputWalks < (int)outWalks.size())
+    {
+        assert(outWalks.begin() + opt::numOutputWalks < outWalks.end());
+        outWalks.erase(outWalks.begin() + opt::numOutputWalks, outWalks.end());
     }
 }
 
@@ -317,6 +337,7 @@ void parseWalkOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case OPT_SAM: arg >> opt::samFile; break;
             case OPT_COMPONENT: opt::componentWalks = true; break;
+            case OPT_LONGEST_N: arg >> opt::numOutputWalks; break;
             case OPT_HELP:
                 std::cout << WALK_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
@@ -347,6 +368,12 @@ void parseWalkOptions(int argc, char** argv)
     if(!opt::componentWalks && opt::walkStr.empty() && (opt::id1.empty() || opt::id2.empty()))
     {
         std::cerr << SUBPROGRAM ": one of a start/end vertex pair (-s/-e), a walk string (-w) or --component-walks must be provided\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if(opt::numOutputWalks == 0)
+    {
+        std::cerr << SUBPROGRAM ": error --longest-n set to zero. Nothing to do\n";
         exit(EXIT_FAILURE);
     }
 

@@ -29,8 +29,27 @@ ClusterNode ReadCluster::addSeed(const std::string& sequence, bool bCheckInIndex
     OverlapResult overlapResult = m_pOverlapper->alignReadDuplicate(tempRecord, &tempBlockList);
     if(overlapResult.isSubstring)
     {
-        std::cerr << "Error: substring reads found in sga-cluster. Please run sga filter (with the --no-kmer-check flag) before cluster\n";
-        exit(1);
+        // If bCheckInIndex is true, then we are extending clusters from reads that are in the FM-index
+        // In this case, seeding a substring read is an error and we abort. If the seed is NOT in the index
+        // we just emit a warning and ignore the seed
+        if(bCheckInIndex)
+        {
+            std::cerr << "Error: The seed used for sga-cluster-extend is a substring of some read.\n";
+            std::cerr << "Please run sga rmdup before cluster\n";
+            std::cerr << "Sequence: " << sequence << "\n";
+            exit(1);
+        }
+        else
+        {
+            std::cerr << "Warning: The cluster sequence to extend is a substring of some read. This seed is being skipped\n";
+            std::cerr << "Sequence: " << sequence << "\n";
+            ClusterNode emptyNode;
+
+            // Set an invalid interval
+            emptyNode.interval.lower = 0;
+            emptyNode.interval.upper = -1;
+            return emptyNode;
+        }
     }
 
     // Find the interval in the fm-index containing the read

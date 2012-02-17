@@ -208,6 +208,13 @@ void VertexRecord::parse(const std::string& record)
     // Tokenize record
     StringVector tokens = SQG::tokenizeRecord(record);
 
+    if(tokens.size() < 3)
+    {
+        std::cerr << "Error: Vertex record is incomplete.\n";
+        std::cerr << "Record: " << record << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
     // Ensure the first token indicates this is a valid vertex record
     if(tokens[0].compare(0, RECORD_TAG_SIZE, VERTEX_TAG) != 0)
     {
@@ -258,6 +265,13 @@ void EdgeRecord::parse(const std::string& record)
 
     // Tokenize record
     StringVector tokens = SQG::tokenizeRecord(record);
+
+    if(tokens.size() < 2)
+    {
+        std::cerr << "Error: Edge record is incomplete.\n";
+        std::cerr << "Record: " << record << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
     // Ensure the first token indicates this is a valid edge record
     if(tokens[0].compare(EDGE_TAG) != 0)

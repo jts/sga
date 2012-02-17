@@ -203,7 +203,13 @@ void writeFastaRecord(std::ostream* pWriter, const std::string& id, const std::s
 // Returns true if the filename has an extension indicating it is compressed
 bool isGzip(const std::string& filename)
 {
-    std::string extension = suffix(filename, sizeof(GZIP_EXT) - 1);
+    size_t suffix_length = sizeof(GZIP_EXT) - 1;
+
+    // Assume files without an extension are not compressed
+    if(filename.length() < suffix_length)
+        return false;
+
+    std::string extension = suffix(filename, suffix_length);
     return extension == GZIP_EXT;
 }
 

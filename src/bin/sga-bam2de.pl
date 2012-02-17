@@ -9,6 +9,10 @@ my $minLength = 0;
 my $prefix = "";
 my $numThreads = 1;
 
+# Filter the abyss distance est histogram to remove insert sizes
+# with fewer than hist_min data points
+my $hist_min = 3;
+
 GetOptions("prefix=s" => \$prefix,
            "k=i"      => \$k,
            "n=i"      => \$n,
@@ -38,15 +42,19 @@ if($bFail)
 my $cmd;
 
 # fix-mate info
-$cmd = "abyss-fixmate -h $prefix.hist $bamFile | samtools view -Sb - > $prefix.diffcontigs.bam";
+$cmd = "abyss-fixmate -h $prefix.tmp.hist $bamFile | samtools view -Sb - > $prefix.diffcontigs.bam";
 runCmd($cmd);
+
+# DistanceEst is very slow when the learned insert size distribution is very wide
+# To work around this, remove singleton data points from the histogram
+runCmd("awk \'\$2 >= $hist_min\' $prefix.tmp.hist > $prefix.hist");
 
 # sort 
 $cmd = "samtools sort $prefix.diffcontigs.bam $prefix.diffcontigs.sorted";
 runCmd($cmd);
 
 # distance est
-$cmd = "DistanceEst -n $n -k $k -j $numThreads -s $minLength -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
+$cmd = "DistanceEst -s $minLength -n $n -k $k -j $numThreads -s $minLength -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
 runCmd($cmd);
 
 sub usage

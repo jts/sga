@@ -40,6 +40,8 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
                 const SQG::IntTag& overlapTag = headerRecord.getOverlapTag();
                 if(overlapTag.isInitialized())
                     pGraph->setMinOverlap(overlapTag.get());
+                else
+                    pGraph->setMinOverlap(0);
 
                 const SQG::FloatTag& errorRateTag = headerRecord.getErrorRateTag();
                 if(errorRateTag.isInitialized())
@@ -54,8 +56,8 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
                 const SQG::IntTag& transitiveTag = headerRecord.getTransitiveTag();
                 if(!transitiveTag.isInitialized())
                 {
-                    std::cerr << "Error: ASQG does not have transitive tag, failure\n";
-                    exit(EXIT_FAILURE);
+                    std::cerr << "Warning: ASQG does not have transitive tag\n";
+                    pGraph->setTransitiveFlag(true);
                 }
                 else
                 {
@@ -102,6 +104,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 
                 ASQG::EdgeRecord edgeRecord(recordLine);
                 const Overlap& ovr = edgeRecord.getOverlap();
+
                 // Add the edge to the graph
                 if(ovr.match.getMinOverlapLength() >= (int)minOverlap)
                     SGAlgorithms::createEdgesFromOverlap(pGraph, ovr, allowContainments);

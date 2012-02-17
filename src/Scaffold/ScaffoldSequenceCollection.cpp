@@ -87,6 +87,11 @@ MapSequenceCollection::MapSequenceCollection(std::string filename)
 std::string MapSequenceCollection::getSequence(const std::string& id) const
 {
     SMPMap::const_iterator iter = m_map.find(id);
+    if(iter == m_map.end())
+    {
+        std::cerr << "Error: Sequence with id " << id << " not found in input sequence collection\n";
+        exit(EXIT_FAILURE);
+    }
     assert(iter != m_map.end());
     return iter->second.sequence;
 }

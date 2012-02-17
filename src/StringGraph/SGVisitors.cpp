@@ -673,11 +673,17 @@ void SGSmallRepeatResolveVisitor::previsit(StringGraph*)
 bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
 {
     bool changed = false;
+
+    // If the vertex has more than MAX_EDGES, do not
+    // attempt to resolve
+    size_t MAX_EDGES = 10;
+
     for(size_t idx = 0; idx < ED_COUNT; idx++)
     {
         EdgeDir dir = EDGE_DIRECTIONS[idx];
         EdgePtrVec x_edges = pX->getEdges(dir); // These edges are already sorted
-        if(x_edges.size() < 2)
+
+        if(x_edges.size() < 2 || x_edges.size() > MAX_EDGES)
             continue;
 
         // Try to eliminate the shortest edge from this vertex (let this be X->Y)
@@ -694,6 +700,9 @@ bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
         Vertex* pY = pXY->getEnd();
 
         EdgePtrVec y_edges = pY->getEdges(pYX->getDir());
+        if(y_edges.size() > MAX_EDGES)
+            continue;
+
         size_t yx_len = pYX->getOverlap().getOverlapLength(0);
 
         size_t y_longest_len = 0;
@@ -1340,7 +1349,7 @@ void SGGraphStatsVisitor::previsit(StringGraph* /*pGraph*/)
     num_island = 0;
     num_monobranch = 0;
     num_dibranch = 0;
-    num_transitive = 0;
+    num_simple = 0;
     num_edges = 0;
     num_vertex = 0;
     sum_edgeLen = 0;
@@ -1366,7 +1375,7 @@ bool SGGraphStatsVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
         ++num_monobranch;
 
     if(s_count == 1 || as_count == 1)
-        ++num_transitive;
+        ++num_simple;
 
     num_edges += (s_count + as_count);
     ++num_vertex;
@@ -1381,9 +1390,9 @@ bool SGGraphStatsVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
 //
 void SGGraphStatsVisitor::postvisit(StringGraph* /*pGraph*/)
 {
-    printf("island: %d terminal: %d monobranch: %d dibranch: %d transitive: %d\n", num_island, num_terminal,
-                                                                                   num_monobranch, num_dibranch, num_transitive);
-    printf("Total Vertices: %d Total Edges: %d Sum edge length: %zu\n", num_vertex, num_edges, sum_edgeLen);
+    printf("Vertices: %d Edges: %d Islands: %d Tips: %d Monobranch: %d Dibranch: %d Simple: %d\n", num_vertex, num_edges, 
+                                                                                                   num_island, num_terminal,
+                                                                                                   num_monobranch, num_dibranch, num_simple);
 }
 
 //

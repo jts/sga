@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.59)
-AC_INIT(sga, 0.9.17, js18@sanger.ac.uk)
+AC_INIT(sga, 0.9.19, js18@sanger.ac.uk)
 AM_INIT_AUTOMAKE(foreign)
 AC_CONFIG_SRCDIR([SGA/sga.cpp])
 AC_CONFIG_HEADER([config.h])
@@ -20,15 +20,19 @@ AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib 
 AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [clock_getttime found])], )
 
 # Check for the bamtools library path
+# Bamtools has two different path formats
+# If it is built in place the files will be in {path}/lib/ and {path}/include/
+# If it is installed (with make install) it will be in {path}/include/bamtools
+# and {path}/lib/bamtools. Both variants are handled here
 AC_ARG_WITH(bamtools, AS_HELP_STRING([--with-bamtools=PATH],
 	[specify directory containing the bamtools library (http://github.com/pezmaster31/bamtools)]))
 
 if test "$with_bamtools" -a -d "$with_bamtools"; then
-    bamtools_ldflags="-Wl,-rpath,$with_bamtools/lib -L$with_bamtools/lib -lbamtools"
-    bamtools_include="-I$with_bamtools/include"
+    bamtools_ldflags="-Wl,-rpath,$with_bamtools/lib -L$with_bamtools/lib -Wl,-rpath,$with_bamtools/lib/bamtools -L$with_bamtools/lib/bamtools"
+    bamtools_include="-I$with_bamtools/include -I$with_bamtools/include/bamtools"
 fi
 
-# Check for the hoard memory allocator 
+# Check for the hoard memory allocator
 AC_ARG_WITH(hoard, AS_HELP_STRING([--with-hoard=PATH],
 	[specify directory containing the hoard memory allocator library]))
 if test "$with_hoard" -a -d "$with_hoard"; then
@@ -44,12 +48,24 @@ if test "$with_sparsehash" -a -d "$with_sparsehash"; then
     sparsehash_include="-I$with_sparsehash/include"
 fi
 
+# Warn that multithreading is not available on macosx, since it does not implement unnamed semaphores
+AC_MSG_CHECKING(for host type)
+host="`uname -a | awk '{print $1}'`";
+if test "$host" = Darwin;then
+  AC_MSG_RESULT(warning: multi-threading is not available since OSX does not support un-named pthread semaphores.)
+else
+  AC_MSG_RESULT(you are not using osx so multi-threading should work.);
+fi
+
 # Set compiler flags.
 AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror")
 AC_SUBST(CXXFLAGS, "-O3")
 AC_SUBST(CFLAGS, "-O3")
 AC_SUBST(CPPFLAGS, "$CPPFLAGS $sparsehash_include $bamtools_include")
 AC_SUBST(LDFLAGS, "$hoard_ldflags $bamtools_ldflags $LDFLAGS")
+
+# We always need to specify to link in bamtools
+AC_SUBST(LIBS, "$LIBS -lbamtools")
 
 #
 if test "$enable_hoard"; then
