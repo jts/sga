@@ -21,8 +21,10 @@
 #include "DindelRealignWindow.h"
 #include "DindelUtil.h"
 #include "HaplotypeBuilder.h"
+#include "ReadCoherentHaplotypeBuilder.h"
 #include "BuilderCommon.h"
 #include "Profiler.h"
+
 
 // #define GRAPH_DIFF_DEBUG 1
 
@@ -301,11 +303,17 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
 #endif
     (void)count;
 
+    size_t haplotype_builder_kmer = m_parameters.kmer;
+
     //
     GraphBuildResult result;
-    bool found_variant_string = buildCoherencyGraph(str, result.variant_haplotypes);
-    
-    size_t hb_k = m_parameters.kmer;
+//    bool found_variant_string = buildCoherencyGraph(str, result.variant_haplotypes);
+    ReadCoherentHaplotypeBuilder rc_builder;
+    rc_builder.setInitialHaplotype(str);
+    rc_builder.setIndex(m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, m_parameters.pVariantSSA);
+    rc_builder.setKmer(haplotype_builder_kmer);
+    rc_builder.run();
+    bool found_variant_string = false;
 
     if(found_variant_string)
     {
@@ -315,8 +323,8 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
         {
             const std::string& current_variant_haplotype = result.variant_haplotypes[i];
 
-            std::string startAnchorSeq = current_variant_haplotype.substr(0, hb_k); 
-            std::string endAnchorSeq = current_variant_haplotype.substr(current_variant_haplotype.length() - hb_k);
+            std::string startAnchorSeq = current_variant_haplotype.substr(0, haplotype_builder_kmer); 
+            std::string endAnchorSeq = current_variant_haplotype.substr(current_variant_haplotype.length() - haplotype_builder_kmer);
 
 #ifdef GRAPH_DIFF_DEBUG
             // Make a kmer count profile for the putative variant string
@@ -359,7 +367,7 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
             HaplotypeBuilder builder;
             builder.setTerminals(startAnchor, endAnchor);
             builder.setIndex(m_parameters.pBaseBWT, NULL);
-            builder.setKmerParameters(hb_k, m_parameters.bReferenceMode ? 1 : 2);
+            builder.setKmerParameters(haplotype_builder_kmer, m_parameters.bReferenceMode ? 1 : 2);
 
             // Run the builder
             HaplotypeBuilderReturnCode hbCode = builder.run();

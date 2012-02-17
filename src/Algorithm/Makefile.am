@@ -42,4 +42,5 @@ libalgorithm_a_SOURCES = \
         VCFTester.h VCFTester.cpp \
         DindelUtil.h DindelUtil.cpp \
         DindelRealignWindow.h DindelRealignWindow.cpp \
-        DindelHMM.h DindelHMM.cpp
+        DindelHMM.h DindelHMM.cpp \
+        ReadCoherentHaplotypeBuilder.h ReadCoherentHaplotypeBuilder.cpp
