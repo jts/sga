@@ -46,10 +46,12 @@ struct BubbleResult
 // has not had it's neighbors visited
 struct BuilderExtensionNode
 {
-    BuilderExtensionNode(Vertex* pX, EdgeDir d) : pVertex(pX), direction(d) {}
+    BuilderExtensionNode(Vertex* pX, EdgeDir d) : pVertex(pX), direction(d), distance(0) {}
+    BuilderExtensionNode(Vertex* pX, EdgeDir dir, int dist) : pVertex(pX), direction(dir), distance(dist) {}
 
     Vertex* pVertex; // the vertex to extend
     EdgeDir direction; // the direction to extend to
+    int distance; // the total number of nodes from the start to this node.
 };
 typedef std::queue<BuilderExtensionNode> BuilderExtensionQueue;
 typedef std::map<std::string, int> StrIntMap;

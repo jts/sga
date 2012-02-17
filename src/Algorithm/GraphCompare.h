@@ -151,6 +151,9 @@ class GraphCompare
 
         // Debug/testing functions
         bool buildVariantStringGraph(const std::string& startingKmer, StringVector& haplotypes);
+        bool buildCoherencyGraph(const std::string& startingKmer, StringVector& haplotypes);
+
+        void filterIncoherentHaplotypes(StringVector& haplotypes);
 
         bool transformVariantString(const std::string& inStr, std::string& outStr);
         IntVector makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max);

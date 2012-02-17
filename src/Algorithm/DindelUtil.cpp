@@ -44,9 +44,9 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
     
     bool extractOK = true;
-    // Reads on the same strand as the haplotype
     if(!parameters.bReferenceMode)
     {
+        // Reads on the same strand as the haplotype
         extractOK = HapgenUtil::extractHaplotypeReads(inHaplotypes, parameters.pBaseBWT, parameters.pBaseBWTCache,
                                                       parameters.pBaseSSA, extractionKmer, false, MAX_READS, &normalReads, &normalReadMates);
 
@@ -83,6 +83,9 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     size_t total_reads = normalReads.size() + normalReadMates.size() + normalRCReads.size() + normalRCReadMates.size();
     total_reads += variantReads.size() + variantReadMates.size() + variantRCReads.size() + variantRCReadMates.size();
 
+    if(total_reads > 2000)
+        return DRC_OVER_DEPTH;
+
     // Get canidate alignments for the input haplotypes
     HapgenAlignmentVector candidateAlignments;
 
@@ -94,17 +97,12 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
                                               parameters.pReferenceSSA,
                                               thisCandidateAlignments);
 
-        /*
-        std::cout << "Alignments for haplotype " << i << "\n";
-        for(size_t j = 0; j < thisCandidateAlignments.size(); ++j)
-            std::cout << thisCandidateAlignments[j] << "\n";
-        */
         candidateAlignments.insert(candidateAlignments.end(), thisCandidateAlignments.begin(), thisCandidateAlignments.end());
     }
     
     // Remove duplicate or bad alignment pairs
     HapgenUtil::coalesceAlignments(candidateAlignments);
-//    std::cout << "Found " << candidateAlignments.size() << " alignments for haplotypes\n";
+
 
     // Join each haplotype with flanking sequence from the reference genome for each alignment
     // This function also adds a haplotype (with flanking sequence) for the piece of the reference
@@ -123,6 +121,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     
     }
 
+    printf("Passing to dindel %zu haplotypes, %zu reads\n", candidateAlignments.size(), total_reads);
 
     // Generate the input haplotypes for dindel
     // We need at least 2 haplotypes

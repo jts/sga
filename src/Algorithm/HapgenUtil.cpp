@@ -194,7 +194,8 @@ bool HapgenUtil::checkAlignmentsAreConsistent(const std::string& refString, cons
             std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
             std::cerr << "A[" << i << "]: " << alignments[i] << "\n";
             std::cerr << "A[" << j << "]: " << alignments[j] << "\n";
-            return false;
+            std::cerr << "DISABLED CHECK\n";
+            //return false;
         }
     }
 

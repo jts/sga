@@ -362,6 +362,39 @@ std::string MultiAlignment::generateMatchString() const
 }
 
 //
+void MultiAlignment::filterByEditDistance(int max_edit_distance)
+{
+    size_t num_rows = m_alignData.size();
+    assert(num_rows > 0);
+    size_t num_cols = m_alignData.front().padded.size();
+    std::vector<bool> keep_vector(num_rows, true);
+    for(size_t i = 1; i < num_rows; ++i)
+    {
+        int current_edit_distance = 0;
+        for(size_t j = 0; j < num_cols; ++j)
+        {
+            char root_symbol = getSymbol(0, j);
+            char seq_symbol = getSymbol(i, j);
+            if(root_symbol != '.' && seq_symbol != '.' && seq_symbol != '-' && root_symbol != seq_symbol)
+                current_edit_distance++;
+        }
+
+        if(current_edit_distance > max_edit_distance)
+            keep_vector[i] = false;
+    }
+
+    MAlignDataVector tmp_ma;
+    for(size_t i = 0; i < num_rows; ++i)
+    {
+        if(keep_vector[i])
+            tmp_ma.push_back(m_alignData[i]);
+    }
+
+    printf("Removed %zu\n", m_alignData.size() - tmp_ma.size());
+    m_alignData.swap(tmp_ma);
+}
+
+//
 void MultiAlignment::print(int col_size, const std::string* pConsensus, bool sorted, bool masked) const
 {
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());

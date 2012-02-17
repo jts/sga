@@ -61,6 +61,9 @@ class MultiAlignment
         // Return the total number of columns in the MA
         size_t getNumColumns() const;
 
+        // Filter the multiple alignment by removing sequences that are more than max_edit_distance from the root sequence
+        void filterByEditDistance(int max_edit_distance);
+
         // Print the multiple alignment, optionally with a consensus sequence
         void print(int col_size = 80, const std::string* pConsensus = NULL, bool sorted = true, bool masked = false) const;
 
