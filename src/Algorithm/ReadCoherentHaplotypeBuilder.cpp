@@ -13,6 +13,7 @@
 #include "SGAlgorithms.h"
 #include "Profiler.h"
 #include "HapgenUtil.h"
+#include "multiple_alignment.h"
 
 //
 //
@@ -57,7 +58,7 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run()
     assert(m_pBWT != NULL);
 
     int round = 0;
-    int MAX_ROUNDS = 110;
+    int MAX_ROUNDS = 160;
 
     // Extend each haplotype a single base
     while(round++ < MAX_ROUNDS)
@@ -91,12 +92,17 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run()
             }
             else if(extensionBases.length() > 1) // branch
             {
-                for(size_t i = 0; i < extensionBases.length(); ++i)
+
+                // Branch the current haplotype for all the extensions but one
+                for(size_t i = 1; i < extensionBases.length(); ++i)
                 {
                     std::string branched = *iterator;
                     branched.push_back(extensionBases[i]);
                     incoming_haplotypes.push_back(branched);   
                 }
+
+                // ...and update the iterator for the remaining extension
+                iterator->append(1, extensionBases[0]);
             }
         }
 
@@ -154,11 +160,17 @@ void ReadCoherentHaplotypeBuilder::alignReadsToHaplotypes()
                                          iterator != m_haplotypes.end(); ++iterator)
     {
         const std::string& haplotype = *iterator;
+        MultipleAlignment multiple_alignment;
+        multiple_alignment.addBaseSequence("haplotype", haplotype, "");
+            
+        // A vector to record the start position of each read mapped to this haplotype
+        std::vector<int> start_vector; 
 
         for(size_t i = 0; i < m_reads.size(); ++i)
         {
             const std::string& read = m_reads[i];
 
+#if 0
             // Try to align this string using mismatches only at every start position of the haplotype
             // Awful algorithm, to be replaced later
             size_t best_mismatches = std::numeric_limits<size_t>::max();
@@ -175,8 +187,30 @@ void ReadCoherentHaplotypeBuilder::alignReadsToHaplotypes()
                     best_start = j;
                 }
             }
-
+            
+            //SequenceOverlap overlap = Overlapper::extendMatch(haplotype, read, best_start, 0, 1);
             printf("Best match of read[%zu] on haplotype: %zu mismatches, position %zu\n", i, best_mismatches, best_start);
+#endif
+            SequenceOverlap overlap = Overlapper::computeOverlap(haplotype, read);
+            if(overlap.edit_distance <= (int)m_maxEditDistance)
+            {
+                // Calculate a proper overlap between the sequences and add to the multiple alignment
+                multiple_alignment.addOverlap("noname", read, "", overlap);
+                start_vector.push_back(overlap.match[0].start);
+            }
         }
+
+        // Calculate the maximum distance between consecutive start positions
+        std::sort(start_vector.begin(), start_vector.end());
+        int max_jump = 0;
+        for(size_t i = 0; i < start_vector.size() - 1; ++i)
+        {
+            int jump = start_vector[i+1] - start_vector[i];
+            if(jump > max_jump)
+                max_jump = jump;
+        }
+
+        multiple_alignment.print(200);
+        printf("Max jump: %d\n", max_jump);
     }
 }

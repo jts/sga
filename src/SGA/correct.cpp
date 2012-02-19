@@ -144,12 +144,11 @@ int correctMain(int argc, char** argv)
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = NULL;
+    SampledSuffixArray* pSSA = NULL;
 
-    // If the correction mode is k-mer only, then do not load the reverse
-    // BWT as it is not needed
-    if(opt::algorithm != ECA_KMER)
-        pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
-    
+    if(opt::algorithm == ECA_OVERLAP)
+        pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
+
     BWTIntervalCache intervalCache(opt::intervalCacheLength, pBWT);
 
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
@@ -164,7 +163,6 @@ int correctMain(int argc, char** argv)
             CorrectionThresholds::Instance().setBaseMinSupport(threshold);
     }
 
-
     // Open outfiles and start a timer
     std::ostream* pWriter = createWriter(opt::outFile);
     std::ostream* pDiscardWriter = (!opt::discardFile.empty() ? createWriter(opt::discardFile) : NULL);
@@ -174,16 +172,19 @@ int correctMain(int argc, char** argv)
     // Set the error correction parameters
     ErrorCorrectParameters ecParams;
     ecParams.pOverlapper = pOverlapper;
+    ecParams.pBWT = pBWT;
+    ecParams.pSSA = pSSA;
     ecParams.pIntervalCache = &intervalCache;
     ecParams.algorithm = opt::algorithm;
 
     ecParams.minOverlap = opt::minOverlap;
     ecParams.numOverlapRounds = opt::numOverlapRounds;
+    ecParams.minIdentity = 1.0f - opt::errorRate;
     ecParams.conflictCutoff = opt::conflictCutoff;
 
     ecParams.numKmerRounds = opt::numKmerRounds;
     ecParams.kmerLength = opt::kmerLength;
-    ecParams.printOverlaps = opt::verbose > 1;
+    ecParams.printOverlaps = opt::verbose > 0;
 
     // Setup post-processor
     bool bCollectMetrics = !opt::metricsFile.empty();
@@ -229,6 +230,9 @@ int correctMain(int argc, char** argv)
     delete pBWT;
     if(pRBWT != NULL)
         delete pRBWT;
+
+    if(pSSA != NULL)
+        delete pSSA;
 
     delete pOverlapper;
     delete pTimer;

@@ -10,7 +10,6 @@
 #include "SGDebugAlgorithms.h"
 #include "SGAlgorithms.h"
 #include "SeqTrie.h"
-#include "ErrorCorrect.h"
 #include <algorithm>
 
 //
@@ -109,11 +108,11 @@ void SGDebugGraphCompareVisitor::postvisit(StringGraph*)
 bool SGDebugGraphCompareVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 {
     (void)pGraph;
+    (void)pVertex;
     //compareTransitiveGroups(pGraph, pVertex);
     //compareInferredQuality(pGraph, pVertex);
     //compareOverlapQuality(pGraph, pVertex);
     //compareErrorRates(pGraph, pVertex);
-    compareSplitGroups(pGraph, pVertex);
     /*
     if(!m_showMissing)
         summarize(pGraph, pVertex);
@@ -218,64 +217,6 @@ void SGDebugGraphCompareVisitor::summarize(StringGraph* pGraph, Vertex* pVertex)
             ++m_numWrong;
     }
 
-}
-
-//
-void SGDebugGraphCompareVisitor::compareSplitGroups(StringGraph* pGraph, Vertex* pVertex)
-{
-    // Retreive the vertex in the comparison graph
-    Vertex* pCompareVertex = m_pCompareGraph->getVertex(pVertex->getID());
-    if(pCompareVertex == NULL)
-    {
-        return;
-    }
-
-    MultiOverlap mo = pVertex->getMultiOverlap();    
-
-    bool hasWrong = false;
-    EdgePtrVec actualEdges = pVertex->getEdges();
-
-    for(size_t i = 0; i < actualEdges.size(); ++i)
-    {
-        Edge* pActualEdge = actualEdges[i];
-        EdgeDesc ed = pActualEdge->getDesc();
-        if(m_pCompareGraph->getVertex(pActualEdge->getEndID()) != NULL && !pCompareVertex->hasEdge(ed))
-        {
-            hasWrong = true;
-            break;
-        }
-    }
-
-    std::string original = pVertex->getStr();
-    std::string base = pCompareVertex->getStr();
-
-    std::string d_str = getDiffString(base, original);
-    std::cout << "ORG: " << original << "\n";
-    std::cout << "CHT: " << base << "\n";
-    std::cout << "DST: " << d_str << "\n";
-
-    std::string consensus = ErrorCorrect::correctVertex(pGraph, pVertex, 3, 0.01);
-    std::string c_diff_str = getDiffString(base, consensus);
-
-    std::cout << "CNS: " << consensus << "\n";
-    std::cout << "CDF: " << c_diff_str << "\n";
-
-    //pVertex->setSeq(consensus);
-
-    int numDiffsNC = countDifferences(original, base, base.size());
-    int numDiffsEC = countDifferences(consensus, base, base.size());
-    
-    std::cout << "EC\t" << numDiffsNC << "\t" << numDiffsEC << "\t" << hasWrong << 
-                 "\t" << pVertex->countEdges() << "\t" <<  "\n";
-
-    if(numDiffsEC != 0)
-    {
-        for(size_t i = 0; i < consensus.size(); ++i)
-        {
-            if(consensus[i] != base[i])
-                std::cout << "MM\t" << i << "\t" << numDiffsEC << "\t" << "\n";
-        }
-    }
 }
 
 void SGDebugGraphCompareVisitor::compareTransitiveGroups(StringGraph* /*pGraph*/, Vertex* pVertex)

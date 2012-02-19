@@ -9,7 +9,6 @@
 // operation
 //
 #include "SGVisitors.h"
-#include "ErrorCorrect.h"
 #include "CompleteOverlapSet.h"
 #include "SGSearch.h"
 #include "stdaln.h"
@@ -373,22 +372,6 @@ void SGRemodelVisitor::postvisit(StringGraph* pGraph)
 {
     pGraph->sweepEdges(GC_BLACK);
     pGraph->setErrorRate(m_remodelER);
-}
-
-//
-// SGErrorCorrectVisitor - Run error correction on the reads
-//
-bool SGErrorCorrectVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
-{
-    static size_t numCorrected = 0;
-
-    if(numCorrected > 0 && numCorrected % 50000 == 0)
-        std::cerr << "Corrected " << numCorrected << " reads\n";
-
-    std::string corrected = ErrorCorrect::correctVertex(pGraph, pVertex, 5, 0.01);
-    pVertex->setSeq(corrected);
-    ++numCorrected;
-    return false;
 }
 
 //

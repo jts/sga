@@ -17,12 +17,13 @@
 #include "MultiOverlap.h"
 #include "Metrics.h"
 #include "BWTIntervalCache.h"
+#include "SampledSuffixArray.h"
 
 enum ErrorCorrectAlgorithm
 {
     ECA_HYBRID, // hybrid kmer/overlap correction
     ECA_KMER, // kmer correction
-    ECA_OVERLAP, // overlap correction
+    ECA_OVERLAP // overlap correction
 };
 
 enum ECFlag
@@ -37,12 +38,15 @@ enum ECFlag
 struct ErrorCorrectParameters
 {
     const OverlapAlgorithm* pOverlapper;
+    const BWT* pBWT;
+    const SampledSuffixArray* pSSA;
     const BWTIntervalCache* pIntervalCache;
     ErrorCorrectAlgorithm algorithm;
 
     // Overlap-based corrector params
     int minOverlap;
     int numOverlapRounds;
+    double minIdentity;
     int conflictCutoff;
     int depthFilter;
 
@@ -83,6 +87,7 @@ class ErrorCorrectProcess
         
         ErrorCorrectResult kmerCorrection(const SequenceWorkItem& item);
         ErrorCorrectResult overlapCorrection(const SequenceWorkItem& workItem);
+        ErrorCorrectResult overlapCorrectionNew(const SequenceWorkItem& workItem);
 
         bool attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence);
 
