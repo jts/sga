@@ -191,6 +191,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
                 if(build_result.variant_haplotypes.size() > 0/* && build_result.base_haplotypes.size() > 0*/)
                 {
+                    std::cout << "Running dindel\n";
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
                     DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
@@ -200,6 +201,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                                                                              baseVCFSS,
                                                                              variantVCFSS);
                     
+                    std::cout << "Dindel returned " << drc << "\n";
                     if(drc == DRC_OK)
                     {                        
                         result.baseVCFStrings.push_back(baseVCFSS.str());
@@ -312,8 +314,8 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
     rc_builder.setInitialHaplotype(str);
     rc_builder.setIndex(m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, m_parameters.pVariantSSA);
     rc_builder.setKmer(haplotype_builder_kmer);
-    rc_builder.run();
-    bool found_variant_string = false;
+    rc_builder.run(result.variant_haplotypes);
+    bool found_variant_string = result.variant_haplotypes.size() > 0;
 
     if(found_variant_string)
     {

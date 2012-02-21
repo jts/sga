@@ -30,7 +30,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     //
     // First, extract the reads from the normal and variant data sets that match each haplotype
     //
-    size_t MAX_READS = 4000;
+    size_t MAX_READS = 40000000000;
 
     // Normal reads
     SeqItemVector normalReads;
@@ -83,7 +83,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     size_t total_reads = normalReads.size() + normalReadMates.size() + normalRCReads.size() + normalRCReadMates.size();
     total_reads += variantReads.size() + variantReadMates.size() + variantRCReads.size() + variantRCReadMates.size();
 
-    if(total_reads > 2000)
+    if(total_reads > MAX_READS)
         return DRC_OVER_DEPTH;
 
     // Get canidate alignments for the input haplotypes

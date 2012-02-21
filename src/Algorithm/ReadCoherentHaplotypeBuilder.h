@@ -33,15 +33,21 @@ class ReadCoherentHaplotypeBuilder
 
         // Run the bubble construction process
         // Returns true if the graph was successfully built between the two sequences
-        HaplotypeBuilderReturnCode run();
+        HaplotypeBuilderReturnCode run(StringVector& out_haplotypes);
         
     private:
         
+        // Extend all haplotypes one base in the given direction
+        void extendOnce(EdgeDir direction);
+
         // Get all reads that share a kmer with a haplotype.
         void getReads();
 
-        // Align the reads onto the haplotypes
-        void alignReadsToHaplotypes();
+        // Calculate the maximum distance between reads aligned onto this haplotype
+        int calculateHaplotypeIncoherency(const std::string& haplotype);
+
+        // Remove incoherent haplotypes
+        void cullHaplotypes();
 
         //
         // Data
