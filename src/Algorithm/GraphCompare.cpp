@@ -755,7 +755,6 @@ bool GraphCompare::transformVariantString(const std::string& inStr, std::string&
 // Update the bit vector with the kmers that were assembled into str
 void GraphCompare::markVariantSequenceKmers(const std::string& str)
 {
-    return;
     assert(str.size() >= m_parameters.kmer);
     size_t n = str.size() - m_parameters.kmer + 1;
 

@@ -215,6 +215,9 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
                                        SeqItemVector* pOutReads, 
                                        SeqItemVector* pOutMates)
 {
+    // Skip repetitive kmers with more than this many occurrences
+    int64_t SKIP_INTERVAL_SIZE = 500;
+
     // Extract the set of reads that have at least one kmer shared with these haplotypes
     // This is a bit of a lengthy procedure with a few steps:
     // 1) extract all the kmers in the haplotypes
@@ -246,8 +249,8 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
         BWTInterval interval = BWTAlgorithms::findIntervalWithCache(pBWT, pBWTCache, *iter);
         if(interval.size() > (int64_t)maxReads)
             return false;
-
-        intervals.push_back(interval);
+        if(interval.size() < SKIP_INTERVAL_SIZE)
+            intervals.push_back(interval);
     }
 
     // Compute the set of reads ids 

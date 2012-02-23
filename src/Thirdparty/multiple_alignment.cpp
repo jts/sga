@@ -147,6 +147,12 @@ void MultipleAlignmentElement::insertGapBeforeColumn(size_t column_index)
 }
 
 //
+void MultipleAlignmentElement::extendTrailing(size_t n)
+{
+    trailing_columns += n;
+}
+
+//
 std::string MultipleAlignmentElement::getUnpaddedSequence() const
 {
     std::string out;
@@ -189,7 +195,7 @@ void MultipleAlignment::addOverlap(const std::string& incoming_name,
     // This function cannot be called before a base element has been added
     assert(!m_sequences.empty());
     MultipleAlignmentElement* template_element = &m_sequences.front();
-    _addSequence(incoming_name, incoming_sequence, incoming_quality, template_element, reference_incoming_overlap);
+    _addSequence(incoming_name, incoming_sequence, incoming_quality, template_element, reference_incoming_overlap, false);
 }
 
 //
@@ -201,7 +207,7 @@ void MultipleAlignment::addExtension(const std::string& incoming_name,
     // This function cannot be called before a base element has been added
     assert(!m_sequences.empty());
     MultipleAlignmentElement* template_element = &m_sequences.back();
-    _addSequence(incoming_name, incoming_sequence, incoming_quality, template_element, previous_incoming_overlap);
+    _addSequence(incoming_name, incoming_sequence, incoming_quality, template_element, previous_incoming_overlap, true);
 }
 
 // Adds a new string into the multiple alignment using the overlap
@@ -211,7 +217,8 @@ void MultipleAlignment::_addSequence(const std::string& name,
                                      const std::string& sequence,
                                      const std::string& quality, 
                                      MultipleAlignmentElement* template_element, 
-                                     const SequenceOverlap& overlap)
+                                     const SequenceOverlap& overlap,
+                                     bool is_extension)
 {
     // Get the padded sequence for the template element
     const std::string& template_padded = template_element->padded_sequence;
@@ -228,6 +235,12 @@ void MultipleAlignment::_addSequence(const std::string& name,
     size_t cigar_index = 0;
     size_t template_index = template_element->getPaddedPositionOfBase(overlap.match[0].start);
     size_t incoming_index = overlap.match[1].start;
+
+    // If extending the multiple alignment, the first
+    // base of the incoming sequence must be aligned.
+    if(is_extension) 
+        assert(incoming_index == 0);
+    
     size_t template_leading = template_element->leading_columns;
     size_t incoming_leading = template_index + template_leading;
 
@@ -306,9 +319,35 @@ void MultipleAlignment::_addSequence(const std::string& name,
         }
     }
 
+    // Now that the alignment has been built, add the remaining bases of the incoming sequence
+    // All other elements of the multiple alignment will be updated to increase the number of
+    // trailing columns
+    if(is_extension) {
+        //printf("Extending the alignment %zu bases\n", sequence.size() - incoming_index);
+        padded_output.append(sequence.substr(incoming_index));
+
+        // Ensure that the incoming sequence ends at least as far as the last base
+        // currently in the multiple alignment. Otherwise this sequence is a containment
+        // and we can not deal with it.
+        size_t incoming_columns = padded_output.size() + incoming_leading;
+
+        overlap.printAlignment(template_element->getUnpaddedSequence(), sequence);
+
+        assert(incoming_columns >= m_sequences.front().getNumColumns());
+
+        // Extend all other sequences to have the same number of columns as the incoming sequence
+        for(size_t i = 0; i < m_sequences.size(); ++i)
+            m_sequences[i].extendTrailing(sequence.size() - incoming_index);
+
+    }
+
     // Calculate the number of unfilled columns of the multiple alignment that come after
     // the padded sequence
     size_t incoming_trailing = template_element->getNumColumns() - padded_output.size() - incoming_leading;
+
+    if(is_extension)
+        assert(incoming_trailing == 0);
+
     MultipleAlignmentElement incoming_element(name, padded_output, padded_quality, 
                                               incoming_leading, incoming_trailing);
 
@@ -593,6 +632,25 @@ void MultipleAlignment::filterByCount(int min_count)
 //    printf("Before filter: %zu\n", m_sequences.size());
     m_sequences.swap(filtered_sequences);
 //    printf("After filter: %zu\n", m_sequences.size());
+}
+
+//
+size_t MultipleAlignment::getNumColumns() const
+{
+    assert(!m_sequences.empty());
+    return m_sequences.front().getNumColumns();
+}
+
+//
+std::string MultipleAlignment::getPileup(size_t idx) const
+{
+    std::string pileup;
+    for(size_t i = 0; i < m_sequences.size(); ++i) {
+        char symbol = m_sequences[i].getColumnSymbol(idx);
+        if(symbol != '\0')
+            pileup.push_back(symbol);
+    }
+    return pileup;
 }
 
 // Order the indices of the m_sequences vector by left-coordinate of the alignment on m_sequence[0]

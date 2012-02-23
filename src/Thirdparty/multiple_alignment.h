@@ -74,6 +74,9 @@ struct MultipleAlignmentElement
     // Insert a new gap before the specified column
     void insertGapBeforeColumn(size_t column_index);
     
+    // Extend the length of the trailing columns by n bases
+    void extendTrailing(size_t n);
+
     // Data
     std::string name;
     std::string padded_sequence;
@@ -139,6 +142,13 @@ class MultipleAlignment
         // Returns a formatted string with the number of times each base has been seen for the given column
         std::string getColumnCountString(size_t column) const; 
 
+        // Returns the total number of columns in the multiple alignment.
+        // Only valid to call this function if the multiple alignment has been initialized
+        size_t getNumColumns() const;
+
+        // Return the pileup of bases in the given column
+        std::string getPileup(size_t idx) const;
+
         // Print the alignment to stdout. If the number of columns
         // is greater than max_columns, it will be printed in multiple 
         // segments
@@ -155,7 +165,8 @@ class MultipleAlignment
                           const std::string& sequence, 
                           const std::string& quality, 
                           MultipleAlignmentElement* template_element, 
-                          const SequenceOverlap& overlap);
+                          const SequenceOverlap& overlap,
+                          bool is_extension);
         
         // Insert a new gap into all sequences in the multiple alignment
         // before the given column

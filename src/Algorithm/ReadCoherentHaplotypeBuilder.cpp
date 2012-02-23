@@ -50,6 +50,14 @@ void ReadCoherentHaplotypeBuilder::setIndex(const BWT* pBWT, const BWTIntervalCa
     m_pSSA = pSSA;
 }
 
+// Functor to sort the reads by the kmer position
+struct KmerPositionSorter 
+{
+    KmerPositionSorter(const std::vector<size_t>& positionVector) : m_positions(positionVector) {}
+    bool operator()(size_t i, size_t j) { return m_positions[i] > m_positions[j]; }
+    const std::vector<size_t>& m_positions;
+};
+
 // Run the bubble construction process
 HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_haplotypes)
 {
@@ -57,25 +65,53 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
     assert(m_haplotypes.size() == 1);
     assert(m_pBWT != NULL);
 
-    int round = 0;
-    int MAX_ROUNDS = 100;
+    // Extract reads with the input k-mer
+    getReads();
 
-    // Extend each haplotype a single base
-    while(round++ < MAX_ROUNDS)
+    // Determine kmer position in all the reads containing it
+    std::vector<size_t> read_indices(m_reads.size(), 0);
+    std::vector<size_t> read_kmer_positions(m_reads.size(), 0);
+    for(size_t i = 0; i < m_reads.size(); ++i)
     {
-        printf("Round %d -- haplotypes: %zu\n", round, m_haplotypes.size());
-        extendOnce(ED_SENSE);
-        extendOnce(ED_ANTISENSE);
+        read_indices[i] = i;
+        size_t pos = m_reads[i].find(*m_haplotypes.begin());
+        assert(pos != std::string::npos);
+        read_kmer_positions[i] = pos;
 
-        // Every x rounds cull incoherent haplotypes
-        if(round % 10 == 0)
-            cullHaplotypes();
     }
 
-    printf("Final haplotypes: %zu\n", m_haplotypes.size());
-    out_haplotypes.clear();
-    out_haplotypes.insert(out_haplotypes.end(), m_haplotypes.begin(), m_haplotypes.end());
+    // Sort reads by kmer position
+    KmerPositionSorter sorter(read_kmer_positions);
+    std::sort(read_indices.begin(), read_indices.end(), sorter);
 
+    // Build a multiple alignment
+    MultipleAlignment multiple_alignment;
+    multiple_alignment.addBaseSequence("base", m_reads[read_indices.front()], "");
+    for(size_t i = 1; i < read_indices.size(); ++i)
+    { 
+        size_t read_idx_1 = read_indices[i-1];
+        size_t read_idx_2 = read_indices[i];
+        SequenceOverlap overlap = Overlapper::extendMatch(m_reads[read_idx_1], m_reads[read_idx_2], read_kmer_positions[read_idx_1], read_kmer_positions[read_idx_2], 2);
+
+        // Skip containments
+        if( overlap.match[1].end < overlap.length[1] - 1)
+            multiple_alignment.addExtension("test", m_reads[read_idx_2], "", overlap);
+    }
+
+    multiple_alignment.print(200);
+
+    std::string haplotype;
+    size_t total_columns = multiple_alignment.getNumColumns();
+    for(size_t i = 0; i < total_columns; ++i)
+    {
+        std::string pileup = multiple_alignment.getPileup(i);
+        std::cout << i << " " << pileup << "\n";
+        assert(!pileup.empty());
+        if(pileup[0] != '-')
+           haplotype.push_back(pileup[0]);
+    }
+
+    out_haplotypes.push_back(haplotype);
     return HBRC_OK;
 }
 
