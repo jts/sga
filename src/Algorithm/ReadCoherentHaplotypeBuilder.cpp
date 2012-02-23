@@ -78,6 +78,8 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
         assert(pos != std::string::npos);
         read_kmer_positions[i] = pos;
 
+        std::string padding(100-pos, ' ');
+        printf("\t%s%s\n", padding.c_str(), m_reads[i].c_str());
     }
 
     // Sort reads by kmer position
@@ -100,6 +102,7 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
 
     multiple_alignment.print(200);
 
+    bool no_call = false;
     std::string haplotype;
     size_t total_columns = multiple_alignment.getNumColumns();
     for(size_t i = 0; i < total_columns; ++i)
@@ -109,9 +112,15 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
         assert(!pileup.empty());
         if(pileup[0] != '-')
            haplotype.push_back(pileup[0]);
+        for(size_t j = 0; j < pileup.size(); ++j)
+        {
+            if(pileup[j] != pileup[0])
+                no_call = true;
+        }
     }
 
-    out_haplotypes.push_back(haplotype);
+    if(!no_call)
+        out_haplotypes.push_back(haplotype);
     return HBRC_OK;
 }
 

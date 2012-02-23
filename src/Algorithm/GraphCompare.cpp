@@ -121,12 +121,17 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     char curr = w[j];
     BWTInterval interval;
     BWTAlgorithms::initInterval(interval, curr, m_parameters.pVariantBWT);
+    std::cout << "W: " << w << "\n";
+    std::cout << "F: " << BWTAlgorithms::findInterval(m_parameters.pVariantBWT, w) << "\n";
+    std::cout << "j[" << j  << "] c: " << curr << " I: " << interval << "\n";
     --j;
 
     for(;j >= 0; --j)
     {
         curr = w[j];
         BWTAlgorithms::updateInterval(interval, curr, m_parameters.pVariantBWT);
+        std::cout << "j[" << j  << "] c: " << curr << " I: " << interval << "\n";
+
         assert(interval.isValid());
 
         // At this point interval represents the suffix [j,len)
@@ -180,6 +185,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 BWTVector bwts;
                 bwts.push_back(m_parameters.pBaseBWT);
                 bwts.push_back(m_parameters.pVariantBWT);
+                std::cout << "Variant read: " << w << "\n";
                 //BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, 1);
                 GraphBuildResult build_result = processVariantKmerAggressive(kmer, count);
 

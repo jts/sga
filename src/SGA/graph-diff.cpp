@@ -127,7 +127,7 @@ int graphDiffMain(int argc, char** argv)
     parseGraphDiffOptions(argc, argv);
 
     // Create indices for the variant reads
-    std::string variantPrefix = "/lustre/scratch101/sanger/js18/varcall/NA12878/simulated/perfect/reads.perfect";//stripFilename(opt::variantFile);
+    std::string variantPrefix = stripFilename(opt::variantFile);
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     SampledSuffixArray* pVariantSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
 
