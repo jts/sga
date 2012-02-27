@@ -90,20 +90,52 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
     MultipleAlignment multiple_alignment;
     multiple_alignment.addBaseSequence("base", m_reads[read_indices.front()], "");
     size_t previous_added = 0;
+    size_t total_added = 0;
     for(size_t i = 1; i < read_indices.size(); ++i)
     { 
         size_t read_idx_1 = read_indices[previous_added];
         size_t read_idx_2 = read_indices[i];
 
-        SequenceOverlap overlap = Overlapper::extendMatch(m_reads[read_idx_1], m_reads[read_idx_2], read_kmer_positions[read_idx_1], read_kmer_positions[read_idx_2], 2);
+        SequenceOverlap overlap = Overlapper::extendMatch(m_reads[read_idx_1], m_reads[read_idx_2], read_kmer_positions[read_idx_1], read_kmer_positions[read_idx_2], 1);
 
-        if(overlap.match[1].end < overlap.length[1] - 1 && overlap.match[1].start == 0)
+        // Check if this is a valid overlap.
+        bool is_proper_overlap = overlap.match[1].end < overlap.length[1] - 1 && overlap.match[1].start == 0;
+        bool is_within_tolerance = overlap.edit_distance <= 1;
+        bool is_gapless = overlap.total_columns == overlap.match[0].length() && overlap.total_columns == overlap.match[1].length();
+
+        if(is_proper_overlap && is_within_tolerance && is_gapless)
         {
             multiple_alignment.addExtension("test", m_reads[read_idx_2], "", overlap);
             previous_added = i;
+            total_added += 1;
         }
     }
 
+    printf("Successfully added %zu/%zu to multiple alignment\n", total_added, m_reads.size());
+
+    // Compute consensus
+    std::string consensus = "";
+    size_t total_columns = multiple_alignment.getNumColumns();
+    for(size_t i = 0; i < total_columns; ++i)
+    {
+        std::string pileup = multiple_alignment.getPileup(i);
+
+        // Convert pileup to counts
+        AlphaCount64 base_counts;
+        for(size_t j = 0; j < pileup.size(); ++j)
+        {
+            if(pileup[j] != '-' && pileup[j] != 'N')
+                base_counts.increment(pileup[j]);
+        }
+        char c = base_counts.getMaxBase();
+        consensus.push_back(c);
+    }
+    multiple_alignment.print(200);
+
+    if(total_added >= 3)
+        out_haplotypes.push_back(consensus);
+
+/*
     multiple_alignment.print(200);
 
     size_t MIN_COVERAGE = 2;
@@ -155,11 +187,11 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
             num_divergent_columns += 1;
         haplotypes.swap(new_haplotypes);
     }
-
     printf("Generated %zu haplotypes\n", haplotypes.size());
 
     if(!haplotypes.empty() && haplotypes.size() < 8)
         out_haplotypes.swap(haplotypes);
+    */
     return HBRC_OK;
 }
 
