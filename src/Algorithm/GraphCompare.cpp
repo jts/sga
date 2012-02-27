@@ -213,14 +213,12 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             }
         }
 
-        /*
         // Update the bit vector
         for(int64_t i = interval.lower; i <= interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
 
         for(int64_t i = rc_interval.lower; i <= rc_interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
-        */
     }
     
     return result;

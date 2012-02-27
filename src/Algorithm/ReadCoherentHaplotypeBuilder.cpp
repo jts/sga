@@ -89,38 +89,77 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
     // Build a multiple alignment
     MultipleAlignment multiple_alignment;
     multiple_alignment.addBaseSequence("base", m_reads[read_indices.front()], "");
+    size_t previous_added = 0;
     for(size_t i = 1; i < read_indices.size(); ++i)
     { 
-        size_t read_idx_1 = read_indices[i-1];
+        size_t read_idx_1 = read_indices[previous_added];
         size_t read_idx_2 = read_indices[i];
+
         SequenceOverlap overlap = Overlapper::extendMatch(m_reads[read_idx_1], m_reads[read_idx_2], read_kmer_positions[read_idx_1], read_kmer_positions[read_idx_2], 2);
 
-        // Skip containments
-        if( overlap.match[1].end < overlap.length[1] - 1)
+        if(overlap.match[1].end < overlap.length[1] - 1 && overlap.match[1].start == 0)
+        {
             multiple_alignment.addExtension("test", m_reads[read_idx_2], "", overlap);
+            previous_added = i;
+        }
     }
 
     multiple_alignment.print(200);
 
-    bool no_call = false;
-    std::string haplotype;
+    size_t MIN_COVERAGE = 2;
+    int num_divergent_columns = 0;
+
+    // Make combinations of all possible haplotypes where
+    // a base has been seen at least twice.
+    std::vector<std::string> haplotypes;
+    haplotypes.push_back(std::string(""));
+
     size_t total_columns = multiple_alignment.getNumColumns();
     for(size_t i = 0; i < total_columns; ++i)
     {
         std::string pileup = multiple_alignment.getPileup(i);
-        std::cout << i << " " << pileup << "\n";
-        assert(!pileup.empty());
-        if(pileup[0] != '-')
-           haplotype.push_back(pileup[0]);
+
+        // Convert pileup to counts
+        AlphaCount64 base_counts;
         for(size_t j = 0; j < pileup.size(); ++j)
+            base_counts.increment(pileup[j]);
+
+        // Add bases that have been seen at least MIN_COVERAGE times to the haplotypes
+        std::vector<std::string> new_haplotypes;
+        std::string extensions;
+        for(uint8_t j = 0; j < DNA_ALPHABET::size; ++j)
         {
-            if(pileup[j] != pileup[0])
-                no_call = true;
+            char b = DNA_ALPHABET::getBase(j);
+            if(base_counts.get(b) >= MIN_COVERAGE || (pileup.size() == 1 && base_counts.get(b) > 0))
+            {
+                // extend haplotypes
+                for(size_t k = 0; k < haplotypes.size(); ++k)
+                {
+                    new_haplotypes.push_back(haplotypes[k]);
+                    new_haplotypes.back().append(1, b);
+                }
+            }
         }
+
+        if(new_haplotypes.empty() || new_haplotypes.size() > 50)
+        {
+            // could not extend
+            haplotypes.clear();
+            break;
+        }
+
+        assert(new_haplotypes.size() >= haplotypes.size());
+
+        size_t haplotypes_added = new_haplotypes.size() - haplotypes.size();
+        if(haplotypes_added > 0)
+            num_divergent_columns += 1;
+        haplotypes.swap(new_haplotypes);
     }
 
-    if(!no_call)
-        out_haplotypes.push_back(haplotype);
+    printf("Generated %zu haplotypes\n", haplotypes.size());
+
+    if(!haplotypes.empty() && haplotypes.size() < 8)
+        out_haplotypes.swap(haplotypes);
     return HBRC_OK;
 }
 
