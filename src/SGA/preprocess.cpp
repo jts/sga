@@ -49,6 +49,9 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "      -f, --quality-filter=INT         discard the read if it contains more than INT low-quality bases.\n"
 "                                       Bases with phred score <= 3 are considered low quality. Default: no filtering.\n"
 "                                       The filtering is applied after trimming so bases removed are not counted.\n"
+"      -r, --remove-adapter-fwd=STRING\n"
+"      -c, --remove-adapter-rev=STRING  Remove the adapter STRING from input reads.\n"
+"                                       Do not use this option if you are planning to use the BCR algorithm for indexing.\n"
 "      -m, --min-length=INT             discard sequences that are shorter than INT\n"
 "                                       this is most useful when used in conjunction with --quality-trim. Default: 40\n"
 "      -h, --hard-clip=INT              clip all reads to be length INT. In most cases it is better to use\n"
@@ -93,9 +96,11 @@ namespace opt
     static double minGC = 0.0f;
     static double maxGC = 1.0;
     static bool bIlluminaScaling = false;
+    static std::string adapter;  // adapter sequence forward
+    static std::string adapterR; // adapter sequence reverse
 }
 
-static const char* shortopts = "o:q:m:h:p:s:f:vi";
+static const char* shortopts = "o:q:m:h:p:r:c:s:f:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, OPT_PHRED64 };
 
@@ -108,6 +113,8 @@ static const struct option longopts[] = {
     { "hard-clip",              required_argument, NULL, 'h' },
     { "min-length",             required_argument, NULL, 'm' },
     { "sample",                 required_argument, NULL, 's' },
+    { "remove-adapter-fwd",     required_argument, NULL, 'r' },
+    { "remove-adapter-rev",     required_argument, NULL, 'c' },
     { "dust",                   no_argument,       NULL, OPT_DUST},
     { "dust-threshold",         required_argument, NULL, OPT_DUST_THRESHOLD },
     { "suffix",                 required_argument, NULL, OPT_SUFFIX },
@@ -142,7 +149,7 @@ int preprocessMain(int argc, char** argv)
     if(opt::qualityFilter >= 0)
         std::cerr << "QualFilter: at most " << opt::qualityFilter << " low quality bases\n";
     else
-        std::cerr << "QualFilter: no filtering\n"; 
+        std::cerr << "QualFilter: no filtering\n";
 
     std::cerr << "HardClip: " << opt::hardClip << "\n";
     std::cerr << "Min length: " << opt::minLength << "\n";
@@ -158,6 +165,11 @@ int preprocessMain(int argc, char** argv)
         std::cerr << "Dust threshold: " << opt::dustThreshold << "\n";
     if(!opt::suffix.empty())
         std::cerr << "Suffix: " << opt::suffix << "\n";
+    if(opt::adapter.length() && opt::adapterR.length())
+    {
+      std::cerr << "Adapter sequence fwd: " << opt::adapter << "\n";
+      std::cerr << "Adapter sequence rev: " << opt::adapterR << "\n";
+    }
 
     // Seed the RNG
     srand(time(NULL));
@@ -219,7 +231,7 @@ int preprocessMain(int argc, char** argv)
                 // Read from separate files
                 std::string filename1 = argv[optind++];
                 std::string filename2 = argv[optind++];
-            
+
                 pReader1 = new SeqReader(filename1, SRF_NO_VALIDATION);
                 pReader2 = new SeqReader(filename2, SRF_NO_VALIDATION);
 
@@ -242,7 +254,7 @@ int preprocessMain(int argc, char** argv)
                 // If the names of the records are the same, append a /1 and /2 to them
                 if(record1.id == record2.id)
                 {
-                    if(!opt::suffix.empty()) 
+                    if(!opt::suffix.empty())
                     {
                         record1.id.append(opt::suffix);
                         record2.id.append(opt::suffix);
@@ -298,8 +310,8 @@ int preprocessMain(int argc, char** argv)
     std::cerr << "Reads kept:\t" << s_numReadsKept << " (" << (double)s_numReadsKept / (double)s_numReadsRead << ")\n";
     std::cerr << "Reads failed primer screen:\t" << s_numReadsPrimer << " (" << (double)s_numReadsPrimer / (double)s_numReadsRead << ")\n";
     std::cerr << "Bases parsed:\t" << s_numBasesRead << "\n";
-    std::cerr << "Bases kept:\t" << s_numBasesKept << " (" << (double)s_numBasesKept / (double)s_numBasesRead << ")\n"; 
-    std::cerr << "Number of incorrectly paired reads that were discarded: " << s_numInvalidPE << "\n"; 
+    std::cerr << "Bases kept:\t" << s_numBasesKept << " (" << (double)s_numBasesKept / (double)s_numBasesRead << ")\n";
+    std::cerr << "Number of incorrectly paired reads that were discarded: " << s_numInvalidPE << "\n";
     if(opt::bDustFilter)
         std::cerr << "Number of reads failed dust filter: " << s_numFailedDust << "\n";
     delete pTimer;
@@ -310,6 +322,33 @@ int preprocessMain(int argc, char** argv)
 // returns true if the read should be kept
 bool processRead(SeqRecord& record)
 {
+    // let's remove the adapter if the user has requested so
+    // before doing any filtering
+    if(opt::adapter.length())
+    {
+      std::string _tmp(record.seq.toString());
+      size_t found = _tmp.find(opt::adapter);
+      int _length;
+
+      if (found != std::string::npos)
+        _length = opt::adapter.length();
+      else
+      { // Couldn't find the fwd adapter; Try the reverse version
+        found   = _tmp.find(opt::adapterR);
+        _length = opt::adapterR.length();
+      }
+
+      if (found != std::string::npos) // found the adapter
+      {
+        _tmp.erase(found, _length);
+        record.seq = _tmp;
+        // We have to remove the qualities of the adapter
+        _tmp = record.qual;
+        _tmp.erase(found, _length);
+        record.qual = _tmp;
+      }
+    }
+
     // Check if the sequence has uncalled bases
     std::string seqStr = record.seq.toString();
     std::string qualStr = record.qual;
@@ -394,14 +433,14 @@ bool processRead(SeqRecord& record)
     {
         double dustScore = calculateDustScore(seqStr);
         bool bAcceptDust = dustScore < opt::dustThreshold;
-        
+
         if(!bAcceptDust)
         {
             s_numFailedDust += 1;
             if(opt::verbose >= 1)
             {
-                printf("Failed dust: %s %s %lf\n", record.id.c_str(), 
-                                                   seqStr.c_str(), 
+                printf("Failed dust: %s %s %lf\n", record.id.c_str(),
+                                                   seqStr.c_str(),
                                                    dustScore);
             }
             return false;
@@ -428,9 +467,9 @@ bool processRead(SeqRecord& record)
     record.qual = qualStr;
 
 
-
     if(record.seq.length() == 0 || record.seq.length() < opt::minLength)
         return false;
+
     return true;
 }
 
@@ -439,12 +478,12 @@ bool samplePass()
 {
     if(opt::sampleFreq >= 1.0f)
         return true; // no sampling
-    
+
     double r = rand() / (RAND_MAX + 1.0f);
     return r < opt::sampleFreq;
 }
 
-// Perform a soft-clipping of the sequence by removing low quality bases from the 
+// Perform a soft-clipping of the sequence by removing low quality bases from the
 // 3' end using Heng Li's algorithm from bwa
 void softClip(int qualTrim, std::string& seq, std::string& qual)
 {
@@ -505,16 +544,16 @@ double calcGC(const std::string& seq)
     return num_gc / num_total;
 }
 
-// 
+//
 // Handle command line arguments
 //
 void parsePreprocessOptions(int argc, char** argv)
 {
     bool die = false;
-    for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
+    for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;)
     {
         std::istringstream arg(optarg != NULL ? optarg : "");
-        switch (c) 
+        switch (c)
         {
             case 'o': arg >> opt::outFile; break;
             case 'q': arg >> opt::qualityTrim; break;
@@ -523,6 +562,8 @@ void parsePreprocessOptions(int argc, char** argv)
             case 'm': arg >> opt::minLength; break;
             case 'h': arg >> opt::hardClip; break;
             case 'p': arg >> opt::peMode; break;
+            case 'r': arg >> opt::adapter; break;
+            case 'c': arg >> opt::adapterR; break;
             case 's': arg >> opt::sampleFreq; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
@@ -542,13 +583,13 @@ void parsePreprocessOptions(int argc, char** argv)
         }
     }
 
-    if (argc - optind < 1) 
+    if (argc - optind < 1)
     {
         std::cerr << SUBPROGRAM ": missing arguments\n";
         die = true;
-    } 
+    }
 
-    if (die) 
+    if (die)
     {
         std::cerr << "Try `" << SUBPROGRAM << " --help' for more information.\n";
         exit(EXIT_FAILURE);
@@ -575,6 +616,13 @@ void parsePreprocessOptions(int argc, char** argv)
     if(opt::qualityScale == QS_NONE && opt::qualityTrim > 0)
     {
         std::cerr << SUBPROGRAM ": If --quality-trim is specified, --quality-scale cannot be none\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if( ( opt::adapter.length() && !opt::adapterR.length()) ||
+        (!opt::adapter.length() &&  opt::adapterR.length()) )
+    {
+        std::cerr << SUBPROGRAM ": Forward and Reverse sequence is necessary to perform adapter removal.\n";
         exit(EXIT_FAILURE);
     }
 }
