@@ -18,6 +18,7 @@
 #include "VariationBubbleBuilder.h"
 #include "HaplotypeBuilder.h"
 #include "multiple_alignment.h"
+#include "GraphCompare.h"
 #include <queue>
 
 // Structure holding a read and its inferred position on the haplotype
@@ -25,8 +26,11 @@ struct HaplotypePositionedRead
 {
     // functions
     friend bool operator<(const HaplotypePositionedRead& a, const HaplotypePositionedRead& b) { return a.position < b.position; }
+    static bool sortByID(const HaplotypePositionedRead& a, const HaplotypePositionedRead& b) { return a.id < b.id; }
+    static bool equalByID(const HaplotypePositionedRead& a, const HaplotypePositionedRead& b) { return a.id == b.id; }
 
     // data
+    std::string id;
     std::string sequence;
     int position; // relative to the initial kmer, which is position 0.
 };
@@ -42,36 +46,32 @@ class ReadCoherentHaplotypeBuilder
         ~ReadCoherentHaplotypeBuilder();
 
         void setInitialHaplotype(const std::string& str);
-        void setIndex(const BWT* pBWT, const BWTIntervalCache* pCache, const SampledSuffixArray* pSSA);
-        void setKmer(size_t k);
+        void setParameters(const GraphCompareParameters& parameters); 
 
         // Run the bubble construction process
         // Returns true if the graph was successfully built between the two sequences
         HaplotypeBuilderReturnCode run(StringVector& out_haplotypes);
         
     private:
-        
-        // Get all reads that share a kmer with a haplotype.
-        void getReadsWithKmer(const std::string& kmer, std::vector<std::string>* out_reads);
     
+        // Find reads with the given kmer and calculate their inferred position on the haplotype we are building
+        void addPositionedReadsForKmers(const std::string& consensus, const std::vector<std::string>& kmer_vector, HaplotypeReadVector* positioned_reads);
+
         // Build a multiple alignment of all the reads that are potentially part of this haplotype
         MultipleAlignment buildMultipleAlignment(HaplotypeReadVector& positioned_reads) const;
 
         // Compute a consensus sequence for the multiple alignment
         std::string getConsensus(MultipleAlignment* multiple_alignment, int max_differences) const;
 
+        // Check whether the input sequence has any unique kmers that can be used to extend the haplotype
+        std::vector<std::string> getExtensionKmers(const std::string& sequence);
+
         //
         // Data
         //
-        const BWT* m_pBWT;
-        const BWTIntervalCache* m_pIntervalCache;
-        const SampledSuffixArray* m_pSSA;
-        
+        GraphCompareParameters m_parameters;
         std::string m_initial_kmer_string;
-
-        size_t m_kmer;
-        size_t m_kmerThreshold;
-        size_t m_maxEditDistance;
+        std::set<std::string> m_used_kmers;
 };
 
 #endif

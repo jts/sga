@@ -18,7 +18,7 @@
 //
 //
 //
-ReadCoherentHaplotypeBuilder::ReadCoherentHaplotypeBuilder() : m_pBWT(NULL), m_kmer(0), m_maxEditDistance(1)
+ReadCoherentHaplotypeBuilder::ReadCoherentHaplotypeBuilder()
 {
 }
 
@@ -27,27 +27,17 @@ ReadCoherentHaplotypeBuilder::~ReadCoherentHaplotypeBuilder()
 {
 }
 
-//
-void ReadCoherentHaplotypeBuilder::setKmer(size_t k)
-{
-    m_kmer = k;
-    m_kmerThreshold = 1;
-}
-
 // The source string is the string the bubble starts from
 void ReadCoherentHaplotypeBuilder::setInitialHaplotype(const std::string& sequence)
 {
-    printf("Starting new haplotype %s\n", sequence.c_str());
+    printf("\n\n***** Starting new haplotype %s\n", sequence.c_str());
     m_initial_kmer_string = sequence;
 }
 
-// The source index is the index that the contains the source string
-void ReadCoherentHaplotypeBuilder::setIndex(const BWT* pBWT, const BWTIntervalCache* pCache, 
-                                            const SampledSuffixArray* pSSA)
+//
+void ReadCoherentHaplotypeBuilder::setParameters(const GraphCompareParameters& parameters)
 {
-    m_pBWT = pBWT;
-    m_pIntervalCache = pCache;
-    m_pSSA = pSSA;
+    m_parameters = parameters;
 }
 
 // Functor to sort the reads by the kmer position
@@ -62,81 +52,127 @@ struct KmerPositionSorter
 HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_haplotypes)
 {
     PROFILE_FUNC("ReadCoherentHaplotypeBuilder::run")
-    assert(m_pBWT != NULL);
+    assert(m_parameters.pVariantBWT != NULL);
     assert(!m_initial_kmer_string.empty());
 
-    // Extract reads with the input k-mer
-    std::vector<std::string> read_vector;
-    getReadsWithKmer(m_initial_kmer_string, &read_vector);
-
-    // Infer the position of the first base of each read relative to the underlying haplotype
+    // Start the haplotype generation process by finding reads containing the initial kmer
     HaplotypeReadVector positioned_reads;
-    for(size_t i = 0; i < read_vector.size(); ++i)
-    {
-        size_t pos = read_vector[i].find(m_initial_kmer_string);
-        HaplotypePositionedRead hpr = { read_vector[i], -pos };
-        positioned_reads.push_back(hpr);
-    }
+    std::vector<std::string> initial_query_kmers;
+    initial_query_kmers.push_back(m_initial_kmer_string);
+    addPositionedReadsForKmers(m_initial_kmer_string, initial_query_kmers, &positioned_reads);
 
-    MultipleAlignment multiple_alignment = buildMultipleAlignment(positioned_reads);
-    multiple_alignment.print(200);
-    
-    std::string consensus = getConsensus(&multiple_alignment, 5);
-    if(!consensus.empty() && consensus.size() >= 110) 
+    int round = 0;
+    bool extended = false;
+    std::string consensus = "";
+    do {
+        extended = false;
+        MultipleAlignment multiple_alignment = buildMultipleAlignment(positioned_reads);
+        consensus = getConsensus(&multiple_alignment, 5);
+        
+        if(round % 10 == 0) 
+        {
+            printf("Round %d\n", round++);
+            multiple_alignment.print(200);
+        }
+
+        // Attempt to extend the haplotype using newly found variant kmers if a consensus was computed
+        if(!consensus.empty())
+        {
+            // Renumber the positioned reads to start from zero
+            std::sort(positioned_reads.begin(), positioned_reads.end());
+            
+            int leftmost = positioned_reads.front().position;
+            for(size_t i = 0; i < positioned_reads.size(); ++i)
+                positioned_reads[i].position -= leftmost;
+
+            std::vector<std::string> extension_kmer_vector = getExtensionKmers(consensus);
+            if(!extension_kmer_vector.empty())
+            {
+                // Find the position of the extension kmer in the consensus
+                addPositionedReadsForKmers(consensus, extension_kmer_vector, &positioned_reads);
+                extended = true;
+            }
+        }
+    } while(extended);
+
+    if(!consensus.empty() && consensus.size() >= 105) 
     {
         std::cout << "Consensus: " << consensus << "\n";
         out_haplotypes.push_back(consensus);
     }
-#if 0
-    // Sort reads by kmer position
-    KmerPositionSorter sorter(read_kmer_positions);
-    std::sort(read_indices.begin(), read_indices.end(), sorter);
 
-    // Build a multiple alignment
-    MultipleAlignment multiple_alignment;
-    multiple_alignment.addBaseSequence("base", read_vector[read_indices.front()], "");
-    size_t previous_added = 0;
-    size_t total_added = 0;
-    for(size_t i = 1; i < read_indices.size(); ++i)
-    { 
-        size_t read_idx_1 = read_indices[previous_added];
-        size_t read_idx_2 = read_indices[i];
-
-        SequenceOverlap overlap = Overlapper::extendMatch(read_vector[read_idx_1], read_vector[read_idx_2], read_kmer_positions[read_idx_1], read_kmer_positions[read_idx_2], 1);
-
-        // Check if this is a valid overlap.
-        bool is_proper_overlap = overlap.match[1].end < overlap.length[1] - 1 && overlap.match[1].start == 0;
-        bool is_within_tolerance = overlap.edit_distance <= 1;
-        bool is_gapless = overlap.total_columns == overlap.match[0].length() && overlap.total_columns == overlap.match[1].length();
-
-        if(is_proper_overlap && is_within_tolerance && is_gapless)
-        {
-            std::cout << "ACCEPTED\n";
-            overlap.printAlignment(read_vector[read_idx_1], read_vector[read_idx_2]);
-
-            multiple_alignment.addExtension("test", read_vector[read_idx_2], "", overlap);
-            previous_added = i;
-            total_added += 1;
-        }
-        else
-        {
-            std::cout << "REJECTED\n";
-            overlap.printAlignment(read_vector[read_idx_1], read_vector[read_idx_2]);
-        }
-    }
-
-    printf("Successfully added %zu/%zu to multiple alignment\n", total_added, read_vector.size());
-    multiple_alignment.print(200);
-
-    // Compute consensus
-    std::string consensus = "";
-    if(total_added >= 3) 
-    {
-        consensus = getConsensus(&multiple_alignment);
-        out_haplotypes.push_back(consensus);
-    }
-#endif
     return HBRC_OK;
+}
+
+void ReadCoherentHaplotypeBuilder::addPositionedReadsForKmers(const std::string& consensus,
+                                                              const std::vector<std::string>& kmer_vector,
+                                                              HaplotypeReadVector* positioned_reads)
+{
+    SeqItemVector reads;
+    SeqItemVector rc_reads;
+
+    // Forward reads
+    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, 
+                                      m_parameters.pVariantSSA, m_parameters.kmer, false, 100000, &reads, NULL);
+
+    // Reverse reads
+    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, 
+                                      m_parameters.pVariantSSA, m_parameters.kmer, true, 100000, &rc_reads, NULL);
+
+    // Copy reads into the positioned read vector, initially with unset positions
+    for(size_t i = 0; i < reads.size(); ++i)
+    {
+        std::string read_sequence = reads[i].seq.toString();
+
+        // Find the position in the read of one of the query kmers
+        size_t consensus_position = std::string::npos;
+        size_t read_position = std::string::npos;
+        std::vector<std::string>::const_iterator iter = kmer_vector.begin();
+        while(read_position == std::string::npos && iter != kmer_vector.end())
+        {
+            read_position = read_sequence.find(*iter);
+            consensus_position = consensus.find(*iter);
+            ++iter;
+        }
+
+        assert(read_position != std::string::npos);
+        assert(consensus_position != std::string::npos);
+
+        HaplotypePositionedRead hpr = { reads[i].id, read_sequence, consensus_position - read_position };
+        positioned_reads->push_back(hpr);
+    }
+
+    // reversed reads
+    for(size_t i = 0; i < rc_reads.size(); ++i) 
+    {
+        std::string read_sequence = reverseComplement(rc_reads[i].seq.toString());
+
+        // Find the position in the read of one of the query kmers
+        size_t consensus_position = std::string::npos;
+        size_t read_position = std::string::npos;
+        std::vector<std::string>::const_iterator iter = kmer_vector.begin();
+        while(read_position == std::string::npos && iter != kmer_vector.end())
+        {
+            read_position = read_sequence.find(*iter);
+            consensus_position = consensus.find(*iter);
+            ++iter;
+        }
+
+        assert(read_position != std::string::npos);
+        assert(consensus_position != std::string::npos);
+
+        HaplotypePositionedRead hpr = { rc_reads[i].id, read_sequence, consensus_position - read_position };
+        positioned_reads->push_back(hpr);
+    }
+
+    // Sort by id and remove duplicates
+    std::sort(positioned_reads->begin(), positioned_reads->end(), HaplotypePositionedRead::sortByID);
+    HaplotypeReadVector::iterator iterator = std::unique(positioned_reads->begin(), positioned_reads->end(), HaplotypePositionedRead::equalByID);
+    positioned_reads->resize(iterator - positioned_reads->begin());
+    
+    // record that we have used these kmers to extract reads.
+    for(size_t i = 0; i < kmer_vector.size(); ++i)
+        m_used_kmers.insert(kmer_vector[i]);
 }
 
 //
@@ -212,26 +248,33 @@ std::string ReadCoherentHaplotypeBuilder::getConsensus(MultipleAlignment* multip
 }
 
 //
-void ReadCoherentHaplotypeBuilder::getReadsWithKmer(const std::string& kmer, std::vector<std::string>* out_reads)
+std::vector<std::string> ReadCoherentHaplotypeBuilder::getExtensionKmers(const std::string& sequence)
 {
-    SeqItemVector variant_reads;
-    SeqItemVector variant_rc_reads;
+    assert(sequence.size() >= m_parameters.kmer);
+    std::vector<std::string> out_vector;
+    for(size_t i = 0; i < sequence.size() - m_parameters.kmer + 1; ++i)
+    {
+        std::string kmer_sequence = sequence.substr(i, m_parameters.kmer);
 
-    std::vector<std::string> lookup_vector;
-    lookup_vector.push_back(kmer);
+        // This kmer has been used previously
+        if(m_used_kmers.find(kmer_sequence) != m_used_kmers.end())
+            continue;
 
-    // Forward reads
-    HapgenUtil::extractHaplotypeReads(lookup_vector, m_pBWT, m_pIntervalCache, m_pSSA, 
-                                      m_kmer, false, 100000, &variant_reads, NULL);
+        size_t var_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
+                                                                            m_parameters.pVariantBWT, 
+                                                                            m_parameters.pVariantBWTCache);
 
-    // Reverse reads
-    HapgenUtil::extractHaplotypeReads(lookup_vector, m_pBWT, m_pIntervalCache, m_pSSA, 
-                                      m_kmer, true, 100000, &variant_rc_reads, NULL);
+        if(var_count < m_parameters.kmerThreshold)
+            continue;
 
-    // Move read sequences to the vector of reads
-    for(size_t i = 0; i < variant_reads.size(); ++i)
-        out_reads->push_back(variant_reads[i].seq.toString());
+        // Check if this k-mer is present in the other base index
+        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
+                                                                             m_parameters.pBaseBWT, 
+                                                                             m_parameters.pBaseBWTCache);
 
-    for(size_t i = 0; i < variant_rc_reads.size(); ++i)
-        out_reads->push_back(reverseComplement(variant_rc_reads[i].seq.toString()));
+        if(base_count == 0)
+            out_vector.push_back(kmer_sequence);
+    }
+
+    return out_vector;
 }
