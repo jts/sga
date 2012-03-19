@@ -164,7 +164,8 @@ std::string MultipleAlignmentElement::getUnpaddedSequence() const
 }
 
 //
-std::string MultipleAlignmentElement::getPrintableSubstring(size_t start_column, size_t num_columns) const
+std::string MultipleAlignmentElement::getPrintableSubstring(size_t start_column, 
+                                                            size_t num_columns) const
 {
     std::string out;
     size_t i = 0;
@@ -177,11 +178,35 @@ std::string MultipleAlignmentElement::getPrintableSubstring(size_t start_column,
 }
 
 //
+// SymbolCount
+//
+
+//
+bool SymbolCount::lexicographicOrder(const SymbolCount& a, const SymbolCount& b) 
+{ 
+    return a.symbol < b.symbol; 
+}
+
+//
+bool SymbolCount::countOrder(const SymbolCount& a, const SymbolCount& b) 
+{ 
+    return a.count < b.count; 
+}
+
+//
+bool SymbolCount::countOrderDescending(const SymbolCount& a, const SymbolCount& b) 
+{ 
+    return a.count > b.count; 
+}
+
+//
 // MultipleAlignment
 //
 
 //
-void MultipleAlignment::addBaseSequence(const std::string& name, const std::string& sequence, const std::string& quality)
+void MultipleAlignment::addBaseSequence(const std::string& name, 
+                                        const std::string& sequence, 
+                                        const std::string& quality)
 {
     m_sequences.push_back(MultipleAlignmentElement(name, sequence, quality, 0, 0));
 }
@@ -330,9 +355,6 @@ void MultipleAlignment::_addSequence(const std::string& name,
         // currently in the multiple alignment. Otherwise this sequence is a containment
         // and we can not deal with it.
         size_t incoming_columns = padded_output.size() + incoming_leading;
-
-        overlap.printAlignment(template_element->getUnpaddedSequence(), sequence);
-
         assert(incoming_columns >= m_sequences.front().getNumColumns());
 
         // Extend all other sequences to have the same number of columns as the incoming sequence
@@ -568,20 +590,10 @@ void MultipleAlignment::filterByMismatchQuality(int max_sum_mismatch)
     for(size_t i = 1; i < m_sequences.size(); ++i) {
         if(scores[i] > max_sum_mismatch)
             keep_vector[i] = 0;
-//        printf("%zu s:%d\n", i, scores[i]);
     }   
 
     // Erase elements from the vector
-    std::vector<MultipleAlignmentElement> filtered_sequences;
-    for(size_t i = 0; i < m_sequences.size(); ++i) {
-        if(keep_vector[i])
-            filtered_sequences.push_back(m_sequences[i]);
-    }
-
-//    printf("Before filter: %zu\n", m_sequences.size());
-    m_sequences.swap(filtered_sequences);
-//    printf("After filter: %zu\n", m_sequences.size());
-
+    filterByVector(keep_vector);
 }
 
 //
@@ -623,15 +635,26 @@ void MultipleAlignment::filterByCount(int min_count)
     }
 
     // Erase elements from the vector
+    filterByVector(keep_vector);
+}
+
+//
+void MultipleAlignment::filterByVector(const std::vector<bool>& keep_vector)
+{
     std::vector<MultipleAlignmentElement> filtered_sequences;
     for(size_t i = 0; i < m_sequences.size(); ++i) {
         if(keep_vector[i])
             filtered_sequences.push_back(m_sequences[i]);
     }
 
-//    printf("Before filter: %zu\n", m_sequences.size());
     m_sequences.swap(filtered_sequences);
-//    printf("After filter: %zu\n", m_sequences.size());
+}
+
+//
+char MultipleAlignment::getSymbol(size_t row, size_t col) const
+{
+    assert(row < m_sequences.size());
+    return m_sequences[row].getColumnSymbol(col);
 }
 
 //
@@ -639,6 +662,12 @@ size_t MultipleAlignment::getNumColumns() const
 {
     assert(!m_sequences.empty());
     return m_sequences.front().getNumColumns();
+}
+
+//
+size_t MultipleAlignment::getNumRows() const
+{
+    return m_sequences.size();
 }
 
 //
@@ -824,6 +853,7 @@ std::vector<int> MultipleAlignment::getColumnBaseCounts(size_t idx) const
     return out;
 }
 
+//
 std::string MultipleAlignment::getColumnCountString(size_t column) const
 {
     std::vector<int> counts = getColumnBaseCounts(column);
@@ -834,4 +864,17 @@ std::string MultipleAlignment::getColumnCountString(size_t column) const
     return out.str();
 }
 
+//
+SymbolCountVector MultipleAlignment::getSymbolCountVector(size_t column) const
+{
+    SymbolCountVector out;
+    std::vector<int> counts = getColumnBaseCounts(column);
+    for(size_t i = 0; i < m_alphabet_size; ++i) {
+        if(counts[i] > 0) {
+            SymbolCount sc = { m_alphabet[i], counts[i] };
+            out.push_back(sc);
+        }
+    }
+    return out;
+}
 

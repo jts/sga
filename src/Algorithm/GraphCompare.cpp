@@ -196,6 +196,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     std::cout << "Running dindel\n";
                     std::stringstream baseVCFSS;
                     std::stringstream variantVCFSS;
+                    
                     DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
                                                                              build_result.base_haplotypes,
                                                                              build_result.variant_haplotypes,

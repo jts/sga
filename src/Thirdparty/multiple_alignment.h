@@ -90,6 +90,26 @@ struct MultipleAlignmentElement
 };
 
 //
+struct SymbolCount
+{
+    char symbol;
+    int count;
+
+    //
+    friend std::ostream& operator<<(std::ostream& out, const SymbolCount& a)
+    {
+        out << a.symbol << ":" << a.count;
+        return out;
+    }
+
+    // Sorters
+    static bool lexicographicOrder(const SymbolCount& a, const SymbolCount& b);
+    static bool countOrder(const SymbolCount& a, const SymbolCount& b);
+    static bool countOrderDescending(const SymbolCount& a, const SymbolCount& b);
+};
+typedef std::vector<SymbolCount> SymbolCountVector;
+
+//
 class MultipleAlignment
 {
     public:
@@ -139,12 +159,27 @@ class MultipleAlignment
         // Filter out sequences by the total weight of quality mismatches
         void filterByMismatchQuality(int max_sum_mismatch);
 
+        // Filter out sequences using a vector of bools
+        // This is to allow client code to calculate the filtering externally, then
+        // apply the vector to the multiple alignment
+        void filterByVector(const std::vector<bool>& keep_vector);
+
+        // Returns a vector of <symbol,count> pairs for the non-zero symbols of the requested column
+        SymbolCountVector getSymbolCountVector(size_t column) const;
+
         // Returns a formatted string with the number of times each base has been seen for the given column
         std::string getColumnCountString(size_t column) const; 
+
+        // Returns the symbol in row r and column c
+        // May be the null character if this sequence does not have a base call in this position
+        char getSymbol(size_t row, size_t col) const;
 
         // Returns the total number of columns in the multiple alignment.
         // Only valid to call this function if the multiple alignment has been initialized
         size_t getNumColumns() const;
+
+        // Returns the total number of rows (or elements) in the multiple alignment
+        size_t getNumRows() const;
 
         // Return the pileup of bases in the given column
         std::string getPileup(size_t idx) const;

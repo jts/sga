@@ -103,7 +103,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // Remove duplicate or bad alignment pairs
     HapgenUtil::coalesceAlignments(candidateAlignments);
 
-
     // Join each haplotype with flanking sequence from the reference genome for each alignment
     // This function also adds a haplotype (with flanking sequence) for the piece of the reference
     bool success = true;

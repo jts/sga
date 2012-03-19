@@ -17,7 +17,21 @@
 #include "SGWalk.h"
 #include "VariationBubbleBuilder.h"
 #include "HaplotypeBuilder.h"
+#include "multiple_alignment.h"
 #include <queue>
+
+// Structure holding a read and its inferred position on the haplotype
+struct HaplotypePositionedRead
+{
+    // functions
+    friend bool operator<(const HaplotypePositionedRead& a, const HaplotypePositionedRead& b) { return a.position < b.position; }
+
+    // data
+    std::string sequence;
+    int position; // relative to the initial kmer, which is position 0.
+};
+
+typedef std::vector<HaplotypePositionedRead> HaplotypeReadVector;
 
 // Build haplotypes starting from a given sequence.
 class ReadCoherentHaplotypeBuilder
@@ -37,27 +51,23 @@ class ReadCoherentHaplotypeBuilder
         
     private:
         
-        // Extend all haplotypes one base in the given direction
-        void extendOnce(EdgeDir direction);
-
         // Get all reads that share a kmer with a haplotype.
-        void getReads();
+        void getReadsWithKmer(const std::string& kmer, std::vector<std::string>* out_reads);
+    
+        // Build a multiple alignment of all the reads that are potentially part of this haplotype
+        MultipleAlignment buildMultipleAlignment(HaplotypeReadVector& positioned_reads) const;
 
-        // Calculate the maximum distance between reads aligned onto this haplotype
-        int calculateHaplotypeIncoherency(const std::string& haplotype);
-
-        // Remove incoherent haplotypes
-        void cullHaplotypes();
+        // Compute a consensus sequence for the multiple alignment
+        std::string getConsensus(MultipleAlignment* multiple_alignment, int max_differences) const;
 
         //
         // Data
         //
-        std::list<std::string> m_haplotypes;
-        std::vector<std::string> m_reads;
-
         const BWT* m_pBWT;
         const BWTIntervalCache* m_pIntervalCache;
         const SampledSuffixArray* m_pSSA;
+        
+        std::string m_initial_kmer_string;
 
         size_t m_kmer;
         size_t m_kmerThreshold;

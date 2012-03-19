@@ -38,7 +38,7 @@ void ReadCoherentHaplotypeBuilder::setKmer(size_t k)
 void ReadCoherentHaplotypeBuilder::setInitialHaplotype(const std::string& sequence)
 {
     printf("Starting new haplotype %s\n", sequence.c_str());
-    m_haplotypes.push_back(sequence);
+    m_initial_kmer_string = sequence;
 }
 
 // The source index is the index that the contains the source string
@@ -62,33 +62,39 @@ struct KmerPositionSorter
 HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_haplotypes)
 {
     PROFILE_FUNC("ReadCoherentHaplotypeBuilder::run")
-    assert(m_haplotypes.size() == 1);
     assert(m_pBWT != NULL);
+    assert(!m_initial_kmer_string.empty());
 
     // Extract reads with the input k-mer
-    getReads();
+    std::vector<std::string> read_vector;
+    getReadsWithKmer(m_initial_kmer_string, &read_vector);
 
-    // Determine kmer position in all the reads containing it
-    std::vector<size_t> read_indices(m_reads.size(), 0);
-    std::vector<size_t> read_kmer_positions(m_reads.size(), 0);
-    for(size_t i = 0; i < m_reads.size(); ++i)
+    // Infer the position of the first base of each read relative to the underlying haplotype
+    HaplotypeReadVector positioned_reads;
+    for(size_t i = 0; i < read_vector.size(); ++i)
     {
-        read_indices[i] = i;
-        size_t pos = m_reads[i].find(*m_haplotypes.begin());
-        assert(pos != std::string::npos);
-        read_kmer_positions[i] = pos;
-
-        std::string padding(100-pos, ' ');
-        printf("\t%s%s\n", padding.c_str(), m_reads[i].c_str());
+        size_t pos = read_vector[i].find(m_initial_kmer_string);
+        HaplotypePositionedRead hpr = { read_vector[i], -pos };
+        positioned_reads.push_back(hpr);
     }
 
+    MultipleAlignment multiple_alignment = buildMultipleAlignment(positioned_reads);
+    multiple_alignment.print(200);
+    
+    std::string consensus = getConsensus(&multiple_alignment, 5);
+    if(!consensus.empty() && consensus.size() >= 110) 
+    {
+        std::cout << "Consensus: " << consensus << "\n";
+        out_haplotypes.push_back(consensus);
+    }
+#if 0
     // Sort reads by kmer position
     KmerPositionSorter sorter(read_kmer_positions);
     std::sort(read_indices.begin(), read_indices.end(), sorter);
 
     // Build a multiple alignment
     MultipleAlignment multiple_alignment;
-    multiple_alignment.addBaseSequence("base", m_reads[read_indices.front()], "");
+    multiple_alignment.addBaseSequence("base", read_vector[read_indices.front()], "");
     size_t previous_added = 0;
     size_t total_added = 0;
     for(size_t i = 1; i < read_indices.size(); ++i)
@@ -96,7 +102,7 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
         size_t read_idx_1 = read_indices[previous_added];
         size_t read_idx_2 = read_indices[i];
 
-        SequenceOverlap overlap = Overlapper::extendMatch(m_reads[read_idx_1], m_reads[read_idx_2], read_kmer_positions[read_idx_1], read_kmer_positions[read_idx_2], 1);
+        SequenceOverlap overlap = Overlapper::extendMatch(read_vector[read_idx_1], read_vector[read_idx_2], read_kmer_positions[read_idx_1], read_kmer_positions[read_idx_2], 1);
 
         // Check if this is a valid overlap.
         bool is_proper_overlap = overlap.match[1].end < overlap.length[1] - 1 && overlap.match[1].start == 0;
@@ -105,255 +111,127 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
 
         if(is_proper_overlap && is_within_tolerance && is_gapless)
         {
-            multiple_alignment.addExtension("test", m_reads[read_idx_2], "", overlap);
+            std::cout << "ACCEPTED\n";
+            overlap.printAlignment(read_vector[read_idx_1], read_vector[read_idx_2]);
+
+            multiple_alignment.addExtension("test", read_vector[read_idx_2], "", overlap);
             previous_added = i;
             total_added += 1;
         }
+        else
+        {
+            std::cout << "REJECTED\n";
+            overlap.printAlignment(read_vector[read_idx_1], read_vector[read_idx_2]);
+        }
     }
 
-    printf("Successfully added %zu/%zu to multiple alignment\n", total_added, m_reads.size());
+    printf("Successfully added %zu/%zu to multiple alignment\n", total_added, read_vector.size());
+    multiple_alignment.print(200);
 
     // Compute consensus
     std::string consensus = "";
-    size_t total_columns = multiple_alignment.getNumColumns();
-    for(size_t i = 0; i < total_columns; ++i)
+    if(total_added >= 3) 
     {
-        std::string pileup = multiple_alignment.getPileup(i);
-
-        // Convert pileup to counts
-        AlphaCount64 base_counts;
-        for(size_t j = 0; j < pileup.size(); ++j)
-        {
-            if(pileup[j] != '-' && pileup[j] != 'N')
-                base_counts.increment(pileup[j]);
-        }
-        char c = base_counts.getMaxBase();
-        consensus.push_back(c);
-    }
-    multiple_alignment.print(200);
-
-    if(total_added >= 3)
+        consensus = getConsensus(&multiple_alignment);
         out_haplotypes.push_back(consensus);
-
-/*
-    multiple_alignment.print(200);
-
-    size_t MIN_COVERAGE = 2;
-    int num_divergent_columns = 0;
-
-    // Make combinations of all possible haplotypes where
-    // a base has been seen at least twice.
-    std::vector<std::string> haplotypes;
-    haplotypes.push_back(std::string(""));
-
-    size_t total_columns = multiple_alignment.getNumColumns();
-    for(size_t i = 0; i < total_columns; ++i)
-    {
-        std::string pileup = multiple_alignment.getPileup(i);
-
-        // Convert pileup to counts
-        AlphaCount64 base_counts;
-        for(size_t j = 0; j < pileup.size(); ++j)
-            base_counts.increment(pileup[j]);
-
-        // Add bases that have been seen at least MIN_COVERAGE times to the haplotypes
-        std::vector<std::string> new_haplotypes;
-        std::string extensions;
-        for(uint8_t j = 0; j < DNA_ALPHABET::size; ++j)
-        {
-            char b = DNA_ALPHABET::getBase(j);
-            if(base_counts.get(b) >= MIN_COVERAGE || (pileup.size() == 1 && base_counts.get(b) > 0))
-            {
-                // extend haplotypes
-                for(size_t k = 0; k < haplotypes.size(); ++k)
-                {
-                    new_haplotypes.push_back(haplotypes[k]);
-                    new_haplotypes.back().append(1, b);
-                }
-            }
-        }
-
-        if(new_haplotypes.empty() || new_haplotypes.size() > 50)
-        {
-            // could not extend
-            haplotypes.clear();
-            break;
-        }
-
-        assert(new_haplotypes.size() >= haplotypes.size());
-
-        size_t haplotypes_added = new_haplotypes.size() - haplotypes.size();
-        if(haplotypes_added > 0)
-            num_divergent_columns += 1;
-        haplotypes.swap(new_haplotypes);
     }
-    printf("Generated %zu haplotypes\n", haplotypes.size());
-
-    if(!haplotypes.empty() && haplotypes.size() < 8)
-        out_haplotypes.swap(haplotypes);
-    */
+#endif
     return HBRC_OK;
 }
 
-void ReadCoherentHaplotypeBuilder::extendOnce(EdgeDir direction)
+//
+MultipleAlignment ReadCoherentHaplotypeBuilder::buildMultipleAlignment(HaplotypeReadVector& positioned_reads) const
 {
-    // A list to add new haplotypes to
-    std::list<std::string> incoming_haplotypes;
+    // Sort the haplotype reads into ascending order by position
+    std::sort(positioned_reads.begin(), positioned_reads.end());
+    assert(!positioned_reads.empty());
+
+    MultipleAlignment multiple_alignment;
+
+    // Add leftmost sequence as the first read of the multiple alignment
+    multiple_alignment.addBaseSequence("base", positioned_reads[0].sequence, "");
     
-    // Extend each haplotype, possibly branching the search
-    for(std::list<std::string>::iterator iterator = m_haplotypes.begin(); 
-                                         iterator != m_haplotypes.end(); ++iterator)
+    // Add remaining sequences
+    for(size_t i = 1; i < positioned_reads.size(); ++i)
     {
-        std::string query_kmer;
-        if(direction == ED_SENSE)
-            query_kmer = iterator->substr(iterator->length() - m_kmer);
-        else
-            query_kmer = iterator->substr(0, m_kmer);
+        // Craft an overlap object for this sequence, relative to the last sequence added
+        size_t prev = i - 1;
 
-        // Get the valid extensions of this sequence
-        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(query_kmer, m_pBWT, direction);
-        std::string extensionBases;
-        for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
-        {
-            char b = DNA_ALPHABET::getBase(i);
-            size_t count = extensionCounts.get(b);
-            if(count >= m_kmerThreshold)
-                extensionBases.push_back(b);
-        }
+        size_t p0 = positioned_reads[prev].position;
+        size_t p1 = positioned_reads[i].position;
 
-        // Extend the haplotype, or create new haplotypes if there is a branch
-        if(extensionBases.length() == 1)
-        {
-            if(direction == ED_SENSE)
-                iterator->append(1,extensionBases[0]);
-            else
-                iterator->insert(0, 1, extensionBases[0]); // slow
-        }
-        else if(extensionBases.length() > 1) // branch
-        {
-            // Branch the current haplotype for all the extensions but one
-            for(size_t i = 1; i < extensionBases.length(); ++i)
-            {
-                std::string branched = *iterator;
-                if(direction == ED_SENSE)
-                    branched.append(1,extensionBases[i]);
-                else
-                    branched.insert(0, 1, extensionBases[i]); // slow
-                incoming_haplotypes.push_back(branched);   
-            }
+        SequenceOverlap overlap;
+        overlap.match[0].start = p1 - p0;
+        overlap.match[0].end = positioned_reads[prev].sequence.length() - 1;
 
-            // ...and update the iterator for the remaining extension
-            if(direction == ED_SENSE)
-                iterator->append(1,extensionBases[0]);
-            else
-                iterator->insert(0, 1, extensionBases[0]); // slow
+        overlap.match[1].start = 0;
+        overlap.match[1].end = positioned_reads[i].sequence.length() - 1 - (p1 - p0);
 
-        }
+        assert(overlap.match[0].length() == overlap.match[1].length());
+        size_t overlap_length = overlap.match[0].length();
+        std::stringstream cigar_builder;
+        cigar_builder << overlap_length << "M";
+        overlap.cigar = cigar_builder.str();
+        overlap.score = 2*overlap_length;
+        overlap.edit_distance = -1;
+        overlap.total_columns = overlap_length;
+
+        multiple_alignment.addExtension("seq", positioned_reads[i].sequence, "", overlap);
     }
 
-    // Merge the incoming haplotypes
-    m_haplotypes.splice(m_haplotypes.end(), incoming_haplotypes, incoming_haplotypes.begin(), incoming_haplotypes.end());
+    return multiple_alignment;
 }
 
+
 //
-void ReadCoherentHaplotypeBuilder::cullHaplotypes()
+std::string ReadCoherentHaplotypeBuilder::getConsensus(MultipleAlignment* multiple_alignment, int max_differences) const
 {
-    m_reads.clear();
-    getReads();
-    std::list<std::string>::iterator iterator = m_haplotypes.begin();
-    while(iterator != m_haplotypes.end())
+    std::string consensus = "";
+    size_t total_columns = multiple_alignment->getNumColumns();
+    for(size_t i = 0; i < total_columns; ++i)
     {
-        int max_jump = calculateHaplotypeIncoherency(*iterator);
-        if(max_jump > 20)
-            iterator = m_haplotypes.erase(iterator);
-        else
-            iterator++;
+        SymbolCountVector symbol_counts = multiple_alignment->getSymbolCountVector(i);
+        assert(!symbol_counts.empty());
+
+        std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
+        // If this column has a maximum of symbols (2 or more bases with count >= max_differences)
+        // then we saw this is a divergent column and return no haplotype.
+        if(symbol_counts.size() >= 2)
+        {
+            if(symbol_counts[1].count >= max_differences)
+                return "";
+        }
+
+        // Not divergent, add the most frequent base to the consensus
+        size_t idx = 0;
+        while(symbol_counts[idx].symbol == '-' || symbol_counts[idx].symbol == '\0')
+            idx++;
+        consensus.append(1, symbol_counts[idx].symbol);
     }
+    return consensus;
 }
 
-
 //
-void ReadCoherentHaplotypeBuilder::getReads()
+void ReadCoherentHaplotypeBuilder::getReadsWithKmer(const std::string& kmer, std::vector<std::string>* out_reads)
 {
     SeqItemVector variant_reads;
     SeqItemVector variant_rc_reads;
 
-    std::vector<std::string> haplotype_vector(m_haplotypes.begin(), m_haplotypes.end());
+    std::vector<std::string> lookup_vector;
+    lookup_vector.push_back(kmer);
 
     // Forward reads
-    HapgenUtil::extractHaplotypeReads(haplotype_vector, m_pBWT, m_pIntervalCache, m_pSSA, 
+    HapgenUtil::extractHaplotypeReads(lookup_vector, m_pBWT, m_pIntervalCache, m_pSSA, 
                                       m_kmer, false, 100000, &variant_reads, NULL);
 
     // Reverse reads
-    HapgenUtil::extractHaplotypeReads(haplotype_vector, m_pBWT, m_pIntervalCache, m_pSSA, 
+    HapgenUtil::extractHaplotypeReads(lookup_vector, m_pBWT, m_pIntervalCache, m_pSSA, 
                                       m_kmer, true, 100000, &variant_rc_reads, NULL);
 
     // Move read sequences to the vector of reads
     for(size_t i = 0; i < variant_reads.size(); ++i)
-        m_reads.push_back(variant_reads[i].seq.toString());
+        out_reads->push_back(variant_reads[i].seq.toString());
 
     for(size_t i = 0; i < variant_rc_reads.size(); ++i)
-        m_reads.push_back(reverseComplement(variant_rc_reads[i].seq.toString()));
-}
-
-//
-int ReadCoherentHaplotypeBuilder::calculateHaplotypeIncoherency(const std::string& haplotype)
-{
-    MultipleAlignment multiple_alignment;
-    multiple_alignment.addBaseSequence("haplotype", haplotype, "");
-        
-    // A vector to record the start position of each read mapped to this haplotype
-    std::vector<int> start_vector; 
-
-    for(size_t i = 0; i < m_reads.size(); ++i)
-    {
-        const std::string& read = m_reads[i];
-
-        // Try to align this string using mismatches only at every start position of the haplotype
-        // Awful algorithm, to be replaced later
-        size_t best_mismatches = std::numeric_limits<size_t>::max();
-        std::vector<size_t> best_starts;
-        for(size_t j = 0; j < haplotype.size(); ++j)
-        {
-            size_t mismatches = 0;
-            for(size_t k = 0; k < read.size(); ++k)
-                mismatches += (j + k < haplotype.size() && haplotype[j + k] == read[k] ? 0 : 1);
-
-            if(mismatches < best_mismatches)
-            {
-                best_mismatches = mismatches;
-                best_starts.clear();
-                best_starts.push_back(j);
-            }
-            else if(mismatches == best_mismatches)
-            {
-                best_starts.push_back(j);
-            }
-        }
-
-        for(size_t j = 0; j < best_starts.size(); ++j)
-        {
-            // Craft a sequence overlap object for each best match
-            SequenceOverlap overlap = Overlapper::extendMatch(haplotype, read, best_starts[j], 0, 2);
-
-            if(overlap.edit_distance <= (int)m_maxEditDistance)
-            {
-//                printf("Best match of read[%zu] on haplotype: %zu mismatches, position %zu ma: %zu\n", i, best_mismatches, best_starts[j], best_starts.size());
-                // Calculate a proper overlap between the sequences and add to the multiple alignment
-                multiple_alignment.addOverlap("noname", read, "", overlap);
-                start_vector.push_back(overlap.match[0].start);
-            }
-        }
-    }
-
-    // Calculate the maximum distance between consecutive start positions
-    std::sort(start_vector.begin(), start_vector.end());
-    int max_jump = 0;
-    for(size_t i = 0; i < start_vector.size() - 1; ++i)
-    {
-        int jump = start_vector[i+1] - start_vector[i];
-        if(jump > max_jump)
-            max_jump = jump;
-    }
-    return max_jump;
+        out_reads->push_back(reverseComplement(variant_rc_reads[i].seq.toString()));
 }
