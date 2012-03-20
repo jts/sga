@@ -77,6 +77,22 @@ inline double addLogs(const double l1, const double l2)
     }
 }
 
+inline double log_one_minus_exp_minus_x(double x)
+{
+    // returns log(1-10^-x)
+    if (x == 0.0)
+        return -HUGE_VAL;
+    else if (x>0.0)
+    {
+        if (x>10.0)
+            return -exp(-x);
+        else return log(1.0- exp(-x));
+    } else
+    {
+        assert(1==0);
+    }
+}
+
 // Convert the type t into a string. Returns true if successful
 template <class T>
 bool from_string(T& t,
@@ -579,10 +595,11 @@ class DindelRealignWindowResult
         class HaplotypeProperties
         {
         public:
-            HaplotypeProperties(double _logMappingProb, double _haplotypeQual, double _freq) : logMappingProb(_logMappingProb), qual(_haplotypeQual), freq(_freq) {};
+            HaplotypeProperties(double _logMappingProb, double _haplotypeQual, double _freq, int _iteration) : logMappingProb(_logMappingProb), qual(_haplotypeQual), freq(_freq), iteration(_iteration) {};
             double logMappingProb;
             double qual;
             double freq;
+            int iteration;
         };
 
         class Inference
@@ -605,7 +622,7 @@ class DindelRealignWindowResult
                 // Data
 
                 // Phred-scaled posterior prob
-                //double qual;
+                double qual;
                 //double freq;
                 double strandBias;
                 int numReadsForward;
@@ -668,6 +685,7 @@ class DindelRealignWindowResult
 
         typedef HashMap<int, Inference> HapIdxToInference;
         HapIdxToInference hapIdxToInference;
+        std::vector<int> addOrder;
         int numHapSpecificReads;
 
         // number of called haplotypes
@@ -797,6 +815,7 @@ class DindelRealignParameters
         // Constructors
         DindelRealignParameters();
         DindelRealignParameters(const std::string & paramString);
+        DindelRealignParameters(const char * paramString);
 
     private:
         
@@ -845,6 +864,7 @@ class DindelRealignParameters
         int EMmaxiter;
 
         int realignMatePairs; // compute a joint likelihood for the alignment of a read pair to the candidate haplotype
+        int graphDiffStyle; // determines way haplotypes are called in the tumour/child sample
 };
 
 // Realigns reads in a given window.
@@ -862,7 +882,9 @@ class DindelRealignWindow
         void run(const std::string & algorithm, std::ostream& out);
         void run(const std::string & algorithm,
                  std::ostream& out,
-                 const std::string id);
+                 const std::string id,
+                 DindelRealignWindowResult * pThisResult,
+                 const DindelRealignWindowResult * pPreviousResult);
 
 
         const DindelWindow & getDindelWindow() const { return  m_dindelWindow; }
@@ -939,6 +961,36 @@ class DindelRealignWindow
                   std::vector<double> & haplotypeFrequencies);
 
         //
+
+        void addCalledHaplotype(int hapIdx,
+                                DindelRealignWindowResult & result,
+                                const std::vector<DindelMultiHaplotype> & haplotypes,
+                                const std::vector< HashMap<int, double> > & addReads,
+                                double minLogLikAlignToAlt,
+                                int numReadPairs);
+
+        void setAddReads(int type,
+                         int h,
+                         const std::vector< std::vector<double> > & hrLik,
+                         std::vector< HashMap<int, double> > & addReads,
+                         std::vector<double> & addLL,
+                         int numReadPairs,
+                         int numHaps,
+                         const std::vector<int> & added);
+
+        void computeAddLL(int type,
+                          int h,
+                          const std::vector< std::vector<double> > & hrLik,
+                          std::vector<double> & addLL,
+                          int numReadPairs,
+                          int numHaps,
+                          const std::vector<int> & added);
+
+        void showHaplotypeOnlyReads(int h,
+                                    const std::vector< std::vector<double> > & hrLik,
+                                    int numReadPairs,
+                                    int numHaps);
+                                
         DindelRealignWindowResult estimateHaplotypeFrequencies(double minLogLikAlignToRef, 
                                                                double minLogLikAlignToAlt, 
                                                                bool capUsingMappingQuality, 
@@ -951,6 +1003,7 @@ class DindelRealignWindow
         DindelRealignWindowResult estimateHaplotypeFrequenciesModelSelectionMatePairs(double minLogLikAlignToRef, 
                                                                                       double minLogLikAlignToAlt, 
                                                                                       bool capUsingMappingQuality,
+                                                                                      const DindelRealignWindowResult * pPreviousResult,
                                                                                       bool print);
 
         double getHaplotypePrior(const DindelHaplotype & h1, const DindelHaplotype & h2) const;
@@ -973,7 +1026,9 @@ class DindelRealignWindow
         // algorithms
 
         // initial try: ungapped alignment of read to candidate haplotype, doesn't use base qualities
-        void algorithm_hmm(std::ostream& out);
+        void algorithm_hmm(std::ostream& out,
+                           DindelRealignWindowResult * pThisResult,
+                           const DindelRealignWindowResult * pPreviousResult);
 };
 
 //
