@@ -67,7 +67,7 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
     do {
         extended = false;
         MultipleAlignment multiple_alignment = buildMultipleAlignment(positioned_reads);
-        consensus = getConsensus(&multiple_alignment, 5);
+        consensus = getConsensus(&multiple_alignment, 500);
         
         if(round % 10 == 0) 
         {

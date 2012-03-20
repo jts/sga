@@ -87,6 +87,7 @@ namespace opt
     //static std::string debugFile = "debug.var1.txt";
     //static std::string debugFile = "badalign.debug";
     //static std::string debugFile = "kmer.debug";
+    static std::string indexPrefix;
     static std::string debugFile;
     static std::string referenceFile;
     static std::string baseFile;
@@ -97,7 +98,7 @@ namespace opt
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_THRESHOLD };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_THRESHOLD, OPT_INDEX };
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -110,6 +111,7 @@ static const struct option longopts[] = {
     { "max-branches",  required_argument, NULL, 'y' },
     { "sample-rate",   required_argument, NULL, 'd' },
     { "prefix",        required_argument, NULL, 'p' },
+    { "index",         required_argument, NULL, OPT_INDEX },
     { "min-threshold", required_argument, NULL, OPT_MIN_THRESHOLD },
     { "debug",         required_argument, NULL, OPT_DEBUG },
     { "references",    required_argument, NULL, OPT_REFERENCE },
@@ -128,6 +130,11 @@ int graphDiffMain(int argc, char** argv)
 
     // Create indices for the variant reads
     std::string variantPrefix = stripFilename(opt::variantFile);
+
+    // Use debug index prefix if specified
+    if(!opt::indexPrefix.empty())
+        variantPrefix = opt::indexPrefix;
+
     BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     SampledSuffixArray* pVariantSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
 
@@ -373,6 +380,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case OPT_MIN_THRESHOLD: arg >> opt::minKmerThreshold; break;
             case OPT_DEBUG: arg >> opt::debugFile; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
+            case OPT_INDEX: arg >> opt::indexPrefix; break;
             case OPT_HELP:
                 std::cout << GRAPH_DIFF_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
