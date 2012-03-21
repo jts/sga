@@ -96,7 +96,7 @@ namespace opt
     static double minGC = 0.0f;
     static double maxGC = 1.0;
     static bool bIlluminaScaling = false;
-    static std::string adapter;  // adapter sequence forward
+    static std::string adapterF;  // adapter sequence forward
     static std::string adapterR; // adapter sequence reverse
 }
 
@@ -165,10 +165,10 @@ int preprocessMain(int argc, char** argv)
         std::cerr << "Dust threshold: " << opt::dustThreshold << "\n";
     if(!opt::suffix.empty())
         std::cerr << "Suffix: " << opt::suffix << "\n";
-    if(opt::adapter.length() && opt::adapterR.length())
+    if(opt::adapterF.length() && opt::adapterR.length())
     {
-      std::cerr << "Adapter sequence fwd: " << opt::adapter << "\n";
-      std::cerr << "Adapter sequence rev: " << opt::adapterR << "\n";
+        std::cerr << "Adapter sequence fwd: " << opt::adapterF << "\n";
+        std::cerr << "Adapter sequence rev: " << opt::adapterR << "\n";
     }
 
     // Seed the RNG
@@ -324,29 +324,36 @@ bool processRead(SeqRecord& record)
 {
     // let's remove the adapter if the user has requested so
     // before doing any filtering
-    if(opt::adapter.length())
+    if(!opt::adapterF.empty())
     {
-      std::string _tmp(record.seq.toString());
-      size_t found = _tmp.find(opt::adapter);
-      int _length;
+        std::string _tmp(record.seq.toString());
+        size_t found = _tmp.find(opt::adapterF);
+        int _length;
 
-      if (found != std::string::npos)
-        _length = opt::adapter.length();
-      else
-      { // Couldn't find the fwd adapter; Try the reverse version
-        found   = _tmp.find(opt::adapterR);
-        _length = opt::adapterR.length();
-      }
+        if(found != std::string::npos)
+        {
+            _length = opt::adapterF.length();
+        }
+        else
+        { 
+            // Couldn't find the fwd adapter; Try the reverse version
+            found = _tmp.find(opt::adapterR);
+           _length = opt::adapterR.length();
+        }
 
-      if (found != std::string::npos) // found the adapter
-      {
-        _tmp.erase(found, _length);
-        record.seq = _tmp;
-        // We have to remove the qualities of the adapter
-        _tmp = record.qual;
-        _tmp.erase(found, _length);
-        record.qual = _tmp;
-      }
+        if(found != std::string::npos) // found the adapter
+        {
+            _tmp.erase(found, _length);
+            record.seq = _tmp;
+
+            // We have to remove the qualities of the adapter
+            if(!record.qual.empty())
+            {
+                _tmp = record.qual;
+                _tmp.erase(found, _length);
+                record.qual = _tmp;
+            }
+        }
     }
 
     // Check if the sequence has uncalled bases
@@ -562,7 +569,7 @@ void parsePreprocessOptions(int argc, char** argv)
             case 'm': arg >> opt::minLength; break;
             case 'h': arg >> opt::hardClip; break;
             case 'p': arg >> opt::peMode; break;
-            case 'r': arg >> opt::adapter; break;
+            case 'r': arg >> opt::adapterF; break;
             case 'c': arg >> opt::adapterR; break;
             case 's': arg >> opt::sampleFreq; break;
             case '?': die = true; break;
@@ -619,8 +626,7 @@ void parsePreprocessOptions(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    if( ( opt::adapter.length() && !opt::adapterR.length()) ||
-        (!opt::adapter.length() &&  opt::adapterR.length()) )
+    if(opt::adapterF.empty() != opt::adapterR.empty())
     {
         std::cerr << SUBPROGRAM ": Forward and Reverse sequence is necessary to perform adapter removal.\n";
         exit(EXIT_FAILURE);
