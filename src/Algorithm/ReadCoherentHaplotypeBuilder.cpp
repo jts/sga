@@ -97,13 +97,14 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
             else
             {
                 // Clip the consensus to the endpoints of the kmers that map onto the base/reference
-                int num_kmers = consensus.size() - m_parameters.kmer + 1;
+                int clip_k = m_parameters.kmer;
+                int num_kmers = consensus.size() - clip_k + 1;
                 int left_clip = num_kmers;
                 int right_clip = -1;
 
                 for(int i = 0; i < num_kmers; ++i)
                 {
-                    std::string kmer_sequence = consensus.substr(i, m_parameters.kmer);
+                    std::string kmer_sequence = consensus.substr(i, clip_k);
  
                     // Check whether the kmer exists in the base reads/reference
                     size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence,
@@ -119,7 +120,7 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
                 if(left_clip == num_kmers || right_clip == -1)
                     consensus = "";
                 else
-                    consensus = consensus.substr(left_clip, right_clip - left_clip + m_parameters.kmer);
+                    consensus = consensus.substr(left_clip, right_clip - left_clip + clip_k);
             }
         }
     } while(extended);
@@ -362,7 +363,7 @@ std::vector<std::string> ReadCoherentHaplotypeBuilder::getExtensionKmers(const s
                                                                             m_parameters.pVariantBWTCache);
 
         //
-        if(var_count >= m_parameters.kmerThreshold)
+        if(var_count >= 1)//m_parameters.kmerThreshold)
             allow_kmer_extension[i] = true;
 
     }
