@@ -205,8 +205,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                                                                              variantVCFSS);
                     
                     std::cout << "Dindel returned " << drc << "\n";
-		    std::cout << "base: " << baseVCFSS.str() << "\n";
-		    std::cout << "vari: " << variantVCFSS.str() << "\n";
+                    std::cout << "base: " << baseVCFSS.str() << "\n";
+                    std::cout << "vari: " << variantVCFSS.str() << "\n";
 			    
                     if(drc == DRC_OK)
                     {                        

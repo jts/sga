@@ -61,7 +61,7 @@ class ReadCoherentHaplotypeBuilder
         MultipleAlignment buildMultipleAlignment(HaplotypeReadVector& positioned_reads) const;
 
         // Compute a consensus sequence for the multiple alignment
-        std::string getConsensus(MultipleAlignment* multiple_alignment, int max_differences) const;
+        std::string getConsensus(MultipleAlignment* multiple_alignment, int min_call_coverage, int max_differences) const;
 
         // Check whether the input sequence has any unique kmers that can be used to extend the haplotype
         std::vector<std::string> getExtensionKmers(const std::string& sequence);

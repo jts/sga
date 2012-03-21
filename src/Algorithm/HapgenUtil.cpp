@@ -23,7 +23,7 @@ void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReference")
     LRAlignment::LRParams params;
 
-    params.zBest = 5;
+    params.zBest = 10;
 
     for(size_t i = 0; i <= 1; ++i)
     {
@@ -41,6 +41,11 @@ void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
             {
                 HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, hits[j].G, i == 1);
                 outAlignments.push_back(aln);
+            }
+            else
+            {
+                printf("Partial alignment -- ID: %d start: %d haplen: %zu alignlength: %d\n", (int)hits[j].targetID, (int)hits[j].t_start, haplotype.length(), (int)q_alignment_length);
+                printf("\tqstart: %d qend: %d\n", hits[j].q_start, hits[j].q_end);
             }
         }
     }
@@ -130,6 +135,7 @@ bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln,
                                         const ReadTable* pRefTable, 
                                         int flanking,
                                         const StringVector& inHaplotypes,
+                                        StringVector& outFlankingHaplotypes,
                                         StringVector& outHaplotypes)
 {
     std::string upstream;
@@ -152,7 +158,8 @@ bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln,
 
     // Make the reference haplotype w/ flanking sequence
     std::string referenceFlanking = upstream + referenceHaplotype + downstream;
-    outHaplotypes.push_back(referenceFlanking);
+    outFlankingHaplotypes.push_back(referenceFlanking);
+    outHaplotypes.push_back(referenceHaplotype);
 
     // Check that all sequences match the reference haplotype properly
     bool checkOk = checkAlignmentsAreConsistent(referenceFlanking, inHaplotypes);
@@ -167,7 +174,10 @@ bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln,
     {
         // Skip if the input haplotype exactly matches the reference
         if(inHaplotypes[i] != referenceHaplotype)
-            outHaplotypes.push_back(upstream + inHaplotypes[i] + downstream);
+        {
+            outFlankingHaplotypes.push_back(upstream + inHaplotypes[i] + downstream);
+            outHaplotypes.push_back(inHaplotypes[i]);
+        }
     }
 
     return true;
@@ -194,8 +204,7 @@ bool HapgenUtil::checkAlignmentsAreConsistent(const std::string& refString, cons
             std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
             std::cerr << "A[" << i << "]: " << alignments[i] << "\n";
             std::cerr << "A[" << j << "]: " << alignments[j] << "\n";
-            std::cerr << "DISABLED CHECK\n";
-            //return false;
+            return false;
         }
     }
 
@@ -305,6 +314,45 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
 
     return true;
 }
+
+// Extract reads from an FM-index that have a k-mer match to AT MOST one haplotype
+// Returns true if the reads were successfully extracted, false if there are 
+// more reads than maxReads
+bool HapgenUtil::extractHaplotypeSpecificReads(const StringVector& haplotypes, 
+                                               const BWT* pBWT,
+                                               const BWTIntervalCache* pBWTCache,
+                                               const SampledSuffixArray* pSSA,
+                                               int k,
+                                               bool doReverse,
+                                               size_t maxReads,
+                                               SeqItemVector* pOutReads, 
+                                               SeqItemVector* pOutMates)
+{
+    std::map<std::string, int> kmer_map;
+    for(size_t i = 0; i < haplotypes.size(); ++i)
+    {
+        const std::string& h = haplotypes[i];
+        printf("Haplotype[%zu]: %s\n", i, h.c_str());
+        if((int)h.size() < k)
+            continue;
+
+        for(size_t j = 0; j < h.size() - k + 1; ++j)
+            kmer_map[h.substr(j,k)]++;
+    }
+
+    StringVector specific_kmer_vector;
+    for(std::map<std::string, int>::iterator iterator = kmer_map.begin(); 
+                                             iterator != kmer_map.end(); ++iterator)
+    {
+        if(iterator->second == 1)
+            specific_kmer_vector.push_back(iterator->first);
+    }
+
+    printf("%zu of %zu kmers are haplotype-unique\n", specific_kmer_vector.size(), kmer_map.size());
+    return extractHaplotypeReads(specific_kmer_vector, pBWT, pBWTCache, pSSA, 
+                                   k, doReverse, maxReads, pOutReads, pOutMates);
+}
+
 
 // Align a bunch of reads locally to a sequence
 LocalAlignmentResultVector HapgenUtil::alignReadsLocally(const std::string& target, const SeqItemVector& reads)

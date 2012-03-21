@@ -86,6 +86,7 @@ namespace HapgenUtil
                                 const ReadTable* pRefTable, 
                                 int flanking,
                                 const StringVector& inHaplotypes,
+                                StringVector& outFlankingHaplotypes,
                                 StringVector& outHaplotypes);
 
 
@@ -100,6 +101,19 @@ namespace HapgenUtil
                                size_t maxReads,
                                SeqItemVector* pOutReads, 
                                SeqItemVector* pOutMates);
+
+    // Extract reads from an FM-index that have a k-mer match to AT MOST one haplotype
+    // If the number of reads to extract exceeds maxReads, false is returned
+    bool extractHaplotypeSpecificReads(const StringVector& haplotypes, 
+                                       const BWT* pBWT, 
+                                       const BWTIntervalCache* pBWTCache,
+                                       const SampledSuffixArray* pSSA,
+                                       int k,
+                                       bool doReverse,
+                                       size_t maxReads,
+                                       SeqItemVector* pOutReads, 
+                                       SeqItemVector* pOutMates);
+
 
     // Compute the best local alignment for each read in the array to the given sequence
     LocalAlignmentResultVector alignReadsLocally(const std::string& target, const SeqItemVector& reads);
