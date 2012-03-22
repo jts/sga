@@ -707,6 +707,7 @@ void MultipleAlignment::print(size_t max_columns) const
     size_t total_columns = m_sequences.front().getNumColumns();
 
     std::vector<size_t> sequence_index_order(m_sequences.size(), 0);
+
     // Initialize order
     for(size_t i = 0; i < sequence_index_order.size(); ++i)
         sequence_index_order[i] = i;
@@ -715,22 +716,29 @@ void MultipleAlignment::print(size_t max_columns) const
     SequencePrintOrder sorter(m_sequences);
     std::stable_sort(sequence_index_order.begin(), sequence_index_order.end(), sorter);
 
+    // Make a simple consensus to use as a mask
+    std::string consensus = getPaddedConsensus();
+
     // Print the multiple alignment in segments
     for(size_t c = 0; c < total_columns; c += max_columns) {
         size_t remaining = total_columns - c;
         size_t slice_size = max_columns < remaining ? max_columns : remaining;
+
+        // Print the consensus
+        printf("\t%s\tC\n", consensus.substr(c, slice_size).c_str());
+
         for(size_t i = 0; i < sequence_index_order.size(); ++i) {
             size_t current_index = sequence_index_order[i];
 
             // Build the output string
             std::string print_string;
             for(size_t j = c; j < slice_size; ++j) {
-                char base_symbol = m_sequences[0].getColumnSymbol(j);
+                char consensus_symbol = consensus[j];
                 char row_symbol = m_sequences[current_index].getColumnSymbol(j);
 
                 if(row_symbol == '\0')
                     print_string.push_back(' '); // no base for this column
-                else if(current_index == 0 || row_symbol == '-' || row_symbol != base_symbol)
+                else if(row_symbol == '-' || row_symbol != consensus_symbol)
                     print_string.push_back(row_symbol); // always show sequence for row 0, gaps and mismatches
                 else
                     print_string.push_back('.'); // mask matches
@@ -770,6 +778,19 @@ void MultipleAlignment::printPileup() const
         }
         printf("%zu\t%s\t%s\t%s\n", i, pileup.c_str(), quality.c_str(), counts_str.c_str());
     }
+}
+
+//
+std::string MultipleAlignment::getPaddedConsensus() const
+{
+    std::string out;
+    for(size_t i = 0; i < getNumColumns(); ++i) {
+        SymbolCountVector symbol_counts = getSymbolCountVector(i);
+        assert(!symbol_counts.empty());
+        std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
+        out.append(1, symbol_counts.front().symbol);
+    }
+    return out;
 }
 
 //

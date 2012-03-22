@@ -203,6 +203,10 @@ class MultipleAlignment
                           const SequenceOverlap& overlap,
                           bool is_extension);
         
+        // Returns a string with the most frequent base for each column
+        // including padding symbols
+        std::string getPaddedConsensus() const;
+
         // Insert a new gap into all sequences in the multiple alignment
         // before the given column
         void insertGapBeforeColumn(size_t column_index);
