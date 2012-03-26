@@ -155,8 +155,8 @@ void ReadCoherentHaplotypeBuilder::addPositionedReadsForKmers(const std::string&
         std::string read_sequence = reads[i].seq.toString();
 
         // Find the position in the read of one of the query kmers
-        size_t consensus_position = std::string::npos;
         size_t read_position = std::string::npos;
+        size_t consensus_position = std::string::npos;
         std::vector<std::string>::const_iterator iter = kmer_vector.begin();
         while(read_position == std::string::npos && iter != kmer_vector.end())
         {
@@ -417,3 +417,44 @@ std::vector<std::string> ReadCoherentHaplotypeBuilder::getExtensionKmers(const s
 
     return out_vector;
 }
+
+//
+std::vector<std::string> ReadCoherentHaplotypeBuilder::getExtensionKmers(const MultipleAlignment* multiple_alignment, 
+                                                                         const HaplotypeReadVector* reads)
+{
+    size_t k = m_parameters.kmer;
+    size_t num_columns = multiple_alignment->getNumColumns();
+    std::vector<bool> unique_kmer(num_columns, false);
+    std::vector<bool> base_kmer(num_columns, false);
+    
+    std::set<std::string> unique_kmer_set;
+    for(size_t i = 0; i < reads->size(); ++i)
+    {
+        const std::string& sequence = reads->at(i).sequence;
+        size_t nk = sequence.size() - k + 1;
+        for(size_t j = 0; j < nk; ++j)
+        {
+            std::string kmer_sequence = sequence.substr(j, k);
+            size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
+                                                                                 m_parameters.pBaseBWT, 
+                                                                                 m_parameters.pBaseBWTCache);
+            if(base_count > 0)
+                base_kmer[j + reads->at(i).position] = true;
+
+            size_t var_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
+                                                                                m_parameters.pVariantBWT, 
+                                                                                m_parameters.pVariantBWTCache);
+
+            //
+            if(var_count >= 1)
+            {
+                unique_kmer[j + reads->at(i).position] = true;
+                unique_kmer_set.insert(kmer_sequence);
+            }
+        }
+    }
+
+    std::vector<std::string> out_vector(unique_kmer_set.begin(), unique_kmer_set.end());
+    return out_vector;
+}
+

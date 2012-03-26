@@ -22,6 +22,7 @@
 #include "DindelUtil.h"
 #include "HaplotypeBuilder.h"
 #include "ReadCoherentHaplotypeBuilder.h"
+#include "OverlapHaplotypeBuilder.h"
 #include "BuilderCommon.h"
 #include "Profiler.h"
 
@@ -314,10 +315,11 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
     //
     GraphBuildResult result;
 //    bool found_variant_string = buildCoherencyGraph(str, result.variant_haplotypes);
-    ReadCoherentHaplotypeBuilder rc_builder;
-    rc_builder.setInitialHaplotype(str);
-    rc_builder.setParameters(m_parameters);
-    rc_builder.run(result.variant_haplotypes);
+    //ReadCoherentHaplotypeBuilder rc_builder;
+    OverlapHaplotypeBuilder overlap_builder;
+    overlap_builder.setInitialHaplotype(str);
+    overlap_builder.setParameters(m_parameters);
+    overlap_builder.run(result.variant_haplotypes);
     bool found_variant_string = result.variant_haplotypes.size() > 0;
 
     if(found_variant_string)

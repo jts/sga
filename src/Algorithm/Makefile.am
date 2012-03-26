@@ -42,4 +42,5 @@ libalgorithm_a_SOURCES = \
         DindelUtil.h DindelUtil.cpp \
         DindelRealignWindow.h DindelRealignWindow.cpp \
         DindelHMM.h DindelHMM.cpp \
-        ReadCoherentHaplotypeBuilder.h ReadCoherentHaplotypeBuilder.cpp
+        ReadCoherentHaplotypeBuilder.h ReadCoherentHaplotypeBuilder.cpp \
+        OverlapHaplotypeBuilder.h OverlapHaplotypeBuilder.cpp

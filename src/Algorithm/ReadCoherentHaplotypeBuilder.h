@@ -66,6 +66,10 @@ class ReadCoherentHaplotypeBuilder
         // Check whether the input sequence has any unique kmers that can be used to extend the haplotype
         std::vector<std::string> getExtensionKmers(const std::string& sequence);
 
+        // Use the read sequences to extend to new unique kmers
+        std::vector<std::string> getExtensionKmers(const MultipleAlignment* multiple_alignment, 
+                                                   const HaplotypeReadVector* reads);
+
         //
         // Data
         //
