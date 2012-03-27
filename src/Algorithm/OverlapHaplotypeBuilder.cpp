@@ -11,7 +11,6 @@
 #include "BWTAlgorithms.h"
 #include "SGSearch.h"
 #include "SGAlgorithms.h"
-#include "SGVisitors.h"
 #include "Profiler.h"
 #include "HapgenUtil.h"
 #include "multiple_alignment.h"
@@ -19,16 +18,13 @@
 //
 //
 //
-OverlapHaplotypeBuilder::OverlapHaplotypeBuilder() : m_minIdentity(90.0f), m_minOverlap(41), m_extend_vertices(0)
+OverlapHaplotypeBuilder::OverlapHaplotypeBuilder()
 {
-    m_graph = new StringGraph;
 }
 
 //
 OverlapHaplotypeBuilder::~OverlapHaplotypeBuilder()
 {
-    m_seedVertices.clear();
-    delete m_graph;
 }
 
 // The source string is the string the bubble starts from
@@ -56,20 +52,66 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
     StringVector reads;
     getReadsForKmers(query_kmers, &reads);
     
-    if(reads.size() > 100)
-        return HBRC_OK;
-
     printf("Starting processing with %zu reads\n", reads.size());
     StringVector ordered_reads;
-    addInitialReadsToGraph(reads);
-    extendGraph();
-    cleanDuplicates();
-    extendGraph();
-    cleanDuplicates();
-    std::string consensus = findHaplotypes();
+    orderReadsInitial(m_initial_kmer_string, reads, &ordered_reads);
+    MultipleAlignment initial_ma = buildMultipleAlignment(ordered_reads);
+    initial_ma.print(200);
+
+    // Extend
+    std::string consensus = "";
+    bool done = false;
+    while(!done)
+    {
+        StringVector extension_kmers = getExtensionKmers(reads);
+        StringVector incoming_reads;
+        getReadsForKmers(extension_kmers, &incoming_reads);
+        orderReadsExtended(incoming_reads, &ordered_reads);
+        removeDuplicates(&ordered_reads);
+
+        printf("Extended to %zu reads\n", incoming_reads.size());
+        MultipleAlignment extended_ma = buildMultipleAlignment(ordered_reads);
+        extended_ma.print(400);
+
+        // Try to compute a consensus
+        consensus = getConsensus(&extended_ma, 3, 1000);
+
+        // Try to find left/right anchors on the consensus
+        int clip_k = m_parameters.kmer;
+        int num_kmers = consensus.size() - clip_k + 1;
+        int left_clip = num_kmers;
+        int right_clip = -1;
+
+        for(int i = 0; i < num_kmers; ++i)
+        {
+            std::string kmer_sequence = consensus.substr(i, clip_k);
+
+            // Check whether the kmer exists in the base reads/reference
+            size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence,
+                                                                      m_parameters.pBaseBWT, 
+                                                                      m_parameters.pBaseBWTCache);
+            if(base_count > 0 && i < left_clip)
+                left_clip = i;
+            if(base_count > 0 && i > right_clip)
+                right_clip = i;
+        }
+        
+        printf("Clip range: [%d %d]\n", left_clip, right_clip);
+        if(left_clip == num_kmers || right_clip == -1)
+        {
+            consensus = "";
+            done = false;
+        }
+        else
+        {
+            consensus = consensus.substr(left_clip, right_clip - left_clip + clip_k);
+            done = true;
+        }
+    }
+
     if(!consensus.empty())
         out_haplotypes.push_back(consensus);
-//    writeGraph("extend-1.dot");
+
     return HBRC_OK;
 }
 
@@ -100,246 +142,196 @@ void OverlapHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, 
         std::string read_sequence = reverseComplement(rev_si[i].seq.toString());
         reads->push_back(read_sequence);
     }
+
+    // record that we have used these kmers to extract reads.
+    for(size_t i = 0; i < kmer_vector.size(); ++i)
+        m_used_kmers.insert(kmer_vector[i]);
+}
+
+static bool sortPairSecondAscending(const std::pair<size_t, size_t>& a, const std::pair<size_t, size_t>& b)
+{
+    return a.second > b.second;
 }
 
 // Order the list of reads based on the fact that they all share the same kmer
-void OverlapHaplotypeBuilder::addInitialReadsToGraph(const StringVector& reads)
+void OverlapHaplotypeBuilder::orderReadsInitial(const std::string& initial_kmer, const StringVector& reads, StringVector* ordered_vector)
 {
-    // Add reads to graph
-    StringVector read_names;
+    std::vector<std::pair<size_t, size_t> > read_kmer_vector;;
     for(size_t i = 0; i < reads.size(); ++i)
     {
-        std::stringstream id_ss;
-        id_ss << "base-" << i;
-        read_names.push_back(id_ss.str());
-
-        // Add vertex
-        printf("OR %s: %s\n", read_names[i].c_str(), reads[i].c_str());
-    
-        // Save the pointer to the seed vertex, which contains the kmer we started the assembly from
-        m_seedVertices.push_back(addVertexToGraph(id_ss.str(), reads[i]));
+        size_t pos = reads[i].find(initial_kmer);
+        assert(pos != std::string::npos);
+        read_kmer_vector.push_back(std::make_pair(i, pos));
     }
 
-    // Compute all pairwise overlaps and add edges to the graph
-    for(size_t i = 0; i < reads.size(); ++i)
+    // Sort the vector by the second element
+    std::sort(read_kmer_vector.begin(), read_kmer_vector.end(), sortPairSecondAscending);
+
+    // Insert the reads into the ordered list
+    assert(ordered_vector->empty());
+    for(size_t i = 0; i < read_kmer_vector.size(); ++i)
+        ordered_vector->push_back(reads[read_kmer_vector[i].first]);
+
+    // Build multiple alignment
+    assert(!ordered_vector->empty());
+}
+
+// Insert the incoming reads into the ordered read list
+void OverlapHaplotypeBuilder::orderReadsExtended(const StringVector& incoming_reads, StringVector* ordered_vector)
+{
+    int MIN_OVERLAP = 30;
+    // Turn the vector into a list for efficient insertion
+    StringList ordered_list(ordered_vector->begin(), ordered_vector->end());
+
+    // Find the insertion position for every read
+    // It is a precondition that every read has a significant overlap
+    // with a read that is already ordered
+    for(size_t i = 0; i < incoming_reads.size(); ++i)
     {
-        for(size_t j = i + 1; j < reads.size(); ++j)
+        StringList::iterator insert_iterator = ordered_list.begin();
+        while(insert_iterator != ordered_list.end())
         {
-            SequenceOverlap overlap = Overlapper::computeOverlap(reads[i], reads[j], ungapped_params);
-            bool is_contain_0 = overlap.match[0].start != 0 && overlap.match[0].end != (int)reads[i].size() - 1;
-            bool is_contain_1 = overlap.match[1].start != 0 && overlap.match[1].end != (int)reads[j].size() - 1;
-            if(overlap.getPercentIdentity() >= m_minIdentity && overlap.getOverlapLength() >= m_minOverlap && !is_contain_0 && !is_contain_1)
-            {
-                // Make an sga overlap object from the match
-                Overlap o(read_names[i], overlap.match[0].start, overlap.match[0].end, reads[i].size(),
-                          read_names[j], overlap.match[1].start, overlap.match[1].end, reads[j].size(), false, 0);
+            SequenceOverlap overlap = Overlapper::computeOverlap(incoming_reads[i], *insert_iterator);
+            bool is_left_overlap = overlap.match[0].start == 0;
+            bool is_right_overlap = overlap.match[0].end == (int)incoming_reads[i].size() - 1;
+            bool is_contain = !is_left_overlap && !is_right_overlap;
+            assert(!is_contain);
+            bool is_full_match = is_left_overlap && is_right_overlap;
 
-                overlap.printAlignment(reads[i], reads[j]);
-                SGAlgorithms::createEdgesFromOverlap(m_graph, o, true);
-            }
+            // Check if we can insert here
+            if(is_full_match || (is_right_overlap && overlap.getOverlapLength() >= MIN_OVERLAP))
+                break;
+
+            insert_iterator++;
         }
-    }
-
-    // Remove duplicate reads and contaiments
-    cleanDuplicates();
-}
-
-//
-Vertex* OverlapHaplotypeBuilder::addVertexToGraph(const std::string& id, const std::string& sequence)
-{
-    Vertex* pVertex = new(m_graph->getVertexAllocator()) Vertex(id, sequence);
-    m_graph->addVertex(pVertex);
-    m_used_sequences.insert(sequence);
-    return pVertex;
-}
-
-// Extend the tips of the graph. Returns a vector
-// of pointers to the newly added vertices.
-VertexPtrVec OverlapHaplotypeBuilder::extendGraph()
-{
-    VertexPtrVec added_vertices;
-    VertexPtrVec vertices = m_graph->getAllVertices();
-    for(size_t i = 0; i < vertices.size(); ++i)
-    {
-        Vertex* vertex = vertices[i];
-
-        // Check if this vertex needs extension
-        size_t as_count = vertex->countEdges(ED_ANTISENSE);
-        size_t s_count = vertex->countEdges(ED_SENSE);
         
-        // Vertex is bidirectionally connected or not connected at all, skip
-        if((as_count > 0 && s_count > 0) || (as_count == 0 && s_count == 0))
-            continue;
-
-        EdgeDir dir = as_count == 0 ? ED_ANTISENSE : ED_SENSE;
-
-        printf("Extending %s in dir %d\n", vertex->getID().c_str(), dir);
-
-        // Get overlapping reads using kmers
-        StringVector overlapping_reads = getOverlappingReads(vertex->getSeq().toString());
-        removeUsedSequences(&overlapping_reads);
-        printf("Has %zu overlaps\n", overlapping_reads.size());
-
-        for(size_t j = 0; j < overlapping_reads.size(); ++j)
-        {
-            Vertex* added = addExtensionVertexToGraph(vertex, overlapping_reads[j]);
-            added_vertices.push_back(added);
-            bool is_join = isVertexJoinNode(added);
-
-            // Add the vertex to the join list
-            // It is added to the opposite direction because we set the direction FROM the node, not TO
-            if(is_join)
-                m_joinVertices[dir].push_back(added);
-            printf("Is %s a join? %d\n", added->getID().c_str(), is_join);
-        }
+        ordered_list.insert(insert_iterator, incoming_reads[i]);
     }
-
-    return added_vertices;
-}
-
-//
-Vertex* OverlapHaplotypeBuilder::addExtensionVertexToGraph(Vertex* source, const std::string& sequence)
-{
-    // Add the new vertex to the graph
-    std::stringstream id_ss;
-    id_ss << "extend-" << m_extend_vertices++;
-    Vertex* vertex = addVertexToGraph(id_ss.str(), sequence);
-
-    // Attempt to overlap against all the vertices connected to the source
-    // vertex. Potentially slow!
-    VertexPtrVec overlap_targets(1, source);
-    EdgePtrVec edges = source->getEdges();
-    for(size_t i = 0; i < edges.size(); ++i)
-        overlap_targets.push_back(edges[i]->getEnd());
-
-    for(size_t i = 0; i < overlap_targets.size(); ++i)
-    {
-        std::string target_sequence = overlap_targets[i]->getSeq().toString();
-        SequenceOverlap overlap = Overlapper::computeOverlap(target_sequence, sequence, ungapped_params);
-        bool is_contain_0 = overlap.match[0].start != 0 && overlap.match[0].end != (int)target_sequence.size() - 1;
-        bool is_contain_1 = overlap.match[1].start != 0 && overlap.match[1].end != (int)sequence.size() - 1;
-        if(overlap.getPercentIdentity() >= m_minIdentity && overlap.getOverlapLength() >= m_minOverlap && !is_contain_0 && !is_contain_1)
-        {
-            // Make an sga overlap object from the match
-            Overlap o(overlap_targets[i]->getID(), overlap.match[0].start, overlap.match[0].end, target_sequence.size(),
-                      id_ss.str(), overlap.match[1].start, overlap.match[1].end, sequence.size(), false, 0);
-
-            SGAlgorithms::createEdgesFromOverlap(m_graph, o, true);
-        }        
-    }
-    return vertex;
-}
-
-//
-bool OverlapHaplotypeBuilder::isVertexJoinNode(const Vertex* vertex) const
-{
-    assert(vertex != NULL);
-    std::string sequence = vertex->getSeq().toString();
-    size_t nk = sequence.size() - m_parameters.kmer + 1;
-    for(size_t i = 0; i < nk; ++i)
-    {
-        std::string kmer = sequence.substr(i, m_parameters.kmer);
-        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, 
-                                                                             m_parameters.pBaseBWT, 
-                                                                             m_parameters.pBaseBWTCache);
-
-        if(base_count > 0)
-            return true;
-    }
-    return false;
-}
-
-//
-std::string OverlapHaplotypeBuilder::findHaplotypes()
-{
-
-    // Remove transitive edges from the graph
-    SGTransitiveReductionVisitor trVisit;
-    m_graph->visit(trVisit);
-
-    // Search between each pair of left/right join vertices
-    for(size_t i = 0; i < m_joinVertices[ED_ANTISENSE].size(); ++i)
-    {
-        for(size_t j = 0; j < m_joinVertices[ED_SENSE].size(); ++j)
-        {
-            Vertex* left_join = m_joinVertices[ED_ANTISENSE].back();//[i];
-            Vertex* right_join = m_joinVertices[ED_SENSE].back();
-
-            SGWalkVector walks;
-            /*bool success =*/ SGSearch::findWalks(left_join, right_join, ED_SENSE,
-                                                   1000, 10000, true, walks);
-
-            printf("Found %zu walks\n", walks.size());
-            if(!walks.empty())
-            {
-                MultipleAlignment multiple_alignment = buildMultipleAlignmentFromWalk(walks.front());
-                multiple_alignment.print(200);
-                std::string consensus = getConsensus(&multiple_alignment, 5, 1000);
-                return consensus;
-            }
-        }
-    }
-
-    return "";
-}
-
-//
-void OverlapHaplotypeBuilder::removeUsedSequences(StringVector* sequences)
-{
-    StringVector out;
-    for(size_t i = 0; i < sequences->size(); ++i)
-    {
-        if(m_used_sequences.find(sequences->at(i)) == m_used_sequences.end())
-            out.push_back(sequences->at(i));
-    }
-
-    sequences->swap(out);
-}
-
-//
-void OverlapHaplotypeBuilder::cleanDuplicates()
-{
-    SGDuplicateVisitor duplicateVisit;
-    m_graph->visit(duplicateVisit);
     
-    // enormous hack
-    m_graph->setContainmentFlag(false);
-}
-
-
-//
-void OverlapHaplotypeBuilder::writeGraph(const std::string& filename) const
-{
-    SGTransitiveReductionVisitor trVisit;
-    m_graph->visit(trVisit);
-    m_graph->writeDot(filename);
+    // Turn the list back into a vector for output
+    ordered_vector->clear();
+    ordered_vector->insert(ordered_vector->end(), ordered_list.begin(), ordered_list.end());
 }
 
 //
-MultipleAlignment OverlapHaplotypeBuilder::buildMultipleAlignmentFromWalk(const SGWalk& walk)
+static bool sortPairFirst(const std::pair<size_t, std::string>& a, const std::pair<size_t, std::string>& b)
 {
-    // Insert first sequence
-    assert(walk.getNumVertices() != 0);
+    return a.first < b.first;
+}
+
+static bool sortPairSecond(const std::pair<size_t, std::string>& a, const std::pair<size_t, std::string>& b)
+{
+    return a.second < b.second;
+}
+
+static bool equalPairSecond(const std::pair<size_t, std::string>& a, const std::pair<size_t, std::string>& b)
+{
+    return a.second == b.second;
+}
+
+//
+void OverlapHaplotypeBuilder::removeDuplicates(StringVector* ordered_vector)
+{
+    std::vector<std::pair<size_t, std::string> > index_sequence_vector;
+    for(size_t i = 0; i < ordered_vector->size(); ++i)
+        index_sequence_vector.push_back(std::make_pair(i, ordered_vector->at(i)));
+
+    // Sort by sequence
+    std::sort(index_sequence_vector.begin(), index_sequence_vector.end(), sortPairSecond);
+
+    // Unique by sequence
+    std::vector<std::pair<size_t, std::string> >::iterator new_end = std::unique(index_sequence_vector.begin(), index_sequence_vector.end(), equalPairSecond);
+    index_sequence_vector.resize(new_end - index_sequence_vector.begin());
+
+    // Sort by position
+    std::sort(index_sequence_vector.begin(), index_sequence_vector.end(), sortPairFirst);
+
+    // Copy back into the ordered vector
+    ordered_vector->clear();
+    for(size_t i = 0; i < index_sequence_vector.size(); ++i)
+        ordered_vector->push_back(index_sequence_vector[i].second);
+}
+
+//
+MultipleAlignment OverlapHaplotypeBuilder::buildMultipleAlignment(const StringVector& ordered_vector)
+{
     MultipleAlignment multiple_alignment;
-    multiple_alignment.addBaseSequence(walk.getStartVertex()->getID(), walk.getStartVertex()->getSeq().toString(), "");
+
+    // Insert first sequence
+    StringVector::const_iterator prev_iterator = ordered_vector.begin();
+    multiple_alignment.addBaseSequence("base", *prev_iterator, "");
 
     // Insert remaining sequences
-    for(size_t i = 1; i < walk.getNumVertices(); ++i)
+    StringVector::const_iterator read_iterator = prev_iterator;
+    read_iterator++;
+    while(read_iterator != ordered_vector.end())
     {
-        std::string s0 = walk.getVertex(i-1)->getSeq().toString();
-        std::string s1 = walk.getVertex(i)->getSeq().toString();
-        std::string i1 = walk.getVertex(i)->getID();
-
-        SequenceOverlap overlap = Overlapper::computeOverlap(s0, s1, ungapped_params);
-        int size_0 = s0.size();
-        int size_1 = s1.size();
-        bool is_contain_0 = overlap.match[0].start != 0 && overlap.match[0].end != size_0 - 1;
-        bool is_contain_1 = overlap.match[1].start != 0 && overlap.match[1].end != size_1 - 1;
-        assert(!is_contain_0 && !is_contain_1);
-        multiple_alignment.addExtension(i1, s1, "", overlap);
+        SequenceOverlap overlap = Overlapper::computeOverlap(*prev_iterator, *read_iterator, ungapped_params);
+        overlap.printAlignment(*prev_iterator, *read_iterator);
+        multiple_alignment.addExtension("seq", *read_iterator, "", overlap);
+        prev_iterator = read_iterator;
+        read_iterator++;
     }
 
     return multiple_alignment;
+}
+
+//
+StringVector OverlapHaplotypeBuilder::getExtensionKmers(const StringVector& reads)
+{
+    StringVector out_kmers;
+    size_t k = m_parameters.kmer;
+    for(size_t i = 0; i < reads.size(); ++i)
+    {
+        size_t nk = reads[i].size() - k + 1;
+
+        // Vector to track the kmers that are unique in this read
+        StringVector read_unique_kmers;
+        bool read_has_base_kmer = false;
+        for(size_t j = 0; j < nk; ++j)
+        {
+            std::string kmer_sequence = reads[i].substr(j, k);
+
+            // Check whether the kmer exists in the base reads/reference
+            /*
+            size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
+                                                                                 m_parameters.pBaseBWT, 
+                                                                                 m_parameters.pBaseBWTCache);
+        
+            if(base_count > 0)
+            {
+                read_has_base_kmer = true;
+                break;
+            }
+            */
+            // Skip kmers that have been used before
+            bool used = m_used_kmers.find(kmer_sequence) != m_used_kmers.end();
+            if(used)
+                continue;
+        
+           // Check that this kmer has occured enough times in the variant reads
+           size_t var_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
+                                                                               m_parameters.pVariantBWT, 
+                                                                               m_parameters.pVariantBWTCache);
+
+           //
+           if(var_count >= 1)
+               read_unique_kmers.push_back(kmer_sequence);
+
+        }
+        
+        // Do not extend using reads that rejoin the base graph
+        if(read_has_base_kmer)
+            read_unique_kmers.clear();
+        else
+            out_kmers.insert(out_kmers.end(), read_unique_kmers.begin(), read_unique_kmers.end());
+    }
+
+    // Remove kmers that are present in multiple reads
+    std::sort(out_kmers.begin(), out_kmers.end());
+    StringVector::iterator new_end = std::unique(out_kmers.begin(), out_kmers.end());
+    out_kmers.resize(new_end - out_kmers.begin());
+    return out_kmers;
 }
 
 //
@@ -401,130 +393,3 @@ std::string OverlapHaplotypeBuilder::getConsensus(MultipleAlignment* multiple_al
     printf("Consens: %s\n", consensus.c_str());
     return consensus;
 }
-
-// Struct to hold a partial match in the FM-index
-// The position field is the location in the query sequence of this kmer.
-// The index field is an index into the BWT. 
-// The is_reverse flag indicates the strand of the partial match
-struct KmerMatch
-{
-    int64_t position:16;
-    int64_t index:47;
-    int64_t is_reverse:1;
-
-    friend bool operator<(const KmerMatch& a, const KmerMatch& b)
-    {
-        if(a.index == b.index)
-            return a.is_reverse < b.is_reverse;
-        else
-            return a.index < b.index;
-    }
-
-    friend bool operator==(const KmerMatch& a, const KmerMatch& b)
-    {
-        return a.index == b.index && a.is_reverse == b.is_reverse;
-    }
-};
-
-// Return a hash key for a KmerMatch
-struct KmerMatchKey
-{
-    size_t operator()(const KmerMatch& a) const { return a.index; }
-};
-
-typedef std::set<KmerMatch> KmerMatchSet;
-typedef HashMap<KmerMatch, bool, KmerMatchKey> KmerMatchMap;
-
-StringVector OverlapHaplotypeBuilder::getOverlappingReads(const std::string& sequence) const
-{
-    WARN_ONCE("TODO: Refactor the kmer-based overlap code in OverlapHaplotyBuilder::getOverlappingReads")
-    StringVector reads;
-    int64_t max_interval_size = 500;
-
-    // Use the FM-index to look up intervals for each kmer of the read. Each index
-    // in the interval is stored individually in the KmerMatchMap. We then
-    // backtrack to map these kmer indices to read IDs. As reads can share
-    // multiple kmers, we use the map to avoid redundant lookups.
-    // There is likely a faster algorithm which performs direct decompression
-    // of the read sequences without having to expand the intervals to individual
-    // indices. The current algorithm suffices for now.
-    KmerMatchMap prematchMap;
-    size_t num_kmers = sequence.size() - m_parameters.kmer + 1;
-    for(size_t i = 0; i < num_kmers; ++i)
-    {
-        std::string kmer = sequence.substr(i, m_parameters.kmer);
-        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, kmer);
-        if(interval.isValid() && interval.size() < max_interval_size) 
-        {
-            for(int64_t j = interval.lower; j <= interval.upper; ++j)
-            {
-                KmerMatch match = { i, j, false };
-                prematchMap.insert(std::make_pair(match, false));
-            }
-        }
-
-        kmer = reverseComplement(kmer);
-        interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, kmer);
-        if(interval.isValid() && interval.size() < max_interval_size) 
-        {
-            for(int64_t j = interval.lower; j <= interval.upper; ++j)
-            {
-                KmerMatch match = { i, j, true };
-                prematchMap.insert(std::make_pair(match, false));
-            }
-        }
-    }
-
-    // Backtrack through the kmer indices to turn them into read indices.
-    // This mirrors the calcSA function in SampledSuffixArray except we mark each entry
-    // as visited once it is processed.
-    KmerMatchSet matches;
-    for(KmerMatchMap::iterator iter = prematchMap.begin(); iter != prematchMap.end(); ++iter)
-    {
-        // This index has been visited
-        if(iter->second)
-            continue;
-
-        // Mark this as visited
-        iter->second = true;
-
-        // Backtrack the index until we hit the starting symbol
-        KmerMatch out_match = iter->first;
-        while(1) 
-        {
-            char b = m_parameters.pVariantBWT->getChar(out_match.index);
-            out_match.index = m_parameters.pVariantBWT->getPC(b) + m_parameters.pVariantBWT->getOcc(b, out_match.index - 1);
-
-            // Check if the hash indicates we have visited this index. If so, stop the backtrack
-            KmerMatchMap::iterator find_iter = prematchMap.find(out_match);
-            if(find_iter != prematchMap.end())
-            {
-                // We have processed this index already
-                if(find_iter->second)
-                    break;
-                else
-                    find_iter->second = true;
-            }
-
-            if(b == '$')
-            {
-                // We've found the lexicographic index for this read. Turn it into a proper ID
-                out_match.index = m_parameters.pVariantSSA->lookupLexoRank(out_match.index);
-                matches.insert(out_match);
-                break;
-            }
-        }
-    }
-
-    // Perform the actual extraction from the index
-    for(KmerMatchSet::iterator iter = matches.begin(); iter != matches.end(); ++iter)
-    {
-        std::string match_sequence = BWTAlgorithms::extractString(m_parameters.pVariantBWT, iter->index);
-        if(iter->is_reverse)
-            match_sequence = reverseComplement(match_sequence);
-        reads.push_back(match_sequence);
-    }
-
-    return reads;
-}
-

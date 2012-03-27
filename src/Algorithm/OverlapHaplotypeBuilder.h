@@ -43,59 +43,29 @@ class OverlapHaplotypeBuilder
 
         // Coerece the set of reads into an ordered overlapping sequences
         // This function relies on the fact that all reads share the same kmer
-        void addInitialReadsToGraph(const StringVector& reads);
+        void orderReadsInitial(const std::string& initial_kmer, const StringVector& reads, StringVector* ordered_reads);
 
-        // Add a single vertex to the graph
-        Vertex* addVertexToGraph(const std::string& id, const std::string& sequence);
+        // Order reads by inserting them into an already ordered list
+        void orderReadsExtended(const StringVector& incoming_reads, StringVector* ordered_vector);
         
-        // Insert a new vertex into the graph, which is an extension of source
-        Vertex* addExtensionVertexToGraph(Vertex* source, const std::string& sequence);
+        // Remove duplicated reads from the ordered list
+        void removeDuplicates(StringVector* ordered_vector);
 
-        // Returns true if this vertex is a node that contains kmer(s) also present
-        // in the base reads/reference. If so, we can merge the sequence back into the
-        // graph at this point
-        bool isVertexJoinNode(const Vertex* vertex) const;
+        // Build a multiple alignment from an ordered set of reads
+        MultipleAlignment buildMultipleAlignment(const StringVector& ordered_vector);
 
-        // Recruit new edges into the graph
-        VertexPtrVec extendGraph();
-
-        // Check if there are paths that form candidate haplotypes that cover the base vertices
-        std::string findHaplotypes();
-
-        // Remove duplicate reads and containments from the graph
-        void cleanDuplicates();
-
-        // Remove sequences from the vector that are already
-        // present in the graph
-        void removeUsedSequences(StringVector* sequences);
-
-        // Build a multiple alignment from a walk through a graph
-        MultipleAlignment buildMultipleAlignmentFromWalk(const SGWalk& walk);
+        // Extract new unique kmers from the reads in the set
+        StringVector getExtensionKmers(const StringVector& reads);
         
         // Compute a consensus sequence for the multiple alignment
         std::string getConsensus(MultipleAlignment* multiple_alignment, int min_call_coverage, int max_differences) const;
     
-        // Get overlapping reads using the FM-index
-        StringVector getOverlappingReads(const std::string& str) const;
-
-        // Write the graph to disk as a dot file
-        void writeGraph(const std::string& filename) const;
-
         //
         // Data
         //
-        StringGraph* m_graph;
-        VertexPtrVec m_seedVertices;
-        VertexPtrVec m_joinVertices[2];
-        
-        std::set<std::string> m_used_sequences;
-
-        double m_minIdentity;
-        int m_minOverlap;
-
         GraphCompareParameters m_parameters;
         std::string m_initial_kmer_string;
-        size_t m_extend_vertices;
+        std::set<std::string> m_used_kmers;
 };
 
 #endif
