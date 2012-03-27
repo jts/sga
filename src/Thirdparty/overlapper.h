@@ -115,13 +115,24 @@ struct SequenceOverlap
 
 };
 
+struct OverlapperParams
+{
+    int match_score;
+    int gap_penalty;
+    int mismatch_penalty;
+};
+
+// Global variables
+extern OverlapperParams default_params; // { 2, -5, -3 };
+extern OverlapperParams ungapped_params; // { 2, -10000, -3 };
+
 //
 namespace Overlapper
 {
 
 // Compute the highest-scoring overlap between s1 and s2.
 // This is a naive O(M*N) algorithm
-SequenceOverlap computeOverlap(const std::string& s1, const std::string& s2);
+SequenceOverlap computeOverlap(const std::string& s1, const std::string& s2, const OverlapperParams params = default_params);
 
 // Extend a match between s1 and s2 into a full overlap using banded dynamic programming.
 // start_1/start_2 give the starting positions of the current partial alignment. These coordinates

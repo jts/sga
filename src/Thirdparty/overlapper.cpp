@@ -32,6 +32,9 @@
 #include <limits>
 #include <stdio.h>
 
+OverlapperParams default_params = { 2, -5, -3 };
+OverlapperParams ungapped_params = { 2, -10000, -3 };
+
 //
 #define max3(x,y,z) std::max(std::max(x,y), z)
 //#define DEBUG_OVERLAPPER 1
@@ -138,7 +141,7 @@ typedef std::vector<int> DPCells;
 typedef std::vector<DPCells> DPMatrix;
 
 //
-SequenceOverlap Overlapper::computeOverlap(const std::string& s1, const std::string& s2)
+SequenceOverlap Overlapper::computeOverlap(const std::string& s1, const std::string& s2, const OverlapperParams params)
 {
     // Exit with invalid intervals if either string is zero length
     SequenceOverlap output;
@@ -146,11 +149,6 @@ SequenceOverlap Overlapper::computeOverlap(const std::string& s1, const std::str
         std::cerr << "Overlapper::computeOverlap error: empty input sequence\n";
         exit(EXIT_FAILURE);
     }
-
-    // We use same scoring as bwasw
-    const int MATCH_SCORE = 2;
-    const int GAP_PENALTY = -5;
-    const int MISMATCH_PENALTY = -3;
 
     // Initialize the scoring matrix
     size_t num_columns = s1.size() + 1;
@@ -167,9 +165,9 @@ SequenceOverlap Overlapper::computeOverlap(const std::string& s1, const std::str
             // Calculate the score for entry (i,j)
             int idx_1 = i - 1;
             int idx_2 = j - 1;
-            int diagonal = score_matrix[i-1][j-1] + (s1[idx_1] == s2[idx_2] ? MATCH_SCORE : MISMATCH_PENALTY);
-            int up = score_matrix[i][j-1] + GAP_PENALTY;
-            int left = score_matrix[i-1][j] + GAP_PENALTY;
+            int diagonal = score_matrix[i-1][j-1] + (s1[idx_1] == s2[idx_2] ? params.match_score : params.mismatch_penalty);
+            int up = score_matrix[i][j-1] + params.gap_penalty;
+            int left = score_matrix[i-1][j] + params.gap_penalty;
 
             score_matrix[i][j] = max3(diagonal, up, left);
         }
@@ -237,9 +235,9 @@ SequenceOverlap Overlapper::computeOverlap(const std::string& s1, const std::str
         int idx_2 = j - 1;
 
         bool is_match = s1[idx_1] == s2[idx_2];
-        int diagonal = score_matrix[i - 1][j - 1] + (is_match ? MATCH_SCORE : MISMATCH_PENALTY);
-        int up = score_matrix[i][j-1] + GAP_PENALTY;
-        int left = score_matrix[i-1][j] + GAP_PENALTY;
+        int diagonal = score_matrix[i - 1][j - 1] + (is_match ? params.match_score : params.mismatch_penalty);
+        int up = score_matrix[i][j-1] + params.gap_penalty;
+        int left = score_matrix[i-1][j] + params.gap_penalty;
 
         // If there are multiple possible paths to this cell
         // we break ties in order of insertion,deletion,match
