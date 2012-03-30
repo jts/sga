@@ -153,6 +153,20 @@ void MultipleAlignmentElement::extendTrailing(size_t n)
 }
 
 //
+void MultipleAlignmentElement::trimLeading(size_t n)
+{
+    assert(n <= leading_columns);
+    leading_columns -= n;
+}
+
+//
+void MultipleAlignmentElement::trimTrailing(size_t n)
+{
+    assert(n <= trailing_columns);
+    trailing_columns -= n;
+}
+
+//
 std::string MultipleAlignmentElement::getUnpaddedSequence() const
 {
     std::string out;
@@ -374,6 +388,18 @@ void MultipleAlignment::_addSequence(const std::string& name,
                                               incoming_leading, incoming_trailing);
 
     m_sequences.push_back(incoming_element);
+}
+
+bool MultipleAlignment::isValid() const
+{
+    size_t total_columns = getNumColumns();
+    size_t i = 0;
+    while(i < total_columns) {
+        if(getPileup(i).empty())
+            return false;
+        ++i;
+    }
+    return true;
 }
 
 std::string MultipleAlignment::calculateBaseConsensus(int min_call_coverage, int min_trim_coverage)
@@ -611,6 +637,12 @@ void MultipleAlignment::filterByCount(int min_count)
     for(size_t c = start_column; c <= end_column; ++c) {
         std::vector<int> counts = getColumnBaseCounts(c);
         char base_symbol = base_element.getColumnSymbol(c);
+
+        // Check that the base sequence has a call in this column
+        // If not, we do not filter here
+        if(base_symbol == '\0')
+            continue;
+
         int base_count = counts[symbol2index(base_symbol)];
         int num_above_min = 0;
 
@@ -648,6 +680,7 @@ void MultipleAlignment::filterByVector(const std::vector<bool>& keep_vector)
     }
 
     m_sequences.swap(filtered_sequences);
+    trimEmptyColumns();
 }
 
 //
@@ -732,7 +765,7 @@ void MultipleAlignment::print(size_t max_columns) const
 
             // Build the output string
             std::string print_string;
-            for(size_t j = c; j < slice_size; ++j) {
+            for(size_t j = c; j < slice_size + c; ++j) {
                 char consensus_symbol = consensus[j];
                 char row_symbol = m_sequences[current_index].getColumnSymbol(j);
 
@@ -798,6 +831,25 @@ void MultipleAlignment::insertGapBeforeColumn(size_t column_index)
 {
     for(size_t i = 0; i < m_sequences.size(); ++i) {
         m_sequences[i].insertGapBeforeColumn(column_index);
+    }
+}
+
+//
+void MultipleAlignment::trimEmptyColumns()
+{
+    size_t num_columns = getNumColumns();
+    size_t leading_empty = 0;
+    while(getPileup(leading_empty).empty())
+        leading_empty += 1;
+   
+    size_t trailing_empty = 0;
+    while(getPileup(num_columns - 1 - trailing_empty).empty())
+        trailing_empty += 1;
+   
+    size_t num_rows = getNumRows();
+    for(size_t i = 0; i < num_rows; ++i) {
+        m_sequences[i].trimLeading(leading_empty);
+        m_sequences[i].trimTrailing(trailing_empty);
     }
 }
 

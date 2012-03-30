@@ -314,18 +314,39 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
 
     //
     GraphBuildResult result;
-//    bool found_variant_string = buildCoherencyGraph(str, result.variant_haplotypes);
-    //ReadCoherentHaplotypeBuilder rc_builder;
+    ReadCoherentHaplotypeBuilder rc_builder;
+    rc_builder.setInitialHaplotype(str);
+    rc_builder.setParameters(m_parameters);
+    rc_builder.run(result.variant_haplotypes);
+
+    /*
     OverlapHaplotypeBuilder overlap_builder;
     overlap_builder.setInitialHaplotype(str);
     overlap_builder.setParameters(m_parameters);
     overlap_builder.run(result.variant_haplotypes);
+    */
+
+    /*
+    // Haplotype QC
+    // Calculate the maximum k such that every kmer is present in the variant and base BWT
+    // The difference between these values must be at least MIN_COVER_K_DIFF
+    size_t MIN_COVER_K_DIFF = 20;
+    StringVector temp_haplotypes;
+    for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
+    {
+        size_t max_variant_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache);
+        size_t max_base_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
+        printf("MVK: %zu MBK: %zu\n", max_variant_k, max_base_k);
+        if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 21)
+            temp_haplotypes.push_back(result.variant_haplotypes[i]);
+    }
+    result.variant_haplotypes.swap(temp_haplotypes);
+    */
     bool found_variant_string = result.variant_haplotypes.size() > 0;
 
     if(found_variant_string)
     {
-        // Run haplotype builder
-        // Set the start/end points of the haplotype builder
+        // Run haplotype builder on the normal graph
         for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
         {
             const std::string& current_variant_haplotype = result.variant_haplotypes[i];
@@ -534,229 +555,6 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, Stri
     return !haplotypes.empty();
 }
 
-//
-bool GraphCompare::buildCoherencyGraph(const std::string& startingKmer, StringVector& haplotypes)
-{
-    PROFILE_FUNC("GraphCompare::buildCoherencyGraph")
-
-    std::map<std::string, int> kmerCountMap;
-
-    size_t MAX_ITERATIONS = 5000;
-    size_t MAX_SIMULTANEOUS_BRANCHES = 500;
-    size_t MAX_TOTAL_BRANCHES = 500;
-
-    // Tracking stats
-    size_t max_simul_branches_used = 0;
-    size_t iterations = 0;
-    size_t total_branches = 0;
-    int extension_distance = startingKmer.size() + 2;
-
-    // Initialize the graph
-    StringGraph* pGraph = new StringGraph;
-    BuilderExtensionQueue queue;
-
-    Vertex* pVertex = new(pGraph->getVertexAllocator()) Vertex(startingKmer, startingKmer);
-    pVertex->setColor(GC_BLACK);
-    pGraph->addVertex(pVertex);
-
-    // Add the vertex to the extension queue
-    queue.push(BuilderExtensionNode(pVertex, ED_SENSE));
-    queue.push(BuilderExtensionNode(pVertex, ED_ANTISENSE));
-
-    std::vector<Vertex*> sense_join_vector;
-    std::vector<Vertex*> antisense_join_vector;
-
-    // Perform the extension. The while conditions are heuristics to avoid searching
-    // the graph too much 
-    while(!queue.empty() && iterations++ < MAX_ITERATIONS && queue.size() < MAX_SIMULTANEOUS_BRANCHES && total_branches < MAX_TOTAL_BRANCHES)
-    {
-        if(queue.size() > max_simul_branches_used)
-            max_simul_branches_used = queue.size();
-
-        BuilderExtensionNode curr = queue.front();
-        queue.pop();
-
-        // Calculate de Bruijn extensions for this node
-        std::string vertStr = curr.pVertex->getSeq().toString();
-        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_parameters.pVariantBWT, curr.direction);
-
-        std::string extensionsUsed;
-        for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
-        {
-            char b = DNA_ALPHABET::getBase(i);
-            size_t count = extensionCounts.get(b);
-            bool acceptExt = count >= m_parameters.minKmerThreshold;
-            if(!acceptExt)
-                continue;
-
-            extensionsUsed.push_back(b);
-            std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
-            kmerCountMap[newStr] = count;
-
-            // Create the new vertex and edge in the graph
-            // Skip if the vertex already exists
-            if(pGraph->getVertex(newStr) != NULL)
-            {
-                std::cout << "Loop\n";
-                continue;
-            }
-            
-            // Allocate the new vertex and add it to the graph
-            Vertex* pVertex = new(pGraph->getVertexAllocator()) Vertex(newStr, newStr);
-            pVertex->setColor(GC_BLACK);
-            pGraph->addVertex(pVertex);
-
-            // Add edges
-            BuilderCommon::addSameStrandDeBruijnEdges(pGraph, curr.pVertex, pVertex, curr.direction);
-            
-            if(curr.distance == extension_distance)
-            {
-                // Done with this extension
-                if(curr.direction == ED_SENSE)
-                    sense_join_vector.push_back(pVertex);
-                else
-                    antisense_join_vector.push_back(pVertex);
-            }
-            else
-            {
-                queue.push(BuilderExtensionNode(pVertex, curr.direction, curr.distance + 1));
-            }
-        }
-        
-        if(!extensionsUsed.empty())
-            total_branches += extensionsUsed.size() - 1;
-    }
-
-    printf("Iterations: %zu total branch: %zu queue: %zu\n", iterations, total_branches, queue.size());
-
-    /*
-    std::string result_str = (pSenseJoin != NULL && pAntisenseJoin != NULL) ? "OK" : "FAIL";
-    printf("VariantStringGraph\t%s\tMS:%zu\tTB:%zu\tNI:%zu\n", result_str.c_str(), max_simul_branches_used, total_branches, iterations);
-    */
-
-    // If the graph construction was successful, walk the graph
-    // between the endpoints to make a string
-    // Generate haplotypes between every pair of antisense/sense join vertices
-    for(size_t i = 0; i < antisense_join_vector.size(); ++i) {
-        for(size_t j = 0; j < sense_join_vector.size(); ++j) {
-            SGWalkVector outWalks;
-            SGSearch::findWalks(antisense_join_vector[i],
-                                sense_join_vector[j],
-                                ED_SENSE,
-                                100000, // max distance to search
-                                10000, // max nodes to search
-                                true, // exhaustive search
-                                outWalks);
-
-            for(size_t k = 0; k < outWalks.size(); ++k)
-                haplotypes.push_back(outWalks[k].getString(SGWT_START_TO_END));
-        }
-    }
-    
-    printf("Built %zu walks\n", haplotypes.size());
-    for(size_t i = 0; i < haplotypes.size(); ++i) {
-        printf("w[%zu]: %s\n", i, haplotypes[i].c_str());
-    }
-    delete pGraph;
-
-   // if(haplotypes.size() > 20)
-   //     haplotypes.clear();
-    filterIncoherentHaplotypes(haplotypes);
-    return !haplotypes.empty();
-}
-
-//
-void GraphCompare::filterIncoherentHaplotypes(StringVector& haplotypes)
-{
-    // Extract reads matching the haplotypes
-    SeqItemVector variant_reads;
-    SeqItemVector variant_rc_reads;
-
-    // Forward reads
-    HapgenUtil::extractHaplotypeReads(haplotypes, 
-                                      m_parameters.pVariantBWT, 
-                                      m_parameters.pVariantBWTCache, 
-                                      m_parameters.pVariantSSA, 
-                                      41, 
-                                      false, 
-                                      1000000, 
-                                      &variant_reads, 
-                                      NULL);
-
-    // Reverse reads
-    HapgenUtil::extractHaplotypeReads(haplotypes, 
-                                      m_parameters.pVariantBWT, 
-                                      m_parameters.pVariantBWTCache, 
-                                      m_parameters.pVariantSSA, 
-                                      41, 
-                                      true, 
-                                      100000, 
-                                      &variant_rc_reads, 
-                                      NULL);
-
-    for(size_t i = 0; i < variant_rc_reads.size(); ++i)
-    {
-        SeqItem reversed;
-        reversed.id = variant_rc_reads[i].id;
-        reversed.seq = reverseComplement(variant_rc_reads[i].seq.toString());
-        variant_reads.push_back(reversed);
-    }
-
-    // Build a multiple alignment of the sequences to each haplotype
-    for(size_t i = 0; i < haplotypes.size(); ++i)
-    {
-        SeqItem hap_item;
-        hap_item.id = "haplotype";
-        hap_item.seq = haplotypes[i];
-        SeqItemVector ma_sequences;
-        ma_sequences.push_back(hap_item);
-        ma_sequences.insert(ma_sequences.end(), variant_reads.begin(), variant_reads.end());
-
-        MultiAlignment multiple_alignment = MultiAlignmentTools::alignSequencesLocal(ma_sequences);
-        multiple_alignment.filterByEditDistance(0);
-        multiple_alignment.print(120, NULL, true, true);
-    }
-}   
-
-// Transform inStr by substituting bases until all kmers covering it are found in the normal bwt
-bool GraphCompare::transformVariantString(const std::string& inStr, std::string& outStr)
-{
-    size_t k = m_parameters.kmer;
-    std::string inCopy = inStr;
-    for(size_t i = k; i < inStr.size() - k + 1; ++i)
-    {
-        char cb = inStr[i];
-        for(size_t j = 0; j < DNA_ALPHABET_SIZE; ++j)
-        {
-            char tb = DNA_ALPHABET::getBase(j);
-            if(cb == tb)
-                continue;
-            inCopy[i] = tb;
-
-            IntVector profile = makeCountProfile(inCopy, k, m_parameters.pBaseBWT, 100);
-            bool allOK = true;
-            for(size_t m = 0; m < profile.size(); ++m)
-            {
-                if(profile[m] < (int)m_parameters.kmerThreshold)
-                {
-                    allOK = false;
-                    break;
-                }
-            }
-
-            if(allOK)
-            {
-                outStr = inCopy;
-                return true;
-            }
-        }
-
-        inCopy[i] = cb;
-    }
-
-    return false;
-}
-
 // Update the bit vector with the kmers that were assembled into str
 void GraphCompare::markVariantSequenceKmers(const std::string& str)
 {
@@ -783,6 +581,38 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
         }
     }
 }
+
+//
+size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache)
+{
+    size_t k = 99;
+    size_t min_k = 15;
+    while(k >= min_k)
+    {
+        if(sequence.size() < k)
+            continue;
+        bool covered = true;
+        size_t nk = sequence.size() - k + 1;
+        for(size_t i = 0; i < nk; ++i)
+        {
+            std::string kmer = sequence.substr(i, k);
+            int c = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, pBWT, pBWTCache);
+
+            if(c < min_depth)
+            {
+                covered = false;
+                break;
+            }
+        }
+
+        if(covered)
+            return k;
+        k -= 1;
+    }
+
+    return 0;
+}
+
 
 // Update the counts of each error type
 void GraphCompare::updateVariationCount(const BubbleResult& result)

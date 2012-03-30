@@ -55,85 +55,348 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
     assert(m_parameters.pVariantBWT != NULL);
     assert(!m_initial_kmer_string.empty());
 
-    // Start the haplotype generation process by finding reads containing the initial kmer
-    HaplotypeReadVector positioned_reads;
-    std::vector<std::string> initial_query_kmers;
-    initial_query_kmers.push_back(m_initial_kmer_string);
-    addPositionedReadsForKmers(m_initial_kmer_string, initial_query_kmers, &positioned_reads);
+    //
+    // Step 1. Generate an initial seed haplotype by aligning all the reads containing
+    // the seed kmer against each other
+    //
+    std::string haplotype = generateSeedHaplotype(m_initial_kmer_string);
+    printf("Initial seed haplotype: %s\n", haplotype.c_str());
 
+    // We expect the haplotype to eventually meet the sequence
+    // that is in the base reads/reference
+    bool right_rejoined = false;
+    bool left_rejoined = false;
+    int MAX_ROUNDS = 10;
     int round = 0;
-    bool extended = false;
-    std::string consensus = "";
-    do {
-        extended = false;
-        MultipleAlignment multiple_alignment = buildMultipleAlignment(positioned_reads);
-        int MAX_CONFLICT = 1000;
-//        int MIN_COVERAGE = 0;
-        consensus = getConsensus(&multiple_alignment, 0, MAX_CONFLICT);
-        
-        //if(round % 10 == 0) 
-        {
-            printf("Round %d\n", round++);
-            multiple_alignment.print(200);
-        }
-
-        // Attempt to extend the haplotype using newly found variant kmers if a consensus was computed
-        if(!consensus.empty())
-        {
-            // Renumber the positioned reads to start from zero
-            std::sort(positioned_reads.begin(), positioned_reads.end());
-            
-            int leftmost = positioned_reads.front().position;
-            for(size_t i = 0; i < positioned_reads.size(); ++i)
-                positioned_reads[i].position -= leftmost;
-
-            std::vector<std::string> extension_kmer_vector = getExtensionKmers(consensus);
-            if(!extension_kmer_vector.empty())
-            {
-                // Find the position of the extension kmer in the consensus
-                addPositionedReadsForKmers(consensus, extension_kmer_vector, &positioned_reads);
-                extended = true;
-            }
-            else
-            {
-                // Clip the consensus to the endpoints of the kmers that map onto the base/reference
-                int clip_k = m_parameters.kmer;
-                int num_kmers = consensus.size() - clip_k + 1;
-                int left_clip = num_kmers;
-                int right_clip = -1;
-
-                for(int i = 0; i < num_kmers; ++i)
-                {
-                    std::string kmer_sequence = consensus.substr(i, clip_k);
- 
-                    // Check whether the kmer exists in the base reads/reference
-                    size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence,
-                                                                              m_parameters.pBaseBWT, 
-                                                                              m_parameters.pBaseBWTCache);
-                    if(base_count > 0 && i < left_clip)
-                        left_clip = i;
-                    if(base_count > 0 && i > right_clip)
-                        right_clip = i;
-                }
-                
-                printf("Clip range: [%d %d]\n", left_clip, right_clip);
-                if(left_clip == num_kmers || right_clip == -1)
-                    consensus = "";
-                else
-                    consensus = consensus.substr(left_clip, right_clip - left_clip + clip_k);
-            }
-        }
-    } while(extended);
-
-    if(!consensus.empty() && consensus.size() >= 105) 
+    //
+    // Right extension
+    //
+    bool continue_extension = true;
+    while(continue_extension)
     {
-        std::cout << "Consensus: " << consensus << "\n";
-        out_haplotypes.push_back(consensus);
+        size_t length_before = haplotype.size();
+        bool is_unambiguous = extendHaplotype(&haplotype);
+        size_t length_after = haplotype.size();
+        bool was_extended = length_after > length_before;
+        
+        // Check if haplotype rejoins base/reference sequence
+        right_rejoined = checkAndRejoin(&haplotype, 10);
+        continue_extension = round < MAX_ROUNDS && was_extended && is_unambiguous && !right_rejoined;
     }
 
+    //
+    // Left extension via reversing the haplotype
+    //
+    std::cout << "LEFT\n";
+    haplotype = reverseComplement(haplotype);
+    round = 0;
+    continue_extension = true;
+    while(continue_extension)
+    {
+        size_t length_before = haplotype.size();
+        bool is_unambiguous = extendHaplotype(&haplotype);
+        size_t length_after = haplotype.size();
+        bool was_extended = length_after > length_before;
+        
+        // Check if haplotype rejoins base/reference sequence
+        left_rejoined = checkAndRejoin(&haplotype, 10);
+        continue_extension = round < MAX_ROUNDS && was_extended && is_unambiguous && !left_rejoined;
+    }
+    
+    haplotype = reverseComplement(haplotype);
+    printf("FINAL: %s\n", haplotype.c_str());
+
+    if(haplotype.size() > 100 && left_rejoined && right_rejoined)
+        out_haplotypes.push_back(haplotype);
     return HBRC_OK;
 }
 
+//
+std::string ReadCoherentHaplotypeBuilder::generateSeedHaplotype(const std::string& kmer)
+{
+    // Extract all the reads that contain this kmer and order them by the position
+    // of the kmer within the sequence
+    HaplotypeReadVector positioned_reads;
+    std::vector<std::string> initial_query_kmers;
+    initial_query_kmers.push_back(kmer);
+    addPositionedReadsForKmers(kmer, initial_query_kmers, &positioned_reads);
+    assert(!positioned_reads.empty());
+
+    // Compute a multiple alignment from the order of reads
+    MultipleAlignment multiple_alignment = buildMultipleAlignmentUngapped(positioned_reads);
+    multiple_alignment.print(200);
+
+    // Compute an initial consensus for the multiple alignment
+    // We limit the consensus to a window where all columns within the window have at least N depth
+    std::vector<int> depth_vector;
+    std::string initial = "";
+    size_t total_columns = multiple_alignment.getNumColumns();
+    for(size_t i = 0; i < total_columns; ++i)
+    {
+        SymbolCountVector symbol_counts = multiple_alignment.getSymbolCountVector(i);
+        assert(!symbol_counts.empty());
+        std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
+        
+        // Calculate depth at this column
+        int depth = 0;
+        char max_base = '\0';
+        for(size_t j = 0; j < symbol_counts.size(); ++j)
+        {
+            depth += symbol_counts[j].count;
+            if(max_base == '\0')
+                max_base = symbol_counts[j].symbol;
+        }
+        depth_vector.push_back(depth);
+        initial.push_back(max_base);
+    }
+
+    // Calculate the maximal window in which the coverage is deep enough to make a call
+    int MIN_DEPTH = m_parameters.kmerThreshold;
+    std::vector<size_t> window_starts;
+    std::vector<size_t> window_ends;
+
+    bool in_window = false;
+    for(size_t i = 0; i < depth_vector.size(); ++i)
+    {
+        if(!in_window && depth_vector[i] >= MIN_DEPTH)
+        {
+            window_starts.push_back(i);
+            in_window = true;
+        }
+
+        if(in_window && depth_vector[i] < MIN_DEPTH)
+        {
+            window_ends.push_back(i);
+            in_window = false;
+        }
+    }
+    
+    // end the last window
+    if(in_window)
+        window_ends.push_back(depth_vector.size());
+    assert(window_starts.size() == window_ends.size());
+
+    // Choose longest window
+    size_t best_window_idx = 0;
+    size_t best_window_size = 0;
+    for(size_t i = 0; i < window_starts.size(); ++i)
+    {
+        size_t s = window_ends[i] - window_starts[i];
+        if(s > best_window_size)
+        {
+            best_window_size = s;
+            best_window_idx = i;
+        }
+    }
+
+    if(best_window_size > 0)
+    {
+        printf("Best window [%zu %zu]\n", window_starts[best_window_idx], window_ends[best_window_idx]);
+        std::string w = initial.substr(window_starts[best_window_idx], best_window_size);
+        
+        // Remove gaps
+        std::string consensus;
+        for(size_t i = 0; i < w.size(); ++i)
+        {
+            if(w[i] != '-')
+                consensus.push_back(w[i]);
+            else
+                assert(false);
+        }
+        return w;
+    }
+    else
+    {
+        return "";
+    }
+}
+
+static bool sortPairSecond(const std::pair<int, int>& a, const std::pair<int, int>& b)
+{
+    return a.second < b.second;
+}
+
+//
+bool ReadCoherentHaplotypeBuilder::extendHaplotype(std::string* haplotype)
+{
+    // Recruit new reads that may overlap this haplotype
+    std::set<std::string> kmer_set;
+    size_t k = m_parameters.kmer;
+    size_t nk = haplotype->size() - k + 1;
+    for(size_t i = 0; i < nk; ++i)
+    {
+        std::string kmer = haplotype->substr(i, k);
+        if(m_used_kmers.find(kmer) == m_used_kmers.end())
+            kmer_set.insert(kmer);
+    }
+
+    std::vector<std::string> query_kmers(kmer_set.begin(), kmer_set.end());
+    StringVector new_reads;
+    getReadsForKmers(query_kmers, &new_reads);
+    printf("Found %zu new reads from %zu kmers\n", new_reads.size(), query_kmers.size());
+
+    // Filter out reads using following conditions:
+    //   a) discard reads that do not have a proper suffix overlap of M bases with the haplotype
+    //   b) discard reads that have more than N mismatches to the haplotype
+    //   c) discard reads that do not match the haplotype at conflicting columns
+    size_t CALL_DEPTH = m_parameters.kmerThreshold;
+    int MAX_EDITS = 4;
+    int MIN_OVERLAP = m_parameters.kmer;
+    
+    //
+    std::vector<std::pair<int,int> > order_read_vector;
+
+    // Overlap the new reads with the haplotype
+    for(size_t i = 0; i < new_reads.size(); ++i)
+    {
+        SequenceOverlap overlap = Overlapper::computeOverlap(*haplotype, new_reads[i]);
+        
+        bool accept_read = true;
+        // Check for proper overlap
+        if(overlap.match[1].start != 0 || overlap.match[0].end != (int)haplotype->size() - 1)
+            accept_read = false;
+        
+        // Check for overlap length
+        if(overlap.getOverlapLength() < MIN_OVERLAP)
+            accept_read = false;
+
+        // Check for edits
+        if(overlap.edit_distance > MAX_EDITS)
+            accept_read = false;
+
+        if(accept_read)
+            order_read_vector.push_back(std::make_pair(i, overlap.match[0].start));
+    }
+
+    // Sort the ordering vector by the read alignment position along the haplotype
+    std::sort(order_read_vector.begin(), order_read_vector.end(), sortPairSecond);
+
+    // Build the multiple alignment by aligning each read with the previous read added
+    MultipleAlignment multiple_alignment;
+    multiple_alignment.addBaseSequence("haplotype", *haplotype, "");
+    std::string* previous = haplotype;
+    for(size_t i = 0; i < order_read_vector.size(); ++i)
+    {
+        size_t idx = order_read_vector[i].first;
+
+        SequenceOverlap overlap = Overlapper::computeOverlap(*previous, new_reads[idx], ungapped_params);
+
+        // Ensure the overlap is a proper suffix overlap
+        bool is_proper_0 = overlap.match[0].start > 0 && overlap.match[0].end == (int)previous->size() - 1;
+        bool is_proper_1 = overlap.match[1].start == 0 && overlap.match[1].end < (int)previous->size() - 1;
+        //bool has_gap = overlap.cigar.find_first_of("ID") != std::string::npos;
+        if(is_proper_0 && is_proper_1)
+        {
+            //overlap.printAlignment(*previous, new_reads[idx]);
+            multiple_alignment.addExtension("ext", new_reads[idx], "", overlap);
+            previous = &new_reads[idx];
+        }
+    }
+
+    // Filter the multiple alignment to achieve condition c
+    multiple_alignment.print(200);
+    multiple_alignment.filterByCount(CALL_DEPTH);
+    if(!multiple_alignment.isValid())
+        return false;
+    multiple_alignment.print(200);
+
+    // Compute the consensus sequence of the bases that extend the haplotype.
+    // We only extend while there is an unambiguous extension and the sequence
+    // is deep enough.
+    
+    // Find the first column after the last base of the haplotype
+    size_t first_extend_column = 0;
+
+    // Make sure there are no left-overhangs
+    size_t total_columns = multiple_alignment.getNumColumns();
+    assert(multiple_alignment.getSymbol(0, 0) != '\0');
+    while(first_extend_column < total_columns && multiple_alignment.getSymbol(0, first_extend_column) != '\0')
+        ++first_extend_column;
+    assert(first_extend_column == total_columns || multiple_alignment.getSymbol(0, first_extend_column) == '\0');
+    
+    std::string extension = "";
+
+    bool is_unambiguous = true;
+
+    for(size_t i = first_extend_column; i < total_columns; ++i)
+    {
+        SymbolCountVector symbol_counts = multiple_alignment.getSymbolCountVector(i);
+        assert(!symbol_counts.empty());
+        std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
+        
+        // Calculate depth at this column
+        size_t total_depth = 0;
+        char max_base = '\0';
+        size_t max_depth = 0;
+        size_t second_depth = 0;
+        for(size_t j = 0; j < symbol_counts.size(); ++j)
+        {
+            total_depth += symbol_counts[j].count;
+
+            // Record the first and second most frequent bases in this column
+            if(max_depth == 0) 
+            {
+                max_depth = symbol_counts[j].count;
+                max_base = symbol_counts[j].symbol;
+            }
+            else if(second_depth == 0)
+            {
+                second_depth = symbol_counts[j].count;
+            }
+        }
+
+        // If the second-deepest base is greater than the MIN_CALL this 
+        // column is ambiguous. Stop extension.
+        if(second_depth >= CALL_DEPTH)
+        {
+            is_unambiguous = false;
+            break;
+        }
+
+        if(total_depth >= CALL_DEPTH)
+        {
+            if(max_base != '-')
+                extension.push_back(max_base);
+        }
+        else
+        {
+            break; // not enough depth to extend
+        }
+    }
+    
+    haplotype->append(extension);
+    return is_unambiguous;
+}
+
+//
+bool ReadCoherentHaplotypeBuilder::checkAndRejoin(std::string* haplotype, int max_distance)
+{
+    size_t k = m_parameters.kmer;
+    if(haplotype->size() < k)
+        return false;
+
+    int nk = haplotype->size() - k + 1;
+    int ki = nk - 1;
+    while(ki >= 0 && ki >= nk - max_distance)
+    {
+        std::string ks = haplotype->substr(ki, k);
+        // Check if present in base index
+        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(ks, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
+        if(base_count > 0)
+        {
+            // join found
+            // trim haplotype to this kmer
+            *haplotype = haplotype->substr(0, ki + k);
+            return true;
+        }
+        ki -= 1;
+    }
+
+    // no join
+    return false;
+}
+
+//
 void ReadCoherentHaplotypeBuilder::addPositionedReadsForKmers(const std::string& consensus,
                                                               const std::vector<std::string>& kmer_vector,
                                                               HaplotypeReadVector* positioned_reads)
@@ -205,8 +468,42 @@ void ReadCoherentHaplotypeBuilder::addPositionedReadsForKmers(const std::string&
         m_used_kmers.insert(kmer_vector[i]);
 }
 
+void ReadCoherentHaplotypeBuilder::getReadsForKmers(const std::vector<std::string>& kmer_vector,
+                                                    std::vector<std::string>* out_reads)
+{
+    SeqItemVector reads;
+    SeqItemVector rc_reads;
+    size_t extraction_kmer = 31;
+
+    // Forward reads
+    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, 
+                                      m_parameters.pVariantSSA, extraction_kmer, false, 100000, &reads, NULL);
+
+    // Reverse reads
+    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, 
+                                      m_parameters.pVariantSSA, extraction_kmer, true, 100000, &rc_reads, NULL);
+
+    // Copy reads into the positioned read vector, initially with unset positions
+    for(size_t i = 0; i < reads.size(); ++i)
+    {
+        std::string read_sequence = reads[i].seq.toString();
+        out_reads->push_back(read_sequence);
+    }
+
+    // reversed reads
+    for(size_t i = 0; i < rc_reads.size(); ++i) 
+    {
+        std::string read_sequence = reverseComplement(rc_reads[i].seq.toString());
+        out_reads->push_back(read_sequence);
+    }
+
+    // record that we have used these kmers to extract reads.
+    for(size_t i = 0; i < kmer_vector.size(); ++i)
+        m_used_kmers.insert(kmer_vector[i]);
+}
+
 //
-MultipleAlignment ReadCoherentHaplotypeBuilder::buildMultipleAlignment(HaplotypeReadVector& positioned_reads) const
+MultipleAlignment ReadCoherentHaplotypeBuilder::buildMultipleAlignmentUngapped(HaplotypeReadVector& positioned_reads) const
 {
     // Sort the haplotype reads into ascending order by position
     std::sort(positioned_reads.begin(), positioned_reads.end());
@@ -247,214 +544,3 @@ MultipleAlignment ReadCoherentHaplotypeBuilder::buildMultipleAlignment(Haplotype
 
     return multiple_alignment;
 }
-
-
-//
-std::string ReadCoherentHaplotypeBuilder::getConsensus(MultipleAlignment* multiple_alignment, int min_call_coverage, int max_differences) const
-{
-    std::string initial_consensus = "";
-    size_t total_columns = multiple_alignment->getNumColumns();
-    for(size_t i = 0; i < total_columns; ++i)
-    {
-        SymbolCountVector symbol_counts = multiple_alignment->getSymbolCountVector(i);
-        assert(!symbol_counts.empty());
-
-        std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
-        // If this column has a maximum of symbols (2 or more bases with count >= max_differences)
-        // then we saw this is a divergent column and return no haplotype.
-        if(symbol_counts.size() >= 2)
-        {
-            if(symbol_counts[1].count >= max_differences)
-                return "";
-        }
-
-        // Not divergent, add the most frequent base to the consensus
-        size_t idx = 0;
-        while(symbol_counts[idx].symbol == '-' || symbol_counts[idx].symbol == '\0')
-            idx++;
-        
-        // Insert no-call if the consensus base does not have enough coverage
-        char c_base = 'N';
-        if(symbol_counts[idx].count >= min_call_coverage)
-            c_base = symbol_counts[idx].symbol;
-        initial_consensus.append(1, c_base);
-    }
-
-    // Copy the final consensus, truncating leading and trailing 'N's
-    // If there is an internal no call, the empty string is return
-    printf("Initial: %s\n", initial_consensus.c_str());
-
-    std::string consensus;
-    bool found_nocall_after_leader = false;
-    for(size_t i = 0; i < initial_consensus.size(); ++i)
-    {
-        if(initial_consensus[i] == 'N')
-        {
-            // If we have written any bases to the consensus
-            // This N represents the trailing sequence or an internal N
-            if(!consensus.empty())
-                found_nocall_after_leader = true;
-        }
-        else
-        {
-            // We have a real base after an internal N
-            // return nothing
-            if(found_nocall_after_leader)
-                return "";
-            else
-                consensus.push_back(initial_consensus[i]);
-        }
-    }
-    printf("Consens: %s\n", consensus.c_str());
-    return consensus;
-}
-
-//
-std::vector<std::string> ReadCoherentHaplotypeBuilder::getExtensionKmers(const std::string& sequence)
-{
-    assert(sequence.size() >= m_parameters.kmer);
-    int num_kmers = sequence.size() - m_parameters.kmer + 1;
-
-    // Construct a mask over the kmers of the sequence where a 1 indicates
-    // that kmer is allowed to be used to extend the sequence.
-    // We set a 1 for a kmer if:
-    //  a) it has been seen at least n times in the variant reads
-    //  b) it is not present in the base reads/reference
-    //  c) we have not used it in a previous pass
-    //  d) its position is not to the left of the leftmost kmer that is in the base/reference
-    //     (or, right of the rightmost)
-    int leftmost_base_kmer = -1;
-    int rightmost_base_kmer = num_kmers;
-
-    // Use the FM-index to set the mask for the first 3 conditions
-    std::vector<bool> allow_kmer_extension(num_kmers, false);
-    std::vector<bool> base_kmer_exists(num_kmers, false);
-    for(int i = 0; i < num_kmers; ++i)
-    {
-        std::string kmer_sequence = sequence.substr(i, m_parameters.kmer);
-
-        // Check whether the kmer exists in the base reads/reference
-        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
-                                                                             m_parameters.pBaseBWT, 
-                                                                             m_parameters.pBaseBWTCache);
-        
-        if(base_count > 0)
-        {
-            // Exists in the reference or base. Record the position
-            if(leftmost_base_kmer == -1 || i < leftmost_base_kmer)
-                leftmost_base_kmer = i;
-            if(rightmost_base_kmer == num_kmers || i > rightmost_base_kmer)
-                rightmost_base_kmer = i;
-            
-            base_kmer_exists[i] = true;
-
-            // short circuit so we don't do the other FM-index lookup
-            continue;
-        }
-        
-        // Check if we have used it before
-        bool used = m_used_kmers.find(kmer_sequence) != m_used_kmers.end();
-        if(used)
-            continue;
-        
-        // Check that this kmer has occured enough times in the variant reads
-        size_t var_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
-                                                                            m_parameters.pVariantBWT, 
-                                                                            m_parameters.pVariantBWTCache);
-
-        //
-        if(var_count >= 1)//m_parameters.kmerThreshold)
-            allow_kmer_extension[i] = true;
-
-    }
-
-    // Only use the left/right boundary if the are to the left/right of the kmer
-    // that we used to start building the haplotype
-    size_t initial_kmer_position = sequence.find(m_initial_kmer_string);
-    if(initial_kmer_position == std::string::npos)
-    {
-        std::cerr << "Development warning: initial kmer was corrected out of the sequence\n";
-        return std::vector<std::string>();
-    }
-
-    if(leftmost_base_kmer > (int)initial_kmer_position)
-        leftmost_base_kmer = -1;
-    if(rightmost_base_kmer < (int)initial_kmer_position)
-        rightmost_base_kmer = num_kmers;
-
-    printf("Bounds: [%d %d]\n", leftmost_base_kmer, rightmost_base_kmer);
-    
-    printf("Mask before: ");
-    for(int i = 0; i < num_kmers; ++i)
-        printf("%d", (int)allow_kmer_extension[i]);
-    printf("\n");
-
-    // Unset the flag for the kmers beyond the left end
-    for(int i = 0; i < leftmost_base_kmer; ++i)
-        allow_kmer_extension[i] = false;
-
-    // and the rightmost
-    for(int i = num_kmers - 1; i > rightmost_base_kmer; --i)
-        allow_kmer_extension[i] = false;
-
-    printf("Mask after:  ");
-    for(int i = 0; i < num_kmers; ++i)
-        printf("%d", (int)allow_kmer_extension[i]);
-    printf("\n");
-
-    printf("Base exist:  ");
-    for(int i = 0; i < num_kmers; ++i)
-        printf("%d", (int)base_kmer_exists[i]);
-    printf("\n");
-
-    // Extract the kmer sequences
-    std::vector<std::string> out_vector;
-    for(int i = 0; i < num_kmers; ++i)
-    {
-        if(allow_kmer_extension[i])
-            out_vector.push_back(sequence.substr(i, m_parameters.kmer));
-    }
-
-    return out_vector;
-}
-
-//
-std::vector<std::string> ReadCoherentHaplotypeBuilder::getExtensionKmers(const MultipleAlignment* multiple_alignment, 
-                                                                         const HaplotypeReadVector* reads)
-{
-    size_t k = m_parameters.kmer;
-    size_t num_columns = multiple_alignment->getNumColumns();
-    std::vector<bool> unique_kmer(num_columns, false);
-    std::vector<bool> base_kmer(num_columns, false);
-    
-    std::set<std::string> unique_kmer_set;
-    for(size_t i = 0; i < reads->size(); ++i)
-    {
-        const std::string& sequence = reads->at(i).sequence;
-        size_t nk = sequence.size() - k + 1;
-        for(size_t j = 0; j < nk; ++j)
-        {
-            std::string kmer_sequence = sequence.substr(j, k);
-            size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
-                                                                                 m_parameters.pBaseBWT, 
-                                                                                 m_parameters.pBaseBWTCache);
-            if(base_count > 0)
-                base_kmer[j + reads->at(i).position] = true;
-
-            size_t var_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
-                                                                                m_parameters.pVariantBWT, 
-                                                                                m_parameters.pVariantBWTCache);
-
-            //
-            if(var_count >= 1)
-            {
-                unique_kmer[j + reads->at(i).position] = true;
-                unique_kmer_set.insert(kmer_sequence);
-            }
-        }
-    }
-
-    std::vector<std::string> out_vector(unique_kmer_set.begin(), unique_kmer_set.end());
-    return out_vector;
-}
-

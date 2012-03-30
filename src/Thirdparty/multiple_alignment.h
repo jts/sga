@@ -77,6 +77,12 @@ struct MultipleAlignmentElement
     // Extend the length of the trailing columns by n bases
     void extendTrailing(size_t n);
 
+    // Trim the length of the leading column by n bases
+    void trimLeading(size_t n);
+
+    // Trim the length of the trailing column by n bases
+    void trimTrailing(size_t n);
+
     // Data
     std::string name;
     std::string padded_sequence;
@@ -141,6 +147,12 @@ class MultipleAlignment
                           const std::string& incoming_quality,
                           const SequenceOverlap& previous_incoming_overlap);
 
+        // Check if the multiple alignment is valid
+        // In extension mode after filtering the multiple alignment
+        // may not be contiguous. This function checks for this case and
+        // return false if so
+        bool isValid() const;
+
         // Calculate a new consensus sequence for the base sequence of the multiple alignment
         // A base call is changed only if it has been seen in less than min_call_coverage sequences
         // Leading/trailing bases are trimmed from the consensus sequence if there is less than
@@ -161,7 +173,7 @@ class MultipleAlignment
 
         // Filter out sequences using a vector of bools
         // This is to allow client code to calculate the filtering externally, then
-        // apply the vector to the multiple alignment
+        // apply the vector to the multiple alignment. If vector[i] is TRUE, the sequence is KEPT.
         void filterByVector(const std::vector<bool>& keep_vector);
 
         // Returns a vector of <symbol,count> pairs for the non-zero symbols of the requested column
@@ -210,6 +222,11 @@ class MultipleAlignment
         // Insert a new gap into all sequences in the multiple alignment
         // before the given column
         void insertGapBeforeColumn(size_t column_index);
+
+        // After removing reads from the multiple alignment there
+        // may be empty leading or trailing columns. This function
+        // removes these
+        void trimEmptyColumns();
 
         // Expand a cigar string by having one symbol per event instead
         // of run length encoding

@@ -23,7 +23,7 @@ void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReference")
     LRAlignment::LRParams params;
 
-    params.zBest = 10;
+    params.zBest = 20;
 
     for(size_t i = 0; i <= 1; ++i)
     {

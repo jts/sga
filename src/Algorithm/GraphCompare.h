@@ -145,15 +145,15 @@ class GraphCompare
         
         // Mark all the kmers in str as being visited
         void markVariantSequenceKmers(const std::string& str);
+        
+        // Calculate the largest k such that every k-mer in the sequence is present at least min_depth times in the BWT
+        size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache);
 
         // Update statistics 
         void updateVariationCount(const BubbleResult& result);
 
         // Debug/testing functions
         bool buildVariantStringGraph(const std::string& startingKmer, StringVector& haplotypes);
-        bool buildCoherencyGraph(const std::string& startingKmer, StringVector& haplotypes);
-
-        void filterIncoherentHaplotypes(StringVector& haplotypes);
 
         bool transformVariantString(const std::string& inStr, std::string& outStr);
         IntVector makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max);

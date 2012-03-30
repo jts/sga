@@ -50,6 +50,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     HapgenUtil::coalesceAlignments(candidateAlignments);
     
     size_t MAX_ALIGNMENTS = 2;
+    printf("Found %zu alignments\n", candidateAlignments.size());
     if(candidateAlignments.size() > MAX_ALIGNMENTS)
         return DRC_AMBIGUOUS_ALIGNMENT;
 

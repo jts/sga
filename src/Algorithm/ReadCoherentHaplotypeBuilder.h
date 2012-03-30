@@ -54,21 +54,26 @@ class ReadCoherentHaplotypeBuilder
         
     private:
     
+        // Generate a seed haplotype by assembling all the reads that contain the seed kmer
+        std::string generateSeedHaplotype(const std::string& kmer);
+
+        // Extend a haplotype using overlapping reads. Return true if the haplotype
+        // extended without ambiguity.
+        bool extendHaplotype(std::string* haplotype);
+
+        // Check if the haplotype has rejoined to the base/reference sequence
+        // If so, trim the haplotype so that the last kmer in the haplotype is a shared kmer
+        // Search up to max_distance away from the end of the haplotype
+        bool checkAndRejoin(std::string* haplotype, int max_distance);
+
         // Find reads with the given kmer and calculate their inferred position on the haplotype we are building
         void addPositionedReadsForKmers(const std::string& consensus, const std::vector<std::string>& kmer_vector, HaplotypeReadVector* positioned_reads);
+        
+        // Extract raw reads that contain a kmer given by the vector
+        void getReadsForKmers(const std::vector<std::string>& kmer_vector, std::vector<std::string>* reads);
 
         // Build a multiple alignment of all the reads that are potentially part of this haplotype
-        MultipleAlignment buildMultipleAlignment(HaplotypeReadVector& positioned_reads) const;
-
-        // Compute a consensus sequence for the multiple alignment
-        std::string getConsensus(MultipleAlignment* multiple_alignment, int min_call_coverage, int max_differences) const;
-
-        // Check whether the input sequence has any unique kmers that can be used to extend the haplotype
-        std::vector<std::string> getExtensionKmers(const std::string& sequence);
-
-        // Use the read sequences to extend to new unique kmers
-        std::vector<std::string> getExtensionKmers(const MultipleAlignment* multiple_alignment, 
-                                                   const HaplotypeReadVector* reads);
+        MultipleAlignment buildMultipleAlignmentUngapped(HaplotypeReadVector& positioned_reads) const;
 
         //
         // Data
