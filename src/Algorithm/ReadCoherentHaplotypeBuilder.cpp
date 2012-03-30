@@ -60,6 +60,9 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
     // the seed kmer against each other
     //
     std::string haplotype = generateSeedHaplotype(m_initial_kmer_string);
+    if(haplotype.empty())
+        return HBRC_OK;
+
     printf("Initial seed haplotype: %s\n", haplotype.c_str());
 
     // We expect the haplotype to eventually meet the sequence
