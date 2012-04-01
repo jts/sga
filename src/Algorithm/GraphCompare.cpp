@@ -192,7 +192,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 
                 //printf("Build %zu var haps %zu base haps\n", variant_haplotypes.size(), base_haplotypes.size());
 
-                if(build_result.variant_haplotypes.size() > 0/* && build_result.base_haplotypes.size() > 0*/)
+                if(build_result.variant_haplotypes.size() > 0 && build_result.base_haplotypes.size() > 0)
                 {
                     std::cout << "Running dindel\n";
                     std::stringstream baseVCFSS;

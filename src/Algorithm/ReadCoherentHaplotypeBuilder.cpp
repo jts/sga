@@ -84,7 +84,7 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
         
         // Check if haplotype rejoins base/reference sequence
         right_rejoined = checkAndRejoin(&haplotype, 10);
-        continue_extension = round < MAX_ROUNDS && was_extended && is_unambiguous && !right_rejoined;
+        continue_extension = round++ < MAX_ROUNDS && was_extended && is_unambiguous && !right_rejoined;
     }
 
     //
@@ -103,7 +103,7 @@ HaplotypeBuilderReturnCode ReadCoherentHaplotypeBuilder::run(StringVector& out_h
         
         // Check if haplotype rejoins base/reference sequence
         left_rejoined = checkAndRejoin(&haplotype, 10);
-        continue_extension = round < MAX_ROUNDS && was_extended && is_unambiguous && !left_rejoined;
+        continue_extension = round++ < MAX_ROUNDS && was_extended && is_unambiguous && !left_rejoined;
     }
     
     haplotype = reverseComplement(haplotype);
@@ -141,7 +141,7 @@ std::string ReadCoherentHaplotypeBuilder::generateSeedHaplotype(const std::strin
         std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
         
         // Calculate depth at this column
-        int depth = 0;
+        /*int depth = 0;
         char max_base = '\0';
         for(size_t j = 0; j < symbol_counts.size(); ++j)
         {
@@ -149,6 +149,10 @@ std::string ReadCoherentHaplotypeBuilder::generateSeedHaplotype(const std::strin
             if(max_base == '\0')
                 max_base = symbol_counts[j].symbol;
         }
+        */
+        int depth = symbol_counts.front().count;
+        char max_base = symbol_counts.front().symbol;
+
         depth_vector.push_back(depth);
         initial.push_back(max_base);
     }
