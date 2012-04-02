@@ -12,7 +12,7 @@
 #include <time.h>
 #include <iostream>
 
-#define USE_PROFILER 1
+//#define USE_PROFILER 1
 #if defined(HAVE_CLOCK_GETTIME) && defined(USE_PROFILER)
 
 // Change this to determine how often the profile should print

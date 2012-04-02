@@ -82,24 +82,36 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
     if(!buildInitialGraph(reads))
         return HBRC_OK;
 
-    // Extend the graph by finding new overlaps for the reads at the tips
-    extendGraph();
-    extendGraph();
-    extendGraph();
+    bool done = false;
+    int MAX_ROUNDS = 4;
+    int round = 0;
+    while(!done) 
+    {
+        // Extend the graph by finding new overlaps for the reads at the tips
+        extendGraph();
 
-    // Clean up the graph
-    SGIdenticalRemoveVisitor dupVisit;
-    m_graph->visit(dupVisit);
+        // Clean up the graph
+        SGIdenticalRemoveVisitor dupVisit;
+        m_graph->visit(dupVisit);
 
-    // hack
-    WARN_ONCE("hacked containment flag");
-    m_graph->setContainmentFlag(false);
+        // hack
+        WARN_ONCE("hacked containment flag");
+        m_graph->setContainmentFlag(false);
 
-    SGTransitiveReductionVisitor trVisit;
-    m_graph->visit(trVisit);
+        SGTransitiveReductionVisitor trVisit;
+        m_graph->visit(trVisit);
 
-    // Check for walks that cover all seed vertices
-    checkWalks(&out_haplotypes);
+        // Check for walks that cover all seed vertices
+        checkWalks(&out_haplotypes);
+        
+        size_t num_vertices = m_graph->getNumVertices();
+        size_t num_tips = findTips().size();
+
+        done = round++ >= MAX_ROUNDS || !out_haplotypes.empty() || num_tips > 5;
+
+        printf("graph size: %zu tips: %zu\n", num_vertices, num_tips);
+    }
+
     return HBRC_OK;
 }
 
@@ -260,8 +272,8 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
 //
 VertexPtrVec OverlapHaplotypeBuilder::findTips() const
 {
+    PROFILE_FUNC("OverlapHaplotypeBuilder::findTips")
     VertexPtrVec out_vertices;
-
     VertexPtrVec vertices = m_graph->getAllVertices();
     for(size_t i = 0; i < vertices.size(); ++i)
     {
@@ -459,43 +471,6 @@ void OverlapHaplotypeBuilder::orderReadsInitial(const std::string& initial_kmer,
     // Insert the reads into the ordered list
     for(size_t i = 0; i < read_kmer_vector.size(); ++i)
         ordered_vector->push_back(reads[read_kmer_vector[i].first]);
-}
-
-// Insert the incoming reads into the ordered read list
-void OverlapHaplotypeBuilder::orderReadsExtended(const StringVector& incoming_reads, StringVector* ordered_vector)
-{
-    int MIN_OVERLAP = 30;
-    // Turn the vector into a list for efficient insertion
-    StringList ordered_list(ordered_vector->begin(), ordered_vector->end());
-
-    // Find the insertion position for every read
-    // It is a precondition that every read has a significant overlap
-    // with a read that is already ordered
-    for(size_t i = 0; i < incoming_reads.size(); ++i)
-    {
-        StringList::iterator insert_iterator = ordered_list.begin();
-        while(insert_iterator != ordered_list.end())
-        {
-            SequenceOverlap overlap = Overlapper::computeOverlap(incoming_reads[i], *insert_iterator);
-            bool is_left_overlap = overlap.match[0].start == 0;
-            bool is_right_overlap = overlap.match[0].end == (int)incoming_reads[i].size() - 1;
-            bool is_contain = !is_left_overlap && !is_right_overlap;
-            assert(!is_contain);
-            bool is_full_match = is_left_overlap && is_right_overlap;
-
-            // Check if we can insert here
-            if(is_full_match || (is_right_overlap && overlap.getOverlapLength() >= MIN_OVERLAP))
-                break;
-
-            insert_iterator++;
-        }
-        
-        ordered_list.insert(insert_iterator, incoming_reads[i]);
-    }
-    
-    // Turn the list back into a vector for output
-    ordered_vector->clear();
-    ordered_vector->insert(ordered_vector->end(), ordered_list.begin(), ordered_list.end());
 }
 
 //
