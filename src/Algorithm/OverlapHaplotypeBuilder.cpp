@@ -120,14 +120,8 @@ bool OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
     //MultipleAlignment ma = buildMultipleAlignment(ordered_reads);
     //ma.print(200);
 
-    // Insert the first read into the graph
-    std::stringstream id_ss;
-    id_ss << "seed-" << m_numReads++;
-    Vertex* pVertex = new(m_graph->getVertexAllocator()) Vertex(id_ss.str(), ordered_reads.front());
-    m_graph->addVertex(pVertex);
-
-    // Insert all other reads into the graph
-    for(size_t i = 1; i < ordered_reads.size(); ++i)
+    // Insert initial reads into graph
+    for(size_t i = 0; i < ordered_reads.size(); ++i)
         insertVertexIntoGraph("seed-", ordered_reads[i]);
     return true;
 }
@@ -172,29 +166,51 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
     Vertex* pVertex = new(m_graph->getVertexAllocator()) Vertex(id_ss.str(), sequence);
     m_graph->addVertex(pVertex);
 
-    // Slow function which tests the incoming read against everything in the graph
-    VertexPtrVec vertices = m_graph->getAllVertices();
-    for(size_t i = 0; i < vertices.size(); ++i) 
+    // Get a list of vertices that have a k-mer match to this sequence.
+    VertexPtrVec candidate_vertices;
+    size_t nk = sequence.size() - m_vertex_map_kmer + 1;
+    for(size_t i = 0; i < nk; ++i) 
+    {
+        std::string query_kmer = sequence.substr(i, m_vertex_map_kmer);
+        std::map<std::string, VertexPtrVec>::iterator find_iter = m_kmer_vertex_cache.find(query_kmer);
+        if(find_iter != m_kmer_vertex_cache.end())
+            candidate_vertices.insert(candidate_vertices.end(), find_iter->second.begin(), find_iter->second.end());
+    }
+
+    // Remove duplicates from the candidate list
+    std::sort(candidate_vertices.begin(), candidate_vertices.end());
+    VertexPtrVec::iterator new_end = std::unique(candidate_vertices.begin(), candidate_vertices.end());
+    candidate_vertices.resize(new_end - candidate_vertices.begin());
+
+    // Align the sequence against all reads
+    for(size_t i = 0; i < candidate_vertices.size(); ++i) 
     {
         // Skip self-edge
-        if(vertices[i] == pVertex)
+        if(candidate_vertices[i] == pVertex)
             continue;
 
         // TODO: replace this with fast function
-        std::string v_sequence = vertices[i]->getSeq().toString();
+        std::string v_sequence = candidate_vertices[i]->getSeq().toString();
         SequenceOverlap overlap = Overlapper::computeOverlap(v_sequence, sequence, ungapped_params);
         if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= MIN_OVERLAP)
         {
             // Add an overlap to the graph
             // Translate the sequence overlap struture into an SGA overlap
-            Overlap sga_overlap(vertices[i]->getID(), overlap.match[0].start, overlap.match[0].end, v_sequence.size(),
-                                         id_ss.str(), overlap.match[1].start, overlap.match[1].end, sequence.size(), false, 0);
+            Overlap sga_overlap(candidate_vertices[i]->getID(), overlap.match[0].start, overlap.match[0].end, v_sequence.size(),
+                                                   id_ss.str(), overlap.match[1].start, overlap.match[1].end, sequence.size(), false, 0);
             SGAlgorithms::createEdgesFromOverlap(m_graph, sga_overlap, true);
         }
     }
 
     // Insert the sequence into the used reads set
     m_used_reads.insert(sequence);
+
+    // Insert kmers into the kmer pointer cache
+    for(size_t i = 0; i < nk; ++i) 
+    {
+        std::string query_kmer = sequence.substr(i, m_vertex_map_kmer);
+        m_kmer_vertex_cache[query_kmer].push_back(pVertex);
+    }
 }
 
 // 

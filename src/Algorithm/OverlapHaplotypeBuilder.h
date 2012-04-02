@@ -95,9 +95,18 @@ class OverlapHaplotypeBuilder
         static const int MIN_OVERLAP = 61;
 
         std::string m_initial_kmer_string;
+
+        // Cache the sequences of reads in the graph to avoid adding redundant reads
         std::set<std::string> m_used_reads;
 
+        // Cache the corrected sequences for reads in the graph. Since we may visit the same
+        // raw sequence multiple times, this lets us avoid redundantly correcting the reads.
         std::map<std::string, std::string> m_correction_cache;
+
+        // A map from kmer->vertex. We use this when inserting new reads into the graph to avoid
+        // comparing incoming reads against everything
+        std::map<std::string, VertexPtrVec> m_kmer_vertex_cache;
+        static const size_t m_vertex_map_kmer = 31;
 };
 
 #endif
