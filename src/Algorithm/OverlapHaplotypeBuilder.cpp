@@ -79,15 +79,14 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
     printf("Corrected %zu initial reads\n", reads.size());
     
     // Start the graph using the corrected reads that contain the initial kmer
-    buildInitialGraph(reads);
+    if(!buildInitialGraph(reads))
+        return HBRC_OK;
 
     // Extend the graph by finding new overlaps for the reads at the tips
     extendGraph();
     extendGraph();
     extendGraph();
 
-    m_graph->writeASQG("hapgraph.asqg");
-    
     // Clean up the graph
     SGIdenticalRemoveVisitor dupVisit;
     m_graph->visit(dupVisit);
@@ -101,12 +100,11 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
 
     // Check for walks that cover all seed vertices
     checkWalks(&out_haplotypes);
-    m_graph->writeDot("hapgraph.dot");
     return HBRC_OK;
 }
 
 //
-void OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
+bool OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::buildInitialGraph")
     // Compute initial ordering of reads based on the position of the
@@ -115,12 +113,12 @@ void OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
     StringVector ordered_reads;
     orderReadsInitial(m_initial_kmer_string, reads, &ordered_reads);
 
-    if(ordered_reads.empty())
-        return;
+    if(ordered_reads.size() < m_parameters.kmerThreshold)
+        return false;
 
     // DEBUG print MA
-    MultipleAlignment ma = buildMultipleAlignment(ordered_reads);
-    ma.print(200);
+    //MultipleAlignment ma = buildMultipleAlignment(ordered_reads);
+    //ma.print(200);
 
     // Insert the first read into the graph
     std::stringstream id_ss;
@@ -131,7 +129,7 @@ void OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
     // Insert all other reads into the graph
     for(size_t i = 1; i < ordered_reads.size(); ++i)
         insertVertexIntoGraph("seed-", ordered_reads[i]);
-
+    return true;
 }
 
 //
@@ -435,16 +433,16 @@ void OverlapHaplotypeBuilder::orderReadsInitial(const std::string& initial_kmer,
             read_kmer_vector.push_back(std::make_pair(i, pos));
     }
 
+    // 
+    if(read_kmer_vector.empty())
+        return;
+
     // Sort the vector by the second element
     std::sort(read_kmer_vector.begin(), read_kmer_vector.end(), sortPairSecondAscending);
 
     // Insert the reads into the ordered list
-    assert(ordered_vector->empty());
     for(size_t i = 0; i < read_kmer_vector.size(); ++i)
         ordered_vector->push_back(reads[read_kmer_vector[i].first]);
-
-    // Build multiple alignment
-    assert(!ordered_vector->empty());
 }
 
 // Insert the incoming reads into the ordered read list

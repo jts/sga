@@ -51,7 +51,8 @@ class OverlapHaplotypeBuilder
         void correctReads(StringVector* reads);
 
         // Initialize the string graph using the corrected reads
-        void buildInitialGraph(const StringVector& reads);
+        // Returns true if the graph was successfully initialized
+        bool buildInitialGraph(const StringVector& reads);
 
         // Extend the graph by finding overlaps for the tip vertices
         void extendGraph();
