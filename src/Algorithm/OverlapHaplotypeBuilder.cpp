@@ -11,6 +11,7 @@
 #include "BWTAlgorithms.h"
 #include "SGSearch.h"
 #include "SGAlgorithms.h"
+#include "SGVisitors.h"
 #include "Profiler.h"
 #include "HapgenUtil.h"
 #include "multiple_alignment.h"
@@ -18,13 +19,39 @@
 //
 //
 //
-OverlapHaplotypeBuilder::OverlapHaplotypeBuilder()
+OverlapHaplotypeBuilder::OverlapHaplotypeBuilder(const GraphCompareParameters& params) : m_parameters(params), m_numReads(0)
 {
+    ErrorCorrectParameters correction_params;
+    correction_params.pOverlapper = NULL;
+    correction_params.pBWT = m_parameters.pVariantBWT;
+    correction_params.pSSA = m_parameters.pVariantSSA;
+    assert(m_parameters.pVariantBWTCache != NULL);
+    correction_params.pIntervalCache = m_parameters.pVariantBWTCache;
+    correction_params.algorithm = ECA_KMER;
+
+    // Overlap-based corrector params
+    correction_params.minOverlap = 51;
+    correction_params.numOverlapRounds = 1;
+    correction_params.minIdentity = 95.0f;
+    correction_params.conflictCutoff = 5;
+    correction_params.depthFilter = 100;
+
+    // k-mer based corrector params
+    correction_params.numKmerRounds = 10;
+    correction_params.kmerLength = 51;
+
+    // output options
+    correction_params.printOverlaps = true;
+
+    m_graph = new StringGraph;
+    m_corrector = new ErrorCorrectProcess(correction_params);
 }
 
 //
 OverlapHaplotypeBuilder::~OverlapHaplotypeBuilder()
 {
+    delete m_corrector;
+    delete m_graph;
 }
 
 // The source string is the string the bubble starts from
@@ -32,12 +59,6 @@ void OverlapHaplotypeBuilder::setInitialHaplotype(const std::string& sequence)
 {
     printf("\n\n***** Starting new haplotype %s\n", sequence.c_str());
     m_initial_kmer_string = sequence;
-}
-
-//
-void OverlapHaplotypeBuilder::setParameters(const GraphCompareParameters& parameters)
-{
-    m_parameters = parameters;
 }
 
 // Run the bubble construction process
@@ -50,84 +71,267 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
     // Start the haplotype generation process by finding reads containing the initial kmer
     StringVector query_kmers(1, m_initial_kmer_string);
     StringVector reads;
-    getReadsForKmers(query_kmers, &reads);
+    getReadsForKmers(query_kmers, m_parameters.kmer, &reads);
+    printf("Found %zu initial reads\n", reads.size());
+    // Correct sequencing errors in the reads
+    correctReads(&reads);
+    printf("Corrected %zu initial reads\n", reads.size());
     
-    printf("Starting processing with %zu reads\n", reads.size());
-    StringVector ordered_reads;
-    orderReadsInitial(m_initial_kmer_string, reads, &ordered_reads);
-    MultipleAlignment initial_ma = buildMultipleAlignment(ordered_reads);
-    initial_ma.print(200);
+    // Start the graph using the corrected reads that contain the initial kmer
+    buildInitialGraph(reads);
 
-    // Extend
-    std::string consensus = "";
-    bool done = false;
-    while(!done)
-    {
-        StringVector extension_kmers = getExtensionKmers(reads);
-        StringVector incoming_reads;
-        getReadsForKmers(extension_kmers, &incoming_reads);
-        orderReadsExtended(incoming_reads, &ordered_reads);
-        removeDuplicates(&ordered_reads);
+    // Extend the graph by finding new overlaps for the reads at the tips
+    extendGraph();
+    extendGraph();
+    extendGraph();
 
-        printf("Extended to %zu reads\n", incoming_reads.size());
-        MultipleAlignment extended_ma = buildMultipleAlignment(ordered_reads);
-        extended_ma.print(400);
+    m_graph->writeASQG("hapgraph.asqg");
+    
+    // Clean up the graph
+    SGIdenticalRemoveVisitor dupVisit;
+    m_graph->visit(dupVisit);
 
-        // Try to compute a consensus
-        consensus = getConsensus(&extended_ma, 3, 1000);
+    // hack
+    WARN_ONCE("hacked containment flag");
+    m_graph->setContainmentFlag(false);
 
-        // Try to find left/right anchors on the consensus
-        int clip_k = m_parameters.kmer;
-        int num_kmers = consensus.size() - clip_k + 1;
-        int left_clip = num_kmers;
-        int right_clip = -1;
+    SGTransitiveReductionVisitor trVisit;
+    m_graph->visit(trVisit);
 
-        for(int i = 0; i < num_kmers; ++i)
-        {
-            std::string kmer_sequence = consensus.substr(i, clip_k);
-
-            // Check whether the kmer exists in the base reads/reference
-            size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence,
-                                                                      m_parameters.pBaseBWT, 
-                                                                      m_parameters.pBaseBWTCache);
-            if(base_count > 0 && i < left_clip)
-                left_clip = i;
-            if(base_count > 0 && i > right_clip)
-                right_clip = i;
-        }
-        
-        printf("Clip range: [%d %d]\n", left_clip, right_clip);
-        if(left_clip == num_kmers || right_clip == -1)
-        {
-            consensus = "";
-            done = false;
-        }
-        else
-        {
-            consensus = consensus.substr(left_clip, right_clip - left_clip + clip_k);
-            done = true;
-        }
-    }
-
-    if(!consensus.empty())
-        out_haplotypes.push_back(consensus);
-
+    // Check for walks that cover all seed vertices
+    checkWalks(&out_haplotypes);
+    m_graph->writeDot("hapgraph.dot");
     return HBRC_OK;
 }
 
 //
-void OverlapHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, StringVector* reads)
+void OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
+{
+    // Compute initial ordering of reads based on the position of the
+    // starting kmer sequence. If the starting kmer was corrected out
+    // of a read, it is discarded.
+    StringVector ordered_reads;
+    orderReadsInitial(m_initial_kmer_string, reads, &ordered_reads);
+
+    if(ordered_reads.empty())
+        return;
+
+    // DEBUG print MA
+    MultipleAlignment ma = buildMultipleAlignment(ordered_reads);
+    ma.print(200);
+
+    // Insert the first read into the graph
+    std::stringstream id_ss;
+    id_ss << "seed-" << m_numReads++;
+    Vertex* pVertex = new(m_graph->getVertexAllocator()) Vertex(id_ss.str(), ordered_reads.front());
+    m_graph->addVertex(pVertex);
+
+    // Insert all other reads into the graph
+    for(size_t i = 1; i < ordered_reads.size(); ++i)
+        insertVertexIntoGraph("seed-", ordered_reads[i]);
+
+}
+
+//
+void OverlapHaplotypeBuilder::extendGraph()
+{
+
+    // Find tip vertices
+    VertexPtrVec tips = findTips();
+    for(size_t i = 0; i < tips.size(); ++i)
+    {
+        printf("Vertex %s can be extended\n", tips[i]->getID().c_str());
+
+        // Find corrected reads that perfectly overlap this vertex
+        StringVector overlapping_reads = getCorrectedOverlaps(tips[i]->getSeq().toString());
+        printf("Found %zu overlaps\n", overlapping_reads.size());
+
+        // Insert the new reads into the graph
+        for(size_t i = 0; i < overlapping_reads.size(); ++i)
+        {
+            // Determine whether the incoming read is possible join point
+            bool is_join = isJoinSequence(overlapping_reads[i]);
+            insertVertexIntoGraph(is_join ? "join-" : "extend-", overlapping_reads[i]);
+        }
+    }
+}
+
+// 
+void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, const std::string& sequence)
+{
+    // Check if a vertex with this sequence already exists, if so
+    // we do not create a new vertex
+    if(m_used_reads.find(sequence) != m_used_reads.end())
+        return;
+
+    // Create the vertex
+    std::stringstream id_ss;
+    id_ss << prefix << m_numReads++;
+    Vertex* pVertex = new(m_graph->getVertexAllocator()) Vertex(id_ss.str(), sequence);
+    m_graph->addVertex(pVertex);
+
+    // Slow function which tests the incoming read against everything in the graph
+    VertexPtrVec vertices = m_graph->getAllVertices();
+    for(size_t i = 0; i < vertices.size(); ++i) 
+    {
+        // Skip self-edge
+        if(vertices[i] == pVertex)
+            continue;
+
+        // TODO: replace this with fast function
+        std::string v_sequence = vertices[i]->getSeq().toString();
+        SequenceOverlap overlap = Overlapper::computeOverlap(v_sequence, sequence, ungapped_params);
+        if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= MIN_OVERLAP)
+        {
+            // Add an overlap to the graph
+            // Translate the sequence overlap struture into an SGA overlap
+            Overlap sga_overlap(vertices[i]->getID(), overlap.match[0].start, overlap.match[0].end, v_sequence.size(),
+                                         id_ss.str(), overlap.match[1].start, overlap.match[1].end, sequence.size(), false, 0);
+            SGAlgorithms::createEdgesFromOverlap(m_graph, sga_overlap, true);
+        }
+    }
+
+    // Insert the sequence into the used reads set
+    m_used_reads.insert(sequence);
+}
+
+// 
+void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
+{
+    // Make a vector of the join sequences
+    VertexPtrVec seed_vertices;
+    VertexPtrVec join_vertices;
+    VertexPtrVec vertices = m_graph->getAllVertices();
+    for(size_t i = 0; i < vertices.size(); ++i)
+    {
+        if(vertices[i]->getID().find("join") != std::string::npos)
+            join_vertices.push_back(vertices[i]);
+        if(vertices[i]->getID().find("seed") != std::string::npos)
+            seed_vertices.push_back(vertices[i]);
+    }
+
+    printf("Found %zu potential joins\n", join_vertices.size());
+    for(size_t i = 0; i < join_vertices.size(); ++i)
+    {
+        for(size_t j = i + 1; j < join_vertices.size(); ++j)
+        {
+            // Try to find a walk between this pair of join vertices
+            SGWalkVector walks;
+            SGSearch::findWalks(join_vertices[i], join_vertices[j], ED_SENSE, 2000, 10000, true, walks);
+
+            if(!walks.empty())
+            {
+                printf("Joined walks found\n");
+
+                // Check how many seed vertices this walk covers
+                size_t seeds_covered = countCoveredVertices(seed_vertices, walks);
+                printf("    walk covers %zu of %zu seeds\n", seeds_covered, seed_vertices.size());
+                if(seeds_covered == seed_vertices.size())
+                {
+                    // Add the sequence of the completed walks to the output vector
+                    for(size_t i = 0; i < walks.size(); ++i)
+                        walk_strings->push_back(walks[i].getString(SGWT_START_TO_END));
+                    return;
+                }
+            }
+        }
+    }
+}
+
+//
+VertexPtrVec OverlapHaplotypeBuilder::findTips() const
+{
+    VertexPtrVec out_vertices;
+
+    VertexPtrVec vertices = m_graph->getAllVertices();
+    for(size_t i = 0; i < vertices.size(); ++i)
+    {
+        size_t edge_count[ED_COUNT];
+        edge_count[ED_SENSE] = 0;
+        edge_count[ED_ANTISENSE] = 0;
+
+        Vertex* x = vertices[i];
+        EdgePtrVec x_edges = x->getEdges();
+        for(size_t j = 0; j < x_edges.size(); ++j)
+        {
+            Edge* xy = x_edges[j];
+
+            // Do not count edges to duplicate vertices
+            Overlap o = xy->getOverlap();
+            if(!o.isContainment())
+                edge_count[xy->getDir()]++;
+        }
+
+        if(edge_count[ED_SENSE] == 0 || edge_count[ED_ANTISENSE] == 0)
+            out_vertices.push_back(x);
+    }
+    return out_vertices;
+}
+
+bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence)
+{
+    // Check if this sequence forms a complete k-mer path in the base/reference sequence
+    size_t k = m_parameters.kmer;
+    if(sequence.size() < k)
+        return false;
+
+    size_t nk = sequence.size() - k + 1;
+    for(size_t i = 0; i < nk; ++i)
+    {
+        std::string kmer_seq = sequence.substr(i, k);
+        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_seq, 
+                                                                             m_parameters.pBaseBWT, 
+                                                                             m_parameters.pBaseBWTCache);
+
+        if(base_count == 0)
+            return false;
+    }
+
+    return true;
+}
+
+//
+StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence)
+{
+    // Extract reads that share a short kmer with the input sequence
+    size_t k = 31;
+    size_t nk = sequence.size() - k + 1;
+    StringVector query_kmers;
+    for(size_t i = 0; i < nk; ++i)
+        query_kmers.push_back(sequence.substr(i, k));
+
+    StringVector reads;
+    getReadsForKmers(query_kmers, k, &reads);
+    printf("    %zu initial reads\n", reads.size());
+    // Correct the reads
+    correctReads(&reads);
+
+    // Overlap each corrected read with the input sequence
+    // Discard any read that does perfectly match with a long enough overlap
+    StringVector out_reads;
+    for(size_t i = 0; i < reads.size(); ++i) 
+    {
+        SequenceOverlap overlap = Overlapper::computeOverlap(sequence, reads[i], ungapped_params);
+        if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= MIN_OVERLAP)
+            out_reads.push_back(reads[i]);
+    }
+
+    return out_reads;
+}
+
+//
+void OverlapHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, size_t k, StringVector* reads)
 {
     SeqItemVector fwd_si;
     SeqItemVector rev_si;
 
     // Forward reads
     HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, 
-                                      m_parameters.pVariantSSA, m_parameters.kmer, false, 100000, &fwd_si, NULL);
+                                      m_parameters.pVariantSSA, k, false, 100000, &fwd_si, NULL);
 
     // Reverse reads
     HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, 
-                                      m_parameters.pVariantSSA, m_parameters.kmer, true, 100000, &rev_si, NULL);
+                                      m_parameters.pVariantSSA, k, true, 100000, &rev_si, NULL);
 
     // Copy reads into the positioned read vector, initially with unset positions
     for(size_t i = 0; i < fwd_si.size(); ++i)
@@ -142,10 +346,42 @@ void OverlapHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, 
         std::string read_sequence = reverseComplement(rev_si[i].seq.toString());
         reads->push_back(read_sequence);
     }
+}
 
-    // record that we have used these kmers to extract reads.
-    for(size_t i = 0; i < kmer_vector.size(); ++i)
-        m_used_kmers.insert(kmer_vector[i]);
+//
+size_t OverlapHaplotypeBuilder::countCoveredVertices(const VertexPtrVec& vertices, const SGWalkVector& walks)
+{
+    size_t count = 0;
+    std::set<Vertex*> walk_vertices;
+    for(size_t i = 0; i < walks.size(); ++i)
+    {
+        for(size_t j = 0; j < walks[i].getNumVertices(); ++j)
+            walk_vertices.insert(walks[i].getVertex(j));
+    }
+
+    for(size_t i = 0; i < vertices.size(); ++i)
+    {
+        if(walk_vertices.find(vertices[i]) != walk_vertices.end())
+            count += 1;
+    }
+
+    return count;
+}
+
+//
+void OverlapHaplotypeBuilder::correctReads(StringVector* reads)
+{
+    StringVector out_reads;
+    for(size_t i = 0; i < reads->size(); ++i)
+    {
+        DNAString dna(reads->at(i));
+        SeqRecord record = { "null", dna, "" };
+        SequenceWorkItem wi(0, record);
+        ErrorCorrectResult r = m_corrector->correct(wi);
+        if(r.kmerQC || r.overlapQC)
+            out_reads.push_back(r.correctSequence.toString());
+    }
+    reads->swap(out_reads);
 }
 
 static bool sortPairSecondAscending(const std::pair<size_t, size_t>& a, const std::pair<size_t, size_t>& b)
@@ -160,8 +396,8 @@ void OverlapHaplotypeBuilder::orderReadsInitial(const std::string& initial_kmer,
     for(size_t i = 0; i < reads.size(); ++i)
     {
         size_t pos = reads[i].find(initial_kmer);
-        assert(pos != std::string::npos);
-        read_kmer_vector.push_back(std::make_pair(i, pos));
+        if(pos != std::string::npos)
+            read_kmer_vector.push_back(std::make_pair(i, pos));
     }
 
     // Sort the vector by the second element
@@ -214,45 +450,6 @@ void OverlapHaplotypeBuilder::orderReadsExtended(const StringVector& incoming_re
 }
 
 //
-static bool sortPairFirst(const std::pair<size_t, std::string>& a, const std::pair<size_t, std::string>& b)
-{
-    return a.first < b.first;
-}
-
-static bool sortPairSecond(const std::pair<size_t, std::string>& a, const std::pair<size_t, std::string>& b)
-{
-    return a.second < b.second;
-}
-
-static bool equalPairSecond(const std::pair<size_t, std::string>& a, const std::pair<size_t, std::string>& b)
-{
-    return a.second == b.second;
-}
-
-//
-void OverlapHaplotypeBuilder::removeDuplicates(StringVector* ordered_vector)
-{
-    std::vector<std::pair<size_t, std::string> > index_sequence_vector;
-    for(size_t i = 0; i < ordered_vector->size(); ++i)
-        index_sequence_vector.push_back(std::make_pair(i, ordered_vector->at(i)));
-
-    // Sort by sequence
-    std::sort(index_sequence_vector.begin(), index_sequence_vector.end(), sortPairSecond);
-
-    // Unique by sequence
-    std::vector<std::pair<size_t, std::string> >::iterator new_end = std::unique(index_sequence_vector.begin(), index_sequence_vector.end(), equalPairSecond);
-    index_sequence_vector.resize(new_end - index_sequence_vector.begin());
-
-    // Sort by position
-    std::sort(index_sequence_vector.begin(), index_sequence_vector.end(), sortPairFirst);
-
-    // Copy back into the ordered vector
-    ordered_vector->clear();
-    for(size_t i = 0; i < index_sequence_vector.size(); ++i)
-        ordered_vector->push_back(index_sequence_vector[i].second);
-}
-
-//
 MultipleAlignment OverlapHaplotypeBuilder::buildMultipleAlignment(const StringVector& ordered_vector)
 {
     MultipleAlignment multiple_alignment;
@@ -267,7 +464,6 @@ MultipleAlignment OverlapHaplotypeBuilder::buildMultipleAlignment(const StringVe
     while(read_iterator != ordered_vector.end())
     {
         SequenceOverlap overlap = Overlapper::computeOverlap(*prev_iterator, *read_iterator, ungapped_params);
-        overlap.printAlignment(*prev_iterator, *read_iterator);
         multiple_alignment.addExtension("seq", *read_iterator, "", overlap);
         prev_iterator = read_iterator;
         read_iterator++;
@@ -276,120 +472,3 @@ MultipleAlignment OverlapHaplotypeBuilder::buildMultipleAlignment(const StringVe
     return multiple_alignment;
 }
 
-//
-StringVector OverlapHaplotypeBuilder::getExtensionKmers(const StringVector& reads)
-{
-    StringVector out_kmers;
-    size_t k = m_parameters.kmer;
-    for(size_t i = 0; i < reads.size(); ++i)
-    {
-        size_t nk = reads[i].size() - k + 1;
-
-        // Vector to track the kmers that are unique in this read
-        StringVector read_unique_kmers;
-        bool read_has_base_kmer = false;
-        for(size_t j = 0; j < nk; ++j)
-        {
-            std::string kmer_sequence = reads[i].substr(j, k);
-
-            // Check whether the kmer exists in the base reads/reference
-            /*
-            size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
-                                                                                 m_parameters.pBaseBWT, 
-                                                                                 m_parameters.pBaseBWTCache);
-        
-            if(base_count > 0)
-            {
-                read_has_base_kmer = true;
-                break;
-            }
-            */
-            // Skip kmers that have been used before
-            bool used = m_used_kmers.find(kmer_sequence) != m_used_kmers.end();
-            if(used)
-                continue;
-        
-           // Check that this kmer has occured enough times in the variant reads
-           size_t var_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_sequence, 
-                                                                               m_parameters.pVariantBWT, 
-                                                                               m_parameters.pVariantBWTCache);
-
-           //
-           if(var_count >= 1)
-               read_unique_kmers.push_back(kmer_sequence);
-
-        }
-        
-        // Do not extend using reads that rejoin the base graph
-        if(read_has_base_kmer)
-            read_unique_kmers.clear();
-        else
-            out_kmers.insert(out_kmers.end(), read_unique_kmers.begin(), read_unique_kmers.end());
-    }
-
-    // Remove kmers that are present in multiple reads
-    std::sort(out_kmers.begin(), out_kmers.end());
-    StringVector::iterator new_end = std::unique(out_kmers.begin(), out_kmers.end());
-    out_kmers.resize(new_end - out_kmers.begin());
-    return out_kmers;
-}
-
-//
-std::string OverlapHaplotypeBuilder::getConsensus(MultipleAlignment* multiple_alignment, int min_call_coverage, int max_differences) const
-{
-    std::string initial_consensus = "";
-    size_t total_columns = multiple_alignment->getNumColumns();
-    for(size_t i = 0; i < total_columns; ++i)
-    {
-        SymbolCountVector symbol_counts = multiple_alignment->getSymbolCountVector(i);
-        assert(!symbol_counts.empty());
-
-        std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
-        // If this column has a maximum of symbols (2 or more bases with count >= max_differences)
-        // then we saw this is a divergent column and return no haplotype.
-        if(symbol_counts.size() >= 2)
-        {
-            if(symbol_counts[1].count >= max_differences)
-                return "";
-        }
-
-        // Not divergent, add the most frequent base to the consensus
-        size_t idx = 0;
-        while(symbol_counts[idx].symbol == '-' || symbol_counts[idx].symbol == '\0')
-            idx++;
-        
-        // Insert no-call if the consensus base does not have enough coverage
-        char c_base = 'N';
-        if(symbol_counts[idx].count >= min_call_coverage)
-            c_base = symbol_counts[idx].symbol;
-        initial_consensus.append(1, c_base);
-    }
-
-    // Copy the final consensus, truncating leading and trailing 'N's
-    // If there is an internal no call, the empty string is return
-    printf("Initial: %s\n", initial_consensus.c_str());
-
-    std::string consensus;
-    bool found_nocall_after_leader = false;
-    for(size_t i = 0; i < initial_consensus.size(); ++i)
-    {
-        if(initial_consensus[i] == 'N')
-        {
-            // If we have written any bases to the consensus
-            // This N represents the trailing sequence or an internal N
-            if(!consensus.empty())
-                found_nocall_after_leader = true;
-        }
-        else
-        {
-            // We have a real base after an internal N
-            // return nothing
-            if(found_nocall_after_leader)
-                return "";
-            else
-                consensus.push_back(initial_consensus[i]);
-        }
-    }
-    printf("Consens: %s\n", consensus.c_str());
-    return consensus;
-}

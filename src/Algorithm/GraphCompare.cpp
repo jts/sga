@@ -314,17 +314,17 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
 
     //
     GraphBuildResult result;
+
+    /*
     ReadCoherentHaplotypeBuilder rc_builder;
     rc_builder.setInitialHaplotype(str);
     rc_builder.setParameters(m_parameters);
     rc_builder.run(result.variant_haplotypes);
-
-    /*
-    OverlapHaplotypeBuilder overlap_builder;
-    overlap_builder.setInitialHaplotype(str);
-    overlap_builder.setParameters(m_parameters);
-    overlap_builder.run(result.variant_haplotypes);
     */
+
+    OverlapHaplotypeBuilder overlap_builder(m_parameters);
+    overlap_builder.setInitialHaplotype(str);
+    overlap_builder.run(result.variant_haplotypes);
 
     /*
     // Haplotype QC

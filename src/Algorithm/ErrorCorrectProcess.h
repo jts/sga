@@ -83,11 +83,11 @@ class ErrorCorrectProcess
         ErrorCorrectResult process(const SequenceWorkItem& item);
         ErrorCorrectResult correct(const SequenceWorkItem& item);
 
-    private:
-        
         ErrorCorrectResult kmerCorrection(const SequenceWorkItem& item);
         ErrorCorrectResult overlapCorrection(const SequenceWorkItem& workItem);
         ErrorCorrectResult overlapCorrectionNew(const SequenceWorkItem& workItem);
+    
+    private:
 
         bool attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence);
 

@@ -416,7 +416,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             }
             else
             {
-                count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pOverlapper->getBWT(), m_params.pIntervalCache);
+                count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pBWT, m_params.pIntervalCache);
                 kmerCache.insert(std::make_pair(kmer, count));
             }
 
@@ -517,7 +517,7 @@ bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t m
         if(currBase == originalBase)
             continue;
         kmer[base_idx] = currBase;
-        size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pOverlapper->getBWT(), m_params.pIntervalCache);
+        size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pBWT, m_params.pIntervalCache);
 
 #if KMER_TESTING
         printf("%c %zu\n", currBase, count);
