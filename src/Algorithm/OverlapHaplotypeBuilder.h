@@ -95,6 +95,8 @@ class OverlapHaplotypeBuilder
 
         std::string m_initial_kmer_string;
         std::set<std::string> m_used_reads;
+
+        std::map<std::string, std::string> m_correction_cache;
 };
 
 #endif

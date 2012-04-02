@@ -18,6 +18,7 @@
 #include "Metrics.h"
 #include "BWTIntervalCache.h"
 #include "SampledSuffixArray.h"
+#include "multiple_alignment.h"
 
 enum ErrorCorrectAlgorithm
 {

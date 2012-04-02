@@ -15,6 +15,9 @@
 //#define USE_PROFILER 1
 #if defined(HAVE_CLOCK_GETTIME) && defined(USE_PROFILER)
 
+// Change this to determine how often the profile should print
+#define PROFILE_TICKS_BEFORE_PRINT 10000
+
 // This class writes the lifespan of the object
 // to the output variable, in nanoseconds
 class TimeTracker
@@ -42,9 +45,6 @@ class TimeTracker
         size_t m_start_ns;
         size_t& m_output;
 };
-
-// Change this to determine how often the profile should print
-#define PROFILE_TICKS_BEFORE_PRINT 10000
 
 // Place this macros at the start of the function you wish the profile
 // The static variable updates are done via atomic compare and swaps so

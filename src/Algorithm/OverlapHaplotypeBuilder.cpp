@@ -15,6 +15,7 @@
 #include "Profiler.h"
 #include "HapgenUtil.h"
 #include "multiple_alignment.h"
+#include "KmerOverlaps.h"
 
 //
 //
@@ -107,6 +108,7 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
 //
 void OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
 {
+    PROFILE_FUNC("OverlapHaplotypeBuilder::buildInitialGraph")
     // Compute initial ordering of reads based on the position of the
     // starting kmer sequence. If the starting kmer was corrected out
     // of a read, it is discarded.
@@ -135,6 +137,7 @@ void OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
 //
 void OverlapHaplotypeBuilder::extendGraph()
 {
+    PROFILE_FUNC("OverlapHaplotypeBuilder::extendGraph")
 
     // Find tip vertices
     VertexPtrVec tips = findTips();
@@ -159,6 +162,7 @@ void OverlapHaplotypeBuilder::extendGraph()
 // 
 void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, const std::string& sequence)
 {
+    PROFILE_FUNC("OverlapHaplotypeBuilder::insertVertexIntoGraph")
     // Check if a vertex with this sequence already exists, if so
     // we do not create a new vertex
     if(m_used_reads.find(sequence) != m_used_reads.end())
@@ -198,6 +202,7 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
 // 
 void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
 {
+    PROFILE_FUNC("OverlapHaplotypeBuilder::checkWalks")
     // Make a vector of the join sequences
     VertexPtrVec seed_vertices;
     VertexPtrVec join_vertices;
@@ -293,16 +298,25 @@ bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence)
 //
 StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence)
 {
+    PROFILE_FUNC("OverlapHaplotypeBuilder::getCorrectedOverlaps")
     // Extract reads that share a short kmer with the input sequence
-    size_t k = 31;
-    size_t nk = sequence.size() - k + 1;
-    StringVector query_kmers;
-    for(size_t i = 0; i < nk; ++i)
-        query_kmers.push_back(sequence.substr(i, k));
+    size_t k = 41;
 
+    SequenceOverlapPairVector overlap_vector = KmerOverlaps::retrieveMatches(sequence,
+                                                                             k,
+                                                                             MIN_OVERLAP,
+                                                                             0.95,
+                                                                             2,
+                                                                             m_parameters.pVariantBWT,
+                                                                             m_parameters.pVariantBWTCache,
+                                                                             m_parameters.pVariantSSA);
+
+    // Extract the read sequences from the multiple alignment
     StringVector reads;
-    getReadsForKmers(query_kmers, k, &reads);
-    printf("    %zu initial reads\n", reads.size());
+    for(size_t i = 0; i < overlap_vector.size(); ++i)
+        reads.push_back(overlap_vector[i].sequence[1]);
+    printf("Extracted %zu reads\n", overlap_vector.size());
+
     // Correct the reads
     correctReads(&reads);
 
@@ -322,6 +336,7 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
 //
 void OverlapHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, size_t k, StringVector* reads)
 {
+    PROFILE_FUNC("OverlapHaplotypeBuilder::getReadsForKmers")
     SeqItemVector fwd_si;
     SeqItemVector rev_si;
 
@@ -371,15 +386,35 @@ size_t OverlapHaplotypeBuilder::countCoveredVertices(const VertexPtrVec& vertice
 //
 void OverlapHaplotypeBuilder::correctReads(StringVector* reads)
 {
+    PROFILE_FUNC("OverlapHaplotypeBuilder::correctReads")
     StringVector out_reads;
     for(size_t i = 0; i < reads->size(); ++i)
     {
-        DNAString dna(reads->at(i));
-        SeqRecord record = { "null", dna, "" };
-        SequenceWorkItem wi(0, record);
-        ErrorCorrectResult r = m_corrector->correct(wi);
-        if(r.kmerQC || r.overlapQC)
-            out_reads.push_back(r.correctSequence.toString());
+        // Check if this read has been corrected before
+        std::string corrected_sequence;
+        std::map<std::string, std::string>::iterator find_iter = m_correction_cache.find(reads->at(i));
+        if(find_iter != m_correction_cache.end())
+        {
+            corrected_sequence = find_iter->second;
+        }
+        else
+        {
+            // Perform correction
+            DNAString dna(reads->at(i));
+            SeqRecord record = { "null", dna, "" };
+            SequenceWorkItem wi(0, record);
+            ErrorCorrectResult r = m_corrector->correct(wi);
+            if(r.kmerQC || r.overlapQC)
+                corrected_sequence = r.correctSequence.toString();
+            
+            // Insert the sequence into the cache
+            // We allow it to be empty 
+            m_correction_cache.insert(std::make_pair(reads->at(i), corrected_sequence));
+        }
+
+        //
+        if(!corrected_sequence.empty())
+            out_reads.push_back(corrected_sequence);
     }
     reads->swap(out_reads);
 }

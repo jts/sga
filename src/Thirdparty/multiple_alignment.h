@@ -182,6 +182,9 @@ class MultipleAlignment
         // Returns a formatted string with the number of times each base has been seen for the given column
         std::string getColumnCountString(size_t column) const; 
 
+        // Returns the complete sequence for row r without any padding characters
+        std::string getUnpaddedSequence(size_t row) const;
+
         // Returns the symbol in row r and column c
         // May be the null character if this sequence does not have a base call in this position
         char getSymbol(size_t row, size_t col) const;

@@ -683,6 +683,13 @@ void MultipleAlignment::filterByVector(const std::vector<bool>& keep_vector)
     trimEmptyColumns();
 }
 
+std::string MultipleAlignment::getUnpaddedSequence(size_t row) const
+{
+    assert(row < m_sequences.size());
+    return m_sequences[row].getUnpaddedSequence();
+    
+}
+
 //
 char MultipleAlignment::getSymbol(size_t row, size_t col) const
 {

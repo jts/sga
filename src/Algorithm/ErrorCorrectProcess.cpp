@@ -11,6 +11,7 @@
 #include "CorrectionThresholds.h"
 #include "HashMap.h"
 #include "multiple_alignment.h"
+#include "KmerOverlaps.h"
 
 //#define KMER_TESTING 1
 
@@ -149,46 +150,12 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
     return result;
 }
 
-// Struct to hold a partial match in the FM-index
-// The position field is the location in the query sequence of this kmer.
-// The index field is an index into the BWT. 
-// The is_reverse flag indicates the strand of the partial match
-struct KmerMatch
-{
-    int64_t position:16;
-    int64_t index:47;
-    int64_t is_reverse:1;
-
-    friend bool operator<(const KmerMatch& a, const KmerMatch& b)
-    {
-        if(a.index == b.index)
-            return a.is_reverse < b.is_reverse;
-        else
-            return a.index < b.index;
-    }
-
-    friend bool operator==(const KmerMatch& a, const KmerMatch& b)
-    {
-        return a.index == b.index && a.is_reverse == b.is_reverse;
-    }
-};
-
-// Return a hash key for a KmerMatch
-struct KmerMatchKey
-{
-    size_t operator()(const KmerMatch& a) const { return a.index; }
-};
-
-typedef std::set<KmerMatch> KmerMatchSet;
-typedef HashMap<KmerMatch, bool, KmerMatchKey> KmerMatchMap;
-
+//
 ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkItem& workItem)
 {
     assert(m_params.pBWT != NULL);
     assert(m_params.pSSA != NULL);
 
-    // DEBUG: Skip intervals that are too large
-    int max_interval_size = 500;
     ErrorCorrectResult result;
     SeqRecord currRead = workItem.read;
     std::string current_sequence = workItem.read.seq.toString();
@@ -197,125 +164,16 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
     int num_rounds = m_params.numOverlapRounds;
     for(int round = 0; round < num_rounds; ++round)
     {
-        // Use the FM-index to look up intervals for each kmer of the read. Each index
-        // in the interval is stored individually in the KmerMatchMap. We then
-        // backtrack to map these kmer indices to read IDs. As reads can share
-        // multiple kmers, we use the map to avoid redundant lookups.
-        // There is likely a faster algorithm which performs direct decompression
-        // of the read sequences without having to expand the intervals to individual
-        // indices. The current algorithm suffices for now.
-        KmerMatchMap prematchMap;
-        size_t num_kmers = current_sequence.size() - m_params.kmerLength + 1;
-        for(size_t i = 0; i < num_kmers; ++i)
-        {
-            std::string kmer = current_sequence.substr(i, m_params.kmerLength);
-            BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_params.pBWT, m_params.pIntervalCache, kmer);
-            if(interval.isValid() && interval.size() < max_interval_size) 
-            {
-                for(int64_t j = interval.lower; j <= interval.upper; ++j)
-                {
-                    KmerMatch match = { i, j, false };
-                    prematchMap.insert(std::make_pair(match, false));
-                }
-            }
-
-            kmer = reverseComplement(kmer);
-            interval = BWTAlgorithms::findIntervalWithCache(m_params.pBWT, m_params.pIntervalCache, kmer);
-            if(interval.isValid() && interval.size() < max_interval_size) 
-            {
-                for(int64_t j = interval.lower; j <= interval.upper; ++j)
-                {
-                    KmerMatch match = { i, j, true };
-                    prematchMap.insert(std::make_pair(match, false));
-                }
-            }
-        }
-
-        // Backtrack through the kmer indices to turn them into read indices.
-        // This mirrors the calcSA function in SampledSuffixArray except we mark each entry
-        // as visited once it is processed.
-        KmerMatchSet matches;
-        for(KmerMatchMap::iterator iter = prematchMap.begin(); iter != prematchMap.end(); ++iter)
-        {
-            // This index has been visited
-            if(iter->second)
-                continue;
-
-            // Mark this as visited
-            iter->second = true;
-
-            // Backtrack the index until we hit the starting symbol
-            KmerMatch out_match = iter->first;
-            while(1) 
-            {
-                char b = m_params.pBWT->getChar(out_match.index);
-                out_match.index = m_params.pBWT->getPC(b) + m_params.pBWT->getOcc(b, out_match.index - 1);
-
-                // Check if the hash indicates we have visited this index. If so, stop the backtrack
-                KmerMatchMap::iterator find_iter = prematchMap.find(out_match);
-                if(find_iter != prematchMap.end())
-                {
-                    // We have processed this index already
-                    if(find_iter->second)
-                        break;
-                    else
-                        find_iter->second = true;
-                }
-
-                if(b == '$')
-                {
-                    // We've found the lexicographic index for this read. Turn it into a proper ID
-                    out_match.index = m_params.pSSA->lookupLexoRank(out_match.index);
-                    matches.insert(out_match);
-                    break;
-                }
-            }
-        }
-
-        // Refine the matches by computing proper overlaps between the sequences
-        // Use the overlaps that meet the thresholds to build a multiple alignment
-        MultipleAlignment multiple_alignment;
-        multiple_alignment.addBaseSequence("base", current_sequence, "");
-
-        for(KmerMatchSet::iterator iter = matches.begin(); iter != matches.end(); ++iter)
-        {
-            if(iter->index == (int64_t)workItem.idx)
-                continue; // Do not overlap the read with itself
-
-            std::string match_sequence = BWTAlgorithms::extractString(m_params.pBWT, iter->index);
-            if(iter->is_reverse)
-                match_sequence = reverseComplement(match_sequence);
-            
-            // Compute the overlap. If the kmer match occurs a single time in each sequence we use
-            // the banded extension overlap strategy. Otherwise we use the slow O(M*N) overlapper.
-            SequenceOverlap overlap;
-            std::string match_kmer = current_sequence.substr(iter->position, m_params.kmerLength);
-            size_t pos_0 = current_sequence.find(match_kmer);
-            size_t pos_1 = match_sequence.find(match_kmer);
-            assert(pos_0 != std::string::npos && pos_1 != std::string::npos);
-
-            /*
-            std::cout << "S1: " << current_sequence << "\n";
-            std::cout << "S2: " << match_sequence << "\n";
-            std::cout << "P1: " << pos_0 << "\n";
-            std::cout << "P1: " << pos_1 << "\n";
-            */
-
-            // Check for secondary occurrences
-            if(current_sequence.find(match_kmer, pos_0 + 1) != std::string::npos || 
-               match_sequence.find(match_kmer, pos_1 + 1) != std::string::npos) {
-                // One of the reads has a second occurrence of the kmer. Use
-                // the slow overlapper.
-                overlap = Overlapper::computeOverlap(current_sequence, match_sequence);
-            } else {
-                overlap = Overlapper::extendMatch(current_sequence, match_sequence, pos_0, pos_1, 20);
-            }
-            bool bPassedOverlap = overlap.getOverlapLength() >= m_params.minOverlap;
-            bool bPassedIdentity = overlap.getPercentIdentity() / 100 >= m_params.minIdentity;
-
-            if(bPassedOverlap && bPassedIdentity)
-                multiple_alignment.addOverlap("noname", match_sequence, "", overlap);
-        }
+        // Construct the multiple alignment
+        assert(false); // this is to be tested
+        MultipleAlignment multiple_alignment = KmerOverlaps::buildMultipleAlignment(current_sequence,
+                                                                                    m_params.kmerLength,
+                                                                                    m_params.minOverlap,
+                                                                                    m_params.minIdentity,
+                                                                                    20,
+                                                                                    m_params.pBWT,
+                                                                                    m_params.pIntervalCache,
+                                                                                    m_params.pSSA);
         
         bool last_round = (round == num_rounds - 1);
         if(last_round)
