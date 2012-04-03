@@ -23,6 +23,17 @@
 #include "SGWalk.h"
 #include <queue>
 
+// A struct holding a kmer that is shared between two reads
+struct SharedVertexKmer
+{
+    std::string kmer;
+    Vertex* vertex;
+
+    static bool sortByVertex(const SharedVertexKmer& a, const SharedVertexKmer& b) { return a.vertex < b.vertex; }
+    static bool equalByVertex(const SharedVertexKmer& a, const SharedVertexKmer& b) { return a.vertex == b.vertex; }
+};
+typedef std::vector<SharedVertexKmer> SharedVertexKmerVector;
+
 // Build haplotypes starting from a given sequence.
 class OverlapHaplotypeBuilder
 {
@@ -60,6 +71,13 @@ class OverlapHaplotypeBuilder
         // Insert a new vertex into the graph with the specified sequence
         void insertVertexIntoGraph(const std::string& prefix, const std::string& sequence);
 
+        // Use the kmer to vertex map to find vertices in the graph that possibly
+        // overlap the incoming vertex
+        SharedVertexKmerVector getCandidateOverlaps(const Vertex* incoming_vertex);
+
+        // Update the kmer to vertex map to include kmers for the new vertex
+        void updateKmerVertexMap(const Vertex* incoming_vertex);
+
         // Find corrected reads that share a perfect overlap to the input sequence
         StringVector getCorrectedOverlaps(const std::string& sequence);
 
@@ -75,12 +93,6 @@ class OverlapHaplotypeBuilder
         // Coerece the set of reads into an ordered overlapping sequences
         // This function relies on the fact that all reads share the same kmer
         void orderReadsInitial(const std::string& initial_kmer, const StringVector& reads, StringVector* ordered_reads);
-
-        // Order reads by inserting them into an already ordered list
-        void orderReadsExtended(const StringVector& incoming_reads, StringVector* ordered_vector);
-        
-        // Remove duplicated reads from the ordered list
-        void removeDuplicates(StringVector* ordered_vector);
 
         // Build a multiple alignment from an ordered set of reads
         MultipleAlignment buildMultipleAlignment(const StringVector& ordered_vector);
@@ -103,9 +115,9 @@ class OverlapHaplotypeBuilder
         // raw sequence multiple times, this lets us avoid redundantly correcting the reads.
         std::map<std::string, std::string> m_correction_cache;
 
-        // A map from kmer->vertex. We use this when inserting new reads into the graph to avoid
+        // A map from kmer to vertex ids. We use this when inserting new reads into the graph to avoid
         // comparing incoming reads against everything
-        std::map<std::string, VertexPtrVec> m_kmer_vertex_cache;
+        std::map<std::string, StringVector> m_kmer_vertex_id_cache;
         static const size_t m_vertex_map_kmer = 31;
 };
 

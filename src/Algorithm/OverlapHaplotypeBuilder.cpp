@@ -179,37 +179,46 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
     m_graph->addVertex(pVertex);
 
     // Get a list of vertices that have a k-mer match to this sequence.
-    VertexPtrVec candidate_vertices;
-    size_t nk = sequence.size() - m_vertex_map_kmer + 1;
-    for(size_t i = 0; i < nk; ++i) 
-    {
-        std::string query_kmer = sequence.substr(i, m_vertex_map_kmer);
-        std::map<std::string, VertexPtrVec>::iterator find_iter = m_kmer_vertex_cache.find(query_kmer);
-        if(find_iter != m_kmer_vertex_cache.end())
-            candidate_vertices.insert(candidate_vertices.end(), find_iter->second.begin(), find_iter->second.end());
-    }
+    SharedVertexKmerVector candidate_vertices = getCandidateOverlaps(pVertex);
 
-    // Remove duplicates from the candidate list
-    std::sort(candidate_vertices.begin(), candidate_vertices.end());
-    VertexPtrVec::iterator new_end = std::unique(candidate_vertices.begin(), candidate_vertices.end());
-    candidate_vertices.resize(new_end - candidate_vertices.begin());
-
-    // Align the sequence against all reads
+    // Align the sequence against candidate reads
     for(size_t i = 0; i < candidate_vertices.size(); ++i) 
     {
+        Vertex* existing_vertex = candidate_vertices[i].vertex;
+        const std::string& shared_kmer = candidate_vertices[i].kmer;
+
         // Skip self-edge
-        if(candidate_vertices[i] == pVertex)
+        if(existing_vertex == pVertex)
             continue;
 
-        // TODO: replace this with fast function
-        std::string v_sequence = candidate_vertices[i]->getSeq().toString();
-        SequenceOverlap overlap = Overlapper::computeOverlap(v_sequence, sequence, ungapped_params);
+        std::string existing_sequence = existing_vertex->getSeq().toString();
+
+        // Try to compute the overlap using the shared kmer as a seed match
+        SequenceOverlap overlap;
+        size_t pos_0 = existing_sequence.find(shared_kmer);
+        size_t pos_1 = sequence.find(shared_kmer);
+        assert(pos_0 != std::string::npos && pos_1 != std::string::npos);
+
+        // Check for secondary occurrences
+        if(existing_sequence.find(shared_kmer, pos_0 + 1) != std::string::npos || 
+                    sequence.find(shared_kmer, pos_1 + 1) != std::string::npos) 
+        {
+            // One of the reads has a second occurrence of the kmer. Use
+            // the slow overlapper.
+            overlap = Overlapper::computeOverlap(existing_sequence, sequence);
+        } 
+        else 
+        {
+            // Seed the match using kmer position
+            overlap = Overlapper::extendMatch(existing_sequence, sequence, pos_0, pos_1, 1);
+        }
+
         if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= MIN_OVERLAP)
         {
             // Add an overlap to the graph
             // Translate the sequence overlap struture into an SGA overlap
-            Overlap sga_overlap(candidate_vertices[i]->getID(), overlap.match[0].start, overlap.match[0].end, v_sequence.size(),
-                                                   id_ss.str(), overlap.match[1].start, overlap.match[1].end, sequence.size(), false, 0);
+            Overlap sga_overlap(existing_vertex->getID(), overlap.match[0].start, overlap.match[0].end, existing_sequence.size(),
+                                             id_ss.str(), overlap.match[1].start, overlap.match[1].end, sequence.size(), false, 0);
             SGAlgorithms::createEdgesFromOverlap(m_graph, sga_overlap, true);
         }
     }
@@ -217,11 +226,56 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
     // Insert the sequence into the used reads set
     m_used_reads.insert(sequence);
 
+    // Update kmer map too
+    updateKmerVertexMap(pVertex);
+}
+
+//
+SharedVertexKmerVector OverlapHaplotypeBuilder::getCandidateOverlaps(const Vertex* incoming_vertex)
+{
+    // Get a list of vertices that have a k-mer match to this sequence.
+    SharedVertexKmerVector candidate_vertices;
+    const std::string sequence = incoming_vertex->getSeq().toString();
+    size_t nk = sequence.size() - m_vertex_map_kmer + 1;
+    for(size_t i = 0; i < nk; ++i) 
+    {
+        std::string query_kmer = sequence.substr(i, m_vertex_map_kmer);
+        std::map<std::string, StringVector>::iterator find_iter = m_kmer_vertex_id_cache.find(query_kmer);
+        if(find_iter != m_kmer_vertex_id_cache.end())
+        {
+            // Get the vertices for these ids
+            for(StringVector::iterator iter = find_iter->second.begin(); iter != find_iter->second.end(); ++iter)
+            {
+                Vertex* candidate = m_graph->getVertex(*iter);
+                if(candidate != NULL)
+                {
+                    SharedVertexKmer svk = { query_kmer, candidate };
+                    candidate_vertices.push_back(svk);
+                }
+            }
+        }
+    }
+
+    // Sort the vector by the vertex pointer and remove duplicates
+    // Remove duplicates from the candidate list
+    std::sort(candidate_vertices.begin(), candidate_vertices.end(), SharedVertexKmer::sortByVertex);
+    SharedVertexKmerVector::iterator new_end = std::unique(candidate_vertices.begin(), candidate_vertices.end(), SharedVertexKmer::equalByVertex);
+    candidate_vertices.resize(new_end - candidate_vertices.begin());
+
+    return candidate_vertices;
+}
+
+// 
+void OverlapHaplotypeBuilder::updateKmerVertexMap(const Vertex* incoming_vertex)
+{
+    const std::string sequence = incoming_vertex->getSeq().toString();
+    size_t nk = sequence.size() - m_vertex_map_kmer + 1;
+
     // Insert kmers into the kmer pointer cache
     for(size_t i = 0; i < nk; ++i) 
     {
         std::string query_kmer = sequence.substr(i, m_vertex_map_kmer);
-        m_kmer_vertex_cache[query_kmer].push_back(pVertex);
+        m_kmer_vertex_id_cache[query_kmer].push_back(incoming_vertex->getID());
     }
 }
 
@@ -257,7 +311,8 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
                 // Check how many seed vertices this walk covers
                 size_t seeds_covered = countCoveredVertices(seed_vertices, walks);
                 printf("    walk covers %zu of %zu seeds\n", seeds_covered, seed_vertices.size());
-                if(seeds_covered == seed_vertices.size())
+                double fraction_covered = (double)seeds_covered / seed_vertices.size();
+                if(fraction_covered > 0.5)
                 {
                     // Add the sequence of the completed walks to the output vector
                     for(size_t i = 0; i < walks.size(); ++i)
@@ -345,13 +400,19 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
 
     // Correct the reads
     correctReads(&reads);
-
+    assert(reads.size() == overlap_vector.size());
     // Overlap each corrected read with the input sequence
     // Discard any read that does perfectly match with a long enough overlap
     StringVector out_reads;
     for(size_t i = 0; i < reads.size(); ++i) 
     {
-        SequenceOverlap overlap = Overlapper::computeOverlap(sequence, reads[i], ungapped_params);
+        // Skip uncorrected reads
+        if(reads[i].empty())
+            continue;
+
+        // Recompute the overlap, using the previous overlap as a guide
+        const SequenceOverlap& initial_overlap = overlap_vector[i].overlap;
+        SequenceOverlap overlap = Overlapper::extendMatch(sequence, reads[i], initial_overlap.match[0].start, initial_overlap.match[1].start, 1);
         if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= MIN_OVERLAP)
             out_reads.push_back(reads[i]);
     }
@@ -438,9 +499,8 @@ void OverlapHaplotypeBuilder::correctReads(StringVector* reads)
             m_correction_cache.insert(std::make_pair(reads->at(i), corrected_sequence));
         }
 
-        //
-        if(!corrected_sequence.empty())
-            out_reads.push_back(corrected_sequence);
+        // We allow the sequence to be null if the read could not be corrected
+        out_reads.push_back(corrected_sequence);
     }
     reads->swap(out_reads);
 }
