@@ -26,7 +26,7 @@
 // A struct holding a kmer that is shared between two reads
 struct SharedVertexKmer
 {
-    std::string kmer;
+    size_t kmer_index;
     Vertex* vertex;
 
     static bool sortByVertex(const SharedVertexKmer& a, const SharedVertexKmer& b) { return a.vertex < b.vertex; }

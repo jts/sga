@@ -185,7 +185,6 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
     for(size_t i = 0; i < candidate_vertices.size(); ++i) 
     {
         Vertex* existing_vertex = candidate_vertices[i].vertex;
-        const std::string& shared_kmer = candidate_vertices[i].kmer;
 
         // Skip self-edge
         if(existing_vertex == pVertex)
@@ -195,6 +194,7 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
 
         // Try to compute the overlap using the shared kmer as a seed match
         SequenceOverlap overlap;
+        std::string shared_kmer = sequence.substr(candidate_vertices[i].kmer_index, m_vertex_map_kmer);
         size_t pos_0 = existing_sequence.find(shared_kmer);
         size_t pos_1 = sequence.find(shared_kmer);
         assert(pos_0 != std::string::npos && pos_1 != std::string::npos);
@@ -249,7 +249,7 @@ SharedVertexKmerVector OverlapHaplotypeBuilder::getCandidateOverlaps(const Verte
                 Vertex* candidate = m_graph->getVertex(*iter);
                 if(candidate != NULL)
                 {
-                    SharedVertexKmer svk = { query_kmer, candidate };
+                    SharedVertexKmer svk = { i, candidate };
                     candidate_vertices.push_back(svk);
                 }
             }
