@@ -154,7 +154,6 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
 
     // Refine the matches by computing proper overlaps between the sequences
     // Use the overlaps that meet the thresholds to build a multiple alignment
-
     for(KmerMatchSet::iterator iter = matches.begin(); iter != matches.end(); ++iter)
     {
         std::string match_sequence = BWTAlgorithms::extractString(pBWT, iter->index);

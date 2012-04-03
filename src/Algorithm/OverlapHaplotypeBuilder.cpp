@@ -240,7 +240,7 @@ SharedVertexKmerVector OverlapHaplotypeBuilder::getCandidateOverlaps(const Verte
     for(size_t i = 0; i < nk; ++i) 
     {
         std::string query_kmer = sequence.substr(i, m_vertex_map_kmer);
-        std::map<std::string, StringVector>::iterator find_iter = m_kmer_vertex_id_cache.find(query_kmer);
+        HashMap<std::string, StringVector>::iterator find_iter = m_kmer_vertex_id_cache.find(query_kmer);
         if(find_iter != m_kmer_vertex_id_cache.end())
         {
             // Get the vertices for these ids
@@ -479,7 +479,7 @@ void OverlapHaplotypeBuilder::correctReads(StringVector* reads)
     {
         // Check if this read has been corrected before
         std::string corrected_sequence;
-        std::map<std::string, std::string>::iterator find_iter = m_correction_cache.find(reads->at(i));
+        HashMap<std::string, std::string>::iterator find_iter = m_correction_cache.find(reads->at(i));
         if(find_iter != m_correction_cache.end())
         {
             corrected_sequence = find_iter->second;
