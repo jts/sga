@@ -22,6 +22,8 @@
 //
 OverlapHaplotypeBuilder::OverlapHaplotypeBuilder(const GraphCompareParameters& params) : m_parameters(params), m_numReads(0)
 {
+    assert(m_parameters.minOverlap > 25);
+
     ErrorCorrectParameters correction_params;
     correction_params.pOverlapper = NULL;
     correction_params.pBWT = m_parameters.pVariantBWT;
@@ -213,7 +215,7 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
             overlap = Overlapper::extendMatch(existing_sequence, sequence, pos_0, pos_1, 1);
         }
 
-        if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= MIN_OVERLAP)
+        if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= m_parameters.minOverlap)
         {
             // Add an overlap to the graph
             // Translate the sequence overlap struture into an SGA overlap
@@ -261,7 +263,6 @@ SharedVertexKmerVector OverlapHaplotypeBuilder::getCandidateOverlaps(const Verte
     std::sort(candidate_vertices.begin(), candidate_vertices.end(), SharedVertexKmer::sortByVertex);
     SharedVertexKmerVector::iterator new_end = std::unique(candidate_vertices.begin(), candidate_vertices.end(), SharedVertexKmer::equalByVertex);
     candidate_vertices.resize(new_end - candidate_vertices.begin());
-
     return candidate_vertices;
 }
 
@@ -385,7 +386,7 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
 
     SequenceOverlapPairVector overlap_vector = KmerOverlaps::retrieveMatches(sequence,
                                                                              k,
-                                                                             MIN_OVERLAP,
+                                                                             m_parameters.minOverlap,
                                                                              0.95,
                                                                              2,
                                                                              m_parameters.pVariantBWT,
@@ -413,7 +414,7 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
         // Recompute the overlap, using the previous overlap as a guide
         const SequenceOverlap& initial_overlap = overlap_vector[i].overlap;
         SequenceOverlap overlap = Overlapper::extendMatch(sequence, reads[i], initial_overlap.match[0].start, initial_overlap.match[1].start, 1);
-        if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= MIN_OVERLAP)
+        if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= m_parameters.minOverlap)
             out_reads.push_back(reads[i]);
     }
 

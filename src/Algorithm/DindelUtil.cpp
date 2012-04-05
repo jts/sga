@@ -88,7 +88,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
     // Set the value to use for extracting reads that potentially match the haplotype
     // Do not use a kmer for extraction greater than this value
-    size_t KMER_CEILING = 61;
+    size_t KMER_CEILING = 41;
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
     
     bool extractOK = true;
@@ -167,13 +167,13 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         // "defined" is not the reference sequence but a candidate haplotype.
         // It is conservative because the flanking sequence is not used in this estimation.
         // DindelReferenceMapping rm(refName, refSeq, refStart, double(candidateAlignments[i].score), candidateAlignments[i].isRC);
-	DindelReferenceMapping rm(refName, refSeq, refStart, double(candidateAlignments[i].score+2*FLANKING_SIZE), candidateAlignments[i].isRC);
+    	DindelReferenceMapping rm(refName, refSeq, refStart, double(candidateAlignments[i].score+2*FLANKING_SIZE), candidateAlignments[i].isRC);
         std::set<DindelReferenceMapping>::iterator rmit = refMappings.find(rm);
         if(rmit == refMappings.end())
         {
             refMappings.insert(rm);
         }
-	else
+	    else
         {
             if(rm.referenceAlignmentScore > rmit->referenceAlignmentScore) 
                 rmit->referenceAlignmentScore = rm.referenceAlignmentScore;

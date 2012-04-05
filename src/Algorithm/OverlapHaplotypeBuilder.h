@@ -104,7 +104,6 @@ class OverlapHaplotypeBuilder
         ErrorCorrectProcess* m_corrector;
         StringGraph* m_graph;
         size_t m_numReads;
-        static const int MIN_OVERLAP = 61;
 
         std::string m_initial_kmer_string;
 

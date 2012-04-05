@@ -209,6 +209,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.bReferenceMode = opt::referenceMode;
     sharedParameters.maxSingletons = 5;
     sharedParameters.minKmerThreshold = opt::minKmerThreshold;
+    sharedParameters.minOverlap = 75;
 
     if(!opt::debugFile.empty())
     {

@@ -61,6 +61,7 @@ struct GraphCompareParameters
     size_t maxBranches;
     int maxSingletons; // the maximum number of times we can use k-mers with count = 1 in the extension
     size_t minKmerThreshold;
+    int minOverlap;
     bool bReferenceMode;
 
     DindelRealignParameters dindelRealignParameters;
