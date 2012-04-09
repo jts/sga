@@ -13,12 +13,13 @@
 #include "LRAlignment.h"
 #include "Interval.h"
 #include "Profiler.h"
+#include "overlapper.h"
 
 // Align the haplotype to the reference genome represented by the BWT/SSA pair
-void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
-                                           const BWT* pReferenceBWT,
-                                           const SampledSuffixArray* pReferenceSSA,
-                                           HapgenAlignmentVector& outAlignments)
+void HapgenUtil::alignHaplotypeToReferenceBWASW(const std::string& haplotype,
+                                                const BWT* pReferenceBWT,
+                                                const SampledSuffixArray* pReferenceSSA,
+                                                HapgenAlignmentVector& outAlignments)
 {
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReference")
     LRAlignment::LRParams params;
@@ -39,6 +40,7 @@ void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
             // Skip non-complete alignments
             if((int)haplotype.length() == q_alignment_length)
             {
+                printf("Full alignment -- ID: %d start: %d haplen: %zu alignlength: %d\n", (int)hits[j].targetID, (int)hits[j].t_start, haplotype.length(), (int)q_alignment_length);
                 HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, hits[j].G, i == 1);
                 outAlignments.push_back(aln);
             }
@@ -48,6 +50,141 @@ void HapgenUtil::alignHaplotypeToReference(const std::string& haplotype,
                 printf("\tqstart: %d qend: %d\n", hits[j].q_start, hits[j].q_end);
             }
         }
+    }
+}
+
+struct CandidateKmerAlignment
+{
+    size_t query_index;
+    size_t target_index;
+    size_t target_extrapolated_start;
+    size_t target_extrapolated_end;
+    size_t target_sequence_id;
+
+    static bool sortByStart(const CandidateKmerAlignment& a, const CandidateKmerAlignment& b) { return a.target_extrapolated_start < b.target_extrapolated_start; }
+    static bool equalByStart(const CandidateKmerAlignment& a, const CandidateKmerAlignment& b) { return a.target_extrapolated_start == b.target_extrapolated_start; }
+
+};
+typedef std::vector<CandidateKmerAlignment> CandidateVector;
+
+// Align the haplotype to the reference genome represented by the BWT/SSA pair
+void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
+                                               const BWT* pReferenceBWT,
+                                               const SampledSuffixArray* pReferenceSSA,
+                                               const ReadTable* pReferenceTable,
+                                               HapgenAlignmentVector& outAlignments)
+{
+    PROFILE_FUNC("HapgenUtil::alignHaplotypesToReference")
+    size_t k = 41;
+    int64_t max_interval_size = 4;
+
+    for(size_t i = 0; i <= 1; ++i)
+    {
+        bool is_reverse = i == 1;
+        std::string query = is_reverse ? reverseComplement(haplotype) : haplotype;
+
+        // Find shared kmers between the haplotype and the reference
+        CandidateVector candidates;
+
+        size_t nqk = query.size() - k + 1;
+        for(size_t j = 0; j < nqk; ++j)
+        {
+            std::string kmer = query.substr(j, k);
+
+            // Find the interval of this kmer in the reference
+            BWTInterval interval = BWTAlgorithms::findInterval(pReferenceBWT, kmer);
+            if(!interval.isValid() || interval.size() >= max_interval_size)
+                continue; // not found or too repetitive
+
+            // Extract the reference location of these hits
+            for(int64_t k = interval.lower; k  <= interval.upper; ++k)
+            {
+                SAElem elem = pReferenceSSA->calcSA(k, pReferenceBWT);
+
+                // Make a candidate alignment
+                CandidateKmerAlignment candidate;
+                candidate.query_index = j;
+                candidate.target_index = elem.getPos();
+                candidate.target_extrapolated_start = candidate.target_index - candidate.query_index;
+                candidate.target_extrapolated_end = candidate.target_extrapolated_start + query.size();
+                candidate.target_sequence_id = elem.getID();
+                candidates.push_back(candidate);
+            }
+        }
+
+        // Remove duplicate candidates
+        std::sort(candidates.begin(), candidates.end(), CandidateKmerAlignment::sortByStart);
+        CandidateVector::iterator new_end = std::unique(candidates.begin(), candidates.end(), CandidateKmerAlignment::equalByStart);
+        candidates.resize(new_end - candidates.begin());
+
+        for(size_t j = 0; j < candidates.size(); ++j)
+        {
+            printf("Candidate: %zu\n", candidates[j].target_extrapolated_start);
+
+            // Extract window around reference
+            size_t window_size = 200;
+            int ref_start = candidates[j].target_extrapolated_start - window_size;
+            int ref_end = candidates[j].target_extrapolated_end + window_size;
+
+            const DNAString& ref_sequence = pReferenceTable->getRead(candidates[j].target_sequence_id).seq;
+            if(ref_start < 0)
+                ref_start = 0;
+
+            if(ref_end > (int)ref_sequence.length())
+                ref_end = ref_sequence.length();
+
+            std::string ref_substring = ref_sequence.substr(ref_start, ref_end - ref_start);
+
+            // Align haplotype to the reference
+            SequenceOverlap overlap = Overlapper::computeOverlap(query, ref_substring);
+//            overlap.printAlignment(query, ref_substring);
+
+            int alignment_start = ref_start + overlap.match[1].start;
+            int alignment_end = ref_start + overlap.match[1].end; // inclusive
+            int alignment_length = alignment_end - alignment_start + 1;
+            
+            // Crude count of the number of distinct variation events
+            int num_events = overlap.edit_distance;
+            std::stringstream c_parser(overlap.cigar);
+            int len;
+            char t;
+            while(c_parser >> len >> t) 
+            {
+                assert(len > 0);
+
+                // Only count one event per insertion/deletion
+                if(t == 'D' || t == 'I')
+                    num_events -= (len - 1);
+            }
+
+            printf("Edits: %d Events: %d\n", overlap.edit_distance, num_events);
+            if(num_events <= 4)
+            {
+                HapgenAlignment aln(candidates[j].target_sequence_id, alignment_start, alignment_length, overlap.score, is_reverse);
+                outAlignments.push_back(aln);
+            }
+        }
+
+        /*
+        // Convert the hits into alignments
+        for(size_t j = 0; j < hits.size(); ++j)
+        {
+            int q_alignment_length = hits[j].q_end - hits[j].q_start;
+
+            // Skip non-complete alignments
+            if((int)haplotype.length() == q_alignment_length)
+            {
+                printf("Full alignment -- ID: %d start: %d haplen: %zu alignlength: %d\n", (int)hits[j].targetID, (int)hits[j].t_start, haplotype.length(), (int)q_alignment_length);
+                HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, hits[j].G, i == 1);
+                outAlignments.push_back(aln);
+            }
+            else
+            {
+                printf("Partial alignment -- ID: %d start: %d haplen: %zu alignlength: %d\n", (int)hits[j].targetID, (int)hits[j].t_start, haplotype.length(), (int)q_alignment_length);
+                printf("\tqstart: %d qend: %d\n", hits[j].q_start, hits[j].q_end);
+            }
+        }
+        */
     }
 }
 

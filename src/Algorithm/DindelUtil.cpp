@@ -38,10 +38,11 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     for(size_t i = 0; i < inHaplotypes.size(); ++i)
     {
         HapgenAlignmentVector thisCandidateAlignments;
-        HapgenUtil::alignHaplotypeToReference(inHaplotypes[i],
-                                              parameters.pReferenceBWT,
-                                              parameters.pReferenceSSA,
-                                              thisCandidateAlignments);
+        HapgenUtil::alignHaplotypeToReferenceKmer(inHaplotypes[i],
+                                                  parameters.pReferenceBWT,
+                                                  parameters.pReferenceSSA,
+                                                  parameters.pRefTable,
+                                                  thisCandidateAlignments);
 
         candidateAlignments.insert(candidateAlignments.end(), thisCandidateAlignments.begin(), thisCandidateAlignments.end());
     }
@@ -49,7 +50,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // Remove duplicate or bad alignment pairs
     HapgenUtil::coalesceAlignments(candidateAlignments);
     
-    size_t MAX_ALIGNMENTS = 2;
+    size_t MAX_ALIGNMENTS = 5;
     printf("Found %zu alignments\n", candidateAlignments.size());
     if(candidateAlignments.size() > MAX_ALIGNMENTS)
         return DRC_AMBIGUOUS_ALIGNMENT;
@@ -284,10 +285,10 @@ DindelReturnCode DindelUtil::runNaiveCaller(const std::string& normalString,
     for(size_t i = 0; i < inHaplotypes.size(); ++i)
     {
         HapgenAlignmentVector thisCandidateAlignments;
-        HapgenUtil::alignHaplotypeToReference(inHaplotypes[i],
-                                              parameters.pReferenceBWT,
-                                              parameters.pReferenceSSA,
-                                              candidateAlignments);
+        HapgenUtil::alignHaplotypeToReferenceBWASW(inHaplotypes[i],
+                                                   parameters.pReferenceBWT,
+                                                   parameters.pReferenceSSA,
+                                                   candidateAlignments);
     }
     
     // Remove duplicate or bad alignment pairs
@@ -681,8 +682,8 @@ DindelReturnCode DindelUtil::computeBestAlignment(const StringVector& inHaplotyp
     HapgenAlignmentVector candidateAlignments;
     for(size_t i = 0; i < inHaplotypes.size(); ++i)
     {
-        HapgenUtil::alignHaplotypeToReference(inHaplotypes[i], parameters.pReferenceBWT, 
-                                              parameters.pReferenceSSA, candidateAlignments);
+        HapgenUtil::alignHaplotypeToReferenceBWASW(inHaplotypes[i], parameters.pReferenceBWT, 
+                                                   parameters.pReferenceSSA, candidateAlignments);
     }
 
     // Remove duplicate or bad alignment pairs

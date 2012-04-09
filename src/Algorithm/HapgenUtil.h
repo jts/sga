@@ -20,7 +20,6 @@
 // the placement of a string onto a reference genome
 struct HapgenAlignment
 {
-
     //
     HapgenAlignment() : referenceID(-1), position(-1), length(0), score(-1), isRC(false) {}
     HapgenAlignment(const int& id, int p, int l, int s, bool rc) : referenceID(id), position(p), length(l), score(s), isRC(rc) {}
@@ -59,10 +58,18 @@ namespace HapgenUtil
 
 
     // Align the haplotype to the reference genome represented by the BWT/SSA pair
-    void alignHaplotypeToReference(const std::string& haplotype,
-                                   const BWT* pReferenceBWT,
-                                   const SampledSuffixArray* pReferenceSSA,
-                                   HapgenAlignmentVector& outAlignments);
+    void alignHaplotypeToReferenceBWASW(const std::string& haplotype,
+                                        const BWT* pReferenceBWT,
+                                        const SampledSuffixArray* pReferenceSSA,
+                                        HapgenAlignmentVector& outAlignments);
+
+    //
+    void alignHaplotypeToReferenceKmer(const std::string& haplotype,
+                                       const BWT* pReferenceBWT,
+                                       const SampledSuffixArray* pReferenceSSA,
+                                       const ReadTable* pReferenceTable,
+                                       HapgenAlignmentVector& outAlignments);
+
 
     // Coalesce a set of alignments into distinct locations
     void coalesceAlignments(HapgenAlignmentVector& alignments);

@@ -114,6 +114,8 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         printf("graph size: %zu tips: %zu\n", num_vertices, num_tips);
     }
 
+//    m_graph->writeDot("final.dot");
+
     return HBRC_OK;
 }
 
@@ -309,6 +311,15 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
             {
                 printf("Joined walks found\n");
 
+                // Check if the walk set is self-contained
+                bool self_contained = areWalksValid(walks);
+                if(!self_contained)
+                {
+                    printf("Skipping invalid walk %s -> %s\n", join_vertices[i]->getID().c_str(), join_vertices[j]->getID().c_str());
+                    continue;
+                }
+
+                printf("Valid walk %s -> %s\n", join_vertices[i]->getID().c_str(), join_vertices[j]->getID().c_str());
                 // Check how many seed vertices this walk covers
                 size_t seeds_covered = countCoveredVertices(seed_vertices, walks);
                 printf("    walk covers %zu of %zu seeds\n", seeds_covered, seed_vertices.size());
@@ -323,6 +334,35 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
             }
         }
     }
+}
+
+//
+bool OverlapHaplotypeBuilder::areWalksValid(const SGWalkVector& walks)
+{
+    // Build ID set
+    std::set<Vertex*> vertex_set;
+    for(size_t i = 0; i < walks.size(); ++i)
+    {
+        VertexPtrVec verts = walks[i].getVertices();
+        for(size_t j = 0; j < verts.size(); ++j)
+            vertex_set.insert(verts[j]);
+    }
+
+    // For every internal vertex of each walk, check that it only has edges to vertices in the set
+    for(size_t i = 0; i < walks.size(); ++i)
+    {
+        VertexPtrVec verts = walks[i].getVertices();
+        for(size_t j = 1; j < verts.size() - 1; ++j)
+        {
+            EdgePtrVec edges = verts[j]->getEdges();
+            for(size_t k = 0; k < edges.size(); ++k)
+            {
+                if(vertex_set.find(edges[k]->getEnd()) == vertex_set.end())
+                    return false; // edge to a non-contained vertex
+            }
+        }
+    }
+    return true;
 }
 
 //

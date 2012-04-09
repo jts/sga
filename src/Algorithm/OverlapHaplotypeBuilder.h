@@ -54,7 +54,10 @@ class OverlapHaplotypeBuilder
         // If there is a valid covering assembly of the reads, it will be
         // written to the vector
         void checkWalks(StringVector* out_strings);
-
+        
+        // Check if the walk set is a valid variant path
+        bool areWalksValid(const SGWalkVector& walks);
+        
         // Get all the reads that contain at least one of the kmers in the vector
         void getReadsForKmers(const StringVector& kmers, size_t k, StringVector* reads);
 
