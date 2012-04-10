@@ -114,7 +114,7 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         printf("graph size: %zu tips: %zu\n", num_vertices, num_tips);
     }
 
-    m_graph->writeDot("final.dot");
+    //m_graph->writeDot("final.dot");
 
     return HBRC_OK;
 }
@@ -307,9 +307,10 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
 
         if(x->getID().find("join") != std::string::npos)
         {
-            if(x->getID().find("left") != std::string::npos)
+            if(x->getID().find("left") != std::string::npos && isUniqueJoin(x, ED_ANTISENSE))
                 left_join_vertices.push_back(x);
-            if(x->getID().find("right") != std::string::npos)
+
+            if(x->getID().find("right") != std::string::npos && isUniqueJoin(x, ED_SENSE))
                 right_join_vertices.push_back(x);
         }
 
@@ -324,6 +325,11 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
     {
         for(size_t j = 0; j < right_join_vertices.size(); ++j)
         {
+            /*
+            printf("Trying %s -> %s\n", left_join_vertices[i]->getID().c_str(), 
+                                        right_join_vertices[j]->getID().c_str());
+            */
+
             // Try to find a walk between this pair of join vertices
             SGWalkVector walks;
             SGSearch::findWalks(left_join_vertices[i], right_join_vertices[j], ED_SENSE, 2000, 10000, true, walks);
@@ -378,6 +384,30 @@ bool OverlapHaplotypeBuilder::areWalksValid(const SGWalkVector& walks)
         }
     }
     return true;
+}
+
+//
+bool OverlapHaplotypeBuilder::isUniqueJoin(Vertex* x, EdgeDir direction)
+{
+    // To avoid generating multiple paths over the same part of the graph
+    // we only use vertices as join points where the graph splits, ends
+    // or goes to non-join sequences. This avoids the case
+    // where we have chains of unambiguous join vertices
+    // and we try to build paths using all pairs of them
+    EdgePtrVec dir_edges = x->getEdges(direction);
+    EdgePtrVec opp_edges = x->getEdges(!direction);
+    if(dir_edges.size() != 1 || opp_edges.size() > 1)
+    {
+        return true;
+    }
+    else
+    {
+        // Single edge, only add if the edge
+        // is not to a join vertex
+        assert(dir_edges.size() == 1);
+        Vertex* y = dir_edges.front()->getEnd();
+        return y->getID().find("join") == std::string::npos;
+    }
 }
 
 //

@@ -98,6 +98,11 @@ class OverlapHaplotypeBuilder
         // Returns true if the sequence represents a junction in the variation graph
         bool isJoinSequence(const std::string& sequence);
 
+        // Returns true if the vertex x is at a bifurcation of the graph, a dead-end tip
+        // or unambiguously connected to a non-join vertex. Used to avoid generating
+        // redudant covering walks
+        bool isUniqueJoin(Vertex* x, EdgeDir direction);
+
         // Returns the number of vertices in the vector that are contained in any walk
         size_t countCoveredVertices(const VertexPtrVec& vertices, const SGWalkVector& walks);
 
