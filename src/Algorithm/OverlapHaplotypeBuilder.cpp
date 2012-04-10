@@ -298,7 +298,9 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
             seed_vertices.push_back(vertices[i]);
     }
 
-    printf("Found %zu potential joins\n", join_vertices.size());
+    printf("%zu walk candidates\n", join_vertices.size());
+
+    //
     for(size_t i = 0; i < join_vertices.size(); ++i)
     {
         for(size_t j = i + 1; j < join_vertices.size(); ++j)
@@ -309,20 +311,14 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
 
             if(!walks.empty())
             {
-                printf("Joined walks found\n");
-
                 // Check if the walk set is self-contained
                 bool self_contained = areWalksValid(walks);
                 if(!self_contained)
-                {
-                    printf("Skipping invalid walk %s -> %s\n", join_vertices[i]->getID().c_str(), join_vertices[j]->getID().c_str());
                     continue;
-                }
 
-                printf("Valid walk %s -> %s\n", join_vertices[i]->getID().c_str(), join_vertices[j]->getID().c_str());
                 // Check how many seed vertices this walk covers
                 size_t seeds_covered = countCoveredVertices(seed_vertices, walks);
-                printf("    walk covers %zu of %zu seeds\n", seeds_covered, seed_vertices.size());
+                //printf("    walk covers %zu of %zu seeds\n", seeds_covered, seed_vertices.size());
                 double fraction_covered = (double)seeds_covered / seed_vertices.size();
                 if(fraction_covered > 0.5)
                 {

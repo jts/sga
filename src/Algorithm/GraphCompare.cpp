@@ -344,7 +344,8 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
     */
     bool found_variant_string = result.variant_haplotypes.size() > 0;
 
-    if(found_variant_string)
+    // JTS: disable base string generation which can lead to false calls if wrong
+    if(found_variant_string &&  false)
     {
         // Run haplotype builder on the normal graph
         for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)

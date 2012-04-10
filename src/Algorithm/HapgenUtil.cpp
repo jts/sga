@@ -117,6 +117,8 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
         CandidateVector::iterator new_end = std::unique(candidates.begin(), candidates.end(), CandidateKmerAlignment::equalByStart);
         candidates.resize(new_end - candidates.begin());
 
+        printf("%zu candidates for alignment\n", candidates.size());
+
         for(size_t j = 0; j < candidates.size(); ++j)
         {
             printf("Candidate: %zu\n", candidates[j].target_extrapolated_start);
@@ -137,7 +139,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
 
             // Align haplotype to the reference
             SequenceOverlap overlap = Overlapper::computeOverlap(query, ref_substring);
-//            overlap.printAlignment(query, ref_substring);
+            overlap.printAlignment(query, ref_substring);
 
             int alignment_start = ref_start + overlap.match[1].start;
             int alignment_end = ref_start + overlap.match[1].end; // inclusive
