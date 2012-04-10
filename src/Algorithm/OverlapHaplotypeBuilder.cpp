@@ -114,7 +114,7 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         printf("graph size: %zu tips: %zu\n", num_vertices, num_tips);
     }
 
-    //m_graph->writeDot("final.dot");
+    m_graph->writeDot("final.dot");
 
     return HBRC_OK;
 }
@@ -146,12 +146,17 @@ bool OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
 void OverlapHaplotypeBuilder::extendGraph()
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::extendGraph")
+    
+    //
+    ExtendableTipVector vertices_to_trim;
 
     // Find tip vertices
     ExtendableTipVector tips = findTips();
+
     for(size_t i = 0; i < tips.size(); ++i)
     {
-        Vertex* x = tips[i].vertex;
+        Vertex* x = m_graph->getVertex(tips[i].id);
+        assert(x != NULL);
         EdgeDir dir = tips[i].direction;
 
         printf("Vertex %s can be extended\n", x->getID().c_str());
@@ -161,16 +166,31 @@ void OverlapHaplotypeBuilder::extendGraph()
         printf("Found %zu overlaps\n", overlapping_reads.size());
 
         // Insert the new reads into the graph
-        for(size_t i = 0; i < overlapping_reads.size(); ++i)
+        for(size_t j = 0; j < overlapping_reads.size(); ++j)
         {
             // Determine whether the incoming read is possible join point
-            bool is_join = isJoinSequence(overlapping_reads[i]);
+            bool is_join = isJoinSequence(overlapping_reads[j]);
 
             std::stringstream label;
             label << (is_join ? "join-" : "extend-");
             label << (dir == ED_ANTISENSE ? "left-" : "right-");
-            insertVertexIntoGraph(label.str(), overlapping_reads[i]);
+            insertVertexIntoGraph(label.str(), overlapping_reads[j]);
         }
+
+        // Check if x is still a tip in this direction. If so, we trim it and its branch from the graph
+        EdgePtrVec x_edges = x->getEdges(dir);
+        if(x_edges.size() == 0)
+            vertices_to_trim.push_back(tips[i]);
+    }
+    
+    // Trim non-extended vertices
+    for(size_t i = 0; i < vertices_to_trim.size(); ++i)
+    {
+        Vertex* x = m_graph->getVertex(vertices_to_trim[i].id);
+
+        // This vertex may have been removed in a previous iteration
+        if(x != NULL)
+            trimTip(x, vertices_to_trim[i].direction);
     }
 }
 
@@ -440,19 +460,37 @@ ExtendableTipVector OverlapHaplotypeBuilder::findTips() const
 
         if(edge_count[ED_SENSE] == 0)
         {
-            ExtendableTip tip = { x, ED_SENSE };
+            ExtendableTip tip = { x->getID(), ED_SENSE };
             tips.push_back(tip);
         }
 
         if(edge_count[ED_ANTISENSE] == 0)
         {
-            ExtendableTip tip = { x, ED_ANTISENSE };
+            ExtendableTip tip = { x->getID(), ED_ANTISENSE };
             tips.push_back(tip);
         }
     }
     return tips;
 }
 
+//
+void OverlapHaplotypeBuilder::trimTip(Vertex* x, EdgeDir direction)
+{
+    // Check if we should recurse to the neighbors of x
+    EdgePtrVec x_opp_edges = x->getEdges(!direction);
+    Vertex* x_neighbor = NULL;
+    if(x_opp_edges.size() == 1)
+        x_neighbor = x_opp_edges.front()->getEnd();
+
+    // Remove x from the graph
+    m_graph->removeConnectedVertex(x);
+
+    // Recurse to x's neighbors if it is now a tip
+    if(x_neighbor != NULL)
+        trimTip(x_neighbor, direction);
+}       
+
+//
 bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence)
 {
     // Check if this sequence forms a complete k-mer path in the base/reference sequence
