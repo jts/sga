@@ -168,7 +168,7 @@ void OverlapHaplotypeBuilder::extendGraph()
 
             std::stringstream label;
             label << (is_join ? "join-" : "extend-");
-            label << (dir == ED_SENSE ? "sense-" : "antisense-");
+            label << (dir == ED_ANTISENSE ? "left-" : "right-");
             insertVertexIntoGraph(label.str(), overlapping_reads[i]);
         }
     }
@@ -295,26 +295,38 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
     PROFILE_FUNC("OverlapHaplotypeBuilder::checkWalks")
     // Make a vector of the join sequences
     VertexPtrVec seed_vertices;
-    VertexPtrVec join_vertices;
+    
+    VertexPtrVec left_join_vertices;
+    VertexPtrVec right_join_vertices;
+
     VertexPtrVec vertices = m_graph->getAllVertices();
     for(size_t i = 0; i < vertices.size(); ++i)
     {
-        if(vertices[i]->getID().find("join") != std::string::npos)
-            join_vertices.push_back(vertices[i]);
-        if(vertices[i]->getID().find("seed") != std::string::npos)
+        // Classify vertex
+        Vertex* x = vertices[i];
+
+        if(x->getID().find("join") != std::string::npos)
+        {
+            if(x->getID().find("left") != std::string::npos)
+                left_join_vertices.push_back(x);
+            if(x->getID().find("right") != std::string::npos)
+                right_join_vertices.push_back(x);
+        }
+
+        if(x->getID().find("seed") != std::string::npos)
             seed_vertices.push_back(vertices[i]);
     }
 
-    printf("%zu walk candidates\n", join_vertices.size());
+    printf("[%zu %zu join candidates]\n", left_join_vertices.size(), right_join_vertices.size());
 
     //
-    for(size_t i = 0; i < join_vertices.size(); ++i)
+    for(size_t i = 0; i < left_join_vertices.size(); ++i)
     {
-        for(size_t j = i + 1; j < join_vertices.size(); ++j)
+        for(size_t j = 0; j < right_join_vertices.size(); ++j)
         {
             // Try to find a walk between this pair of join vertices
             SGWalkVector walks;
-            SGSearch::findWalks(join_vertices[i], join_vertices[j], ED_SENSE, 2000, 10000, true, walks);
+            SGSearch::findWalks(left_join_vertices[i], right_join_vertices[j], ED_SENSE, 2000, 10000, true, walks);
 
             if(!walks.empty())
             {
