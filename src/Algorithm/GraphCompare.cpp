@@ -344,6 +344,9 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
     */
     bool found_variant_string = result.variant_haplotypes.size() > 0;
 
+    for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
+        printf("Assembly[%zu]: %s\n", i, result.variant_haplotypes[i].c_str());
+
     // JTS: disable base string generation which can lead to false calls if wrong
     if(found_variant_string &&  false)
     {

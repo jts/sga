@@ -21,7 +21,7 @@ void HapgenUtil::alignHaplotypeToReferenceBWASW(const std::string& haplotype,
                                                 const SampledSuffixArray* pReferenceSSA,
                                                 HapgenAlignmentVector& outAlignments)
 {
-    PROFILE_FUNC("HapgenUtil::alignHaplotypesToReference")
+    PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceBWASW")
     LRAlignment::LRParams params;
 
     params.zBest = 20;
@@ -74,7 +74,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
                                                const ReadTable* pReferenceTable,
                                                HapgenAlignmentVector& outAlignments)
 {
-    PROFILE_FUNC("HapgenUtil::alignHaplotypesToReference")
+    PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceKmer")
     size_t k = 41;
     int64_t max_interval_size = 4;
 
