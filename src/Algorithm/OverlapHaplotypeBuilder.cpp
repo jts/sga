@@ -114,7 +114,7 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         printf("graph size: %zu tips: %zu\n", num_vertices, num_tips);
     }
 
-//    m_graph->writeDot("final.dot");
+    m_graph->writeDot("final.dot");
 
     return HBRC_OK;
 }
@@ -148,13 +148,16 @@ void OverlapHaplotypeBuilder::extendGraph()
     PROFILE_FUNC("OverlapHaplotypeBuilder::extendGraph")
 
     // Find tip vertices
-    VertexPtrVec tips = findTips();
+    ExtendableTipVector tips = findTips();
     for(size_t i = 0; i < tips.size(); ++i)
     {
-        printf("Vertex %s can be extended\n", tips[i]->getID().c_str());
+        Vertex* x = tips[i].vertex;
+        EdgeDir dir = tips[i].direction;
+
+        printf("Vertex %s can be extended\n", x->getID().c_str());
 
         // Find corrected reads that perfectly overlap this vertex
-        StringVector overlapping_reads = getCorrectedOverlaps(tips[i]->getSeq().toString());
+        StringVector overlapping_reads = getCorrectedOverlaps(x->getSeq().toString());
         printf("Found %zu overlaps\n", overlapping_reads.size());
 
         // Insert the new reads into the graph
@@ -162,7 +165,11 @@ void OverlapHaplotypeBuilder::extendGraph()
         {
             // Determine whether the incoming read is possible join point
             bool is_join = isJoinSequence(overlapping_reads[i]);
-            insertVertexIntoGraph(is_join ? "join-" : "extend-", overlapping_reads[i]);
+
+            std::stringstream label;
+            label << (is_join ? "join-" : "extend-");
+            label << (dir == ED_SENSE ? "sense-" : "antisense-");
+            insertVertexIntoGraph(label.str(), overlapping_reads[i]);
         }
     }
 }
@@ -362,10 +369,10 @@ bool OverlapHaplotypeBuilder::areWalksValid(const SGWalkVector& walks)
 }
 
 //
-VertexPtrVec OverlapHaplotypeBuilder::findTips() const
+ExtendableTipVector OverlapHaplotypeBuilder::findTips() const
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::findTips")
-    VertexPtrVec out_vertices;
+    ExtendableTipVector tips;
     VertexPtrVec vertices = m_graph->getAllVertices();
     for(size_t i = 0; i < vertices.size(); ++i)
     {
@@ -385,10 +392,23 @@ VertexPtrVec OverlapHaplotypeBuilder::findTips() const
                 edge_count[xy->getDir()]++;
         }
 
-        if(edge_count[ED_SENSE] == 0 || edge_count[ED_ANTISENSE] == 0)
-            out_vertices.push_back(x);
+        // Skip completely disconnected vertices
+        if(edge_count[ED_SENSE] == 0 && edge_count[ED_ANTISENSE] == 0)
+            continue;
+
+        if(edge_count[ED_SENSE] == 0)
+        {
+            ExtendableTip tip = { x, ED_SENSE };
+            tips.push_back(tip);
+        }
+
+        if(edge_count[ED_ANTISENSE] == 0)
+        {
+            ExtendableTip tip = { x, ED_ANTISENSE };
+            tips.push_back(tip);
+        }
     }
-    return out_vertices;
+    return tips;
 }
 
 bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence)
