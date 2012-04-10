@@ -64,6 +64,7 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "                                       searching for the completion of a bubble (default: 0)\n"
 "      -t, --threads=NUM                use NUM computation threads\n"
 "          --test=VCF                   test the variants in the provided VCF file\n"
+"      -m, --min-overlap=N              require at least N bp overlap between reads when constructing the graph\n" 
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -80,6 +81,7 @@ namespace opt
     static int sampleRate = 128;
     static int cacheLength = 10;
     static int minKmerThreshold = 1;
+    static int minOverlap = 61;
 
     static bool referenceMode = false;
 
@@ -96,7 +98,7 @@ namespace opt
 //    static std::string outFile = "variants.fa";
 }
 
-static const char* shortopts = "b:r:o:k:d:t:x:y:p:v";
+static const char* shortopts = "b:r:o:k:d:t:x:y:p:m:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_THRESHOLD, OPT_INDEX };
 
@@ -111,6 +113,7 @@ static const struct option longopts[] = {
     { "max-branches",  required_argument, NULL, 'y' },
     { "sample-rate",   required_argument, NULL, 'd' },
     { "prefix",        required_argument, NULL, 'p' },
+    { "min-overlap",   required_argument, NULL, 'm' },
     { "index",         required_argument, NULL, OPT_INDEX },
     { "min-threshold", required_argument, NULL, OPT_MIN_THRESHOLD },
     { "debug",         required_argument, NULL, OPT_DEBUG },
@@ -209,7 +212,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.bReferenceMode = opt::referenceMode;
     sharedParameters.maxSingletons = 5;
     sharedParameters.minKmerThreshold = opt::minKmerThreshold;
-    sharedParameters.minOverlap = 61;
+    sharedParameters.minOverlap = opt::minOverlap;
 
     if(!opt::debugFile.empty())
     {
@@ -376,6 +379,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'y': arg >> opt::maxBranches; break;
             case 'd': arg >> opt::sampleRate; break;
             case 'p': arg >> opt::outPrefix; break;
+            case 'm': arg >> opt::minOverlap; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_MIN_THRESHOLD: arg >> opt::minKmerThreshold; break;
