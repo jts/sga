@@ -160,7 +160,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
             }
 
             printf("Edits: %d Events: %d\n", overlap.edit_distance, num_events);
-            if(num_events <= 4)
+            if(num_events <= 10)
             {
                 HapgenAlignment aln(candidates[j].target_sequence_id, alignment_start, alignment_length, overlap.score, is_reverse);
                 outAlignments.push_back(aln);

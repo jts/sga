@@ -85,7 +85,8 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         return HBRC_OK;
 
     bool done = false;
-    int MAX_ROUNDS = 4;
+    int MAX_ROUNDS = 10;
+    size_t MAX_GRAPH_SIZE = 500;
     int round = 0;
     while(!done) 
     {
@@ -109,13 +110,15 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         size_t num_vertices = m_graph->getNumVertices();
         size_t num_tips = findTips().size();
 
-        done = round++ >= MAX_ROUNDS || !out_haplotypes.empty() || num_tips > 5;
+        done = round++ >= MAX_ROUNDS || !out_haplotypes.empty() || num_tips > 5 || num_vertices >= MAX_GRAPH_SIZE;
 
-        printf("graph size: %zu tips: %zu\n", num_vertices, num_tips);
+        printf("graph size: %zu tips: %zu round: %d done: %d\n", num_vertices, num_tips, round, done);
     }
 
+    /*
+    m_graph->writeASQG("final.asqg");
     m_graph->writeDot("final.dot");
-
+    */
     return HBRC_OK;
 }
 
@@ -162,7 +165,7 @@ void OverlapHaplotypeBuilder::extendGraph()
         printf("Vertex %s can be extended\n", x->getID().c_str());
 
         // Find corrected reads that perfectly overlap this vertex
-        StringVector overlapping_reads = getCorrectedOverlaps(x->getSeq().toString());
+        StringVector overlapping_reads = getCorrectedOverlaps(x->getSeq().toString(), dir);
         printf("Found %zu overlaps\n", overlapping_reads.size());
 
         // Insert the new reads into the graph
@@ -209,6 +212,8 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
     Vertex* pVertex = new(m_graph->getVertexAllocator()) Vertex(id_ss.str(), sequence);
     m_graph->addVertex(pVertex);
 
+    std::cout << "Inserting vertex " << id_ss.str() << "\n";
+
     // Get a list of vertices that have a k-mer match to this sequence.
     SharedVertexKmerVector candidate_vertices = getCandidateOverlaps(pVertex);
 
@@ -243,6 +248,11 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
             // Seed the match using kmer position
             overlap = Overlapper::extendMatch(existing_sequence, sequence, pos_0, pos_1, 1);
         }
+
+        /*
+        printf("Overlap: %s - %s\n", existing_vertex->getID().c_str(), pVertex->getID().c_str());
+        overlap.printAlignment(existing_sequence, sequence);
+        */
 
         if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= m_parameters.minOverlap)
         {
@@ -514,7 +524,7 @@ bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence)
 }
 
 //
-StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence)
+StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence, EdgeDir direction)
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::getCorrectedOverlaps")
     // Extract reads that share a short kmer with the input sequence
@@ -538,6 +548,7 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
     // Correct the reads
     correctReads(&reads);
     assert(reads.size() == overlap_vector.size());
+
     // Overlap each corrected read with the input sequence
     // Discard any read that does perfectly match with a long enough overlap
     StringVector out_reads;
@@ -550,7 +561,14 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
         // Recompute the overlap, using the previous overlap as a guide
         const SequenceOverlap& initial_overlap = overlap_vector[i].overlap;
         SequenceOverlap overlap = Overlapper::extendMatch(sequence, reads[i], initial_overlap.match[0].start, initial_overlap.match[1].start, 1);
-        if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= m_parameters.minOverlap)
+
+        bool is_prefix_overlap = overlap.match[0].start == 0;
+        bool is_suffix_overlap = overlap.match[0].end == ((int)sequence.size() - 1);
+
+        bool valid_direction = (is_prefix_overlap && direction == ED_ANTISENSE) ||
+                               (is_suffix_overlap && direction == ED_SENSE);
+
+        if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= m_parameters.minOverlap && valid_direction)
             out_reads.push_back(reads[i]);
     }
 

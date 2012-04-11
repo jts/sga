@@ -90,7 +90,7 @@ class OverlapHaplotypeBuilder
         void updateKmerVertexMap(const Vertex* incoming_vertex);
 
         // Find corrected reads that share a perfect overlap to the input sequence
-        StringVector getCorrectedOverlaps(const std::string& sequence);
+        StringVector getCorrectedOverlaps(const std::string& sequence, EdgeDir direction);
 
         // Find tip vertices in the graph
         ExtendableTipVector findTips() const;
