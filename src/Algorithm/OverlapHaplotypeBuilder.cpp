@@ -113,11 +113,13 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         size_t num_tips = findTips().size();
 
         done = round++ >= MAX_ROUNDS || !out_haplotypes.empty() || num_tips > MAX_TIPS || num_vertices >= MAX_GRAPH_SIZE;
-
+        
+        /*
         std::stringstream graph_name;
         graph_name << "graph.r" << round;
         m_graph->writeDot(graph_name.str() + ".dot");
         m_graph->writeASQG(graph_name.str() + ".asqg");
+        */
         printf("graph size: %zu tips: %zu round: %d done: %d\n", num_vertices, num_tips, round, done);
     }
 
