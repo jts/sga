@@ -41,7 +41,7 @@ OverlapHaplotypeBuilder::OverlapHaplotypeBuilder(const GraphCompareParameters& p
 
     // k-mer based corrector params
     correction_params.numKmerRounds = 10;
-    correction_params.kmerLength = 51;
+    correction_params.kmerLength = 31;
 
     // output options
     correction_params.printOverlaps = true;
@@ -85,7 +85,9 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         return HBRC_OK;
 
     bool done = false;
+
     int MAX_ROUNDS = 10;
+    size_t MAX_TIPS = 10;
     size_t MAX_GRAPH_SIZE = 500;
     int round = 0;
     while(!done) 
@@ -110,15 +112,15 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         size_t num_vertices = m_graph->getNumVertices();
         size_t num_tips = findTips().size();
 
-        done = round++ >= MAX_ROUNDS || !out_haplotypes.empty() || num_tips > 5 || num_vertices >= MAX_GRAPH_SIZE;
+        done = round++ >= MAX_ROUNDS || !out_haplotypes.empty() || num_tips > MAX_TIPS || num_vertices >= MAX_GRAPH_SIZE;
 
+        std::stringstream graph_name;
+        graph_name << "graph.r" << round;
+        m_graph->writeDot(graph_name.str() + ".dot");
+        m_graph->writeASQG(graph_name.str() + ".asqg");
         printf("graph size: %zu tips: %zu round: %d done: %d\n", num_vertices, num_tips, round, done);
     }
 
-    /*
-    m_graph->writeASQG("final.asqg");
-    m_graph->writeDot("final.dot");
-    */
     return HBRC_OK;
 }
 
@@ -135,7 +137,7 @@ bool OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
     if(ordered_reads.size() < m_parameters.kmerThreshold)
         return false;
 
-    // DEBUG print MA
+    //DEBUG print MA
     //MultipleAlignment ma = buildMultipleAlignment(ordered_reads);
     //ma.print(200);
 
@@ -486,6 +488,8 @@ ExtendableTipVector OverlapHaplotypeBuilder::findTips() const
 //
 void OverlapHaplotypeBuilder::trimTip(Vertex* x, EdgeDir direction)
 {
+    printf("Trimming %s\n", x->getID().c_str());
+
     // Check if we should recurse to the neighbors of x
     EdgePtrVec x_opp_edges = x->getEdges(!direction);
     Vertex* x_neighbor = NULL;
@@ -495,9 +499,11 @@ void OverlapHaplotypeBuilder::trimTip(Vertex* x, EdgeDir direction)
     // Remove x from the graph
     m_graph->removeConnectedVertex(x);
 
+/*
     // Recurse to x's neighbors if it is now a tip
     if(x_neighbor != NULL)
         trimTip(x_neighbor, direction);
+        */
 }       
 
 //
