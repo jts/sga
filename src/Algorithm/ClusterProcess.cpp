@@ -107,6 +107,10 @@ ClusterResult ClusterProcess::process(const ClusterVector& inSequences)
     for(size_t i = 0; i < inSequences.size(); ++i)
         cluster.addSeed(inSequences[i].sequence, false);
 
+    // Add sequences to be used to stop extension, if requested
+    if(m_parameters.pLimitKmers != NULL)
+        cluster.setLimitKmers(m_parameters.pLimitKmers, m_parameters.limitK);
+
     cluster.run(m_parameters.maxClusterSize, m_parameters.maxIterations);
 
     ClusterResult result;

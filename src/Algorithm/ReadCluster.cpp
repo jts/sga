@@ -11,9 +11,18 @@
 
 //
 ReadCluster::ReadCluster(const OverlapAlgorithm* pOverlapper, int minOverlap) : m_pOverlapper(pOverlapper), 
-                                                                                m_minOverlap(minOverlap)
+                                                                                m_minOverlap(minOverlap),
+                                                                                m_pLimitKmers(NULL),
+                                                                                m_limitK(0)
 {
 
+}
+
+//
+void ReadCluster::setLimitKmers(const std::set<std::string>* pLimitKmers, size_t limitK)
+{
+    m_pLimitKmers = pLimitKmers;
+    m_limitK = limitK;
 }
 
 // Add a seed read to the cluster. Overlaps will be found for 
@@ -100,6 +109,11 @@ void ReadCluster::run(size_t max_size, int max_iterations)
         // Add this node to the output
         m_outCluster.push_back(node);
 
+        // If we are using limit kmers, only try to extend this sequence if it does not contain a limit kmer
+        bool extend_read = canExtendRead(node);
+        if(!extend_read)
+            continue; 
+
         // Find overlaps for the current node
         SeqRecord tempRecord;
         tempRecord.id = "cluster";
@@ -130,7 +144,34 @@ void ReadCluster::run(size_t max_size, int max_iterations)
     // Clear the queue
     while(!m_queue.empty())
         m_queue.pop();
+}
 
+// Check if the given node contains a kmer that we stop extension at.
+// Returns true if we can extend the cluster using the given node
+bool ReadCluster::canExtendRead(const ClusterNode& node) const
+{
+    // No limiting kmers
+    if(m_pLimitKmers == NULL)
+        return true;
+
+    // Node too short
+    if(node.sequence.size() < m_limitK)
+        return false;
+
+    size_t nk = node.sequence.size() - m_limitK + 1;
+    for(size_t i = 0; i < nk; ++i)
+    {
+        std::string kmer = node.sequence.substr(i, m_limitK);
+        if(m_pLimitKmers->find(kmer) != m_pLimitKmers->end())
+            return false; // this read contains a limiting kmer
+        
+        // check reverse complement too
+        kmer = reverseComplement(kmer);
+        if(m_pLimitKmers->find(kmer) != m_pLimitKmers->end())
+            return false; // this read contains a limiting kmer
+    }
+
+    return true;
 }
 
 // 

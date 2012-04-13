@@ -23,6 +23,9 @@
 #include "ClusterProcess.h"
 #include "ClusterReader.h"
 
+// Local functions
+void readLimitKmers(std::set<std::string>* limit_kmers);
+
 // Defines to clarify awful template function calls
 #define PROCESS_CLUSTER_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, ClusterResult, \
                                                                                 ClusterProcess, ClusterPostProcess>
@@ -66,6 +69,7 @@ static const char *CLUSTER_USAGE_MESSAGE =
 "      -t, --threads=NUM                use NUM worker threads to compute the overlaps (default: no threading)\n"
 "      -i, --iterations=NUM             limit cluster extension to NUM iterations\n"
 "          --extend=FILE                extend previously existing clusters in FILE\n"
+"          --limit=FILE                 do not extend through the sequences in FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -81,6 +85,7 @@ namespace opt
     static int seedLength = 0;
     static int seedStride = 0;//seedLength;
     static int numThreads = 1;
+    static size_t limitKmer = 21;
     static int maxIterations = -1;
     static double errorRate = 0.0f;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
@@ -88,7 +93,7 @@ namespace opt
 
 static const char* shortopts = "o:m:c:t:e:p:x:";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_EXTEND };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_EXTEND, OPT_LIMIT };
 
 static const struct option longopts[] = {
     { "verbose",          no_argument,       NULL, 'v' },
@@ -101,6 +106,7 @@ static const struct option longopts[] = {
     { "iterations",       required_argument, NULL, 'i' },
     { "prefix",           required_argument, NULL, 'p' },
     { "extend",           required_argument, NULL, OPT_EXTEND },
+    { "limit",            required_argument, NULL, OPT_LIMIT },
     { "help",             no_argument,       NULL, OPT_HELP },
     { "version",          no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -141,6 +147,23 @@ void cluster()
     parameters.maxClusterSize = opt::maxSize;
     parameters.maxIterations = opt::maxIterations;
     parameters.pMarkedReads = &markedReads;
+
+    // Read the limit kmer sequences, if provided
+    std::set<std::string>* pLimitKmers = NULL;
+
+    if(!opt::limitFile.empty())
+    {
+        // Read in the limit sequences
+        pLimitKmers = new std::set<std::string>;
+        readLimitKmers(pLimitKmers);
+        parameters.pLimitKmers = pLimitKmers;
+        parameters.limitK = opt::limitKmer;
+    }
+    else
+    {
+        parameters.pLimitKmers = NULL;
+        parameters.limitK = 0;
+    }
 
     // Make pre-clusters from the reads
     if(opt::numThreads <= 1)
@@ -192,6 +215,10 @@ void cluster()
     delete pRBWT;
     delete pOverlapper;
 
+    // Deallocate limit kmers
+    if(pLimitKmers != NULL)
+        delete pLimitKmers;
+
     // Open the preclusters file and convert them to read names
     SuffixArray* pFwdSAI = new SuffixArray(opt::prefix + SAI_EXT);
     ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pFwdSAI->getNumStrings());
@@ -234,6 +261,30 @@ void cluster()
     delete pClusterWriter;
 }
 
+//
+void readLimitKmers(std::set<std::string>* limit_kmers)
+{
+    assert(!opt::limitFile.empty());
+    assert(opt::limitKmer > 0);
+    ClusterReader limit_reader(opt::limitFile);
+    ClusterRecord record;
+    while(limit_reader.readCluster(record))
+    {
+        // Insert kmers into the output set
+
+        // Skip short sequences
+        if(record.sequence.size() < opt::limitKmer)
+            continue;
+
+        size_t nk = record.sequence.size() - opt::limitKmer + 1;
+        for(size_t i = 0; i < nk; ++i) 
+        {
+            std::string kmer = record.sequence.substr(i, opt::limitKmer);
+            limit_kmers->insert(kmer);
+        }
+    }
+}
+
 // 
 // Handle command line arguments
 //
@@ -256,6 +307,7 @@ void parseClusterOptions(int argc, char** argv)
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_EXTEND: arg >> opt::extendFile; break;
+            case OPT_LIMIT: arg >> opt::limitFile; break;
             case OPT_HELP:
                 std::cout << CLUSTER_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

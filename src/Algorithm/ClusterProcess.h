@@ -25,6 +25,8 @@ struct ClusterParameters
     size_t maxClusterSize;
     int maxIterations;
     BitVector* pMarkedReads; // shared between threads
+    const std::set<std::string>* pLimitKmers;
+    size_t limitK;
 };
 
 struct ClusterResult
