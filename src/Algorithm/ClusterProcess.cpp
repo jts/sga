@@ -11,16 +11,12 @@
 #include "SGVisitors.h"
 
 //
-ClusterProcess::ClusterProcess(const OverlapAlgorithm* pOverlapper, 
-                               int minOverlap, 
-                               size_t maxSize,
-                               BitVector* pMarkedReads) : 
-                                     m_pOverlapper(pOverlapper), 
-                                     m_minOverlap(minOverlap), 
-                                     m_maxClusterSize(maxSize),
-                                     m_pMarkedReads(pMarkedReads)
+ClusterProcess::ClusterProcess(ClusterParameters params) : m_parameters(params)
 {
-
+    // Check parameters are set
+    assert(m_parameters.pOverlapper != NULL);
+    assert(m_parameters.pMarkedReads != NULL);
+    assert(m_parameters.minOverlap >= 12);
 }
 
 //
@@ -33,13 +29,13 @@ ClusterProcess::~ClusterProcess()
 //
 ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
 {
-    ReadCluster cluster(m_pOverlapper, m_minOverlap);
+    ReadCluster cluster(m_parameters.pOverlapper, m_parameters.minOverlap);
     ClusterNode node = cluster.addSeed(item.read.seq.toString(), true);
     assert(node.interval.isValid());
     // Check if this read is already part of a cluster. If so, return an empty result
     for(int64_t i = node.interval.lower; i <= node.interval.upper; ++i)
     {
-        if(m_pMarkedReads->test(i))
+        if(m_parameters.pMarkedReads->test(i))
         {
             ClusterResult result;
             return result; // already part of a cluster, return nothing
@@ -47,7 +43,7 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
     }
     
     // Run the clustering process
-    cluster.run(m_maxClusterSize);
+    cluster.run(m_parameters.maxClusterSize, 0);
 
     // If some work was performed, update the bitvector so other threads do not try to merge the same set of reads.
     // As a given set of reads should all be merged together, we only need to make sure we atomically update
@@ -58,14 +54,14 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
     // Check if the bit in the vector has already been set for the lowest read index
     // If it has some other thread has already output this set so we do nothing
     int64_t lowestIndex = result.clusterNodes.front().interval.lower;
-    bool currentValue = m_pMarkedReads->test(lowestIndex);
+    bool currentValue = m_parameters.pMarkedReads->test(lowestIndex);
     bool updateSuccess = false;
 
     if(currentValue == false)
     {
         // Attempt to update the bit vector with an atomic CAS. If this returns false
         // the bit was set by some other thread
-        updateSuccess = m_pMarkedReads->updateCAS(lowestIndex, currentValue, true);
+        updateSuccess = m_parameters.pMarkedReads->updateCAS(lowestIndex, currentValue, true);
     }
 
     if(updateSuccess)
@@ -80,7 +76,7 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
             {
                 if(i == lowestIndex) //already set
                     continue;
-                currentValue = m_pMarkedReads->test(i);
+                currentValue = m_parameters.pMarkedReads->test(i);
                 if(currentValue)
                 {
                     // This value should not be true, emit a warning
@@ -88,7 +84,7 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
                 }
                 else
                 {
-                    m_pMarkedReads->updateCAS(i, currentValue, true);
+                    m_parameters.pMarkedReads->updateCAS(i, currentValue, true);
                 }
             }
         }
@@ -105,13 +101,13 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
 // Generate a new cluster from a previously build cluster
 ClusterResult ClusterProcess::process(const ClusterVector& inSequences)
 {
-    ReadCluster cluster(m_pOverlapper, m_minOverlap);
+    ReadCluster cluster(m_parameters.pOverlapper, m_parameters.minOverlap);
     
     // Add seeds to the cluster generator
     for(size_t i = 0; i < inSequences.size(); ++i)
         cluster.addSeed(inSequences[i].sequence, false);
 
-    cluster.run(m_maxClusterSize);
+    cluster.run(m_parameters.maxClusterSize, m_parameters.maxIterations);
 
     ClusterResult result;
     result.clusterNodes = cluster.getOutput();

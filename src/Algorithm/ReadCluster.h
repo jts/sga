@@ -44,7 +44,7 @@ class ReadCluster
 
         // Run the cluster process. If the number of total nodes
         // exceeds max, abort the search.
-        void run(size_t max);
+        void run(size_t max_size, int max_iterations);
 
         ClusterNodeVector getOutput() const;
     

@@ -64,6 +64,7 @@ static const char *CLUSTER_USAGE_MESSAGE =
 "      -m, --min-overlap=N              require an overlap of at least N bases between reads (default: 45)\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned (default: exact matches only)\n"
 "      -t, --threads=NUM                use NUM worker threads to compute the overlaps (default: no threading)\n"
+"      -i, --iterations=NUM             limit cluster extension to NUM iterations\n"
 "          --extend=FILE                extend previously existing clusters in FILE\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -76,9 +77,11 @@ namespace opt
     static std::string readsFile;
     static std::string prefix;
     static std::string extendFile;
+    static std::string limitFile;
     static int seedLength = 0;
     static int seedStride = 0;//seedLength;
     static int numThreads = 1;
+    static int maxIterations = -1;
     static double errorRate = 0.0f;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
 }
@@ -95,6 +98,7 @@ static const struct option longopts[] = {
     { "min-overlap",      required_argument, NULL, 'm' },
     { "error-rate",       required_argument, NULL, 'e' },
     { "threads",          required_argument, NULL, 't' },
+    { "iterations",       required_argument, NULL, 'i' },
     { "prefix",           required_argument, NULL, 'p' },
     { "extend",           required_argument, NULL, OPT_EXTEND },
     { "help",             no_argument,       NULL, OPT_HELP },
@@ -130,11 +134,19 @@ void cluster()
     std::ostream* pPreWriter = createWriter(preclustersFile);
     ClusterPostProcess postProcessor(pPreWriter, opt::minSize, &markedReads);
     
+    // Set the cluster parameters
+    ClusterParameters parameters;
+    parameters.pOverlapper = pOverlapper;
+    parameters.minOverlap = opt::minOverlap;
+    parameters.maxClusterSize = opt::maxSize;
+    parameters.maxIterations = opt::maxIterations;
+    parameters.pMarkedReads = &markedReads;
+
     // Make pre-clusters from the reads
     if(opt::numThreads <= 1)
     {
         printf("[%s] starting serial-mode read clustering\n", PROGRAM_IDENT);
-        ClusterProcess processor(pOverlapper, opt::minOverlap, opt::maxSize, &markedReads);
+        ClusterProcess processor(parameters);
         
         // If the extend file is empty, build new clusters
         if(opt::extendFile.empty())
@@ -155,7 +167,7 @@ void cluster()
         std::vector<ClusterProcess*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
-            ClusterProcess* pProcessor = new ClusterProcess(pOverlapper, opt::minOverlap, opt::maxSize, &markedReads);
+            ClusterProcess* pProcessor = new ClusterProcess(parameters);
             processorVector.push_back(pProcessor);
         }
         
@@ -239,6 +251,7 @@ void parseClusterOptions(int argc, char** argv)
             case 'e': arg >> opt::errorRate; break;
             case 'm': arg >> opt::minOverlap; break;
             case 't': arg >> opt::numThreads; break;
+            case 'i': arg >> opt::maxIterations; break;
             case 'p': arg >> opt::prefix; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;

@@ -78,17 +78,21 @@ ClusterNode ReadCluster::addSeed(const std::string& sequence, bool bCheckInIndex
 
 // Run the cluster process. If the number of total nodes
 // exceeds max, abort the search.
-void ReadCluster::run(size_t max)
+void ReadCluster::run(size_t max_size, int max_iterations)
 {
+    int iteration = 0;
     while(!m_queue.empty())
     {
-        if(m_queue.size() + m_outCluster.size() > max)
+        if(m_queue.size() + m_outCluster.size() > max_size)
         {
-            while(!m_queue.empty())
-                m_queue.pop();
+            // Abort the search
             m_outCluster.clear();
-            return;
+            break;
         }
+        
+        // Check if we have reached the maximum number of extension steps
+        if(max_iterations > 0 && iteration++ > max_iterations)
+            break;
 
         ClusterNode node = m_queue.front();
         m_queue.pop();
@@ -122,6 +126,11 @@ void ReadCluster::run(size_t max)
             }
         }
     }
+    
+    // Clear the queue
+    while(!m_queue.empty())
+        m_queue.pop();
+
 }
 
 // 

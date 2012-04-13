@@ -18,21 +18,25 @@
 #include "ReadCluster.h"
 #include "ClusterReader.h"
 
+struct ClusterParameters
+{
+    const OverlapAlgorithm* pOverlapper;
+    int minOverlap;
+    size_t maxClusterSize;
+    int maxIterations;
+    BitVector* pMarkedReads; // shared between threads
+};
+
 struct ClusterResult
 {
     std::vector<ClusterNode> clusterNodes;
 };
 
-
 // Compute the overlap blocks for reads
 class ClusterProcess
 {
     public:
-        ClusterProcess(const OverlapAlgorithm* pOverlapper, 
-                       int minOverlap, 
-                       size_t maxClusterSize,
-                       BitVector* pMarkedReads);
-
+        ClusterProcess(ClusterParameters params);
         ~ClusterProcess();
         
         // Generate a cluster from a single sequence
@@ -43,10 +47,7 @@ class ClusterProcess
     
     private:
 
-        const OverlapAlgorithm* m_pOverlapper;
-        const int m_minOverlap;
-        const size_t m_maxClusterSize;
-        BitVector* m_pMarkedReads;
+        ClusterParameters m_parameters;
 };
 
 // Write the cluster results to a temporary output file
