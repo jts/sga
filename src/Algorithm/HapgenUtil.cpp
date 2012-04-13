@@ -183,11 +183,12 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
     // Copy the best alignments into the output
     printf("Lowest event count: %d\n", min_events);
 
-    int MAX_DIFF_TO_BEST = 1;
+    int MAX_DIFF_TO_BEST = 2;
+    int MAX_EVENTS = 8;
     assert(event_count_vector.size() == tmp_alignments.size());
     for(size_t i = 0; i < event_count_vector.size(); ++i)
     {
-        if(event_count_vector[i] - min_events <= MAX_DIFF_TO_BEST)
+        if(event_count_vector[i] <= MAX_EVENTS && event_count_vector[i] - min_events <= MAX_DIFF_TO_BEST)
             outAlignments.push_back(tmp_alignments[i]);
     }
 }
