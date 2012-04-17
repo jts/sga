@@ -170,7 +170,9 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         if(rc_interval.isValid())
             count += rc_interval.size();
 
-        if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold && !variantAttempted)
+        bool both_directions = interval.size() > 0 && rc_interval.size() > 0;
+
+        if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold && !variantAttempted && both_directions)
         {
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
@@ -326,7 +328,6 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
     overlap_builder.setInitialHaplotype(str);
     overlap_builder.run(result.variant_haplotypes);
 
-    /*
     // Haplotype QC
     // Calculate the maximum k such that every kmer is present in the variant and base BWT
     // The difference between these values must be at least MIN_COVER_K_DIFF
@@ -341,7 +342,7 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
             temp_haplotypes.push_back(result.variant_haplotypes[i]);
     }
     result.variant_haplotypes.swap(temp_haplotypes);
-    */
+
     bool found_variant_string = result.variant_haplotypes.size() > 0;
 
     for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
