@@ -962,14 +962,20 @@ class DindelRealignWindow
 
         //
 
-        void addCalledHaplotype(int hapIdx,
+        void addCalledHaplotypeMatePairs(int hapIdx,
                                 DindelRealignWindowResult & result,
                                 const std::vector<DindelMultiHaplotype> & haplotypes,
                                 const std::vector< HashMap<int, double> > & addReads,
                                 double minLogLikAlignToAlt,
                                 int numReadPairs);
+        void addCalledHaplotypeSingleRead(int hapIdx,
+                                DindelRealignWindowResult & result,
+                                const std::vector<DindelMultiHaplotype> & haplotypes,
+                                const std::vector< HashMap<int, double> > & addReads,
+                                double minLogLikAlignToAlt,
+                                int numReads);
 
-        void setAddReads(int type,
+        void setAddReadsMatePairs(int type,
                          int h,
                          const std::vector< std::vector<double> > & hrLik,
                          std::vector< HashMap<int, double> > & addReads,
@@ -978,7 +984,16 @@ class DindelRealignWindow
                          int numHaps,
                          const std::vector<int> & added);
 
-        void computeAddLL(int type,
+        void setAddReadsSingleRead(int type,
+                         int h,
+                         const std::vector< std::vector<double> > & hrLik,
+                         std::vector< HashMap<int, double> > & addReads,
+                         std::vector<double> & addLL,
+                         int numReads,
+                         int numHaps,
+                         const std::vector<int> & added);
+
+        void computeAddLLMatePairs(int type,
                           int h,
                           const std::vector< std::vector<double> > & hrLik,
                           std::vector<double> & addLL,
@@ -986,9 +1001,23 @@ class DindelRealignWindow
                           int numHaps,
                           const std::vector<int> & added);
 
-        void showHaplotypeOnlyReads(int h,
+         void computeAddLLSingleRead(int type,
+                          int h,
+                          const std::vector< std::vector<double> > & hrLik,
+                          std::vector<double> & addLL,
+                          int numReads,
+                          int numHaps,
+                          const std::vector<int> & added);
+
+        void doReadHaplotypeAlignment(int H, const std::vector<DindelRead> & dReads);
+        void showHaplotypeOnlyReadsMatePairs(int h,
                                     const std::vector< std::vector<double> > & hrLik,
                                     int numReadPairs,
+                                    int numHaps);
+
+        void showHaplotypeOnlyReadsSingleRead(int h,
+                                    const std::vector< std::vector<double> > & hrLik,
+                                    int numReads,
                                     int numHaps);
                                 
         DindelRealignWindowResult estimateHaplotypeFrequencies(double minLogLikAlignToRef, 
@@ -1005,7 +1034,12 @@ class DindelRealignWindow
                                                                                       bool capUsingMappingQuality,
                                                                                       const DindelRealignWindowResult * pPreviousResult,
                                                                                       bool print);
-
+    
+        DindelRealignWindowResult estimateHaplotypeFrequenciesModelSelectionSingleReads(double minLogLikAlignToRef,
+                                                                                        double minLogLikAlignToAlt,
+                                                                                        bool capUsingMappingQuality,
+                                                                                        const DindelRealignWindowResult * pPreviousResult,
+                                                                                        bool print);
         double getHaplotypePrior(const DindelHaplotype & h1, const DindelHaplotype & h2) const;
 
         // this is a function that hides how the read information is actually stored in the various ReadTables
