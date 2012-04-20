@@ -78,6 +78,11 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
     size_t k = 41;
     int64_t max_interval_size = 4;
 
+    std::vector<int> event_count_vector;
+    std::vector<HapgenAlignment> tmp_alignments;
+    int min_events = std::numeric_limits<int>::max();
+
+    // Align forward and reverse haplotype to reference
     for(size_t i = 0; i <= 1; ++i)
     {
         bool is_reverse = i == 1;
@@ -141,6 +146,10 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
             SequenceOverlap overlap = Overlapper::computeOverlap(query, ref_substring);
             overlap.printAlignment(query, ref_substring);
 
+            // Skip terrible alignments
+            if(overlap.getOverlapLength() < (int)k)
+                continue;
+
             int alignment_start = ref_start + overlap.match[1].start;
             int alignment_end = ref_start + overlap.match[1].end; // inclusive
             int alignment_length = alignment_end - alignment_start + 1;
@@ -160,33 +169,28 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
             }
 
             printf("Edits: %d Events: %d\n", overlap.edit_distance, num_events);
-            if(num_events <= 20)
-            {
-                HapgenAlignment aln(candidates[j].target_sequence_id, alignment_start, alignment_length, overlap.score, is_reverse);
-                outAlignments.push_back(aln);
-            }
-        }
 
-        /*
-        // Convert the hits into alignments
-        for(size_t j = 0; j < hits.size(); ++j)
-        {
-            int q_alignment_length = hits[j].q_end - hits[j].q_start;
 
-            // Skip non-complete alignments
-            if((int)haplotype.length() == q_alignment_length)
-            {
-                printf("Full alignment -- ID: %d start: %d haplen: %zu alignlength: %d\n", (int)hits[j].targetID, (int)hits[j].t_start, haplotype.length(), (int)q_alignment_length);
-                HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, hits[j].G, i == 1);
-                outAlignments.push_back(aln);
-            }
-            else
-            {
-                printf("Partial alignment -- ID: %d start: %d haplen: %zu alignlength: %d\n", (int)hits[j].targetID, (int)hits[j].t_start, haplotype.length(), (int)q_alignment_length);
-                printf("\tqstart: %d qend: %d\n", hits[j].q_start, hits[j].q_end);
-            }
+            HapgenAlignment aln(candidates[j].target_sequence_id, alignment_start, alignment_length, overlap.score, is_reverse);
+            tmp_alignments.push_back(aln);
+            event_count_vector.push_back(num_events);
+            
+            // Record the best edit distance
+            if(num_events < min_events) 
+                min_events = num_events;
         }
-        */
+    }
+
+    // Copy the best alignments into the output
+    printf("Lowest event count: %d\n", min_events);
+
+    int MAX_DIFF_TO_BEST = 10;
+    int MAX_EVENTS = 8;
+    assert(event_count_vector.size() == tmp_alignments.size());
+    for(size_t i = 0; i < event_count_vector.size(); ++i)
+    {
+        if(event_count_vector[i] <= MAX_EVENTS && event_count_vector[i] - min_events <= MAX_DIFF_TO_BEST)
+            outAlignments.push_back(tmp_alignments[i]);
     }
 }
 

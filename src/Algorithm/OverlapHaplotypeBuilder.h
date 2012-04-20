@@ -37,7 +37,7 @@ typedef std::vector<SharedVertexKmer> SharedVertexKmerVector;
 // A tip in the graph that can be extended
 struct ExtendableTip
 {
-    Vertex* vertex;
+    std::string id;
     EdgeDir direction;
 };
 typedef std::vector<ExtendableTip> ExtendableTipVector;
@@ -90,10 +90,13 @@ class OverlapHaplotypeBuilder
         void updateKmerVertexMap(const Vertex* incoming_vertex);
 
         // Find corrected reads that share a perfect overlap to the input sequence
-        StringVector getCorrectedOverlaps(const std::string& sequence);
+        StringVector getCorrectedOverlaps(const std::string& sequence, EdgeDir direction);
 
         // Find tip vertices in the graph
         ExtendableTipVector findTips() const;
+
+        // Trim a tip off the graph. Recursive
+        void trimTip(Vertex* x, EdgeDir direction);
 
         // Returns true if the sequence represents a junction in the variation graph
         bool isJoinSequence(const std::string& sequence);

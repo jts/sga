@@ -347,7 +347,7 @@ public:
     {
         if (a.refName != b.refName) return a.refName<b.refName;
         else if (a.refStart != b.refStart) return a.refStart<b.refStart;
-        else return a.refSeq<b.refSeq;
+        else return a.refSeq.size()<b.refSeq.size();
         //else return a.referenceAlignmentScore<b.referenceAlignmentScore;
     }
 
@@ -458,6 +458,8 @@ public:
     // stores DindelVariants for each reference location the haplotype has been aligned to.
     const DindelSequenceHash & getHash() const { return m_sequenceHash; }
 
+    const std::vector< DindelReferenceMapping > & getReferenceMappings() const { return m_referenceMappings; }
+
 private:
     void estimateMappingProbabilities();
     std::vector< DindelHaplotype > m_haplotypes;
@@ -480,18 +482,19 @@ class DindelWindow
         
         // Create window from a set of haplotypes and a reference sequence.
         // Uses SGA MultiAlignment to annotate the variations in the haplotypes with respect to the reference sequence.
-        DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::vector< std::vector<DindelReferenceMapping> > & referenceMappings);
+        DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::vector<DindelReferenceMapping>  & referenceMappings);
         DindelWindow(const DindelWindow & window);
         ~DindelWindow();
 
         // Functions
   
         const std::vector<DindelMultiHaplotype> & getHaplotypes() const { return m_haplotypes; }
+        const std::vector< DindelReferenceMapping > & getReferenceMappings() const { return m_referenceMappings; }
         void addVariant(const DindelVariant& variant, bool addToAll);
         
     private:
     
-        void initHaplotypes(const std::vector<std::string> & haplotypeSequences, const std::vector< std::vector<DindelReferenceMapping> > & referenceMappings);
+        void initHaplotypes(const std::vector<std::string> & haplotypeSequences, const std::vector<DindelReferenceMapping> & referenceMappings);
         void doMultipleHaplotypeAlignment();
         void copy(const DindelWindow & window);
 
@@ -508,6 +511,8 @@ class DindelWindow
         std::map<std::string, int> m_hashAltHaps;
 
         //Fasta *m_pFasta; // pointer to Fasta class for getting the reference sequence
+        
+        std::vector< DindelReferenceMapping > m_referenceMappings;
 
         //parameters
         DindelWindowCandHapAlgorithm m_candHapAlgorithm;
@@ -674,6 +679,9 @@ class DindelRealignWindowResult
         // Data
         std::vector<DindelHaplotype> haplotypes;
         std::vector<double> haplotypeFrequencies;
+        // Size is determined by number of reference mappings in m_dindelWindow.
+        // Since the haplotypes may map to multiple locations, this keeps track of which proportion of the haplotypes can be attributed to a given reference mapping location
+        std::vector<double> weightedRefMapFrequencies;
         std::string outputID;
         
         // integrates same variants across different haplotypes
@@ -817,7 +825,7 @@ class DindelRealignParameters
         DindelRealignParameters(const std::string & paramString);
         DindelRealignParameters(const char * paramString);
 
-    private:
+    //private:
         
         // Functions
         std::string getDefaultParameters() const;

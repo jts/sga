@@ -1110,11 +1110,12 @@ void DindelSequenceHash::makeHash(const std::string & sequence)
  *
  */
 DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences,
-                           const std::vector< std::vector<DindelReferenceMapping> > & referenceMappings)
+                           const std::vector<DindelReferenceMapping>  & referenceMappings)
 {
 
     m_pHaplotype_ma = NULL;
     m_deleteMA = false;
+    m_referenceMappings = referenceMappings;
     // filter out duplicate haplotype sequences.
     initHaplotypes(haplotypeSequences, referenceMappings);
 
@@ -1135,14 +1136,15 @@ void DindelWindow::copy(const DindelWindow & window)
     m_haplotypes = window.m_haplotypes;
     m_hashAltHaps = window.m_hashAltHaps;
     m_candHapAlgorithm = window.m_candHapAlgorithm;
+    m_referenceMappings = window.m_referenceMappings;
     m_pHaplotype_ma = window.m_pHaplotype_ma;
     m_deleteMA = false;
 }
 
 void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequences,
-                                  const std::vector< std::vector<DindelReferenceMapping> > & referenceMappings)
+                                  const std::vector<DindelReferenceMapping>  & referenceMappings)
 {
-    assert( haplotypeSequences.size() == referenceMappings.size() );
+    
 
     for(size_t i = 0; i < haplotypeSequences.size(); ++i)
     {
@@ -1150,7 +1152,7 @@ void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequ
         {
             if (DINDEL_DEBUG_3)
                 std::cout << "DindelWindow::MultiHaplotype " << m_haplotypes.size() << "\n";
-            m_haplotypes.push_back(DindelMultiHaplotype(referenceMappings[i], haplotypeSequences[i]));
+            m_haplotypes.push_back(DindelMultiHaplotype(referenceMappings, haplotypeSequences[i]));
         }
     }
 }
@@ -1787,8 +1789,10 @@ void DindelRealignWindow::algorithm_hmm(std::ostream& out, DindelRealignWindowRe
     {
         if (realignParameters.realignMatePairs)
             result = estimateHaplotypeFrequenciesModelSelectionMatePairs(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, pPreviousResult, true);
-	else
-            result = estimateHaplotypeFrequenciesModelSelection(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, true);
+	else {
+            std::cout << "Single read alignment.\n";
+            result = estimateHaplotypeFrequenciesModelSelectionSingleReads(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, pPreviousResult, true);
+        }
          
     }
     else
@@ -3575,6 +3579,24 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
    }
 
 
+   const std::vector< DindelReferenceMapping > & refMappings = this->m_dindelWindow.getReferenceMappings();
+   result.weightedRefMapFrequencies = std::vector<double>(refMappings.size(), 0.0);
+
+   for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
+   {
+       double hq = haplotypeQual[hapIdx];
+       if (hq<0.)
+           hq = 0.0;
+       double probHap = 1.0-exp(-hq);
+       double hapFreq = haplotypeFrequencies[hapIdx];
+
+       for (int refIdx = 0; refIdx < haplotypes[hapIdx].getNumReferenceMappings(); ++refIdx)
+       {
+           double mapProb = exp(haplotypes[hapIdx].getLogMappingProbability(refIdx));
+           result.weightedRefMapFrequencies[refIdx] += hapFreq * probHap * mapProb;
+       }
+   }
+
    // Add haplotype properties for all variants
    for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
    {
@@ -3592,20 +3614,20 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
                 {
                     // should set quality and freq to zero.
                     DindelRealignWindowResult::Inference varInf;
-                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, hapFreq, addedInIteration[hapIdx]));
+                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, (result.weightedRefMapFrequencies[refIdx]<1e-6)?0:hapFreq/result.weightedRefMapFrequencies[refIdx], addedInIteration[hapIdx]));
                     varInf.numCalledHaplotypes = numAdded;
                     result.variantInference[vars[x]] = varInf;
                 }
                 else
                 {
                     DindelRealignWindowResult::Inference & varInf = vit->second;
-                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, hapFreq, addedInIteration[hapIdx]));
+                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, (result.weightedRefMapFrequencies[refIdx]<1e-6)?0:hapFreq/result.weightedRefMapFrequencies[refIdx], addedInIteration[hapIdx]));
                     varInf.numCalledHaplotypes = numAdded;
                 }
 
             }
         }
-        
+
    }
 
 
@@ -3630,7 +3652,7 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
                                                                                                    const DindelRealignWindowResult *pPreviousResult,
                                                                                                    bool print = false)
 {
-   assert(realignParameters.realignMatePairs);
+   
    (void) pPreviousResult;
    if (DINDEL_DEBUG)
        std::cout << "DindelRealignWindow::estimateHaplotypeFrequencies START" << std::endl;
@@ -3910,6 +3932,33 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
 
    }
 
+   // compute the expected sum of haplotype frequencies for each mapping location
+
+   const std::vector< DindelReferenceMapping > & refMappings = this->m_dindelWindow.getReferenceMappings();
+   result.weightedRefMapFrequencies = std::vector<double>(refMappings.size(), 0.0);
+
+   for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
+   {
+       double hq = haplotypeQual[hapIdx];
+       if (hq<0.)
+           hq = 0.0;
+       double probHap = 1.0-exp(-hq);
+       double hapFreq = haplotypeFrequencies[hapIdx];
+
+       for (int refIdx = 0; refIdx < haplotypes[hapIdx].getNumReferenceMappings(); ++refIdx)
+       {
+           double mapProb = exp(haplotypes[hapIdx].getLogMappingProbability(refIdx));
+           result.weightedRefMapFrequencies[refIdx] += hapFreq * probHap * mapProb;
+       }
+   }
+
+   if (DINDEL_DEBUG_3)
+   {
+       for (size_t x = 0; x < result.weightedRefMapFrequencies.size();x++) {
+           std::cout << " refMapping #" << x << " : weighted hapFreq " << result.weightedRefMapFrequencies[x] << "\n";
+       }
+
+   }
 
    // Add haplotype properties for all variants
    for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
@@ -3928,14 +3977,14 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
                 {
                     // should set quality and freq to zero.
                     DindelRealignWindowResult::Inference varInf;
-                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, hapFreq, addedInIteration[hapIdx]));
+                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, (result.weightedRefMapFrequencies[refIdx]<1e-6)?0:hapFreq/result.weightedRefMapFrequencies[refIdx], addedInIteration[hapIdx]));
                     varInf.numCalledHaplotypes = numAdded;
                     result.variantInference[vars[x]] = varInf;
                 }
                 else
                 {
                     DindelRealignWindowResult::Inference & varInf = vit->second;
-                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, hapFreq, addedInIteration[hapIdx]));
+                    varInf.haplotypeProperties.push_back(DindelRealignWindowResult::HaplotypeProperties(haplotypes[hapIdx].getLogMappingProbability(refIdx), hapQual, (result.weightedRefMapFrequencies[refIdx]<1e-6)?0:hapFreq/result.weightedRefMapFrequencies[refIdx], addedInIteration[hapIdx]));
                     varInf.numCalledHaplotypes = numAdded;
                 }
 
@@ -3944,7 +3993,7 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
 
    }
 
-
+  
 
   // assign result
 
@@ -4048,7 +4097,7 @@ std::string DindelRealignParameters::getDefaultParameters() const
 {
      std::string paramString = "genotyping:0,maxNumReads:100000,maxNumReadsWindow:100000,showCallReads:0,minNumHaplotypeOverlaps:0,maxNumCandidatesPerWindow:32,windowReadBuffer:500,minVariantSep:10,haplotypeWidth:60,minCandidateAlleleCount:0,probSNP:0.001,probINDEL:0.0001,probMNP:0.00001";
      paramString += ",maxMappingQuality:80,addSNPMaxSNPs:0,addSNPMaxMismatches:3,addSNPMinMappingQual:30,addSNPMinBaseQual:20,addSNPMinCount:2,minPostProbLastReadBaseForUngapped:0.95";
-     paramString += ",singleSampleHetThreshold:20,singleSampleHomThreshold:20,EMtol:0.0001,EMmaxiter:200,doEM:1,realignMatePairs:1,priorAddHaplotype:0.0001,graphDiffStyle:1";
+     paramString += ",singleSampleHetThreshold:20,singleSampleHomThreshold:20,EMtol:0.0001,EMmaxiter:200,doEM:1,realignMatePairs:0,priorAddHaplotype:0.0001,graphDiffStyle:1";
      return paramString; 
 }      
 

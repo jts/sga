@@ -149,7 +149,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
 
     // Make Dindel referenceMappings
-    std::vector< std::vector<DindelReferenceMapping> > dindelRefMappings(flankingHaplotypes.size());
+    // std::vector< std::vector<DindelReferenceMapping> > dindelRefMappings(flankingHaplotypes.size());
     StringVector dindelHaplotypes;
     std::set<DindelReferenceMapping> refMappings;
 
@@ -190,9 +190,10 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     for(size_t i = 0; i < flankingHaplotypes.size(); ++i)
     {
         dindelHaplotypes.push_back(flankingHaplotypes[i]);
-        dindelRefMappings[i] = std::vector<DindelReferenceMapping>(refMappings.begin(),refMappings.end());
+        //dindelRefMappings[i] = std::vector<DindelReferenceMapping>(refMappings.begin(),refMappings.end());
     }
-    DindelWindow dWindow(dindelHaplotypes, dindelRefMappings);
+    std::vector<DindelReferenceMapping> dRefMappings(refMappings.begin(),refMappings.end());
+    DindelWindow dWindow(dindelHaplotypes, dRefMappings);
 
     if (1)
     {
@@ -232,16 +233,20 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             dReads.push_back(DindelRead(rcReads[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
         }
 
-        for(size_t j = 0; j < fwdReadMates.size(); ++j)
-        {           
-            fwdReadMates[j].seq.reverseComplement();
-            dReads.push_back(DindelRead(fwdReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
-        }
+        if (parameters.dindelRealignParameters.realignMatePairs)
+        {
+            std::cout << "Adding read mates.\n";
+            for(size_t j = 0; j < fwdReadMates.size(); ++j)
+            {
+                fwdReadMates[j].seq.reverseComplement();
+                dReads.push_back(DindelRead(fwdReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
+            }
 
-        for(size_t j = 0; j < rcReadMates.size(); ++j)
-        {       
-            //rcReadMates[j].seq.reverseComplement();
-            dReads.push_back(DindelRead(rcReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
+            for(size_t j = 0; j < rcReadMates.size(); ++j)
+            {
+                //rcReadMates[j].seq.reverseComplement();
+                dReads.push_back(DindelRead(rcReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
+            }
         }
 
 //        std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";

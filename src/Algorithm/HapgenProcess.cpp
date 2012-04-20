@@ -114,11 +114,11 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
 
     std::string dindelRef = refSubstring;
     int dindelRefStart = int(refStart);
-    std::vector< std::vector<DindelReferenceMapping> > dRefMappings(result.haplotypes.size());
+    std::vector<DindelReferenceMapping> dRefMappings;
 
     // FIXME Set haplotype mapping quality properly
     DindelReferenceMapping dRefMapping(refName, dindelRef, dindelRefStart, 100.0, false);
-    for(size_t i = 0; i < result.haplotypes.size(); ++i) dRefMappings[i].push_back(dRefMapping);
+    dRefMappings.push_back(dRefMapping);
 
     DindelWindow dWindow(result.haplotypes, dRefMappings);
 
