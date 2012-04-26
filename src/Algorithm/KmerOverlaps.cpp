@@ -23,6 +23,7 @@ MultipleAlignment KmerOverlaps::buildMultipleAlignment(const std::string& query,
                                                        const SampledSuffixArray* pSSA)
 {
     SequenceOverlapPairVector overlap_vector = retrieveMatches(query, k, min_overlap, min_identity, bandwidth, pBWT, pIntervalCache, pSSA);
+    std::cout << "Found " << overlap_vector.size() << " matches\n";
     MultipleAlignment multiple_alignment;
     multiple_alignment.addBaseSequence("query", query, "");
     for(size_t i = 0; i < overlap_vector.size(); ++i)
@@ -181,6 +182,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
         } else {
             overlap = Overlapper::extendMatch(query, match_sequence, pos_0, pos_1, bandwidth);
         }
+
         bool bPassedOverlap = overlap.getOverlapLength() >= min_overlap;
         bool bPassedIdentity = overlap.getPercentIdentity() / 100 >= min_identity;
 

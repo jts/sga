@@ -24,7 +24,8 @@ enum ErrorCorrectAlgorithm
 {
     ECA_HYBRID, // hybrid kmer/overlap correction
     ECA_KMER, // kmer correction
-    ECA_OVERLAP // overlap correction
+    ECA_OVERLAP, // overlap correction
+    ECA_THREAD // thread the read through a de Bruijn graph
 };
 
 enum ECFlag
@@ -87,6 +88,7 @@ class ErrorCorrectProcess
         ErrorCorrectResult kmerCorrection(const SequenceWorkItem& item);
         ErrorCorrectResult overlapCorrection(const SequenceWorkItem& workItem);
         ErrorCorrectResult overlapCorrectionNew(const SequenceWorkItem& workItem);
+        ErrorCorrectResult threadingCorrection(const SequenceWorkItem& workItem);
     
     private:
 

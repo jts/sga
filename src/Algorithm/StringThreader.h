@@ -110,8 +110,7 @@ class StringThreader
                        const std::string* pQuery,
                        int queryAlignmentEnd,
                        int kmer,
-                       const BWT* pBWT, 
-                       const BWT* pRevBWT);
+                       const BWT* pBWT);
 
         ~StringThreader();
 
@@ -144,7 +143,6 @@ class StringThreader
         // Data
         //
         const BWT* m_pBWT; 
-        const BWT* m_pRevBWT;
         int m_kmer;
         const std::string* m_pQuery;
         StringThreaderNode* m_pRootNode;

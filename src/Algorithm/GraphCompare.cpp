@@ -324,10 +324,17 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
     rc_builder.run(result.variant_haplotypes);
     */
 
-    OverlapHaplotypeBuilder overlap_builder(m_parameters);
-    overlap_builder.setInitialHaplotype(str);
-    overlap_builder.run(result.variant_haplotypes);
+    // Build haplotypes with de bruijn graph
+    buildVariantStringGraph(str, result.variant_haplotypes);
 
+    if(result.variant_haplotypes.empty())
+    {
+        OverlapHaplotypeBuilder overlap_builder(m_parameters);
+        overlap_builder.setInitialHaplotype(str);
+        overlap_builder.run(result.variant_haplotypes);
+    }
+
+    /*
     // Haplotype QC
     // Calculate the maximum k such that every kmer is present in the variant and base BWT
     // The difference between these values must be at least MIN_COVER_K_DIFF
@@ -342,6 +349,7 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
             temp_haplotypes.push_back(result.variant_haplotypes[i]);
     }
     result.variant_haplotypes.swap(temp_haplotypes);
+    */
 
     bool found_variant_string = result.variant_haplotypes.size() > 0;
 

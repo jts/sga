@@ -16,6 +16,7 @@
 #include "HapgenUtil.h"
 #include "multiple_alignment.h"
 #include "KmerOverlaps.h"
+#include "CorrectionThresholds.h"
 
 //
 //
@@ -35,16 +36,15 @@ OverlapHaplotypeBuilder::OverlapHaplotypeBuilder(const GraphCompareParameters& p
     // Overlap-based corrector params
     correction_params.minOverlap = 51;
     correction_params.numOverlapRounds = 1;
-    correction_params.minIdentity = 95.0f;
+    correction_params.minIdentity = 0.95f;
     correction_params.conflictCutoff = 5;
     correction_params.depthFilter = 100;
+    correction_params.printOverlaps = false;
 
     // k-mer based corrector params
     correction_params.numKmerRounds = 10;
     correction_params.kmerLength = 31;
-
-    // output options
-    correction_params.printOverlaps = true;
+    CorrectionThresholds::Instance().setBaseMinSupport(2);
 
     m_graph = new StringGraph;
     m_corrector = new ErrorCorrectProcess(correction_params);
@@ -83,13 +83,14 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
     // Start the graph using the corrected reads that contain the initial kmer
     if(!buildInitialGraph(reads))
         return HBRC_OK;
-
+    
     bool done = false;
 
     int MAX_ROUNDS = 10;
-    size_t MAX_TIPS = 10;
+    size_t MAX_TIPS = 20;
     size_t MAX_GRAPH_SIZE = 500;
     int round = 0;
+
     while(!done) 
     {
         // Extend the graph by finding new overlaps for the reads at the tips
@@ -140,9 +141,10 @@ bool OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
         return false;
 
     //DEBUG print MA
-    //MultipleAlignment ma = buildMultipleAlignment(ordered_reads);
-    //ma.print(200);
-
+    /*
+    MultipleAlignment ma = buildMultipleAlignment(ordered_reads);
+    ma.print(200);
+    */
     // Insert initial reads into graph
     for(size_t i = 0; i < ordered_reads.size(); ++i)
         insertVertexIntoGraph("seed-", ordered_reads[i]);
@@ -501,7 +503,7 @@ void OverlapHaplotypeBuilder::trimTip(Vertex* x, EdgeDir direction)
     // Remove x from the graph
     m_graph->removeConnectedVertex(x);
 
-/*
+    /*
     // Recurse to x's neighbors if it is now a tip
     if(x_neighbor != NULL)
         trimTip(x_neighbor, direction);

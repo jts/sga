@@ -195,7 +195,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     std::vector<DindelReferenceMapping> dRefMappings(refMappings.begin(),refMappings.end());
     DindelWindow dWindow(dindelHaplotypes, dRefMappings);
 
-    if (1)
+    if (0)
     {
         for (size_t i = 0; i < dindelHaplotypes.size(); i++ )
         {
