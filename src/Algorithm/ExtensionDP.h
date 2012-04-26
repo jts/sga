@@ -57,6 +57,8 @@ class BandedDPColumn
         int getCellScore(int colIdx, int rowIdx) const;
         int getMinRow() const { return m_rowStartIdx; }   
         int getMaxRow() const { return m_rowEndIdx; }
+        int getQueryRows() const { return m_maxRows; }
+
         const BandedDPColumn* getPreviousColumn() const;
 
         // Set the cell information for a given row in the column
@@ -109,6 +111,9 @@ namespace ExtensionDP
     // Return the best trimmed alignment of the extensionDP object requiring minMatches matches
     // at the end of the alignment
     ExtensionDPAlignment findTrimmedAlignment(const BandedDPColumn* pLastColumn, int minMatches);
+
+    // Return the best alignment that contains the entire fixed string
+    ExtensionDPAlignment findGlocalAlignment(const BandedDPColumn* pLastColumn);
     
     // Calculate mismatch/error rates between the query and the string up to pStartColumn
     double calculateLocalEditPercentage(const BandedDPColumn* pStartColumn, int numBases);

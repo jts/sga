@@ -99,11 +99,9 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         // Clean up the graph
         SGIdenticalRemoveVisitor dupVisit;
         m_graph->visit(dupVisit);
-
-        // hack
-        WARN_ONCE("hacked containment flag");
         m_graph->setContainmentFlag(false);
 
+        // Remove transitive edges
         SGTransitiveReductionVisitor trVisit;
         m_graph->visit(trVisit);
 
@@ -537,9 +535,9 @@ bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence)
 StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence, EdgeDir direction)
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::getCorrectedOverlaps")
-    // Extract reads that share a short kmer with the input sequence
-    size_t k = 41;
 
+    // Extract reads that share a short kmer with the input sequence
+    size_t k = 31;
     SequenceOverlapPairVector overlap_vector = KmerOverlaps::retrieveMatches(sequence,
                                                                              k,
                                                                              m_parameters.minOverlap,

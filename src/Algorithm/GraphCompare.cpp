@@ -325,7 +325,7 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
     */
 
     // Build haplotypes with de bruijn graph
-    buildVariantStringGraph(str, result.variant_haplotypes);
+    //buildVariantStringGraph(str, result.variant_haplotypes);
 
     if(result.variant_haplotypes.empty())
     {

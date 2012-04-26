@@ -126,13 +126,13 @@ int StringThreaderNode::getEditDistance() const
 // Returns true if the extension has terminated
 bool StringThreaderNode::hasExtensionTerminated() const
 {
-    return ExtensionDP::isExtensionTerminated(m_alignmentColumns.back(), 5);
+    return ExtensionDP::isExtensionTerminated(m_alignmentColumns.back(), 2);
 }
 
 // Return the best alignment between the string represented by this node and the query
 StringThreaderResult StringThreaderNode::getAlignment() const
 {
-    ExtensionDPAlignment alignment = ExtensionDP::findTrimmedAlignment(m_alignmentColumns.back(), 5);
+    ExtensionDPAlignment alignment = ExtensionDP::findGlocalAlignment(m_alignmentColumns.back());
     StringThreaderResult result;
     result.query_align_length = alignment.query_align_length;
     result.thread =  getFullString().substr(0, alignment.target_align_length);
@@ -274,7 +274,7 @@ void StringThreader::cullLeavesByEdits()
     }
 
     int leafID = 0;
-    int threshold = 2;
+    int threshold = 1;
     for(STNodePtrList::iterator iter = m_leaves.begin(); iter != m_leaves.end(); ++iter)
     {
         if(editsVector[leafID] <= bestEdits + threshold)
