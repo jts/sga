@@ -60,7 +60,7 @@ $cmd = "samtools sort $prefix.diffcontigs.bam $prefix.diffcontigs.sorted";
 runCmd($cmd);
 
 # distance est
-$cmd = "DistanceEst -s $minLength -n $n -k $k -j $numThreads -s $minLength -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
+$cmd = "DistanceEst -s $minLength -n $n -k $k -j $numThreads -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
 runCmd($cmd);
 
 sub usage
