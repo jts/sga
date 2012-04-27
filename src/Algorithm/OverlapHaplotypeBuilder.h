@@ -95,11 +95,11 @@ class OverlapHaplotypeBuilder
         // Find tip vertices in the graph
         ExtendableTipVector findTips() const;
 
-        // Trim a tip off the graph. Recursive
+        // Trim a tip off the graph.
         void trimTip(Vertex* x, EdgeDir direction);
 
         // Returns true if the sequence represents a junction in the variation graph
-        bool isJoinSequence(const std::string& sequence);
+        bool isJoinSequence(const std::string& sequence, EdgeDir dir);
 
         // Returns true if the vertex x is at a bifurcation of the graph, a dead-end tip
         // or unambiguously connected to a non-join vertex. Used to avoid generating

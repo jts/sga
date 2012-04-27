@@ -192,6 +192,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
             op.sequence[0] = query;
             op.sequence[1] = match_sequence;
             op.overlap = overlap;
+            op.is_reversed = iter->is_reverse;
             overlap_vector.push_back(op);
         }
     }

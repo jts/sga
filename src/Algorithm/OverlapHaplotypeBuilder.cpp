@@ -18,6 +18,9 @@
 #include "KmerOverlaps.h"
 #include "CorrectionThresholds.h"
 
+//#define SHOW_MULTIPLE_ALIGNMENT 1
+//#define SHOW_GRAPH 1
+
 //
 //
 //
@@ -44,7 +47,7 @@ OverlapHaplotypeBuilder::OverlapHaplotypeBuilder(const GraphCompareParameters& p
     // k-mer based corrector params
     correction_params.numKmerRounds = 10;
     correction_params.kmerLength = 31;
-    CorrectionThresholds::Instance().setBaseMinSupport(2);
+    CorrectionThresholds::Instance().setBaseMinSupport(3);
 
     m_graph = new StringGraph;
     m_corrector = new ErrorCorrectProcess(correction_params);
@@ -99,11 +102,9 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         // Clean up the graph
         SGIdenticalRemoveVisitor dupVisit;
         m_graph->visit(dupVisit);
-
-        // hack
-        WARN_ONCE("hacked containment flag");
         m_graph->setContainmentFlag(false);
 
+        // Remove transitive edges
         SGTransitiveReductionVisitor trVisit;
         m_graph->visit(trVisit);
 
@@ -115,13 +116,13 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
 
         done = round++ >= MAX_ROUNDS || !out_haplotypes.empty() || num_tips > MAX_TIPS || num_vertices >= MAX_GRAPH_SIZE;
         
-        /*
+#ifdef SHOW_GRAPH
         std::stringstream graph_name;
         graph_name << "graph.r" << round;
         m_graph->writeDot(graph_name.str() + ".dot");
         m_graph->writeASQG(graph_name.str() + ".asqg");
-        */
         printf("graph size: %zu tips: %zu round: %d done: %d\n", num_vertices, num_tips, round, done);
+#endif
     }
 
     return HBRC_OK;
@@ -140,11 +141,11 @@ bool OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
     if(ordered_reads.size() < m_parameters.kmerThreshold)
         return false;
 
+#ifdef SHOW_MULTIPLE_ALIGNMENT
     //DEBUG print MA
-    /*
     MultipleAlignment ma = buildMultipleAlignment(ordered_reads);
     ma.print(200);
-    */
+#endif
     // Insert initial reads into graph
     for(size_t i = 0; i < ordered_reads.size(); ++i)
         insertVertexIntoGraph("seed-", ordered_reads[i]);
@@ -178,7 +179,7 @@ void OverlapHaplotypeBuilder::extendGraph()
         for(size_t j = 0; j < overlapping_reads.size(); ++j)
         {
             // Determine whether the incoming read is possible join point
-            bool is_join = isJoinSequence(overlapping_reads[j]);
+            bool is_join = isJoinSequence(overlapping_reads[j], dir);
 
             std::stringstream label;
             label << (is_join ? "join-" : "extend-");
@@ -511,35 +512,35 @@ void OverlapHaplotypeBuilder::trimTip(Vertex* x, EdgeDir direction)
 }       
 
 //
-bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence)
+bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence, EdgeDir dir)
 {
     // Check if this sequence forms a complete k-mer path in the base/reference sequence
     size_t k = m_parameters.kmer;
     if(sequence.size() < k)
         return false;
 
-    size_t nk = sequence.size() - k + 1;
-    for(size_t i = 0; i < nk; ++i)
-    {
-        std::string kmer_seq = sequence.substr(i, k);
-        size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_seq, 
-                                                                             m_parameters.pBaseBWT, 
-                                                                             m_parameters.pBaseBWTCache);
+    // Check if the start/end kmer of the sequence is present in the reference
+    // depending on the extension direction
+    std::string kmer_seq;
+    if(dir == ED_ANTISENSE)
+        kmer_seq = sequence.substr(0, k);
+    else
+        kmer_seq = sequence.substr(sequence.size() - k);
 
-        if(base_count == 0)
-            return false;
-    }
-
-    return true;
+    // Count occurrences of the terminal kmer in the reference
+    size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_seq, 
+                                                                         m_parameters.pBaseBWT, 
+                                                                         m_parameters.pBaseBWTCache);
+    return base_count > 0;
 }
 
 //
 StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence, EdgeDir direction)
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::getCorrectedOverlaps")
-    // Extract reads that share a short kmer with the input sequence
-    size_t k = 41;
 
+    // Extract reads that share a short kmer with the input sequence
+    size_t k = 31;
     SequenceOverlapPairVector overlap_vector = KmerOverlaps::retrieveMatches(sequence,
                                                                              k,
                                                                              m_parameters.minOverlap,
@@ -549,15 +550,28 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
                                                                              m_parameters.pVariantBWTCache,
                                                                              m_parameters.pVariantSSA);
 
-    // Extract the read sequences from the multiple alignment
+    // Copy out the read sequences so they can be corrected
+    // We use the original sequencing strand of the read here - if
+    // it was reversed when we extracted it, we flip it back
     StringVector reads;
     for(size_t i = 0; i < overlap_vector.size(); ++i)
-        reads.push_back(overlap_vector[i].sequence[1]);
+    {
+        if(!overlap_vector[i].is_reversed)
+            reads.push_back(overlap_vector[i].sequence[1]);
+        else
+            reads.push_back(reverseComplement(overlap_vector[i].sequence[1]));
+    }
+
     printf("Extracted %zu reads\n", overlap_vector.size());
 
     // Correct the reads
     correctReads(&reads);
     assert(reads.size() == overlap_vector.size());
+
+#ifdef SHOW_MULTIPLE_ALIGNMENT
+    MultipleAlignment corrected_ma;
+    corrected_ma.addBaseSequence("query", sequence, "");
+#endif
 
     // Overlap each corrected read with the input sequence
     // Discard any read that does perfectly match with a long enough overlap
@@ -566,11 +580,19 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
     {
         // Skip uncorrected reads
         if(reads[i].empty())
+        {
+            printf("Read %zu could not be corrected\n", i);
             continue;
+        }
+
+        // Change the strand of the corrected read back to the same as the query sequence
+        std::string incoming = reads[i];
+        if(overlap_vector[i].is_reversed)
+            incoming = reverseComplement(incoming);
 
         // Recompute the overlap, using the previous overlap as a guide
         const SequenceOverlap& initial_overlap = overlap_vector[i].overlap;
-        SequenceOverlap overlap = Overlapper::extendMatch(sequence, reads[i], initial_overlap.match[0].start, initial_overlap.match[1].start, 1);
+        SequenceOverlap overlap = Overlapper::extendMatch(sequence, incoming, initial_overlap.match[0].start, initial_overlap.match[1].start, 2);
 
         bool is_prefix_overlap = overlap.match[0].start == 0;
         bool is_suffix_overlap = overlap.match[0].end == ((int)sequence.size() - 1);
@@ -578,10 +600,17 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
         bool valid_direction = (is_prefix_overlap && direction == ED_ANTISENSE) ||
                                (is_suffix_overlap && direction == ED_SENSE);
 
+#ifdef SHOW_MULTIPLE_ALIGNMENT
+        corrected_ma.addOverlap("crct_in", incoming, "", overlap);
+#endif
+
         if(overlap.edit_distance == 0 && overlap.getOverlapLength() >= m_parameters.minOverlap && valid_direction)
-            out_reads.push_back(reads[i]);
+            out_reads.push_back(incoming);
     }
 
+#ifdef SHOW_MULTIPLE_ALIGNMENT
+        corrected_ma.print(200);
+#endif
     return out_reads;
 }
 

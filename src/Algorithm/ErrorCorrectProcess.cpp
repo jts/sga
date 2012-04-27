@@ -420,6 +420,7 @@ ErrorCorrectResult ErrorCorrectProcess::threadingCorrection(const SequenceWorkIt
     int nk = query.size() - m_params.kmerLength + 1;
     int right_index = -1;
     size_t x = 3;
+
     for(int i = 0; i < nk; ++i)
     {
         std::string kmer = query.substr(i, k);
@@ -430,15 +431,6 @@ ErrorCorrectResult ErrorCorrectProcess::threadingCorrection(const SequenceWorkIt
             break;
     }
 
-    if(right_index == nk)
-    {
-        printf("Read does not need correction\n");
-        // This read does not need correction
-        result.correctSequence = query;
-        result.kmerQC = true;
-        return result;
-    }
-
     if(right_index == -1)
     {
         // No way to correct this read
@@ -447,9 +439,20 @@ ErrorCorrectResult ErrorCorrectProcess::threadingCorrection(const SequenceWorkIt
         return result;
     }
 
+    if(right_index == nk - 1)
+    {
+        printf("Read does not need correction\n");
+        // This read does not need correction
+        result.correctSequence = query;
+        result.kmerQC = true;
+        return result;
+    }
+
     // Correct the read with the threader
+    int seed_endpoint = k + right_index;
+    printf("Correcting %s [%d %d]\n", query.c_str(), right_index, seed_endpoint);
     StringThreaderResultVector thread_results;
-    StringThreader threader(query.substr(0, k + right_index), &query, k + right_index, k, m_params.pBWT);
+    StringThreader threader(query.substr(0, seed_endpoint), &query, seed_endpoint, k, m_params.pBWT);
     threader.run(thread_results);
 
     printf("Found %zu correction threads\n", thread_results.size());

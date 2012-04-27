@@ -19,6 +19,7 @@
 struct SequenceOverlapPair
 {
     std::string sequence[2];
+    bool is_reversed;
     SequenceOverlap overlap;
 };
 typedef std::vector<SequenceOverlapPair> SequenceOverlapPairVector;

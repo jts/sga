@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <assert.h>
+#include <limits>
 
 static const int MINUS_INF = -1073741823;
 static const int POSITIVE_INF = 1073741823;
@@ -131,12 +132,13 @@ void BandedDPColumn::fillRowEditDistance(int rowIdx, int matchScore)
         return; // out of band, ignore
 
     // Get the scores for the cell above, to the left and diagonal
-    
     int above = getCellScore(m_colIdx, rowIdx - 1) + 1;
     int diag = getCellScore(m_colIdx - 1, rowIdx - 1) + matchScore;
     
     // Give free insertions if the last row
-    int insert_score = rowIdx < (m_maxRows - 1) ? 1 : 0;
+    // JS Apr/12 do not give free insertions in the last row
+    //int insert_score = rowIdx < (m_maxRows - 1) ? 1 : 0;
+    int insert_score = 1;
     int left = getCellScore(m_colIdx - 1, rowIdx) + insert_score;
     int score = min3(above, left, diag);
 
@@ -432,6 +434,45 @@ ExtensionDPAlignment ExtensionDP::findTrimmedAlignment(const BandedDPColumn* pLa
     {
         result.target_align_length = pBestColumn->getColIdx();
         result.query_align_length = pBestColumn->getBestRowIndex();
+    }
+    else
+    {
+        result.target_align_length = 0;
+        result.query_align_length = 0;
+    }
+    return result;
+}
+
+// Parse the score matrix and return a the best alignment that includes the entire query string.
+ExtensionDPAlignment ExtensionDP::findGlocalAlignment(const BandedDPColumn* pLastColumn)
+{
+    const BandedDPColumn* pCurrColumn = pLastColumn;
+    int lastRowIdx = pLastColumn->getQueryRows() - 1;
+    
+    const BandedDPColumn* pBestColumn = NULL;
+    int best_score = std::numeric_limits<int>::max();
+
+    // Iterate backwards over the columns searching for one that 
+    // has minMatches matches to the query at the end
+    while(pCurrColumn != NULL && pCurrColumn->getMaxRow() >= lastRowIdx)
+    {
+        // Get the score for the last row of the matrix
+        int score = pCurrColumn->getRowScore(lastRowIdx);
+        if(score < best_score)
+        {
+            best_score = score;
+            pBestColumn = pCurrColumn;
+        }
+
+        pCurrColumn = pCurrColumn->getPreviousColumn();
+    }
+    
+    // set the result output
+    ExtensionDPAlignment result;
+    if(pBestColumn != NULL)
+    {
+        result.target_align_length = pBestColumn->getColIdx();
+        result.query_align_length = lastRowIdx;
     }
     else
     {
