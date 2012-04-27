@@ -150,6 +150,9 @@ class GraphCompare
         // Calculate the largest k such that every k-mer in the sequence is present at least min_depth times in the BWT
         size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache);
 
+        // Calculate the number of high coverage branches off a haplotype path through the de Bruijn graph
+        size_t calculateHaplotypeBranches(const std::string& sequence, size_t k, size_t min_branch_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache);
+
         // Update statistics 
         void updateVariationCount(const BubbleResult& result);
 

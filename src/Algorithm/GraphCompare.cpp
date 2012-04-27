@@ -341,10 +341,17 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
     StringVector temp_haplotypes;
     for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
     {
+        // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
         size_t max_variant_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache);
         size_t max_base_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
-        printf("MVK: %zu MBK: %zu\n", max_variant_k, max_base_k);
-        if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 21)
+
+        // Calculate the number of high coverage branches in this haplotype
+        size_t num_branches = calculateHaplotypeBranches(result.variant_haplotypes[i], m_parameters.kmer, m_parameters.kmerThreshold, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache);
+
+        printf("MVK: %zu MBK: %zu NHC: %zu\n", max_variant_k, max_base_k, num_branches);
+
+
+        if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 31)
             temp_haplotypes.push_back(result.variant_haplotypes[i]);
     }
     result.variant_haplotypes.swap(temp_haplotypes);
@@ -624,6 +631,35 @@ size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_
     return 0;
 }
 
+
+//
+size_t GraphCompare::calculateHaplotypeBranches(const std::string& sequence, size_t k, size_t min_branch_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache)
+{
+    if(sequence.size() < k)
+        return 0;
+
+    size_t num_branches = 0;
+    size_t nk = sequence.size() - k + 1;
+    for(size_t i = 0; i < nk; ++i)
+    {
+        std::string kmer = sequence.substr(i, k);
+        AlphaCount64 extensions = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, pBWT, ED_SENSE, pBWTCache);
+
+        // Count number of symbols with coverage >= min_branch_depth
+        size_t n = 0;
+        for(int j = 0; j < DNA_ALPHABET::size; ++j)
+        {
+            char b = DNA_ALPHABET::getBase(j);
+            if(extensions.get(b) >= min_branch_depth)
+                ++n;
+        }
+
+        if(n > 0)
+            num_branches += (n - 1);
+    }
+
+    return num_branches;
+}
 
 // Update the counts of each error type
 void GraphCompare::updateVariationCount(const BubbleResult& result)
