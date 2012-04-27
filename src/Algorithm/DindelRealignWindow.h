@@ -349,6 +349,7 @@ public:
         else if (a.refStart != b.refStart) return a.refStart<b.refStart;
         else return a.refSeq.size()<b.refSeq.size();
         //else return a.referenceAlignmentScore<b.referenceAlignmentScore;
+        //else return a.referenceAlignmentScore<b.referenceAlignmentScore;
     }
 
 };
