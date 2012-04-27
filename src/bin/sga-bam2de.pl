@@ -5,7 +5,7 @@ use Getopt::Long;
 
 my $n = 5;
 my $k = 99;
-my $minLength = 0;
+my $minLength = 200;
 my $prefix = "";
 my $numThreads = 1;
 
@@ -30,6 +30,12 @@ my $bamFile = $ARGV[0];
 if($bamFile eq "")
 {
     print "Error: A bam file must be provided\n";
+    $bFail = 1;
+}
+
+if($minLength <= 0)
+{
+    print "Error: minimum contig length (-m) must be greater than 0\n";
     $bFail = 1;
 }
 
@@ -63,7 +69,7 @@ sub usage
     print "sga-bam2de.pl -n N --prefix lib300 lib300.bam\n";
     print "Options:\n";
     print "                -n N             Minimum number of pairs required to consider two contigs linked\n";
-    print "                -m LEN           Only find links between contigs with length at least LEN bp\n";
+    print "                -m LEN           Only find links between contigs with length at least LEN bp (default: 200)\n";
     print "                -t NUM           Use NUM threads for computing the distance estimates\n";
     print "                --prefix NAME    Use NAME as the prefix for the outfiles\n";
 }
