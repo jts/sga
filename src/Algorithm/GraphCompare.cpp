@@ -603,9 +603,8 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
 //
 size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache)
 {
-    size_t k = 99;
     size_t min_k = 15;
-    while(k >= min_k)
+    for(size_t k = 99; k >= min_k; --k)
     {
         if(sequence.size() < k)
             continue;
@@ -625,7 +624,6 @@ size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_
 
         if(covered)
             return k;
-        k -= 1;
     }
 
     return 0;
