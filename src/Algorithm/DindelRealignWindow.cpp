@@ -1243,7 +1243,9 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
 
     std::map<int, std::vector<double> > logPostNotProbs;
     std::map<int, std::vector<double> > freqs;
-
+    if (DINDEL_DEBUG_3)
+        std::cout << "==outputAsVCF: variant: " << var.getID() << "\n";
+    
     for(size_t i = 0; i < haplotypeProperties.size(); ++i)
     {
         // probability that at least one haplotype maps with high probability to this position in the reference
@@ -1252,13 +1254,18 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
         if (probHaplotypeDoesNotMap>1.0-1e-6) probHaplotypeDoesNotMap=1.0-1e-6;
 
         int hapIt = haplotypeProperties[i].iteration;
-        double hq = haplotypeProperties[i].qual/10.0*exp(1.0);
+        double hq = haplotypeProperties[i].qual/10.0*log(10.0);
         if (hq<0.0)
             hq = 0.0;
+
+        
 
         // note this must be probabilities of NOT being true in log space
         double _lnprob = addLogs(log(probHaplotypeDoesNotMap), -hq+log(1.0-probHaplotypeDoesNotMap));
         logPostNotProbs[hapIt].push_back(_lnprob);
+
+        if (DINDEL_DEBUG_3)
+            std::cout << "==outputAsVCF: i: " << i << " hapIt: " << hapIt << " hq: " << hq << " lnprob: " << _lnprob << " haplotypeProperties[i].qual: " << haplotypeProperties[i].qual << " probHaplotypeDoesNotMap: " << probHaplotypeDoesNotMap << "\n";
 
         freqs[hapIt].push_back(haplotypeProperties[i].freq);
 
@@ -1270,7 +1277,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
 
         logProbNoHaplotypeMaps += log(probHaplotypeDoesNotMap);
 
-        expNumberOfHaplotypesMappingToThisLocation += (1.0-exp(-hq));
+        expNumberOfHaplotypesMappingToThisLocation += (1.0-probHaplotypeDoesNotMap)*(1.0-exp(-hq));
         // set values in hapPropString
         if(hmq>0)
         {
@@ -1298,12 +1305,18 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
             s += 1.0-exp(it->second[h]);
             varFreq += (1.0-exp(it->second[h]))*freqs[iteration][h];
         }
-        double notPost = 1.0-s;
-        if (s == 0.0)
+
+        double saves = s;
+        if (s < 1e-6)
             s = 1e-6;
+        
+        double notPost = 1.0-s;
         
 
         lnprob += log(notPost);
+
+        if (DINDEL_DEBUG_3)
+            std::cout << "==outputAsVCF: iteration: " << iteration << " notPost: " << notPost << " lnprob: " << lnprob << " saves: " << saves << "\n";
 
     }
 
@@ -1363,7 +1376,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     out << "\t" << var.getRef() << "\t" << var.getAlt() << "\t" << ( iqual ) << "\t" << filter << "\t";
     out << "AF=" << varFreq;
     out << ";NumReads=" << numRealignedReads;
-    out << ";NumHaps=" << numCalledHaplotypes;
+    out << ";NumCalledHaps=" << numCalledHaplotypes;
     out << ";ExpNumHapsWithVarMappingHere=" << expNumberOfHaplotypesMappingToThisLocation;
     out << ";VarQual=" << this->qual;
     out << ";HV=" << hapPropString.str();
@@ -3595,6 +3608,14 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
            double mapProb = exp(haplotypes[hapIdx].getLogMappingProbability(refIdx));
            result.weightedRefMapFrequencies[refIdx] += hapFreq * probHap * mapProb;
        }
+   }
+
+   if (DINDEL_DEBUG_3)
+   {
+       for (size_t x = 0; x < result.weightedRefMapFrequencies.size();x++) {
+           std::cout << " refMapping #" << x << " : weighted hapFreq " << result.weightedRefMapFrequencies[x] << "\n";
+       }
+
    }
 
    // Add haplotype properties for all variants

@@ -59,6 +59,10 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // This function also adds a haplotype (with flanking sequence) for the piece of the reference
     bool success = true;
     int FLANKING_SIZE = 0;
+    if (parameters.dindelRealignParameters.realignMatePairs)
+        FLANKING_SIZE = 1000;
+    else
+        FLANKING_SIZE = 0;
     StringVector flankingHaplotypes;
 
     // This vector contains the internal portion of the haplotypes, without the flanking sequence
@@ -181,15 +185,25 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         }
     }
     
+    // RESET MAPPING SCORES
+    for(std::set<DindelReferenceMapping>::iterator it = refMappings.begin(); it != refMappings.end(); it++) 
+        it->referenceAlignmentScore = 1000;
+
+
      
     std::cout << "REFERENCE MAPPINGS: \n";
     int c = 0;
-    for(std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++)
+    for(std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++) {
         std::cout << c << " " << it->refName << " start: " << it->refStart << " end: " << it->refStart + it->refSeq.size()-1 << " score: " << it->referenceAlignmentScore << "\n";
+    }
+
+    // make flankingHaplotypes unique
+    std::set< std::string > setFlanking(flankingHaplotypes.begin(), flankingHaplotypes.end());
+
     
-    for(size_t i = 0; i < flankingHaplotypes.size(); ++i)
+    for(std::set< std::string >::const_iterator it = setFlanking.begin(); it != setFlanking.end(); it++)
     {
-        dindelHaplotypes.push_back(flankingHaplotypes[i]);
+        dindelHaplotypes.push_back(*it);
         //dindelRefMappings[i] = std::vector<DindelReferenceMapping>(refMappings.begin(),refMappings.end());
     }
     std::vector<DindelReferenceMapping> dRefMappings(refMappings.begin(),refMappings.end());
