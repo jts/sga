@@ -43,7 +43,7 @@ const int DEBUG_CALLINDEL=0;
 const int REPOSITION_INDEL_WINDOW=1000;
 const int SHOWHAPFREQ=0;
 const int REPOSITIONVARIANTSSLOW=0; // uses slow code to reposition indels.
-const int DINDEL_DEBUG_3 = 1; // useful debugging
+const int DINDEL_DEBUG_3 = 0; // useful debugging
 const int DINDEL_ADJUST_MAPPINGQUAL = 1;
 //#define OVERLAPPER // build overlapper
 
@@ -3608,6 +3608,14 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
            double mapProb = exp(haplotypes[hapIdx].getLogMappingProbability(refIdx));
            result.weightedRefMapFrequencies[refIdx] += hapFreq * probHap * mapProb;
        }
+   }
+
+   if (DINDEL_DEBUG_3)
+   {
+       for (size_t x = 0; x < result.weightedRefMapFrequencies.size();x++) {
+           std::cout << " refMapping #" << x << " : weighted hapFreq " << result.weightedRefMapFrequencies[x] << "\n";
+       }
+
    }
 
    // Add haplotype properties for all variants

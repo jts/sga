@@ -59,6 +59,10 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // This function also adds a haplotype (with flanking sequence) for the piece of the reference
     bool success = true;
     int FLANKING_SIZE = 0;
+    if (parameters.dindelRealignParameters.realignMatePairs)
+        FLANKING_SIZE = 1000;
+    else
+        FLANKING_SIZE = 0;
     StringVector flankingHaplotypes;
 
     // This vector contains the internal portion of the haplotypes, without the flanking sequence
