@@ -149,7 +149,11 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
             // Skip terrible alignments
             if(overlap.getOverlapLength() < (int)k)
                 continue;
-
+            /*
+            // Skip alignments that are not full-length matches of the haplotype
+            if(overlap.match[0].start != 0 || overlap.match[0].end != (int)haplotype.size() - 1)
+                continue;
+            */
             int alignment_start = ref_start + overlap.match[1].start;
             int alignment_end = ref_start + overlap.match[1].end; // inclusive
             int alignment_length = alignment_end - alignment_start + 1;
@@ -168,8 +172,8 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
                     num_events -= (len - 1);
             }
 
-            printf("Edits: %d Events: %d\n", overlap.edit_distance, num_events);
 
+            printf("Edits: %d Events: %d\n", overlap.edit_distance, num_events);
 
             HapgenAlignment aln(candidates[j].target_sequence_id, alignment_start, alignment_length, overlap.score, is_reverse);
             tmp_alignments.push_back(aln);
@@ -271,7 +275,13 @@ void HapgenUtil::extractReferenceSubstrings(const HapgenAlignment& aln,
 
     outUpstream = refItem.seq.substr(upstreamFlankStart, definedStart - upstreamFlankStart);
     outDefined = refItem.seq.substr(definedStart, definedEnd - definedStart);
-    outDownstream = refItem.seq.substr(definedEnd, flanking);
+    
+    // Bugfix, the substr call will assert if the haplotype
+    // aligns to the end of the chromosome
+    if(definedEnd < (int)refItem.seq.length())
+        outDownstream = refItem.seq.substr(definedEnd, flanking);
+    else
+        outDownstream = "";
 }
 
 bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln, 
