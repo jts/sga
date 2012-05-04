@@ -4,13 +4,12 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// VariationBubbleBuilder - Construct a variation
-// bubble from an initial seed k-mer which only
-// appears in one out of a pair of abstract
-// deBruijn graphs.
+// VariationBuilderCommon - Data structures
+// commons to various algorithms for assembling
+// variation haplotypes
 //
-#ifndef VARIATION_BUBBLE_BUILDER_H
-#define VARIATION_BUBBLE_BUILDER_H
+#ifndef VARIATION_BUILDER_COMMON_H
+#define VARIATION_BUILDER_COMMON_H
 #include "BWT.h"
 #include "BWTInterval.h"
 #include "SGUtil.h"

@@ -31,7 +31,6 @@ libalgorithm_a_SOURCES = \
         StringThreader.h StringThreader.cpp \
         HapgenProcess.h HapgenProcess.cpp \
         ExtensionDP.h ExtensionDP.cpp \
-        VariationBubbleBuilder.h VariationBubbleBuilder.cpp \
         HaplotypeBuilder.h HaplotypeBuilder.cpp \
         GapFillProcess.h GapFillProcess.cpp \
         MetAssembleProcess.h MetAssembleProcess.cpp \

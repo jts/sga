@@ -13,7 +13,7 @@
 #include "BWTInterval.h"
 #include "SGUtil.h"
 #include "SGWalk.h"
-#include "VariationBubbleBuilder.h"
+#include "VariationBuilderCommon.h"
 #include <queue>
 
 // Structs

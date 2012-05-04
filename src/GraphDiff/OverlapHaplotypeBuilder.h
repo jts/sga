@@ -15,7 +15,7 @@
 #include "BWTIntervalCache.h"
 #include "SGUtil.h"
 #include "SGWalk.h"
-#include "VariationBubbleBuilder.h"
+#include "VariationBuilderCommon.h"
 #include "HaplotypeBuilder.h"
 #include "multiple_alignment.h"
 #include "GraphCompare.h"

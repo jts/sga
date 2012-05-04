@@ -22,7 +22,7 @@
 #include "SGUtil.h"
 #include "SGWalk.h"
 #include "BitVector.h"
-#include "VariationBubbleBuilder.h"
+#include "VariationBuilderCommon.h"
 #include "SequenceProcessFramework.h"
 #include "BWTIntervalCache.h"
 #include "SampledSuffixArray.h"
