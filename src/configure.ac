@@ -95,6 +95,7 @@ AC_CONFIG_FILES([Makefile
 		StringGraph/Makefile
 		Concurrency/Makefile
 		SuffixTools/Makefile
+        GraphDiff/Makefile
         Scaffold/Makefile
 		SGA/Makefile])
 

@@ -15,7 +15,7 @@
 #include "StdAlnTools.h"
 #include "HaplotypeBuilder.h"
 #include "MultiAlignment.h"
-#include "DindelRealignWindow.h"
+
 //
 //
 //

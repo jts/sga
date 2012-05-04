@@ -7,6 +7,7 @@ libalgorithm_a_CPPFLAGS = \
 	-I$(top_srcdir)/SQG \
 	-I$(top_srcdir)/SuffixTools \
 	-I$(top_srcdir)/Thirdparty \
+	-I$(top_srcdir)/GraphDiff \
     -I$(top_srcdir)/Concurrency
 
 libalgorithm_a_SOURCES = \
@@ -28,7 +29,6 @@ libalgorithm_a_SOURCES = \
         LRCorrectionAlgorithm.h LRCorrectionAlgorithm.cpp \
         LRCorrectionProcess.h LRCorrectionProcess.cpp \
         StringThreader.h StringThreader.cpp \
-        GraphCompare.h GraphCompare.cpp \
         HapgenProcess.h HapgenProcess.cpp \
         ExtensionDP.h ExtensionDP.cpp \
         VariationBubbleBuilder.h VariationBubbleBuilder.cpp \
@@ -38,10 +38,6 @@ libalgorithm_a_SOURCES = \
         MetagenomeBuilder.h MetagenomeBuilder.cpp \
         HapgenUtil.h HapgenUtil.cpp \
         BuilderCommon.h BuilderCommon.cpp \
-        VCFTester.h VCFTester.cpp \
-        DindelUtil.h DindelUtil.cpp \
-        DindelRealignWindow.h DindelRealignWindow.cpp \
-        DindelHMM.h DindelHMM.cpp \
         ReadCoherentHaplotypeBuilder.h ReadCoherentHaplotypeBuilder.cpp \
         OverlapHaplotypeBuilder.h OverlapHaplotypeBuilder.cpp \
         KmerOverlaps.h KmerOverlaps.cpp
