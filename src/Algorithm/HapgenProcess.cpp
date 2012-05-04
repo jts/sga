@@ -27,6 +27,7 @@ HapgenProcess::HapgenProcess(const HapgenParameters& params) : m_parameters(para
 //
 HapgenProcess::~HapgenProcess()
 {
+
 }
 
 void HapgenProcess::processSite(const std::string& refName, size_t start, size_t end, const std::string& comment)

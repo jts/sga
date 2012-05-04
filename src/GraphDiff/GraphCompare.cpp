@@ -25,7 +25,6 @@
 #include "BuilderCommon.h"
 #include "Profiler.h"
 
-
 // #define GRAPH_DIFF_DEBUG 1
 
 //
@@ -184,7 +183,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 bwts.push_back(m_parameters.pBaseBWT);
                 bwts.push_back(m_parameters.pVariantBWT);
                 std::cout << "Variant read: " << w << "\n";
-                //BubbleResult bubbleResult = processVariantKmer(kmer, count, bwts, 1);
                 GraphBuildResult build_result = processVariantKmerAggressive(kmer, count);
 
                 // Mark the kmers of the variant haplotypes as being visited
@@ -234,71 +232,6 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 {
     pSharedStats->updateShared(m_stats);
     m_stats.clear();
-}
-
-//
-BubbleResult GraphCompare::processVariantKmer(const std::string& str, int count, const BWTVector& bwts, int varIndex)
-{
-    assert(varIndex == 0 || varIndex == 1);
-    VariationBubbleBuilder builder;
-    builder.setSourceIndex(bwts[varIndex]);
-    builder.setTargetIndex(bwts[1 - varIndex]);
-    builder.setSourceString(str, count);
-    builder.setKmerThreshold(m_parameters.kmerThreshold);
-    builder.setAllowedBranches(m_parameters.maxBranches);
-
-    //
-    BubbleResult result = builder.run();
-    if(result.returnCode == BRC_OK)
-    {
-        assert(!result.targetString.empty());
-        assert(!result.sourceString.empty());
-
-        updateVariationCount(result);
-        markVariantSequenceKmers(result.sourceString);
-    }
-    else
-    {
-        
-        // Get all the kmers on this failed variant and mark them
-        StringVector kmers = builder.getSourceKmers();
-        for(size_t i = 0; i < kmers.size(); ++i)
-            markVariantSequenceKmers(kmers[i]);
-    }
-
-    // Update the results stats
-    m_stats.numAttempted += 1;
-    switch(result.returnCode)
-    {
-        case BRC_UNKNOWN:
-            assert(false);
-        case BRC_OK:
-            m_stats.numBubbles += 1;
-            break;
-        case BRC_SOURCE_BROKEN:
-            m_stats.numSourceBroken += 1;
-            break;
-        case BRC_SOURCE_BRANCH:
-            m_stats.numSourceBranched += 1;
-            break;
-        case BRC_TARGET_BROKEN:
-            m_stats.numTargetBroken += 1;
-            break;
-        case BRC_TARGET_BRANCH:
-            m_stats.numTargetBranched += 1;
-            break;
-        case BRC_WALK_FAILED:
-            m_stats.numWalkFailed += 1;
-            break;
-        case BRC_HB_FAILED:
-            m_stats.numHBFailed += 1;
-            break;
-        case BRC_NO_SOLUTION:
-            m_stats.numNoSolution += 1;
-            break;
-    }
-    
-    return result;
 }
 
 //
@@ -656,43 +589,6 @@ size_t GraphCompare::calculateHaplotypeBranches(const std::string& sequence, siz
     }
 
     return num_branches;
-}
-
-// Update the counts of each error type
-void GraphCompare::updateVariationCount(const BubbleResult& result)
-{
-    std::string tsM;
-    std::string vsM;
-    StdAlnTools::makePaddedStrings(result.targetString, result.sourceString, tsM, vsM);
-
-    assert(tsM.size() == vsM.size());
-    
-//    std::cout << "TSM: " << tsM << "\n";
-//    std::cout << "VSM: " << vsM << "\n";
-
-    // Count differences
-    bool inIns = false;
-    bool inDel = false;
-    for(size_t i = 0; i < tsM.size(); ++i)
-    {
-        if(tsM[i] != '-' && vsM[i] != '-' && vsM[i] != tsM[i])
-        {
-            m_stats.numSubs += 1;
-        }
-        else if(tsM[i] == '-')
-        {
-            if(!inIns)
-                m_stats.numInsertions += 1;
-        }
-        else if(vsM[i] == '-')
-        {
-            if(!inDel)
-                m_stats.numDeletions += 1;
-        }
-
-        inIns = tsM[i] == '-';
-        inDel = vsM[i] == '-';
-    }
 }
 
 IntVector GraphCompare::makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max)
