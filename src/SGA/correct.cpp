@@ -284,7 +284,7 @@ int learnKmerParameters(const BWT* pBWT)
     std::cout << "Proportion of kmer density right of threshold: " << 1.0f - cumulativeLEQ << "\n";
     if(cumulativeLEQ > 0.25f)
     {
-        std::cerr << "[sga correct] Warning: Proportion of kmers greater than the chosen threshold is less than 0.75 (" << cumulativeLEQ  << "\n";
+        std::cerr << "[sga correct] Warning: Proportion of kmers greater than the chosen threshold is less than 0.75 (" << 1.0f - cumulativeLEQ  << ")\n";
         std::cerr << "[sga correct] This can indicate your chosen kmer size is too large or your data is too low coverage to reliably correct\n";
         std::cerr << "[sga correct] It is suggest to lower the kmer size and/or choose the threshold manually\n";
     }
