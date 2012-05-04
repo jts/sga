@@ -38,6 +38,5 @@ libalgorithm_a_SOURCES = \
         MetagenomeBuilder.h MetagenomeBuilder.cpp \
         HapgenUtil.h HapgenUtil.cpp \
         BuilderCommon.h BuilderCommon.cpp \
-        ReadCoherentHaplotypeBuilder.h ReadCoherentHaplotypeBuilder.cpp \
         OverlapHaplotypeBuilder.h OverlapHaplotypeBuilder.cpp \
         KmerOverlaps.h KmerOverlaps.cpp

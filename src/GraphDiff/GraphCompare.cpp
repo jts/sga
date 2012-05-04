@@ -21,7 +21,6 @@
 #include "DindelRealignWindow.h"
 #include "DindelUtil.h"
 #include "HaplotypeBuilder.h"
-#include "ReadCoherentHaplotypeBuilder.h"
 #include "OverlapHaplotypeBuilder.h"
 #include "BuilderCommon.h"
 #include "Profiler.h"
