@@ -10,7 +10,6 @@
 //
 #include "MetagenomeBuilder.h"
 #include "BWTAlgorithms.h"
-#include "BuilderCommon.h"
 
 //
 MetagenomeBuilder::MetagenomeBuilder()
@@ -97,7 +96,7 @@ void MetagenomeBuilder::run()
 
         Vertex* pNewVertex = new(m_pGraph->getVertexAllocator()) Vertex(strY, strY);
         addVertex(pNewVertex, coverageY);
-        BuilderCommon::addSameStrandDeBruijnEdges(m_pGraph, curr.pVertex, pNewVertex, curr.direction);
+        VariationBuilderCommon::addSameStrandDeBruijnEdges(m_pGraph, curr.pVertex, pNewVertex, curr.direction);
             
         // Add the vertex to the extension queue
         m_queue.push(BuilderExtensionNode(pNewVertex, curr.direction));
@@ -118,7 +117,7 @@ std::pair<std::string, int> MetagenomeBuilder::getBestEdgeNode(const std::string
 
     size_t cov_threshold = static_cast<size_t>(std::max(m_frequencyFilter * nodeCoverage, (double)m_hardMinCoverage));
     bool uniqueExtension = extensionCounts.hasUniqueDNAChar() || 
-                                BuilderCommon::countValidExtensions(extensionCounts, cov_threshold) == 1;
+                                VariationBuilderCommon::countValidExtensions(extensionCounts, cov_threshold) == 1;
 
     std::pair<std::string, int> ret;
     // Fail due to ambiguity
@@ -132,7 +131,7 @@ std::pair<std::string, int> MetagenomeBuilder::getBestEdgeNode(const std::string
         size_t count = extensionCounts.get(b);
         if(!uniqueExtension || count < cov_threshold)
             continue; 
-        ret.first = BuilderCommon::makeDeBruijnVertex(nodeX, b, direction);
+        ret.first = VariationBuilderCommon::makeDeBruijnVertex(nodeX, b, direction);
         ret.second = count;
         return ret;
     }

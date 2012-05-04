@@ -22,7 +22,6 @@
 #include "DindelUtil.h"
 #include "HaplotypeBuilder.h"
 #include "OverlapHaplotypeBuilder.h"
-#include "BuilderCommon.h"
 #include "Profiler.h"
 
 // #define GRAPH_DIFF_DEBUG 1
@@ -439,7 +438,7 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, Stri
                 continue;
 
             extensionsUsed.push_back(b);
-            std::string newStr = BuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
+            std::string newStr = VariationBuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
             kmerCountMap[newStr] = count;
 
             // Create the new vertex and edge in the graph
@@ -453,7 +452,7 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, Stri
             pGraph->addVertex(pVertex);
 
             // Add edges
-            BuilderCommon::addSameStrandDeBruijnEdges(pGraph, curr.pVertex, pVertex, curr.direction);
+            VariationBuilderCommon::addSameStrandDeBruijnEdges(pGraph, curr.pVertex, pVertex, curr.direction);
             
             // Check if this sequence is present in the FM-index of the target
             // If so, it is the join point of the de Bruijn graph and we extend no further.

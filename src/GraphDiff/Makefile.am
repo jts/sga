@@ -1,0 +1,20 @@
+noinst_LIBRARIES = libgraphdiff.a
+
+libgraphdiff_a_CPPFLAGS = \
+	-I$(top_srcdir)/Bigraph \
+	-I$(top_srcdir)/Util \
+	-I$(top_srcdir)/StringGraph \
+	-I$(top_srcdir)/SQG \
+	-I$(top_srcdir)/SuffixTools \
+	-I$(top_srcdir)/Thirdparty \
+	-I$(top_srcdir)/Algorithm \
+    -I$(top_srcdir)/Concurrency
+
+libgraphdiff_a_SOURCES = \
+        DindelUtil.h DindelUtil.cpp \
+        DindelRealignWindow.h DindelRealignWindow.cpp \
+        DindelHMM.h DindelHMM.cpp \
+        VariationBuilderCommon.h VariationBuilderCommon.cpp \
+        OverlapHaplotypeBuilder.h OverlapHaplotypeBuilder.cpp \
+        VCFTester.h VCFTester.cpp \
+        GraphCompare.h GraphCompare.cpp 

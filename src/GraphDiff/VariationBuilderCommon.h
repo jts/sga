@@ -55,4 +55,27 @@ struct BuilderExtensionNode
 typedef std::queue<BuilderExtensionNode> BuilderExtensionQueue;
 typedef std::map<std::string, int> StrIntMap;
 
+// Common functions
+namespace VariationBuilderCommon
+{
+
+// Count the number of extensions above the given threshold
+size_t countValidExtensions(const AlphaCount64& ac, size_t threshold);
+
+// Returns true if there are multiple characters above the threshold
+bool hasMultipleBranch(const AlphaCount64& ac, size_t threshold);
+
+// Filter out low counts in AlphaCount using a coverage threshold
+// relative to the most frequent count. Returns the number of
+// surviving counts
+size_t filterLowFrequency(AlphaCount64& ac, double alpha);
+
+// Make a de Bruijn graph string 
+std::string makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction);
+
+// Add a de Bruijn graph edge to the given graph betwee pX and pY.
+void addSameStrandDeBruijnEdges(StringGraph* pGraph, const Vertex* pX, const Vertex* pY, EdgeDir direction);
+
+};
+
 #endif

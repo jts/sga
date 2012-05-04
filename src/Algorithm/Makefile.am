@@ -36,5 +36,4 @@ libalgorithm_a_SOURCES = \
         MetAssembleProcess.h MetAssembleProcess.cpp \
         MetagenomeBuilder.h MetagenomeBuilder.cpp \
         HapgenUtil.h HapgenUtil.cpp \
-        BuilderCommon.h BuilderCommon.cpp \
         KmerOverlaps.h KmerOverlaps.cpp
