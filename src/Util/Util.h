@@ -190,6 +190,10 @@ std::string reverseComplement(const std::string& seq);
 std::string complement(const std::string& seq);
 std::string reverse(const std::string& seq);
 
+// Reverse/complement functions, allowing a full IUPAC alphabet
+std::string reverseComplementIUPAC(const std::string& seq);
+std::string complementIUPAC(const std::string& seq);
+
 // Return the prefix/suffix of seq of length len 
 std::string prefix(const std::string& seq, const unsigned int len);
 std::string suffix(const std::string& seq, const unsigned int len);
@@ -223,6 +227,38 @@ inline char complement(char base)
             assert(false && "Unknown base!");
             return 'N';
     }
+}
+
+// Complement a base using the full IUPAC alphabet
+// Also allows for lowercase bases
+inline char complementIUPAC(char c)
+{
+    char cmp = '\0';
+    bool is_lc = std::islower(c);
+
+    switch(std::toupper(c)) {
+        case 'A': cmp = 'T'; break;
+        case 'C': cmp = 'G'; break;
+        case 'G': cmp = 'C'; break;
+        case 'T': cmp = 'A'; break;
+        case 'M': cmp = 'K'; break;
+        case 'R': cmp = 'Y'; break;
+        case 'W': cmp = 'W'; break;
+        case 'S': cmp = 'S'; break;
+        case 'Y': cmp = 'R'; break;
+        case 'K': cmp = 'M'; break;
+        case 'V': cmp = 'B'; break;
+        case 'H': cmp = 'D'; break;
+        case 'D': cmp = 'H'; break;
+        case 'B': cmp = 'V'; break;
+        case 'N': cmp = 'N'; break;
+        default:
+            assert(false);
+    }
+
+    if(is_lc)
+        cmp = std::tolower(cmp);
+    return cmp;
 }
 
 // Wrapper function to determine whether a calculated error rate is within tolerance of a

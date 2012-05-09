@@ -27,6 +27,18 @@ std::string reverseComplement(const std::string& seq)
     return out;
 }
 
+// Reverse complement a sequence using the full iupac alphabet
+std::string reverseComplementIUPAC(const std::string& seq)
+{
+    std::string out(seq.length(), 'A');
+    size_t last_pos = seq.length() - 1;
+    for(int i = last_pos; i >= 0; --i)
+    {
+        out[last_pos - i] = complementIUPAC(seq[i]);
+    }
+    return out;
+}
+
 // Reverse a sequence
 std::string reverse(const std::string& seq)
 {
@@ -39,9 +51,17 @@ std::string complement(const std::string& seq)
     std::string out(seq.length(), 'A');
     size_t l = seq.length();
     for(size_t i = 0; i < l; ++i)
-    {
         out[i] = complement(seq[i]);
-    }
+    return out;
+}
+
+// Complement a sequence over the IUPAC alphabet
+std::string complementIUPAC(const std::string& seq)
+{
+    std::string out(seq.length(), 'A');
+    size_t l = seq.length();
+    for(size_t i = 0; i < l; ++i)
+        out[i] = complementIUPAC(seq[i]);
     return out;
 }
 

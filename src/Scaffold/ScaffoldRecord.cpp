@@ -96,7 +96,7 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params) const
                 // The returned sequence is wrt currID. If we flipped the sequence of currID, we must
                 // flip this sequence
                 if(prevComp == EC_REVERSE)
-                    resolvedSequence = reverseComplement(resolvedSequence);
+                    resolvedSequence = reverseComplementIUPAC(resolvedSequence);
 
                 if(reverseAll)
                     resolvedSequence = reverse(resolvedSequence);
@@ -111,7 +111,7 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params) const
             // Get the sequence that should be potentially appended in
             std::string toAppend = params.pSequenceCollection->getSequence(link.endpointID);
             if(relativeComp == EC_REVERSE)
-                toAppend = reverseComplement(toAppend);
+                toAppend = reverseComplementIUPAC(toAppend);
             if(reverseAll)
                 toAppend = reverse(toAppend);
             
