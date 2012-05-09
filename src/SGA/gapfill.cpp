@@ -121,7 +121,7 @@ int gapfillMain(int argc, char** argv)
 
     std::ostream* pWriter = createWriter(opt::outFile);
 
-    SeqReader reader(opt::scaffoldFile, SRF_NO_VALIDATION);
+    SeqReader reader(opt::scaffoldFile, SRF_NO_VALIDATION | SRF_KEEP_CASE);
     SeqRecord record;
     while(reader.get(record))
     {

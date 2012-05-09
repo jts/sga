@@ -142,7 +142,7 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 StringGraph* SGUtil::loadFASTA(const std::string& filename)
 {
     StringGraph* pGraph = new StringGraph;
-    SeqReader reader(filename, SRF_FULL_VALIDATION);
+    SeqReader reader(filename);
     SeqRecord record;
 
     while(reader.get(record))

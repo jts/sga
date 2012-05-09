@@ -12,10 +12,10 @@
 #include "SeqReader.h"
 
 // Read the sequences from a file
-ReadTable::ReadTable(std::string filename, SeqReaderFlag flag)
+ReadTable::ReadTable(std::string filename, uint32_t reader_flags)
 {
     m_pIndex = NULL; // not built by default
-    SeqReader reader(filename, flag);
+    SeqReader reader(filename, reader_flags);
     SeqRecord sr;
     while(reader.get(sr))
     {

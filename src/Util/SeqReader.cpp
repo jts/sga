@@ -11,7 +11,7 @@
 #include "SeqReader.h"
 #include "Util.h"
 
-SeqReader::SeqReader(std::string filename, SeqReaderFlag flag) : m_flag(flag)
+SeqReader::SeqReader(std::string filename, uint32_t flags) : m_flags(flags)
 {
     m_pHandle = createReader(filename);
 }
@@ -109,10 +109,11 @@ bool SeqReader::get(SeqRecord& sr)
         }
 
         // Convert the sequence string to upper case
-        std::transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
+        if( !(m_flags & SRF_KEEP_CASE) )
+            std::transform(seq.begin(), seq.end(), seq.begin(), ::toupper);
 
         // If the validation flag is set, ensure that there aren't any non-ACGT bases
-        if(m_flag != SRF_NO_VALIDATION)
+        if( !(m_flags & SRF_NO_VALIDATION) )
         {
             if(seq.find_first_not_of("ACGT") != std::string::npos)
             {

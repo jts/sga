@@ -19,23 +19,20 @@ enum RecordType
     RT_UNKNOWN
 };
 
-enum SeqReaderFlag
-{
-    SRF_NO_VALIDATION,
-    SRF_FULL_VALIDATION
-};
+static const uint32_t SRF_NO_VALIDATION = 1;
+static const uint32_t SRF_KEEP_CASE = 2;
 
 //
 class SeqReader
 {
     public:
-        SeqReader(std::string filename, SeqReaderFlag flag = SRF_FULL_VALIDATION);
+        SeqReader(std::string filename, uint32_t flags = 0);
         ~SeqReader();
         bool get(SeqRecord& sr);
 
     private:
         std::istream* m_pHandle;
-        SeqReaderFlag m_flag;
+        uint32_t m_flags;
 };
 
 #endif

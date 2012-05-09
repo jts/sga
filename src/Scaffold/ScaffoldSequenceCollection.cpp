@@ -73,7 +73,7 @@ void GraphSequenceCollection::writeUnplaced(std::ostream* pWriter, int minLength
 // Read the sequences from the file
 MapSequenceCollection::MapSequenceCollection(std::string filename)
 {
-    SeqReader reader(filename, SRF_NO_VALIDATION);
+    SeqReader reader(filename, SRF_NO_VALIDATION | SRF_KEEP_CASE);
     SeqRecord record;
     while(reader.get(record))
     {

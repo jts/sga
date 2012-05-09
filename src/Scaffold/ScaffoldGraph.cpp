@@ -116,7 +116,7 @@ void ScaffoldGraph::setEdgeColors(GraphColor c)
 // 
 void ScaffoldGraph::loadVertices(const std::string& filename, int minLength)
 {
-    SeqReader reader(filename, SRF_NO_VALIDATION);
+    SeqReader reader(filename, SRF_NO_VALIDATION | SRF_KEEP_CASE);
     SeqRecord sr;
     while(reader.get(sr))
     {

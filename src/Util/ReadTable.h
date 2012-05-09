@@ -20,7 +20,7 @@ class ReadTable
     public:
         //
         ReadTable() : m_pIndex(NULL) {}
-        ReadTable(std::string filename, SeqReaderFlag flag = SRF_FULL_VALIDATION);
+        ReadTable(std::string filename, uint32_t reader_flags = 0);
         ~ReadTable();
 
         // Initialize this read table as the reverse of the passed in read table
