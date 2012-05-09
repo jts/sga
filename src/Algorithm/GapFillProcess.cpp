@@ -190,7 +190,6 @@ GapFillReturnCode GapFillProcess::processGap(size_t k, int estimatedSize, const 
 // Find an anchor sequence to start the process of building the gap sequence
 AnchorSequence GapFillProcess::findAnchor(size_t k, const std::string& scaffold, int64_t position, bool upstream) const
 {
-    WARN_ONCE("TODO: deduplicate findAnchor code");
     AnchorSequence anchor;
     int64_t stride = upstream ? -1 : 1;
     int MAX_DISTANCE = 50;
@@ -207,7 +206,7 @@ AnchorSequence GapFillProcess::findAnchor(size_t k, const std::string& scaffold,
         assert(position >= 0);
         std::string testSeq = scaffold.substr(position, k);
         std::transform(testSeq.begin(), testSeq.end(), testSeq.begin(), ::toupper);
-        if(testSeq.find_first_of('N') != std::string::npos)
+        if(testSeq.find_first_not_of("ACGT") != std::string::npos)
             continue;
 
         size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(testSeq, m_parameters.pBWT, m_parameters.pBWTCache);
