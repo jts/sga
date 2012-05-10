@@ -54,6 +54,15 @@ BWTInterval BWTAlgorithms::findIntervalWithCache(const BWT* pBWT, const BWTInter
     return interval;
 }
 
+// Delegate the findInterval call based on what indices are loaded
+BWTInterval BWTAlgorithms::findInterval(const BWTIndexSet& indices, const std::string& w)
+{
+    if(indices.pCache != NULL)
+        return findIntervalWithCache(indices.pBWT, indices.pCache, w);
+    else
+        return findInterval(indices.pBWT, w);
+}
+
 // Find the intervals in pBWT/pRevBWT corresponding to w
 // If w does not exist in the BWT, the interval 
 // coordinates [l, u] will be such that l > u
@@ -137,6 +146,15 @@ size_t BWTAlgorithms::countSequenceOccurrencesWithCache(const std::string& w, co
     return count;
 }
 
+//
+size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWTIndexSet& indices)
+{
+    assert(indices.pBWT != NULL);
+    if(indices.pCache != NULL)
+        return countSequenceOccurrencesWithCache(w, indices.pBWT, indices.pCache);
+    else
+        return countSequenceOccurrences(w, indices.pBWT);
+}
 
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 

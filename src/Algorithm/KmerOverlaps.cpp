@@ -18,11 +18,9 @@ MultipleAlignment KmerOverlaps::buildMultipleAlignment(const std::string& query,
                                                        int min_overlap,
                                                        double min_identity,
                                                        int bandwidth,
-                                                       const BWT* pBWT, 
-                                                       const BWTIntervalCache* pIntervalCache,
-                                                       const SampledSuffixArray* pSSA)
+                                                       const BWTIndexSet& indices)
 {
-    SequenceOverlapPairVector overlap_vector = retrieveMatches(query, k, min_overlap, min_identity, bandwidth, pBWT, pIntervalCache, pSSA);
+    SequenceOverlapPairVector overlap_vector = retrieveMatches(query, k, min_overlap, min_identity, bandwidth, indices);
     std::cout << "Found " << overlap_vector.size() << " matches\n";
     MultipleAlignment multiple_alignment;
     multiple_alignment.addBaseSequence("query", query, "");
@@ -65,16 +63,14 @@ typedef std::set<KmerMatch> KmerMatchSet;
 typedef HashMap<KmerMatch, bool, KmerMatchKey> KmerMatchMap;
 
 //
-SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query, 
-                                                        size_t k,
-                                                        int min_overlap,
-                                                        double min_identity,
-                                                        int bandwidth,
-                                                        const BWT* pBWT, 
-                                                        const BWTIntervalCache* pIntervalCache,
-                                                        const SampledSuffixArray* pSSA)
+SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query, size_t k, 
+                                                        int min_overlap, double min_identity,
+                                                        int bandwidth, const BWTIndexSet& indices)
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::retrieveMatches")
+    assert(indices.pBWT != NULL);
+    assert(indices.pSSA != NULL);
+
     int64_t max_interval_size = 200;
     SequenceOverlapPairVector overlap_vector;
 
@@ -90,7 +86,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
     for(size_t i = 0; i < num_kmers; ++i)
     {
         std::string kmer = query.substr(i, k);
-        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(pBWT, pIntervalCache, kmer);
+        BWTInterval interval = BWTAlgorithms::findInterval(indices, kmer);
         if(interval.isValid() && interval.size() < max_interval_size) 
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
@@ -101,7 +97,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
         }
 
         kmer = reverseComplement(kmer);
-        interval = BWTAlgorithms::findIntervalWithCache(pBWT, pIntervalCache, kmer);
+        interval = BWTAlgorithms::findInterval(indices, kmer);
         if(interval.isValid() && interval.size() < max_interval_size) 
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
@@ -129,8 +125,8 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
         KmerMatch out_match = iter->first;
         while(1) 
         {
-            char b = pBWT->getChar(out_match.index);
-            out_match.index = pBWT->getPC(b) + pBWT->getOcc(b, out_match.index - 1);
+            char b = indices.pBWT->getChar(out_match.index);
+            out_match.index = indices.pBWT->getPC(b) + indices.pBWT->getOcc(b, out_match.index - 1);
 
             // Check if the hash indicates we have visited this index. If so, stop the backtrack
             KmerMatchMap::iterator find_iter = prematchMap.find(out_match);
@@ -146,7 +142,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
             if(b == '$')
             {
                 // We've found the lexicographic index for this read. Turn it into a proper ID
-                out_match.index = pSSA->lookupLexoRank(out_match.index);
+                out_match.index = indices.pSSA->lookupLexoRank(out_match.index);
                 matches.insert(out_match);
                 break;
             }
@@ -157,7 +153,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
     // Use the overlaps that meet the thresholds to build a multiple alignment
     for(KmerMatchSet::iterator iter = matches.begin(); iter != matches.end(); ++iter)
     {
-        std::string match_sequence = BWTAlgorithms::extractString(pBWT, iter->index);
+        std::string match_sequence = BWTAlgorithms::extractString(indices.pBWT, iter->index);
         if(iter->is_reverse)
             match_sequence = reverseComplement(match_sequence);
         

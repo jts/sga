@@ -17,7 +17,7 @@
 #include <list>
 #include <stack>
 #include <queue>
-#include "BWT.h"
+#include "BWTIndexSet.h"
 #include "BWTInterval.h"
 #include "SGUtil.h"
 #include "SGWalk.h"
@@ -35,20 +35,14 @@ typedef std::vector<const BWT*> BWTVector;
 class GraphCompareAggregateResults;
 struct GraphCompareParameters
 {
-    // Indices for the base reads
-    const BWT* pBaseBWT; 
-    const BWTIntervalCache* pBaseBWTCache;
-    const SampledSuffixArray* pBaseSSA;
+    // Base read index
+    BWTIndexSet baseIndex;
     
     // Indices for the variant reads
-    const BWT* pVariantBWT;
-    const BWTIntervalCache* pVariantBWTCache;
-    const SampledSuffixArray* pVariantSSA;
+    BWTIndexSet variantIndex;
     
     // Reference genome
-    const BWT* pReferenceBWT;
-    const BWT* pReferenceRevBWT;
-    const SampledSuffixArray* pReferenceSSA;
+    BWTIndexSet referenceIndex;
     const ReadTable* pRefTable;
 
     // Bitvector to mark used kmers
@@ -150,10 +144,10 @@ class GraphCompare
         void markVariantSequenceKmers(const std::string& str);
         
         // Calculate the largest k such that every k-mer in the sequence is present at least min_depth times in the BWT
-        size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache);
+        size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices);
 
         // Calculate the number of high coverage branches off a haplotype path through the de Bruijn graph
-        size_t calculateHaplotypeBranches(const std::string& sequence, size_t k, size_t min_branch_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache);
+        size_t calculateHaplotypeBranches(const std::string& sequence, size_t k, size_t min_branch_depth, const BWTIndexSet& indices);
 
         // Update statistics 
         void updateVariationCount(const BubbleResult& result);

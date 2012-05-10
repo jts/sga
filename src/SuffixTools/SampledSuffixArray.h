@@ -42,7 +42,7 @@ class SampledSuffixArray
 
         // Validate using the full suffix array for the given set of reads. Very slow.
         void validate(std::string readsFile, const BWT* pBWT);
-        void printInfo();
+        void printInfo() const;
 
         // I/O
         void writeLexicoIndex(const std::string& filename);

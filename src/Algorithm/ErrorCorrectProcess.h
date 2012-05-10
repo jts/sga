@@ -16,7 +16,7 @@
 #include "SequenceWorkItem.h"
 #include "MultiOverlap.h"
 #include "Metrics.h"
-#include "BWTIntervalCache.h"
+#include "BWTIndexSet.h"
 #include "SampledSuffixArray.h"
 #include "multiple_alignment.h"
 
@@ -39,11 +39,11 @@ enum ECFlag
 // Parameter object for the error corrector
 struct ErrorCorrectParameters
 {
-    const OverlapAlgorithm* pOverlapper;
-    const BWT* pBWT;
-    const SampledSuffixArray* pSSA;
-    const BWTIntervalCache* pIntervalCache;
     ErrorCorrectAlgorithm algorithm;
+
+    //
+    const OverlapAlgorithm* pOverlapper;
+    BWTIndexSet indices;
 
     // Overlap-based corrector params
     int minOverlap;

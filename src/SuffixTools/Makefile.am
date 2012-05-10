@@ -35,6 +35,7 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
                            BWTCABauerCoxRosone.h BWTCABauerCoxRosone.cpp \
                            BWT.h \
                            BWTInterval.h \
+                           BWTIndexSet.h \
                            HitData.h \
                            SparseGapArray.h \
 						   FMMarkers.h \

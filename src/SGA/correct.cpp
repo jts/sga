@@ -142,6 +142,7 @@ int correctMain(int argc, char** argv)
 {
     parseCorrectOptions(argc, argv);
 
+    // Load indices
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = NULL;
     SampledSuffixArray* pSSA = NULL;
@@ -149,12 +150,14 @@ int correctMain(int argc, char** argv)
     if(opt::algorithm == ECA_OVERLAP)
         pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
 
-    BWTIntervalCache intervalCache(opt::intervalCacheLength, pBWT);
+    BWTIntervalCache* pIntervalCache = new BWTIntervalCache(opt::intervalCacheLength, pBWT);
 
-    OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
-                                                         opt::errorRate, opt::seedLength, 
-                                                         opt::seedStride, false, opt::branchCutoff);
-    
+    BWTIndexSet indexSet;
+    indexSet.pBWT = pBWT;
+    indexSet.pRBWT = pRBWT;
+    indexSet.pSSA = pSSA;
+    indexSet.pCache = pIntervalCache;
+
     // Learn the parameters of the kmer corrector
     if(opt::bLearnKmerParams)
     {
@@ -171,10 +174,8 @@ int correctMain(int argc, char** argv)
 
     // Set the error correction parameters
     ErrorCorrectParameters ecParams;
-    ecParams.pOverlapper = pOverlapper;
-    ecParams.pBWT = pBWT;
-    ecParams.pSSA = pSSA;
-    ecParams.pIntervalCache = &intervalCache;
+    ecParams.pOverlapper = NULL;
+    ecParams.indices = indexSet;
     ecParams.algorithm = opt::algorithm;
 
     ecParams.minOverlap = opt::minOverlap;
@@ -228,13 +229,13 @@ int correctMain(int argc, char** argv)
     }
 
     delete pBWT;
+    delete pIntervalCache;
     if(pRBWT != NULL)
         delete pRBWT;
 
     if(pSSA != NULL)
         delete pSSA;
 
-    delete pOverlapper;
     delete pTimer;
     
     delete pWriter;

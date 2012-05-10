@@ -159,8 +159,8 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrection(const SequenceWorkItem
 //
 ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkItem& workItem)
 {
-    assert(m_params.pBWT != NULL);
-    assert(m_params.pSSA != NULL);
+    assert(m_params.indices.pBWT != NULL);
+    assert(m_params.indices.pSSA != NULL);
 
     ErrorCorrectResult result;
     SeqRecord currRead = workItem.read;
@@ -176,9 +176,7 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
                                                                                     m_params.minOverlap,
                                                                                     m_params.minIdentity,
                                                                                     20,
-                                                                                    m_params.pBWT,
-                                                                                    m_params.pIntervalCache,
-                                                                                    m_params.pSSA);
+                                                                                    m_params.indices);
 
         multiple_alignment.filterByCount(m_params.conflictCutoff);
         
@@ -210,6 +208,9 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
 // Correct a read with a k-mer based corrector
 ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& workItem)
 {
+    assert(m_params.indices.pBWT != NULL);
+    assert(m_params.indices.pCache != NULL);
+
     ErrorCorrectResult result;
 
     typedef std::map<std::string, int> KmerCountMap;
@@ -278,7 +279,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             }
             else
             {
-                count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pBWT, m_params.pIntervalCache);
+                count = BWTAlgorithms::countSequenceOccurrences(kmer, m_params.indices);
                 kmerCache.insert(std::make_pair(kmer, count));
             }
 
@@ -380,7 +381,7 @@ bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t m
         if(currBase == originalBase)
             continue;
         kmer[base_idx] = currBase;
-        size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pBWT, m_params.pIntervalCache);
+        size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_params.indices);
 
 #if KMER_TESTING
         printf("%c %zu\n", currBase, count);
@@ -424,7 +425,7 @@ ErrorCorrectResult ErrorCorrectProcess::threadingCorrection(const SequenceWorkIt
     for(int i = 0; i < nk; ++i)
     {
         std::string kmer = query.substr(i, k);
-        size_t count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_params.pBWT, m_params.pIntervalCache);
+        size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, m_params.indices);
         if(count >= x)
             right_index = i;
         else
@@ -452,7 +453,7 @@ ErrorCorrectResult ErrorCorrectProcess::threadingCorrection(const SequenceWorkIt
     int seed_endpoint = k + right_index;
     printf("Correcting %s [%d %d]\n", query.c_str(), right_index, seed_endpoint);
     StringThreaderResultVector thread_results;
-    StringThreader threader(query.substr(0, seed_endpoint), &query, seed_endpoint, k, m_params.pBWT);
+    StringThreader threader(query.substr(0, seed_endpoint), &query, seed_endpoint, k, m_params.indices.pBWT);
     threader.run(thread_results);
 
     printf("Found %zu correction threads\n", thread_results.size());

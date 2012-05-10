@@ -132,21 +132,18 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     {
         if(visitedKmers[j])
             continue; // skip marked kmers
+
         std::string kmer = w.substr(j, m_parameters.kmer);
         
     	// Get the interval for this kmer
-        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
-                                                                    m_parameters.pVariantBWTCache, 
-                                                                    kmer);
+        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, kmer);
 
         // Check if this interval has been marked by a previous iteration of the loop
         assert(interval.isValid());
         if(m_parameters.pBitVector->test(interval.lower))
             continue;
 
-        BWTInterval rc_interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pVariantBWT, 
-                                                                       m_parameters.pVariantBWTCache, 
-                                                                       reverseComplement(kmer));
+        BWTInterval rc_interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, reverseComplement(kmer));
         
         size_t count = interval.size();
         if(rc_interval.isValid())
@@ -157,7 +154,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold && !variantAttempted && both_strands)
         {
             // Check if this k-mer is present in the other base index
-            size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
+            size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.baseIndex);
             
             // k-mer present in the other read set, skip it
             if(base_count > 0)
@@ -256,15 +253,19 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int co
     for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
     {
         // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
-        size_t max_variant_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache);
-        size_t max_base_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
+        size_t max_variant_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.variantIndex);
+        size_t max_base_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.baseIndex);
 
         // Calculate the number of high coverage branches in this haplotype
-        size_t num_branches = calculateHaplotypeBranches(result.variant_haplotypes[i], m_parameters.kmer, m_parameters.kmerThreshold, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache);
-
+        size_t num_branches = calculateHaplotypeBranches(result.variant_haplotypes[i], 
+                                                         m_parameters.kmer, 
+                                                         m_parameters.kmerThreshold, 
+                                                         m_parameters.variantIndex);
+        
+        //
         printf("MVK: %zu MBK: %zu NHC: %zu\n", max_variant_k, max_base_k, num_branches);
 
-
+        //
         if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 31)
             temp_haplotypes.push_back(result.variant_haplotypes[i]);
     }
@@ -289,18 +290,18 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int co
 #ifdef GRAPH_DIFF_DEBUG
             // Make a kmer count profile for the putative variant string
             std::cout << "VProfile(" << m_parameters.kmer << "):";
-            IntVector countProfile = makeCountProfile(current_variant_haplotype, m_parameters.kmer, m_parameters.pVariantBWT, 9);
+            IntVector countProfile = makeCountProfile(current_variant_haplotype, m_parameters.kmer, m_parameters.variantIndex.pBWT, 9);
             std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
             std::cout << "\n";
 
 
             std::cout << "BProfile(" << m_parameters.kmer << "):";
-            countProfile = makeCountProfile(current_variant_haplotype, m_parameters.kmer, m_parameters.pBaseBWT, 9);
+            countProfile = makeCountProfile(current_variant_haplotype, m_parameters.kmer, m_parameters.baseIndex.pBWT, 9);
             std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
             std::cout << "\n";
 
             std::cout << "BProfile(31): ";
-            countProfile = makeCountProfile(current_variant_haplotype, 31, m_parameters.pBaseBWT, 9);
+            countProfile = makeCountProfile(current_variant_haplotype, 31, m_parameters.baseIndex.pBWT, 9);
             std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
             std::cout << "\n";
 
@@ -326,7 +327,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int co
 
             HaplotypeBuilder builder;
             builder.setTerminals(startAnchor, endAnchor);
-            builder.setIndex(m_parameters.pBaseBWT, NULL);
+            builder.setIndex(m_parameters.baseIndex.pBWT, NULL);
             builder.setKmerParameters(haplotype_builder_kmer, m_parameters.bReferenceMode ? 1 : 2);
 
             // Run the builder
@@ -408,7 +409,7 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, Stri
 
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
-        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_parameters.pVariantBWT, curr.direction);
+        AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_parameters.variantIndex.pBWT, curr.direction);
 
         std::string extensionsUsed;
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
@@ -439,7 +440,7 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, Stri
             
             // Check if this sequence is present in the FM-index of the target
             // If so, it is the join point of the de Bruijn graph and we extend no further.
-            size_t targetCount = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.pBaseBWT);
+            size_t targetCount = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.baseIndex);
             if(targetCount >= MIN_TARGET_COUNT)
             {
                 if(curr.direction == ED_SENSE)
@@ -458,11 +459,6 @@ bool GraphCompare::buildVariantStringGraph(const std::string& startingKmer, Stri
         if(!extensionsUsed.empty())
             total_branches += extensionsUsed.size() - 1;
     }
-
-    /*
-    std::string result_str = (pSenseJoin != NULL && pAntisenseJoin != NULL) ? "OK" : "FAIL";
-    printf("VariantStringGraph\t%s\tMS:%zu\tTB:%zu\tNI:%zu\n", result_str.c_str(), max_simul_branches_used, total_branches, iterations);
-    */
 
     // If the graph construction was successful, walk the graph
     // between the endpoints to make a string
@@ -496,7 +492,7 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
     for(size_t i = 0; i < n; ++i)
     {
         std::string kseq = str.substr(i, m_parameters.kmer);
-        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, kseq);
+        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, kseq);
         if(interval.isValid())
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
@@ -505,7 +501,7 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
 
         // Mark the reverse complement k-mers too
         std::string rc_kseq = reverseComplement(kseq);
-        interval = BWTAlgorithms::findInterval(m_parameters.pVariantBWT, rc_kseq);
+        interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, rc_kseq);
         if(interval.isValid())
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
@@ -523,13 +519,13 @@ std::vector<bool> GraphCompare::generateKmerMask(const std::string& str) const
     int j = len - 1;
     char curr = str[j];
     BWTInterval interval;
-    BWTAlgorithms::initInterval(interval, curr, m_parameters.pVariantBWT);
+    BWTAlgorithms::initInterval(interval, curr, m_parameters.variantIndex.pBWT);
     --j;
 
     for(;j >= 0; --j)
     {
         curr = str[j];
-        BWTAlgorithms::updateInterval(interval, curr, m_parameters.pVariantBWT);
+        BWTAlgorithms::updateInterval(interval, curr, m_parameters.variantIndex.pBWT);
 
         assert(interval.isValid());
 
@@ -542,7 +538,7 @@ std::vector<bool> GraphCompare::generateKmerMask(const std::string& str) const
 }
 
 //
-size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache)
+size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices)
 {
     size_t min_k = 15;
     for(size_t k = 99; k >= min_k; --k)
@@ -554,7 +550,7 @@ size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_
         for(size_t i = 0; i < nk; ++i)
         {
             std::string kmer = sequence.substr(i, k);
-            int c = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, pBWT, pBWTCache);
+            int c = BWTAlgorithms::countSequenceOccurrences(kmer, indices);
 
             if(c < min_depth)
             {
@@ -572,7 +568,10 @@ size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_
 
 
 //
-size_t GraphCompare::calculateHaplotypeBranches(const std::string& sequence, size_t k, size_t min_branch_depth, const BWT* pBWT, const BWTIntervalCache* pBWTCache)
+size_t GraphCompare::calculateHaplotypeBranches(const std::string& sequence, 
+                                                size_t k, 
+                                                size_t min_branch_depth, 
+                                                const BWTIndexSet& indices)
 {
     if(sequence.size() < k)
         return 0;
@@ -582,7 +581,7 @@ size_t GraphCompare::calculateHaplotypeBranches(const std::string& sequence, siz
     for(size_t i = 0; i < nk; ++i)
     {
         std::string kmer = sequence.substr(i, k);
-        AlphaCount64 extensions = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, pBWT, ED_SENSE, pBWTCache);
+        AlphaCount64 extensions = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, indices.pBWT, ED_SENSE, indices.pCache);
 
         // Count number of symbols with coverage >= min_branch_depth
         size_t n = 0;
@@ -673,9 +672,9 @@ void GraphCompare::testKmer(const std::string& kmer)
 
 void GraphCompare::showMappingLocations(const std::string& str)
 {
-    BWTInterval ref_interval = BWTAlgorithms::findInterval(m_parameters.pReferenceBWT, str);
+    BWTInterval ref_interval = BWTAlgorithms::findInterval(m_parameters.referenceIndex, str);
     for(int64_t i = ref_interval.lower; i <= ref_interval.upper; ++i)
-        std::cout << "Location: " << m_parameters.pReferenceSSA->calcSA(i, m_parameters.pReferenceBWT) << "\n";
+        std::cout << "Location: " << m_parameters.referenceIndex.pSSA->calcSA(i, m_parameters.referenceIndex.pBWT) << "\n";
 }
 
 //

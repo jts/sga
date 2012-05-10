@@ -10,9 +10,8 @@
 #define BWT_ALGORITHMS_H
 
 #include "STCommon.h"
-#include "BWT.h"
+#include "BWTIndexSet.h"
 #include "BWTInterval.h"
-#include "BWTIntervalCache.h"
 #include "GraphCommon.h"
 
 #include <queue>
@@ -28,6 +27,7 @@ namespace BWTAlgorithms
 // get the interval(s) in pBWT/pRevBWT that corresponds to the string w using a backward search algorithm
 BWTInterval findInterval(const BWT* pBWT, const std::string& w);
 BWTInterval findIntervalWithCache(const BWT* pBWT, const BWTIntervalCache* pIntervalCache, const std::string& w);
+BWTInterval findInterval(const BWTIndexSet& indices, const std::string& w);
 
 BWTIntervalPair findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std::string& w);
 BWTIntervalPair findIntervalPairWithCache(const BWT* pBWT, 
@@ -40,7 +40,7 @@ BWTIntervalPair findIntervalPairWithCache(const BWT* pBWT,
 // its reverse complement
 size_t countSequenceOccurrences(const std::string& w, const BWT* pBWT);
 size_t countSequenceOccurrencesWithCache(const std::string& w, const BWT* pBWT, const BWTIntervalCache* pIntervalCache);
-
+size_t countSequenceOccurrences(const std::string& w, const BWTIndexSet& indices);
 
 // Update the given interval using backwards search
 // If the interval corrsponds to string S, it will be updated 

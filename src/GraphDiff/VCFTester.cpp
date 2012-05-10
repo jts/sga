@@ -89,8 +89,8 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     {
         std::string ks = varStr.substr(i, k);
 
-        size_t baseCount = BWTAlgorithms::countSequenceOccurrences(ks, m_parameters.pBaseBWT);
-        size_t varCount = BWTAlgorithms::countSequenceOccurrences(ks, m_parameters.pVariantBWT);
+        size_t baseCount = BWTAlgorithms::countSequenceOccurrences(ks, m_parameters.baseIndex);
+        size_t varCount = BWTAlgorithms::countSequenceOccurrences(ks, m_parameters.variantIndex);
 
         bv.push_back(baseCount > 9 ? 9 : baseCount);
         vv.push_back(varCount > 9 ? 9 : varCount);

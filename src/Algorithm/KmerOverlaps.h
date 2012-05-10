@@ -11,8 +11,7 @@
 #define KMER_OVERLAPS_H
 
 #include "multiple_alignment.h"
-#include "BWT.h"
-#include "BWTIntervalCache.h"
+#include "BWTIndexSet.h"
 #include "SampledSuffixArray.h"
 
 // A pair of sequences and an overlap matching them
@@ -33,9 +32,7 @@ MultipleAlignment buildMultipleAlignment(const std::string& query,
                                          int min_overlap,
                                          double min_identity,
                                          int bandwidth,
-                                         const BWT* pBWT, 
-                                         const BWTIntervalCache* pIntervalCache,
-                                         const SampledSuffixArray* pSSA);
+                                         const BWTIndexSet& indices);
 
 // Retrieve matches to the query sequence
 SequenceOverlapPairVector retrieveMatches(const std::string& query, 
@@ -43,9 +40,7 @@ SequenceOverlapPairVector retrieveMatches(const std::string& query,
                                           int min_overlap,
                                           double min_identity,
                                           int bandwidth,
-                                          const BWT* pBWT, 
-                                          const BWTIntervalCache* pIntervalCache,
-                                          const SampledSuffixArray* pSSA);
+                                          const BWTIndexSet& indices);
 };
 
 #endif

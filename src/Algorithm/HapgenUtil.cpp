@@ -17,8 +17,7 @@
 
 // Align the haplotype to the reference genome represented by the BWT/SSA pair
 void HapgenUtil::alignHaplotypeToReferenceBWASW(const std::string& haplotype,
-                                                const BWT* pReferenceBWT,
-                                                const SampledSuffixArray* pReferenceSSA,
+                                                const BWTIndexSet& referenceIndex,
                                                 HapgenAlignmentVector& outAlignments)
 {
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceBWASW")
@@ -30,7 +29,7 @@ void HapgenUtil::alignHaplotypeToReferenceBWASW(const std::string& haplotype,
     {
         LRAlignment::LRHitVector hits;
         std::string query = (i == 0) ? haplotype : reverseComplement(haplotype);
-        LRAlignment::bwaswAlignment(query, pReferenceBWT, pReferenceSSA, params, hits);
+        LRAlignment::bwaswAlignment(query, referenceIndex.pBWT, referenceIndex.pSSA, params, hits);
 
         // Convert the hits into alignments
         for(size_t j = 0; j < hits.size(); ++j)
@@ -40,14 +39,8 @@ void HapgenUtil::alignHaplotypeToReferenceBWASW(const std::string& haplotype,
             // Skip non-complete alignments
             if((int)haplotype.length() == q_alignment_length)
             {
-                printf("Full alignment -- ID: %d start: %d haplen: %zu alignlength: %d\n", (int)hits[j].targetID, (int)hits[j].t_start, haplotype.length(), (int)q_alignment_length);
                 HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, hits[j].G, i == 1);
                 outAlignments.push_back(aln);
-            }
-            else
-            {
-                printf("Partial alignment -- ID: %d start: %d haplen: %zu alignlength: %d\n", (int)hits[j].targetID, (int)hits[j].t_start, haplotype.length(), (int)q_alignment_length);
-                printf("\tqstart: %d qend: %d\n", hits[j].q_start, hits[j].q_end);
             }
         }
     }
@@ -69,8 +62,7 @@ typedef std::vector<CandidateKmerAlignment> CandidateVector;
 
 // Align the haplotype to the reference genome represented by the BWT/SSA pair
 void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
-                                               const BWT* pReferenceBWT,
-                                               const SampledSuffixArray* pReferenceSSA,
+                                               const BWTIndexSet& referenceIndex,
                                                const ReadTable* pReferenceTable,
                                                HapgenAlignmentVector& outAlignments)
 {
@@ -97,14 +89,14 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
             std::string kmer = query.substr(j, k);
 
             // Find the interval of this kmer in the reference
-            BWTInterval interval = BWTAlgorithms::findInterval(pReferenceBWT, kmer);
+            BWTInterval interval = BWTAlgorithms::findInterval(referenceIndex, kmer);
             if(!interval.isValid() || interval.size() >= max_interval_size)
                 continue; // not found or too repetitive
 
             // Extract the reference location of these hits
             for(int64_t k = interval.lower; k  <= interval.upper; ++k)
             {
-                SAElem elem = pReferenceSSA->calcSA(k, pReferenceBWT);
+                SAElem elem = referenceIndex.pSSA->calcSA(k, referenceIndex.pBWT);
 
                 // Make a candidate alignment
                 CandidateKmerAlignment candidate;
@@ -368,9 +360,7 @@ bool HapgenUtil::checkAlignmentsAreConsistent(const std::string& refString, cons
 // Returns true if the reads were successfully extracted, false if there are 
 // more reads than maxReads
 bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes, 
-                                       const BWT* pBWT,
-                                       const BWTIntervalCache* pBWTCache,
-                                       const SampledSuffixArray* pSSA,
+                                       const BWTIndexSet& indices,
                                        int k,
                                        bool doReverse,
                                        size_t maxReads,
@@ -408,7 +398,7 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
     std::vector<BWTInterval> intervals;
     for(std::set<std::string>::const_iterator iter = kmerSet.begin(); iter != kmerSet.end(); ++iter)
     {
-        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(pBWT, pBWTCache, *iter);
+        BWTInterval interval = BWTAlgorithms::findInterval(indices, *iter);
         if(interval.size() > (int64_t)maxReads)
             return false;
         if(interval.size() < SKIP_INTERVAL_SIZE)
@@ -423,7 +413,7 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
         for(int64_t j = interval.lower; j <= interval.upper; ++j)
         {
             // Get index from sampled suffix array
-            SAElem elem = pSSA->calcSA(j, pBWT);
+            SAElem elem = indices.pSSA->calcSA(j, indices.pBWT);
             readIndices.insert(elem.getID());
         }
     }
@@ -441,7 +431,7 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
         namer << "idx-" << idx;
         SeqItem item;
         item.id = namer.str();
-        item.seq = BWTAlgorithms::extractString(pBWT, idx);
+        item.seq = BWTAlgorithms::extractString(indices.pBWT, idx);
         pOutReads->push_back(item);
 
         // Optionally extract its mate
@@ -460,7 +450,7 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
             mateName << "idx-" << mateIdx;
             SeqItem mateItem;
             mateItem.id = mateName.str();
-            mateItem.seq = BWTAlgorithms::extractString(pBWT, mateIdx);
+            mateItem.seq = BWTAlgorithms::extractString(indices.pBWT, mateIdx);
             pOutMates->push_back(mateItem);
         }
     }
@@ -472,9 +462,7 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
 // Returns true if the reads were successfully extracted, false if there are 
 // more reads than maxReads
 bool HapgenUtil::extractHaplotypeSpecificReads(const StringVector& haplotypes, 
-                                               const BWT* pBWT,
-                                               const BWTIntervalCache* pBWTCache,
-                                               const SampledSuffixArray* pSSA,
+                                               const BWTIndexSet& indices,
                                                int k,
                                                bool doReverse,
                                                size_t maxReads,
@@ -502,8 +490,7 @@ bool HapgenUtil::extractHaplotypeSpecificReads(const StringVector& haplotypes,
     }
 
     printf("%zu of %zu kmers are haplotype-unique\n", specific_kmer_vector.size(), kmer_map.size());
-    return extractHaplotypeReads(specific_kmer_vector, pBWT, pBWTCache, pSSA, 
-                                   k, doReverse, maxReads, pOutReads, pOutMates);
+    return extractHaplotypeReads(specific_kmer_vector, indices, k, doReverse, maxReads, pOutReads, pOutMates);
 }
 
 

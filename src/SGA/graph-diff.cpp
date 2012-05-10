@@ -138,70 +138,65 @@ int graphDiffMain(int argc, char** argv)
     if(!opt::indexPrefix.empty())
         variantPrefix = opt::indexPrefix;
 
-    BWT* pVariantBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
-    SampledSuffixArray* pVariantSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
+    //
+    // Initialize indices
+    //
 
-    // Create indices for the reference
+    // Variant reads
+    BWTIndexSet variantIndex;
+    variantIndex.pBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
+    variantIndex.pSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
+    variantIndex.pCache = new BWTIntervalCache(opt::cacheLength, variantIndex.pBWT);
+
+    // Reference genome
+    BWTIndexSet referenceIndex;
     std::string refPrefix = stripExtension(opt::referenceFile);
-    BWT* pRefBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
-    BWT* pRefRevBWT = new BWT(refPrefix + RBWT_EXT, opt::sampleRate);
-    SampledSuffixArray* pRefSSA = new SampledSuffixArray(refPrefix + SSA_EXT);
 
-    // Create indices for the base
-    // If in reference mode, we just make these point to the reference BWT loaded above
-    BWT* pBaseBWT;
-    SampledSuffixArray* pBaseSSA;
+    referenceIndex.pBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
+    referenceIndex.pSSA = new SampledSuffixArray(refPrefix + SSA_EXT);
+
+    // Base reads, only if not in reference mode
+    BWTIndexSet baseIndex;
 
     if(!opt::referenceMode)
     {
         std::string basePrefix = stripFilename(opt::baseFile);
-        pBaseBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
-        pBaseSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
+        baseIndex.pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
+        baseIndex.pSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
+        baseIndex.pCache = new BWTIntervalCache(opt::cacheLength, baseIndex.pBWT);
     }
     else
     {
-        pBaseBWT = pRefBWT;
-        pBaseSSA = pRefSSA;
+        baseIndex.pBWT = referenceIndex.pBWT;
+        baseIndex.pSSA = referenceIndex.pSSA;
+        baseIndex.pCache = NULL;
     }
 
     // 
     std::cout << "Base index memory info\n";
-    pBaseBWT->printInfo();
-    pBaseSSA->printInfo();
+    baseIndex.pBWT->printInfo();
+    baseIndex.pSSA->printInfo();
 
     //
     std::cout << "Variant index memory info\n";
-    pVariantBWT->printInfo();
-    pVariantSSA->printInfo();
+    variantIndex.pBWT->printInfo();
+    variantIndex.pSSA->printInfo();
 
     //
     std::cout << "Reference index memory info\n";
-    pRefBWT->printInfo();
-    pRefRevBWT->printInfo();
-    pRefSSA->printInfo();
+    referenceIndex.pBWT->printInfo();
+    referenceIndex.pSSA->printInfo();
 
     // Read in the reference 
     ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
     refTable.indexReadsByID();
 
-    // Create interval caches to speed up k-mer lookups
-    BWTIntervalCache varBWTCache(opt::cacheLength, pVariantBWT);
-    BWTIntervalCache baseBWTCache(opt::cacheLength, pBaseBWT);
-
     // Set the parameters shared between all threads
     GraphCompareParameters sharedParameters;
 
-    sharedParameters.pBaseBWT = pBaseBWT;
-    sharedParameters.pBaseBWTCache = &baseBWTCache;
-    sharedParameters.pBaseSSA = pBaseSSA;
-
-    sharedParameters.pVariantBWT = pVariantBWT;
-    sharedParameters.pVariantBWTCache = &varBWTCache;
-    sharedParameters.pVariantSSA = pVariantSSA;
-
-    sharedParameters.pReferenceBWT = pRefBWT;
-    sharedParameters.pReferenceRevBWT = pRefRevBWT;
-    sharedParameters.pReferenceSSA = pRefSSA;
+    sharedParameters.baseIndex = baseIndex;
+    sharedParameters.variantIndex = variantIndex;
+    sharedParameters.referenceIndex = referenceIndex;
     sharedParameters.pRefTable = &refTable;
 
     sharedParameters.kmer = opt::kmer;
@@ -230,16 +225,18 @@ int graphDiffMain(int argc, char** argv)
     // Cleanup
     if(!opt::referenceMode)
     {
-        delete pBaseBWT;
-        delete pBaseSSA;
+        delete baseIndex.pBWT;
+        delete baseIndex.pSSA;
+        delete baseIndex.pCache;
     }
 
-    delete pVariantBWT;
-    delete pVariantSSA;
+    // Cleanup indices
+    delete variantIndex.pBWT;
+    delete variantIndex.pSSA;
+    delete variantIndex.pCache;
 
-    delete pRefBWT;
-    delete pRefRevBWT;
-    delete pRefSSA;
+    delete referenceIndex.pBWT;
+    delete referenceIndex.pSSA;
 
     if(opt::numThreads > 1)
         pthread_exit(NULL);
@@ -277,7 +274,7 @@ void runVCFTester(GraphCompareParameters& parameters)
 void runGraphDiff(GraphCompareParameters& parameters)
 {
     // Create the shared bit vector and shared results aggregator
-    BitVector* pSharedBitVector = new BitVector(parameters.pVariantBWT->getBWLen());
+    BitVector* pSharedBitVector = new BitVector(parameters.variantIndex.pBWT->getBWLen());
 
     // This call can throw via dindel
     GraphCompareAggregateResults* pSharedResults;
@@ -337,7 +334,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
 void runDebug(GraphCompareParameters& parameters)
 {
     // Create the shared bit vector and shared results aggregator
-    BitVector* pSharedBitVector = new BitVector(parameters.pVariantBWT->getBWLen());
+    BitVector* pSharedBitVector = new BitVector(parameters.variantIndex.pBWT->getBWLen());
 
     // This call can throw via dindel
     GraphCompareAggregateResults* pSharedResults;

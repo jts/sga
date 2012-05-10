@@ -30,10 +30,7 @@ OverlapHaplotypeBuilder::OverlapHaplotypeBuilder(const GraphCompareParameters& p
 
     ErrorCorrectParameters correction_params;
     correction_params.pOverlapper = NULL;
-    correction_params.pBWT = m_parameters.pVariantBWT;
-    correction_params.pSSA = m_parameters.pVariantSSA;
-    assert(m_parameters.pVariantBWTCache != NULL);
-    correction_params.pIntervalCache = m_parameters.pVariantBWTCache;
+    correction_params.indices = m_parameters.variantIndex;
     correction_params.algorithm = ECA_KMER;
 
     // Overlap-based corrector params
@@ -71,7 +68,7 @@ void OverlapHaplotypeBuilder::setInitialHaplotype(const std::string& sequence)
 HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplotypes)
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::run")
-    assert(m_parameters.pVariantBWT != NULL);
+    assert(m_parameters.variantIndex.pBWT != NULL);
     assert(!m_initial_kmer_string.empty());
 
     // Start the haplotype generation process by finding reads containing the initial kmer
@@ -528,9 +525,7 @@ bool OverlapHaplotypeBuilder::isJoinSequence(const std::string& sequence, EdgeDi
         kmer_seq = sequence.substr(sequence.size() - k);
 
     // Count occurrences of the terminal kmer in the reference
-    size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer_seq, 
-                                                                         m_parameters.pBaseBWT, 
-                                                                         m_parameters.pBaseBWTCache);
+    size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer_seq, m_parameters.baseIndex); 
     return base_count > 0;
 }
 
@@ -541,14 +536,8 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
 
     // Extract reads that share a short kmer with the input sequence
     size_t k = 31;
-    SequenceOverlapPairVector overlap_vector = KmerOverlaps::retrieveMatches(sequence,
-                                                                             k,
-                                                                             m_parameters.minOverlap,
-                                                                             0.95,
-                                                                             2,
-                                                                             m_parameters.pVariantBWT,
-                                                                             m_parameters.pVariantBWTCache,
-                                                                             m_parameters.pVariantSSA);
+    SequenceOverlapPairVector overlap_vector = KmerOverlaps::retrieveMatches(sequence, k, m_parameters.minOverlap,
+                                                                             0.95, 2, m_parameters.variantIndex);
 
     // Copy out the read sequences so they can be corrected
     // We use the original sequencing strand of the read here - if
@@ -622,12 +611,10 @@ void OverlapHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, 
     SeqItemVector rev_si;
 
     // Forward reads
-    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, 
-                                      m_parameters.pVariantSSA, k, false, 100000, &fwd_si, NULL);
+    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.variantIndex, k, false, 100000, &fwd_si, NULL);
 
     // Reverse reads
-    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.pVariantBWT, m_parameters.pVariantBWTCache, 
-                                      m_parameters.pVariantSSA, k, true, 100000, &rev_si, NULL);
+    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.variantIndex, k, true, 100000, &rev_si, NULL);
 
     // Copy reads into the positioned read vector, initially with unset positions
     for(size_t i = 0; i < fwd_si.size(); ++i)

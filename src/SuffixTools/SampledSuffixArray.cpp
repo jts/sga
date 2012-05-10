@@ -260,7 +260,7 @@ void SampledSuffixArray::readSAI(std::string filename)
 }
 
 // Print memory usage information
-void SampledSuffixArray::printInfo()
+void SampledSuffixArray::printInfo() const
 {
     double mb = (double)(1024*1024);
     double lexoSize = (double)(sizeof(SSA_INT_TYPE) * m_saLexoIndex.capacity()) / mb;

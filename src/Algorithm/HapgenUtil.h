@@ -11,9 +11,7 @@
 #ifndef HAPGENUTIL_H
 #define HAPGENUTIL_H
 
-#include "BWT.h"
-#include "BWTIntervalCache.h"
-#include "SampledSuffixArray.h"
+#include "BWTIndexSet.h"
 #include "StdAlnTools.h"
 
 // Simple alignment object representing
@@ -39,7 +37,11 @@ struct HapgenAlignment
     // Output
     friend std::ostream& operator<<(std::ostream& o, const HapgenAlignment& align) 
     { 
-        o << "R_ID: " << align.referenceID << " P: [" << align.position << ", " << align.position + align.length << "]" << " length: " << align.length << " score: " << align.score;
+        o << "R_ID: " << align.referenceID << 
+             " P: [" << align.position << ", " << 
+             align.position + align.length << "]" << 
+             " length: " << align.length << 
+             " score: " << align.score;
         return o; 
     }
 
@@ -59,14 +61,12 @@ namespace HapgenUtil
 
     // Align the haplotype to the reference genome represented by the BWT/SSA pair
     void alignHaplotypeToReferenceBWASW(const std::string& haplotype,
-                                        const BWT* pReferenceBWT,
-                                        const SampledSuffixArray* pReferenceSSA,
+                                        const BWTIndexSet& referenceIndex,
                                         HapgenAlignmentVector& outAlignments);
 
     //
     void alignHaplotypeToReferenceKmer(const std::string& haplotype,
-                                       const BWT* pReferenceBWT,
-                                       const SampledSuffixArray* pReferenceSSA,
+                                       const BWTIndexSet& referenceIndex,
                                        const ReadTable* pReferenceTable,
                                        HapgenAlignmentVector& outAlignments);
 
@@ -100,9 +100,7 @@ namespace HapgenUtil
     // Extract reads from an FM-index that have a k-mer match to any given haplotypes
     // If the number of reads to extract exceeds maxReads, false is returned
     bool extractHaplotypeReads(const StringVector& haplotypes, 
-                               const BWT* pBWT, 
-                               const BWTIntervalCache* pBWTCache,
-                               const SampledSuffixArray* pSSA,
+                               const BWTIndexSet& indices,
                                int k,
                                bool doReverse,
                                size_t maxReads,
@@ -112,9 +110,7 @@ namespace HapgenUtil
     // Extract reads from an FM-index that have a k-mer match to AT MOST one haplotype
     // If the number of reads to extract exceeds maxReads, false is returned
     bool extractHaplotypeSpecificReads(const StringVector& haplotypes, 
-                                       const BWT* pBWT, 
-                                       const BWTIntervalCache* pBWTCache,
-                                       const SampledSuffixArray* pSSA,
+                                       const BWTIndexSet& indices,
                                        int k,
                                        bool doReverse,
                                        size_t maxReads,
