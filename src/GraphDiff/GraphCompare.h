@@ -142,6 +142,8 @@ class GraphCompare
         // 
         GraphBuildResult processVariantKmerAggressive(const std::string& str, int count);
         
+        std::vector<bool> generateKmerMask(const std::string& str) const;
+
         // Mark all the kmers in str as being visited
         void markVariantSequenceKmers(const std::string& str);
         

@@ -101,39 +101,24 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     GraphCompareResult result;
     SeqRecord currRead = item.read;
     std::string w = item.read.seq.toString();
+    
+    int len = w.size();
+    int num_kmers = len - m_parameters.kmer + 1;
+
+    // Check if the read is long enough to be used
     if(w.size() <= m_parameters.kmer)
-    {
         return result;
-    }
 
     // Perform a backwards search using the read sequence
     // Check which k-mers have already been visited using the
     // shared bitvector. If any bit in the range [l,u] is set
-    // for a suffix of the read, then we do not visit those kmers
-    // later
-    int len = w.size();
-    int num_kmers = len - m_parameters.kmer + 1;
-    std::vector<bool> visitedKmers(false, num_kmers);
+    // for a suffix of the read, then we do not visit those kmers later
 
-    int j = len - 1;
-    char curr = w[j];
-    BWTInterval interval;
-    BWTAlgorithms::initInterval(interval, curr, m_parameters.pVariantBWT);
-    --j;
+    // Generate a mask that indicates whether a kmer starting at a specific
+    // position has already been used a different read. 
+    // Such kmers are skipped below
+    std::vector<bool> visitedKmers = generateKmerMask(w);
 
-    for(;j >= 0; --j)
-    {
-        curr = w[j];
-        BWTAlgorithms::updateInterval(interval, curr, m_parameters.pVariantBWT);
-
-        assert(interval.isValid());
-
-        // At this point interval represents the suffix [j,len)
-        // Check if the starting point of this interval is set
-        if(j < num_kmers)
-            visitedKmers[j] = m_parameters.pBitVector->test(interval.lower);
-    }
-    
     // Process the kmers that have not been previously visited
     // We only try to find variants from one k-mer per read. 
     // This heurestic handles the situation where we process a kmer,
@@ -143,7 +128,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     // to assemble a k-mer into a variant fails, it is very unlikely that
     // subsequent attempts will succeed.
     bool variantAttempted = false;
-    for(j = 0; j < num_kmers; ++j)
+    for(int j = 0; j < num_kmers; ++j)
     {
         if(visitedKmers[j])
             continue; // skip
@@ -529,6 +514,33 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
                 m_parameters.pBitVector->updateCAS(j, false, true);
         }
     }
+}
+
+//
+std::vector<bool> GraphCompare::generateKmerMask(const std::string& str) const
+{
+    size_t len = str.size();
+    int num_kmers = len - m_parameters.kmer + 1;
+    std::vector<bool> visitedKmers(false, num_kmers);
+    int j = len - 1;
+    char curr = str[j];
+    BWTInterval interval;
+    BWTAlgorithms::initInterval(interval, curr, m_parameters.pVariantBWT);
+    --j;
+
+    for(;j >= 0; --j)
+    {
+        curr = str[j];
+        BWTAlgorithms::updateInterval(interval, curr, m_parameters.pVariantBWT);
+
+        assert(interval.isValid());
+
+        // At this point interval represents the suffix [j,len)
+        // Check if the starting point of this interval is set
+        if(j < num_kmers)
+            visitedKmers[j] = m_parameters.pBitVector->test(interval.lower);
+    }
+    return visitedKmers;
 }
 
 //
