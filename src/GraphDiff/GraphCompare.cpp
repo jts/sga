@@ -131,7 +131,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     for(int j = 0; j < num_kmers; ++j)
     {
         if(visitedKmers[j])
-            continue; // skip
+            continue; // skip marked kmers
         std::string kmer = w.substr(j, m_parameters.kmer);
         
     	// Get the interval for this kmer
@@ -152,56 +152,61 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
         if(rc_interval.isValid())
             count += rc_interval.size();
 
-        bool both_directions = interval.size() > 0 && rc_interval.size() > 0;
+        bool both_strands = interval.size() > 0 && rc_interval.size() > 0;
 
-        if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold && !variantAttempted && both_directions)
+        if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold && !variantAttempted && both_strands)
         {
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrencesWithCache(kmer, m_parameters.pBaseBWT, m_parameters.pBaseBWTCache);
-
-            if(base_count == 0)
-            {
-                // This is a variant kmer
-                variantAttempted = true;
-                BWTVector bwts;
-                bwts.push_back(m_parameters.pBaseBWT);
-                bwts.push_back(m_parameters.pVariantBWT);
+            
+            // k-mer present in the other read set, skip it
+            if(base_count > 0)
+                continue;
+            
+            if(m_parameters.verbose > 0)
                 std::cout << "Variant read: " << w << "\n";
-                GraphBuildResult build_result = processVariantKmerAggressive(kmer, count);
+            
+            // variant k-mer, attempt to assemble it into haplotypes
+            GraphBuildResult build_result = processVariantKmer(kmer, count);
+            variantAttempted = true;
 
-                // Mark the kmers of the variant haplotypes as being visited
-                for(size_t vhi = 0; vhi < build_result.variant_haplotypes.size(); ++vhi)
-                    markVariantSequenceKmers(build_result.variant_haplotypes[vhi]);
-                
-                //printf("Build %zu var haps %zu base haps\n", variant_haplotypes.size(), base_haplotypes.size());
-
-                if(build_result.variant_haplotypes.size() > 0 /*&& build_result.base_haplotypes.size() > 0*/)
-                {
+            // Mark the kmers of the variant haplotypes as being visited
+            for(size_t vhi = 0; vhi < build_result.variant_haplotypes.size(); ++vhi)
+                markVariantSequenceKmers(build_result.variant_haplotypes[vhi]);
+            
+            // If we assembled anything, run DINDEL on the haplotypes
+            if(build_result.variant_haplotypes.size() > 0 /*&& build_result.base_haplotypes.size() > 0*/)
+            {
+                if(m_parameters.verbose > 0)
                     std::cout << "Running dindel\n";
-                    std::stringstream baseVCFSS;
-                    std::stringstream variantVCFSS;
-                    
-                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
-                                                                             build_result.base_haplotypes,
-                                                                             build_result.variant_haplotypes,
-                                                                             m_parameters,
-                                                                             baseVCFSS,
-                                                                             variantVCFSS);
-                    
+
+                std::stringstream baseVCFSS;
+                std::stringstream variantVCFSS;
+                DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
+                                                                         build_result.base_haplotypes,
+                                                                         build_result.variant_haplotypes,
+                                                                         m_parameters,
+                                                                         baseVCFSS,
+                                                                         variantVCFSS);
+                
+                //
+                if(m_parameters.verbose > 0) 
+                {
                     std::cout << "Dindel returned " << drc << "\n";
                     std::cout << "base: " << baseVCFSS.str() << "\n";
                     std::cout << "vari: " << variantVCFSS.str() << "\n";
-			    
-                    if(drc == DRC_OK)
-                    {                        
-                        result.baseVCFStrings.push_back(baseVCFSS.str());
-                        result.variantVCFStrings.push_back(variantVCFSS.str());
-                    }
+                }
+                
+                // DINDEL ran without error, push its results to the output
+                if(drc == DRC_OK)
+                {                        
+                    result.baseVCFStrings.push_back(baseVCFSS.str());
+                    result.variantVCFStrings.push_back(variantVCFSS.str());
                 }
             }
         }
 
-        // Update the bit vector
+        // Update the bit vector to mark this kmer has been used
         for(int64_t i = interval.lower; i <= interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
 
@@ -219,9 +224,9 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 }
 
 //
-GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& str, int count)
+GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int count)
 {
-    PROFILE_FUNC("GraphCompare::processVariantKmerAggressive")
+    PROFILE_FUNC("GraphCompare::processVariantKmer")
 
 #ifdef GRAPH_DIFF_DEBUG
     std::cout << "Processing variant kmer " << str << " with depth: " << count << "\n";
@@ -232,13 +237,6 @@ GraphBuildResult GraphCompare::processVariantKmerAggressive(const std::string& s
 
     //
     GraphBuildResult result;
-
-    /*
-    ReadCoherentHaplotypeBuilder rc_builder;
-    rc_builder.setInitialHaplotype(str);
-    rc_builder.setParameters(m_parameters);
-    rc_builder.run(result.variant_haplotypes);
-    */
 
     // Build haplotypes with de bruijn graph
     //buildVariantStringGraph(str, result.variant_haplotypes);
@@ -616,75 +614,6 @@ IntVector GraphCompare::makeCountProfile(const std::string& str, size_t k, const
     return out;
 }
 
-void GraphCompare::debug(const std::string& debugFilename)
-{
-        (void)debugFilename;
-#if 0
-    std::cout << "Debug file: " << debugFilename << "\n";   
-    std::istream* pReader = createReader(debugFilename);
-    
-    std::string line;
-    StringVector kmerVector;
-    while(getline(*pReader, line))
-    {
-        StringVector fields = split(line, '\t');
-
-        if(fields[0] == "NEXT")
-        {
-            // Process the set of kmers
-            for(size_t i = 0; i < kmerVector.size(); ++i)
-            {
-                std::string kmer = kmerVector[i];
-                size_t bc = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.pBaseBWT);
-                size_t vc = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.pVariantBWT);
-                size_t rc = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.pReferenceBWT);
-                AlphaCount64 aec = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, m_parameters.pVariantBWT, ED_ANTISENSE);
-                AlphaCount64 sec = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, m_parameters.pVariantBWT, ED_SENSE);
-                std::cout << kmer << " BC:" << bc << " VC:" << vc << " RC:" << rc << " SEC:" << sec << " AEC: " << aec << "\n";
-            }
-         
-            if(!kmerVector.empty())
-            {
-                BubbleResult bubbleResult = processVariantKmerAggressive(kmerVector[kmerVector.size() / 2], 0);
-
-                if(bubbleResult.returnCode == BRC_OK)
-                {
-                    std::stringstream baseVCFSS;
-                    std::stringstream variantVCFSS;
-                    std::string kmer = ".";
-                    DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
-                                                                             bubbleResult.sourceString,
-                                                                             bubbleResult.targetString,
-                                                                             m_parameters,
-                                                                             baseVCFSS,
-                                                                             variantVCFSS);
-                    
-                    if(drc == DRC_OK)
-                    {
-                        std::cout << "BASE: " << baseVCFSS.str() << "\n";
-                        std::cout << "VAR: " << variantVCFSS.str() << "\n";
-                    }
-                    else
-                    {
-                        std::cout << "Dindel fail: " << drc << "\n";
-                    }
-                }
-            }
-            kmerVector.clear();
-        }
-        else if(fields.size() == 4)
-        {
-            kmerVector.push_back(fields[0]);
-        }
-        else
-        {
-            std::cout << "Processing " << line << "\n";
-        }
-    }
-#endif
-    
-}
-
 // test kmers from a file
 void GraphCompare::testKmersFromFile(const std::string& kmerFilename)
 {
@@ -710,7 +639,7 @@ void GraphCompare::testKmersFromFile(const std::string& kmerFilename)
 void GraphCompare::testKmer(const std::string& kmer)
 {
     int count = 1;
-    GraphBuildResult build_result = processVariantKmerAggressive(kmer, count);
+    GraphBuildResult build_result = processVariantKmer(kmer, count);
 
     if(build_result.variant_haplotypes.size() > 0 && build_result.base_haplotypes.size() > 0)
     {

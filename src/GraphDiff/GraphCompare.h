@@ -63,6 +63,7 @@ struct GraphCompareParameters
     size_t minKmerThreshold;
     int minOverlap;
     bool bReferenceMode;
+    int verbose;
 
     DindelRealignParameters dindelRealignParameters;
 };
@@ -139,9 +140,10 @@ class GraphCompare
         // Functions
         //
 
-        // 
-        GraphBuildResult processVariantKmerAggressive(const std::string& str, int count);
+        // Attempt to assemble a variant kmer into haplotypes
+        GraphBuildResult processVariantKmer(const std::string& str, int count);
         
+        // Generate a bitmask of kmers that have already been used 
         std::vector<bool> generateKmerMask(const std::string& str) const;
 
         // Mark all the kmers in str as being visited
