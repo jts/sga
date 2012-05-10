@@ -21,6 +21,7 @@
 #include "DindelRealignWindow.h"
 #include "DindelUtil.h"
 #include "HaplotypeBuilder.h"
+#include "DeBruijnHaplotypeBuilder.h"
 #include "OverlapHaplotypeBuilder.h"
 #include "Profiler.h"
 
@@ -109,11 +110,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     if(w.size() <= m_parameters.kmer)
         return result;
 
-    // Perform a backwards search using the read sequence
-    // Check which k-mers have already been visited using the
-    // shared bitvector. If any bit in the range [l,u] is set
-    // for a suffix of the read, then we do not visit those kmers later
-
     // Generate a mask that indicates whether a kmer starting at a specific
     // position has already been used a different read. 
     // Such kmers are skipped below
@@ -171,7 +167,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             for(size_t vhi = 0; vhi < build_result.variant_haplotypes.size(); ++vhi)
                 markVariantSequenceKmers(build_result.variant_haplotypes[vhi]);
             
-            // If we assembled anything, run DINDEL on the haplotypes
+            // If we assembled anything, run Dindel on the haplotypes
             if(build_result.variant_haplotypes.size() > 0 /*&& build_result.base_haplotypes.size() > 0*/)
             {
                 if(m_parameters.verbose > 0)
@@ -221,23 +217,20 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 }
 
 //
-GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int count)
+GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*count*/)
 {
     PROFILE_FUNC("GraphCompare::processVariantKmer")
-
-#ifdef GRAPH_DIFF_DEBUG
-    std::cout << "Processing variant kmer " << str << " with depth: " << count << "\n";
-#endif
-    (void)count;
-
 
     //
     GraphBuildResult result;
 
-    // Build haplotypes with de bruijn graph
-    //buildVariantStringGraph(str, result.variant_haplotypes);
-
-    if(result.variant_haplotypes.empty())
+    if(m_parameters.algorithm == GCA_DEBRUIJN_GRAPH)
+    {
+        DeBruijnHaplotypeBuilder dbg_builder(m_parameters);
+        dbg_builder.setInitialHaplotype(str);
+        dbg_builder.run(result.variant_haplotypes);
+    } 
+    else if(m_parameters.algorithm == GCA_STRING_GRAPH)
     {
         OverlapHaplotypeBuilder overlap_builder(m_parameters);
         overlap_builder.setInitialHaplotype(str);

@@ -28,20 +28,23 @@
 #include "SampledSuffixArray.h"
 #include "DindelRealignWindow.h"
 
-// Structures and typedefs
-typedef std::vector<const BWT*> BWTVector;
+enum GraphCompareAlgorithm
+{
+    GCA_STRING_GRAPH,
+    GCA_DEBRUIJN_GRAPH
+};
 
 // Parameters structure
 class GraphCompareAggregateResults;
 struct GraphCompareParameters
 {
-    // Base read index
+    // Base reads index
     BWTIndexSet baseIndex;
     
-    // Indices for the variant reads
+    // Variant reads index
     BWTIndexSet variantIndex;
     
-    // Reference genome
+    // Reference genome index
     BWTIndexSet referenceIndex;
     const ReadTable* pRefTable;
 
@@ -49,6 +52,7 @@ struct GraphCompareParameters
     BitVector* pBitVector;
  
     // Parameters
+    GraphCompareAlgorithm algorithm;
     size_t kmer;
     size_t kmerThreshold;
     size_t maxKmerThreshold; // skip kmers seen this many times or more
@@ -58,14 +62,28 @@ struct GraphCompareParameters
     int minOverlap;
     bool bReferenceMode;
     int verbose;
-
+    
+    // Dindel params
     DindelRealignParameters dindelRealignParameters;
 };
 
+// Intermediate result
 struct GraphBuildResult
 {
     StringVector variant_haplotypes;
     StringVector base_haplotypes;
+};
+
+// Final result
+struct GraphCompareResult
+{
+    StringVector varStrings;
+    StringVector baseStrings;
+    DoubleVector varCoverages;
+    DoubleVector baseCoverages;
+
+    StringVector baseVCFStrings;
+    StringVector variantVCFStrings;
 };
 
 //
@@ -95,19 +113,8 @@ struct GraphCompareStats
     int numSubs;
 };
 
-struct GraphCompareResult
-{
-    StringVector varStrings;
-    StringVector baseStrings;
-    DoubleVector varCoverages;
-    DoubleVector baseCoverages;
-
-    StringVector baseVCFStrings;
-    StringVector variantVCFStrings;
-};
-
 //
-//
+// GraphCompare
 //
 class GraphCompare
 {

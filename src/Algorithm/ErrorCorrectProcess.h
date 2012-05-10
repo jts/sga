@@ -7,7 +7,7 @@
 // ErrorCorrectProcess - Wrapper to perform error correction
 // for a sequence work item
 //
-#ifndef CORRECTROCESS_H
+#ifndef CORRECTPROCESS_H
 #define CORRECTPROCESS_H
 
 #include "Util.h"

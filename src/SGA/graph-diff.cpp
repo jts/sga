@@ -65,6 +65,7 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "      -t, --threads=NUM                use NUM computation threads\n"
 "          --test=VCF                   test the variants in the provided VCF file\n"
 "      -m, --min-overlap=N              require at least N bp overlap between reads when constructing the graph\n" 
+"          --debruijn                   use the de Bruijn graph assembly algoritm (default: string graph)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -80,9 +81,10 @@ namespace opt
     static int maxBranches = 0;
     static int sampleRate = 128;
     static int cacheLength = 10;
-    static int minKmerThreshold = 1;
+    static int minKmerThreshold = 2;
     static int minOverlap = 61;
 
+    static bool deBruijnMode = false;
     static bool referenceMode = false;
 
     static std::string outPrefix = "graphdiff";
@@ -100,7 +102,7 @@ namespace opt
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:m:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_THRESHOLD, OPT_INDEX };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_THRESHOLD, OPT_INDEX, OPT_DEBRUIJN };
 
 static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
@@ -114,6 +116,7 @@ static const struct option longopts[] = {
     { "sample-rate",   required_argument, NULL, 'd' },
     { "prefix",        required_argument, NULL, 'p' },
     { "min-overlap",   required_argument, NULL, 'm' },
+    { "debruijn",      required_argument, NULL, OPT_DEBRUIJN },
     { "index",         required_argument, NULL, OPT_INDEX },
     { "min-threshold", required_argument, NULL, OPT_MIN_THRESHOLD },
     { "debug",         required_argument, NULL, OPT_DEBUG },
@@ -199,6 +202,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.referenceIndex = referenceIndex;
     sharedParameters.pRefTable = &refTable;
 
+    sharedParameters.algorithm = opt::deBruijnMode ? GCA_DEBRUIJN_GRAPH : GCA_STRING_GRAPH;
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = NULL;
     sharedParameters.kmerThreshold = opt::kmerThreshold;
@@ -351,7 +355,6 @@ void runDebug(GraphCompareParameters& parameters)
     parameters.pBitVector = pSharedBitVector;
 
     GraphCompare graphCompare(parameters); 
-//    graphCompare.debug(opt::debugFile);
     graphCompare.testKmersFromFile(opt::debugFile);
 }
 
@@ -379,6 +382,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'm': arg >> opt::minOverlap; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_DEBRUIJN: opt::deBruijnMode = true; break;
             case OPT_MIN_THRESHOLD: arg >> opt::minKmerThreshold; break;
             case OPT_DEBUG: arg >> opt::debugFile; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
