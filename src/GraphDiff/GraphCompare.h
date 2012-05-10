@@ -151,10 +151,8 @@ class GraphCompare
 
         // Update statistics 
         void updateVariationCount(const BubbleResult& result);
-
-        // Debug/testing functions
-        bool buildVariantStringGraph(const std::string& startingKmer, StringVector& haplotypes);
-
+        
+        // Debug functions
         bool transformVariantString(const std::string& inStr, std::string& outStr);
         IntVector makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max);
         void showMappingLocations(const std::string& str);

@@ -4,8 +4,8 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// OverlapHaplotypeBuilder - Construct candidate
-// haplotypes from a pair of k-mer seeds.
+// OverlapHaplotypeBuilder - Build read coherent haplotypes
+// using read overlaps.
 //
 #include "OverlapHaplotypeBuilder.h"
 #include "BWTAlgorithms.h"
