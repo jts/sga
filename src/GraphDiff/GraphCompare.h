@@ -54,8 +54,8 @@ struct GraphCompareParameters
     // Parameters
     GraphCompareAlgorithm algorithm;
     size_t kmer;
-    size_t kmerThreshold;
-    size_t maxKmerThreshold; // skip kmers seen this many times or more
+    size_t minDiscoveryCount;
+    size_t maxDiscoveryCount;
     size_t minDBGCount;
     int minOverlap;
     bool bReferenceMode;

@@ -135,7 +135,7 @@ bool OverlapHaplotypeBuilder::buildInitialGraph(const StringVector& reads)
     StringVector ordered_reads;
     orderReadsInitial(m_initial_kmer_string, reads, &ordered_reads);
 
-    if(ordered_reads.size() < m_parameters.kmerThreshold)
+    if(ordered_reads.size() < m_parameters.minDiscoveryCount)
         return false;
 
 #ifdef SHOW_MULTIPLE_ALIGNMENT

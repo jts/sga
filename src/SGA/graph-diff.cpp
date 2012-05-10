@@ -48,9 +48,10 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2011 Wellcome Trust Sanger Institute\n";
 
 static const char *GRAPH_DIFF_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] --base BASE.fa --variant VARIANT.fa\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] --base BASE.fa --variant VARIANT.fa --ref REFERENCE.fa\n"
 "Find and report strings only present in the graph of VARIANT when compared to BASE\n"
 "\n"
+"General options:\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -p, --prefix=NAME                prefix the output files with NAME\n"
@@ -58,9 +59,10 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 //"          --test=VCF                   test the variants in the provided VCF file\n"
 "\n"
 "Index options:\n"
-"      -b, --base=FILE                  the baseline reads are in FILE\n"
-"      -r, --variant=FILE               the variant reads are in FILE\n"
-"          --reference=FILE             the reference sequence FILE\n"
+"      -r, --variant=FILE               call variants present in the read set in FILE\n"
+"      -b, --base=FILE                  use the read set in FILE as the base line for comparison\n"
+"                                       if this option is not given, reference-based calls will be made\n"
+"          --reference=FILE             use the reference sequence in FILE\n"
 "\n"
 "Algorithm options:\n"
 "      -k, --kmer=K                     use K-mers to discover variants\n"
@@ -77,17 +79,18 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
-    static int kmer = 55;
-    static int kmerThreshold = 2;
-    static int maxKmerThreshold = 400;
-    static int sampleRate = 128;
     static int cacheLength = 10;
-    static int minDBGCount = 2;
+    static int sampleRate = 128;
+    
+    static int kmer = 55;
+    static int minDiscoveryCount = 2;
+    static int maxDiscoveryCount = 400;
     static int minOverlap = 61;
 
     static bool deBruijnMode = false;
-    static bool referenceMode = false;
+    static int minDBGCount = 2;
 
+    static bool referenceMode = false;
     static std::string outPrefix = "graphdiff";
     static std::string indexPrefix;
     static std::string debugFile;
@@ -196,13 +199,13 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.variantIndex = variantIndex;
     sharedParameters.referenceIndex = referenceIndex;
     sharedParameters.pRefTable = &refTable;
+    sharedParameters.bReferenceMode = opt::referenceMode;
 
     sharedParameters.algorithm = opt::deBruijnMode ? GCA_DEBRUIJN_GRAPH : GCA_STRING_GRAPH;
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = NULL;
-    sharedParameters.kmerThreshold = opt::kmerThreshold;
-    sharedParameters.maxKmerThreshold = opt::maxKmerThreshold;
-    sharedParameters.bReferenceMode = opt::referenceMode;
+    sharedParameters.minDiscoveryCount = opt::minDiscoveryCount;
+    sharedParameters.maxDiscoveryCount = opt::maxDiscoveryCount;
     sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
 
@@ -363,7 +366,7 @@ void parseGraphDiffOptions(int argc, char** argv)
         switch (c) 
         {
             case 'k': arg >> opt::kmer; break;
-            case 'x': arg >> opt::kmerThreshold; break;
+            case 'x': arg >> opt::minDiscoveryCount; break;
             case 'b': arg >> opt::baseFile; break;
             case 'r': arg >> opt::variantFile; break;
             case 't': arg >> opt::numThreads; break;

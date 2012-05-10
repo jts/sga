@@ -147,7 +147,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
         bool both_strands = interval.size() > 0 && rc_interval.size() > 0;
 
-        if(count >= m_parameters.kmerThreshold && count < m_parameters.maxKmerThreshold && !variantAttempted && both_strands)
+        if(count >= m_parameters.minDiscoveryCount && count < m_parameters.maxDiscoveryCount && !variantAttempted && both_strands)
         {
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.baseIndex);
@@ -267,7 +267,7 @@ void GraphCompare::qcVariantHaplotypes(StringVector& variant_haplotypes)
         // Calculate the number of high coverage branches in this haplotype
         size_t num_branches = calculateHaplotypeBranches(variant_haplotypes[i], 
                                                          m_parameters.kmer, 
-                                                         m_parameters.kmerThreshold, 
+                                                         m_parameters.minDiscoveryCount,
                                                          m_parameters.variantIndex);
         
         //
