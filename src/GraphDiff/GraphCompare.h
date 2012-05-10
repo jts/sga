@@ -137,6 +137,13 @@ class GraphCompare
         // Attempt to assemble a variant kmer into haplotypes
         GraphBuildResult processVariantKmer(const std::string& str, int count);
         
+        // Perform quality checks on the variant haplotypes
+        void qcVariantHaplotypes(StringVector& variant_haplotypes);
+
+        // Build haplotypes in the base sequence that are parallel to the variant haplotypes
+        void buildParallelBaseHaplotypes(const StringVector& variant_haplotypes,
+                                         StringVector& base_haplotypes);
+
         // Generate a bitmask of kmers that have already been used 
         std::vector<bool> generateKmerMask(const std::string& str) const;
 

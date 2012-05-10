@@ -230,7 +230,6 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int co
 #endif
     (void)count;
 
-    size_t haplotype_builder_kmer = m_parameters.kmer;
 
     //
     GraphBuildResult result;
@@ -246,18 +245,34 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int co
     }
 
     // Haplotype QC
+    qcVariantHaplotypes(result.variant_haplotypes);
+
+    for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
+        printf("Assembly[%zu]: %s\n", i, result.variant_haplotypes[i].c_str());
+
+    /*
+    if(found_variant_string && false)
+        buildParallelBaseHaplotypes(result.variant_haplotypes, result.ase_haplotypes);
+    */
+
+    return result;
+}
+
+//
+void GraphCompare::qcVariantHaplotypes(StringVector& variant_haplotypes)
+{
     // Calculate the maximum k such that every kmer is present in the variant and base BWT
     // The difference between these values must be at least MIN_COVER_K_DIFF
     size_t MIN_COVER_K_DIFF = 20;
     StringVector temp_haplotypes;
-    for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
+    for(size_t i = 0; i < variant_haplotypes.size(); ++i)
     {
         // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
-        size_t max_variant_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.variantIndex);
-        size_t max_base_k = calculateMaxCoveringK(result.variant_haplotypes[i], 1, m_parameters.baseIndex);
+        size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], 1, m_parameters.variantIndex);
+        size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], 1, m_parameters.baseIndex);
 
         // Calculate the number of high coverage branches in this haplotype
-        size_t num_branches = calculateHaplotypeBranches(result.variant_haplotypes[i], 
+        size_t num_branches = calculateHaplotypeBranches(variant_haplotypes[i], 
                                                          m_parameters.kmer, 
                                                          m_parameters.kmerThreshold, 
                                                          m_parameters.variantIndex);
@@ -267,69 +282,11 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int co
 
         //
         if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 31)
-            temp_haplotypes.push_back(result.variant_haplotypes[i]);
+            temp_haplotypes.push_back(variant_haplotypes[i]);
     }
-    result.variant_haplotypes.swap(temp_haplotypes);
 
-    bool found_variant_string = result.variant_haplotypes.size() > 0;
-
-    for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
-        printf("Assembly[%zu]: %s\n", i, result.variant_haplotypes[i].c_str());
-
-    // JTS: disable base string generation which can lead to false calls if wrong
-    if(found_variant_string && false)
-    {
-        // Run haplotype builder on the normal graph
-        for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
-        {
-            const std::string& current_variant_haplotype = result.variant_haplotypes[i];
-
-            std::string startAnchorSeq = current_variant_haplotype.substr(0, haplotype_builder_kmer); 
-            std::string endAnchorSeq = current_variant_haplotype.substr(current_variant_haplotype.length() - haplotype_builder_kmer);
-
-            if(startAnchorSeq == endAnchorSeq)
-                continue; // degenerate sequence, skip
-
-            AnchorSequence startAnchor;
-            startAnchor.sequence = startAnchorSeq;
-            startAnchor.count = 0;
-            startAnchor.position = 0;
-
-            AnchorSequence endAnchor;
-            endAnchor.sequence = endAnchorSeq;
-            endAnchor.count = 0;
-            endAnchor.position = 0;
-
-            HaplotypeBuilder builder;
-            builder.setTerminals(startAnchor, endAnchor);
-            builder.setIndex(m_parameters.baseIndex.pBWT, NULL);
-            builder.setKmerParameters(haplotype_builder_kmer, m_parameters.bReferenceMode ? 1 : 2);
-
-            // Run the builder
-            HaplotypeBuilderReturnCode hbCode = builder.run();
-//#ifdef GRAPH_DIFF_DEBUG
-            std::cout << "HBC: " << hbCode << " VS: " << current_variant_haplotype << "\n";
-//#endif
-            HaplotypeBuilderResult hbResult;
-
-            // The search was successful, build strings from the walks
-            if(hbCode == HBRC_OK) {
-    
-                hbCode = builder.parseWalks(hbResult);
-                if(hbCode == HBRC_OK) {
-                    result.base_haplotypes.insert(result.base_haplotypes.end(), hbResult.haplotypes.begin(), hbResult.haplotypes.end());
-                }
-            }
-        }
-    }
-#ifdef GRAPH_DIFF_DEBUG
-    else
-    {
-        std::cout << "Variant string not assembled\n";
-    }
-#endif
-
-    return result;
+    // Update the variant haplotypes with those remaining
+    variant_haplotypes.swap(temp_haplotypes);
 }
 
 // Update the bit vector with the kmers that were assembled into str
@@ -355,6 +312,51 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
                 m_parameters.pBitVector->updateCAS(j, false, true);
+        }
+    }
+}
+
+//
+void GraphCompare::buildParallelBaseHaplotypes(const StringVector& variant_haplotypes,
+                                               StringVector& base_haplotypes)
+{
+    size_t haplotype_builder_kmer = m_parameters.kmer;
+    // Run haplotype builder on the normal graph
+    for(size_t i = 0; i < variant_haplotypes.size(); ++i)
+    {
+        const std::string& current_variant_haplotype = variant_haplotypes[i];
+
+        std::string startAnchorSeq = current_variant_haplotype.substr(0, haplotype_builder_kmer); 
+        std::string endAnchorSeq = current_variant_haplotype.substr(current_variant_haplotype.length() - haplotype_builder_kmer);
+
+        if(startAnchorSeq == endAnchorSeq)
+            continue; // degenerate sequence, skip
+
+        AnchorSequence startAnchor;
+        startAnchor.sequence = startAnchorSeq;
+        startAnchor.count = 0;
+        startAnchor.position = 0;
+
+        AnchorSequence endAnchor;
+        endAnchor.sequence = endAnchorSeq;
+        endAnchor.count = 0;
+        endAnchor.position = 0;
+
+        HaplotypeBuilder builder;
+        builder.setTerminals(startAnchor, endAnchor);
+        builder.setIndex(m_parameters.baseIndex.pBWT, NULL);
+        builder.setKmerParameters(haplotype_builder_kmer, m_parameters.bReferenceMode ? 1 : 2);
+
+        // Run the builder
+        HaplotypeBuilderReturnCode hbCode = builder.run();
+        HaplotypeBuilderResult hbResult;
+
+        // The search was successful, build strings from the walks
+        if(hbCode == HBRC_OK) 
+        {
+            hbCode = builder.parseWalks(hbResult);
+            if(hbCode == HBRC_OK) 
+                base_haplotypes.insert(base_haplotypes.end(), hbResult.haplotypes.begin(), hbResult.haplotypes.end());
         }
     }
 }
