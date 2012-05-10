@@ -277,7 +277,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int co
         printf("Assembly[%zu]: %s\n", i, result.variant_haplotypes[i].c_str());
 
     // JTS: disable base string generation which can lead to false calls if wrong
-    if(found_variant_string &&  false)
+    if(found_variant_string && false)
     {
         // Run haplotype builder on the normal graph
         for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
@@ -286,31 +286,6 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int co
 
             std::string startAnchorSeq = current_variant_haplotype.substr(0, haplotype_builder_kmer); 
             std::string endAnchorSeq = current_variant_haplotype.substr(current_variant_haplotype.length() - haplotype_builder_kmer);
-
-#ifdef GRAPH_DIFF_DEBUG
-            // Make a kmer count profile for the putative variant string
-            std::cout << "VProfile(" << m_parameters.kmer << "):";
-            IntVector countProfile = makeCountProfile(current_variant_haplotype, m_parameters.kmer, m_parameters.variantIndex.pBWT, 9);
-            std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
-            std::cout << "\n";
-
-
-            std::cout << "BProfile(" << m_parameters.kmer << "):";
-            countProfile = makeCountProfile(current_variant_haplotype, m_parameters.kmer, m_parameters.baseIndex.pBWT, 9);
-            std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
-            std::cout << "\n";
-
-            std::cout << "BProfile(31): ";
-            countProfile = makeCountProfile(current_variant_haplotype, 31, m_parameters.baseIndex.pBWT, 9);
-            std::copy(countProfile.begin(), countProfile.end(), std::ostream_iterator<int>(std::cout, ""));
-            std::cout << "\n";
-
-
-            std::cout << "Mapping locations for start: " << startAnchorSeq << "\n";
-            showMappingLocations(startAnchorSeq);
-            std::cout << "Mapping locations for end: " << endAnchorSeq << "\n";
-            showMappingLocations(endAnchorSeq);
-#endif
 
             if(startAnchorSeq == endAnchorSeq)
                 continue; // degenerate sequence, skip
