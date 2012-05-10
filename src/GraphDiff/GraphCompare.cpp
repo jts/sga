@@ -152,7 +152,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.baseIndex);
             
-            // k-mer present in the other read set, skip it
+            // k-mer present in the base read set, skip it
             if(base_count > 0)
                 continue;
             

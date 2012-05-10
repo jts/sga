@@ -56,9 +56,7 @@ struct GraphCompareParameters
     size_t kmer;
     size_t kmerThreshold;
     size_t maxKmerThreshold; // skip kmers seen this many times or more
-    size_t maxBranches;
-    int maxSingletons; // the maximum number of times we can use k-mers with count = 1 in the extension
-    size_t minKmerThreshold;
+    size_t minDBGCount;
     int minOverlap;
     bool bReferenceMode;
     int verbose;

@@ -92,7 +92,7 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
 
-            bool acceptExt = count >= m_parameters.minKmerThreshold;
+            bool acceptExt = count >= m_parameters.minDBGCount;
             if(!acceptExt)
                 continue;
 

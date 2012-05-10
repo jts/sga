@@ -53,19 +53,21 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+"      -p, --prefix=NAME                prefix the output files with NAME\n"
+"      -t, --threads=NUM                use NUM computation threads\n"
+//"          --test=VCF                   test the variants in the provided VCF file\n"
+"\n"
+"Index options:\n"
 "      -b, --base=FILE                  the baseline reads are in FILE\n"
 "      -r, --variant=FILE               the variant reads are in FILE\n"
-"          --reference=FILE             the reference FILE\n"
-"      -o, --outfile=FILE               write the strings found to FILE\n"
-"      -p, --prefix=NAME                prefix the output files with NAME\n"
-"      -k, --kmer=K                     use K as the k-mer size for variant discovery\n"
-"      -x, --kmer-threshold=T           only used kmers seen at least T times\n"
-"      -y, --max-branches=B             allow the search process to branch B times when \n"
-"                                       searching for the completion of a bubble (default: 0)\n"
-"      -t, --threads=NUM                use NUM computation threads\n"
-"          --test=VCF                   test the variants in the provided VCF file\n"
-"      -m, --min-overlap=N              require at least N bp overlap between reads when constructing the graph\n" 
-"          --debruijn                   use the de Bruijn graph assembly algoritm (default: string graph)\n"
+"          --reference=FILE             the reference sequence FILE\n"
+"\n"
+"Algorithm options:\n"
+"      -k, --kmer=K                     use K-mers to discover variants\n"
+"      -x, --min-discovery-count=T      require a variant k-mer to be seen at least T times\n"
+"          --debruijn                   use the de Bruijn graph assembly algorithm (default: string graph)\n"
+"      -m, --min-overlap=N              require at least N bp overlap when assembling using a string graph\n" 
+"          --min-dbg-count=T            only use k-mers seen T times when assembling using a de Bruijn graph\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -78,52 +80,45 @@ namespace opt
     static int kmer = 55;
     static int kmerThreshold = 2;
     static int maxKmerThreshold = 400;
-    static int maxBranches = 0;
     static int sampleRate = 128;
     static int cacheLength = 10;
-    static int minKmerThreshold = 2;
+    static int minDBGCount = 2;
     static int minOverlap = 61;
 
     static bool deBruijnMode = false;
     static bool referenceMode = false;
 
     static std::string outPrefix = "graphdiff";
-    //static std::string debugFile = "debug.var1.txt";
-    //static std::string debugFile = "badalign.debug";
-    //static std::string debugFile = "kmer.debug";
     static std::string indexPrefix;
     static std::string debugFile;
     static std::string referenceFile;
     static std::string baseFile;
     static std::string variantFile;
     static std::string inputVCFFile;
-//    static std::string outFile = "variants.fa";
 }
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:m:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_THRESHOLD, OPT_INDEX, OPT_DEBRUIJN };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_DBG_COUNT, OPT_INDEX, OPT_DEBRUIJN };
 
 static const struct option longopts[] = {
-    { "verbose",       no_argument,       NULL, 'v' },
-    { "threads",       required_argument, NULL, 't' },
-    { "base",          required_argument, NULL, 'b' },
-    { "variants",      required_argument, NULL, 'r' },
-    { "outfile",       required_argument, NULL, 'o' },
-    { "kmer",          required_argument, NULL, 'k' },
-    { "kmer-threshold",required_argument, NULL, 'x' },
-    { "max-branches",  required_argument, NULL, 'y' },
-    { "sample-rate",   required_argument, NULL, 'd' },
-    { "prefix",        required_argument, NULL, 'p' },
-    { "min-overlap",   required_argument, NULL, 'm' },
-    { "debruijn",      required_argument, NULL, OPT_DEBRUIJN },
-    { "index",         required_argument, NULL, OPT_INDEX },
-    { "min-threshold", required_argument, NULL, OPT_MIN_THRESHOLD },
-    { "debug",         required_argument, NULL, OPT_DEBUG },
-    { "references",    required_argument, NULL, OPT_REFERENCE },
-    { "test"      ,    required_argument, NULL, OPT_TESTVCF },
-    { "help",          no_argument,       NULL, OPT_HELP },
-    { "version",       no_argument,       NULL, OPT_VERSION },
+    { "verbose",              no_argument,       NULL, 'v' },
+    { "threads",              required_argument, NULL, 't' },
+    { "base",                 required_argument, NULL, 'b' },
+    { "variant",              required_argument, NULL, 'r' },
+    { "kmer",                 required_argument, NULL, 'k' },
+    { "min-discovery-count",  required_argument, NULL, 'x' },
+    { "sample-rate",          required_argument, NULL, 'd' },
+    { "prefix",               required_argument, NULL, 'p' },
+    { "min-overlap",          required_argument, NULL, 'm' },
+    { "debruijn",             required_argument, NULL, OPT_DEBRUIJN },
+    { "index",                required_argument, NULL, OPT_INDEX },
+    { "min-dbg-count",        required_argument, NULL, OPT_MIN_DBG_COUNT },
+    { "debug",                required_argument, NULL, OPT_DEBUG },
+    { "reference",            required_argument, NULL, OPT_REFERENCE },
+    { "test"      ,           required_argument, NULL, OPT_TESTVCF },
+    { "help",                 no_argument,       NULL, OPT_HELP },
+    { "version",              no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
 };
 
@@ -207,10 +202,8 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.pBitVector = NULL;
     sharedParameters.kmerThreshold = opt::kmerThreshold;
     sharedParameters.maxKmerThreshold = opt::maxKmerThreshold;
-    sharedParameters.maxBranches = opt::maxBranches;
     sharedParameters.bReferenceMode = opt::referenceMode;
-    sharedParameters.maxSingletons = 5;
-    sharedParameters.minKmerThreshold = opt::minKmerThreshold;
+    sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
 
     if(!opt::debugFile.empty())
@@ -373,17 +366,15 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'x': arg >> opt::kmerThreshold; break;
             case 'b': arg >> opt::baseFile; break;
             case 'r': arg >> opt::variantFile; break;
-            case OPT_REFERENCE: arg >> opt::referenceFile; break;
-//            case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
-            case 'y': arg >> opt::maxBranches; break;
             case 'd': arg >> opt::sampleRate; break;
             case 'p': arg >> opt::outPrefix; break;
             case 'm': arg >> opt::minOverlap; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_REFERENCE: arg >> opt::referenceFile; break;
             case OPT_DEBRUIJN: opt::deBruijnMode = true; break;
-            case OPT_MIN_THRESHOLD: arg >> opt::minKmerThreshold; break;
+            case OPT_MIN_DBG_COUNT: arg >> opt::minDBGCount; break;
             case OPT_DEBUG: arg >> opt::debugFile; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
             case OPT_INDEX: arg >> opt::indexPrefix; break;
