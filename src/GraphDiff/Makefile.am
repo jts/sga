@@ -16,5 +16,6 @@ libgraphdiff_a_SOURCES = \
         DindelHMM.h DindelHMM.cpp \
         OverlapHaplotypeBuilder.h OverlapHaplotypeBuilder.cpp \
         DeBruijnHaplotypeBuilder.h DeBruijnHaplotypeBuilder.cpp \
+        HapgenUtil.h HapgenUtil.cpp \
         VCFTester.h VCFTester.cpp \
         GraphCompare.h GraphCompare.cpp 
