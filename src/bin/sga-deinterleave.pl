@@ -14,7 +14,7 @@ die("No output file(s) given") if($out1File eq "" || $out2File eq "");
 
 open(OUT1, ">$out1File");
 open(OUT2, ">$out2File");
-open(IN, $inFile);
+open(IN, ($inFile =~ /\.gz$/)? "gzip -dc $inFile |" : $inFile) || die;
 
 while(my $line = <IN>)
 {
