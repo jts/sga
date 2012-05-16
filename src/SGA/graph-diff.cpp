@@ -114,7 +114,7 @@ static const struct option longopts[] = {
     { "sample-rate",          required_argument, NULL, 'd' },
     { "prefix",               required_argument, NULL, 'p' },
     { "min-overlap",          required_argument, NULL, 'm' },
-    { "debruijn",             required_argument, NULL, OPT_DEBRUIJN },
+    { "debruijn",             no_argument,       NULL, OPT_DEBRUIJN },
     { "index",                required_argument, NULL, OPT_INDEX },
     { "min-dbg-count",        required_argument, NULL, OPT_MIN_DBG_COUNT },
     { "debug",                required_argument, NULL, OPT_DEBUG },
