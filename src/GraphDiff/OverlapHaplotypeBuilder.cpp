@@ -20,6 +20,7 @@
 
 //#define SHOW_MULTIPLE_ALIGNMENT 1
 //#define SHOW_GRAPH 1
+//#define OVERLAP_HAP_DEBUG 1
 
 //
 //
@@ -60,7 +61,9 @@ OverlapHaplotypeBuilder::~OverlapHaplotypeBuilder()
 // The source string is the string the bubble starts from
 void OverlapHaplotypeBuilder::setInitialHaplotype(const std::string& sequence)
 {
+#ifdef OVERLAP_HAP_DEBUG
     printf("\n\n***** Starting new haplotype %s\n", sequence.c_str());
+#endif
     m_initial_kmer_string = sequence;
 }
 
@@ -75,11 +78,18 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
     StringVector query_kmers(1, m_initial_kmer_string);
     StringVector reads;
     getReadsForKmers(query_kmers, m_parameters.kmer, &reads);
+
+#ifdef OVERLAP_HAP_DEBUG
     printf("Found %zu initial reads\n", reads.size());
+#endif
+
     // Correct sequencing errors in the reads
     correctReads(&reads);
+
+#ifdef OVERLAP_HAP_DEBUG
     printf("Corrected %zu initial reads\n", reads.size());
-    
+#endif
+
     // Start the graph using the corrected reads that contain the initial kmer
     if(!buildInitialGraph(reads))
         return HBRC_OK;
@@ -166,11 +176,16 @@ void OverlapHaplotypeBuilder::extendGraph()
         assert(x != NULL);
         EdgeDir dir = tips[i].direction;
 
+#ifdef OVERLAP_HAP_DEBUG
         printf("Vertex %s can be extended\n", x->getID().c_str());
+#endif
 
         // Find corrected reads that perfectly overlap this vertex
         StringVector overlapping_reads = getCorrectedOverlaps(x->getSeq().toString(), dir);
+
+#ifdef OVERLAP_HAP_DEBUG
         printf("Found %zu overlaps\n", overlapping_reads.size());
+#endif
 
         // Insert the new reads into the graph
         for(size_t j = 0; j < overlapping_reads.size(); ++j)
@@ -216,7 +231,9 @@ void OverlapHaplotypeBuilder::insertVertexIntoGraph(const std::string& prefix, c
     Vertex* pVertex = new(m_graph->getVertexAllocator()) Vertex(id_ss.str(), sequence);
     m_graph->addVertex(pVertex);
 
+#ifdef OVERLAP_HAP_DEBUG
     std::cout << "Inserting vertex " << id_ss.str() << "\n";
+#endif
 
     // Get a list of vertices that have a k-mer match to this sequence.
     SharedVertexKmerVector candidate_vertices = getCandidateOverlaps(pVertex);
@@ -352,7 +369,9 @@ void OverlapHaplotypeBuilder::checkWalks(StringVector* walk_strings)
             seed_vertices.push_back(vertices[i]);
     }
 
+#ifdef OVERLAP_HAP_DEBUG
     printf("[%zu %zu join candidates]\n", left_join_vertices.size(), right_join_vertices.size());
+#endif
 
     //
     for(size_t i = 0; i < left_join_vertices.size(); ++i)
@@ -490,8 +509,6 @@ ExtendableTipVector OverlapHaplotypeBuilder::findTips() const
 //
 void OverlapHaplotypeBuilder::trimTip(Vertex* x, EdgeDir direction)
 {
-    printf("Trimming %s\n", x->getID().c_str());
-
     // Check if we should recurse to the neighbors of x
     EdgePtrVec x_opp_edges = x->getEdges(!direction);
     Vertex* x_neighbor = NULL;
@@ -551,7 +568,9 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
             reads.push_back(reverseComplement(overlap_vector[i].sequence[1]));
     }
 
+#ifdef OVERLAP_HAP_DEBUG
     printf("Extracted %zu reads\n", overlap_vector.size());
+#endif
 
     // Correct the reads
     correctReads(&reads);
