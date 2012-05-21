@@ -238,16 +238,21 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
     }
 
     // Haplotype QC
+    size_t num_assembled = result.variant_haplotypes.size();
     qcVariantHaplotypes(result.variant_haplotypes);
+    size_t num_qc = result.variant_haplotypes.size();
+
+    // If any assembled haplotypes failed QC, do not try to call variants
+    if(num_qc < num_assembled)
+        result.variant_haplotypes.clear();
 
     for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
         printf("Assembly[%zu]: %s\n", i, result.variant_haplotypes[i].c_str());
 
-    /*
-    if(found_variant_string && false)
-        buildParallelBaseHaplotypes(result.variant_haplotypes, result.ase_haplotypes);
-    */
-
+/*
+    if(!result.variant_haplotypes.empty())
+        buildParallelBaseHaplotypes(result.variant_haplotypes, result.base_haplotypes);
+*/
     return result;
 }
 
