@@ -114,22 +114,29 @@ void indexInMemoryBCR()
 {
     std::cout << "Building index for " << opt::readsFile << " in memory using BCR\n";
 
-    // Parse the initial read table
-    std::vector<DNAEncodedString> readSequences;
-    SeqReader reader(opt::readsFile);
-    SeqRecord sr;
-    while(reader.get(sr))
-        readSequences.push_back(sr.seq.toString());
-    
-    BWTCA::runBauerCoxRosone(&readSequences, opt::prefix + BWT_EXT, opt::prefix + SAI_EXT);
+	if(opt::bBuildForward || opt::bBuildReverse)
+	{
+		// Parse the initial read table
+		std::vector<DNAEncodedString> readSequences;
+		SeqReader reader(opt::readsFile);
+		SeqRecord sr;
+		while(reader.get(sr))
+			readSequences.push_back(sr.seq.toString());
 
-    if(opt::bBuildReverse)
-    {
-        // Reverse all the reads
-        for(size_t i = 0; i < readSequences.size(); ++i)
-            readSequences[i] = reverse(readSequences[i].toString());
-        BWTCA::runBauerCoxRosone(&readSequences, opt::prefix + RBWT_EXT, opt::prefix + RSAI_EXT);
-    }
+		if(opt::bBuildForward)
+		{
+			BWTCA::runBauerCoxRosone(&readSequences, opt::prefix + BWT_EXT, opt::prefix + SAI_EXT);
+		}
+
+
+		if(opt::bBuildReverse)
+		{
+			// Reverse all the reads
+			for(size_t i = 0; i < readSequences.size(); ++i)
+				readSequences[i] = reverse(readSequences[i].toString());
+			BWTCA::runBauerCoxRosone(&readSequences, opt::prefix + RBWT_EXT, opt::prefix + RSAI_EXT);
+		}
+	}
 }
 
 //
@@ -137,22 +144,27 @@ void indexInMemorySAIS()
 {
     std::cout << "Building index for " << opt::readsFile << " in memory\n";
 
-    // Parse the initial read table
-    ReadTable* pRT = new ReadTable(opt::readsFile);
+	if(opt::bBuildForward || opt::bBuildReverse){
+		// Parse the initial read table
+		ReadTable* pRT = new ReadTable(opt::readsFile);
 
-    // Create and write the suffix array for the forward reads
-    buildIndexForTable(opt::prefix, pRT, false);
-    
-    if(opt::bBuildReverse)
-    {
-        // Reverse all the reads
-        pRT->reverseAll();
+		// Create and write the suffix array for the forward reads
+		if(opt::bBuildForward)
+		{
+			buildIndexForTable(opt::prefix, pRT, false);
+		}
 
-        // Build the reverse suffix array
-        buildIndexForTable(opt::prefix, pRT, true);
-    }
+		if(opt::bBuildReverse)
+		{
+			// Reverse all the reads
+			pRT->reverseAll();
 
-    delete pRT;
+			// Build the reverse suffix array
+			buildIndexForTable(opt::prefix, pRT, true);
+		}
+
+		delete pRT;
+	}
 }
 
 //
@@ -170,12 +182,12 @@ void indexOnDisk()
     parameters.bBuildReverse = false;
     parameters.bUseBCR = (opt::algorithm == "bcr");
 		
-		if(opt::bBuildForward)
-		{
-			buildBWTDisk(parameters);
-		}
+	if(opt::bBuildForward)
+	{
+		buildBWTDisk(parameters);
+	}
 		
-    if(opt::bBuildReverse)
+	if(opt::bBuildReverse)
     {
         parameters.bwtExtension = RBWT_EXT;
         parameters.saiExtension = RSAI_EXT;

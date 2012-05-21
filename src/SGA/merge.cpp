@@ -57,9 +57,9 @@ namespace opt
     static int numThreads = 1;
     static bool bRemove;
     static int gapArrayStorage = 4;
-		static bool bMergeSequence = true;
-		static bool bMergeForward = true;
-		static bool bMergeReverse = true;
+	static bool bMergeSequence = true;
+	static bool bMergeForward = true;
+	static bool bMergeReverse = true;
 }
 
 static const char* shortopts = "p:m:t:g:vr";
@@ -101,10 +101,10 @@ int mergeMain(int argc, char** argv)
     }
 
     // Merge the indices
-		if(opt::bMergeForward)
-		{
-			mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
-		}
+	if(opt::bMergeForward)
+	{
+		mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
+	}
 
     // Skip merging the reverse indices if the reverse bwt file does not exist. 
     std::string rbwt_filename_1 = prefix1 + RBWT_EXT;
@@ -116,15 +116,15 @@ int mergeMain(int argc, char** argv)
     int ret2 = stat(rbwt_filename_2.c_str(), &file_s_2);
 
     if((ret1 == 0 || ret2 == 0) && opt::bMergeReverse)
-		{
-			mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
-		}
+	{
+		mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads, opt::gapArrayStorage);
+	}
 		
     // Merge the read files
-		if(opt::bMergeSequence)
-		{
-			mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
-		}
+	if(opt::bMergeSequence)
+	{
+		mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
+	}
 
     if(opt::bRemove)
     {
@@ -169,9 +169,9 @@ void parseMergeOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'g': arg >> opt::gapArrayStorage; break;
             case 'v': opt::verbose++; break;
-						case OPT_NO_SEQUENCE: opt::bMergeSequence = false; break;
-						case OPT_NO_FWD: opt::bMergeForward = false; break;
-						case OPT_NO_REV: opt::bMergeReverse = false; break;
+			case OPT_NO_SEQUENCE: opt::bMergeSequence = false; break;
+			case OPT_NO_FWD: opt::bMergeForward = false; break;
+			case OPT_NO_REV: opt::bMergeReverse = false; break;
             case OPT_HELP:
                 std::cout << MERGE_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
