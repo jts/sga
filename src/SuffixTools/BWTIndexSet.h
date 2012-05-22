@@ -14,6 +14,7 @@
 #include "BWT.h"
 #include "BWTIntervalCache.h"
 #include "SampledSuffixArray.h"
+#include "PopulationIndex.h"
 
 // A collection of indices. For some algorithms
 // all three indices are not necessary so some of these
@@ -22,13 +23,14 @@
 struct BWTIndexSet
 {
     // Constructor
-    BWTIndexSet() : pBWT(NULL), pRBWT(NULL), pCache(NULL), pSSA(NULL) {}
+    BWTIndexSet() : pBWT(NULL), pRBWT(NULL), pCache(NULL), pSSA(NULL), pPopIdx(NULL) {}
 
     // Data
     const BWT* pBWT;
     const BWT* pRBWT;
     const BWTIntervalCache* pCache;
     const SampledSuffixArray* pSSA;
+    const PopulationIndex* pPopIdx;
 };
 
 #endif

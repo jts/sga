@@ -143,6 +143,7 @@ int graphDiffMain(int argc, char** argv)
     // Initialize indices
     //
 
+
     // Variant reads
     BWTIndexSet variantIndex;
     variantIndex.pBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
