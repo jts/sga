@@ -11,7 +11,7 @@ my $sequence_filename = "$prefix.fa";
 my $index_filename = "$prefix.popidx";
 
 # Open filehandles for the output sequences and the output index
-my $seq_out = Bio::SeqIO->new('-file' => ">$sequence_filename", '-format' => 'Fasta');
+open(OUT, ">$sequence_filename") || die("Cannot open $sequence_filename");
 open(IDX, ">$index_filename") || die("Cannot open $index_filename");
 
 # Track position data
@@ -24,7 +24,7 @@ foreach my $in_filename (@ARGV) {
 
     # Write out the previous file's data to the index, if any
     if($current_name ne "") {
-        print IDX join("\t", ($current_start_index, $current_index - 1, $current_name));
+        print IDX join("\t", ($current_start_index, $current_index - 1, $current_name)) . "\n";
     }
     
     # Reset position data
@@ -34,15 +34,32 @@ foreach my $in_filename (@ARGV) {
     print "Processing $in_filename with $current_name\n";
 
     # Iterate over all reads in the file
-    my $in  = Bio::SeqIO->new(-file => $in_filename);
-    while(my $seq = $in->next_seq()) {
-        $seq_out->write_seq($seq);
+    open(IN, $in_filename) || die("Cannot open $in_filename");
+    while(my $line = <IN>) {
+        chomp $line;
+        my ($header) = split(' ', $line);
+
+        my $record = "";
+        if($header =~ /^>/) {
+            # parse fasta, assume 1 line per sequence
+            $record = $header . "\n" . <IN>;
+        } elsif($header =~ /^@/) {
+            # parse fastq
+            $record = $header . "\n";
+            $record .= <IN>;
+            $record .= <IN>;
+            $record .= <IN>;
+        } else {
+            die("Unexpected format\n");
+        }
+
         $current_index += 1;
+        print OUT $record;
     }
 }
 
 # Write the last element of the index
-print IDX join("\t", ($current_start_index, $current_index - 1, $current_name));
+print IDX join("\t", ($current_start_index, $current_index - 1, $current_name)) . "\n";
 
 close(IDX);
-$seq_out->close();
+close(OUT);

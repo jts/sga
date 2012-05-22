@@ -220,8 +220,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     //
     // Run Dindel
     //
-    double MAP_QUAL = 40.0;
-    int BASE_QUAL = 20;
     size_t start_i = parameters.bReferenceMode ? 1 : 0;
 
     DindelRealignWindowResult *pThisResult, *pPreviousResult = NULL;
@@ -233,32 +231,33 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         SeqItemVector& fwdReadMates = (i == 0) ? normalReadMates : variantReadMates;
         SeqItemVector& rcReads = (i == 0) ? normalRCReads : variantRCReads;
         SeqItemVector& rcReadMates = (i == 0) ? normalRCReadMates : variantRCReadMates;
+        const BWTIndexSet* indices = &parameters.variantIndex;
 
         // Create dindel reads
         // Mates must be at the end of the array.
         std::vector<DindelRead> dReads;
         for(size_t j = 0; j < fwdReads.size(); ++j)
-            dReads.push_back(DindelRead(fwdReads[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
+            dReads.push_back(convertToDindelRead(indices, fwdReads[j], true));
 
         for(size_t j = 0; j < rcReads.size(); ++j)
         {
             rcReads[j].seq.reverseComplement();
-            dReads.push_back(DindelRead(rcReads[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
+            dReads.push_back(convertToDindelRead(indices, rcReads[j], false));
         }
 
-        if (parameters.dindelRealignParameters.realignMatePairs)
+        if(parameters.dindelRealignParameters.realignMatePairs)
         {
             std::cout << "Adding read mates.\n";
             for(size_t j = 0; j < fwdReadMates.size(); ++j)
             {
                 fwdReadMates[j].seq.reverseComplement();
-                dReads.push_back(DindelRead(fwdReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, true));
+                dReads.push_back(convertToDindelRead(indices, fwdReadMates[j], true));
             }
 
             for(size_t j = 0; j < rcReadMates.size(); ++j)
             {
                 //rcReadMates[j].seq.reverseComplement();
-                dReads.push_back(DindelRead(rcReadMates[j], std::string("SAMPLE"), MAP_QUAL, BASE_QUAL, false));
+                dReads.push_back(convertToDindelRead(indices, rcReadMates[j], false));
             }
         }
 
@@ -290,6 +289,30 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     delete pPreviousResult;
 
     return DRC_OK;
+}
+
+DindelRead DindelUtil::convertToDindelRead(const BWTIndexSet* indices, const SeqItem& item, bool is_forward)
+{
+    double MAP_QUAL = 40.0;
+    int BASE_QUAL = 20;
+
+    std::string sample = "SAMPLE";
+    if(indices->pPopIdx != NULL)
+    {
+        // Parse the read index from the name of the SeqItem
+        if(item.id.find("idx-") == std::string::npos)
+        {
+            std::cerr << "Unexpected sequence id: " << item.id << "\n";
+            assert(false);
+        }
+        std::stringstream parser(item.id.substr(4));
+        size_t index;
+        parser >> index;
+
+        sample = indices->pPopIdx->getName(index);
+    }
+
+    return DindelRead(item, sample, MAP_QUAL, BASE_QUAL, is_forward);
 }
 
 //

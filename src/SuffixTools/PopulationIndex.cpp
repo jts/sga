@@ -13,6 +13,8 @@
 
 PopulationIndex::PopulationIndex(const std::string& filename)
 {
+    std::cout << "Loading population index from " << filename << "\n";
+
     std::istream* reader = createReader(filename);
     std::string line;
     while(getline(*reader, line))
@@ -24,6 +26,8 @@ PopulationIndex::PopulationIndex(const std::string& filename)
         parser >> member.name;
         m_population.push_back(member);
     }
+    delete reader;
+    reader = NULL;
 
     // Make sure the index is properly formatted
     assert(m_population.size() != 0);
@@ -33,7 +37,7 @@ PopulationIndex::PopulationIndex(const std::string& filename)
         assert(m_population[i].start > m_population[i-1].start);
         assert(m_population[i].start == m_population[i-1].end + 1);
     }
-
+    
     /* Test the index
     size_t start = 0;
     size_t end = m_population.back().end + 2;

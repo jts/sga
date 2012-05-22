@@ -89,6 +89,7 @@ namespace opt
 
     static bool deBruijnMode = false;
     static int minDBGCount = 2;
+    static bool lowCoverage = false;
 
     static bool referenceMode = false;
     static std::string outPrefix = "graphdiff";
@@ -143,12 +144,13 @@ int graphDiffMain(int argc, char** argv)
     // Initialize indices
     //
 
-
     // Variant reads
     BWTIndexSet variantIndex;
     variantIndex.pBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     variantIndex.pSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
     variantIndex.pCache = new BWTIntervalCache(opt::cacheLength, variantIndex.pBWT);
+    if(opt::lowCoverage)
+        variantIndex.pPopIdx = new PopulationIndex(variantPrefix + POPIDX_EXT);
 
     // Reference genome
     BWTIndexSet referenceIndex;
@@ -235,6 +237,8 @@ int graphDiffMain(int argc, char** argv)
     delete variantIndex.pBWT;
     delete variantIndex.pSSA;
     delete variantIndex.pCache;
+    if(opt::lowCoverage)
+        delete variantIndex.pPopIdx;
 
     delete referenceIndex.pBWT;
     delete referenceIndex.pSSA;
