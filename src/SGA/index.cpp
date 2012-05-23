@@ -144,7 +144,8 @@ void indexInMemorySAIS()
 {
     std::cout << "Building index for " << opt::readsFile << " in memory\n";
 
-	if(opt::bBuildForward || opt::bBuildReverse){
+	if(opt::bBuildForward || opt::bBuildReverse)
+    {
 		// Parse the initial read table
 		ReadTable* pRT = new ReadTable(opt::readsFile);
 
