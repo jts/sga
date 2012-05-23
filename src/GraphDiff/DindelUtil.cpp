@@ -247,6 +247,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
         if(parameters.dindelRealignParameters.realignMatePairs)
         {
+            assert(false && "This is disabled");
             std::cout << "Adding read mates.\n";
             for(size_t j = 0; j < fwdReadMates.size(); ++j)
             {
