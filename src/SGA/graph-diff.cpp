@@ -89,7 +89,7 @@ namespace opt
 
     static bool deBruijnMode = false;
     static int minDBGCount = 2;
-    static bool lowCoverage = false;
+    static bool lowCoverage = true;
 
     static bool referenceMode = false;
     static std::string outPrefix = "graphdiff";
@@ -211,6 +211,9 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.maxDiscoveryCount = opt::maxDiscoveryCount;
     sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
+
+    if (opt::lowCoverage)
+        sharedParameters.dindelRealignParameters.multiSample = 1;
 
     if(!opt::debugFile.empty())
     {

@@ -235,6 +235,8 @@ class DindelVariant
         void setPriorProb(double prob) { m_priorProb = prob; }
         double getPriorProb() const { if (m_priorProb==-1.0) { std::cerr << "ERRVAR: "; write(std::cerr); } assert(m_priorProb!=-1.0); return m_priorProb; }
         void write(std::ostream & out) const;
+        void setHPLen(int hplen) { m_hplen = hplen;}
+        int getHPLen() const { return m_hplen; }
 
     private:
 
@@ -256,7 +258,7 @@ class DindelVariant
 
         // how far can indel be shifted to left and right?
         int m_leftUniquePos, m_rightUniquePos;
-
+        int m_hplen; // homopolymer length in reference at this position
         // does the variant change the length of the reference sequence?
         // m_dlen>0 is insertion
         int m_dlen;
@@ -383,20 +385,10 @@ class DindelHaplotype
         int getHomopolymerLengthRefPos(int refPos) const 
         { 
             int b=getHapBase(refPos); 
-            
-            // JS: This fails in an odd way with the following command on the cancer data set:
-            //  $SGA_DEV graph-diff -k 41 -p k41.testing -b PD4107b.fastq -r PD4107a.fastq --ref=chr22.permute.fa
-            // Removed the assertion for now
-            if(m_refPos[b] != refPos)
-            {
-                throw std::string("WARNING: Error in getHomopolymerLengthRefPos()");
-                return -1;
-            }
+            if (b>=0)
+                return m_hplen[b];
             else
-            {
-                return m_hplen[b]; 
-            }
-            //assert(m_refPos[b]==refPos); 
+                return -1;
         }
 
         int length() const { return (int) m_seq.length();}
@@ -452,7 +444,8 @@ public:
     int getNumReferenceMappings() const { return int(m_referenceMappings.size()); }
     const DindelHaplotype & getSingleMappingHaplotype(int refIdx) const { return m_haplotypes[refIdx]; }
     int getHomopolymerLength(int b) const { return getSingleMappingHaplotype(0).getHomopolymerLength(b); }
-    int length() const { return getSingleMappingHaplotype(0).length(); } 
+    int getHomopolymerLength(const std::string & chrom, int refPos) const;
+    int length() const { return getSingleMappingHaplotype(0).length(); }
     bool isReference() const { return false; } //FIXME allow reference haplotypes?
     double getLogMappingProbability(int refIdx) const { return m_haplotypes[refIdx].m_refMapping.probMapCorrect; }
     
@@ -873,6 +866,7 @@ class DindelRealignParameters
         int EMmaxiter;
 
         int realignMatePairs; // compute a joint likelihood for the alignment of a read pair to the candidate haplotype
+        int multiSample;
         int graphDiffStyle; // determines way haplotypes are called in the tumour/child sample
 };
 
@@ -969,7 +963,12 @@ class DindelRealignWindow
                   const std::vector<int> & calledHaplotypes, 
                   std::vector<double> & haplotypeFrequencies);
 
-        //
+        void doEMMultiSample(int numSamples,
+                             int maxIter,
+                             const std::vector<double> & llHapPairs,
+                             const std::vector<int> & allowedHaplotypes,
+                             const std::vector<double> & initHaplotypeFrequencies,
+                             std::vector<double> & haplotypeFrequencies);
 
         void addCalledHaplotypeMatePairs(int hapIdx,
                                 DindelRealignWindowResult & result,
@@ -977,6 +976,7 @@ class DindelRealignWindow
                                 const std::vector< HashMap<int, double> > & addReads,
                                 double minLogLikAlignToAlt,
                                 int numReadPairs);
+        
         void addCalledHaplotypeSingleRead(int hapIdx,
                                 DindelRealignWindowResult & result,
                                 const std::vector<DindelMultiHaplotype> & haplotypes,
@@ -1002,6 +1002,21 @@ class DindelRealignWindow
                          int numHaps,
                          const std::vector<int> & added);
 
+        void setAddReadsSingleReadMultiSample(int type,
+                                      int htest,
+                                      const std::vector< std::vector<double> > & hrLik,
+                                      std::vector< HashMap<int, double> > & addReads,
+                                      std::vector<double> & newLL,
+                                      int numReads,
+                                      int numHaps,
+                                      std::vector<double> & zindNew,
+                                      std::vector<double> & hapFreqNew,
+                                      const std::vector<int> & added,
+                                      const std::vector<double> & hapFreqPrevious,
+                                      const std::vector<double> & zindPrevious,
+                                      const std::vector<double> & llHapPairs,
+                                      const HashMap<std::string, std::list<int> > & sampleToReads);
+
         void computeAddLLMatePairs(int type,
                           int h,
                           const std::vector< std::vector<double> > & hrLik,
@@ -1017,7 +1032,10 @@ class DindelRealignWindow
                           int numReads,
                           int numHaps,
                           const std::vector<int> & added);
-
+        void computeHaplotypePairLikelihoods(std::vector<double> & llHapPairs,
+                                             HashMap<std::string, std::list<int> > & sampleToReads,
+                                             const std::vector< std::vector<double> > & hrLik);
+        
         void doReadHaplotypeAlignment(int H, const std::vector<DindelRead> & dReads);
         void showHaplotypeOnlyReadsMatePairs(int h,
                                     const std::vector< std::vector<double> > & hrLik,
@@ -1049,6 +1067,13 @@ class DindelRealignWindow
                                                                                         bool capUsingMappingQuality,
                                                                                         const DindelRealignWindowResult * pPreviousResult,
                                                                                         bool print);
+
+        DindelRealignWindowResult estimateHaplotypeFrequenciesModelSelectionSingleReadsMultiSample(double minLogLikAlignToRef,
+                                                                                        double minLogLikAlignToAlt,
+                                                                                        bool capUsingMappingQuality,
+                                                                                        const DindelRealignWindowResult * pPreviousResult,
+                                                                                        bool print);
+
         double getHaplotypePrior(const DindelHaplotype & h1, const DindelHaplotype & h2) const;
 
         // this is a function that hides how the read information is actually stored in the various ReadTables
