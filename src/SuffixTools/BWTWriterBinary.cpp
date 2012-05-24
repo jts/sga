@@ -81,8 +81,10 @@ void BWTWriterBinary::writeRun(RLUnit& unit)
 // write the final run to the stream and fill in the number of runs
 void BWTWriterBinary::finalize()
 {
-    assert(m_currRun.isInitialized());
-    writeRun(m_currRun);
+    // JS Bugfix 24/05/12
+    // Allow empty BWTs to be written out
+    if(m_currRun.isInitialized())
+        writeRun(m_currRun);
 
     m_pWriter->seekp(m_runFileOffset);
     m_pWriter->write(reinterpret_cast<const char*>(&m_numRuns), sizeof(m_numRuns));

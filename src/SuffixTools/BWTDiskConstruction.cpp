@@ -578,8 +578,8 @@ void writeRemovalIndex(const BWT* pBWTInternal, const std::string& sai_inname,
     SAReader* pSAIReader = new SAReader(sai_inname);
 
     // Calculate and write header values
-    assert(num_strings_remove < pBWTInternal->getNumStrings());
-    assert(num_symbols_remove < pBWTInternal->getBWLen());
+    assert(num_strings_remove <= pBWTInternal->getNumStrings());
+    assert(num_symbols_remove <= pBWTInternal->getBWLen());
     size_t input_strings = pBWTInternal->getNumStrings();
     size_t input_symbols = pBWTInternal->getBWLen();
 
