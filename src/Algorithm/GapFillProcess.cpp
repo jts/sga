@@ -108,7 +108,6 @@ GapFillResult GapFillProcess::processScaffold(const std::string& scaffold) const
                     // for the case that the gap sequence is significantly different than the sequence
                     // after the left anchor. 
                     size_t trimLength = result.scaffold.length() - leftAnchor.position;
-                    assert(result.scaffold.substr(leftAnchor.position, k) == gapSequence.substr(0, k));
                     result.scaffold.replace(leftAnchor.position, trimLength, gapSequence);
                         
                     // We need to update currIdx to point to the next base in the 
