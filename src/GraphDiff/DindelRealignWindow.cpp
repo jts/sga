@@ -3098,12 +3098,33 @@ void DindelRealignWindow::setAddReadsSingleReadMultiSample(int type,
             std::cout << "\tzind[" << s << "]: " << zind << " zindPrevious: " << zindPrevious[s] << "\n";
         if (addToReads && diff>0.0)
         {
-            // if the likelihood improves for this individual then add to the list.
-            // It is assumed that the downstream annotate functions remove reads if they are a complete mismatch
-            // TODO DIFF BASED ON READ SPECIFIC LIKELIHOODS?
-            for (std::list<int>::const_iterator rit = sit->second.begin(); rit != sit->second.end(); rit++)
-            {
-                addReads[htest][*rit] = diff;
+            if (numAdded == 0) {
+                for (std::list<int>::const_iterator rit = sit->second.begin(); rit != sit->second.end(); rit++)
+                {
+                    int r = *rit;
+                    double min = HUGE_VAL;
+                    for (int h = 0; h < numHaps; h++)
+                        if (h!=htest && hrLik[r][h]<min)
+                            min = hrLik[r][h];
+                    double rdiff = hrLik[r][htest]-min;
+                    if (rdiff>2.0)
+                        addReads[htest][r] = rdiff;
+                }
+            } else {
+                for (std::list<int>::const_iterator rit = sit->second.begin(); rit != sit->second.end(); rit++)
+                {
+                    int r = *rit;
+                    double max = -HUGE_VAL;
+                    for (int h = 0; h < numHaps; h++)
+                    {
+                        if (added[h] && hrLik[r][h]>max)
+                            max = hrLik[r][h];
+                    }
+
+                    double rdiff = hrLik[r][htest]-max;
+                    if (rdiff>2.0)
+                        addReads[htest][r] = rdiff;
+                }
             }
         }
 
@@ -4275,7 +4296,8 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
                     std::vector<double> testHapFreqNew(numHaps, 0.0);
                     
                     for (int h = 0; h < numHaps; h++)
-                        setAddReadsSingleReadMultiSample(-1, h, hrLik, testAddReads, testNewLL, numReads, numHaps, testZindNew, testHapFreqNew, added, hapFreqPrevious, zindPrevious, llHapPairs, sampleToReads);
+                        if (!added[h])
+                            setAddReadsSingleReadMultiSample(-1, h, hrLik, testAddReads, testNewLL, numReads, numHaps, testZindNew, testHapFreqNew, added, hapFreqPrevious, zindPrevious, llHapPairs, sampleToReads);
 
                     // idea is that if difference with original newLL is zero for those haplotypes with similar score, the two haplotypes would have similar posteriors
                     for (int h = 0; h < numHaps; h++)
@@ -4333,7 +4355,7 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
                         zindPrevious = zindNew[_idx];
                     }
                     
-                    if (DINDEL_DEBUG_3)
+                    if (DINDEL_DEBUG_3 && 0)
                     {
                         std::cout << "Haplotype[" << _idx << "] ONLY reads\n";
                         showHaplotypeOnlyReadsSingleRead(_idx, hrLik, numReads, numHaps);

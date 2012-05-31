@@ -135,7 +135,10 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     total_reads += variantReads.size() + variantReadMates.size() + variantRCReads.size() + variantRCReadMates.size();
 
     if(total_reads > MAX_READS)
-        return DRC_OVER_DEPTH;    
+        return DRC_OVER_DEPTH;
+
+    if (total_reads == 0)
+        return DRC_UNDER_DEPTH;
 
     printf("Passing to dindel %zu haplotypes, %zu reads\n", candidateAlignments.size(), total_reads);
 

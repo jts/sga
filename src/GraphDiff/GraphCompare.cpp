@@ -183,7 +183,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                                                                          variantVCFSS);
                 
                 //
-                if(m_parameters.verbose > 0) 
+                if(m_parameters.verbose > 0 || 1)
                 {
                     std::cout << "Dindel returned " << drc << "\n";
                     std::cout << "base: " << baseVCFSS.str() << "\n";
