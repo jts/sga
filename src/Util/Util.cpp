@@ -86,6 +86,10 @@ std::string suffix(const std::string& seq, const unsigned int len)
 double calculateDustScore(const std::string& seq)
 {
     std::map<std::string, int> scoreMap;
+    
+    // Cannot calculate dust scores on very short reads
+    if(seq.size() < 3)
+        return 0.0f;
 
     // Slide a 3-mer window over the sequence and insert the sequences into the map
     for(size_t i = 0; i < seq.size() - 3; ++i)
