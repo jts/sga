@@ -89,7 +89,7 @@ namespace opt
 
     static bool deBruijnMode = false;
     static int minDBGCount = 2;
-    static bool lowCoverage = true;
+    static bool lowCoverage = false;
 
     static bool referenceMode = false;
     static std::string outPrefix = "graphdiff";
@@ -103,7 +103,7 @@ namespace opt
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:m:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_DBG_COUNT, OPT_INDEX, OPT_DEBRUIJN };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_DBG_COUNT, OPT_INDEX, OPT_DEBRUIJN, OPT_LOWCOVERAGE };
 
 static const struct option longopts[] = {
     { "verbose",              no_argument,       NULL, 'v' },
@@ -116,6 +116,7 @@ static const struct option longopts[] = {
     { "prefix",               required_argument, NULL, 'p' },
     { "min-overlap",          required_argument, NULL, 'm' },
     { "debruijn",             no_argument,       NULL, OPT_DEBRUIJN },
+    { "low-coverage",         no_argument,       NULL, OPT_LOWCOVERAGE },
     { "index",                required_argument, NULL, OPT_INDEX },
     { "min-dbg-count",        required_argument, NULL, OPT_MIN_DBG_COUNT },
     { "debug",                required_argument, NULL, OPT_DEBUG },
@@ -385,6 +386,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
             case OPT_DEBRUIJN: opt::deBruijnMode = true; break;
+            case OPT_LOWCOVERAGE: opt::lowCoverage = true; break;
             case OPT_MIN_DBG_COUNT: arg >> opt::minDBGCount; break;
             case OPT_DEBUG: arg >> opt::debugFile; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
