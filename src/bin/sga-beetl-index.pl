@@ -8,8 +8,8 @@ use File::Temp;
 use File::Basename;
 
 # Program paths
-my $SGA_BIN = "~/bin/sga-0.9.14";
-my $BEETL_BIN = "/nfs/team118/js18/software/BEETL-tc/BCRext";
+my $SGA_BIN = "/nfs/users/nfs_j/js18/work/devel/sga/src/build-lenny/SGA/sga";
+my $BEETL_BIN = "/nfs/users/nfs_j/js18/work/devel/BEETL/Beetl";
 
 # Options
 my $bHelp = 0;
@@ -43,35 +43,24 @@ print "Working directory: $beetl_dir\n";
 my $final_dir = Cwd::getcwd();
 chdir($beetl_dir);
 
-# Currently using the development version of BEETL
-# Flatten the input file
-my $flat_file = "flattened.txt";
+#BCR expects FASTA input, convert if necessary
+my $bcr_in_file = $abs_input;
 my $bIsFastq = isFastq($abs_input);
 my $ret = 0;
 if($bIsFastq == 1)
 {
-    runCmd("cat $abs_input | awk 'NR % 2 == 0 && NR % 4 > 0' > $flat_file");
-}
-elsif($bIsFastq == 0)
-{
-    runCmd("cat $abs_input | awk 'NR % 2 == 0' > $flat_file");
-}
-else
-{
-    print STDERR "Error: Cannot determine if $abs_input is FASTQ or FASTA\n"; 
-
-    # Set error status so no further commands are run
-    $ret = 1;
+    die("TODO");
+#    runCmd("cat $abs_input | awk 'NR % 2 == 0 && NR % 4 > 0' > $flat_file");
 }
 
 # Run BEETL on the flattened input file
 my $time_str = `date`;
 print "Starting beetl at $time_str\n";
-$ret = runCmd("$BEETL_BIN $flat_file > beetl.status") if($ret == 0);
+$ret = runCmd("$BEETL_BIN ext -i $bcr_in_file -a > beetl.status") if($ret == 0);
 
 # concatenate the beetl output files
 my $beetl_bwt = "beetl.bwt";
-$ret = runCmd("cat bwt-B* > $beetl_bwt") if($ret == 0);
+$ret = runCmd("cat BCRext-B* > $beetl_bwt") if($ret == 0);
 
 # Run sga convert-beetl
 $time_str = `date`;

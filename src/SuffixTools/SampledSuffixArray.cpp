@@ -149,6 +149,59 @@ void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int s
     }
 }
 
+// A streamlined version of the above functions, which does not require the reads to be 
+// stored in a table
+void SampledSuffixArray::buildLexicoIndex(const BWT* pBWT, const std::string& filename)
+{
+    size_t numStrings = pBWT->getNumStrings();
+    m_saLexoIndex.resize(numStrings);
+    
+    size_t MAX_ELEMS = std::numeric_limits<SSA_INT_TYPE>::max();
+
+    // Read each sequence and calculate its rank
+    SeqReader reader(filename);
+    SeqRecord record;
+    size_t read_idx = 0;
+    while(reader.get(record)) 
+    {
+        // For each read, start from the end of the read and backtrack through the suffix array/BWT
+        // to calculate its lexicographic rank in the collection
+        size_t idx = read_idx;
+
+        // The position coordinate is inclusive but 
+        // since the read information table does not store the '$' symbol
+        // the starting position equals the read length
+        SAElem elem(read_idx, record.seq.length());
+
+        while(1)
+        {
+            char b = pBWT->getChar(idx);
+            idx = pBWT->getPC(b) + pBWT->getOcc(b, idx - 1);
+            if(b != '$')
+            {
+                // Decrease the position of the elem
+                elem.setPos(elem.getPos() - 1);
+            }
+            else
+            {
+                // we have hit the beginning of this string
+                // store the SAElem for the beginning of the read
+                // in the lexicographic index
+                if(elem.getPos() != 0)
+                    std::cout << "elem: " << elem << " i: " << read_idx << "\n";
+
+                assert(elem.getPos() == 0);
+                size_t id = elem.getID();
+                assert(id < MAX_ELEMS);
+                m_saLexoIndex[idx] = id;
+                break; // done;
+            }
+        }
+
+        read_idx += 1;
+    }
+}
+
 // Validate the sampled suffix array values are correct
 void SampledSuffixArray::validate(const std::string filename, const BWT* pBWT)
 {
@@ -210,8 +263,11 @@ void SampledSuffixArray::writeLexicoIndex(const std::string& filename)
     SAWriter writer(filename);
     size_t num_strings = m_saLexoIndex.size();
     writer.writeHeader(num_strings, num_strings);
-    for(size_t i = 0; i < m_saLexoIndex.size(); ++i)
-        writer.writeElem(m_saLexoIndex[i]);
+    for(size_t i = 0; i < m_saLexoIndex.size(); ++i) 
+    {
+        SAElem elem(m_saLexoIndex[i], 0);
+        writer.writeElem(elem);
+    }
 }
 
 

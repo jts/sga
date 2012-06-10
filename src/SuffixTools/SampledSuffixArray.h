@@ -40,6 +40,9 @@ class SampledSuffixArray
         // Construct the sampled SA using the bwt of a set of reads and their lengths
         void build(const BWT* pBWT, const ReadInfoTable* pRIT, int sampleRate = DEFAULT_SA_SAMPLE_RATE);
 
+        // Construct the lexicographic index (.sai) from the BWT and the reads in a file
+        void buildLexicoIndex(const BWT* pBWT, const std::string& filename);
+
         // Validate using the full suffix array for the given set of reads. Very slow.
         void validate(std::string readsFile, const BWT* pBWT);
         void printInfo() const;
