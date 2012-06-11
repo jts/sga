@@ -13,9 +13,11 @@ my $BEETL_BIN = "/nfs/users/nfs_j/js18/work/devel/BEETL/Beetl";
 
 # Options
 my $bHelp = 0;
+my $bNoConvert = 0;
 my $tmpDir = ".";
 GetOptions("help"     => \$bHelp,
-           "tmp-dir=s" => \$tmpDir);
+           "tmp-dir=s" => \$tmpDir,
+           "no-convert" => \$bNoConvert);
 
 if($bHelp)
 {
@@ -43,6 +45,9 @@ print "Working directory: $beetl_dir\n";
 my $final_dir = Cwd::getcwd();
 chdir($beetl_dir);
 
+# Save the output name for the files
+my $base = File::Basename::basename($abs_input, (".fa", ".fastq"));
+
 # BCR expects FASTA input, convert if necessary
 my $bcr_in_file = $abs_input;
 my $bIsFastq = isFastq($abs_input);
@@ -65,18 +70,18 @@ $ret = runCmd("$BEETL_BIN ext -i $bcr_in_file -a > beetl.status") if($ret == 0);
 #$ret = runCmd("$BEETL_BIN bcr -i $bcr_in_file -o bcr.test > beetl.status") if($ret == 0);
 
 # concatenate the beetl output files
-my $beetl_bwt = "beetl.bwt";
+my $beetl_bwt = $final_dir . "/" . $base . ".beetl.bwt";
 $ret = runCmd("cat BCRext-B* > $beetl_bwt") if($ret == 0);
-runCmd("cp $beetl_bwt $final_dir");
 
 # Run sga convert-beetl
 $time_str = `date`;
-print "Starting convert-beetl at $time_str\n";
-$ret = runCmd("$SGA_BIN convert-beetl $beetl_bwt $abs_input") if($ret == 0);
+if(!$bNoConvert) {
+    print "Starting convert-beetl at $time_str\n";
+    $ret = runCmd("$SGA_BIN convert-beetl $beetl_bwt $abs_input") if($ret == 0);
 
-# Copy the final files back to the original directory
-my $base = File::Basename::basename($abs_input, (".fa", ".fastq"));
-$ret = runCmd("mv $base* $final_dir") if($ret == 0);
+    # Copy the final files back to the original directory
+    $ret = runCmd("mv $base* $final_dir") if($ret == 0);
+}
 
 # Change back to the original directory
 chdir($final_dir);
