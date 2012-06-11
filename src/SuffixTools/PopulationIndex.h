@@ -34,8 +34,16 @@ class PopulationIndex
 
         // Return the name of the individual for the read at index
         std::string getName(size_t index) const;
+        
+        // Merge two population index files into a new one
+        static void mergeIndexFiles(const std::string& file1, const std::string& file2, const std::string& outfile);
 
     private:
+        
+        // Parse a string from a .popidx file into a population member
+        static PopulationMember str2member(const std::string& line);
+        
+        // Data
         std::vector<PopulationMember> m_population;
 };
 

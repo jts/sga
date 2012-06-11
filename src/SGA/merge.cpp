@@ -15,6 +15,7 @@
 #include "SACAInducedCopying.h"
 #include "BWTDiskConstruction.h"
 #include "BWT.h"
+#include "PopulationIndex.h"
 
 //
 void removeFiles(const std::string& inFile);
@@ -107,6 +108,14 @@ int mergeMain(int argc, char** argv)
 
     // Merge the read files
     mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
+
+    // Merge any population index files
+    std::string popidx_filename_1 = prefix1 + POPIDX_EXT;
+    std::string popidx_filename_2 = prefix2 + POPIDX_EXT;
+    ret1 = stat(rbwt_filename_1.c_str(), &file_s_1);
+    ret2 = stat(rbwt_filename_2.c_str(), &file_s_2);
+    if(ret1 == 0 && ret2 == 0)
+        PopulationIndex::mergeIndexFiles(popidx_filename_1, popidx_filename_2, opt::prefix + POPIDX_EXT);
 
     if(opt::bRemove)
     {
