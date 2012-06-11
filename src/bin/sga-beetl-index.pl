@@ -43,24 +43,31 @@ print "Working directory: $beetl_dir\n";
 my $final_dir = Cwd::getcwd();
 chdir($beetl_dir);
 
-#BCR expects FASTA input, convert if necessary
+# BCR expects FASTA input, convert if necessary
 my $bcr_in_file = $abs_input;
 my $bIsFastq = isFastq($abs_input);
 my $ret = 0;
 if($bIsFastq == 1)
 {
-    die("TODO");
-#    runCmd("cat $abs_input | awk 'NR % 2 == 0 && NR % 4 > 0' > $flat_file");
+    my $tmp_fasta = "bcr_input.fa";
+    fastq2fasta($bcr_in_file, $tmp_fasta);
+    $bcr_in_file = $tmp_fasta;
 }
 
 # Run BEETL on the flattened input file
 my $time_str = `date`;
 print "Starting beetl at $time_str\n";
+
+# BCRext
 $ret = runCmd("$BEETL_BIN ext -i $bcr_in_file -a > beetl.status") if($ret == 0);
+
+# BCR
+#$ret = runCmd("$BEETL_BIN bcr -i $bcr_in_file -o bcr.test > beetl.status") if($ret == 0);
 
 # concatenate the beetl output files
 my $beetl_bwt = "beetl.bwt";
 $ret = runCmd("cat BCRext-B* > $beetl_bwt") if($ret == 0);
+runCmd("cp $beetl_bwt $final_dir");
 
 # Run sga convert-beetl
 $time_str = `date`;
@@ -110,6 +117,21 @@ sub isFastq
     close(F);
 
     return $isFastq;
+}
+
+sub fastq2fasta
+{
+    my($in, $out) = @_;
+    open(IN, $in) || die("Cannot read $in");
+    open(OUT, ">$out") || die("Cannot write to $out");
+    while(my $h = <IN>) {
+        $h =~ s/^@/\>/;
+        my $s = <IN>;
+        print OUT $h;
+        print OUT $s;
+        $h = <IN>;
+        $h = <IN>;
+    }
 }
 
 sub runCmd
