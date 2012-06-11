@@ -83,16 +83,18 @@ int mergeMain(int argc, char** argv)
     if(inFiles[0] == inFiles[1])
         return 0; // avoid self-merge
 
-    std::string prefix1 = stripFilename(inFiles[0]);
-    std::string prefix2 = stripFilename(inFiles[1]);
-
     if(opt::prefix.empty())
     {
-        opt::prefix = prefix1 + "." + prefix2;
+        std::string basename1 = stripFilename(inFiles[0]);
+        std::string basename2 = stripFilename(inFiles[1]);
+        opt::prefix = basename1 + "." + basename2;
     }
 
     // Merge the indices
     mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
+    
+    std::string prefix1 = stripExtension(inFiles[0]);
+    std::string prefix2 = stripExtension(inFiles[1]);
 
     // Skip merging the reverse indices if the reverse bwt file does not exist. 
     std::string rbwt_filename_1 = prefix1 + RBWT_EXT;
