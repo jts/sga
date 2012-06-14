@@ -250,12 +250,18 @@ size_t MultiAlignment::countHomopolymer(size_t rowIdx, int from, int to) const
 {
     assert(rowIdx < m_alignData.size());
     assert(from < (int)m_alignData[rowIdx].padded.size());
-
+    
+    //
     if(to == -1)
         to = m_alignData[rowIdx].padded.size() - 1; // inclusive
 
     // Determine iteration direction
     int step = from <= to ? 1 : -1;
+    
+    // The first or last column of the multiple alignment was requested
+    // This can only be a homopolymer of length 1
+    if(from == (int)m_alignData[rowIdx].padded.size() - 1 || (from == 0 && step < 0))
+        return 1;
 
     // Get the base of the homopolymer
     // If it is a padding symbol we use the next non-padded base in the sequence
