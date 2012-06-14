@@ -135,7 +135,7 @@ int graphDiffMain(int argc, char** argv)
     parseGraphDiffOptions(argc, argv);
 
     // Create indices for the variant reads
-    std::string variantPrefix = stripFilename(opt::variantFile);
+    std::string variantPrefix = stripExtension(opt::variantFile);
 
     // Use debug index prefix if specified
     if(!opt::indexPrefix.empty())
@@ -165,7 +165,7 @@ int graphDiffMain(int argc, char** argv)
 
     if(!opt::referenceMode)
     {
-        std::string basePrefix = stripFilename(opt::baseFile);
+        std::string basePrefix = stripExtension(opt::baseFile);
         baseIndex.pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
         baseIndex.pSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
         baseIndex.pCache = new BWTIntervalCache(opt::cacheLength, baseIndex.pBWT);
