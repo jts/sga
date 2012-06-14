@@ -79,6 +79,7 @@ int mergeMain(int argc, char** argv)
     {
         inFiles.push_back(argv[optind++]);
     }
+
     assert(inFiles.size() == 2);
     if(inFiles[0] == inFiles[1])
         return 0; // avoid self-merge
@@ -114,8 +115,8 @@ int mergeMain(int argc, char** argv)
     // Merge any population index files
     std::string popidx_filename_1 = prefix1 + POPIDX_EXT;
     std::string popidx_filename_2 = prefix2 + POPIDX_EXT;
-    ret1 = stat(rbwt_filename_1.c_str(), &file_s_1);
-    ret2 = stat(rbwt_filename_2.c_str(), &file_s_2);
+    ret1 = stat(popidx_filename_1.c_str(), &file_s_1);
+    ret2 = stat(popidx_filename_2.c_str(), &file_s_2);
     if(ret1 == 0 && ret2 == 0)
         PopulationIndex::mergeIndexFiles(popidx_filename_1, popidx_filename_2, opt::prefix + POPIDX_EXT);
 
