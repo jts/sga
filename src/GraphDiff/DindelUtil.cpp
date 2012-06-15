@@ -32,7 +32,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     //
     // First, extract the reads from the normal and variant data sets that match each haplotype
     //
-    size_t MAX_READS = std::numeric_limits<size_t>::max();
+    size_t MAX_READS = 400000000;
 
     // Get canidate alignments for the input haplotypes
     HapgenAlignmentVector candidateAlignments;

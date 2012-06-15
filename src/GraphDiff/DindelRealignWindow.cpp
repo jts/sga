@@ -682,8 +682,11 @@ void DindelHaplotype::extractVariants()
                     // int refBaseOffset = ma.getBaseIdx(refRow, eventStart);
                     // get positions in haplotype where indel variant may be ambiguously positioned
 
-                    int refBaseOffsetMinPos = ma.getBaseIdx(refRow, minPos);                    
-                    size_t hplen = ma.countHomopolymer(refRow, minPos,-1);
+                    int refBaseOffsetMinPos = ma.getBaseIdx(refRow, minPos);       
+                    size_t hplen_before = ma.countHomopolymer(refRow, minPos - 1, -1) + ma.countHomopolymer(refRow, minPos - 1, 0) - 1;
+                    size_t hplen_at = ma.countHomopolymer(refRow, minPos, -1) + ma.countHomopolymer(refRow, minPos, 0) - 1;
+                    size_t hplen_after = ma.countHomopolymer(refRow, minPos + 1, -1) + ma.countHomopolymer(refRow, minPos + 1, 0) - 1;
+                    size_t hplen = std::max(std::max(hplen_before, hplen_at), hplen_after);
 
                     if (minPos+1<int(ma.getNumColumns()))
                         hplen += ma.countHomopolymer(refRow, minPos,0)-1;
