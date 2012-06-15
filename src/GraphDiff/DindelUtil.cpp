@@ -12,6 +12,8 @@
 #include "HapgenUtil.h"
 #include "VCFUtil.h"
 #include "Profiler.h"
+#include "overlapper.h"
+#include "multiple_alignment.h"
 
 // Run dindel on a pair of samples
 DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
@@ -30,7 +32,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     //
     // First, extract the reads from the normal and variant data sets that match each haplotype
     //
-    size_t MAX_READS = 40000000000;
+    size_t MAX_READS = std::numeric_limits<size_t>::max();
 
     // Get canidate alignments for the input haplotypes
     HapgenAlignmentVector candidateAlignments;
@@ -92,7 +94,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
     // Set the value to use for extracting reads that potentially match the haplotype
     // Do not use a kmer for extraction greater than this value
-    size_t KMER_CEILING = 41;
+    size_t KMER_CEILING = 31;
     size_t extractionKmer = parameters.kmer < KMER_CEILING ? parameters.kmer : KMER_CEILING;
     
     bool extractOK = true;
@@ -131,8 +133,9 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     if(!extractOK)
         return DRC_OVER_DEPTH;
 
-    size_t total_reads = normalReads.size() + normalReadMates.size() + normalRCReads.size() + normalRCReadMates.size();
-    total_reads += variantReads.size() + variantReadMates.size() + variantRCReads.size() + variantRCReadMates.size();
+    size_t normal_reads = normalReads.size() + normalReadMates.size() + normalRCReads.size() + normalRCReadMates.size();
+    size_t variant_reads = variantReads.size() + variantReadMates.size() + variantRCReads.size() + variantRCReadMates.size();
+    size_t total_reads = normal_reads + variant_reads;
 
     if(total_reads > MAX_READS)
         return DRC_OVER_DEPTH;
@@ -140,7 +143,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     if (total_reads == 0)
         return DRC_UNDER_DEPTH;
 
-    printf("Passing to dindel %zu haplotypes, %zu reads\n", candidateAlignments.size(), total_reads);
+    printf("Passing to dindel %zu haplotypes, %zu normal reads, %zu variant reads\n", candidateAlignments.size(), normal_reads, variant_reads);
 
     // Generate the input haplotypes for dindel
     // We need at least 2 haplotypes
@@ -190,8 +193,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // RESET MAPPING SCORES
     for(std::set<DindelReferenceMapping>::iterator it = refMappings.begin(); it != refMappings.end(); it++) 
         it->referenceAlignmentScore = 1000;
-
-
      
     std::cout << "REFERENCE MAPPINGS: \n";
     int c = 0;
@@ -202,23 +203,14 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // make flankingHaplotypes unique
     std::set< std::string > setFlanking(flankingHaplotypes.begin(), flankingHaplotypes.end());
 
-    
     for(std::set< std::string >::const_iterator it = setFlanking.begin(); it != setFlanking.end(); it++)
     {
         dindelHaplotypes.push_back(*it);
         //dindelRefMappings[i] = std::vector<DindelReferenceMapping>(refMappings.begin(),refMappings.end());
     }
+
     std::vector<DindelReferenceMapping> dRefMappings(refMappings.begin(),refMappings.end());
     DindelWindow dWindow(dindelHaplotypes, dRefMappings);
-
-    if (0)
-    {
-        for (size_t i = 0; i < dindelHaplotypes.size(); i++ )
-        {
-            std::cout << ">HAPLOTYPE_" << i << "\n";
-            std::cout << dindelHaplotypes[i] << "\n";
-        }
-    }
 
     //
     // Run Dindel
@@ -265,8 +257,10 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             }
         }
 
-//        std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
-//        doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
+        printf("DREADS[%zu] pushed %zu reads\n", i, dReads.size());
+
+        //std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
+        //doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
 
         pThisResult = new DindelRealignWindowResult();
 
@@ -274,7 +268,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         {
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
             dRealignWindow.run("hmm", (i==0) ? baseOut : variantOut, id, pThisResult, pPreviousResult);
-	    //dRealignWindow.run("hmm", std::cout);
         }
         catch(std::string e)
         {
@@ -329,46 +322,36 @@ void DindelUtil::doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> 
     for (size_t h = 0; h < haplotypes.size(); ++h)
     {
         std::cout << "ALIGNING EVERYTHING AGAINST HAPLOTYPE " << h << "\n";
+        MultipleAlignment ma;
         std::vector< MAlignData > maVector;
         const std::string rootSequence = haplotypes[h];
+        ma.addBaseSequence("root", rootSequence, "");
+
         std::string hid;
         for(size_t j = 0; j < haplotypes.size(); j++)
         {
-            MAlignData _ma;
-            _ma.position = 0;
-            _ma.str = haplotypes[j];
-
             std::stringstream ss;
             if (j!=h)
                 ss << "haplotype-" << j;
             else
                 ss << "HAPLOTYPE-" << j;
-            _ma.name = ss.str();
-            _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(haplotypes[j], rootSequence));
-            maVector.push_back(_ma);
+            SequenceOverlap o = Overlapper::computeOverlap(rootSequence, haplotypes[j]);
+            ma.addOverlap(ss.str(), haplotypes[j], "", o);
         }
     
 
         for(size_t r = 0; r < dReads.size(); ++r)
         {
-            MAlignData _ma;
-            _ma.position = 0;
-            _ma.str = dReads[r].getSequence();
-
             std::stringstream ss;
             if (r<dReads.size()/2) 
                 ss << "read-" << r << "("  << dReads[r].getID() << ")"; 
             else 
                 ss << "MATE read-" << r;
-
-            _ma.name = ss.str();
-            _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(dReads[r].getSequence(), rootSequence));
-            maVector.push_back(_ma);
+            
+            SequenceOverlap o = Overlapper::computeOverlap(rootSequence, dReads[r].getSequence());
+            ma.addOverlap(ss.str(), dReads[r].getSequence(), "", o);
         }
-
-        MultiAlignment MA(rootSequence, maVector, hid);
-        //std::string consensus = MA.generateConsensus();
-        MA.print(100000, NULL, true, true);
+        ma.print(100000);
     }
 }
 
