@@ -69,7 +69,7 @@ namespace opt
     static bool bBuildReverse = true;
     static bool bBuildForward = true;
     static bool validate;
-    static int gapArrayStorage = 8;
+    static int gapArrayStorage = 4;
 }
 
 static const char* shortopts = "p:a:m:t:d:g:cv";
