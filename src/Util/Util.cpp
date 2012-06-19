@@ -11,6 +11,27 @@
 #include <map>
 #include "Util.h"
 
+//DEBUG
+void* operator new(size_t size)
+{
+    static size_t sum = 0;
+   
+    sum += size;
+    if(size > 1024) {
+        double MB = 1000000;
+        double GB = 1000000000;
+        printf("[Memory] Allocating: %.2lfMB. Total: %.2lfGB\n", (double)size / MB, (double)sum / GB);
+    }
+   
+    void* p = malloc(size);
+    if(p == 0) {
+        printf("Allocation failed!\n");
+        assert(false);
+    }
+    return p;
+}
+
+
 //
 // Sequence operations
 //

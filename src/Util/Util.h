@@ -33,6 +33,9 @@
 
 #define GZIP_EXT ".gz"
 
+// DEBUG
+void* operator new(size_t size);
+
 //
 // Typedef
 //

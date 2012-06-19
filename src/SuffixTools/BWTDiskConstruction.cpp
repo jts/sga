@@ -380,7 +380,9 @@ void computeGapArray(SeqReader* pReader, size_t n, const BWT* pBWT, bool doRever
 {
     // Create the gap array
     size_t gap_array_size = pBWT->getBWLen() + 1;
+    printf("Resizing gap array to be %zu elements\n", gap_array_size);
     pGapArray->resize(gap_array_size);
+    printf("Done resize\n");
 
     // The rank processor calculates the rank of every suffix of a given sequence
     // and returns a vector of ranks. The postprocessor takes in the vector
@@ -433,7 +435,9 @@ int64_t merge(SeqReader* pReader,
     std::cout << "Merge2: " << item2 << "\n";
 
     // Load the bwt of item2 into memory as the internal bwt
+    std::cout << "Loading: " << item2.bwt_filename << "\n";
     BWT* pBWTInternal = new BWT(item2.bwt_filename, BWT_SAMPLE_RATE);
+    std::cout << "Done loading: " << item2.bwt_filename << "\n";
     
     // If end_index is -1, calculate the ranks for every sequence in the file
     // otherwise only calculate the rank for the next (end_index - start_index + 1) sequences
