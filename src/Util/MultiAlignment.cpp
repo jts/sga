@@ -276,14 +276,12 @@ size_t MultiAlignment::countHomopolymer(size_t rowIdx, int from, int to) const
             break;
     }
 
-    if(from < 0 || from > max_position)
-        return 1;
-
     size_t length = 1;
     do
     {
         from += step;
-
+        if(from < 0 || from > max_position)
+            return length;
 
         char s = getSymbol(rowIdx, from);
         if(s == '-')
