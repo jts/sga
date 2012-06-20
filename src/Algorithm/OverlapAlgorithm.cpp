@@ -20,6 +20,9 @@ static const AlignFlags preSufAF(true, true, false);
 OverlapResult OverlapAlgorithm::overlapRead(const SeqRecord& read, int minOverlap, OverlapBlockList* pOutList) const
 {
     OverlapResult r;
+    if(static_cast<int>(read.seq.length()) < minOverlap)
+        return r;
+
     if(!m_exactModeOverlap)
         r = overlapReadInexact(read, minOverlap, pOutList);
     else
