@@ -66,6 +66,13 @@ class DNAString
             return m_data[idx];
         }
 
+        // Set the character at the given position
+        inline void set(size_t idx, char b) const
+        {
+            assert(idx < m_len + 1);
+            m_data[idx] = b;
+        }
+
         // Get the substring of length n starting at position pos
         std::string substr(size_t pos, size_t n) const
         {
