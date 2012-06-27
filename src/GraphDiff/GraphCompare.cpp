@@ -249,10 +249,10 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
     for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
         printf("Assembly[%zu]: %s\n", i, result.variant_haplotypes[i].c_str());
 
-/*
+
     if(!result.variant_haplotypes.empty())
         buildParallelBaseHaplotypes(result.variant_haplotypes, result.base_haplotypes);
-*/
+
     return result;
 }
 

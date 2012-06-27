@@ -67,8 +67,11 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
                                                HapgenAlignmentVector& outAlignments)
 {
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceKmer")
-    size_t k = 41;
+    size_t k = 31;
     int64_t max_interval_size = 4;
+
+    if(haplotype.size() < k)
+        return;
 
     std::vector<int> event_count_vector;
     std::vector<HapgenAlignment> tmp_alignments;
