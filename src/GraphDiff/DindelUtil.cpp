@@ -215,13 +215,15 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     //
     // Run Dindel
     //
+
+    VCFVector vcfRecords[2];
+
     size_t start_i = parameters.bReferenceMode ? 1 : 0;
 
     DindelRealignWindowResult *pThisResult, *pPreviousResult = NULL;
 
     for(size_t i = start_i; i <= 1; ++i)
     {
-
         SeqItemVector& fwdReads = (i == 0) ? normalReads : variantReads;
         SeqItemVector& fwdReadMates = (i == 0) ? normalReadMates : variantReadMates;
         SeqItemVector& rcReads = (i == 0) ? normalRCReads : variantRCReads;
@@ -264,10 +266,11 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
         pThisResult = new DindelRealignWindowResult();
 
+        std::stringstream out_ss;
         try
         {
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
-            dRealignWindow.run("hmm", (i==0) ? baseOut : variantOut, id, pThisResult, pPreviousResult);
+            dRealignWindow.run("hmm", vcfRecords[i], id, pThisResult, pPreviousResult);
         }
         catch(std::string e)
         {
@@ -275,12 +278,21 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             exit(DRC_EXCEPTION);
         }
 
-        baseOut.flush();
-        variantOut.flush();
 
         if(i == 0)
             pPreviousResult = pThisResult;
     }
+
+    // Copy VCFRecords to output
+    for(size_t i = 0; i <= 1; ++i)
+    {
+        std::ostream& curr_out = i == 0 ? baseOut : variantOut;
+        for(size_t j = 0; j < vcfRecords[i].size(); ++j)
+            curr_out << vcfRecords[i][j] << "\n";
+    }
+
+    baseOut.flush();
+    variantOut.flush();
 
     delete pThisResult;
     delete pPreviousResult;

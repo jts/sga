@@ -61,12 +61,15 @@ void VCFRecord::printVerbose() const
 // Write the VCF record to the stream
 std::ostream& operator<<(std::ostream& o, VCFRecord& record)
 {
+    o.precision(5);
+    o.setf(std::ios::fixed,std::ios::floatfield);
+
     o << record.refName << "\t";
     o << record.refPosition << "\t",
-    o << ".\t"; // ID not supported
+    o << (record.id.empty() ? "." : record.id) << "\t";
     o << record.refStr << "\t";
     o << record.varStr << "\t";
-    o << record.quality << "\t";
+    o << (int)record.quality << "\t";
     o << record.passStr << "\t";
     std::copy( record.comments.begin(), record.comments.end(), 
                std::ostream_iterator<std::string>(o, ";")); // comments 

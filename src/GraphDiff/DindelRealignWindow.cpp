@@ -33,6 +33,7 @@
 #include "BWT.h"
 #include "DindelHMM.h"
 #include "Profiler.h"
+#include "VCFUtil.h"
 #include <cmath>
 
 const int DINDEL_DEBUG=0;
@@ -1247,8 +1248,9 @@ DindelWindow::~DindelWindow()
 
 
 // Need to add pointer to VCF Header instance
-void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, std::ostream& out) const
+void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, VCFVector& out) const
 {
+    VCFRecord record;
     std::stringstream hapPropString;
     hapPropString.precision(5);
     hapPropString.setf(std::ios::fixed,std::ios::floatfield);
@@ -1366,21 +1368,27 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
 
     int iqual = (vcfQual<0.0)?0:int(round(vcfQual));
 
-
     // determine support for filter tag
     int totInHist = 0;
     if (!this->histDistance.empty())
         for (size_t x=0;x<histDistance.size();x++)
             totInHist += histDistance[x];
 
+    // Count homopolymer runs
+    std::set<int> hps;
+    hps.insert(var.getHPLen());
+    int hp = *hps.rbegin();
 
-
+    // Apply filters
     std::string filter="NoCall";
     if (iqual == 0)
         filter = "NoCall";
     else
     {
-        if (totInHist == 0) filter = "NoSupp";
+        if (totInHist == 0) 
+        {
+            filter = "NoSupp";
+        }
         else
         {
             if (iqual<20)
@@ -1394,14 +1402,56 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
                         filter = "LowPosterior";
                 }
             }
+            else if( hp >= 7 )
+                filter = "AmbiHP";
             else if (iqual>=20)
                 filter = "PASS";
         }
     }
 
-    std::set<int> hps;
-    hps.insert(var.getHPLen());
-    int hp = *hps.rbegin();
+    record.refName = var.getChrom();
+    record.refPosition = var.getPos();
+    record.id = result.outputID.empty() ? "." : result.outputID;
+    record.refStr = var.getRef();
+    record.varStr = var.getAlt();
+    record.quality = iqual;
+    record.passStr = filter;
+    record.addComment("AF", varFreq);
+    record.addComment("NumReads", numRealignedReads);
+    record.addComment("NumCalledHaps", numCalledHaplotypes);
+    record.addComment("ExpNumHapsWithVarMappingHere", expNumberOfHaplotypesMappingToThisLocation);
+    record.addComment("VarQual", this->qual);
+    record.addComment("HV", hapPropString.str());
+    record.addComment("HMQ", hapMappingQual);
+    record.addComment("VarDP", numReadsForward+numReadsReverse);
+    record.addComment("NF", numReadsForward);
+    record.addComment("NR", numReadsReverse);
+    record.addComment("NF0", this->numReadsForwardZeroMismatch);
+    record.addComment("NR0", this->numReadsReverseZeroMismatch);
+    record.addComment("NU", numUnmapped);
+    record.addComment("NU", result.numCalledHaplotypes);
+    record.addComment("HSR", result.numHapSpecificReads);
+    record.addComment("HPLen", hp);
+    record.addComment("SB", this->strandBias);
+    record.addComment("NumLib", this->numLibraries);
+    record.addComment("NumFragments", this->numReadNames);
+    out.push_back(record);
+
+    /*
+    // HistDist
+    std::stringstream histdist_ss;
+    std::copy(histDistance.begin(), histDistance.end(), std::ostream_iterator<int>(histdist_ss, ","));
+    record.addComment("HistDist", histdist_ss.str());
+
+    // HistLik
+    std::stringstream histlik_ss;
+    std::copy(histAlignLik.begin(), histAlignLik.end(), std::ostream_iterator<int>(histdist_ss, ","));
+    record.addComment("HistLik", histlik_ss.str());
+
+    // HistMapQ
+    std::stringstream histmap_ss;
+    std::copy(histMapQ.begin(), histMapQ.end(), std::ostream_iterator<int>(histMapQ_ss, ","));
+    record.addComment("HistMapQ", histlik_ss.str());
 
     out.precision(5);
     out.setf(std::ios::fixed,std::ios::floatfield);
@@ -1491,6 +1541,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
 #endif
     }
     out << std::endl;
+    */
 }
 
 double DindelRealignWindowResult::Inference::computeStrandBias(int numForward, int numReverse)
@@ -1566,7 +1617,7 @@ void DindelRealignWindowResult::Inference::addMapQToHistogram(double mappingQual
     if (bin>=0) histMapQ[bin]++;
 }
 
-void DindelRealignWindowResult::outputVCF(std::ostream& out)
+void DindelRealignWindowResult::outputVCF(VCFVector& out)
 {
     VarToInference::const_iterator iter = variantInference.begin();
 
@@ -1611,7 +1662,7 @@ void DindelRealignWindow::run(const std::string & algorithm,
 }
 */
 void DindelRealignWindow::run(const std::string & algorithm,
-                              std::ostream& out,
+                              VCFVector& out,
                               const std::string id,
                               DindelRealignWindowResult *pThisResult,
                               const DindelRealignWindowResult *pPreviousResult)
@@ -1809,7 +1860,7 @@ void DindelRealignWindow::addSNPsToHaplotypes()
 
 
 
-void DindelRealignWindow::algorithm_hmm(std::ostream& out, DindelRealignWindowResult * pThisResult, const DindelRealignWindowResult *pPreviousResult)
+void DindelRealignWindow::algorithm_hmm(VCFVector& out, DindelRealignWindowResult * pThisResult, const DindelRealignWindowResult *pPreviousResult)
 {
     if (DINDEL_DEBUG) std::cout << "DindelRealignWindow::algorithm_hmm STARTED" << std::endl;
 

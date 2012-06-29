@@ -61,6 +61,7 @@ struct VCFRecord
     // data
     std::string refName;
     size_t refPosition;
+    std::string id;
     std::string refStr;
     std::string varStr;
     double quality;
