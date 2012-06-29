@@ -36,7 +36,8 @@ namespace DindelUtil
                                            const StringVector& variant_haplotypes,
                                            const GraphCompareParameters& parameters,
                                            std::ostream& baseOut,
-                                           std::ostream& variantOut);
+                                           std::ostream& variantOut,
+                                           std::ostream& callsOut);
 
     // Run a naive caller
     DindelReturnCode runNaiveCaller(const std::string& normalString,

@@ -82,6 +82,7 @@ struct GraphCompareResult
 
     StringVector baseVCFStrings;
     StringVector variantVCFStrings;
+    StringVector calledVCFStrings;
 };
 
 //
@@ -204,6 +205,7 @@ class GraphCompareAggregateResults
         // VCF output files
         VCFFile m_baseVCFFile;
         VCFFile m_variantVCFFile;
+        VCFFile m_callsVCFFile;
 
         size_t m_numVariants;
 };

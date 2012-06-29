@@ -49,6 +49,7 @@ class VCFTester
         // Output file
         VCFFile m_baseVCFFile;
         VCFFile m_variantVCFFile;
+        VCFFile m_callsVCFFile;
 };
 
 #endif

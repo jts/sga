@@ -1435,24 +1435,37 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     record.addComment("SB", this->strandBias);
     record.addComment("NumLib", this->numLibraries);
     record.addComment("NumFragments", this->numReadNames);
-    out.push_back(record);
 
-    /*
     // HistDist
     std::stringstream histdist_ss;
-    std::copy(histDistance.begin(), histDistance.end(), std::ostream_iterator<int>(histdist_ss, ","));
+    for (size_t x=0;x<histDistance.size();x++) {
+        if (x>0)
+            histdist_ss << ",";
+        histdist_ss << histDistance[x];
+    }
     record.addComment("HistDist", histdist_ss.str());
 
     // HistLik
     std::stringstream histlik_ss;
-    std::copy(histAlignLik.begin(), histAlignLik.end(), std::ostream_iterator<int>(histdist_ss, ","));
+    for (size_t x=0;x<histAlignLik.size();x++) {
+        if (x>0)
+            histlik_ss << ",";
+        histlik_ss << histAlignLik[x];
+    }
     record.addComment("HistLik", histlik_ss.str());
 
     // HistMapQ
     std::stringstream histmap_ss;
-    std::copy(histMapQ.begin(), histMapQ.end(), std::ostream_iterator<int>(histMapQ_ss, ","));
-    record.addComment("HistMapQ", histlik_ss.str());
+    for (size_t x=0;x<histMapQ.size();x++) {
+        if (x>0)
+            histmap_ss << ",";
+        histmap_ss << histMapQ[x];
+    }
+    record.addComment("HistMapQ", histmap_ss.str());
 
+    out.push_back(record);
+
+    /*
     out.precision(5);
     out.setf(std::ios::fixed,std::ios::floatfield);
     out << var.getChrom() << "\t" << var.getPos() << "\t";

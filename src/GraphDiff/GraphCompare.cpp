@@ -175,12 +175,14 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
                 std::stringstream baseVCFSS;
                 std::stringstream variantVCFSS;
+                std::stringstream callsVCFSS;
                 DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
                                                                          build_result.base_haplotypes,
                                                                          build_result.variant_haplotypes,
                                                                          m_parameters,
                                                                          baseVCFSS,
-                                                                         variantVCFSS);
+                                                                         variantVCFSS,
+                                                                         callsVCFSS);
                 
                 //
                 if(m_parameters.verbose > 0 || 1)
@@ -195,6 +197,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 {                        
                     result.baseVCFStrings.push_back(baseVCFSS.str());
                     result.variantVCFStrings.push_back(variantVCFSS.str());
+                    result.calledVCFStrings.push_back(callsVCFSS.str());
                 }
             }
         }
@@ -498,13 +501,15 @@ void GraphCompare::testKmer(const std::string& kmer)
 
         std::stringstream baseVCFSS;
         std::stringstream variantVCFSS;
+        std::stringstream callsVCFSS;
 
         DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
                                                                  build_result.base_haplotypes,
                                                                  build_result.variant_haplotypes,
                                                                  m_parameters,
                                                                  baseVCFSS,
-                                                                 variantVCFSS);
+                                                                 variantVCFSS,
+                                                                 callsVCFSS);
         
         std::cout << "base:    " << baseVCFSS.str() << "\n";
         std::cout << "variant: " << variantVCFSS.str() << "\n";
@@ -533,6 +538,7 @@ void GraphCompare::showMappingLocations(const std::string& str)
 //
 GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
                                                                                             m_variantVCFFile(fileprefix + ".variant.vcf","w"),
+                                                                                            m_callsVCFFile(fileprefix + ".calls.vcf","w"),
                                                                                             m_numVariants(0)
 {
     //
@@ -541,6 +547,7 @@ GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fi
     //
     m_baseVCFFile.outputHeader("stub", "stub");
     m_variantVCFFile.outputHeader("stub", "stub");
+    m_callsVCFFile.outputHeader("stub", "stub");
 
     // Initialize mutex
     int ret = pthread_mutex_init(&m_mutex, NULL);
@@ -601,6 +608,10 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
         m_baseVCFFile.getOutputStream() << result.baseVCFStrings[i];
         m_variantVCFFile.getOutputStream() << result.variantVCFStrings[i];
     }
+
+    // Write out the final calls
+    for(size_t i = 0; i < result.calledVCFStrings.size(); ++i)
+        m_callsVCFFile.getOutputStream() << result.calledVCFStrings[i];
 }
 
 //

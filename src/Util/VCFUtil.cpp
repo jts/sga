@@ -40,6 +40,16 @@ void VCFRecord::addComment(const std::string& key, const int& value)
     addComment(key, v_str.str());
 }
 
+void VCFRecord::addComment(const std::string& key, const double& value)
+{
+    std::stringstream v_str;
+    v_str.precision(5);
+    v_str.setf(std::ios::fixed,std::ios::floatfield);
+    v_str << value;
+    addComment(key, v_str.str());
+}
+
+
 void VCFRecord::setPassStr(const std::string str)
 {
     passStr = str;
@@ -71,8 +81,13 @@ std::ostream& operator<<(std::ostream& o, VCFRecord& record)
     o << record.varStr << "\t";
     o << (int)record.quality << "\t";
     o << record.passStr << "\t";
-    std::copy( record.comments.begin(), record.comments.end(), 
-               std::ostream_iterator<std::string>(o, ";")); // comments 
+
+    for(size_t i = 0; i < record.comments.size(); ++i)
+    {
+        if(i > 0)
+            o << ";";
+        o << record.comments[i];
+    }
     return o;
 }
 

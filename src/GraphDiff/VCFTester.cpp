@@ -19,10 +19,12 @@
 VCFTester::VCFTester(const GraphCompareParameters& params) : m_parameters(params),
                                                              m_graphComparer(params),
                                                              m_baseVCFFile("vtest.base.vcf","w"),
-                                                             m_variantVCFFile("vtest.variant.vcf","w")
+                                                             m_variantVCFFile("vtest.variant.vcf","w"),
+                                                             m_callsVCFFile("vtest.calls.vcf","w")
 {
     m_baseVCFFile.outputHeader("stub", "stub");
     m_variantVCFFile.outputHeader("stub", "stub");
+    m_callsVCFFile.outputHeader("stub", "stub");
     DindelUtil::initializeCodeCounts(m_returnCodes);
 }
 
@@ -63,6 +65,7 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     // Run dindel
     std::stringstream baseSS;
     std::stringstream variantSS;
+    std::stringstream callsSS;
     std::string id = ".";
 
     StringVector ref_haplotypes;
@@ -75,7 +78,8 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
                                                               var_haplotypes,
                                                               m_parameters,
                                                               baseSS,
-                                                              variantSS);
+                                                              variantSS,
+                                                              callsSS);
 
     m_returnCodes[code] += 1;
 

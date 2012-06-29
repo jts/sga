@@ -21,7 +21,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
                                                    const StringVector& variant_haplotypes,
                                                    const GraphCompareParameters& parameters,
                                                    std::ostream& baseOut,
-                                                   std::ostream& variantOut)
+                                                   std::ostream& variantOut,
+                                                   std::ostream& callsOut)
 {
     PROFILE_FUNC("runDindelPairMatePair")
 
@@ -283,12 +284,27 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             pPreviousResult = pThisResult;
     }
 
-    // Copy VCFRecords to output
+    // Copy raw VCFRecords to output
     for(size_t i = 0; i <= 1; ++i)
     {
         std::ostream& curr_out = i == 0 ? baseOut : variantOut;
         for(size_t j = 0; j < vcfRecords[i].size(); ++j)
             curr_out << vcfRecords[i][j] << "\n";
+    }
+
+    // Make comparative calls
+    size_t VARIANT_IDX = 1;
+    size_t BASE_IDX = 0;
+    bool has_base_calls = !vcfRecords[BASE_IDX].empty();
+    for(size_t i = 0; i < vcfRecords[1].size(); ++i)
+    {
+        bool not_called_in_base = true;
+        if(has_base_calls)
+            not_called_in_base = vcfRecords[BASE_IDX][i].passStr == "NoCall";
+
+        bool called_in_variant = vcfRecords[VARIANT_IDX][i].passStr == "PASS";
+        if(called_in_variant && not_called_in_base)
+            callsOut << vcfRecords[VARIANT_IDX][i] << "\n";
     }
 
     baseOut.flush();

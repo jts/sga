@@ -42,6 +42,7 @@ struct VCFRecord
     VCFRecord();
     void addComment(const std::string& key, const std::string& value);
     void addComment(const std::string& key, const int& value);
+    void addComment(const std::string& key, const double& value);
 
     void setPassStr(const std::string str);
     void setQuality(const double q);
