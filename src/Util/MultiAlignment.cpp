@@ -265,7 +265,7 @@ size_t MultiAlignment::countHomopolymer(size_t rowIdx, int from, int to) const
 
     // Get the base of the homopolymer
     // If it is a padding symbol we use the next non-padded base in the sequence
-    char b;
+    char b = '\0';
     int max_position = (int)m_alignData[rowIdx].padded.size() - 1;
     while(from >= 0 && from <= max_position)
     {
