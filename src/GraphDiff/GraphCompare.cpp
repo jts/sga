@@ -265,7 +265,7 @@ void GraphCompare::qcVariantHaplotypes(StringVector& variant_haplotypes)
     PROFILE_FUNC("GraphCompare::qcVariantHaplotypes")
     // Calculate the maximum k such that every kmer is present in the variant and base BWT
     // The difference between these values must be at least MIN_COVER_K_DIFF
-    size_t MIN_COVER_K_DIFF = 20;
+    size_t MIN_COVER_K_DIFF = 10;
     StringVector temp_haplotypes;
     for(size_t i = 0; i < variant_haplotypes.size(); ++i)
     {
