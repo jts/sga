@@ -33,15 +33,17 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     //
     // First, extract the reads from the normal and variant data sets that match each haplotype
     //
-    size_t MAX_READS = 400000000;
+    assert(inHaplotypes.size() > 0);
+    size_t MAX_READS = 100000;
 
     // Get canidate alignments for the input haplotypes
     HapgenAlignmentVector candidateAlignments;
 
     // Choose the kmer size for alignment
-    size_t MAX_ALIGN_KMER = 51;
-    size_t ALIGN_KMER_OFFSET = 5;
-    size_t align_kmer = std::min(MAX_ALIGN_KMER, parameters.kmer - ALIGN_KMER_OFFSET);
+    //size_t MAX_ALIGN_KMER = 51;
+    //size_t ALIGN_KMER_OFFSET = 5;
+    //size_t align_kmer = std::min(MAX_ALIGN_KMER, parameters.kmer - ALIGN_KMER_OFFSET);
+    size_t align_kmer = 31;
     for(size_t i = 0; i < inHaplotypes.size(); ++i)
     {
         HapgenAlignmentVector thisCandidateAlignments;
