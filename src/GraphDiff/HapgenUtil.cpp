@@ -61,13 +61,13 @@ struct CandidateKmerAlignment
 typedef std::vector<CandidateKmerAlignment> CandidateVector;
 
 // Align the haplotype to the reference genome represented by the BWT/SSA pair
-void HapgenUtil::alignHaplotypeToReferenceKmer(const std::string& haplotype,
+void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
+                                               const std::string& haplotype,
                                                const BWTIndexSet& referenceIndex,
                                                const ReadTable* pReferenceTable,
                                                HapgenAlignmentVector& outAlignments)
 {
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceKmer")
-    size_t k = 31;
     int64_t max_interval_size = 4;
 
     if(haplotype.size() < k)

@@ -1402,8 +1402,6 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
                         filter = "LowPosterior";
                 }
             }
-            else if( hp >= 7 )
-                filter = "AmbiHP";
             else if (iqual>=20)
                 filter = "PASS";
         }

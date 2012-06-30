@@ -65,7 +65,8 @@ namespace HapgenUtil
                                         HapgenAlignmentVector& outAlignments);
 
     //
-    void alignHaplotypeToReferenceKmer(const std::string& haplotype,
+    void alignHaplotypeToReferenceKmer(size_t k,
+                                       const std::string& haplotype,
                                        const BWTIndexSet& referenceIndex,
                                        const ReadTable* pReferenceTable,
                                        HapgenAlignmentVector& outAlignments);
