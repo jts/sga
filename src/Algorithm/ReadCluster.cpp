@@ -90,60 +90,78 @@ ClusterNode ReadCluster::addSeed(const std::string& sequence, bool bCheckInIndex
 void ReadCluster::run(size_t max_size, int max_iterations)
 {
     int iteration = 0;
-    while(!m_queue.empty())
+    do
     {
-        if(m_queue.size() + m_outCluster.size() > max_size)
-        {
-            // Abort the search
-            m_outCluster.clear();
-            break;
-        }
-        
-        // Check if we have reached the maximum number of extension steps
+        // Perform one iteration of extending each sequence in the queue
+        ClusterNodeQueue next_queue;
+        bool aborted = false;
+            
+        // Have we performed enough iterations?
         if(max_iterations > 0 && iteration++ > max_iterations)
-            break;
+            aborted = true;
 
-        ClusterNode node = m_queue.front();
-        m_queue.pop();
-
-        // Add this node to the output
-        m_outCluster.push_back(node);
-
-        // If we are using limit kmers, only try to extend this sequence if it does not contain a limit kmer
-        bool extend_read = canExtendRead(node);
-        if(!extend_read)
-            continue; 
-
-        // Find overlaps for the current node
-        SeqRecord tempRecord;
-        tempRecord.id = "cluster";
-        tempRecord.seq = node.sequence;
-        OverlapBlockList blockList;
-        m_pOverlapper->overlapRead(tempRecord, m_minOverlap, &blockList);
-        
-        // Parse each member of the block list and potentially expand the cluster
-        for(OverlapBlockList::const_iterator iter = blockList.begin(); iter != blockList.end(); ++iter)
+        while(!aborted && !m_queue.empty())
         {
-            // Check if the reads in this block are part of the cluster already
-            BWTInterval canonicalInterval = iter->getCanonicalInterval();
-            int64_t canonicalIndex = canonicalInterval.lower;
-            if(m_usedIndex.count(canonicalIndex) == 0)
+            if(m_queue.size() + m_outCluster.size() > max_size)
             {
-                // This is a new node that isn't in the cluster. Add it.
-                m_usedIndex.insert(canonicalIndex);
+                // Abort the search
+                m_outCluster.clear();
+                aborted = true;
+                break;
+            }
+            
+            ClusterNode node = m_queue.front();
+            m_queue.pop();
 
-                ClusterNode newNode;
-                newNode.sequence = iter->getFullString(node.sequence);
-                newNode.interval = canonicalInterval;
-                newNode.isReverseInterval = iter->flags.isTargetRev();
-                m_queue.push(newNode);
+            // Add this node to the output
+            m_outCluster.push_back(node);
+
+            // If we are using limit kmers, only try to extend this sequence if it does not contain a limit kmer
+            bool extend_read = canExtendRead(node);
+            if(!extend_read)
+                continue; 
+
+            // Find overlaps for the current node
+            SeqRecord tempRecord;
+            tempRecord.id = "cluster";
+            tempRecord.seq = node.sequence;
+            OverlapBlockList blockList;
+            m_pOverlapper->overlapRead(tempRecord, m_minOverlap, &blockList);
+            
+            // Parse each member of the block list and potentially expand the cluster
+            for(OverlapBlockList::const_iterator iter = blockList.begin(); iter != blockList.end(); ++iter)
+            {
+                // Check if the reads in this block are part of the cluster already
+                BWTInterval canonicalInterval = iter->getCanonicalInterval();
+                int64_t canonicalIndex = canonicalInterval.lower;
+                if(m_usedIndex.count(canonicalIndex) == 0)
+                {
+                    // This is a new node that isn't in the cluster. Add it.
+                    m_usedIndex.insert(canonicalIndex);
+
+                    ClusterNode newNode;
+                    newNode.sequence = iter->getFullString(node.sequence);
+                    newNode.interval = canonicalInterval;
+                    newNode.isReverseInterval = iter->flags.isTargetRev();
+                    next_queue.push(newNode);
+                }
             }
         }
-    }
-    
-    // Clear the queue
-    while(!m_queue.empty())
-        m_queue.pop();
+
+            
+        // Clear the queue
+        if(aborted) 
+        {
+            while(!m_queue.empty())
+                m_queue.pop();
+        } 
+        else
+        {
+            // Swap the reads to extend in the next iteration
+            m_queue = next_queue;
+        }
+
+    } while(!m_queue.empty());
 }
 
 // Check if the given node contains a kmer that we stop extension at.
