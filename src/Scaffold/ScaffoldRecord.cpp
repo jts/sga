@@ -52,6 +52,7 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params, StringVe
     // together along with the appropriate gaps/overlap
     std::string sequence = params.pSequenceCollection->getSequence(m_rootID);
     params.pSequenceCollection->setPlaced(m_rootID);
+    ids.push_back(m_rootID);
  
     if(m_links.empty())
         return sequence;
@@ -60,7 +61,6 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params, StringVe
     EdgeComp relativeComp = EC_SAME;
     EdgeComp prevComp = EC_SAME;
     std::string currID = m_rootID;
-    ids.push_back(currID);
 
     // If this scaffold grows in the antisense direction,
     // we reverse every component and perform appends of the reversed
