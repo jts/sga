@@ -90,10 +90,9 @@ class ScaffoldRecord
         void setRoot(const std::string& root);
         void addLink(const ScaffoldLink& link);
         size_t getNumComponents() const;
-        StringVector getIDs() const;
 
         // Generate a sequence string representing the constructed scaffold
-        std::string generateString(const ResolveParams& params) const;
+        std::string generateString(const ResolveParams& params, StringVector& ids) const;
 
         // Resolve a link by find walks through the graph
         bool graphResolve(const ResolveParams& params, const std::string& startID, 

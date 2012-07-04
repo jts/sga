@@ -41,22 +41,8 @@ size_t ScaffoldRecord::getNumComponents() const
     return 1 + m_links.size();
 }
 
-//
-StringVector ScaffoldRecord::getIDs() const
-{
-    StringVector ids;
-    if(m_rootID.empty())
-        return ids;
-
-    ids.push_back(m_rootID);
-    for(size_t i = 0; i < m_links.size(); ++i)
-        ids.push_back(m_links[i].endpointID);
-    return ids;
-}
-
-
 // Construct a string from the scaffold
-std::string ScaffoldRecord::generateString(const ResolveParams& params) const
+std::string ScaffoldRecord::generateString(const ResolveParams& params, StringVector& ids) const
 {
     assert(params.pSequenceCollection != NULL);
 
@@ -74,7 +60,8 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params) const
     EdgeComp relativeComp = EC_SAME;
     EdgeComp prevComp = EC_SAME;
     std::string currID = m_rootID;
-    
+    ids.push_back(currID);
+
     // If this scaffold grows in the antisense direction,
     // we reverse every component and perform appends of the reversed
     // parts. After the scaffold is constructed we reverse again
@@ -152,12 +139,15 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params) const
 
         sequence.append(resolvedSequence);
         currID = link.endpointID;
+        ids.push_back(currID);
         prevComp = relativeComp;
     }
 
-    if(reverseAll)
+    if(reverseAll) 
+    {
         sequence = reverse(sequence);
-    
+        std::reverse(ids.begin(), ids.end());
+    }
     return sequence;
 }
 
