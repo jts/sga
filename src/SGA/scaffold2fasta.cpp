@@ -43,6 +43,7 @@ static const char *SCAFFOLD2FASTA_USAGE_MESSAGE =
 "      -o, --outfile=FILE               write the scaffolds to FILE (default: scaffolds.fa)\n"
 "      -m, --min-length=N               only output scaffolds longer than N bases\n"
 "          --write-unplaced             output unplaced contigs that are larger than minLength\n"
+"          --write-names                write the name of contigs contained in the scaffold in the FASTA header\n"
 "          --min-gap-length=N           separate contigs by at least N bases. All predicted gaps less\n"
 "                                       than N will be extended to N (default: 25)\n"
 "          --use-overlap                attempt to merge contigs using predicted overlaps.\n"
@@ -78,13 +79,14 @@ namespace opt
     static double maxErrorRate = 0.05f;
     static bool bNoSingletons = false;
     static bool bWriteUnplaced = false;
+    static bool bWriteNames = false;
     static int minScaffoldLength = 200;
     static float distanceFactor = 3.0f;
 }
 
 static const char* shortopts = "vm:o:f:a:g:d:";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_NOSINGLETON, OPT_USEOVERLAP, OPT_MINGAPLENGTH, OPT_WRITEUNPLACED };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_NOSINGLETON, OPT_USEOVERLAP, OPT_MINGAPLENGTH, OPT_WRITEUNPLACED, OPT_WRITENAMES };
 
 static const struct option longopts[] = {
     { "verbose",        no_argument,       NULL, 'v' },
@@ -96,6 +98,7 @@ static const struct option longopts[] = {
     { "distanceFactor", required_argument, NULL, 'd' },
     { "min-gap-length", required_argument, NULL, OPT_MINGAPLENGTH },
     { "write-unplaced", no_argument,       NULL, OPT_WRITEUNPLACED },
+    { "write-names",    no_argument,       NULL, OPT_WRITENAMES },
     { "no-singleton",   no_argument,       NULL, OPT_NOSINGLETON },
     { "use-overlap",    no_argument,       NULL, OPT_USEOVERLAP },
     { "help",           no_argument,       NULL, OPT_HELP },
@@ -151,10 +154,19 @@ int scaffold2fastaMain(int argc, char** argv)
         record.parse(line);
         if(record.getNumComponents() > 1 || !opt::bNoSingletons)
         {
+            StringVector ids = record.getIDs();
+            std::stringstream contig_ss;
+            contig_ss << "Contigs=";
+            std::copy(ids.begin(), ids.end(), std::ostream_iterator<std::string>(contig_ss, ";"));
+
             std::string sequence = record.generateString(resolveParams);
-            std::stringstream idss;
-            idss << "scaffold-" << idx;
-            writeFastaRecord(pWriter, idss.str(), sequence);
+            std::stringstream id_ss;
+            id_ss << "scaffold-" << idx;
+
+            if(opt::bWriteNames)
+                id_ss << "\t" << contig_ss.str();
+            
+            writeFastaRecord(pWriter, id_ss.str(), sequence);
             ++idx;
         }
     }
@@ -191,6 +203,7 @@ void parseScaffold2fastaOptions(int argc, char** argv)
             case 'g': arg >> modeStr; break;
             case 'd': arg >> opt::distanceFactor; break;
             case OPT_WRITEUNPLACED: opt::bWriteUnplaced = true; break;
+            case OPT_WRITENAMES: opt::bWriteNames = true; break;
             case OPT_MINGAPLENGTH: arg >> opt::minGapLength; break;
             case OPT_NOSINGLETON: opt::bNoSingletons = true; break;
             case OPT_USEOVERLAP: opt::resolveMask |= RESOLVE_OVERLAP; break;

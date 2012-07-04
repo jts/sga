@@ -41,6 +41,20 @@ size_t ScaffoldRecord::getNumComponents() const
     return 1 + m_links.size();
 }
 
+//
+StringVector ScaffoldRecord::getIDs() const
+{
+    StringVector ids;
+    if(m_rootID.empty())
+        return ids;
+
+    ids.push_back(m_rootID);
+    for(size_t i = 0; i < m_links.size(); ++i)
+        ids.push_back(m_links[i].endpointID);
+    return ids;
+}
+
+
 // Construct a string from the scaffold
 std::string ScaffoldRecord::generateString(const ResolveParams& params) const
 {
