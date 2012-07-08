@@ -242,7 +242,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 
     // Haplotype QC
     size_t num_assembled = result.variant_haplotypes.size();
-    qcVariantHaplotypes(result.variant_haplotypes);
+    qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
     size_t num_qc = result.variant_haplotypes.size();
 
     // If any assembled haplotypes failed QC, do not try to call variants
@@ -259,18 +259,19 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 }
 
 //
-void GraphCompare::qcVariantHaplotypes(StringVector& variant_haplotypes)
+void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes)
 {
     PROFILE_FUNC("GraphCompare::qcVariantHaplotypes")
     // Calculate the maximum k such that every kmer is present in the variant and base BWT
     // The difference between these values must be at least MIN_COVER_K_DIFF
     size_t MIN_COVER_K_DIFF = 10;
+    size_t MIN_COVERAGE = bReferenceMode ? 1 : 2;
     StringVector temp_haplotypes;
     for(size_t i = 0; i < variant_haplotypes.size(); ++i)
     {
         // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
-        size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], 1, m_parameters.variantIndex);
-        size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], 1, m_parameters.baseIndex);
+        size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.variantIndex);
+        size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.baseIndex);
 
         // Calculate the number of high coverage branches in this haplotype
         size_t num_branches = calculateHaplotypeBranches(variant_haplotypes[i], 
