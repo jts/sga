@@ -146,6 +146,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             count += rc_interval.size();
 
         bool both_strands = interval.size() > 0 && rc_interval.size() > 0;
+        size_t min_base_coverage = m_parameters.bReferenceMode ? 1 : 2;
 
         if(count >= m_parameters.minDiscoveryCount && count < m_parameters.maxDiscoveryCount && !variantAttempted && both_strands)
         {
@@ -153,7 +154,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
             size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.baseIndex);
             
             // k-mer present in the base read set, skip it
-            if(base_count > 0)
+            if(base_count >= min_base_coverage)
                 continue;
             
             if(m_parameters.verbose > 0)
