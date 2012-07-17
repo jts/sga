@@ -370,7 +370,11 @@ std::string BWTAlgorithms::sampleRandomString(const BWT* pBWT)
 // Return the string from the BWT at idx
 std::string BWTAlgorithms::extractString(const BWT* pBWT, size_t idx)
 {
-    assert(idx < pBWT->getNumStrings());
+    if(idx >= pBWT->getNumStrings())
+    {
+        std::cerr << "Warning: attempting to extract index " << idx << "\n";
+        return "";
+    }
 
     // The range [0,n) in the BWT contains all the terminal
     // symbols for the reads. Search backwards from one of them

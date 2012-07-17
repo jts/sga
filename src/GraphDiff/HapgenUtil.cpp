@@ -436,7 +436,8 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
         SeqItem item;
         item.id = namer.str();
         item.seq = BWTAlgorithms::extractString(indices.pBWT, idx);
-        pOutReads->push_back(item);
+        if(!item.seq.empty())
+            pOutReads->push_back(item);
 
         // Optionally extract its mate
         // If the index is constructed properly, 
@@ -449,13 +450,20 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
                 mateIdx += 1;
             else
                 mateIdx -= 1;
+            
+            if(mateIdx >= (int64_t)indices.pBWT->getNumStrings())
+            {
+                std::cout << "DEBUG: MATE INDEX OUT OF RANGE\n";
+            }
+
 
             std::stringstream mateName;
             mateName << "idx-" << mateIdx;
             SeqItem mateItem;
             mateItem.id = mateName.str();
             mateItem.seq = BWTAlgorithms::extractString(indices.pBWT, mateIdx);
-            pOutMates->push_back(mateItem);
+            if(!item.seq.empty() && !mateItem.seq.empty())
+                pOutMates->push_back(mateItem);
         }
     }
 
