@@ -52,7 +52,7 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params, StringVe
     // together along with the appropriate gaps/overlap
     std::string sequence = params.pSequenceCollection->getSequence(m_rootID);
     params.pSequenceCollection->setPlaced(m_rootID);
-    ids.push_back(m_rootID);
+    ids.push_back(m_rootID + "+");
  
     if(m_links.empty())
         return sequence;
@@ -139,7 +139,10 @@ std::string ScaffoldRecord::generateString(const ResolveParams& params, StringVe
 
         sequence.append(resolvedSequence);
         currID = link.endpointID;
-        ids.push_back(currID);
+
+        std::string outID = currID;
+        outID.append(relativeComp == EC_SAME ? "+" : "-");
+        ids.push_back(outID);
         prevComp = relativeComp;
     }
 
