@@ -48,7 +48,7 @@ static const char *HAPGEN_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -r, --reference=FILE             the reference genome to use\n"
 "      -s, --sites=FILE                 the coordinates on the reference to generate haplotypes for\n"
-"      -o, --outfile=FILE               write results to FILE\n"
+"      -o, --outfile=FILE               write results to VCF FILE\n"
 "      -k, --kmer=K                     use K as the k-mer size for variant discovery\n"
 "      -x, --kmer-threshold=T           only used kmers seen at least T times\n"
 "      -t, --threads=NUM                use NUM computation threads\n"
@@ -70,7 +70,7 @@ namespace opt
     static std::string referenceFile;
     static std::string sitesFile;
     static std::string readsFile;
-    static std::string outFile = "haplotypes.fa";
+    static std::string outFile;
 }
 
 static const char* shortopts = "o:k:t:r:s:d:v";
@@ -96,6 +96,7 @@ static const struct option longopts[] = {
 //
 int hapgenMain(int argc, char** argv)
 {
+    
     parseHapgenOptions(argc, argv);
 
     // In the BWTs and create interval caches
@@ -124,10 +125,15 @@ int hapgenMain(int argc, char** argv)
     parameters.kmerThreshold = opt::kmerThreshold;
     parameters.pRefTable = &refTable;
     parameters.verbose = opt::verbose;
+    parameters.vcfOutfile = opt::outFile;
+
     HapgenProcess processor(parameters);
+
+    std::cout << "Parsing file\n";
 
     std::istream* pReader = createReader(opt::sitesFile);
     std::string line;
+
     while(getline(*pReader, line))
     {
         std::stringstream parser(line);
@@ -136,8 +142,15 @@ int hapgenMain(int argc, char** argv)
         size_t start;
         size_t end;
         parser >> refName >> start >> end >> comment;
-        processor.processSite(refName, start, end, comment);
+        try {
+            processor.processSite(refName, start, end, comment);
+        } catch (std::string errorString)
+        {
+            std::cerr << "String exception: " << errorString << std::endl;
+        }
     }
+
+
     delete pReader;
 
     // Cleanup
@@ -146,6 +159,8 @@ int hapgenMain(int argc, char** argv)
     delete pBWTCache;
     delete pRevBWTCache;
     delete pSSA;
+
+        
 
     if(opt::numThreads > 1)
         pthread_exit(NULL);
@@ -200,11 +215,13 @@ void parseHapgenOptions(int argc, char** argv)
         die = true;
     }
 
-    if(opt::referenceFile.empty() || opt::sitesFile.empty())
+    if(opt::referenceFile.empty() || opt::sitesFile.empty() || opt::outFile.empty())
     {
-        std::cerr << SUBPROGRAM ": error a --reference and --sites file must be provided\n";
+        std::cerr << SUBPROGRAM ": error a --reference and --sites  and --outfile file must be provided\n";
         die = true;
     }
+
+    
 
     if (die) 
     {

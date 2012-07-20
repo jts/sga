@@ -17,6 +17,12 @@
 // 
 // VCFRecord
 //
+VCFRecord::VCFRecord()
+{
+    passStr = "PASS";
+    quality = 20.0f;
+}
+
 void VCFRecord::addComment(const std::string& key, const std::string& value)
 {
     std::string out = key;
@@ -25,6 +31,33 @@ void VCFRecord::addComment(const std::string& key, const std::string& value)
 
 
     comments.push_back(out);
+}
+
+void VCFRecord::addComment(const std::string& key, const int& value)
+{
+    std::stringstream v_str;
+    v_str << value;
+    addComment(key, v_str.str());
+}
+
+void VCFRecord::addComment(const std::string& key, const double& value)
+{
+    std::stringstream v_str;
+    v_str.precision(5);
+    v_str.setf(std::ios::fixed,std::ios::floatfield);
+    v_str << value;
+    addComment(key, v_str.str());
+}
+
+
+void VCFRecord::setPassStr(const std::string str)
+{
+    passStr = str;
+}
+
+void VCFRecord::setQuality(const double q)
+{
+    quality = q;
 }
 
 void VCFRecord::printVerbose() const
@@ -38,15 +71,23 @@ void VCFRecord::printVerbose() const
 // Write the VCF record to the stream
 std::ostream& operator<<(std::ostream& o, VCFRecord& record)
 {
+    o.precision(5);
+    o.setf(std::ios::fixed,std::ios::floatfield);
+
     o << record.refName << "\t";
     o << record.refPosition << "\t",
-    o << ".\t"; // ID not supported
+    o << (record.id.empty() ? "." : record.id) << "\t";
     o << record.refStr << "\t";
     o << record.varStr << "\t";
-    o << ".\t"; // QUAL not supported
-    o << "PASS\t"; // everything passes
-    std::copy( record.comments.begin(), record.comments.end(), 
-               std::ostream_iterator<std::string>(o, ";")); // comments 
+    o << (int)record.quality << "\t";
+    o << record.passStr << "\t";
+
+    for(size_t i = 0; i < record.comments.size(); ++i)
+    {
+        if(i > 0)
+            o << ";";
+        o << record.comments[i];
+    }
     return o;
 }
 

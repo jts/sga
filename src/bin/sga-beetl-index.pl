@@ -8,14 +8,16 @@ use File::Temp;
 use File::Basename;
 
 # Program paths
-my $SGA_BIN = "~/bin/sga-0.9.14";
-my $BEETL_BIN = "/nfs/team118/js18/software/BEETL-tc/BCRext";
+my $SGA_BIN = "/nfs/users/nfs_j/js18/work/devel/sga/src/build-lenny/SGA/sga";
+my $BEETL_BIN = "/nfs/users/nfs_j/js18/work/devel/BEETL/Beetl";
 
 # Options
 my $bHelp = 0;
+my $bNoConvert = 0;
 my $tmpDir = ".";
 GetOptions("help"     => \$bHelp,
-           "tmp-dir=s" => \$tmpDir);
+           "tmp-dir=s" => \$tmpDir,
+           "no-convert" => \$bNoConvert);
 
 if($bHelp)
 {
@@ -43,44 +45,43 @@ print "Working directory: $beetl_dir\n";
 my $final_dir = Cwd::getcwd();
 chdir($beetl_dir);
 
-# Currently using the development version of BEETL
-# Flatten the input file
-my $flat_file = "flattened.txt";
+# Save the output name for the files
+my $base = File::Basename::basename($abs_input, (".fa", ".fastq"));
+
+# BCR expects FASTA input, convert if necessary
+my $bcr_in_file = $abs_input;
 my $bIsFastq = isFastq($abs_input);
 my $ret = 0;
 if($bIsFastq == 1)
 {
-    runCmd("cat $abs_input | awk 'NR % 2 == 0 && NR % 4 > 0' > $flat_file");
-}
-elsif($bIsFastq == 0)
-{
-    runCmd("cat $abs_input | awk 'NR % 2 == 0' > $flat_file");
-}
-else
-{
-    print STDERR "Error: Cannot determine if $abs_input is FASTQ or FASTA\n"; 
-
-    # Set error status so no further commands are run
-    $ret = 1;
+    my $tmp_fasta = "bcr_input.fa";
+    fastq2fasta($bcr_in_file, $tmp_fasta);
+    $bcr_in_file = $tmp_fasta;
 }
 
 # Run BEETL on the flattened input file
 my $time_str = `date`;
 print "Starting beetl at $time_str\n";
-$ret = runCmd("$BEETL_BIN $flat_file > beetl.status") if($ret == 0);
+
+# BCRext
+$ret = runCmd("$BEETL_BIN ext -i $bcr_in_file -a > beetl.status") if($ret == 0);
+
+# BCR
+#$ret = runCmd("$BEETL_BIN bcr -i $bcr_in_file -o bcr.test > beetl.status") if($ret == 0);
 
 # concatenate the beetl output files
-my $beetl_bwt = "beetl.bwt";
-$ret = runCmd("cat bwt-B* > $beetl_bwt") if($ret == 0);
+my $beetl_bwt = $final_dir . "/" . $base . ".beetl.bwt";
+$ret = runCmd("cat BCRext-B* > $beetl_bwt") if($ret == 0);
 
 # Run sga convert-beetl
 $time_str = `date`;
-print "Starting convert-beetl at $time_str\n";
-$ret = runCmd("$SGA_BIN convert-beetl $beetl_bwt $abs_input") if($ret == 0);
+if(!$bNoConvert) {
+    print "Starting convert-beetl at $time_str\n";
+    $ret = runCmd("$SGA_BIN convert-beetl $beetl_bwt $abs_input") if($ret == 0);
 
-# Copy the final files back to the original directory
-my $base = File::Basename::basename($abs_input, (".fa", ".fastq"));
-$ret = runCmd("mv $base* $final_dir") if($ret == 0);
+    # Copy the final files back to the original directory
+    $ret = runCmd("mv $base* $final_dir") if($ret == 0);
+}
 
 # Change back to the original directory
 chdir($final_dir);
@@ -121,6 +122,21 @@ sub isFastq
     close(F);
 
     return $isFastq;
+}
+
+sub fastq2fasta
+{
+    my($in, $out) = @_;
+    open(IN, $in) || die("Cannot read $in");
+    open(OUT, ">$out") || die("Cannot write to $out");
+    while(my $h = <IN>) {
+        $h =~ s/^@/\>/;
+        my $s = <IN>;
+        print OUT $h;
+        print OUT $s;
+        $h = <IN>;
+        $h = <IN>;
+    }
 }
 
 sub runCmd

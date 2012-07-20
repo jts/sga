@@ -9,8 +9,6 @@
 //
 #include "OverlapTools.h"
 #include "SuffixArray.h"
-#include "RLBWT.h"
-
 //#define DPOVERLAPPRINT 1
 
 // Find a suffix of s1 that matches a prefix of s2 with minimal edit distance

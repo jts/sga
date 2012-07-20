@@ -7,11 +7,11 @@ libalgorithm_a_CPPFLAGS = \
 	-I$(top_srcdir)/SQG \
 	-I$(top_srcdir)/SuffixTools \
 	-I$(top_srcdir)/Thirdparty \
+	-I$(top_srcdir)/GraphDiff \
     -I$(top_srcdir)/Concurrency
 
 libalgorithm_a_SOURCES = \
         OverlapAlgorithm.h OverlapAlgorithm.cpp \
-        ErrorCorrect.h ErrorCorrect.cpp \
 		SearchSeed.h SearchSeed.cpp \
 		OverlapBlock.h OverlapBlock.cpp \
 		SearchHistory.h SearchHistory.cpp \
@@ -29,12 +29,11 @@ libalgorithm_a_SOURCES = \
         LRCorrectionAlgorithm.h LRCorrectionAlgorithm.cpp \
         LRCorrectionProcess.h LRCorrectionProcess.cpp \
         StringThreader.h StringThreader.cpp \
-        GraphCompare.h GraphCompare.cpp \
         HapgenProcess.h HapgenProcess.cpp \
         ExtensionDP.h ExtensionDP.cpp \
-        VariationBubbleBuilder.h VariationBubbleBuilder.cpp \
         HaplotypeBuilder.h HaplotypeBuilder.cpp \
         GapFillProcess.h GapFillProcess.cpp \
         MetAssembleProcess.h MetAssembleProcess.cpp \
         MetagenomeBuilder.h MetagenomeBuilder.cpp \
-        BuilderCommon.h BuilderCommon.cpp 
+        VariationBuilderCommon.h VariationBuilderCommon.cpp \
+        KmerOverlaps.h KmerOverlaps.cpp

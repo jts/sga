@@ -10,6 +10,7 @@
 #define UTIL_H
 
 #include <vector>
+#include <list>
 #include <string>
 #include <istream>
 #include <fstream>
@@ -41,6 +42,7 @@ typedef std::string ContigID;
 typedef std::vector<int> IntVec;
 typedef std::vector<double> DoubleVec;
 typedef std::vector<std::string> StringVector;
+typedef std::list<std::string> StringList;
 typedef std::vector<Sequence> SequenceVector;
 
 // SeqItem is just an id, sequence pair

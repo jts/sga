@@ -282,7 +282,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
                              const std::string& sai_extension, bool doReverse, int numThreads, int storageLevel)
 {
     MergeItem item1;
-    std::string prefix1 = stripFilename(readsFile1);
+    std::string prefix1 = stripExtension(readsFile1);
     item1.reads_filename = readsFile1;
     item1.bwt_filename = makeFilename(prefix1, bwt_extension);
     item1.sai_filename = makeFilename(prefix1, sai_extension);
@@ -290,7 +290,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     item1.end_index = -1; // this tells merge to read the entire file
 
     MergeItem item2;
-    std::string prefix2 = stripFilename(readsFile2);
+    std::string prefix2 = stripExtension(readsFile2);
     item2.reads_filename = readsFile2;
     item2.bwt_filename = makeFilename(prefix2, bwt_extension);
     item2.sai_filename = makeFilename(prefix2, sai_extension);

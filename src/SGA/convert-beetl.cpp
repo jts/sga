@@ -105,15 +105,13 @@ int convertBeetlMain(int argc, char** argv)
 
     // Create the suffix array index files using the sampled suffix array machinery
     std::cout << "Generating lexicographic index (.sai)\n";
-    BWT* pBWT = new BWT(outBWTName); 
-    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile);
+    BWT* pBWT = new BWT(outBWTName, 512); 
     SampledSuffixArray* pSSA = new SampledSuffixArray();
 
-    pSSA->build(pBWT, pRIT, 8192);
+    pSSA->buildLexicoIndex(pBWT, opt::readsFile);
     pSSA->writeLexicoIndex(opt::prefix + SAI_EXT);
 
     delete pBWT;
-    delete pRIT;
     delete pSSA;
     return 0;
 }

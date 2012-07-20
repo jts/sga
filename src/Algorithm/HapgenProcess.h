@@ -22,6 +22,7 @@
 #include "SequenceProcessFramework.h"
 #include "BWTIntervalCache.h"
 #include "SampledSuffixArray.h"
+#include "DindelRealignWindow.h"
 
 // Structures and typedefs
 
@@ -40,6 +41,7 @@ struct HapgenParameters
     size_t kmer;
     size_t kmerThreshold;
 
+    std::string vcfOutfile;
     int verbose;
 };
 
@@ -77,6 +79,7 @@ class HapgenProcess
         // Data
         //
         HapgenParameters m_parameters;
+        VCFFile m_vcfFile;
 };
 
 #if 0

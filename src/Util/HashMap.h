@@ -15,17 +15,23 @@
 
 #if HAVE_UNORDERED_MAP
 # include <unordered_map>
-# define HashMap std::unordered_map
+# include <unordered_set>
+#define HashMap std::unordered_map
+#define HashSet std::unordered_set
 typedef std::hash<std::string> StringHasher;
 #elif HAVE_TR1_UNORDERED_MAP
 #include <tr1/unordered_map>
+#include <tr1/unordered_set>
 #define HashMap std::tr1::unordered_map
+#define HashSet std::tr1::unordered_set
 typedef std::tr1::hash<std::string> StringHasher;
 #elif HAVE_EXT_HASH_MAP
 #define USING_EXT_HASH_MAP 1
 # undef __DEPRECATED
 #include <ext/hash_map>
+#include <ext/hash_set>
 #define HashMap __gnu_cxx::hash_map
+#define HashSet __gnu_cxx::hash_set
 #else
 # error No hash map implementation found
 #endif

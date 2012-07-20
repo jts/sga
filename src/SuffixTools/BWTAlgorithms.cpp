@@ -54,6 +54,15 @@ BWTInterval BWTAlgorithms::findIntervalWithCache(const BWT* pBWT, const BWTInter
     return interval;
 }
 
+// Delegate the findInterval call based on what indices are loaded
+BWTInterval BWTAlgorithms::findInterval(const BWTIndexSet& indices, const std::string& w)
+{
+    if(indices.pCache != NULL)
+        return findIntervalWithCache(indices.pBWT, indices.pCache, w);
+    else
+        return findInterval(indices.pBWT, w);
+}
+
 // Find the intervals in pBWT/pRevBWT corresponding to w
 // If w does not exist in the BWT, the interval 
 // coordinates [l, u] will be such that l > u
@@ -137,6 +146,15 @@ size_t BWTAlgorithms::countSequenceOccurrencesWithCache(const std::string& w, co
     return count;
 }
 
+//
+size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWTIndexSet& indices)
+{
+    assert(indices.pBWT != NULL);
+    if(indices.pCache != NULL)
+        return countSequenceOccurrencesWithCache(w, indices.pBWT, indices.pCache);
+    else
+        return countSequenceOccurrences(w, indices.pBWT);
+}
 
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
@@ -239,6 +257,100 @@ AlphaCount64 BWTAlgorithms::calculateDeBruijnExtensions(const std::string str,
         extensions += BWTAlgorithms::getExtCount(ip.interval[fwdIdx], bwts[fwdIdx]);
     if(rc_ip.interval[revIdx].isValid())
         rc_extensions = BWTAlgorithms::getExtCount(rc_ip.interval[revIdx], bwts[revIdx]);
+
+    // Switch the reverse-complement extensions to the same strand as the str
+    rc_extensions.complement();
+    extensions += rc_extensions;
+    return extensions;
+}
+
+//
+AlphaCount64 BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(const std::string str, 
+                                                                   const BWT* pBWT, 
+                                                                   EdgeDir direction,
+                                                                   const BWTIntervalCache* pFwdCache)
+{
+    size_t k = str.size();
+    size_t p = k - 1;
+    
+    std::string pmer;
+
+    // In the sense direction, we extend from the 3' end
+    if(direction == ED_SENSE)
+        pmer = str.substr(1, p);
+    else
+        pmer = str.substr(0, p);
+    assert(pmer.length() == p);
+    std::string rc_pmer = reverseComplement(pmer);
+
+    // As we only have a single index, we can only directly look up
+    // the extensions for either the pmer or its reverse complement
+    // In the SENSE extension direction, we directly look up for
+    // the reverse complement. In ANTISENSE we directly look up for
+    // the pmer.
+    
+    // Get the extension bases
+    AlphaCount64 extensions;
+    AlphaCount64 rc_extensions;
+
+    // Set up pointers to the data to fill in/query
+    // depending on the direction of the extension
+    AlphaCount64* pDirectEC;
+    AlphaCount64* pIndirectEC;
+    std::string* pDirectStr;
+    std::string* pIndirectStr;
+    if(direction == ED_SENSE)
+    {
+        pDirectEC = &rc_extensions;
+        pDirectStr = &rc_pmer;
+
+        pIndirectEC = &extensions;
+        pIndirectStr = &pmer;
+    }
+    else
+    {
+        pDirectEC = &extensions;
+        pDirectStr = &pmer;
+
+        pIndirectEC = &rc_extensions;
+        pIndirectStr = &rc_pmer;
+    }
+
+    // Get the interval for the direct query string
+    BWTInterval interval;
+
+    // Use interval cache if available
+    if(pFwdCache)
+        interval = BWTAlgorithms::findIntervalWithCache(pBWT, pFwdCache, *pDirectStr);
+    else
+        interval = BWTAlgorithms::findInterval(pBWT, *pDirectStr);
+
+    // Fill in the direct count
+    if(interval.isValid())
+        *pDirectEC = BWTAlgorithms::getExtCount(interval, pBWT);
+
+    // Now, for the non-direct index, query the 4 possible k-mers that are adjacent to the pmer
+    // Setup the query sequence
+    std::string query(k, 'A');
+    int varIdx = query.size() - 1;
+    query.replace(0, p, *pIndirectStr);
+
+    for(int i = 0; i < BWT_ALPHABET::size; ++i)
+    {
+        // Transform the query
+        char b = BWT_ALPHABET::getChar(i);
+        query[varIdx] = b;
+
+        // Perform lookup
+        if(pFwdCache)
+            interval = BWTAlgorithms::findIntervalWithCache(pBWT, pFwdCache, query);
+        else
+            interval = BWTAlgorithms::findInterval(pBWT, query);
+        
+        // Update the extension count
+        if(interval.isValid())
+            pIndirectEC->add(b, interval.size());
+    }
 
     // Switch the reverse-complement extensions to the same strand as the str
     rc_extensions.complement();

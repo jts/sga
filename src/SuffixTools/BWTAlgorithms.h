@@ -10,9 +10,8 @@
 #define BWT_ALGORITHMS_H
 
 #include "STCommon.h"
-#include "BWT.h"
+#include "BWTIndexSet.h"
 #include "BWTInterval.h"
-#include "BWTIntervalCache.h"
 #include "GraphCommon.h"
 
 #include <queue>
@@ -28,6 +27,7 @@ namespace BWTAlgorithms
 // get the interval(s) in pBWT/pRevBWT that corresponds to the string w using a backward search algorithm
 BWTInterval findInterval(const BWT* pBWT, const std::string& w);
 BWTInterval findIntervalWithCache(const BWT* pBWT, const BWTIntervalCache* pIntervalCache, const std::string& w);
+BWTInterval findInterval(const BWTIndexSet& indices, const std::string& w);
 
 BWTIntervalPair findIntervalPair(const BWT* pBWT, const BWT* pRevBWT, const std::string& w);
 BWTIntervalPair findIntervalPairWithCache(const BWT* pBWT, 
@@ -40,7 +40,7 @@ BWTIntervalPair findIntervalPairWithCache(const BWT* pBWT,
 // its reverse complement
 size_t countSequenceOccurrences(const std::string& w, const BWT* pBWT);
 size_t countSequenceOccurrencesWithCache(const std::string& w, const BWT* pBWT, const BWTIntervalCache* pIntervalCache);
-
+size_t countSequenceOccurrences(const std::string& w, const BWTIndexSet& indices);
 
 // Update the given interval using backwards search
 // If the interval corrsponds to string S, it will be updated 
@@ -134,7 +134,7 @@ inline AlphaCount64 getExtCount(const BWTInterval& interval, const BWT* pBWT)
 // appears in the FM-index for all i s.t. length(w[i, l]) >= minOverlap.
 AlphaCount64 calculateExactExtensions(const unsigned int overlapLen, const std::string& w, const BWT* pBWT, const BWT* pRevBWT);
 
-// Calculate de Bruijn graph extensions of the given sequence
+// Calculate de Bruijn graph extensions of the given sequence using an index pair
 // Returns an AlphaCount64 with the count of each extension base
 // This function optionally takes in an interval cache to speed up the computation
 AlphaCount64 calculateDeBruijnExtensions(const std::string str, 
@@ -143,6 +143,16 @@ AlphaCount64 calculateDeBruijnExtensions(const std::string str,
                                          EdgeDir direction,
                                          const BWTIntervalCache* pFwdCache = NULL,
                                          const BWTIntervalCache* pRevCache = NULL);
+
+// Calculate de Bruijn graph extensions of the given sequence using a single index
+// This version is more computationally expensive than above but allows
+// only one index to be held in memory. 
+// Returns an AlphaCount64 with the count of each extension base
+// This function optionally takes in an interval cache to speed up the computation
+AlphaCount64 calculateDeBruijnExtensionsSingleIndex(const std::string str, 
+                                                    const BWT* pBWT, 
+                                                    EdgeDir direction,
+                                                    const BWTIntervalCache* pFwdCache = NULL);
 
 // Extract the string at idx from the BWT
 std::string extractString(const BWT* pBWT, size_t idx);

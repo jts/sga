@@ -39,7 +39,13 @@ enum VCFReturnCode
 struct VCFRecord
 {
     // functions
+    VCFRecord();
     void addComment(const std::string& key, const std::string& value);
+    void addComment(const std::string& key, const int& value);
+    void addComment(const std::string& key, const double& value);
+
+    void setPassStr(const std::string str);
+    void setQuality(const double q);
 
     void printVerbose() const;
     VCFClassification classify() const;
@@ -56,8 +62,11 @@ struct VCFRecord
     // data
     std::string refName;
     size_t refPosition;
+    std::string id;
     std::string refStr;
     std::string varStr;
+    double quality;
+    std::string passStr;
     std::vector<std::string> comments;
 };
 

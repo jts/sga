@@ -14,7 +14,7 @@
 #include "BWT.h"
 #include "BWTIntervalCache.h"
 #include "SGUtil.h"
-#include "VariationBubbleBuilder.h"
+#include "VariationBuilderCommon.h"
 
 class MetagenomeBuilder
 {

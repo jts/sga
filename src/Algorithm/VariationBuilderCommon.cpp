@@ -4,14 +4,14 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// BuilderCommon -- Common functions and data
+// VariantionVariationBuilderCommon -- Common functions and data
 // structures for the abstract graph builders
 //
-#include "BuilderCommon.h"
+#include "VariationBuilderCommon.h"
 #include "SGAlgorithms.h"
 
 // Count the number of extensions above the given threshold
-size_t BuilderCommon::countValidExtensions(const AlphaCount64& ac, size_t threshold)
+size_t VariationBuilderCommon::countValidExtensions(const AlphaCount64& ac, size_t threshold)
 {
     size_t n = 0;
     for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
@@ -27,7 +27,7 @@ size_t BuilderCommon::countValidExtensions(const AlphaCount64& ac, size_t thresh
 // Filter out low counts in AlphaCount using a coverage threshold
 // relative to the most frequent count. Returns the number of
 // surviving counts
-size_t BuilderCommon::filterLowFrequency(AlphaCount64& ac, double alpha)
+size_t VariationBuilderCommon::filterLowFrequency(AlphaCount64& ac, double alpha)
 {
     size_t n = 0;
     size_t max = ac.getMaxCount();
@@ -49,7 +49,7 @@ size_t BuilderCommon::filterLowFrequency(AlphaCount64& ac, double alpha)
 
 
 // Make a de Bruijn graph string 
-std::string BuilderCommon::makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction)
+std::string VariationBuilderCommon::makeDeBruijnVertex(const std::string& v, char edgeBase, EdgeDir direction)
 {
     std::string w;
     size_t p = v.size() - 1;
@@ -68,7 +68,7 @@ std::string BuilderCommon::makeDeBruijnVertex(const std::string& v, char edgeBas
 
 // Add a de Bruijn graph edge to the given graph betwee pX and pY.
 // Assumes the sequences are from the same strand (not reverse complements)
-void BuilderCommon::addSameStrandDeBruijnEdges(StringGraph* pGraph, const Vertex* pX, const Vertex* pY, EdgeDir direction)
+void VariationBuilderCommon::addSameStrandDeBruijnEdges(StringGraph* pGraph, const Vertex* pX, const Vertex* pY, EdgeDir direction)
 {
     assert(pX->getSeq().length() == pY->getSeq().length());
     

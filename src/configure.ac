@@ -17,6 +17,7 @@ AC_CHECK_HEADER([zlib.h])
 
 # Check for libraries
 AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
+AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [clock_getttime found])], )
 
 # Check for the bamtools library path
 # Bamtools has two different path formats
@@ -94,6 +95,7 @@ AC_CONFIG_FILES([Makefile
 		StringGraph/Makefile
 		Concurrency/Makefile
 		SuffixTools/Makefile
+        GraphDiff/Makefile
         Scaffold/Makefile
 		SGA/Makefile])
 

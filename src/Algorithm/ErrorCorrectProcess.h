@@ -7,7 +7,7 @@
 // ErrorCorrectProcess - Wrapper to perform error correction
 // for a sequence work item
 //
-#ifndef CORRECTROCESS_H
+#ifndef CORRECTPROCESS_H
 #define CORRECTPROCESS_H
 
 #include "Util.h"
@@ -16,13 +16,16 @@
 #include "SequenceWorkItem.h"
 #include "MultiOverlap.h"
 #include "Metrics.h"
-#include "BWTIntervalCache.h"
+#include "BWTIndexSet.h"
+#include "SampledSuffixArray.h"
+#include "multiple_alignment.h"
 
 enum ErrorCorrectAlgorithm
 {
     ECA_HYBRID, // hybrid kmer/overlap correction
     ECA_KMER, // kmer correction
     ECA_OVERLAP, // overlap correction
+    ECA_THREAD // thread the read through a de Bruijn graph
 };
 
 enum ECFlag
@@ -36,13 +39,16 @@ enum ECFlag
 // Parameter object for the error corrector
 struct ErrorCorrectParameters
 {
-    const OverlapAlgorithm* pOverlapper;
-    const BWTIntervalCache* pIntervalCache;
     ErrorCorrectAlgorithm algorithm;
+
+    //
+    const OverlapAlgorithm* pOverlapper;
+    BWTIndexSet indices;
 
     // Overlap-based corrector params
     int minOverlap;
     int numOverlapRounds;
+    double minIdentity;
     int conflictCutoff;
     int depthFilter;
 
@@ -79,10 +85,12 @@ class ErrorCorrectProcess
         ErrorCorrectResult process(const SequenceWorkItem& item);
         ErrorCorrectResult correct(const SequenceWorkItem& item);
 
-    private:
-        
         ErrorCorrectResult kmerCorrection(const SequenceWorkItem& item);
         ErrorCorrectResult overlapCorrection(const SequenceWorkItem& workItem);
+        ErrorCorrectResult overlapCorrectionNew(const SequenceWorkItem& workItem);
+        ErrorCorrectResult threadingCorrection(const SequenceWorkItem& workItem);
+    
+    private:
 
         bool attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence);
 

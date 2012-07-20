@@ -44,5 +44,6 @@ libutil_a_SOURCES = \
         mkqs.h \
         bucketSort.h \
         HashMap.h \
+        Profiler.h \
 		Metrics.h
 

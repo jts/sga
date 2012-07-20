@@ -126,13 +126,13 @@ int StringThreaderNode::getEditDistance() const
 // Returns true if the extension has terminated
 bool StringThreaderNode::hasExtensionTerminated() const
 {
-    return ExtensionDP::isExtensionTerminated(m_alignmentColumns.back(), 5);
+    return ExtensionDP::isExtensionTerminated(m_alignmentColumns.back(), 2);
 }
 
 // Return the best alignment between the string represented by this node and the query
 StringThreaderResult StringThreaderNode::getAlignment() const
 {
-    ExtensionDPAlignment alignment = ExtensionDP::findTrimmedAlignment(m_alignmentColumns.back(), 5);
+    ExtensionDPAlignment alignment = ExtensionDP::findGlocalAlignment(m_alignmentColumns.back());
     StringThreaderResult result;
     result.query_align_length = alignment.query_align_length;
     result.thread =  getFullString().substr(0, alignment.target_align_length);
@@ -167,9 +167,7 @@ StringThreader::StringThreader(const std::string& seed,
                                const std::string* pQuery,
                                int queryAlignmentEnd,
                                int kmer, 
-                               const BWT* pBWT, 
-                               const BWT* pRevBWT) : m_pBWT(pBWT), m_pRevBWT(pRevBWT), 
-                                                     m_kmer(kmer), m_pQuery(pQuery)
+                               const BWT* pBWT) : m_pBWT(pBWT), m_kmer(kmer), m_pQuery(pQuery)
 {
     // Create the root node containing the seed string
     m_pRootNode = new StringThreaderNode(pQuery, NULL);
@@ -305,25 +303,9 @@ void StringThreader::checkTerminated(StringThreaderResultVector& results)
 // Calculate the successors of this node in the implicit deBruijn graph
 StringVector StringThreader::getDeBruijnExtensions(StringThreaderNode* pNode)
 {
-    WARN_ONCE("TODO: Refactor StringThreader to use new deBruijn code");
-
     // Get the last k-1 bases of the node
     std::string pmer = pNode->getSuffix(m_kmer - 1);
-    std::string rc_pmer = reverseComplement(pmer);
-
-    // Get an interval for the p-mer and its reverse complement
-    BWTIntervalPair ip = BWTAlgorithms::findIntervalPair(m_pBWT, m_pRevBWT, pmer);
-    BWTIntervalPair rc_ip = BWTAlgorithms::findIntervalPair(m_pBWT, m_pRevBWT, rc_pmer);
-
-    // Get the extension bases
-    AlphaCount64 extensions;
-    AlphaCount64 rc_extensions;
-    if(ip.interval[1].isValid())
-        extensions += BWTAlgorithms::getExtCount(ip.interval[1], m_pRevBWT);
-    if(rc_ip.interval[1].isValid())
-        rc_extensions = BWTAlgorithms::getExtCount(rc_ip.interval[0], m_pBWT);
-    rc_extensions.complement();
-    extensions += rc_extensions;
+    AlphaCount64 extensions = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(pmer, m_pBWT, ED_SENSE, NULL);
 
     // Loop over the DNA symbols, if there is are more than two characters create a branch
     // otherwise just perform an extension.
@@ -335,7 +317,7 @@ StringVector StringThreader::getDeBruijnExtensions(StringThreaderNode* pNode)
         for(int i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
-            if(extensions.get(b) > 0)
+            if(extensions.get(b) >= 3)
             {
                 // extend to b
                 std::string tmp;
@@ -345,6 +327,5 @@ StringVector StringThreader::getDeBruijnExtensions(StringThreaderNode* pNode)
         }
     }
 
-    // If the node branched, return true so the outer function can remove it from the leaf list
     return out;
 }
