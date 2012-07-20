@@ -117,12 +117,8 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
         CandidateVector::iterator new_end = std::unique(candidates.begin(), candidates.end(), CandidateKmerAlignment::equalByStart);
         candidates.resize(new_end - candidates.begin());
 
-        printf("%zu candidates for alignment\n", candidates.size());
-
         for(size_t j = 0; j < candidates.size(); ++j)
         {
-            printf("Candidate: %zu\n", candidates[j].target_extrapolated_start);
-
             // Extract window around reference
             size_t window_size = 200;
             int ref_start = candidates[j].target_extrapolated_start - window_size;
@@ -139,7 +135,6 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 
             // Align haplotype to the reference
             SequenceOverlap overlap = Overlapper::computeOverlap(query, ref_substring);
-            overlap.printAlignment(query, ref_substring);
 
             // Skip terrible alignments
             double percent_aligned = (double)overlap.getOverlapLength() / query.size();
@@ -169,8 +164,6 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             }
 
 
-            printf("Edits: %d Events: %d\n", overlap.edit_distance, num_events);
-
             HapgenAlignment aln(candidates[j].target_sequence_id, alignment_start, alignment_length, overlap.score, is_reverse);
             tmp_alignments.push_back(aln);
             event_count_vector.push_back(num_events);
@@ -182,8 +175,6 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
     }
 
     // Copy the best alignments into the output
-    printf("Lowest event count: %d\n", min_events);
-
     int MAX_DIFF_TO_BEST = 10;
     int MAX_EVENTS = 8;
     assert(event_count_vector.size() == tmp_alignments.size());
@@ -350,9 +341,9 @@ bool HapgenUtil::checkAlignmentsAreConsistent(const std::string& refString, cons
         if(alignments[i].targetStartPosition != alignments[j].targetStartPosition ||
            alignments[j].targetEndPosition != alignments[j].targetEndPosition)
         {
-            std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
-            std::cerr << "A[" << i << "]: " << alignments[i] << "\n";
-            std::cerr << "A[" << j << "]: " << alignments[j] << "\n";
+            //std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
+            //std::cerr << "A[" << i << "]: " << alignments[i] << "\n";
+            ///std::cerr << "A[" << j << "]: " << alignments[j] << "\n";
             return false;
         }
     }
@@ -451,12 +442,6 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
             else
                 mateIdx -= 1;
             
-            if(mateIdx >= (int64_t)indices.pBWT->getNumStrings())
-            {
-                std::cout << "DEBUG: MATE INDEX OUT OF RANGE\n";
-            }
-
-
             std::stringstream mateName;
             mateName << "idx-" << mateIdx;
             SeqItem mateItem;

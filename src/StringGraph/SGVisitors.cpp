@@ -166,7 +166,7 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
 // Remove all the marked edges
 void SGTransitiveReductionVisitor::postvisit(StringGraph* pGraph)
 {
-    printf("TR marked %d verts and %d edges\n", marked_verts, marked_edges);
+    //printf("TR marked %d verts and %d edges\n", marked_verts, marked_edges);
     pGraph->sweepEdges(GC_BLACK);
     pGraph->setTransitiveFlag(false);
     assert(pGraph->checkColors(GC_WHITE));

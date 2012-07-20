@@ -1899,7 +1899,6 @@ void DindelRealignWindow::algorithm_hmm(VCFVector& out, DindelRealignWindowResul
         if (realignParameters.realignMatePairs)
             result = estimateHaplotypeFrequenciesModelSelectionMatePairs(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, pPreviousResult, true);
 	else {
-            std::cout << "Single read alignment.\n";
             if (realignParameters.multiSample)
                 result = estimateHaplotypeFrequenciesModelSelectionSingleReadsMultiSample(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, pPreviousResult, true);
             else
@@ -4646,7 +4645,7 @@ std::string DindelRealignParameters::getDefaultParameters() const
 
 void DindelRealignParameters::checkAndInit()
 {
-    bool print = true;
+    bool print = false;
     this->minLogLikAlignToAlt=-double(this->maxMappingQuality)*.2302585-log(double(DINDEL_HMM_BANDWIDTH)); // note last term accounts for base prior in HMM.
     this->minLogLikAlignToRef=this->minLogLikAlignToAlt;
     this->addSNPMinLogBaseQual=log(pow(10.0, -this->addSNPMinBaseQual/10.0));

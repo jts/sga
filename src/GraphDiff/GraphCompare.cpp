@@ -68,6 +68,7 @@ void GraphCompareStats::add(const GraphCompareStats& other)
 //
 void GraphCompareStats::print() const
 {
+    /*
     printf("Total attempts: %d\n", numAttempted);
     printf("Total bubbles: %d\n", numBubbles);
     printf("Failed - target branched: %d\n", numTargetBranched);
@@ -81,6 +82,7 @@ void GraphCompareStats::print() const
     printf("Num subs found: %d\n", numSubs);
     printf("Num insertions found: %d\n", numInsertions);
     printf("Num deletions found: %d\n", numDeletions);
+    */
 }
 
 //
@@ -186,7 +188,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                                                                          callsVCFSS);
                 
                 //
-                if(m_parameters.verbose > 0 || 1)
+                if(m_parameters.verbose > 0)
                 {
                     std::cout << "Dindel returned " << drc << "\n";
                     std::cout << "base: " << baseVCFSS.str() << "\n";
@@ -250,9 +252,6 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
     if(num_qc < num_assembled)
         result.variant_haplotypes.clear();
 
-    for(size_t i = 0; i < result.variant_haplotypes.size(); ++i)
-        printf("Assembly[%zu]: %s\n", i, result.variant_haplotypes[i].c_str());
-
     if(!result.variant_haplotypes.empty())
         buildParallelBaseHaplotypes(result.variant_haplotypes, result.base_haplotypes);
     
@@ -273,16 +272,7 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
         // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
         size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.variantIndex);
         size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.baseIndex);
-
-        // Calculate the number of high coverage branches in this haplotype
-        size_t num_branches = calculateHaplotypeBranches(variant_haplotypes[i], 
-                                                         m_parameters.kmer, 
-                                                         m_parameters.minDiscoveryCount,
-                                                         m_parameters.variantIndex);
         
-        //
-        printf("MVK: %zu MBK: %zu NHC: %zu\n", max_variant_k, max_base_k, num_branches);
-
         //
         if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 31)
             temp_haplotypes.push_back(variant_haplotypes[i]);

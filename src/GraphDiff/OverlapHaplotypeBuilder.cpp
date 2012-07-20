@@ -588,10 +588,7 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
     {
         // Skip uncorrected reads
         if(reads[i].empty())
-        {
-            printf("Read %zu could not be corrected\n", i);
             continue;
-        }
 
         // Change the strand of the corrected read back to the same as the query sequence
         std::string incoming = reads[i];
