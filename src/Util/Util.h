@@ -122,6 +122,7 @@ std::string stripAllExtensions(const std::string& filename);
 std::string stripDirectories(const std::string& filename);
 std::string getFileExtension(const std::string& filename);
 bool isGzip(const std::string& filename);
+bool isFastq(const std::string& filename);
 
 // Write out a fasta record
 void writeFastaRecord(std::ostream* pWriter, const std::string& id, const std::string& seq, size_t maxLength = 80);

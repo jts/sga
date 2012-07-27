@@ -357,7 +357,7 @@ void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2
     }
     else
     {
-        bool both_fastq = readsFile1.find(".fastq") != std::string::npos && readsFile2.find(".fastq") != std::string::npos;
+        bool both_fastq = isFastq(readsFile1) && isFastq(readsFile2);
         bool both_gzip = isGzip(readsFile1) && isGzip(readsFile2);
         std::string extension = both_fastq ? ".fastq" : ".fa";
         if(both_gzip)

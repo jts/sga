@@ -250,6 +250,13 @@ bool isGzip(const std::string& filename)
     return extension == GZIP_EXT;
 }
 
+// Returns true if the filename has an extension indicating it is fastq
+bool isFastq(const std::string& filename)
+{
+    return filename.find(".fastq") != std::string::npos || filename.find(".fq") != std::string::npos;
+}
+
+
 // Open a file that may or may not be gzipped for reading
 // The caller is responsible for freeing the handle
 std::istream* createReader(const std::string& filename, std::ios_base::openmode mode)
