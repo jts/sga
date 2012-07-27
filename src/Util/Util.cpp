@@ -191,6 +191,19 @@ std::string stripExtension(const std::string& filename)
         return filename.substr(0, suffixPos);
 }
 
+// Remove all file extensions from the filename
+std::string stripAllExtensions(const std::string& filename)
+{
+    size_t last_directory = filename.find_last_of('/');
+    size_t start = last_directory != std::string::npos ? last_directory : 0;
+    size_t suffixPos = filename.find_first_of('.', start);
+    if(suffixPos == std::string::npos)
+        return filename; // no suffix
+    else
+        return filename.substr(0, suffixPos);
+}
+
+
 // Strip the leadering directories from a filename
 std::string stripDirectories(const std::string& filename)
 {
