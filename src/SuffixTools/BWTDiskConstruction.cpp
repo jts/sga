@@ -282,7 +282,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
                              const std::string& sai_extension, bool doReverse, int numThreads, int storageLevel)
 {
     MergeItem item1;
-    std::string prefix1 = stripExtension(readsFile1);
+    std::string prefix1 = stripAllExtensions(readsFile1);
     item1.reads_filename = readsFile1;
     item1.bwt_filename = makeFilename(prefix1, bwt_extension);
     item1.sai_filename = makeFilename(prefix1, sai_extension);
@@ -290,7 +290,7 @@ void mergeIndependentIndices(const std::string& readsFile1, const std::string& r
     item1.end_index = -1; // this tells merge to read the entire file
 
     MergeItem item2;
-    std::string prefix2 = stripExtension(readsFile2);
+    std::string prefix2 = stripAllExtensions(readsFile2);
     item2.reads_filename = readsFile2;
     item2.bwt_filename = makeFilename(prefix2, bwt_extension);
     item2.sai_filename = makeFilename(prefix2, sai_extension);
@@ -357,7 +357,13 @@ void mergeReadFiles(const std::string& readsFile1, const std::string& readsFile2
     }
     else
     {
-        pWriter = createWriter(makeFilename(outPrefix, ".fa"));
+        bool both_fastq = readsFile1.find(".fastq") != std::string::npos && readsFile2.find(".fastq") != std::string::npos;
+        bool both_gzip = isGzip(readsFile1) && isGzip(readsFile2);
+        std::string extension = both_fastq ? ".fastq" : ".fa";
+        if(both_gzip)
+            extension.append(".gz");
+        std::string out_filename = outPrefix + extension;
+        pWriter = createWriter(out_filename);
 
         // Copy reads1 to the outfile
         SeqReader reader(readsFile1);

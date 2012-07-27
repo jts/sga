@@ -107,8 +107,8 @@ int mergeMain(int argc, char** argv)
 		mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
 	}
     
-    std::string prefix1 = stripExtension(inFiles[0]);
-    std::string prefix2 = stripExtension(inFiles[1]);
+    std::string prefix1 = stripAllExtensions(inFiles[0]);
+    std::string prefix2 = stripAllExtensions(inFiles[1]);
 
     // Skip merging the reverse indices if the reverse bwt file does not exist. 
     std::string rbwt_filename_1 = prefix1 + RBWT_EXT;
