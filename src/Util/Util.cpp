@@ -191,6 +191,19 @@ std::string stripExtension(const std::string& filename)
         return filename.substr(0, suffixPos);
 }
 
+// Remove all file extensions from the filename
+std::string stripAllExtensions(const std::string& filename)
+{
+    size_t last_directory = filename.find_last_of('/');
+    size_t start = last_directory != std::string::npos ? last_directory : 0;
+    size_t suffixPos = filename.find_first_of('.', start);
+    if(suffixPos == std::string::npos)
+        return filename; // no suffix
+    else
+        return filename.substr(0, suffixPos);
+}
+
+
 // Strip the leadering directories from a filename
 std::string stripDirectories(const std::string& filename)
 {
@@ -236,6 +249,13 @@ bool isGzip(const std::string& filename)
     std::string extension = suffix(filename, suffix_length);
     return extension == GZIP_EXT;
 }
+
+// Returns true if the filename has an extension indicating it is fastq
+bool isFastq(const std::string& filename)
+{
+    return filename.find(".fastq") != std::string::npos || filename.find(".fq") != std::string::npos;
+}
+
 
 // Open a file that may or may not be gzipped for reading
 // The caller is responsible for freeing the handle

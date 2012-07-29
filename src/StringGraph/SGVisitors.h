@@ -108,15 +108,6 @@ struct SGSmallRepeatResolveVisitor
     int m_minDiff;
 };
 
-// 
-struct SGErrorCorrectVisitor
-{
-    SGErrorCorrectVisitor() {}
-    void previsit(StringGraph*) {}
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*) {}
-};
-
 // Compute edge summary statistics 
 struct SGEdgeStatsVisitor
 {

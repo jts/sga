@@ -15,6 +15,7 @@
 #include "SACAInducedCopying.h"
 #include "BWTDiskConstruction.h"
 #include "BWT.h"
+#include "PopulationIndex.h"
 
 //
 void removeFiles(const std::string& inFile);
@@ -88,16 +89,16 @@ int mergeMain(int argc, char** argv)
     {
         inFiles.push_back(argv[optind++]);
     }
+
     assert(inFiles.size() == 2);
     if(inFiles[0] == inFiles[1])
         return 0; // avoid self-merge
 
-    std::string prefix1 = stripFilename(inFiles[0]);
-    std::string prefix2 = stripFilename(inFiles[1]);
-
     if(opt::prefix.empty())
     {
-        opt::prefix = prefix1 + "." + prefix2;
+        std::string basename1 = stripFilename(inFiles[0]);
+        std::string basename2 = stripFilename(inFiles[1]);
+        opt::prefix = basename1 + "." + basename2;
     }
 
     // Merge the indices
@@ -105,6 +106,9 @@ int mergeMain(int argc, char** argv)
 	{
 		mergeIndependentIndices(inFiles[0], inFiles[1], opt::prefix, BWT_EXT, SAI_EXT, false, opt::numThreads, opt::gapArrayStorage);
 	}
+    
+    std::string prefix1 = stripAllExtensions(inFiles[0]);
+    std::string prefix2 = stripAllExtensions(inFiles[1]);
 
     // Skip merging the reverse indices if the reverse bwt file does not exist. 
     std::string rbwt_filename_1 = prefix1 + RBWT_EXT;
@@ -125,6 +129,14 @@ int mergeMain(int argc, char** argv)
 	{
 		mergeReadFiles(inFiles[0], inFiles[1], opt::prefix);
 	}
+
+    // Merge any population index files
+    std::string popidx_filename_1 = prefix1 + POPIDX_EXT;
+    std::string popidx_filename_2 = prefix2 + POPIDX_EXT;
+    ret1 = stat(popidx_filename_1.c_str(), &file_s_1);
+    ret2 = stat(popidx_filename_2.c_str(), &file_s_2);
+    if(ret1 == 0 && ret2 == 0)
+        PopulationIndex::mergeIndexFiles(popidx_filename_1, popidx_filename_2, opt::prefix + POPIDX_EXT);
 
     if(opt::bRemove)
     {

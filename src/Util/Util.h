@@ -10,6 +10,7 @@
 #define UTIL_H
 
 #include <vector>
+#include <list>
 #include <string>
 #include <istream>
 #include <fstream>
@@ -41,6 +42,7 @@ typedef std::string ContigID;
 typedef std::vector<int> IntVec;
 typedef std::vector<double> DoubleVec;
 typedef std::vector<std::string> StringVector;
+typedef std::list<std::string> StringList;
 typedef std::vector<Sequence> SequenceVector;
 
 // SeqItem is just an id, sequence pair
@@ -116,9 +118,11 @@ struct SeqRecord
 //
 std::string stripFilename(const std::string& filename);
 std::string stripExtension(const std::string& filename);
+std::string stripAllExtensions(const std::string& filename);
 std::string stripDirectories(const std::string& filename);
 std::string getFileExtension(const std::string& filename);
 bool isGzip(const std::string& filename);
+bool isFastq(const std::string& filename);
 
 // Write out a fasta record
 void writeFastaRecord(std::ostream* pWriter, const std::string& id, const std::string& seq, size_t maxLength = 80);

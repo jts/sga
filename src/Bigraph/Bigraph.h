@@ -49,8 +49,7 @@ class Bigraph
         void addVertex(Vertex* pVert);
         
         // Remove a vertex
-        // removeIslandVertex removes a vertex that is guarenteed to
-        // not have edges
+        // removeIslandVertex removes a vertex that is guarenteed to not have edges
         // removeConnectedVertex removes a (possibly) connected vertex and all the edges to/from it
         void removeIslandVertex(Vertex* pVertex);
         void removeConnectedVertex(Vertex* pVertex);

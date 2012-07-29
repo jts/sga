@@ -161,6 +161,12 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             m_alignData[i].padded.append(1,outSym);
         }
     }
+
+    // replace trailing '.'
+    for(size_t i = 0; i < iterVec.size(); ++i)
+    {
+        for(size_t j = m_alignData[i].padded.size(); j > 0 && m_alignData[i].padded[--j] == '.';) m_alignData[i].padded[j]='-';
+    }
 }
 
 // 
@@ -225,7 +231,7 @@ size_t MultiAlignment::getBaseIdx(size_t rowIdx, size_t colIdx) const
         if(getSymbol(rowIdx, i) == '-')
             padSyms += 1;
     }
-    assert(padSyms < colIdx);
+    assert(padSyms <= colIdx);
     return colIdx - padSyms;
 }
 
@@ -235,7 +241,7 @@ std::string MultiAlignment::getPaddedSubstr(size_t rowIdx, size_t start, size_t 
 {
     assert(rowIdx < m_alignData.size());
     assert(start < m_alignData[rowIdx].padded.size());
-    assert(start + length < m_alignData[rowIdx].padded.size());
+    assert(start + length <= m_alignData[rowIdx].padded.size());
     return m_alignData[rowIdx].padded.substr(start, length);
 }
 
@@ -244,17 +250,24 @@ size_t MultiAlignment::countHomopolymer(size_t rowIdx, int from, int to) const
 {
     assert(rowIdx < m_alignData.size());
     assert(from < (int)m_alignData[rowIdx].padded.size());
-
+    
+    //
     if(to == -1)
         to = m_alignData[rowIdx].padded.size() - 1; // inclusive
 
     // Determine iteration direction
     int step = from <= to ? 1 : -1;
+    
+    // The first or last column of the multiple alignment was requested
+    // This can only be a homopolymer of length 1
+    if(from == (int)m_alignData[rowIdx].padded.size() - 1 || (from == 0 && step < 0))
+        return 1;
 
     // Get the base of the homopolymer
     // If it is a padding symbol we use the next non-padded base in the sequence
-    char b;
-    while(1)
+    char b = '\0';
+    int max_position = (int)m_alignData[rowIdx].padded.size() - 1;
+    while(from >= 0 && from <= max_position)
     {
         b = getSymbol(rowIdx, from);
         if(b == '-')
@@ -267,7 +280,8 @@ size_t MultiAlignment::countHomopolymer(size_t rowIdx, int from, int to) const
     do
     {
         from += step;
-        assert(from >= 0 && from < (int)m_alignData[rowIdx].padded.size());
+        if(from < 0 || from > max_position)
+            return length;
 
         char s = getSymbol(rowIdx, from);
         if(s == '-')
@@ -356,7 +370,40 @@ std::string MultiAlignment::generateMatchString() const
 }
 
 //
-void MultiAlignment::print(int col_size, const std::string* pConsensus) const
+void MultiAlignment::filterByEditDistance(int max_edit_distance)
+{
+    size_t num_rows = m_alignData.size();
+    assert(num_rows > 0);
+    size_t num_cols = m_alignData.front().padded.size();
+    std::vector<bool> keep_vector(num_rows, true);
+    for(size_t i = 1; i < num_rows; ++i)
+    {
+        int current_edit_distance = 0;
+        for(size_t j = 0; j < num_cols; ++j)
+        {
+            char root_symbol = getSymbol(0, j);
+            char seq_symbol = getSymbol(i, j);
+            if(root_symbol != '.' && seq_symbol != '.' && seq_symbol != '-' && root_symbol != seq_symbol)
+                current_edit_distance++;
+        }
+
+        if(current_edit_distance > max_edit_distance)
+            keep_vector[i] = false;
+    }
+
+    MAlignDataVector tmp_ma;
+    for(size_t i = 0; i < num_rows; ++i)
+    {
+        if(keep_vector[i])
+            tmp_ma.push_back(m_alignData[i]);
+    }
+
+    printf("Removed %zu\n", m_alignData.size() - tmp_ma.size());
+    m_alignData.swap(tmp_ma);
+}
+
+//
+void MultiAlignment::print(int col_size, const std::string* pConsensus, bool sorted, bool masked) const
 {
     assert(!m_alignData.empty() && !m_alignData.front().padded.empty());
 
@@ -364,8 +411,9 @@ void MultiAlignment::print(int col_size, const std::string* pConsensus) const
 
     // Create a copy of the m_alignData and sort it by position
     MAlignDataVector sortedAlignments = m_alignData;
-    std::stable_sort(sortedAlignments.begin(), sortedAlignments.end(), MAlignData::sortPosition);
-
+    if(sorted)
+        std::stable_sort(sortedAlignments.begin(), sortedAlignments.end(), MAlignData::sortPosition);
+    col_size = 100000;
     size_t len = sortedAlignments[0].padded.size();
     for(size_t l = 0; l < len; l += col_size)
     {
@@ -386,14 +434,27 @@ void MultiAlignment::print(int col_size, const std::string* pConsensus) const
             const MAlignData& mad = sortedAlignments[i];
             int diff = mad.padded.size() - l;
             int stop = diff < col_size ? diff : col_size;
-            printf("%zu\t%s\t%s\n", i, mad.padded.substr(l, stop).c_str(), mad.name.c_str());
+
+            std::string s = mad.padded.substr(l, stop).c_str();
+            if(masked)
+            {
+                for(size_t j = 0; j < s.size(); ++j)
+                {
+                    // get base row symbol
+                    char rb = getSymbol(0, l + j);
+                    if(s[j] == rb && s[j] != '-')
+                        s[j] = '=';
+                }
+            }
+            
+            printf("%zu\t%s\t%s\n", i, s.c_str(), mad.name.c_str());
         }
     
         // Print the matched columns
         int diff = matchString.size() - l;
         int stop = diff < col_size ? diff : col_size;
+        
         printf("M\t%s\n", matchString.substr(l, stop).c_str());
-
         std::cout << "\n";
     }
 }

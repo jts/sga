@@ -33,8 +33,10 @@ libsuffixtools_a_SOURCES = STCommon.cpp STCommon.h \
                            QuickBWT.h QuickBWT.cpp \
                            SampledSuffixArray.h SampledSuffixArray.cpp \
                            BWTCABauerCoxRosone.h BWTCABauerCoxRosone.cpp \
+                           PopulationIndex.h PopulationIndex.cpp \
                            BWT.h \
                            BWTInterval.h \
+                           BWTIndexSet.h \
                            HitData.h \
                            SparseGapArray.h \
 						   FMMarkers.h \

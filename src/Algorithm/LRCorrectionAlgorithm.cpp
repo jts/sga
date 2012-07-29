@@ -86,7 +86,7 @@ std::string correctAlignmentPartial(const std::string& query,
 // Attempt to correct the sequence via threading through a graph
 std::string correctGraphThread(const std::string& query,
                                const BWT* pTargetBWT, 
-                               const BWT* pRevTargetBWT, 
+                               const BWT* /*pRevTargetBWT*/, 
                                const SampledSuffixArray* pTargetSSA,
                                const LRAlignment::LRParams& params)
 {
@@ -115,7 +115,7 @@ std::string correctGraphThread(const std::string& query,
 
         // Perform the threading for this query seed
         std::string querySeed = query.substr(seedHit.q_start);
-        StringThreader threader(seed, &querySeed, seedHit.q_end, extension_kmer, pTargetBWT, pRevTargetBWT);
+        StringThreader threader(seed, &querySeed, seedHit.q_end, extension_kmer, pTargetBWT);
 
         StringThreaderResultVector results;
         threader.run(results);

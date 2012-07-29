@@ -13,7 +13,7 @@
 #include "SAReader.h"
 #include "SAWriter.h"
 
-static const uint32_t SSA_MAGIC_NUMBER = 77832;
+static const uint32_t SSA_MAGIC_NUMBER = 12412;
 #define SSA_READ(x) pReader->read(reinterpret_cast<char*>(&(x)), sizeof((x)));
 #define SSA_READ_N(x,n) pReader->read(reinterpret_cast<char*>(&(x)), (n));
 
@@ -60,7 +60,8 @@ SAElem SampledSuffixArray::calcSA(int64_t idx, const BWT* pBWT) const
             // idx (before the update) corresponds to the start of a read.
             // We can directly look up the saElem for idx from the lexicographic index
             assert(idx < (int64_t)m_saLexoIndex.size());
-            elem = m_saLexoIndex[idx];
+            elem.setID(m_saLexoIndex[idx]);
+            elem.setPos(0);
             break;
         }
         else
@@ -77,7 +78,7 @@ SAElem SampledSuffixArray::calcSA(int64_t idx, const BWT* pBWT) const
 // Returns the ID of the read with lexicographic rank r
 size_t SampledSuffixArray::lookupLexoRank(size_t r) const
 {
-    return m_saLexoIndex[r].getID();
+    return m_saLexoIndex[r];
 }
 
 // 
@@ -87,6 +88,15 @@ void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int s
 
     size_t numStrings = pRIT->getCount();
     m_saLexoIndex.resize(numStrings);
+
+    size_t MAX_ELEMS = std::numeric_limits<SSA_INT_TYPE>::max();
+    if(numStrings > MAX_ELEMS)
+    {
+        std::cerr << "Error: Only " << MAX_ELEMS << " reads are allowed in the sampled suffix array\n";
+        std::cerr << "Number of reads in your index: " << numStrings << "\n";
+        std::cerr << "Contact sga-users@googlegroups.com for help\n";
+        exit(EXIT_FAILURE);
+    }
 
     // Set the size of the sampled vector
     size_t numElems = (pBWT->getBWLen() / m_sampleRate) + 1;
@@ -123,8 +133,11 @@ void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int s
                 // in the lexicographic index
                 if(elem.getPos() != 0)
                     std::cout << "elem: " << elem << " i: " << i << "\n";
+
                 assert(elem.getPos() == 0);
-                m_saLexoIndex[idx] = elem;
+                size_t id = elem.getID();
+                assert(id < MAX_ELEMS);
+                m_saLexoIndex[idx] = id;
                 break; // done;
             }
             else
@@ -133,6 +146,59 @@ void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int s
                 elem.setPos(elem.getPos() - 1);
             }
         }
+    }
+}
+
+// A streamlined version of the above functions, which does not require the reads to be 
+// stored in a table
+void SampledSuffixArray::buildLexicoIndex(const BWT* pBWT, const std::string& filename)
+{
+    size_t numStrings = pBWT->getNumStrings();
+    m_saLexoIndex.resize(numStrings);
+    
+    size_t MAX_ELEMS = std::numeric_limits<SSA_INT_TYPE>::max();
+
+    // Read each sequence and calculate its rank
+    SeqReader reader(filename);
+    SeqRecord record;
+    size_t read_idx = 0;
+    while(reader.get(record)) 
+    {
+        // For each read, start from the end of the read and backtrack through the suffix array/BWT
+        // to calculate its lexicographic rank in the collection
+        size_t idx = read_idx;
+
+        // The position coordinate is inclusive but 
+        // since the read information table does not store the '$' symbol
+        // the starting position equals the read length
+        SAElem elem(read_idx, record.seq.length());
+
+        while(1)
+        {
+            char b = pBWT->getChar(idx);
+            idx = pBWT->getPC(b) + pBWT->getOcc(b, idx - 1);
+            if(b != '$')
+            {
+                // Decrease the position of the elem
+                elem.setPos(elem.getPos() - 1);
+            }
+            else
+            {
+                // we have hit the beginning of this string
+                // store the SAElem for the beginning of the read
+                // in the lexicographic index
+                if(elem.getPos() != 0)
+                    std::cout << "elem: " << elem << " i: " << read_idx << "\n";
+
+                assert(elem.getPos() == 0);
+                size_t id = elem.getID();
+                assert(id < MAX_ELEMS);
+                m_saLexoIndex[idx] = id;
+                break; // done;
+            }
+        }
+
+        read_idx += 1;
     }
 }
 
@@ -179,7 +245,7 @@ void SampledSuffixArray::writeSSA(std::string filename)
     SSA_WRITE(n)
 
     // Write lexo index
-    SSA_WRITE_N(m_saLexoIndex.front(), sizeof(SAElem) * n)
+    SSA_WRITE_N(m_saLexoIndex.front(), sizeof(SSA_INT_TYPE) * n)
     
     // Write number of samples
     n = m_saSamples.size();
@@ -197,8 +263,11 @@ void SampledSuffixArray::writeLexicoIndex(const std::string& filename)
     SAWriter writer(filename);
     size_t num_strings = m_saLexoIndex.size();
     writer.writeHeader(num_strings, num_strings);
-    for(size_t i = 0; i < m_saLexoIndex.size(); ++i)
-        writer.writeElem(m_saLexoIndex[i]);
+    for(size_t i = 0; i < m_saLexoIndex.size(); ++i) 
+    {
+        SAElem elem(m_saLexoIndex[i], 0);
+        writer.writeElem(elem);
+    }
 }
 
 
@@ -220,7 +289,7 @@ void SampledSuffixArray::readSSA(std::string filename)
     m_saLexoIndex.resize(n);
 
     // Read lexo index
-    SSA_READ_N(m_saLexoIndex.front(), sizeof(SAElem) * n)
+    SSA_READ_N(m_saLexoIndex.front(), sizeof(SSA_INT_TYPE) * n)
     
     // Read number of samples
     n = 0;
@@ -247,10 +316,10 @@ void SampledSuffixArray::readSAI(std::string filename)
 }
 
 // Print memory usage information
-void SampledSuffixArray::printInfo()
+void SampledSuffixArray::printInfo() const
 {
     double mb = (double)(1024*1024);
-    double lexoSize = (double)(sizeof(SAElem) * m_saLexoIndex.capacity()) / mb;
+    double lexoSize = (double)(sizeof(SSA_INT_TYPE) * m_saLexoIndex.capacity()) / mb;
     double sampleSize = (double)(sizeof(SAElem) * m_saSamples.capacity()) / mb;
     
     printf("SampledSuffixArray info:\n");

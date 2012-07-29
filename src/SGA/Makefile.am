@@ -9,10 +9,12 @@ sga_CPPFLAGS = \
 	-I$(top_srcdir)/Algorithm \
 	-I$(top_srcdir)/SQG \
 	-I$(top_srcdir)/Scaffold \
+	-I$(top_srcdir)/GraphDiff \
 	-I$(top_srcdir)/Thirdparty
 
 sga_LDADD = \
 	$(top_builddir)/Scaffold/libscaffold.a \
+	$(top_builddir)/GraphDiff/libgraphdiff.a \
     $(top_builddir)/StringGraph/libstringgraph.a \
 	$(top_builddir)/Concurrency/libconcurrency.a \
     $(top_builddir)/Algorithm/libalgorithm.a \
@@ -53,5 +55,6 @@ sga_SOURCES = sga.cpp \
               hapgen.h hapgen.cpp \
               gapfill.h gapfill.cpp \
               metagenome.h metagenome.cpp \
+              variant-detectability.h variant-detectability.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

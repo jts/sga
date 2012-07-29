@@ -36,6 +36,8 @@ class BitVector
         void set(size_t i, bool v);
         bool test(size_t i) const;
 
+        size_t capacity() const { return m_data.size() * 8; }
+
     private:
 
         void initializeMutex();

@@ -141,7 +141,6 @@ void assemble()
     SGBubbleEdgeVisitor bubbleEdgeVisit;
 
     SGContainRemoveVisitor containVisit;
-    SGErrorCorrectVisitor errorCorrectVisit;
     SGValidateStructureVisitor validationVisit;
 
     // Pre-assembly graph stats

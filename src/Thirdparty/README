@@ -9,4 +9,6 @@ and the original download link is: http://www.cs.unc.edu/Research/compgeom/gzstr
 This code was originally released under the LGPL v2.1. I have converted the license to GPLv3 
 which is allowed by section 3 of the LGPL. The source files have been modified to reflect this change.
 
-stdaln.h/.c - banded dynamic programming functions developed by Heng Li. Originally licensed under the MIT license.
+stdaln.h/.c - banded dynamic programming functions developed by Heng Li. Uses the MIT license.
+
+overlapper*/multiple_alignment* - My personal directory of code shared over multiple projects. Uses the MIT license.

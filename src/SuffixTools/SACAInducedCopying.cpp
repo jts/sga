@@ -67,6 +67,8 @@ void saca_induced_copying(SuffixArray* pSA, const ReadTable* pRT, int numThreads
     countBuckets(pRT, bucket_counts, ALPHABET_SIZE);
     getBuckets(bucket_counts, buckets, ALPHABET_SIZE, true); 
 
+    std::cout << "initializing SA\n";
+
     // Initialize the suffix array
     size_t num_suffixes = buckets[ALPHABET_SIZE - 1];
     pSA->initialize(num_suffixes, pRT->getCount());

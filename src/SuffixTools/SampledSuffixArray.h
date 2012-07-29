@@ -16,6 +16,8 @@
 #include "BWT.h"
 #include "ReadInfoTable.h"
 
+typedef uint32_t SSA_INT_TYPE;
+
 enum SSAFileType
 {
     SSA_FT_SSA,
@@ -38,9 +40,12 @@ class SampledSuffixArray
         // Construct the sampled SA using the bwt of a set of reads and their lengths
         void build(const BWT* pBWT, const ReadInfoTable* pRIT, int sampleRate = DEFAULT_SA_SAMPLE_RATE);
 
+        // Construct the lexicographic index (.sai) from the BWT and the reads in a file
+        void buildLexicoIndex(const BWT* pBWT, const std::string& filename);
+
         // Validate using the full suffix array for the given set of reads. Very slow.
         void validate(std::string readsFile, const BWT* pBWT);
-        void printInfo();
+        void printInfo() const;
 
         // I/O
         void writeLexicoIndex(const std::string& filename);
@@ -50,11 +55,16 @@ class SampledSuffixArray
 
     private:
 
-        // SAElems indicating the start of every read in the
+        // Unsigned integers indicating the start of every read in the
         // sequence collection. These elements are in lexicographic order
         // based on the whole read sequence. Tracing a read backwards through
-        // the suffix array necessarily ends at one of these positions.
-        SAElemVector m_saLexoIndex;
+        // the suffix array necessarily ends at one of these positions. These
+        // are nominally SAElems representing the full length suffix but
+        // we store them here as unsigned integers to save 4 bytes per entry.
+        // This limits the SampledSuffixArray to represent at most 2**32 strings.
+        // To improve this we could use a polymorphic vector with a runtime-determined
+        // size.
+        std::vector<SSA_INT_TYPE> m_saLexoIndex;
 
         static const int DEFAULT_SA_SAMPLE_RATE = 64;
         int m_sampleRate;

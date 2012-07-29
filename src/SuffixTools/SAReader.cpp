@@ -70,6 +70,37 @@ void SAReader::readElems(SAElemVector& elemVector)
     m_stage = SAIOS_DONE;
 }
 
+//
+void SAReader::readElems(std::vector<uint32_t>& outVector)
+{
+    assert(m_stage == SAIOS_ELEM);
+    size_t cap = outVector.capacity();
+    size_t num_read = 0;
+    size_t MAX_ELEMS = std::numeric_limits<uint32_t>::max();
+
+    SAElem e;
+    while(*m_pReader >> e)
+    {
+        size_t index = e.getID();
+        size_t pos = e.getPos();
+        assert(pos == 0);
+
+        // Ensure this index is representable by the collection
+        if(index > MAX_ELEMS)
+        {
+            std::cerr << "Error: Only " << MAX_ELEMS << " reads are allowed in this program\n";
+            std::cerr << "Found read with index " << index << "\n";
+            std::cerr << "Contact sga-users@googlegroups.com for help\n";
+            exit(EXIT_FAILURE);
+        }
+        outVector.push_back(index);
+        ++num_read;
+    }
+    assert(cap >= num_read);
+    (void)cap;
+    m_stage = SAIOS_DONE;
+}
+
 SAElem SAReader::readElem()
 {
     assert(m_stage == SAIOS_ELEM);

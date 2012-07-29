@@ -13,11 +13,10 @@
 #include "BWTInterval.h"
 #include "SGUtil.h"
 #include "SGWalk.h"
-#include "VariationBubbleBuilder.h"
+#include "VariationBuilderCommon.h"
 #include <queue>
 
 // Structs
-
 struct AnchorSequence
 {
     std::string sequence;
@@ -32,12 +31,13 @@ struct AnchorSequence
 };
 typedef std::vector<AnchorSequence> AnchorVector;
 
-// The actual result structure
+// The result, a set of haplotypes
 struct HaplotypeBuilderResult
 {
     StringVector haplotypes;
 };
 
+// Return codes to indicate why the process may have failed
 enum HaplotypeBuilderReturnCode
 {
     HBRC_OK,

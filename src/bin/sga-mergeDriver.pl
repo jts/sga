@@ -30,7 +30,7 @@ my $finalName = "final";
 # In optimize time mode, we load the larger of the two into memory
 my $MODE_OPT_MEMORY = 0;
 my $MODE_OPT_TIME = 1;
-my $mode = $MODE_OPT_MEMORY;
+my $mode = $MODE_OPT_TIME;
 
 my $finalParam = "";
 if($n == 2)

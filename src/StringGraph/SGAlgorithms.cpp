@@ -8,7 +8,6 @@
 //
 #include "SGAlgorithms.h"
 #include "SGUtil.h"
-#include "ErrorCorrect.h"
 #include "CompleteOverlapSet.h"
 #include "RemovalAlgorithm.h"
 #include <iterator>

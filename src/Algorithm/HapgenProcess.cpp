@@ -19,13 +19,15 @@
 //
 //
 //
-HapgenProcess::HapgenProcess(const HapgenParameters& params) : m_parameters(params)
+HapgenProcess::HapgenProcess(const HapgenParameters& params) : m_parameters(params), m_vcfFile(params.vcfOutfile,"w")
 {
+
 }
 
 //
 HapgenProcess::~HapgenProcess()
 {
+
 }
 
 void HapgenProcess::processSite(const std::string& refName, size_t start, size_t end, const std::string& comment)
@@ -97,22 +99,36 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
     extractHaplotypeReads(result.haplotypes, false, &reads, &readMates);
     extractHaplotypeReads(result.haplotypes, true, &rcReads, &rcReadMates);
 
-    if(m_parameters.verbose > 0)
+    // FIXME
+    double mappingQual = 40.0;
+    int fixedBaseQual = 20;
+
+    // make a vector of Dindel reads
+    std::vector<DindelRead> dReads;
+    for(size_t i = 0; i < reads.size(); ++i) dReads.push_back(DindelRead(reads[i],std::string("SAMPLE"), mappingQual, fixedBaseQual, true ));
+    for(size_t i = 0; i < rcReads.size(); ++i)
     {
-        printf("Found %zu reads matching a kmer with a haplotype\n", reads.size());
-        printf("Found %zu reads matching a reverse-complement kmer with a haplotype\n", rcReads.size());
-        
-        if(!result.haplotypes.empty())
-        {
-            std::cout << "Printing multi alignments of forward reads to haplotype 0\n";
-            SeqItemVector readPlusHap;
-            SeqItem hsi = { "haplotype-0", result.haplotypes[0] };
-            readPlusHap.push_back(hsi);
-            readPlusHap.insert(readPlusHap.end(), reads.begin(), reads.end());
-            MultiAlignment readAlignment = MultiAlignmentTools::alignSequencesLocal(readPlusHap);
-            readAlignment.print();
-        }            
+        rcReads[i].seq.reverseComplement();
+        dReads.push_back(DindelRead(rcReads[i],std::string("SAMPLE"), mappingQual, fixedBaseQual, false ));
     }
+    // create Dindel window
+
+    std::string dindelRef = refSubstring;
+    int dindelRefStart = int(refStart);
+    std::vector<DindelReferenceMapping> dRefMappings;
+
+    // FIXME Set haplotype mapping quality properly
+    DindelReferenceMapping dRefMapping(refName, dindelRef, dindelRefStart, 100.0, false);
+    dRefMappings.push_back(dRefMapping);
+
+    DindelWindow dWindow(result.haplotypes, dRefMappings);
+
+    DindelRealignParameters dRealignParameters;
+    DindelRealignWindow dRealignWindow(&dWindow, dReads, dRealignParameters);
+
+    assert(false);
+//    dRealignWindow.run("hmm", m_vcfFile.getOutputStream());
+
 
     if(m_parameters.verbose > 0)
     {
@@ -174,6 +190,8 @@ AnchorSequence HapgenProcess::findAnchorKmer(const std::string& refName, int64_t
 void HapgenProcess::extractHaplotypeReads(const StringVector& haplotypes, bool doReverseComp, 
                                          SeqItemVector* pOutReads, SeqItemVector* pOutMates) const
 {
+    WARN_ONCE("HapgenProcess::extractHaplotypeReads is depracated")
+    assert(false);
     // Extract the set of reads that have at least one kmer shared with these haplotypes
     // This is a bit of a roundabout procedure with a few steps:
     // 1) extract all the kmers in the haplotypes
