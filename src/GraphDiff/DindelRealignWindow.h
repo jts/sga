@@ -170,7 +170,7 @@ class DindelRead
         bool isUnmapped() const {  return false; } //FIXME
         bool mateIsUnmapped() const { assert(false); return false; } //FIXME
         char getBase(int b) const { return m_seqItem.seq.get(size_t(b)); }
-        int getQual(int b) const { b=1; return m_fixedBaseQual; }
+        int getQual(int /*b*/) const { return m_fixedBaseQual; }
         int length() const { return int(m_seqItem.seq.length()); }
         
         //BAM const bam1_t *getBam() const { return bam; }
