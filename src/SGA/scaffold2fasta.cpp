@@ -232,7 +232,7 @@ void parseScaffold2fastaOptions(int argc, char** argv)
 
     if (die) 
     {
-        std::cerr << "Try `" << SUBPROGRAM << " --help' for more information.\n";
+        std::cout << "\n" << SCAFFOLD2FASTA_USAGE_MESSAGE;
         exit(EXIT_FAILURE);
     }
 
