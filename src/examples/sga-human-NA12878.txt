@@ -59,7 +59,7 @@ sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
 sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
 
 # Rename intermediate files to have a shorter name
-N=0; for i in `ls *.fa*`; do sga-rename.pl $i merged.$N; N=$(($N+1)); done
+N=0; for i in `ls *.fa`; do sga-rename.pl $i merged.$N; N=$(($N+1)); done
 
 # Merge round 4
 sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 16G
@@ -122,7 +122,7 @@ sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
 sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 8G
 
 # Rename intermediate files to have a shorter name
-N=0; for i in `ls *.fa*`; do sga-rename.pl $i merged.$N; N=$(($N+1)); done
+N=0; for i in `ls *.fa`; do sga-rename.pl $i merged.$N; N=$(($N+1)); done
 
 # Merge round 4
 sga-mergeDriver.pl -t 8 *.fa | submit --cpu 8 --mem 16G

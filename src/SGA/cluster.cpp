@@ -331,7 +331,7 @@ void parseClusterOptions(int argc, char** argv)
 
     if (die) 
     {
-        std::cerr << "Try `" << SUBPROGRAM << " --help' for more information.\n";
+        std::cout << "\n" << CLUSTER_USAGE_MESSAGE;
         exit(EXIT_FAILURE);
     }
     
