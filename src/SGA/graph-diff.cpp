@@ -135,7 +135,7 @@ int graphDiffMain(int argc, char** argv)
     parseGraphDiffOptions(argc, argv);
 
     // Create indices for the variant reads
-    std::string variantPrefix = stripAllExtensions(opt::variantFile);
+    std::string variantPrefix = stripGzippedExtension(opt::variantFile);
 
     // Use debug index prefix if specified
     if(!opt::indexPrefix.empty())

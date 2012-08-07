@@ -118,7 +118,7 @@ struct SeqRecord
 //
 std::string stripFilename(const std::string& filename);
 std::string stripExtension(const std::string& filename);
-std::string stripAllExtensions(const std::string& filename);
+std::string stripGzippedExtension(const std::string& filename);
 std::string stripDirectories(const std::string& filename);
 std::string getFileExtension(const std::string& filename);
 bool isGzip(const std::string& filename);
