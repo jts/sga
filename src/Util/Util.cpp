@@ -386,6 +386,10 @@ std::string getPairID(const std::string& id)
         pid[li] = '2';
     else if(last == '2')
         pid[li] = '1';
+    else if(last == 'f')
+        pid[li] = 'r';
+    else if(last == 'r')
+        pid[li] = 'f';
     else
         pid = "";
     return pid;
@@ -396,9 +400,9 @@ int getPairIndex(const std::string& id)
 {
     size_t li = id.length() - 1;
     char last = id[li];
-    if(last == 'A' || last == '1')
+    if(last == 'A' || last == '1' || last == 'f')
         return 0;
-    else if(last == 'B' || last == '2')
+    else if(last == 'B' || last == '2' || last == 'r')
         return 1;
     else
     {
