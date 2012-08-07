@@ -345,17 +345,6 @@ void runDebug(GraphCompareParameters& parameters)
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(parameters.variantIndex.pBWT->getBWLen());
 
-    // This call can throw via dindel
-    GraphCompareAggregateResults* pSharedResults;
-    try {
-        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix);
-    }
-    catch(std::string e)
-    {
-        std::cout << "Exception: " << e << "\n";
-        exit(EXIT_FAILURE);
-    }
-
     // Set the bit vector
     parameters.pBitVector = pSharedBitVector;
 

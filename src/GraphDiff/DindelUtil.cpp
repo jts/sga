@@ -65,7 +65,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
     // Join each haplotype with flanking sequence from the reference genome for each alignment
     // This function also adds a haplotype (with flanking sequence) for the piece of the reference
-    bool success = true;
     int FLANKING_SIZE = 0;
     if (parameters.dindelRealignParameters.realignMatePairs)
         FLANKING_SIZE = 1000;
@@ -79,12 +78,12 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     for(size_t i = 0; i < candidateAlignments.size(); ++i)
     {
         // FIXME. Maybe should use only inHaplotypes[i]???
-        success = HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i],
-                                                     parameters.pRefTable,
-                                                     FLANKING_SIZE,
-                                                     inHaplotypes,
-                                                     flankingHaplotypes,
-                                                     candidateHaplotypes);
+        HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i],
+                                           parameters.pRefTable,
+                                           FLANKING_SIZE,
+                                           inHaplotypes,
+                                           flankingHaplotypes,
+                                           candidateHaplotypes);
     
     }
 
