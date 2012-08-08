@@ -31,6 +31,7 @@ libutil_a_SOURCES = \
         MultiAlignment.h MultiAlignment.cpp \
 		StdAlnTools.h StdAlnTools.cpp \
         VCFUtil.h VCFUtil.cpp \
+        QualityTable.h QualityTable.cpp \
         Timer.h \
         EncodedString.h \
         DNACodec.h \
@@ -39,6 +40,7 @@ libutil_a_SOURCES = \
         BWTCodec.h \
         DNACodec.h \
         NoCodec.h \
+        QualityCodec.h \
         SimpleAllocator.h \
         SimplePool.h \
         mkqs.h \

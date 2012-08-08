@@ -22,6 +22,7 @@
 #include "GraphCompare.h"
 #include "VCFTester.h"
 #include "DindelRealignWindow.h"
+#include "QualityTable.h"
 #include "graph-diff.h"
 
 // Functions
@@ -133,6 +134,9 @@ static const struct option longopts[] = {
 int graphDiffMain(int argc, char** argv)
 {
     parseGraphDiffOptions(argc, argv);
+
+    QualityTable qualityTable(opt::variantFile);
+    qualityTable.printSize();
 
     // Create indices for the variant reads
     std::string variantPrefix = stripGzippedExtension(opt::variantFile);
