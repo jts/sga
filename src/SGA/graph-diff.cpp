@@ -221,6 +221,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.maxDiscoveryCount = opt::maxDiscoveryCount;
     sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
+    sharedParameters.verbose = opt::verbose;
 
     if (opt::lowCoverage)
         sharedParameters.dindelRealignParameters.multiSample = 1;
