@@ -32,6 +32,13 @@ HapgenProcess::~HapgenProcess()
 
 void HapgenProcess::processSite(const std::string& refName, size_t start, size_t end, const std::string& comment)
 {
+    assert(false);
+    (void)refName;
+    (void)start;
+    (void)end;
+    (void)comment;
+#if 0
+
     if(m_parameters.verbose > 0)
         std::cout << "\nProcessing " << refName << " [" << start << " " << end << "] " << comment << "\n";
 
@@ -146,6 +153,7 @@ void HapgenProcess::processSite(const std::string& refName, size_t start, size_t
             std::cout << "  result(rc): " << rcLocalResult << "\n";
         }
     }
+#endif
 }
 
 // Returns the closest kmer to the provided position with occurrence count greater than the passed in threshold
@@ -185,78 +193,3 @@ AnchorSequence HapgenProcess::findAnchorKmer(const std::string& refName, int64_t
     anchor.count = -1;
     return anchor;
 }
-
-// Extract the reads from the FM-index that share a kmer with any given haplotype
-void HapgenProcess::extractHaplotypeReads(const StringVector& haplotypes, bool doReverseComp, 
-                                         SeqItemVector* pOutReads, SeqItemVector* pOutMates) const
-{
-    WARN_ONCE("HapgenProcess::extractHaplotypeReads is depracated")
-    assert(false);
-    // Extract the set of reads that have at least one kmer shared with these haplotypes
-    // This is a bit of a roundabout procedure with a few steps:
-    // 1) extract all the kmers in the haplotypes
-    // 2) find the intervals for the kmers in the fm-index
-    // 3) compute the set of read indices of the reads from the intervals (using the sampled suffix array)
-    // 4) finally, extract the read sequences from the index
-
-    // Make a set of kmers from the haplotypes
-    std::set<std::string> kmerSet;
-    for(size_t i = 0; i < haplotypes.size(); ++i)
-    {
-        const std::string& h = haplotypes[i];
-        for(size_t j = 0; j < h.size() - m_parameters.kmer + 1; ++j)
-        {
-            std::string ks = h.substr(j, m_parameters.kmer);
-            if(doReverseComp)
-                ks = reverseComplement(ks);
-            kmerSet.insert(ks);
-        }
-    }
-
-    // Compute the set of reads ids 
-    std::set<int64_t> readIndices;
-    for(std::set<std::string>::const_iterator iter = kmerSet.begin(); iter != kmerSet.end(); ++iter)
-    {
-        BWTInterval interval = BWTAlgorithms::findIntervalWithCache(m_parameters.pBWT, m_parameters.pBWTCache, *iter);
-        for(int64_t j = interval.lower; j <= interval.upper; ++j)
-        {
-            // Get index from sampled suffix array
-            SAElem elem = m_parameters.pSSA->calcSA(j, m_parameters.pBWT);
-            readIndices.insert(elem.getID());
-        }
-    }
-
-    for(std::set<int64_t>::const_iterator iter = readIndices.begin(); iter != readIndices.end(); ++iter)
-    {
-        int64_t idx = *iter;
-        
-        // Extract the read
-        std::stringstream namer;
-        namer << "idx-" << idx;
-        SeqItem item;
-        item.id = namer.str();
-        item.seq = BWTAlgorithms::extractString(m_parameters.pBWT, idx);
-        pOutReads->push_back(item);
-
-        // Optionally extract its mate
-        // If the index is constructed properly, 
-        // paired reads are in adjacent indices with the
-        // first read at even indices
-        if(pOutMates != NULL)
-        {
-            int64_t mateIdx = idx;
-            if(idx % 2 == 0)
-                mateIdx += 1;
-            else
-                mateIdx -= 1;
-
-            std::stringstream mateName;
-            mateName << "idx-" << mateIdx;
-            SeqItem mateItem;
-            mateItem.id = mateName.str();
-            mateItem.seq = BWTAlgorithms::extractString(m_parameters.pBWT, idx);
-            pOutMates->push_back(mateItem);
-        }
-    }
-}
-

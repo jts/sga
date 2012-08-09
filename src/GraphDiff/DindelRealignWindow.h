@@ -149,13 +149,13 @@ class DindelRead
     public:
 
         // Constructor
-        DindelRead(const SeqItem & seqItem, const SampleName & sampleName, double mappingQual, int fixedBaseQual, bool isForward);
+        DindelRead(const SeqRecord & seqRecord, const SampleName & sampleName, double mappingQual, bool isForward);
 
         // Functions
 
-        const std::string  getSequence() const { return m_seqItem.seq.toString(); }
+        const std::string  getSequence() const { return m_seqRecord.seq.toString(); }
         const std::vector<double> getBaseQuals() const;
-        const std::string getID() const { return m_seqItem.id; }
+        const std::string getID() const { return m_seqRecord.id; }
         double getMappingQual() const { return m_mappingQual; } //return double(bam->core.qual); }
         double getLogProbNotMapping() const { return m_mappingQual*0.23026; }
         bool isForward() const { return m_isForward; } //FIXME
@@ -169,9 +169,9 @@ class DindelRead
         
         bool isUnmapped() const {  return false; } //FIXME
         bool mateIsUnmapped() const { assert(false); return false; } //FIXME
-        char getBase(int b) const { return m_seqItem.seq.get(size_t(b)); }
-        int getQual(int /*b*/) const { return m_fixedBaseQual; }
-        int length() const { return int(m_seqItem.seq.length()); }
+        char getBase(int b) const { return m_seqRecord.seq.get(size_t(b)); }
+        int getQual(int b) const { assert((size_t)b < m_seqRecord.qual.length()); return Quality::char2phred(m_seqRecord.qual[b]); }
+        int length() const { return int(m_seqRecord.seq.length()); }
         
         //BAM const bam1_t *getBam() const { return bam; }
 
@@ -192,10 +192,9 @@ class DindelRead
         //BAM const bam1_t *bam;
         //BAM const DindelBAM *m_pDindelBAM;
         double m_mappingQual;
-        int m_fixedBaseQual;
         bool m_rcRead, m_isForward, m_setupHash; // reverse-complement the read. Intended for unmapped reads. Determined using the status of the mate.
         SampleName m_sampleName;
-        SeqItem m_seqItem;
+        SeqRecord m_seqRecord;
         
         std::vector<unsigned int> m_hashKeys; // stores hashes for the read
 

@@ -149,10 +149,9 @@ std::vector<std::string> SplitString(const std::string & str, char sep)
  *
  */
 
-DindelRead::DindelRead(const SeqItem & seqItem, const SampleName & sampleName, double mappingQual, int fixedBaseQual, bool isForward) : m_seqItem(seqItem)
+DindelRead::DindelRead(const SeqRecord & seqRecord, const SampleName & sampleName, double mappingQual, bool isForward) : m_seqRecord(seqRecord)
 {
     m_mappingQual = mappingQual;
-    m_fixedBaseQual = fixedBaseQual;
     m_rcRead = false;
     m_sampleName = sampleName;
     m_setupHash = false;

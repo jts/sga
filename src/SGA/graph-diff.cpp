@@ -78,7 +78,7 @@ PACKAGE_NAME "::" SUBPROGRAM;
 
 namespace opt
 {
-    static unsigned int verbose;
+    static unsigned int verbose = 0;
     static int numThreads = 1;
     static int cacheLength = 10;
     static int sampleRate = 128;
@@ -93,6 +93,7 @@ namespace opt
     static bool lowCoverage = false;
 
     static bool referenceMode = false;
+    static bool useQualityScores = true;
     static std::string outPrefix = "graphdiff";
     static std::string indexPrefix;
     static std::string debugFile;
@@ -135,9 +136,6 @@ int graphDiffMain(int argc, char** argv)
 {
     parseGraphDiffOptions(argc, argv);
 
-    QualityTable qualityTable(opt::variantFile);
-    qualityTable.printSize();
-
     // Create indices for the variant reads
     std::string variantPrefix = stripGzippedExtension(opt::variantFile);
 
@@ -156,6 +154,8 @@ int graphDiffMain(int argc, char** argv)
     variantIndex.pCache = new BWTIntervalCache(opt::cacheLength, variantIndex.pBWT);
     if(opt::lowCoverage)
         variantIndex.pPopIdx = new PopulationIndex(variantPrefix + POPIDX_EXT);
+    if(opt::useQualityScores)
+        variantIndex.pQualityTable = new QualityTable(opt::variantFile);
 
     // Reference genome
     BWTIndexSet referenceIndex;
@@ -173,6 +173,10 @@ int graphDiffMain(int argc, char** argv)
         baseIndex.pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
         baseIndex.pSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
         baseIndex.pCache = new BWTIntervalCache(opt::cacheLength, baseIndex.pBWT);
+
+        if(opt::useQualityScores)
+            baseIndex.pQualityTable = new QualityTable(opt::baseFile);
+
     }
     else
     {
@@ -190,6 +194,7 @@ int graphDiffMain(int argc, char** argv)
     std::cout << "Variant index memory info\n";
     variantIndex.pBWT->printInfo();
     variantIndex.pSSA->printInfo();
+    variantIndex.pQualityTable->printSize();
 
     //
     std::cout << "Reference index memory info\n";
@@ -239,6 +244,9 @@ int graphDiffMain(int argc, char** argv)
         delete baseIndex.pBWT;
         delete baseIndex.pSSA;
         delete baseIndex.pCache;
+
+        if(opt::useQualityScores)
+            delete baseIndex.pQualityTable;
     }
 
     // Cleanup indices
@@ -247,6 +255,8 @@ int graphDiffMain(int argc, char** argv)
     delete variantIndex.pCache;
     if(opt::lowCoverage)
         delete variantIndex.pPopIdx;
+    if(opt::useQualityScores)
+        delete variantIndex.pQualityTable;
 
     delete referenceIndex.pBWT;
     delete referenceIndex.pSSA;

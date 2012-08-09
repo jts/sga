@@ -359,8 +359,8 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
                                        int k,
                                        bool doReverse,
                                        size_t maxReads,
-                                       SeqItemVector* pOutReads, 
-                                       SeqItemVector* pOutMates)
+                                       SeqRecordVector* pOutReads, 
+                                       SeqRecordVector* pOutMates)
 {
     // Skip repetitive kmers with more than this many occurrences
     int64_t SKIP_INTERVAL_SIZE = 500;
@@ -424,11 +424,15 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
         // Extract the read
         std::stringstream namer;
         namer << "idx-" << idx;
-        SeqItem item;
-        item.id = namer.str();
-        item.seq = BWTAlgorithms::extractString(indices.pBWT, idx);
-        if(!item.seq.empty())
-            pOutReads->push_back(item);
+        SeqRecord record;
+        record.id = namer.str();
+        record.seq = BWTAlgorithms::extractString(indices.pBWT, idx);
+
+        assert(indices.pQualityTable != NULL);
+        record.qual = indices.pQualityTable->getQualityString(idx, record.seq.length());
+
+        if(!record.seq.empty())
+            pOutReads->push_back(record);
 
         // Optionally extract its mate
         // If the index is constructed properly, 
@@ -444,11 +448,12 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
             
             std::stringstream mateName;
             mateName << "idx-" << mateIdx;
-            SeqItem mateItem;
-            mateItem.id = mateName.str();
-            mateItem.seq = BWTAlgorithms::extractString(indices.pBWT, mateIdx);
-            if(!item.seq.empty() && !mateItem.seq.empty())
-                pOutMates->push_back(mateItem);
+            SeqRecord mateRecord;
+            mateRecord.id = mateName.str();
+            mateRecord.seq = BWTAlgorithms::extractString(indices.pBWT, mateIdx);
+            mateRecord.qual = indices.pQualityTable->getQualityString(mateIdx, mateRecord.seq.length());
+            if(!record.seq.empty() && !mateRecord.seq.empty())
+                pOutMates->push_back(mateRecord);
         }
     }
 
@@ -463,8 +468,8 @@ bool HapgenUtil::extractHaplotypeSpecificReads(const StringVector& haplotypes,
                                                int k,
                                                bool doReverse,
                                                size_t maxReads,
-                                               SeqItemVector* pOutReads, 
-                                               SeqItemVector* pOutMates)
+                                               SeqRecordVector* pOutReads, 
+                                               SeqRecordVector* pOutMates)
 {
     std::map<std::string, int> kmer_map;
     for(size_t i = 0; i < haplotypes.size(); ++i)

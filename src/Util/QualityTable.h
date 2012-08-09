@@ -40,7 +40,7 @@ class QualityTable
         void printSize() const;
 
     private:
-        QualityCodec<2> m_codec;
+        QualityCodec<4> m_codec;
         QualityStringVector m_table;
         size_t m_bytes_used;
 };
