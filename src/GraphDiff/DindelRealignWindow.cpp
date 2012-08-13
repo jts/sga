@@ -1247,7 +1247,7 @@ DindelWindow::~DindelWindow()
 
 
 // Need to add pointer to VCF Header instance
-void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, VCFVector& out) const
+void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, VCFCollection& out) const
 {
     VCFRecord record;
     std::stringstream hapPropString;
@@ -1460,7 +1460,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     }
     record.addComment("HistMapQ", histmap_ss.str());
 
-    out.push_back(record);
+    out.records.push_back(record);
 
     /*
     out.precision(5);
@@ -1627,7 +1627,7 @@ void DindelRealignWindowResult::Inference::addMapQToHistogram(double mappingQual
     if (bin>=0) histMapQ[bin]++;
 }
 
-void DindelRealignWindowResult::outputVCF(VCFVector& out)
+void DindelRealignWindowResult::outputVCF(VCFCollection& out)
 {
     VarToInference::const_iterator iter = variantInference.begin();
 
@@ -1672,7 +1672,7 @@ void DindelRealignWindow::run(const std::string & algorithm,
 }
 */
 void DindelRealignWindow::run(const std::string & algorithm,
-                              VCFVector& out,
+                              VCFCollection& out,
                               const std::string id,
                               DindelRealignWindowResult *pThisResult,
                               const DindelRealignWindowResult *pPreviousResult)
@@ -1870,7 +1870,7 @@ void DindelRealignWindow::addSNPsToHaplotypes()
 
 
 
-void DindelRealignWindow::algorithm_hmm(VCFVector& out, DindelRealignWindowResult * pThisResult, const DindelRealignWindowResult *pPreviousResult)
+void DindelRealignWindow::algorithm_hmm(VCFCollection& out, DindelRealignWindowResult * pThisResult, const DindelRealignWindowResult *pPreviousResult)
 {
     if (DINDEL_DEBUG) std::cout << "DindelRealignWindow::algorithm_hmm STARTED" << std::endl;
 

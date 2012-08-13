@@ -217,8 +217,16 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     //
     // Run Dindel
     //
+    
+    // Initialize VCF collections
+    VCFCollection vcfCollections[2];
 
-    VCFVector vcfRecords[2];
+    // If in multisample mode, load the sample names into the VCFCollection
+    if(parameters.variantIndex.pPopIdx != NULL)
+    {
+        for(size_t i = 0; i <= 1; ++i)
+            vcfCollections[i].samples = parameters.variantIndex.pPopIdx->getSamples();
+    }
 
     size_t start_i = parameters.bReferenceMode ? 1 : 0;
 
@@ -251,7 +259,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         try
         {
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
-            dRealignWindow.run("hmm", vcfRecords[i], id, pThisResult, pPreviousResult);
+            dRealignWindow.run("hmm", vcfCollections[i], id, pThisResult, pPreviousResult);
         }
         catch(std::string e)
         {
@@ -268,23 +276,23 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     for(size_t i = 0; i <= 1; ++i)
     {
         std::ostream& curr_out = i == 0 ? baseOut : variantOut;
-        for(size_t j = 0; j < vcfRecords[i].size(); ++j)
-            curr_out << vcfRecords[i][j] << "\n";
+        for(size_t j = 0; j < vcfCollections[i].records.size(); ++j)
+            curr_out << vcfCollections[i].records[j] << "\n";
     }
 
     // Make comparative calls
     size_t VARIANT_IDX = 1;
     size_t BASE_IDX = 0;
-    bool has_base_calls = !vcfRecords[BASE_IDX].empty();
-    for(size_t i = 0; i < vcfRecords[1].size(); ++i)
+    bool has_base_calls = !vcfCollections[BASE_IDX].records.empty();
+    for(size_t i = 0; i < vcfCollections[1].records.size(); ++i)
     {
         bool not_called_in_base = true;
         if(has_base_calls)
-            not_called_in_base = vcfRecords[BASE_IDX][i].passStr == "NoCall";
+            not_called_in_base = vcfCollections[BASE_IDX].records[i].passStr == "NoCall";
 
-        bool called_in_variant = vcfRecords[VARIANT_IDX][i].passStr == "PASS";
+        bool called_in_variant = vcfCollections[VARIANT_IDX].records[i].passStr == "PASS";
         if(called_in_variant && not_called_in_base)
-            callsOut << vcfRecords[VARIANT_IDX][i] << "\n";
+            callsOut << vcfCollections[VARIANT_IDX].records[i] << "\n";
     }
 
     baseOut.flush();
