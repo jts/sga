@@ -90,7 +90,7 @@ namespace opt
 
     static bool deBruijnMode = false;
     static int minDBGCount = 2;
-    static bool lowCoverage = false;
+    static bool lowCoverage = true;
 
     static bool referenceMode = false;
     static bool useQualityScores = true;
@@ -303,7 +303,12 @@ void runGraphDiff(GraphCompareParameters& parameters)
     // This call can throw via dindel
     GraphCompareAggregateResults* pSharedResults;
     try {
-        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix);
+        StringVector samples;
+
+        // If in multi-sample mode, write sample names in the VCF header
+        if(parameters.variantIndex.pPopIdx != NULL)
+            samples = parameters.variantIndex.pPopIdx->getSamples();
+        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix, samples);
     }
     catch(std::string e)
     {

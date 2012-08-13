@@ -64,6 +64,15 @@ std::string PopulationIndex::getName(size_t index) const
 }
 
 //
+StringVector PopulationIndex::getSamples() const
+{
+    StringVector out;
+    for(size_t i = 0; i < m_population.size(); ++i)
+        out.push_back(m_population[i].name);
+    return out;
+}
+
+//
 void PopulationIndex::mergeIndexFiles(const std::string& file1, const std::string& file2, const std::string& outfile)
 {
     std::ostream* writer = createWriter(outfile);

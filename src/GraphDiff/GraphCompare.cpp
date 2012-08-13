@@ -527,7 +527,7 @@ void GraphCompare::showMappingLocations(const std::string& str)
 //
 // GraphCompareAggregateResult
 //
-GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
+GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix, const StringVector& samples) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
                                                                                             m_variantVCFFile(fileprefix + ".variant.vcf","w"),
                                                                                             m_callsVCFFile(fileprefix + ".calls.vcf","w"),
                                                                                             m_numVariants(0)
@@ -535,7 +535,11 @@ GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fi
     //
     m_pWriter = createWriter(fileprefix + ".strings.fa");
     
-    //
+    // Initialize samples
+    m_baseVCFFile.setSamples(samples);
+    m_variantVCFFile.setSamples(samples);
+    m_callsVCFFile.setSamples(samples);
+
     m_baseVCFFile.outputHeader("stub", "stub");
     m_variantVCFFile.outputHeader("stub", "stub");
     m_callsVCFFile.outputHeader("stub", "stub");

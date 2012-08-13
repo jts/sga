@@ -609,7 +609,7 @@ class DindelRealignWindowResult
                 Inference() :  strandBias(0.0),numReadsForward(0), numReadsReverse(0), numReadsForwardZeroMismatch(0), numReadsReverseZeroMismatch(0), numUnmapped(0), numLibraries(0), numReadNames(0), numRealignedReads(0), numCalledHaplotypes(0) {};
                 void outputAsVCF(const DindelVariant & var, 
                                  const DindelRealignWindowResult & result, 
-                                 VCFVector& out) const;
+                                 VCFCollection& out) const;
 
                 static double computeStrandBias(int numForward, int numReverse);
                 
@@ -668,7 +668,7 @@ class DindelRealignWindowResult
         DindelRealignWindowResult(const DindelRealignWindow & dindelRealignWindow) : m_pDindelRealignWindow(&dindelRealignWindow){ };
     
         // Functions
-        void outputVCF(VCFVector& out);
+        void outputVCF(VCFCollection& out);
 
         // Data
         std::vector<DindelHaplotype> haplotypes;
@@ -884,7 +884,7 @@ class DindelRealignWindow
         // Functions
         void run(const std::string & algorithm, std::ostream& out);
         void run(const std::string & algorithm,
-                 VCFVector& out,
+                 VCFCollection& out,
                  const std::string id,
                  DindelRealignWindowResult * pThisResult,
                  const DindelRealignWindowResult * pPreviousResult);
@@ -1087,14 +1087,14 @@ class DindelRealignWindow
         // update hapReadAlignments.
         void computeReadHaplotypeAlignmentsUsingHMM(size_t firstHap, size_t lastHap);
         void addDiploidGenotypes(DindelRealignWindowResult & result, bool useEstimatedHaplotypeFrequencies);
-
+        void addDiploidGenotypes(DindelRealignWindowResult& result, const std::vector<int> & allowedHaplotype, const std::vector< std::vector<double> > & hrLik);
         // result
         DindelRealignWindowResult m_result;
 
         // algorithms
 
         // initial try: ungapped alignment of read to candidate haplotype, doesn't use base qualities
-        void algorithm_hmm(VCFVector& out,
+        void algorithm_hmm(VCFCollection& out,
                            DindelRealignWindowResult * pThisResult,
                            const DindelRealignWindowResult * pPreviousResult);
 };

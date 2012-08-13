@@ -88,6 +88,14 @@ std::ostream& operator<<(std::ostream& o, VCFRecord& record)
             o << ";";
         o << record.comments[i];
     }
+
+    if(record.sampleStr.size())
+    {
+        o << "\t" << record.formatStr;
+        for(size_t i = 0; i < record.sampleStr.size(); ++i)
+            o << "\t" << record.sampleStr[i];
+    }
+
     return o;
 }
 
