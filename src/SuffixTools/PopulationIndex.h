@@ -13,6 +13,8 @@
 #include <vector>
 #include <string>
 
+typedef std::vector<std::string> StringVector;
+
 struct PopulationMember
 {
     size_t start;
@@ -34,6 +36,9 @@ class PopulationIndex
 
         // Return the name of the individual for the read at index
         std::string getName(size_t index) const;
+        
+        // Get the names of all samples in the collection
+        StringVector getSamples() const;
         
         // Merge two population index files into a new one
         static void mergeIndexFiles(const std::string& file1, const std::string& file2, const std::string& outfile);

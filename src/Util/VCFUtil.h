@@ -67,11 +67,21 @@ struct VCFRecord
     std::string varStr;
     double quality;
     std::string passStr;
+    std::string formatStr;
     std::vector<std::string> comments;
+    std::vector<std::string> sampleStr;
 };
 
 // Typedefs
 typedef std::vector<VCFRecord> VCFVector;
+typedef std::vector<std::string> StringVector;
+
+// A set of VCF records, with sample names in a predefined order
+struct VCFCollection
+{
+    StringVector samples;
+    VCFVector records;
+};
 
 namespace VCFUtil
 {

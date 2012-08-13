@@ -1247,7 +1247,7 @@ DindelWindow::~DindelWindow()
 
 
 // Need to add pointer to VCF Header instance
-void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, VCFVector& out) const
+void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, VCFCollection& out) const
 {
     VCFRecord record;
     std::stringstream hapPropString;
@@ -1441,7 +1441,8 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
             histdist_ss << ",";
         histdist_ss << histDistance[x];
     }
-    record.addComment("HistDist", histdist_ss.str());
+    if (!histdist_ss.str().empty())
+        record.addComment("HistDist", histdist_ss.str());
 
     // HistLik
     std::stringstream histlik_ss;
@@ -1450,7 +1451,8 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
             histlik_ss << ",";
         histlik_ss << histAlignLik[x];
     }
-    record.addComment("HistLik", histlik_ss.str());
+    if (!histlik_ss.str().empty())
+        record.addComment("HistLik", histlik_ss.str());
 
     // HistMapQ
     std::stringstream histmap_ss;
@@ -1459,19 +1461,21 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
             histmap_ss << ",";
         histmap_ss << histMapQ[x];
     }
-    record.addComment("HistMapQ", histmap_ss.str());
+    if (!histmap_ss.str().empty())
+        record.addComment("HistMapQ", histmap_ss.str());
+
 
    // output genotyping information
 
-    if (record.samples.size()>0 && result.outputGenotypes)
+    if (out.samples.size()>0 && result.outputGenotypes)
     {
-        std::stringstream sampleString;
-        record.format = "GT:GQ:GL";
         
-        const std::vector<std::string> & samples = record.getSamples();
-        for (size_t x=0;x<samples.size();x++)
+        record.formatStr = "GT:GQ:GL";
+       
+        for (size_t x=0;x<out.samples.size();x++)
         {
-            const std::string & sample = samples[x];
+            std::stringstream sampleString;
+            const std::string & sample = out.samples[x];
             const  DindelRealignWindowResult::SampleToGenotypes::const_iterator sample_it=result.sampleToGenotypes.find(sample);
             
             if (sample_it!=result.sampleToGenotypes.end())
@@ -1490,10 +1494,11 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
             {
                 sampleString << "."; // no call
             }
+            record.sampleStr.push_back(sampleString.str());
         }
     }
 
-    out.push_back(record);
+    out.records.push_back(record);
 
 }
 
@@ -1570,7 +1575,7 @@ void DindelRealignWindowResult::Inference::addMapQToHistogram(double mappingQual
     if (bin>=0) histMapQ[bin]++;
 }
 
-void DindelRealignWindowResult::outputVCF(VCFVector& out)
+void DindelRealignWindowResult::outputVCF(VCFCollection& out)
 {
     VarToInference::const_iterator iter = variantInference.begin();
 
@@ -1615,7 +1620,7 @@ void DindelRealignWindow::run(const std::string & algorithm,
 }
 */
 void DindelRealignWindow::run(const std::string & algorithm,
-                              VCFVector& out,
+                              VCFCollection& out,
                               const std::string id,
                               DindelRealignWindowResult *pThisResult,
                               const DindelRealignWindowResult *pPreviousResult)
@@ -1813,7 +1818,7 @@ void DindelRealignWindow::addSNPsToHaplotypes()
 
 
 
-void DindelRealignWindow::algorithm_hmm(VCFVector& out, DindelRealignWindowResult * pThisResult, const DindelRealignWindowResult *pPreviousResult)
+void DindelRealignWindow::algorithm_hmm(VCFCollection& out, DindelRealignWindowResult * pThisResult, const DindelRealignWindowResult *pPreviousResult)
 {
     if (DINDEL_DEBUG) std::cout << "DindelRealignWindow::algorithm_hmm STARTED" << std::endl;
 
@@ -1842,7 +1847,14 @@ void DindelRealignWindow::algorithm_hmm(VCFVector& out, DindelRealignWindowResul
             result = estimateHaplotypeFrequenciesModelSelectionMatePairs(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, pPreviousResult, true);
 	else {
             if (realignParameters.multiSample)
+            {
+                if (out.samples.size())
+                    realignParameters.genotyping = 1;
+                else
+                    realignParameters.genotyping = 0;
+                
                 result = estimateHaplotypeFrequenciesModelSelectionSingleReadsMultiSample(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, pPreviousResult, true);
+            }
             else
                 result = estimateHaplotypeFrequenciesModelSelectionSingleReads(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, pPreviousResult, true);
         }
@@ -1855,18 +1867,7 @@ void DindelRealignWindow::algorithm_hmm(VCFVector& out, DindelRealignWindowResul
 	 //result = estimateHaplotypeFrequencies(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, true);
     }
         
-    if (realignParameters.genotyping)
-    {
-        //addDiploidGenotypes(result, true);
-	//FIXME Implement genoptying
-	assert(1==0);
-        result.outputGenotypes=true;
-    } else
-    {
-        result.outputGenotypes=false;
-    }
-
-
+   
     // output the results. result does marginalization over haplotypes
     result.outputVCF(out);
 
@@ -2407,8 +2408,8 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
        double max_ll=-HUGE_VAL;
        int h1max=-1, h2max=-1;
 
-       for (int h1=0;h1<numHaps;h1++) if (allowedHaplotype[h1])
-           for (int h2=h1;h2<numHaps;h2++) if (allowedHaplotype[h2])
+       for (int h1=0;h1<numHaps;h1++) 
+           for (int h2=h1;h2<numHaps;h2++) 
            {
                double ll=0.0;
                for (std::list<int>::const_iterator _r = sampleToReads[sample].begin(); _r != sampleToReads[sample].end(); ++_r)
@@ -2425,11 +2426,15 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
                llHapPairs[h1*numHaps+h2]=ll;
                llHapPairs[h2*numHaps+h1]=ll;
 
-               if (ll>max_ll)
+               if (allowedHaplotype[h1] && allowedHaplotype[h2])
                {
-                   max_ll = ll;
-                   h1max = h1;
-                   h2max = h2;
+                   // only use allowed haplotypes to find the most likely pair of haplotypes.
+                   if (ll>max_ll)
+                   {
+                       max_ll = ll;
+                       h1max = h1;
+                       h2max = h2;
+                   }
                }
            }
 
@@ -2469,8 +2474,9 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
                for (int x=0;x<3;x++) it1->second.gl[x] = -HUGE_VAL;
            }
 
-           for (int h1=0;h1<numHaps;h1++) if (allowedHaplotype[h1])
-               for (int h2=h1;h2<numHaps;h2++) if (allowedHaplotype[h2])
+           // always allow the reference haplotype for the mapping location so that we don't get -inf likelihoods for genotypes involving the reference
+           for (int h1=0;h1<numHaps;h1++) // if (allowedHaplotype[h1] || haplotypes[h1].getVariants(refIdx).size()==0)
+               for (int h2=h1;h2<numHaps;h2++) // if (allowedHaplotype[h2] || haplotypes[h2].getVariants(refIdx).size()==0)
                {
                    double ll_this_pair = llHapPairs[h1*numHaps + h2];
 
@@ -4412,6 +4418,9 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
    // estimate haplotype frequencies for called haplotypes using EM. 
    doEMMultiSample(numSamples, 25, llHapPairs, added, haplotypeFrequencies, haplotypeFrequencies);
 
+   if (realignParameters.genotyping)
+       this->addDiploidGenotypes(result, added, hrLik);
+
    if (!QUIET) std::cout << "DindelRealignWindow::estimateHaplotypeFrequencies Added " << numAdded << " out of " << haplotypes.size() << " haplotypes." << std::endl;
 
    if (realignParameters.showCallReads && print)
@@ -4817,7 +4826,6 @@ VCFFile::VCFFile(const std::string& fileName, const std::string & mode)
 
 void VCFFile::setSamples(const std::vector<std::string> & samples)
 {
-    assert(!samples.empty());
     m_samples = samples;
 }
 
