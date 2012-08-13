@@ -191,16 +191,15 @@ std::string stripExtension(const std::string& filename)
         return filename.substr(0, suffixPos);
 }
 
-// Remove all file extensions from the filename
-std::string stripAllExtensions(const std::string& filename)
+// Remove an extension from a filename, including the .gz extension
+// file.fastq will return file
+// file.fastq.gz will return file
+std::string stripGzippedExtension(const std::string& filename)
 {
-    size_t last_directory = filename.find_last_of('/');
-    size_t start = last_directory != std::string::npos ? last_directory : 0;
-    size_t suffixPos = filename.find_first_of('.', start);
-    if(suffixPos == std::string::npos)
-        return filename; // no suffix
+    if(isGzip(filename))
+        return stripExtension(stripExtension(filename));
     else
-        return filename.substr(0, suffixPos);
+        return stripExtension(filename);
 }
 
 

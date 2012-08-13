@@ -399,7 +399,7 @@ void DindelHaplotype::extractVariants()
 
     // set m_refPos
     int hidx=-1, ridx=-1, hDelStart=-1;
-    size_t numLeftOverhang = 0, numRightOverhang = 0;
+    size_t numRightOverhang = 0;
     bool inRefDeletion = false;
     bool leftOverhang = true;
 
@@ -423,7 +423,6 @@ void DindelHaplotype::extractVariants()
             if(rs != '-')
             {
                 // end of left overhang of haplotype with reference
-                numLeftOverhang = i;
                 for(size_t j= 0 ; j < i; j++) m_refPos[j] = LEFTOVERHANG;
                 leftOverhang = false;
             }
@@ -2080,7 +2079,6 @@ void DindelRealignWindow::printReadAlignments(int readIdx, std::ostream & out, i
 
 
        // print variant annotations in the haplotype
-       bool hasVars = false;
        for(int refIdx = 0; refIdx < haplotypes[h].getNumReferenceMappings(); ++refIdx)
        {
             const DindelHaplotype & haplotype = haplotypes[h].getSingleMappingHaplotype(refIdx);
@@ -2095,7 +2093,6 @@ void DindelRealignWindow::printReadAlignments(int readIdx, std::ostream & out, i
 		       if (rb == SNP || rb == MULTINUCLEOTIDE_RUN) out << "S";
 		       else if (rb == INSERTION) out << "I";
 		       else out << -rb;
-		       hasVars = true;
 		   }
 		   else
 		   {
@@ -2107,7 +2104,6 @@ void DindelRealignWindow::printReadAlignments(int readIdx, std::ostream & out, i
 			   if (prb>=0 && rb>=0 && rb-prb>1) 
 			   {
 			       out << "D";
-			       hasVars = true;
 			   }
 			   else
 			       out << " ";
@@ -2213,7 +2209,6 @@ void DindelRealignWindow::doEM(const std::vector< std::vector<double> > & hrLik,
         // compute expectation of indicator variables
         for (size_t h=0;h<nh;h++) nk[h]=0.0;
 
-        int idx=0;
         for (size_t r=0;r<nr;r++)
         {
             double lognorm=-HUGE_VAL;
@@ -2239,7 +2234,6 @@ void DindelRealignWindow::doEM(const std::vector< std::vector<double> > & hrLik,
        for (size_t h=0;h<nh;h++) zh += nk[h];
        for (size_t h=0;h<nh;h++) pi[h] = log(nk[h]/zh); 
 
-       idx = 0;
        eNew = 0.0;
        for (size_t r=0;r<nr;r++)
        {
@@ -2333,7 +2327,6 @@ void DindelRealignWindow::doEMMultiSample(int numSamples,
         // compute expectation of indicator variables
         for (size_t h=0;h<nh;h++) nk[h]=0.0;
 
-        int idx=0;
         for (size_t s=0;s<ns;s++)
         {
             size_t sampleOffset = s*numPairs;
@@ -2378,7 +2371,6 @@ void DindelRealignWindow::doEMMultiSample(int numSamples,
            if (allowedHaplotypes[h])
                pi[h] = log(nk[h]/zh);
        }
-       idx = 0;
        eNew = 0.0;
        for (size_t s=0;s<ns;s++)
        {

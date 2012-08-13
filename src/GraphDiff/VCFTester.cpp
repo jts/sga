@@ -111,23 +111,13 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
     */
     std::cout<< " B:\t";
     
-    bool baseHasZero = false;
     for(size_t i = 0; i < bv.size(); ++i)
-    {
         std::cout << bv[i];
-        if(bv[i] == 0)
-            baseHasZero = true;
-    }
     std::cout << "\n";
     
-    bool variantIsComplete = true;
     std::cout<< " V:\t";
     for(size_t i = 0; i < vv.size(); ++i)
-    {
         std::cout << vv[i];
-        if(vv[i] == 0)
-            variantIsComplete = false;
-    }
     std::cout << "\n";
 
     bool canAssemble = !variantKmer.empty();

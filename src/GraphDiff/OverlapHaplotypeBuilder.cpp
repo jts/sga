@@ -511,9 +511,12 @@ void OverlapHaplotypeBuilder::trimTip(Vertex* x, EdgeDir direction)
 {
     // Check if we should recurse to the neighbors of x
     EdgePtrVec x_opp_edges = x->getEdges(!direction);
+    
+    /*
     Vertex* x_neighbor = NULL;
     if(x_opp_edges.size() == 1)
         x_neighbor = x_opp_edges.front()->getEnd();
+    */
 
     // Remove x from the graph
     m_graph->removeConnectedVertex(x);
