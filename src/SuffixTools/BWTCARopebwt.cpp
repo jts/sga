@@ -11,50 +11,84 @@
 #include "bcr.h"
 #include "SeqReader.h"
 #include "StdAlnTools.h"
+#include "BWTWriterBinary.h"
+#include "BWTWriterAscii.h"
+#include "SAWriter.h"
+
+static unsigned char seq_nt6_table[128] = {
+    0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 1, 5, 2, 5, 5, 5, 3, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 1, 5, 2, 5, 5, 5, 3, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+};
 
 void BWTCA::runRopebwt(const std::string& input_filename)
 {
     // Initialize ropebwt
     bcr_t* bcr = bcr_init(true, "ropebwt-tmp");
 
+    size_t num_sequences = 0;
+    size_t num_bases = 0;
     SeqReader reader(input_filename);
     SeqRecord record;
     while(reader.get(record))
     {
-        // Convert the sequence of this read to a 2-bit packed representation
-        // ropebwt uses Heng Li's standard 2-bit sequence encoding, which is wrapped in StdalnTools
-        uint8_t* s = StdAlnTools::createPacked(record.seq.toString());
-        bcr_append(bcr, record.seq.length(), s);
+        size_t l = record.seq.length();
+
+        // Convert the string into the alphabet encoding expected by ropebwt
+        uint8_t* s = new uint8_t[l];
+        for(size_t i = 0; i < l; ++i) {
+            char c = record.seq.get(i);
+            s[i] = seq_nt6_table[(int)c];
+        }
+        
+        // Send the sequence to ropebwt
+        bcr_append(bcr, l, s);
+
+        num_sequences += 1;
+        num_bases += l;
         delete [] s;
     }
 
-    std::cout << "Done reading sequences\n";
     // Build the BWT
     bcr_build(bcr);
     
-    std::cout << "Done build\n";
+    // write the BWT and SAI
+    bcritr_t* itr = bcr_itr_init(bcr);
+    const uint8_t* s;
+    int l;
 
-#define print_bwt(itr_t, itr_set, itr_next_f, is_bin, fp) do { \
-        itr_t *itr; \
-        const uint8_t *s; \
-        int i, j, l; \
-        itr = (itr_set); \
-        if (is_bin) { \
-            fwrite("RLE\6", 4, 1, fp); \
-            while ((s = itr_next_f(itr, &l)) != 0) \
-                fwrite(s, 1, l, fp); \
-        } else { \
-        while ((s = itr_next_f(itr, &l)) != 0) \
-            for (i = 0; i < l; ++i) \
-                for (j = 0; j < s[i]>>3; ++j) \
-                    fputc("$ACGTN"[s[i]&7], fp); \
-                    fputc('\n', fp); \
-                } \
-            free(itr); \
-        } while (0)
+    BWTWriterBinary out_bwt("testrope.bwt");
+    SAWriter out_sai("testrope.sai");
 
+    // Write headers
+    out_sai.writeHeader(num_sequences, num_sequences);
+    size_t num_symbols = num_bases + num_sequences;
+    out_bwt.writeHeader(num_sequences, num_symbols, BWF_NOFMI);
 
-    FILE* out = fopen("ropebwt.bwt", "w");
-    print_bwt(bcritr_t, bcr_itr_init(bcr), bcr_itr_next, 1, out);
+    // Write each run
+    size_t lexo_seq_idx = 0;
+    while( (s = bcr_itr_next(itr, &l)) != 0 ) {
+        for (int i = 0; i < l; ++i) {
+            char c = "$ACGTN"[s[i]&7];
+            int rl = s[i]>>3;
+            for(int j = 0; j < rl; ++j)
+                out_bwt.writeBWChar(c);
+
+            if(c == '$') {
+                size_t pos_index = bcr_getLexicographicIndex(bcr, lexo_seq_idx++);
+                out_sai.writeElem(SAElem(pos_index, 0));
+            }
+        }
+    }
+
+    free(itr);
+    out_bwt.finalize();
+
+    // Cleanup
     bcr_destroy(bcr);
 }
