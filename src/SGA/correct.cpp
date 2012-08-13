@@ -142,6 +142,8 @@ int correctMain(int argc, char** argv)
 {
     parseCorrectOptions(argc, argv);
 
+    std::cout << "Correcting sequencing errors for " << opt::readsFile << "\n";
+
     // Load indices
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = NULL;
