@@ -1088,7 +1088,7 @@ class DindelRealignWindow
         // update hapReadAlignments.
         void computeReadHaplotypeAlignmentsUsingHMM(size_t firstHap, size_t lastHap);
         void addDiploidGenotypes(DindelRealignWindowResult & result, bool useEstimatedHaplotypeFrequencies);
-
+        void addDiploidGenotypes(DindelRealignWindowResult& result, const std::vector<int> & allowedHaplotype, const std::vector< std::vector<double> > & hrLik);
         // result
         DindelRealignWindowResult m_result;
 

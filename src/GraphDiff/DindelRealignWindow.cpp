@@ -1433,6 +1433,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     record.addComment("NumLib", this->numLibraries);
     record.addComment("NumFragments", this->numReadNames);
 
+    
     // HistDist
     std::stringstream histdist_ss;
     for (size_t x=0;x<histDistance.size();x++) {
@@ -1460,98 +1461,40 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     }
     record.addComment("HistMapQ", histmap_ss.str());
 
-    out.push_back(record);
-
-    /*
-    out.precision(5);
-    out.setf(std::ios::fixed,std::ios::floatfield);
-    out << var.getChrom() << "\t" << var.getPos() << "\t";
-    if (!result.outputID.empty()) out << result.outputID; else out << ".";
-    out << "\t" << var.getRef() << "\t" << var.getAlt() << "\t" << ( iqual ) << "\t" << filter << "\t";
-    out << "AF=" << varFreq;
-    out << ";NumReads=" << numRealignedReads;
-    out << ";NumCalledHaps=" << numCalledHaplotypes;
-    out << ";ExpNumHapsWithVarMappingHere=" << expNumberOfHaplotypesMappingToThisLocation;
-    out << ";VarQual=" << this->qual;
-    out << ";HV=" << hapPropString.str();
-    out << ";HMQ=" << hapMappingQual;
-    
-    out << ";VarDP=" << numReadsForward+numReadsReverse << ";NF=" << numReadsForward << ";NR=" << numReadsReverse << ";NF0=" << this->numReadsForwardZeroMismatch;
-    out << ";NR0=" << this->numReadsReverseZeroMismatch << ";NU=" << numUnmapped << ";NH=" << result.numCalledHaplotypes << ";HSR=" << result.numHapSpecificReads;
-
-    out << ";HPLen=" << hp;
-    out << ";SB=" << this->strandBias;
-    out << ";NumLib=" << this->numLibraries;
-    out << ";NumFragments=" << this->numReadNames;
-
-    if (!infoStr.empty()) out << ";" << this->infoStr;
-
-
-    if (!this->histDistance.empty())
-    {
-        out << ";HistDist=";
-        for (size_t x=0;x<histDistance.size();x++)
-        {
-            if (x>0) out << ",";
-            out << histDistance[x];
-        }
-    }
-    
-    if (!this->histAlignLik.empty())
-    {
-        out << ";HistLik=";
-        for (size_t x=0;x<histAlignLik.size();x++)
-        {
-            if (x>0) out << ",";
-            out << histAlignLik[x];
-        }
-    }
-
-    if (!this->histMapQ.empty())
-    {
-        out << ";HistMapQ=";
-        for (size_t x=0;x<histMapQ.size();x++)
-        {
-            if (x>0) out << ",";
-            out << histMapQ[x];
-        }
-    }
-
    // output genotyping information
 
-    if (result.outputGenotypes)
+    if (record.samples.size()>0 && result.outputGenotypes)
     {
-        // JS: This has been hacked out since we now output to an ostream instead of a VCFFile
-        assert(false);
-#if 0
-        out << "\tGT:GQ:GL";
-        const std::vector<std::string> & samples = vcfFile.getSamples();
+        std::stringstream sampleString;
+        record.format = "GT:GQ:GL";
+        
+        const std::vector<std::string> & samples = record.getSamples();
         for (size_t x=0;x<samples.size();x++)
         {
             const std::string & sample = samples[x];
             const  DindelRealignWindowResult::SampleToGenotypes::const_iterator sample_it=result.sampleToGenotypes.find(sample);
-            out << "\t";
+            
             if (sample_it!=result.sampleToGenotypes.end())
             {
                 DindelRealignWindowResult::VarToGenotypeCall::const_iterator it_var = sample_it->second.find(var);
                 assert(it_var!=sample_it->second.end());
                 const DindelRealignWindowResult::GenotypeCall & gc = it_var->second;
 
-                if (gc.count == 0) out << "0/0";
-                else if (gc.count == 1) out << "0/1";
-                else if (gc.count == 2) out << "1/1";
-                out << ":" << int(gc.qual);
-        //out <<  std::iostream::fixed;
-                out << std::setprecision(5) << ":" << gc.gl[0] << "," << gc.gl[1] << "," << gc.gl[2];
+                if (gc.count == 0) sampleString << "0/0";
+                else if (gc.count == 1) sampleString << "0/1";
+                else if (gc.count == 2) sampleString << "1/1";
+                sampleString << ":" << int(gc.qual);
+                //out <<  std::iostream::fixed;
+                sampleString << std::setprecision(5) << ":" << gc.gl[0] << "," << gc.gl[1] << "," << gc.gl[2];
             } else
             {
-                out << "."; // no call
+                sampleString << "."; // no call
             }
         }
-#endif
     }
-    out << std::endl;
-    */
+
+    out.push_back(record);
+
 }
 
 double DindelRealignWindowResult::Inference::computeStrandBias(int numForward, int numReverse)
@@ -2422,10 +2365,11 @@ void DindelRealignWindow::doEMMultiSample(int numSamples,
 
 }
 
-#ifdef MAYBELATER
-void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result, const std::vector<int> & allowedHaplotype)
+
+void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result, const std::vector<int> & allowedHaplotype, const std::vector< std::vector<double> > & hrLik)
 {
-   const std::vector<DindelHaplotype> & haplotypes = m_dindelWindow.getHaplotypes();
+  
+   const std::vector<DindelMultiHaplotype> & haplotypes = m_dindelWindow.getHaplotypes();
    const std::vector<DindelRead> & reads = *m_pDindelReads;
    if (DINDEL_DEBUG) std::cerr << "GENOTYPING START" << std::endl;
    if (hapReadAlignments.size() != haplotypes.size()) throw std::string("DindelRealignWindow::addDiploidGenotypes incomplete haplotype alignments.");
@@ -2445,8 +2389,11 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
 
    for (int i=0;i<numHaps;i++)
    {
-       const std::vector<DindelVariant> & vars = haplotypes[i].getVariants();
-       for (size_t x=0;x<vars.size();x++) variantToHaplotype[vars[x]][i]=1;
+       for (int refIdx = 0; refIdx<haplotypes[i].getNumReferenceMappings(); refIdx++)
+       {
+           const std::vector<DindelVariant> & vars = haplotypes[i].getVariants(refIdx);
+           for (size_t x=0;x<vars.size();x++) variantToHaplotype[vars[x]][i] = refIdx;
+       }
    }
 
 
@@ -2467,9 +2414,11 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
                for (std::list<int>::const_iterator _r = sampleToReads[sample].begin(); _r != sampleToReads[sample].end(); ++_r)
                {
                    int r = *_r;
-                   double mq = -reads[r].getMappingQual()*0.23056-log(double(DINDEL_HMM_BANDWIDTH));
-                   double lh1 = addLogs(hapReadAlignments[h1][r].logLik, mq);
-                   double lh2 = addLogs(hapReadAlignments[h2][r].logLik, mq);
+                   double lh1 = hrLik[r][h1];
+                   double lh2 = hrLik[r][h2];
+                   //if (h1==0 && h2==1) {
+                    //       std::cerr << "r: " << r << " lh1: " << lh1 << " lh2: " << lh2 << std::endl;
+                   //}
                    ll += log(.5) + addLogs(lh1, lh2);
                }
 
@@ -2485,91 +2434,99 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
            }
 
        assert(h1max!=-1 && h2max !=-1);
-       // set genotypes based on best haplotype pair
-       const std::vector<DindelVariant> & v1 = haplotypes[h1max].getVariants();
-       const std::vector<DindelVariant> & v2 = haplotypes[h2max].getVariants();
+
 
        // genotype call for most likely pair of haplotypes
        result.sampleToGenotypes[sample] = DindelRealignWindowResult::VarToGenotypeCall();
        DindelRealignWindowResult::VarToGenotypeCall & gc = result.sampleToGenotypes[sample];
-
-       // initialize to NOT called
+       
+       // initialize all variant genotypes to NOT called (ref/ref)
        for (VariantToHaplotype::const_iterator it = variantToHaplotype.begin();it!=variantToHaplotype.end();it++)
-       {
            gc[it->first] = DindelRealignWindowResult::GenotypeCall();
-       }
 
-       // gc contains genotypes for maximum likelihood pair of haplotypes
-       for (size_t x=0;x<v1.size();x++) gc[v1[x]].count += 1;
-       for (size_t x=0;x<v2.size();x++) gc[v2[x]].count += 1;
+       // use referenceMappings to determine how many haplotypes were mapped to a given reference location.
+       // This is a crude way to determine homozygous from heterozygous positions (as in two or one haplotype mapped to a reference location for this sample)
 
-       DindelRealignWindowResult::VarToGenotypeCall::iterator it1;
-       for (it1=gc.begin();it1!=gc.end();it1++)
+       for (int refIdx = 0; refIdx < int( m_dindelWindow.getReferenceMappings().size() ); refIdx++)
        {
-           // initialize quality
-           it1->second.qual = 123456.0;
-           it1->second.called = true;
-           for (int x=0;x<3;x++) it1->second.gl[x] = -HUGE_VAL;
-       }
 
-       for (int h1=0;h1<numHaps;h1++) if (allowedHaplotype[h1])
-           for (int h2=h1;h2<numHaps;h2++) if (allowedHaplotype[h2])
+           // set genotypes based on best haplotype pair
+           const std::vector<DindelVariant> & v1 = haplotypes[h1max].getVariants(refIdx);
+           const std::vector<DindelVariant> & v2 = haplotypes[h2max].getVariants(refIdx);
+
+
+
+           // gc contains genotypes for maximum likelihood pair of haplotypes
+           for (size_t x=0;x<v1.size();x++) gc[v1[x]].count += 1;
+           for (size_t x=0;x<v2.size();x++) gc[v2[x]].count += 1;
+
+           DindelRealignWindowResult::VarToGenotypeCall::iterator it1;
+           for (it1=gc.begin();it1!=gc.end();it1++)
            {
-               double ll_this_pair = llHapPairs[h1*numHaps + h2];
+               // initialize quality
+               it1->second.qual = 123456.0;
+               it1->second.called = true;
+               for (int x=0;x<3;x++) it1->second.gl[x] = -HUGE_VAL;
+           }
 
-               if (true)// (h1!=h1max || h2!=h2max)) NOT NECESSARY?
+           for (int h1=0;h1<numHaps;h1++) if (allowedHaplotype[h1])
+               for (int h2=h1;h2<numHaps;h2++) if (allowedHaplotype[h2])
                {
-                   // different pair of haplotypes
-                   // only consider likelihood difference if it is higher, otherwise genotype quality will be zero.
-                    const std::vector<DindelVariant> & _v1 = haplotypes[h1].getVariants();
-                    const std::vector<DindelVariant> & _v2 = haplotypes[h2].getVariants();
-                    DindelRealignWindowResult::VarToGenotypeCall _gc;
+                   double ll_this_pair = llHapPairs[h1*numHaps + h2];
 
-                    for (size_t x=0;x<_v1.size();x++) _gc[_v1[x]].count += 1;
-                    for (size_t x=0;x<_v2.size();x++) _gc[_v2[x]].count += 1;
+                   if (true)// (h1!=h1max || h2!=h2max)) NOT NECESSARY?
+                   {
+                       // different pair of haplotypes
+                       // only consider likelihood difference if it is higher, otherwise genotype quality will be zero.
+                        const std::vector<DindelVariant> & _v1 = haplotypes[h1].getVariants(refIdx);
+                        const std::vector<DindelVariant> & _v2 = haplotypes[h2].getVariants(refIdx);
+                        DindelRealignWindowResult::VarToGenotypeCall _gc;
 
-                    // update genotype qualities for called variants
-                    for (it1 = gc.begin();it1 != gc.end();it1++)
-                    {
-                        DindelRealignWindowResult::VarToGenotypeCall::const_iterator it2;
-                        const DindelVariant & variant = it1->first;
-                        it2 = _gc.find(variant);
-                        bool countIsDifferent = true;
-                        if (it2 == _gc.end())
+                        for (size_t x=0;x<_v1.size();x++) _gc[_v1[x]].count += 1;
+                        for (size_t x=0;x<_v2.size();x++) _gc[_v2[x]].count += 1;
+
+                        // update genotype qualities for called variants
+                        for (it1 = gc.begin();it1 != gc.end();it1++)
                         {
-                            // variant not called in this pair of haplotypes
-                            int count = 0;
-                            it1->second.gl[count] = addLogs(it1->second.gl[count], ll_this_pair);
-                        } else
-                        {
-                            it1->second.gl[it2->second.count] = addLogs(it1->second.gl[it2->second.count], ll_this_pair);
+                            DindelRealignWindowResult::VarToGenotypeCall::const_iterator it2;
+                            const DindelVariant & variant = it1->first;
+                            it2 = _gc.find(variant);
+                            //bool countIsDifferent = true;
+                            if (it2 == _gc.end())
+                            {
+                                // variant not called in this pair of haplotypes
+                                int count = 0;
+                                it1->second.gl[count] = addLogs(it1->second.gl[count], ll_this_pair);
+                            } else
+                            {
+                                it1->second.gl[it2->second.count] = addLogs(it1->second.gl[it2->second.count], ll_this_pair);
+                            }
+
                         }
-
-                    }
+                   }
                }
-           }
 
 
-       for (it1 = gc.begin();it1 != gc.end();it1++)
-       {
-           int count = it1->second.count;
-           double qual = 1000.0;
-           for (int c=0;c<3;c++)
+           for (it1 = gc.begin();it1 != gc.end();it1++)
            {
-               double d = it1->second.gl[count]-it1->second.gl[c];
-               if (c!=count && d<qual)
+               int count = it1->second.count;
+               double qual = 1000.0;
+               for (int c=0;c<3;c++)
                {
-                   qual = d;
+                   double d = it1->second.gl[count]-it1->second.gl[c];
+                   if (c!=count && d<qual)
+                   {
+                       qual = d;
+                   }
                }
+               if (qual<0.0) qual = 0.0;
+               it1->second.qual = 10.0*qual/log(10.0);
            }
-           if (qual<0.0) qual = 0.0;
-           it1->second.qual = 10.0*qual/log(10.0);
        }
    }
    if (DINDEL_DEBUG) std::cerr << "GENOTYPING END" << std::endl;
 
 }
-#endif
 
 void DindelRealignWindow::computeHaplotypePairLikelihoods(std::vector<double> & llHapPairs,
                                                           HashMap<std::string, std::list<int> > & sampleToReads,
