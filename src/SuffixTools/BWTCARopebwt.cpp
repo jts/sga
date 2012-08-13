@@ -26,10 +26,12 @@ static unsigned char seq_nt6_table[128] = {
     5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
 };
 
-void BWTCA::runRopebwt(const std::string& input_filename)
+void BWTCA::runRopebwt(const std::string& input_filename, const std::string& bwt_out_name, 
+                       const std::string& sai_out_name, bool do_reverse)
 {
     // Initialize ropebwt
-    bcr_t* bcr = bcr_init(true, "ropebwt-tmp");
+    std::string tmp_name = bwt_out_name + ".tmp";
+    bcr_t* bcr = bcr_init(true, tmp_name.c_str());
 
     size_t num_sequences = 0;
     size_t num_bases = 0;
@@ -37,6 +39,9 @@ void BWTCA::runRopebwt(const std::string& input_filename)
     SeqRecord record;
     while(reader.get(record))
     {
+        if(do_reverse)
+            record.seq.reverse();
+
         size_t l = record.seq.length();
 
         // Convert the string into the alphabet encoding expected by ropebwt
@@ -62,8 +67,8 @@ void BWTCA::runRopebwt(const std::string& input_filename)
     const uint8_t* s;
     int l;
 
-    BWTWriterBinary out_bwt("testrope.bwt");
-    SAWriter out_sai("testrope.sai");
+    BWTWriterBinary out_bwt(bwt_out_name);
+    SAWriter out_sai(sai_out_name);
 
     // Write headers
     out_sai.writeHeader(num_sequences, num_sequences);
@@ -80,8 +85,10 @@ void BWTCA::runRopebwt(const std::string& input_filename)
                 out_bwt.writeBWChar(c);
 
             if(c == '$') {
-                size_t pos_index = bcr_getLexicographicIndex(bcr, lexo_seq_idx++);
-                out_sai.writeElem(SAElem(pos_index, 0));
+                for(int j = 0; j < rl; ++j) {
+                    size_t pos_index = bcr_getLexicographicIndex(bcr, lexo_seq_idx++);
+                    out_sai.writeElem(SAElem(pos_index, 0));
+                }
             }
         }
     }
