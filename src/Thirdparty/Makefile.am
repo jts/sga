@@ -4,4 +4,5 @@ libthirdparty_a_SOURCES = \
         gzstream.h gzstream.C \
         stdaln.h stdaln.c \
         overlapper.h overlapper.cpp \
-        multiple_alignment.h multiple_alignment.cpp 
+        multiple_alignment.h multiple_alignment.cpp \
+        bcr.h bcr.c

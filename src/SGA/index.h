@@ -15,6 +15,7 @@
 int indexMain(int argc, char** argv);
 void indexInMemorySAIS();
 void indexInMemoryBCR();
+void indexInMemoryRopebwt();
 void indexOnDisk();
 void buildIndexForTable(std::string outfile, const ReadTable* pRT, bool isReverse);
 void parseIndexOptions(int argc, char** argv);

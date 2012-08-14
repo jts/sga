@@ -19,6 +19,7 @@
 #include "BWT.h"
 #include "Timer.h"
 #include "BWTCABauerCoxRosone.h"
+#include "BWTCARopebwt.h"
 
 //
 // Getopt
@@ -99,8 +100,10 @@ int indexMain(int argc, char** argv)
     {
         if(opt::algorithm == "sais")
             indexInMemorySAIS();
-        else
+        else if(opt::algorithm == "bcr")
             indexInMemoryBCR();
+        else if(opt::algorithm == "ropebwt")
+            indexInMemoryRopebwt();
     }
     else
     {
@@ -137,6 +140,18 @@ void indexInMemoryBCR()
 			BWTCA::runBauerCoxRosone(&readSequences, opt::prefix + RBWT_EXT, opt::prefix + RSAI_EXT);
 		}
 	}
+}
+
+//
+void indexInMemoryRopebwt()
+{
+    std::cout << "Building index for " << opt::readsFile << " in memory using ropebwt\n";
+
+    if(opt::bBuildForward)
+        BWTCA::runRopebwt(opt::readsFile, opt::prefix + BWT_EXT, opt::prefix + SAI_EXT, false);
+
+    if(opt::bBuildReverse)
+        BWTCA::runRopebwt(opt::readsFile,  opt::prefix + RBWT_EXT, opt::prefix + RSAI_EXT, true);
 }
 
 //
@@ -276,9 +291,9 @@ void parseIndexOptions(int argc, char** argv)
         die = true;
     }
 
-    if(opt::algorithm != "sais" && opt::algorithm != "bcr")
+    if(opt::algorithm != "sais" && opt::algorithm != "bcr" && opt::algorithm != "ropebwt")
     {
-        std::cerr << SUBPROGRAM ": unrecognized algorithm string " << opt::algorithm << ". --algorithm must be sais or bcr\n";
+        std::cerr << SUBPROGRAM ": unrecognized algorithm string " << opt::algorithm << ". --algorithm must be sais, bcr or ropebwt\n";
         die = true;
     }
 
