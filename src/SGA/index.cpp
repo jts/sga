@@ -147,11 +147,13 @@ void indexInMemoryRopebwt()
 {
     std::cout << "Building index for " << opt::readsFile << " in memory using ropebwt\n";
 
+    bool use_threads = opt::numThreads >= 4;
+
     if(opt::bBuildForward)
-        BWTCA::runRopebwt(opt::readsFile, opt::prefix + BWT_EXT, opt::prefix + SAI_EXT, false);
+        BWTCA::runRopebwt(opt::readsFile, opt::prefix + BWT_EXT, opt::prefix + SAI_EXT, use_threads, false);
 
     if(opt::bBuildReverse)
-        BWTCA::runRopebwt(opt::readsFile,  opt::prefix + RBWT_EXT, opt::prefix + RSAI_EXT, true);
+        BWTCA::runRopebwt(opt::readsFile,  opt::prefix + RBWT_EXT, opt::prefix + RSAI_EXT, use_threads, true);
 }
 
 //

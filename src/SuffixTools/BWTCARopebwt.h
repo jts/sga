@@ -15,7 +15,7 @@
 namespace BWTCA
 {
     void runRopebwt(const std::string& input_filename, const std::string& bwt_out_name, 
-                    const std::string& sai_out_name, bool do_reverse);
+                    const std::string& sai_out_name, bool use_threads, bool do_reverse);
 };
 
 #endif

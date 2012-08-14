@@ -27,11 +27,11 @@ static unsigned char seq_nt6_table[128] = {
 };
 
 void BWTCA::runRopebwt(const std::string& input_filename, const std::string& bwt_out_name, 
-                       const std::string& sai_out_name, bool do_reverse)
+                       const std::string& sai_out_name, bool use_threads, bool do_reverse)
 {
     // Initialize ropebwt
     std::string tmp_name = bwt_out_name + ".tmp";
-    bcr_t* bcr = bcr_init(true, tmp_name.c_str());
+    bcr_t* bcr = bcr_init(use_threads, tmp_name.c_str());
 
     size_t num_sequences = 0;
     size_t num_bases = 0;
