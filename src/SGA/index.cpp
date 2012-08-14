@@ -159,7 +159,7 @@ void indexInMemoryRopebwt()
 //
 void indexInMemorySAIS()
 {
-    std::cout << "Building index for " << opt::readsFile << " in memory\n";
+    std::cout << "Building index for " << opt::readsFile << " in memory using SAIS\n";
 
 	if(opt::bBuildForward || opt::bBuildReverse)
     {
