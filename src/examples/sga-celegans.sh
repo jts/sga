@@ -11,7 +11,7 @@ IN1=SRR065390_1.fastq
 IN2=SRR065390_2.fastq
 
 # Parameters
-SGA_BIN=sga-0.9.13
+SGA_BIN=sga-0.9.31
 
 # Overlap parameter used for the final assembly. This is the only argument
 # to the script
@@ -58,7 +58,7 @@ $SGA_BIN preprocess --pe-mode 1 -o SRR065390.fastq $IN1 $IN2
 # Build the index that will be used for error correction
 # As the error corrector does not require the reverse BWT, suppress
 # construction of the reversed index
-$SGA_BIN index -d $D -t $CPU --no-reverse SRR065390.fastq
+$SGA_BIN index -a ropebwt -t $CPU --no-reverse SRR065390.fastq
 
 # Perform error correction with a 41-mer.
 # The k-mer cutoff parameter is learned automatically
@@ -69,7 +69,7 @@ $SGA_BIN correct -k $CK --discard --learn -t $CPU -o reads.ec.k$CK.fastq SRR0653
 #
 
 # Index the corrected data.
-$SGA_BIN index -d $D -t $CPU reads.ec.k$CK.fastq
+$SGA_BIN index -a ropebwt -t $CPU reads.ec.k$CK.fastq
 
 # Remove exact-match duplicates and reads with low-frequency k-mers
 $SGA_BIN filter -x $COV_FILTER -t $CPU --homopolymer-check --low-complexity-check reads.ec.k$CK.fastq

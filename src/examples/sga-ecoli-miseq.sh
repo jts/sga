@@ -24,9 +24,6 @@ DISTANCE_EST=DistanceEst
 # The number of threads to use
 CPU=8
 
-# To save memory, we index $D reads at a time then merge the indices together
-D=2000000
-
 # Correction k-mer 
 CORRECTION_K=41
 
@@ -78,7 +75,7 @@ $SGA_BIN preprocess --pe-mode 1 -o reads.pp.fastq $IN1 $IN2
 # Build the index that will be used for error correction
 # As the error corrector does not require the reverse BWT, suppress
 # construction of the reversed index
-$SGA_BIN index -d $D -t $CPU --no-reverse reads.pp.fastq
+$SGA_BIN index -a ropebwt -t $CPU --no-reverse reads.pp.fastq
 
 # Perform k-mer based error correction.
 # The k-mer cutoff parameter is learned automatically.
@@ -89,7 +86,7 @@ $SGA_BIN correct -k $CORRECTION_K --learn -t $CPU -o reads.ec.fastq reads.pp.fas
 #
 
 # Index the corrected data.
-$SGA_BIN index -d $D -t $CPU reads.ec.fastq
+$SGA_BIN index -a ropebwt -t $CPU reads.ec.fastq
 
 # Remove exact-match duplicates and reads with low-frequency k-mers
 $SGA_BIN filter -x 2 -t $CPU reads.ec.fastq
