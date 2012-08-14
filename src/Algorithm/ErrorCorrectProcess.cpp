@@ -233,7 +233,8 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 
     int n = readSequence.size();
     int nk = n - m_params.kmerLength + 1;
-    
+    int k = m_params.kmerLength;
+
     // Are all kmers in the read well-represented?
     bool allSolid = false;
     bool done = false;
@@ -270,17 +271,18 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 
             // First check if this kmer is in the cache
             // If its not, find its count from the fm-index and cache it
-            int count = 0;
-            KmerCountMap::iterator iter = kmerCache.find(kmer);
-
-            if(iter != kmerCache.end())
-            {
-                count = iter->second;
-            }
-            else
+            int count = m_params.indices.pCountMinSketch->get(kmer.c_str(), k);
+            if(count == 0)
             {
                 count = BWTAlgorithms::countSequenceOccurrences(kmer, m_params.indices);
-                kmerCache.insert(std::make_pair(kmer, count));
+                
+                // Insert high-frequency kmers into the CMS
+                if(count > 5)
+                {
+                    for(int j = 0; j < count; ++j)
+                        m_params.indices.pCountMinSketch->increment(kmer.c_str(), k);
+                }
+
             }
 
             // Get the phred score for the last base of the kmer

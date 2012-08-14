@@ -5,4 +5,6 @@ libthirdparty_a_SOURCES = \
         stdaln.h stdaln.c \
         overlapper.h overlapper.cpp \
         multiple_alignment.h multiple_alignment.cpp \
-        bcr.h bcr.c
+        bcr.h bcr.c \
+        MurmurHash3.h MurmurHash3.cpp \
+        count_min_sketch.h count_min_sketch.c

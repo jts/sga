@@ -159,6 +159,9 @@ int correctMain(int argc, char** argv)
     indexSet.pRBWT = pRBWT;
     indexSet.pSSA = pSSA;
     indexSet.pCache = pIntervalCache;
+    CountMinSketch* pCMS = new CountMinSketch;
+    pCMS->initialize(240000000, 3);
+    indexSet.pCountMinSketch = pCMS;
 
     // Learn the parameters of the kmer corrector
     if(opt::bLearnKmerParams)
@@ -232,6 +235,8 @@ int correctMain(int argc, char** argv)
 
     delete pBWT;
     delete pIntervalCache;
+    delete pCMS;
+
     if(pRBWT != NULL)
         delete pRBWT;
 
