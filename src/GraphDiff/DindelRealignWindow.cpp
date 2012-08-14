@@ -2451,6 +2451,14 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
 
        // use referenceMappings to determine how many haplotypes were mapped to a given reference location.
        // This is a crude way to determine homozygous from heterozygous positions (as in two or one haplotype mapped to a reference location for this sample)
+       DindelRealignWindowResult::VarToGenotypeCall::iterator it1;
+       for (it1=gc.begin();it1!=gc.end();it1++)
+       {
+           // initialize quality
+           it1->second.qual = 123456.0;
+           it1->second.called = true;
+           for (int x=0;x<3;x++) it1->second.gl[x] = -HUGE_VAL;
+       }
 
        for (int refIdx = 0; refIdx < int( m_dindelWindow.getReferenceMappings().size() ); refIdx++)
        {
@@ -2465,14 +2473,7 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
            for (size_t x=0;x<v1.size();x++) gc[v1[x]].count += 1;
            for (size_t x=0;x<v2.size();x++) gc[v2[x]].count += 1;
 
-           DindelRealignWindowResult::VarToGenotypeCall::iterator it1;
-           for (it1=gc.begin();it1!=gc.end();it1++)
-           {
-               // initialize quality
-               it1->second.qual = 123456.0;
-               it1->second.called = true;
-               for (int x=0;x<3;x++) it1->second.gl[x] = -HUGE_VAL;
-           }
+          
 
            // always allow the reference haplotype for the mapping location so that we don't get -inf likelihoods for genotypes involving the reference
            for (int h1=0;h1<numHaps;h1++) // if (allowedHaplotype[h1] || haplotypes[h1].getVariants(refIdx).size()==0)

@@ -280,16 +280,15 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             curr_out << vcfCollections[i].records[j] << "\n";
     }
 
-
-    // Copy raw VCFRecords to stdout
     /*
+    // Copy raw VCFRecords to stdout
     for(size_t i = 0; i <= 1; ++i)
     {
         std::cout << ((i==0)?"BASE:\t" : "VARI:\t");
         for(size_t j = 0; j < vcfCollections[i].records.size(); ++j)
             std::cout << vcfCollections[i].records[j] << "\n";
     }
-    */
+     */
     
     // Make comparative calls
     size_t VARIANT_IDX = 1;
