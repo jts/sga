@@ -19,6 +19,7 @@
 #include "BWT.h"
 #include "Timer.h"
 #include "BWTCABauerCoxRosone.h"
+#include "BWTCARopebwt.h"
 
 //
 // Getopt
@@ -37,10 +38,9 @@ static const char *INDEX_USAGE_MESSAGE =
 "\n"
 "  -v, --verbose                        display verbose output\n"
 "      --help                           display this help and exit\n"
-"  -a, --algorithm=STR                  BWT construction algorithm. STR must be SAIS (induced copying, the default) or BCR (Bauer-Cox-Rosone)\n"
-"                                       SAIS is the default method and works well for all types of input. BCR is a specialized to handle\n"
-"                                       large volumes of short (<150bp) reads. If you have a large collection of 100bp reads, use BCR as it\n"
-"                                       will be much faster and use less memory.\n"
+"  -a, --algorithm=STR                  BWT construction algorithm. STR can be:\n"
+"                                       sais - induced sort algorithm, slower but works for very long sequences (default)\n"
+"                                       ropebwt - very fast and memory efficient. use this for short (<200bp) reads\n"
 "  -d, --disk=NUM                       use disk-based BWT construction algorithm. The suffix array/BWT will be constructed\n"
 "                                       for batchs of NUM reads at a time. To construct the suffix array of 200 megabases of sequence\n"
 "                                       requires ~2GB of memory, set this parameter accordingly.\n"
@@ -99,8 +99,10 @@ int indexMain(int argc, char** argv)
     {
         if(opt::algorithm == "sais")
             indexInMemorySAIS();
-        else
+        else if(opt::algorithm == "bcr")
             indexInMemoryBCR();
+        else if(opt::algorithm == "ropebwt")
+            indexInMemoryRopebwt();
     }
     else
     {
@@ -140,9 +142,23 @@ void indexInMemoryBCR()
 }
 
 //
+void indexInMemoryRopebwt()
+{
+    std::cout << "Building index for " << opt::readsFile << " in memory using ropebwt\n";
+
+    bool use_threads = opt::numThreads >= 4;
+
+    if(opt::bBuildForward)
+        BWTCA::runRopebwt(opt::readsFile, opt::prefix + BWT_EXT, opt::prefix + SAI_EXT, use_threads, false);
+
+    if(opt::bBuildReverse)
+        BWTCA::runRopebwt(opt::readsFile,  opt::prefix + RBWT_EXT, opt::prefix + RSAI_EXT, use_threads, true);
+}
+
+//
 void indexInMemorySAIS()
 {
-    std::cout << "Building index for " << opt::readsFile << " in memory\n";
+    std::cout << "Building index for " << opt::readsFile << " in memory using SAIS\n";
 
 	if(opt::bBuildForward || opt::bBuildReverse)
     {
@@ -276,9 +292,9 @@ void parseIndexOptions(int argc, char** argv)
         die = true;
     }
 
-    if(opt::algorithm != "sais" && opt::algorithm != "bcr")
+    if(opt::algorithm != "sais" && opt::algorithm != "bcr" && opt::algorithm != "ropebwt")
     {
-        std::cerr << SUBPROGRAM ": unrecognized algorithm string " << opt::algorithm << ". --algorithm must be sais or bcr\n";
+        std::cerr << SUBPROGRAM ": unrecognized algorithm string " << opt::algorithm << ". --algorithm must be sais, bcr or ropebwt\n";
         die = true;
     }
 

@@ -18,6 +18,13 @@
 # The submit script takes in the amount of memory required by the job (eg --mem 16G) and the
 # number of compute cores (--cpu 8). It is the user's responsibility to provide this script.
 #
+#
+# Update 14/07/12:
+#   The commands used here are for the original published version of SGA. Since publication,
+#   many algorithms have been improved, notable the indexing/merge step. See the SGA wiki
+#   for updated best practices on indexing large collections of data.
+#
+#
 # Send questions or comments to js18@sanger.ac.uk
 #
 

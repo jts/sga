@@ -89,7 +89,7 @@ namespace opt
 
     static bool deBruijnMode = false;
     static int minDBGCount = 2;
-    static bool lowCoverage = true;
+    static bool lowCoverage = false;
 
     static bool referenceMode = false;
     static std::string outPrefix = "graphdiff";
