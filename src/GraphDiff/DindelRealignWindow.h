@@ -126,6 +126,10 @@ bool from_string(T& t, T min, T max,
 // JS TODO: Util.h has a similar function, can deduplicate
 std::vector<std::string> SplitString(const std::string & str, char sep);
 
+// Align two haplotypes against each other semi-globally and adjust
+// cigar strings to give an end-to-end alignment
+std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2);
+
 // Parse a colon-separated string into a chromosome/start/end triple
 void parseRegionString(const std::string & region, std::string & chrom, int & start, int & end);
 

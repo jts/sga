@@ -34,6 +34,7 @@
 #include "DindelHMM.h"
 #include "Profiler.h"
 #include "VCFUtil.h"
+#include "overlapper.h"
 #include <cmath>
 
 const int DINDEL_DEBUG=0;
@@ -111,6 +112,7 @@ void parseRegionString(const std::string & region, std::string & chrom, int & st
         }
 }
 
+//
 std::vector<std::string> SplitString(const std::string & str, char sep)
 {
     std::string elem;
@@ -129,18 +131,42 @@ std::vector<std::string> SplitString(const std::string & str, char sep)
     return split;
 }
 
-/*
+std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2)
+{
+    // Compute semi-global alignment between the pair of haplotypes
+    SequenceOverlap overlap = Overlapper::computeOverlap(h1, h2);
 
- * DINDELBAM
+    // If the align sequence is not aligned end-to-end adjust the cigar string
+    // by padding with deletion characters
+//    printf("i0: [%d %d] i1: [%d %d]\n", overlap.match[0].start, overlap.match[0].end, overlap.match[1].start, overlap.match[1].end);
+    std::stringstream out_cigar_ss;
 
- */
+    int end_overhang_1 = (h1.size() - 1) - overlap.match[0].end;
+    int end_overhang_2 = (h2.size() - 1) - overlap.match[1].end;
+    
+    // Make sure the alignments are sane
+    assert(overlap.match[0].start == 0 || overlap.match[1].start == 0);
+    assert(end_overhang_1 == 0 || end_overhang_2 == 0);
 
+    // Pad the beginning of the cigar string to handle overhangs
+    if(overlap.match[0].start > 0)
+        out_cigar_ss << overlap.match[0].start << "D";
+    else if(overlap.match[1].start > 0)
+        out_cigar_ss << overlap.match[1].start << "I";
 
+    out_cigar_ss << overlap.cigar;
 
+    // Pad the end as well
+    if(end_overhang_1 > 0)
+        out_cigar_ss << end_overhang_1 << "D";
+    else if(end_overhang_2 > 0)
+        out_cigar_ss << end_overhang_2 << "I";
 
-
-
-
+    //overlap.cigar = out_cigar_ss.str();
+    //overlap.printAlignment(h1, h2);
+    return out_cigar_ss.str();
+    
+}
 
 /*
  *
@@ -350,9 +376,7 @@ void DindelVariant::write(std::ostream & out) const
 
 void DindelHaplotype::alignHaplotype()
 {
-   
-
-    // globally align haplotypes to the first haplotype (arbitrary)
+    // semi-globally align haplotypes to the first haplotype (arbitrary)
     std::vector< MAlignData > maVector;
     const std::string  rootSequence = m_refMapping.refSeq;
     std::string alignSeq;
@@ -365,7 +389,9 @@ void DindelHaplotype::alignHaplotype()
     _ma.position = 0;
     _ma.str = alignSeq;
     _ma.name = std::string("haplotype-1");
-    _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(alignSeq, rootSequence));
+    
+    std::string cigar = semiGlobalHaplotypeAlignment(alignSeq, rootSequence);
+    _ma.expandedCigar = StdAlnTools::expandCigar(cigar);
     maVector.push_back(_ma);
     m_pMA = new MultiAlignment(rootSequence, maVector, std::string("haplotype-0"));
     m_deleteMA = true;
@@ -1208,7 +1234,8 @@ void DindelWindow::doMultipleHaplotypeAlignment()
         std::stringstream ss; ss << "haplotype-" << h;
 
         _ma.name = ss.str();
-        _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(m_haplotypes[h].getSequence(), rootSequence));
+        std::string cigar = semiGlobalHaplotypeAlignment(m_haplotypes[h].getSequence(), rootSequence);
+        _ma.expandedCigar = StdAlnTools::expandCigar(cigar);
 
         if (DINDEL_DEBUG) std::cout << "DindelWindow::DindelWindow globalAlignmentCigar " << h << " vs root: " << _ma.expandedCigar << std::endl;
 
@@ -3278,7 +3305,8 @@ void DindelRealignWindow::doReadHaplotypeAlignment(int H, const std::vector<Dind
             else
                 ss << "HAPLOTYPE-" << j;
             _ma.name = ss.str();
-            _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(haplotypes[j].getSequence(), rootSequence));
+            std::string cigar = semiGlobalHaplotypeAlignment(haplotypes[j].getSequence(), rootSequence);
+            _ma.expandedCigar = StdAlnTools::expandCigar(cigar);
             maVector.push_back(_ma);
         }
 
@@ -3296,7 +3324,8 @@ void DindelRealignWindow::doReadHaplotypeAlignment(int H, const std::vector<Dind
                 ss << "MATE read-" << r;
 
             _ma.name = ss.str();
-            _ma.expandedCigar = StdAlnTools::expandCigar(StdAlnTools::globalAlignmentCigar(dReads[r].getSequence(), rootSequence));
+            std::string cigar = semiGlobalHaplotypeAlignment(dReads[r].getSequence(), rootSequence);
+            _ma.expandedCigar = StdAlnTools::expandCigar(cigar);
             maVector.push_back(_ma);
         }
 
