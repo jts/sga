@@ -494,7 +494,8 @@ void DindelHaplotype::extractVariants()
     {
         // ref deletion extends to end of alignment, right overhang.
 	// 
-        if (!(m_refPos[hDelStart-1] >=0))
+        
+        if (!(m_refPos[hDelStart-1] >=0) && DINDEL_DEBUG_3)
         {
             std::cout << "hDelStart: " << hDelStart << "m_refPos[hDelStart-1]: " << m_refPos[hDelStart-1] << std::endl;
             std::string consensus = m_pMA->generateConsensus();
