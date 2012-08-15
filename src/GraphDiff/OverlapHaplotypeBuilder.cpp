@@ -626,8 +626,8 @@ StringVector OverlapHaplotypeBuilder::getCorrectedOverlaps(const std::string& se
 void OverlapHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, size_t k, StringVector* reads)
 {
     PROFILE_FUNC("OverlapHaplotypeBuilder::getReadsForKmers")
-    SeqItemVector fwd_si;
-    SeqItemVector rev_si;
+    SeqRecordVector fwd_si;
+    SeqRecordVector rev_si;
 
     // Forward reads
     HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.variantIndex, k, false, 100000, &fwd_si, NULL);

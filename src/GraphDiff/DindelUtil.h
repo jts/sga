@@ -58,7 +58,7 @@ namespace DindelUtil
                                           HapgenAlignment& bestAlignment);
 
     // Convert a SeqItem to a dindel read
-    DindelRead convertToDindelRead(const BWTIndexSet* indices, const SeqItem& item, bool is_forward);
+    DindelRead convertToDindelRead(const BWTIndexSet* indices, const SeqRecord& record, bool is_forward);
 
     void initializeCodeCounts(int counts[DRC_NUM_CODES]);
     void printReturnReport(const int counts[DRC_NUM_CODES]);

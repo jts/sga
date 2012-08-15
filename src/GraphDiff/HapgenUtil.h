@@ -105,8 +105,8 @@ namespace HapgenUtil
                                int k,
                                bool doReverse,
                                size_t maxReads,
-                               SeqItemVector* pOutReads, 
-                               SeqItemVector* pOutMates);
+                               SeqRecordVector* pOutReads, 
+                               SeqRecordVector* pOutMates);
 
     // Extract reads from an FM-index that have a k-mer match to AT MOST one haplotype
     // If the number of reads to extract exceeds maxReads, false is returned
@@ -115,8 +115,8 @@ namespace HapgenUtil
                                        int k,
                                        bool doReverse,
                                        size_t maxReads,
-                                       SeqItemVector* pOutReads, 
-                                       SeqItemVector* pOutMates);
+                                       SeqRecordVector* pOutReads, 
+                                       SeqRecordVector* pOutMates);
 
 
     // Compute the best local alignment for each read in the array to the given sequence

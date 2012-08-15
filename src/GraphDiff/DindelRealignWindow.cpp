@@ -175,10 +175,9 @@ std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::strin
  *
  */
 
-DindelRead::DindelRead(const SeqItem & seqItem, const SampleName & sampleName, double mappingQual, int fixedBaseQual, bool isForward) : m_seqItem(seqItem)
+DindelRead::DindelRead(const SeqRecord & seqRecord, const SampleName & sampleName, double mappingQual, bool isForward) : m_seqRecord(seqRecord)
 {
     m_mappingQual = mappingQual;
-    m_fixedBaseQual = fixedBaseQual;
     m_rcRead = false;
     m_sampleName = sampleName;
     m_setupHash = false;

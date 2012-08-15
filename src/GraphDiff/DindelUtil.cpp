@@ -88,8 +88,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     }
 
     // Normal reads
-    SeqItemVector normalReads;
-    SeqItemVector normalRCReads;
+    SeqRecordVector normalReads;
+    SeqRecordVector normalRCReads;
 
     // Remove non-unique candidate haplotypes
     std::sort(candidateHaplotypes.begin(), candidateHaplotypes.end());
@@ -120,8 +120,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     }
 
     // Variant reads
-    SeqItemVector variantReads;
-    SeqItemVector variantRCReads;
+    SeqRecordVector variantReads;
+    SeqRecordVector variantRCReads;
 
     extractOK = HapgenUtil::extractHaplotypeReads(candidateHaplotypes, parameters.variantIndex, extractionKmer, 
                                                   false, MAX_READS, &variantReads, NULL);
@@ -234,8 +234,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
     for(size_t i = start_i; i <= 1; ++i)
     {
-        SeqItemVector& fwdReads = (i == 0) ? normalReads : variantReads;
-        SeqItemVector& rcReads = (i == 0) ? normalRCReads : variantRCReads;
+        SeqRecordVector& fwdReads = (i == 0) ? normalReads : variantReads;
+        SeqRecordVector& rcReads = (i == 0) ? normalRCReads : variantRCReads;
         const BWTIndexSet* indices = &parameters.variantIndex;
 
         // Create dindel reads
@@ -247,6 +247,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         for(size_t j = 0; j < rcReads.size(); ++j)
         {
             rcReads[j].seq.reverseComplement();
+            std::reverse(rcReads[j].qual.begin(), rcReads[j].qual.end());
             dReads.push_back(convertToDindelRead(indices, rcReads[j], false));
         }
 
@@ -314,28 +315,27 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     return DRC_OK;
 }
 
-DindelRead DindelUtil::convertToDindelRead(const BWTIndexSet* indices, const SeqItem& item, bool is_forward)
+DindelRead DindelUtil::convertToDindelRead(const BWTIndexSet* indices, const SeqRecord& record, bool is_forward)
 {
     double MAP_QUAL = 40.0;
-    int BASE_QUAL = 20;
 
     std::string sample = "SAMPLE";
     if(indices->pPopIdx != NULL)
     {
         // Parse the read index from the name of the SeqItem
-        if(item.id.find("idx-") == std::string::npos)
+        if(record.id.find("idx-") == std::string::npos)
         {
-            std::cerr << "Unexpected sequence id: " << item.id << "\n";
+            std::cerr << "Unexpected sequence id: " << record.id << "\n";
             assert(false);
         }
-        std::stringstream parser(item.id.substr(4));
+        std::stringstream parser(record.id.substr(4));
         size_t index;
         parser >> index;
 
         sample = indices->pPopIdx->getName(index);
     }
 
-    return DindelRead(item, sample, MAP_QUAL, BASE_QUAL, is_forward);
+    return DindelRead(record, sample, MAP_QUAL, is_forward);
 }
 
 //

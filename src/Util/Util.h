@@ -112,6 +112,7 @@ struct SeqRecord
     DNAString seq;
     std::string qual;
 };
+typedef std::vector<SeqRecord> SeqRecordVector;
 
 //
 // Functions
