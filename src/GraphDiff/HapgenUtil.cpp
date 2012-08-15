@@ -430,7 +430,6 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
 
         assert(indices.pQualityTable != NULL);
         record.qual = indices.pQualityTable->getQualityString(idx, record.seq.length());
-
         if(!record.seq.empty())
             pOutReads->push_back(record);
 
@@ -456,7 +455,6 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
                 pOutMates->push_back(mateRecord);
         }
     }
-
     return true;
 }
 

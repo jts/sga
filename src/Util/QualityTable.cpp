@@ -13,19 +13,26 @@
 #include "SeqReader.h"
 
 // Read the sequences from a file
-QualityTable::QualityTable(std::string filename) : m_bytes_used(0)
+QualityTable::QualityTable() : m_bytes_used(0)
+{
+    int missing_phred = 20;
+    m_missingQualityChar = Quality::phred2char(missing_phred);
+}
+
+ 
+QualityTable::~QualityTable()
+{
+    for(size_t i = 0; i < m_table.size(); ++i)
+        delete m_table[i].encoded_data;
+}
+
+//
+void QualityTable::loadQualities(const std::string& filename)
 {
     SeqReader reader(filename);
     SeqRecord sr;
     while(reader.get(sr))
         addQualityString(sr.qual);
-}
-
-// 
-QualityTable::~QualityTable()
-{
-    for(size_t i = 0; i < m_table.size(); ++i)
-        delete m_table[i].encoded_data;
 }
 
 //
@@ -47,7 +54,10 @@ void QualityTable::addQualityString(const std::string& qual)
 //
 std::string QualityTable::getQualityString(size_t idx, size_t n) const
 {
-    assert(idx < m_table.size());
+    // If there is no quality string for this index, return default qualities
+    if(idx >= m_table.size())
+        return std::string(n, m_missingQualityChar);
+
     QualityString encoded = m_table[idx];
     std::string out;
     out.reserve(encoded.num_encoded_symbols);

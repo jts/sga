@@ -26,11 +26,11 @@ class QualityTable
     public:
 
         //
-        QualityTable() {}
-        QualityTable(std::string filename);
+        QualityTable();
         ~QualityTable();
 
         //
+        void loadQualities(const std::string& filename);
         void addQualityString(const std::string& qual);
         std::string getQualityString(size_t idx, size_t n) const;
         size_t getCount() const;
@@ -43,6 +43,7 @@ class QualityTable
         QualityCodec<4> m_codec;
         QualityStringVector m_table;
         size_t m_bytes_used;
+        char m_missingQualityChar;
 };
 
 #endif

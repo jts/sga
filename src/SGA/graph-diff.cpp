@@ -93,7 +93,7 @@ namespace opt
     static bool lowCoverage = false;
 
     static bool referenceMode = false;
-    static bool useQualityScores = true;
+    static bool useQualityScores = false;
     static std::string outPrefix = "graphdiff";
     static std::string indexPrefix;
     static std::string debugFile;
@@ -105,7 +105,7 @@ namespace opt
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:m:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_DBG_COUNT, OPT_INDEX, OPT_DEBRUIJN, OPT_LOWCOVERAGE };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_DBG_COUNT, OPT_INDEX, OPT_DEBRUIJN, OPT_LOWCOVERAGE, OPT_QUALSCORES };
 
 static const struct option longopts[] = {
     { "verbose",              no_argument,       NULL, 'v' },
@@ -119,6 +119,7 @@ static const struct option longopts[] = {
     { "min-overlap",          required_argument, NULL, 'm' },
     { "debruijn",             no_argument,       NULL, OPT_DEBRUIJN },
     { "low-coverage",         no_argument,       NULL, OPT_LOWCOVERAGE },
+    { "use-quality-scores",   no_argument,       NULL, OPT_QUALSCORES},
     { "index",                required_argument, NULL, OPT_INDEX },
     { "min-dbg-count",        required_argument, NULL, OPT_MIN_DBG_COUNT },
     { "debug",                required_argument, NULL, OPT_DEBUG },
@@ -154,8 +155,13 @@ int graphDiffMain(int argc, char** argv)
     variantIndex.pCache = new BWTIntervalCache(opt::cacheLength, variantIndex.pBWT);
     if(opt::lowCoverage)
         variantIndex.pPopIdx = new PopulationIndex(variantPrefix + POPIDX_EXT);
+
+    // Generate a quality table for the variant sequences. If --use-quality
+    // is not set, this will just return default quality scores for all reads
+    QualityTable* variantQuals = new QualityTable;
     if(opt::useQualityScores)
-        variantIndex.pQualityTable = new QualityTable(opt::variantFile);
+        variantQuals->loadQualities(opt::variantFile);
+    variantIndex.pQualityTable = variantQuals;
 
     // Reference genome
     BWTIndexSet referenceIndex;
@@ -173,10 +179,12 @@ int graphDiffMain(int argc, char** argv)
         baseIndex.pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
         baseIndex.pSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
         baseIndex.pCache = new BWTIntervalCache(opt::cacheLength, baseIndex.pBWT);
+        baseIndex.pQualityTable = new QualityTable();
 
+        QualityTable* baseQuals = new QualityTable;
         if(opt::useQualityScores)
-            baseIndex.pQualityTable = new QualityTable(opt::baseFile);
-
+            baseQuals->loadQualities(opt::baseFile);
+        baseIndex.pQualityTable = baseQuals;
     }
     else
     {
@@ -245,19 +253,16 @@ int graphDiffMain(int argc, char** argv)
         delete baseIndex.pBWT;
         delete baseIndex.pSSA;
         delete baseIndex.pCache;
-
-        if(opt::useQualityScores)
-            delete baseIndex.pQualityTable;
+        delete baseIndex.pQualityTable;
     }
 
     // Cleanup indices
     delete variantIndex.pBWT;
     delete variantIndex.pSSA;
     delete variantIndex.pCache;
+    delete variantIndex.pQualityTable;
     if(opt::lowCoverage)
         delete variantIndex.pPopIdx;
-    if(opt::useQualityScores)
-        delete variantIndex.pQualityTable;
 
     delete referenceIndex.pBWT;
     delete referenceIndex.pSSA;
@@ -400,6 +405,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case OPT_DEBUG: arg >> opt::debugFile; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
             case OPT_INDEX: arg >> opt::indexPrefix; break;
+            case OPT_QUALSCORES:  opt::useQualityScores = true; break;
             case OPT_HELP:
                 std::cout << GRAPH_DIFF_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
