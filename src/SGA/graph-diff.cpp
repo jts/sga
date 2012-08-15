@@ -144,6 +144,7 @@ int graphDiffMain(int argc, char** argv)
     if(!opt::indexPrefix.empty())
         variantPrefix = opt::indexPrefix;
 
+
     //
     // Initialize indices
     //
