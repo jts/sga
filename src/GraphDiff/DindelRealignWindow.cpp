@@ -45,9 +45,13 @@ const int DEBUG_CALLINDEL=0;
 const int REPOSITION_INDEL_WINDOW=1000;
 const int SHOWHAPFREQ=0;
 const int REPOSITIONVARIANTSSLOW=0; // uses slow code to reposition indels.
-const int DINDEL_DEBUG_3 = 1; // useful debugging
+const int DINDEL_DEBUG_3 = 0; // useful debugging
 const int DINDEL_ADJUST_MAPPINGQUAL = 1;
 //#define OVERLAPPER // build overlapper
+
+// used in DindelHaplotype::extractVariants. Variants within this distance from the edge of the reference haplotype will not be annotated
+const int MIN_EVENT_DIST_FROM_EDGE = 10;
+
 
 #include <iostream>
 #include <vector>
@@ -407,6 +411,7 @@ void DindelHaplotype::alignHaplotype()
 
 void DindelHaplotype::extractVariants()
 {
+    const int verbose = 0;
     // extract variants from alignment
     MultiAlignment & ma = *m_pMA;
 
@@ -425,7 +430,8 @@ void DindelHaplotype::extractVariants()
 
     // set m_refPos
     int hidx=-1, ridx=-1, hDelStart=-1;
-    size_t numRightOverhang = 0;
+    int numRightOverhang = 0;
+    int numLeftOverhang = 0;
     bool inRefDeletion = false;
     bool leftOverhang = true;
 
@@ -444,6 +450,8 @@ void DindelHaplotype::extractVariants()
         if (rs != '-') ridx++;
         if (vs != '-') hidx++;
 
+        
+
         if(leftOverhang)
         {
             if(rs != '-')
@@ -451,6 +459,7 @@ void DindelHaplotype::extractVariants()
                 // end of left overhang of haplotype with reference
                 for(size_t j= 0 ; j < i; j++) m_refPos[j] = LEFTOVERHANG;
                 leftOverhang = false;
+                numLeftOverhang = int(i);
             }
         }
 
@@ -493,10 +502,8 @@ void DindelHaplotype::extractVariants()
             m_pMA->print(1000, &consensus);
         }
 
-        assert(hDelStart>0);
-        assert(m_refPos[hDelStart-1] >=0);
-
-
+        assert(hDelStart != -1);
+        
         for(int h = hDelStart; h < int(m_refPos.size()); h++)
         {
             m_refPos[h] = RIGHTOVERHANG;
@@ -504,15 +511,17 @@ void DindelHaplotype::extractVariants()
         }
     }
 
-   
-    if(DINDEL_DEBUG)
+    
+    if(DINDEL_DEBUG || verbose)
     {
         std::cout << "m_refPos: ";
         for (size_t i = 0; i < m_refPos.size(); i++) std::cout << "[" << i << " " << m_refPos[i] << "]";
         std::cout << "\n";
+
+        std::cout << "numLeftOverhang: " << numLeftOverhang << " numRightOverhang: " << numRightOverhang << "\n";
     }
 
-    int verbose = 0;
+    
 
     int leftExactMatch = 0;
     int rightExactMatch = 0;
@@ -604,6 +613,8 @@ void DindelHaplotype::extractVariants()
                 bool okEvent = true;
                 if(isIndel && (eventStart == 0 || eventEnd == (int)numCols - 1) ) okEvent = false;
 
+                if ((eventStart-numLeftOverhang < MIN_EVENT_DIST_FROM_EDGE || eventEnd > int(numCols) - numRightOverhang - MIN_EVENT_DIST_FROM_EDGE) ) okEvent = false;
+                
                 if(okEvent)
                 {
                     if(isIndel)
