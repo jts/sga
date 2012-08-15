@@ -141,6 +141,17 @@ int graphDiffMain(int argc, char** argv)
     if(!opt::indexPrefix.empty())
         variantPrefix = opt::indexPrefix;
 
+
+
+    std::string refSeq = "TTTCTTAGTTCAGGACATCCTCTCTTGAAGTGGCCTGTTTTTCCACATCTATAGCACCTATCTTGTCCTTCCTCCCTCTTAGTTCTGGGATTCTTTAACCCTGCTCCCCCATACTCTTTAGGGG";
+    std::string hapSeq = "TTTCTTAGTTCAGGACATCCTCTCTTGAAGTGGCCTGTTCTTCCACATCTATAGCACCTATCTTGTCCTTCCTCCCTCTTAGTTCTGGGATTCTTTAACCCTTCTCCCCCATACTCTTTAGGGAG";
+    std::string refName = "TEST";
+    DindelReferenceMapping dref(refName, refSeq, 0,1000,false);
+    DindelHaplotype dhap = DindelHaplotype(hapSeq, dref);
+
+    exit(1);
+
+
     //
     // Initialize indices
     //
