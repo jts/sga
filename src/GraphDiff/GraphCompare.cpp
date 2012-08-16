@@ -201,6 +201,9 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                     result.baseVCFStrings.push_back(baseVCFSS.str());
                     result.variantVCFStrings.push_back(variantVCFSS.str());
                     result.calledVCFStrings.push_back(callsVCFSS.str());
+
+                    result.varStrings.insert(result.varStrings.end(), 
+                                             build_result.variant_haplotypes.begin(), build_result.variant_haplotypes.end());
                 }
             }
         }
@@ -576,24 +579,13 @@ void GraphCompareAggregateResults::updateShared(const GraphCompareStats stats)
 
 void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, const GraphCompareResult& result)
 {
-    assert(result.varStrings.size() == result.baseStrings.size());
     for(size_t i = 0; i < result.varStrings.size(); ++i)
     {
         // Write to the variants file
-        std::stringstream baseIDMaker;
-        std::stringstream baseMeta;
-        baseIDMaker << "base-" << m_numVariants;
-        baseMeta << "coverage=" << result.baseCoverages[i];
-
-        SeqItem item1 = { baseIDMaker.str(), result.baseStrings[i] };
-        item1.write(*m_pWriter, baseMeta.str());
-
         std::stringstream varIDMaker;
-        std::stringstream varMeta;
         varIDMaker << "variant-" << m_numVariants;
-        varMeta << "coverage=" << result.varCoverages[i];
         SeqItem item2 = { varIDMaker.str(), result.varStrings[i] };
-        item2.write(*m_pWriter, varMeta.str());
+        item2.write(*m_pWriter);
         m_numVariants += 1;
     }
 
