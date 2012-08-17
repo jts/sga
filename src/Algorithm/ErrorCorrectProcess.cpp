@@ -268,31 +268,35 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
         for(int i = 0; i < nk; ++i)
         {
             std::string kmer = readSequence.substr(i, m_params.kmerLength);
+            std::string rc_kmer = reverseComplement(kmer);
+            std::string& key_kmer = kmer < rc_kmer ? kmer : rc_kmer;
 
-            // First check if this kmer is in the cache
-            // If its not, find its count from the fm-index and cache it
-            int count = m_params.indices.pCountMinSketch->get(kmer.c_str(), k);
-            if(count == 0)
+            // Check the bloom filter to see if this k-mer has been cached as solid
+            int count = 0;
+            bool solid = m_params.pBloomFilter->test(key_kmer.c_str(), k);
+
+            if(!solid)
             {
-                count = BWTAlgorithms::countSequenceOccurrences(kmer, m_params.indices);
+                // This k-mer is not in the bloom filter, check the FM-index
+                int count = BWTAlgorithms::countSequenceOccurrences(kmer, m_params.indices);
                 
-                // Insert high-frequency kmers into the CMS
-                if(count > 5)
-                {
-                    for(int j = 0; j < count; ++j)
-                        m_params.indices.pCountMinSketch->increment(kmer.c_str(), k);
-                }
+                // Get the phred score for the last base of the kmer
+                int phred = minPhredVector[i];
+                int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
 
+                solid = count >= threshold;
+
+                // Insert high-frequency kmers into the CMS
+                if(solid)
+                    m_params.pBloomFilter->add(key_kmer.c_str(), k);
+            }
+            else
+            {
+                count = 10; // set the count to be some value greater than the threshold
             }
 
-            // Get the phred score for the last base of the kmer
-            int phred = minPhredVector[i];
             countVector[i] = count;
-//            std::cout << i << "\t" << phred << "\t" << count << "\n";
-
-            // Determine whether the base is solid or not based on phred scores
-            int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
-            if(count >= threshold)
+            if(solid)
             {
                 for(int j = i; j < i + m_params.kmerLength; ++j)
                     solidVector[j] = 1;

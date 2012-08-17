@@ -31,6 +31,7 @@ libutil_a_SOURCES = \
         MultiAlignment.h MultiAlignment.cpp \
 		StdAlnTools.h StdAlnTools.cpp \
         VCFUtil.h VCFUtil.cpp \
+        BloomFilter.h BloomFilter.cpp \
         Timer.h \
         EncodedString.h \
         DNACodec.h \

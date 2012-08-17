@@ -26,6 +26,7 @@
 #include "KmerDistribution.h"
 #include "BWTIntervalCache.h"
 #include "LRAlignment.h"
+#include "BloomFilter.h"
 
 // Functions
 int learnKmerParameters(const BWT* pBWT);
@@ -159,9 +160,6 @@ int correctMain(int argc, char** argv)
     indexSet.pRBWT = pRBWT;
     indexSet.pSSA = pSSA;
     indexSet.pCache = pIntervalCache;
-    CountMinSketch* pCMS = new CountMinSketch;
-    pCMS->initialize(240000000, 3);
-    indexSet.pCountMinSketch = pCMS;
 
     // Learn the parameters of the kmer corrector
     if(opt::bLearnKmerParams)
@@ -191,6 +189,8 @@ int correctMain(int argc, char** argv)
     ecParams.numKmerRounds = opt::numKmerRounds;
     ecParams.kmerLength = opt::kmerLength;
     ecParams.printOverlaps = opt::verbose > 0;
+    ecParams.pBloomFilter = new BloomFilter;
+    ecParams.pBloomFilter->initialize(4000000000,3);
 
     // Setup post-processor
     bool bCollectMetrics = !opt::metricsFile.empty();
@@ -235,7 +235,7 @@ int correctMain(int argc, char** argv)
 
     delete pBWT;
     delete pIntervalCache;
-    delete pCMS;
+    delete ecParams.pBloomFilter;
 
     if(pRBWT != NULL)
         delete pRBWT;
