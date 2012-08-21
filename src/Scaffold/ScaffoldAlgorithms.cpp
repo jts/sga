@@ -84,8 +84,8 @@ void ScaffoldAlgorithms::makeScaffolds(ScaffoldGraph* pGraph)
     pGraph->deleteEdgesByColor(GC_BLACK);
 }
 
-// Remove cycles from the graph
-void ScaffoldAlgorithms::removeCycles(ScaffoldGraph* pGraph)
+// Remove internal cycles from the connected components of the graph
+void ScaffoldAlgorithms::removeInternalCycles(ScaffoldGraph* pGraph)
 {
     bool done = false;
     while(!done)
@@ -113,10 +113,10 @@ void ScaffoldAlgorithms::removeCycles(ScaffoldGraph* pGraph)
 
             for(size_t j = 0; j < terminalVertices.size(); j++)
             {
-                ScaffoldEdge* pBackEdge = checkForCycle(terminalVertices[j]);
+                ScaffoldEdge* pBackEdge = checkForInternalCycle(terminalVertices[j]);
                 if(pBackEdge != NULL)
                 {
-                    std::cout << "Cycle found between: " << pBackEdge->getStartID() << " and " << pBackEdge->getEndID() << "\n";
+                    std::cout << "Internal cycle found between: " << pBackEdge->getStartID() << " and " << pBackEdge->getEndID() << "\n";
 
                     // Mark the endpoints of the cycle as repeats
                     pBackEdge->getStart()->setClassification(SVC_REPEAT);
@@ -134,6 +134,53 @@ void ScaffoldAlgorithms::removeCycles(ScaffoldGraph* pGraph)
         else
         {
             done = true;
+        }
+    }
+}
+
+// Destroy simple cycles in the graph
+void ScaffoldAlgorithms::destroyStrictCycles(ScaffoldGraph* pGraph, std::string out_filename)
+{
+    std::ofstream cycle_writer(out_filename.c_str());
+
+    bool done = false;
+    while(!done)
+    {
+        done = true;
+        pGraph->setVertexColors(GC_WHITE);
+        pGraph->setEdgeColors(GC_WHITE);
+
+        // Compute the connected components of the graph
+        ScaffoldConnectedComponents connectedComponents;
+        ScaffoldAlgorithms::connectedComponents(pGraph, connectedComponents);
+
+        // Check each CC for a cycle. 
+        for(size_t i = 0; i < connectedComponents.size(); ++i)
+        {
+            ScaffoldVertexPtrVector& component = connectedComponents[i];
+
+            // Trivially not a cycle
+            if(component.size() == 1)
+                continue;
+            
+            assert(!component.empty());
+
+            // The strict cycle check will find the first cycle in the connected component reachable from this vertex
+            ScaffoldVertex* test_vertex = component.front();
+            ScaffoldVertexVector cycle_vertices = checkForStrictCycle(test_vertex);
+            if(!cycle_vertices.empty())
+            {
+                std::cout << "\tcycle startina at " << cycle_vertices[0]->getID() << " length " << cycle_vertices.size() << " found\n";
+
+                // Delete the edges for this vertex
+                for(size_t j = 0; j < cycle_vertices.size(); ++j)
+                {
+                    cycle_vertices[j]->deleteEdgesAndTwins();
+                    cycle_writer << cycle_vertices[j]->getID() << "\n";
+                }
+
+                done = false;
+            }
         }
     }
 }
@@ -262,10 +309,10 @@ void ScaffoldAlgorithms::computeLayout(ScaffoldVertex* pStartVertex, ScaffoldWal
     }
 }
 
-// Check for cycles in the connected component reachable from pVertex.
+// Check for internal cycles in the connected component reachable from pVertex.
 // If a cycle is found, the back edge pointer making the cycle is returned. Otherwise
 // NULL is returned.
-ScaffoldEdge* ScaffoldAlgorithms::checkForCycle(ScaffoldVertex* pVertex)
+ScaffoldEdge* ScaffoldAlgorithms::checkForInternalCycle(ScaffoldVertex* pVertex)
 {
     // Detect the direction to search for cycle
     size_t asCount = pVertex->getEdges(ED_ANTISENSE).size();
@@ -286,7 +333,7 @@ ScaffoldEdge* ScaffoldAlgorithms::checkForCycle(ScaffoldVertex* pVertex)
     return pBackEdge;
 }
 
-// Recursive function for finding a cycle. If a cycle is found, a pointer to the back edge
+// Recursive function for finding a cycle using a directional. If a cycle is found, a pointer to the back edge
 // is returned. If NULL is returned, there is no cycle.
 ScaffoldEdge* ScaffoldAlgorithms::_cycleDFS(ScaffoldVertex* pVertex, EdgeDir dir, LayoutEdgeMap& predMap)
 {
@@ -306,6 +353,80 @@ ScaffoldEdge* ScaffoldAlgorithms::_cycleDFS(ScaffoldVertex* pVertex, EdgeDir dir
             predMap[pEnd] = pEdge;
             EdgeDir continueDir = !pEdge->getTwin()->getDir();
             ScaffoldEdge* pBackEdge = _cycleDFS(pEnd, continueDir, predMap);
+            if(pBackEdge != NULL)
+                return pBackEdge;
+        }
+    }
+    pVertex->setColor(GC_BLACK);
+    return NULL;
+}
+
+// Check for strict cycles in the connected component reachable from pVertex.
+// If a cycle is found, the back edge pointer making the cycle is returned. Otherwise
+// NULL is returned.
+ScaffoldVertexVector ScaffoldAlgorithms::checkForStrictCycle(ScaffoldVertex* pVertex)
+{
+    assert(pVertex->getColor() == GC_WHITE);
+    
+    LayoutEdgeMap predMap;
+    predMap[pVertex] = NULL;
+    ScaffoldEdge* pCycleEdge = _cycleDFSBoth(pVertex, predMap);
+
+    ScaffoldVertexVector out;
+    if(pCycleEdge != NULL)
+    {
+        // Find all vertices contained in this cycle
+        ScaffoldEdge* current = pCycleEdge;
+        while(current != NULL)
+        {
+            out.push_back(current->getStart());
+            current = predMap[current->getStart()];
+        }
+    }
+
+    // reset colors
+    for(LayoutEdgeMap::iterator iter = predMap.begin(); iter != predMap.end(); ++iter)
+    {
+        iter->first->setColor(GC_WHITE);
+
+        if(iter->second != NULL)
+        {
+            iter->second->setColor(GC_WHITE);
+            iter->second->getTwin()->setColor(GC_WHITE);
+        }
+    }
+
+    return out;
+}
+
+// Recursive function for finding a cycle by searching both directions from a vertex. 
+// If a cycle is found, a pointer to the back edge is returned. If NULL is returned, there is no cycle.
+ScaffoldEdge* ScaffoldAlgorithms::_cycleDFSBoth(ScaffoldVertex* pVertex, LayoutEdgeMap& predMap)
+{
+    pVertex->setColor(GC_GRAY);
+    ScaffoldEdgePtrVector edges = pVertex->getEdges();
+    for(size_t i = 0; i < edges.size(); ++i)
+    {
+        ScaffoldEdge* pEdge = edges[i];
+
+        // If an edge's twin has already been used, it is
+        // marked red. skip these edges
+        if(pEdge->getColor() == GC_RED)
+            continue;
+        
+        // Check if this is a back edge
+        ScaffoldVertex* pEnd = pEdge->getEnd();
+        if(pEnd->getColor() == GC_GRAY)
+            return pEdge;
+
+        if(pEnd->getColor() == GC_WHITE)
+        {
+            pEdge->setColor(GC_RED);
+            pEdge->getTwin()->setColor(GC_RED);
+            predMap[pEnd] = pEdge;
+            
+            // Extend the DFS to the next node
+            ScaffoldEdge* pBackEdge = _cycleDFSBoth(pEnd, predMap);
             if(pBackEdge != NULL)
                 return pBackEdge;
         }
