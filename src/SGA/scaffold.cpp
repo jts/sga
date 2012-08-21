@@ -124,7 +124,6 @@ int scaffoldMain(int argc, char** argv)
 
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
     graph.deleteVertices(SVC_REPEAT);
-
     if(opt::removeConflicting)
     {
         ScaffoldConflictingVisitor conflictVisitor;
@@ -137,6 +136,9 @@ int scaffoldMain(int argc, char** argv)
         std::cout << "Performing strict resolutions\n";
         ScaffoldTransitiveReductionVisitor trVisit;
         graph.visit(trVisit);
+    
+        // Check for cycles in the graph
+        ScaffoldAlgorithms::destroyStrictCycles(&graph, "scaffold.cycles.out");
 
         ScaffoldMultiEdgeRemoveVisitor meVisit;
         graph.visit(meVisit);
@@ -158,10 +160,11 @@ int scaffoldMain(int argc, char** argv)
         ScaffoldLinkValidator linkValidator(100, 0.05f, opt::verbose);
         graph.visit(linkValidator);
         graph.deleteVertices(SVC_REPEAT);
+        
+        // Check for cycles in the graph using the old cycle finding algorithm
+        ScaffoldAlgorithms::removeInternalCycles(&graph);
     }
 
-    // Check for cycles in the graph
-    ScaffoldAlgorithms::removeCycles(&graph);
 
     // Linearize the scaffolds
     ScaffoldAlgorithms::makeScaffolds(&graph);

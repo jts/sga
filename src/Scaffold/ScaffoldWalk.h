@@ -26,6 +26,11 @@ class ScaffoldWalk
         // if pvertex is not found, returns -1
         int findVertex(ScaffoldVertex* pVertex) const;
 
+        // Find the orientation of the vertex with respect
+        // to the beginning of the walk. This function assumes
+        // pVertex is in the walk.
+        EdgeComp findOrientation(ScaffoldVertex* pVertex) const;
+
         // Returns all the ordered list of vertices in the walk
         ScaffoldVertexPtrVector getVertices() const;
         ScaffoldEdgePtrVector getEdges() const;

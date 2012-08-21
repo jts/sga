@@ -15,14 +15,21 @@
 #include "ScaffoldGraph.h"
 
 typedef std::vector<ScaffoldVertexPtrVector> ScaffoldConnectedComponents;
+typedef std::vector<ScaffoldVertex*> ScaffoldVertexVector;
 
 namespace ScaffoldAlgorithms
 {
     // Construct scaffolds from the given graph
     void makeScaffolds(ScaffoldGraph* pGraph);
 
-    // Remove any cycles from the graph
-    void removeCycles(ScaffoldGraph* pGraph);
+    // Remove any internal cycles from the connected components of the graph. 
+    // An internal cycle of a connected component is a cycle which does
+    // not contain all vertices in a connected component.
+    void removeInternalCycles(ScaffoldGraph* pGraph);
+
+    // Remove all edges for strict cycles in the graph.
+    // The names of the vertices in the cycle are written to the file.
+    void destroyStrictCycles(ScaffoldGraph* pGraph, std::string out_filename);
 
     // Compute the connected components of the scaffold graph
     void connectedComponents(ScaffoldGraph* pGraph, ScaffoldConnectedComponents& outComponents);
@@ -51,11 +58,15 @@ namespace ScaffoldAlgorithms
     typedef std::queue<LayoutNode> LayoutQueue;
     typedef std::set<ScaffoldVertex*> LayoutTerminalSet;
 
-    // Check for a cycle starting in a component with pVertex as a terminal. 
+    // Check for a directional cycle starting from pVertex
     // Returns a pointer completing the cycle
-    ScaffoldEdge* checkForCycle(ScaffoldVertex* pVertex);
-
+    ScaffoldEdge* checkForInternalCycle(ScaffoldVertex* pVertex);
     ScaffoldEdge* _cycleDFS(ScaffoldVertex* pVertex, EdgeDir dir, LayoutEdgeMap& predMap);
+
+    // Check for an cycle containing pVertex by searching both directions.
+    // Returns all the vertices contained on the cycle
+    ScaffoldVertexVector checkForStrictCycle(ScaffoldVertex* pVertex);
+    ScaffoldEdge* _cycleDFSBothDir(ScaffoldVertex* pVertex, LayoutEdgeMap& predMap);
 };
 
 #endif

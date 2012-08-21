@@ -65,13 +65,33 @@ int ScaffoldWalk::findVertex(ScaffoldVertex* pVertex) const
     int idx = 1;
     for(ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin();
                                               iter != m_edges.end();
-                                              ++iter)
-    {
+                                              ++iter) {
         if(pVertex == (*iter)->getEnd())
             return idx;
         ++idx;
     }
     return -1;
+}
+
+//
+EdgeComp ScaffoldWalk::findOrientation(ScaffoldVertex* pVertex) const
+{
+    if(pVertex == m_pStartVertex)
+        return EC_SAME;
+    EdgeComp out = EC_SAME;
+    for(ScaffoldEdgePtrVector::const_iterator iter = m_edges.begin();
+                                              iter != m_edges.end();
+                                              ++iter) {
+        if((*iter)->getComp() == EC_REVERSE)
+            out = !out;
+
+        if(pVertex == (*iter)->getEnd())
+            return out;
+    }
+
+    std::cerr << "Error, ScaffoldWalk::findOrientation requires the vertex to be in the walk.\n";
+    exit(EXIT_FAILURE);
+    return EC_SAME;
 }
 
 // returns the sum of the gaps plus contig lengths from
