@@ -58,16 +58,15 @@ namespace ScaffoldAlgorithms
     typedef std::queue<LayoutNode> LayoutQueue;
     typedef std::set<ScaffoldVertex*> LayoutTerminalSet;
 
-    // Check for an internal cycle starting in a component with pVertex as a terminal. 
+    // Check for a directional cycle starting from pVertex
     // Returns a pointer completing the cycle
     ScaffoldEdge* checkForInternalCycle(ScaffoldVertex* pVertex);
-
-    // Check for an simple cycle containing pVertex
-    // Returns a pointer completing the cycle
-    ScaffoldVertexVector checkForStrictCycle(ScaffoldVertex* pVertex);
-
     ScaffoldEdge* _cycleDFS(ScaffoldVertex* pVertex, EdgeDir dir, LayoutEdgeMap& predMap);
-    ScaffoldEdge* _cycleDFSBoth(ScaffoldVertex* pVertex, LayoutEdgeMap& predMap);
+
+    // Check for an cycle containing pVertex by searching both directions.
+    // Returns all the vertices contained on the cycle
+    ScaffoldVertexVector checkForStrictCycle(ScaffoldVertex* pVertex);
+    ScaffoldEdge* _cycleDFSBothDir(ScaffoldVertex* pVertex, LayoutEdgeMap& predMap);
 };
 
 #endif

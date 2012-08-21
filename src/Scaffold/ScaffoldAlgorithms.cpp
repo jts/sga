@@ -170,7 +170,7 @@ void ScaffoldAlgorithms::destroyStrictCycles(ScaffoldGraph* pGraph, std::string 
             ScaffoldVertexVector cycle_vertices = checkForStrictCycle(test_vertex);
             if(!cycle_vertices.empty())
             {
-                std::cout << "\tcycle startina at " << cycle_vertices[0]->getID() << " length " << cycle_vertices.size() << " found\n";
+                //std::cout << "\tcycle starting at " << cycle_vertices[0]->getID() << " length " << cycle_vertices.size() << " found\n";
 
                 // Delete the edges for this vertex
                 for(size_t j = 0; j < cycle_vertices.size(); ++j)
@@ -178,7 +178,8 @@ void ScaffoldAlgorithms::destroyStrictCycles(ScaffoldGraph* pGraph, std::string 
                     cycle_vertices[j]->deleteEdgesAndTwins();
                     cycle_writer << cycle_vertices[j]->getID() << "\n";
                 }
-
+                
+                // iterate the cycle detection
                 done = false;
             }
         }
@@ -370,7 +371,7 @@ ScaffoldVertexVector ScaffoldAlgorithms::checkForStrictCycle(ScaffoldVertex* pVe
     
     LayoutEdgeMap predMap;
     predMap[pVertex] = NULL;
-    ScaffoldEdge* pCycleEdge = _cycleDFSBoth(pVertex, predMap);
+    ScaffoldEdge* pCycleEdge = _cycleDFSBothDir(pVertex, predMap);
 
     ScaffoldVertexVector out;
     if(pCycleEdge != NULL)
@@ -401,7 +402,7 @@ ScaffoldVertexVector ScaffoldAlgorithms::checkForStrictCycle(ScaffoldVertex* pVe
 
 // Recursive function for finding a cycle by searching both directions from a vertex. 
 // If a cycle is found, a pointer to the back edge is returned. If NULL is returned, there is no cycle.
-ScaffoldEdge* ScaffoldAlgorithms::_cycleDFSBoth(ScaffoldVertex* pVertex, LayoutEdgeMap& predMap)
+ScaffoldEdge* ScaffoldAlgorithms::_cycleDFSBothDir(ScaffoldVertex* pVertex, LayoutEdgeMap& predMap)
 {
     pVertex->setColor(GC_GRAY);
     ScaffoldEdgePtrVector edges = pVertex->getEdges();
@@ -426,7 +427,7 @@ ScaffoldEdge* ScaffoldAlgorithms::_cycleDFSBoth(ScaffoldVertex* pVertex, LayoutE
             predMap[pEnd] = pEdge;
             
             // Extend the DFS to the next node
-            ScaffoldEdge* pBackEdge = _cycleDFSBoth(pEnd, predMap);
+            ScaffoldEdge* pBackEdge = _cycleDFSBothDir(pEnd, predMap);
             if(pBackEdge != NULL)
                 return pBackEdge;
         }
