@@ -374,6 +374,7 @@ bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* /*pGraph*/, Scaffo
 
             for(size_t j = 0; j < edgeVec.size(); ++j)
             {
+                EdgeComp expected_orientation = edgeVec[j]->getComp();
                 int idxInWalk = walkVector[i].findVertex(edgeVec[j]->getEnd());
 
                 if(idxInWalk == -1)
@@ -383,6 +384,17 @@ bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* /*pGraph*/, Scaffo
                     break;
                 }
 
+                // The vertex is in the walk, check that the orientation in
+                // the walk matches the expected orientation
+                EdgeComp walk_orientation = walkVector[i].findOrientation(edgeVec[j]->getEnd());
+                if(walk_orientation != expected_orientation)
+                {
+                    // Invalid solution
+                    allContained = false;
+                    break;
+                }
+                
+                // This is a valid solution
                 if(idxInWalk < lowestIdxInWalk)
                 {
                     lowestIdxInWalk = idxInWalk;
@@ -403,12 +415,13 @@ bool ScaffoldTransitiveReductionVisitor::visit(ScaffoldGraph* /*pGraph*/, Scaffo
             continue;
         }
 
-        // Keep the first link in the walk and discard all others
         /*
         std::cout << "Walk " << walkIdx << " contains all links ";
         walkVector[walkIdx].print();
         std::cout << "keeping link: " << lowestIdxInVec << " " << edgeVec[lowestIdxInVec]->getLink() << "\n";
         */
+
+        // Keep the first link in the walk and discard all others
         // Mark the links that should not be deleted
         for(int i = 0; i < (int)edgeVec.size(); ++i)
         {

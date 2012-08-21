@@ -124,7 +124,6 @@ int scaffoldMain(int argc, char** argv)
 
     std::cout << "[sga-scaffold] Removing non-unique vertices from scaffold graph\n";
     graph.deleteVertices(SVC_REPEAT);
-
     if(opt::removeConflicting)
     {
         ScaffoldConflictingVisitor conflictVisitor;
