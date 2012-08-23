@@ -108,7 +108,7 @@ int convertBeetlMain(int argc, char** argv)
     BWT* pBWT = new BWT(outBWTName, 512); 
     SampledSuffixArray* pSSA = new SampledSuffixArray();
 
-    pSSA->buildLexicoIndex(pBWT, opt::readsFile);
+    pSSA->buildLexicoIndex(pBWT);
     pSSA->writeLexicoIndex(opt::prefix + SAI_EXT);
 
     delete pBWT;

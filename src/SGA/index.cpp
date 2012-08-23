@@ -20,6 +20,7 @@
 #include "Timer.h"
 #include "BWTCABauerCoxRosone.h"
 #include "BWTCARopebwt.h"
+#include "SampledSuffixArray.h"
 
 //
 // Getopt
@@ -149,10 +150,33 @@ void indexInMemoryRopebwt()
     bool use_threads = opt::numThreads >= 4;
 
     if(opt::bBuildForward)
-        BWTCA::runRopebwt(opt::readsFile, opt::prefix + BWT_EXT, opt::prefix + SAI_EXT, use_threads, false);
+    {
+        std::string bwt_filename = opt::prefix + BWT_EXT;
+        std::string sai_filename = opt::prefix + SAI_EXT;
+        BWTCA::runRopebwt(opt::readsFile, bwt_filename, use_threads, false);
+        std::cout << "\t done bwt construction, generating .sai file\n";
+        // Build the .sai file
+        BWT* pBWT = new BWT(bwt_filename);
+        SampledSuffixArray ssa;
+        ssa.buildLexicoIndex(pBWT);
+        ssa.writeLexicoIndex(sai_filename);
+        delete pBWT;
+    }
 
     if(opt::bBuildReverse)
-        BWTCA::runRopebwt(opt::readsFile,  opt::prefix + RBWT_EXT, opt::prefix + RSAI_EXT, use_threads, true);
+    {
+        std::string rbwt_filename = opt::prefix + RBWT_EXT;
+        std::string rsai_filename = opt::prefix + RSAI_EXT;
+        BWTCA::runRopebwt(opt::readsFile, rbwt_filename, use_threads, true);
+
+        // Build the .sai file
+        std::cout << "\t done rbwt construction, generating .rsai file\n";
+        BWT* pRBWT = new BWT(rbwt_filename);
+        SampledSuffixArray ssa;
+        ssa.buildLexicoIndex(pRBWT);
+        ssa.writeLexicoIndex(rsai_filename);
+        delete pRBWT;
+    }
 }
 
 //

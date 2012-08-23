@@ -27,7 +27,7 @@ static unsigned char seq_nt6_table[128] = {
 };
 
 void BWTCA::runRopebwt(const std::string& input_filename, const std::string& bwt_out_name, 
-                       const std::string& sai_out_name, bool use_threads, bool do_reverse)
+                       bool use_threads, bool do_reverse)
 {
     // Initialize ropebwt
     std::string tmp_name = bwt_out_name + ".tmp";
@@ -67,34 +67,23 @@ void BWTCA::runRopebwt(const std::string& input_filename, const std::string& bwt
     const uint8_t* s;
     int l;
 
-    BWTWriterBinary out_bwt(bwt_out_name);
-    SAWriter out_sai(sai_out_name);
-
-    // Write headers
-    out_sai.writeHeader(num_sequences, num_sequences);
+    BWTWriterBinary* out_bwt = new BWTWriterBinary(bwt_out_name);
     size_t num_symbols = num_bases + num_sequences;
-    out_bwt.writeHeader(num_sequences, num_symbols, BWF_NOFMI);
+    out_bwt->writeHeader(num_sequences, num_symbols, BWF_NOFMI);
 
     // Write each run
-    size_t lexo_seq_idx = 0;
     while( (s = bcr_itr_next(itr, &l)) != 0 ) {
         for (int i = 0; i < l; ++i) {
             char c = "$ACGTN"[s[i]&7];
             int rl = s[i]>>3;
             for(int j = 0; j < rl; ++j)
-                out_bwt.writeBWChar(c);
-
-            if(c == '$') {
-                for(int j = 0; j < rl; ++j) {
-                    size_t pos_index = bcr_getLexicographicIndex(bcr, lexo_seq_idx++);
-                    out_sai.writeElem(SAElem(pos_index, 0));
-                }
-            }
+                out_bwt->writeBWChar(c);
         }
     }
 
     free(itr);
-    out_bwt.finalize();
+    out_bwt->finalize();
+    delete out_bwt;
 
     // Cleanup
     bcr_destroy(bcr);
