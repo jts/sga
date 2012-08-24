@@ -155,7 +155,7 @@ void indexInMemoryRopebwt()
         std::string sai_filename = opt::prefix + SAI_EXT;
         BWTCA::runRopebwt(opt::readsFile, bwt_filename, use_threads, false);
         std::cout << "\t done bwt construction, generating .sai file\n";
-        // Build the .sai file
+
         BWT* pBWT = new BWT(bwt_filename);
         SampledSuffixArray ssa;
         ssa.buildLexicoIndex(pBWT);
@@ -169,7 +169,6 @@ void indexInMemoryRopebwt()
         std::string rsai_filename = opt::prefix + RSAI_EXT;
         BWTCA::runRopebwt(opt::readsFile, rbwt_filename, use_threads, true);
 
-        // Build the .sai file
         std::cout << "\t done rbwt construction, generating .rsai file\n";
         BWT* pRBWT = new BWT(rbwt_filename);
         SampledSuffixArray ssa;
