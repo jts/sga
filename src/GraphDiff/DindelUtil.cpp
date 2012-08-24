@@ -177,7 +177,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         // "defined" is not the reference sequence but a candidate haplotype.
         // It is conservative because the flanking sequence is not used in this estimation.
         // DindelReferenceMapping rm(refName, refSeq, refStart, double(candidateAlignments[i].score), candidateAlignments[i].isRC);
-    	DindelReferenceMapping rm(refName, refSeq, refStart, double(candidateAlignments[i].score+2*FLANKING_SIZE), candidateAlignments[i].isRC);
+    	DindelReferenceMapping rm(refName, refSeq, refStart, candidateAlignments[i].score+2*FLANKING_SIZE, candidateAlignments[i].isRC);
         std::set<DindelReferenceMapping>::iterator rmit = refMappings.find(rm);
         if(rmit == refMappings.end())
         {
@@ -230,7 +230,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
     size_t start_i = parameters.bReferenceMode ? 1 : 0;
 
-    DindelRealignWindowResult *pThisResult, *pPreviousResult = NULL;
+    DindelRealignWindowResult *pThisResult = NULL;
+    DindelRealignWindowResult *pPreviousResult = NULL;
 
     for(size_t i = start_i; i <= 1; ++i)
     {
