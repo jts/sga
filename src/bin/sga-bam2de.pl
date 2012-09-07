@@ -8,6 +8,7 @@ my $k = 99;
 my $minLength = 200;
 my $prefix = "";
 my $numThreads = 1;
+my $mind = -50; # minimum gap size to pass to abyss
 
 # Filter the abyss distance est histogram to remove insert sizes
 # with fewer than hist_min data points
@@ -17,8 +18,11 @@ GetOptions("prefix=s" => \$prefix,
            "k=i"      => \$k,
            "n=i"      => \$n,
            "m=i"      => \$minLength,
+           "mind=i"   => \$mind,
            "t=i"      => \$numThreads);
 
+checkDependency("abyss-fixmate");
+checkDependency("DistanceEst");
 
 my $bFail = 0;
 if($prefix eq "")
@@ -60,7 +64,8 @@ $cmd = "samtools sort $prefix.diffcontigs.bam $prefix.diffcontigs.sorted";
 runCmd($cmd);
 
 # distance est
-$cmd = "DistanceEst -s $minLength -n $n -k $k -j $numThreads -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
+my $mind_opt = "--mind $mind";
+$cmd = "DistanceEst -s $minLength $mind_opt -n $n -k $k -j $numThreads -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
 runCmd($cmd);
 
 sub usage
@@ -72,6 +77,8 @@ sub usage
     print "                -m LEN           Only find links between contigs with length at least LEN bp (default: 200)\n";
     print "                -t NUM           Use NUM threads for computing the distance estimates\n";
     print "                --prefix NAME    Use NAME as the prefix for the outfiles\n";
+    print "                --mind N         Set the minimum distance estimate to test to be D. This should be a negative\n";
+    print "                                 number if contigs are expected to overlap. Defaults to -50bp.\n";
 }
 
 sub runCmd
@@ -79,4 +86,17 @@ sub runCmd
     my($c) = @_;
     print "$c\n";
     system($c);
+}
+
+# Check whether the programs are found and executable
+sub checkDependency
+{
+    while(my $program = shift) {
+        my $ret = system("/bin/bash -c \"hash $program\"");
+        if($ret != 0) {
+            print STDERR "Could not find program $program. Please install it or update your PATH.\n";
+            print STDERR "Return: $ret\n";
+            exit(1);
+        }
+    }
 }
