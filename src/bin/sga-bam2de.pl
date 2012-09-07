@@ -9,6 +9,7 @@ my $minLength = 200;
 my $prefix = "";
 my $numThreads = 1;
 my $mind = -99; # minimum gap size to pass to abyss
+my $mina = 100; # minimum alignment length to pass to abyss
 
 # Filter the abyss distance est histogram to remove insert sizes
 # with fewer than hist_min data points
@@ -19,6 +20,7 @@ GetOptions("prefix=s" => \$prefix,
            "n=i"      => \$n,
            "m=i"      => \$minLength,
            "mind=i"   => \$mind,
+           "mina=i"   => \$mina,
            "t=i"      => \$numThreads);
 
 checkDependency("abyss-fixmate");
@@ -65,7 +67,7 @@ runCmd($cmd);
 
 # distance est
 my $mind_opt = "--mind $mind";
-$cmd = "DistanceEst -s $minLength $mind_opt -n $n -k $k -j $numThreads -o $prefix.de $prefix.hist $prefix.diffcontigs.sorted.bam";
+$cmd = "DistanceEst -s $minLength $mind_opt -n $n -k $k -j $numThreads -o $prefix.de $prefix.hist -l $mina $prefix.diffcontigs.sorted.bam";
 runCmd($cmd);
 
 sub usage
@@ -77,8 +79,9 @@ sub usage
     print "                -m LEN           Only find links between contigs with length at least LEN bp (default: 200)\n";
     print "                -t NUM           Use NUM threads for computing the distance estimates\n";
     print "                --prefix NAME    Use NAME as the prefix for the outfiles\n";
-    print "                --mind N         Set the minimum distance estimate to test to be D. This should be a negative\n";
+    print "                --mind D         Set the minimum distance estimate to test to be D. This should be a negative\n";
     print "                                 number if contigs are expected to overlap. Defaults to -99bp.\n";
+    print "                --mina N         Set the minimum alignment length to be N.\n";
 }
 
 sub runCmd
