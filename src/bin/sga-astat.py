@@ -118,7 +118,7 @@ contigData.sort(key=lambda c : c.len, reverse=True)
 # when calculating the expected number of reads is a better
 # approximation for small contigs
 for cd in contigData:
-    cd.nlen = cd.len - avgReadLen + 1
+    cd.nlen = cd.len - avgReadLen + 1 if (cd.len > avgReadLen) else 0
 
 # Estimate the initial arrival rate using the longest contigs
 # if the genome size was not provided
@@ -171,7 +171,7 @@ for cd in contigData:
 sumUnique = 0
 sumRepeat = 0
 for cd in contigData:
-    if cd.len >= minLength:
+    if cd.len >= minLength and cd.nlen > 0:
         print '%s\t%d\t%d\t%d\t%f\t%f' % (cd.name, cd.len, cd.nlen, cd.n, cd.n / (cd.nlen * arrivalRate), cd.astat)
         
         if cd.bUnique:
