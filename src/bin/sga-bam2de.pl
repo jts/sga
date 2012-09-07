@@ -8,7 +8,7 @@ my $k = 99;
 my $minLength = 200;
 my $prefix = "";
 my $numThreads = 1;
-my $mind = -50; # minimum gap size to pass to abyss
+my $mind = -99; # minimum gap size to pass to abyss
 
 # Filter the abyss distance est histogram to remove insert sizes
 # with fewer than hist_min data points
@@ -78,7 +78,7 @@ sub usage
     print "                -t NUM           Use NUM threads for computing the distance estimates\n";
     print "                --prefix NAME    Use NAME as the prefix for the outfiles\n";
     print "                --mind N         Set the minimum distance estimate to test to be D. This should be a negative\n";
-    print "                                 number if contigs are expected to overlap. Defaults to -50bp.\n";
+    print "                                 number if contigs are expected to overlap. Defaults to -99bp.\n";
 }
 
 sub runCmd
