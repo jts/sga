@@ -42,6 +42,7 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "                                       1 - reads are paired with the first read in READS1 and the second\n"
 "                                       read in READS2. The paired reads will be interleaved in the output file\n"
 "                                       2 - reads are paired and the records are interleaved within a single file.\n"
+"      -e, --pe-orphans=FILE            Write orphaned paired-ends to FILE (default: stdout)\n"
 "      -q, --quality-trim=INT           perform Heng Li's BWA quality trim algorithm. \n"
 "                                       Reads are trimmed according to the formula:\n"
 "                                       argmax_x{\\sum_{i=x+1}^l(INT-q_i)} if q_l<INT\n"
@@ -79,6 +80,7 @@ namespace opt
 {
     static unsigned int verbose;
     static std::string outFile;
+    static std::string orphansFile;
     static unsigned int qualityTrim = 0;
     static unsigned int hardClip = 0;
     static unsigned int minLength = DEFAULT_MIN_LENGTH;
@@ -100,13 +102,14 @@ namespace opt
     static std::string adapterR; // adapter sequence reverse
 }
 
-static const char* shortopts = "o:q:m:h:p:r:c:s:f:vi";
+static const char* shortopts = "o:e:q:m:h:p:r:c:s:f:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, OPT_PHRED64 };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
     { "out",                    required_argument, NULL, 'o' },
+    { "pe-orphans",             required_argument, NULL, 'e' },
     { "quality-trim",           required_argument, NULL, 'q' },
     { "quality-filter",         required_argument, NULL, 'f' },
     { "pe-mode",                required_argument, NULL, 'p' },
@@ -221,6 +224,19 @@ int preprocessMain(int argc, char** argv)
             exit(EXIT_FAILURE);
         }
 
+        std::ostream* oWriter;
+        if(opt::orphansFile.empty())
+        {
+            oWriter = &std::cout;
+        }
+        else
+        {
+            std::cerr << "PE orphans outfile: " << opt::orphansFile << "\n";
+            std::ofstream* oFile = new std::ofstream(opt::orphansFile.c_str());
+            assertFileOpen(*oFile, opt::orphansFile);
+            oWriter = oFile;
+        }
+
         while(optind < argc)
         {
             SeqReader* pReader1;
@@ -287,6 +303,20 @@ int preprocessMain(int argc, char** argv)
                     s_numBasesKept += record1.seq.length();
                     s_numBasesKept += record2.seq.length();
                 }
+                else if(passed1 && oWriter && samplePass())
+                {
+                   // first read in pair passed
+                   record1.write(*oWriter);
+                   s_numReadsKept += 1;
+                   s_numBasesKept += record1.seq.length();
+                }
+                else if(passed2 && oWriter && samplePass())
+                {
+                   // second read in pair passed
+                   record2.write(*oWriter);
+                   s_numReadsKept += 1;
+                   s_numBasesKept += record2.seq.length();
+                }
             }
 
             if(pReader2 != pReader1)
@@ -299,6 +329,8 @@ int preprocessMain(int argc, char** argv)
             pReader1 = NULL;
 
         }
+        if(oWriter != &std::cout)
+            delete oWriter;
 
     }
 
@@ -569,6 +601,7 @@ void parsePreprocessOptions(int argc, char** argv)
             case 'm': arg >> opt::minLength; break;
             case 'h': arg >> opt::hardClip; break;
             case 'p': arg >> opt::peMode; break;
+            case 'e': arg >> opt::orphansFile; break;
             case 'r': arg >> opt::adapterF; break;
             case 'c': arg >> opt::adapterR; break;
             case 's': arg >> opt::sampleFreq; break;
@@ -605,6 +638,12 @@ void parsePreprocessOptions(int argc, char** argv)
     if(opt::peMode > 2)
     {
         std::cerr << SUBPROGRAM ": error pe-mode must be 0,1 or 2 (found: " << opt::peMode << ")\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if(opt::peMode == 0 && !opt::orphansFile.empty())
+    {
+        std::cerr << SUBPROGRAM ": error pe-orphans can only be set when pe-mode is 1 or 2\n";
         exit(EXIT_FAILURE);
     }
 
