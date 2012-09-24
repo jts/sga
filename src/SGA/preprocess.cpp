@@ -36,13 +36,15 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+"\nInput/Output options:\n"
 "      -o, --out=FILE                   write the reads to FILE (default: stdout)\n"
-"          --phred64                    the input reads are phred64 scaled. They will be converted to phred33.\n"
 "      -p, --pe-mode=INT                0 - do not treat reads as paired (default)\n"
 "                                       1 - reads are paired with the first read in READS1 and the second\n"
 "                                       read in READS2. The paired reads will be interleaved in the output file\n"
 "                                       2 - reads are paired and the records are interleaved within a single file.\n"
 "          --pe-orphans=FILE            if one half of a read pair fails filtering, write the passed half to FILE\n"
+"\nConversions/Filtering:\n"
+"          --phred64                    convert quality values from phred-64 to phred-33.\n"
 "      -q, --quality-trim=INT           perform Heng Li's BWA quality trim algorithm. \n"
 "                                       Reads are trimmed according to the formula:\n"
 "                                       argmax_x{\\sum_{i=x+1}^l(INT-q_i)} if q_l<INT\n"
@@ -50,22 +52,21 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "      -f, --quality-filter=INT         discard the read if it contains more than INT low-quality bases.\n"
 "                                       Bases with phred score <= 3 are considered low quality. Default: no filtering.\n"
 "                                       The filtering is applied after trimming so bases removed are not counted.\n"
-"      -r, --remove-adapter-fwd=STRING\n"
-"      -c, --remove-adapter-rev=STRING  Remove the adapter STRING from input reads.\n"
 "                                       Do not use this option if you are planning to use the BCR algorithm for indexing.\n"
 "      -m, --min-length=INT             discard sequences that are shorter than INT\n"
 "                                       this is most useful when used in conjunction with --quality-trim. Default: 40\n"
 "      -h, --hard-clip=INT              clip all reads to be length INT. In most cases it is better to use\n"
 "                                       the soft clip (quality-trim) option.\n"
 "      --permute-ambiguous              Randomly change ambiguous base calls to one of possible bases.\n"
-"                                       For example M will be changed to A or C. If this option is not specified, the\n"
-"                                       entire read will be discarded.\n"
+"                                       If this option is not specified, the entire read will be discarded.\n"
 "      -s, --sample=FLOAT               Randomly sample reads or pairs with acceptance probability FLOAT.\n"
-"      --dust                           Perform dust-style filtering of low complexity reads. If you are performing\n"
-"                                       de novo genome assembly, you probably do not want this.\n"
+"      --dust                           Perform dust-style filtering of low complexity reads.\n"
 "      --dust-threshold=FLOAT           filter out reads that have a dust score higher than FLOAT (default: 4.0).\n"
-"                                       This option implies --dust\n"
 "      --suffix=SUFFIX                  append SUFFIX to each read ID\n"
+"\nAdapter/Primer checks:\n"
+"          --no-primer-check            disable the default check for primer sequences\n"
+"      -r, --remove-adapter-fwd=STRING\n"
+"      -c, --remove-adapter-rev=STRING  Remove the adapter STRING from input reads.\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 enum QualityScaling
@@ -97,6 +98,7 @@ namespace opt
     static double minGC = 0.0f;
     static double maxGC = 1.0;
     static bool bIlluminaScaling = false;
+    static bool bDisablePrimerCheck = false;
     static std::string orphanFile;
     static std::string adapterF;  // adapter sequence forward
     static std::string adapterR; // adapter sequence reverse
@@ -105,7 +107,7 @@ namespace opt
 static const char* shortopts = "o:q:m:h:p:r:c:s:f:vi";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, 
-       OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, OPT_PHRED64, OPT_OUTPUTORPHANS };
+       OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, OPT_PHRED64, OPT_OUTPUTORPHANS, OPT_DISABLE_PRIMER };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -128,6 +130,7 @@ static const struct option longopts[] = {
     { "help",                   no_argument,       NULL, OPT_HELP },
     { "version",                no_argument,       NULL, OPT_VERSION },
     { "permute-ambiguous",      no_argument,       NULL, OPT_PERMUTE },
+    { "no-primer-check",        no_argument,       NULL, OPT_DISABLE_PRIMER },
     { NULL, 0, NULL, 0 }
 };
 
@@ -487,16 +490,18 @@ bool processRead(SeqRecord& record)
     }
 
     // Primer screen
-    bool containsPrimer = PrimerScreen::containsPrimer(seqStr);
-    if(containsPrimer)
+    if(!opt::bDisablePrimerCheck)
     {
-        ++s_numReadsPrimer;
-        return false;
+        bool containsPrimer = PrimerScreen::containsPrimer(seqStr);
+        if(containsPrimer)
+        {
+            ++s_numReadsPrimer;
+            return false;
+        }
     }
 
     record.seq = seqStr;
     record.qual = qualStr;
-
 
     if(record.seq.length() == 0 || record.seq.length() < opt::minLength)
         return false;
@@ -598,14 +603,15 @@ void parsePreprocessOptions(int argc, char** argv)
             case 's': arg >> opt::sampleFreq; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
-            case OPT_DUST: opt::bDustFilter = true; break;
             case OPT_DUST_THRESHOLD: arg >> opt::dustThreshold; opt::bDustFilter = true; break;
             case OPT_SUFFIX: arg >> opt::suffix; break;
-            case OPT_PERMUTE: opt::bDiscardAmbiguous = false; break;
             case OPT_MINGC: arg >> opt::minGC; opt::bFilterGC = true; break;
+            case OPT_OUTPUTORPHANS: arg >> opt::orphanFile; break;
             case OPT_MAXGC: arg >> opt::maxGC; opt::bFilterGC = true; break;
             case OPT_PHRED64: opt::qualityScale = QS_PHRED64; break;
-            case OPT_OUTPUTORPHANS: arg >> opt::orphanFile; break;
+            case OPT_PERMUTE: opt::bDiscardAmbiguous = false; break;
+            case OPT_DUST: opt::bDustFilter = true; break;
+            case OPT_DISABLE_PRIMER: opt::bDisablePrimerCheck = true; break;
             case OPT_HELP:
                 std::cout << PREPROCESS_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
