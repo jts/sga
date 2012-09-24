@@ -42,6 +42,7 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "                                       1 - reads are paired with the first read in READS1 and the second\n"
 "                                       read in READS2. The paired reads will be interleaved in the output file\n"
 "                                       2 - reads are paired and the records are interleaved within a single file.\n"
+"          --pe-orphans=FILE            if one half of a read pair fails filtering, write the passed half to FILE\n"
 "      -q, --quality-trim=INT           perform Heng Li's BWA quality trim algorithm. \n"
 "                                       Reads are trimmed according to the formula:\n"
 "                                       argmax_x{\\sum_{i=x+1}^l(INT-q_i)} if q_l<INT\n"
@@ -96,13 +97,15 @@ namespace opt
     static double minGC = 0.0f;
     static double maxGC = 1.0;
     static bool bIlluminaScaling = false;
+    static std::string orphanFile;
     static std::string adapterF;  // adapter sequence forward
     static std::string adapterR; // adapter sequence reverse
 }
 
 static const char* shortopts = "o:q:m:h:p:r:c:s:f:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, OPT_PHRED64 };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, 
+       OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, OPT_PHRED64, OPT_OUTPUTORPHANS };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -118,7 +121,8 @@ static const struct option longopts[] = {
     { "dust",                   no_argument,       NULL, OPT_DUST},
     { "dust-threshold",         required_argument, NULL, OPT_DUST_THRESHOLD },
     { "suffix",                 required_argument, NULL, OPT_SUFFIX },
-    { "phred64",                no_argument, NULL, OPT_PHRED64},
+    { "phred64",                no_argument,       NULL, OPT_PHRED64 },
+    { "pe-orphans",             required_argument, NULL, OPT_OUTPUTORPHANS },
     { "min-gc",                 required_argument, NULL, OPT_MINGC},
     { "max-gc",                 required_argument, NULL, OPT_MAXGC},
     { "help",                   no_argument,       NULL, OPT_HELP },
@@ -159,12 +163,14 @@ int preprocessMain(int argc, char** argv)
     std::cerr << "MinGC: " << opt::minGC << "\n";
     std::cerr << "MaxGC: " << opt::maxGC << "\n";
     std::cerr << "Outfile: " << (opt::outFile.empty() ? "stdout" : opt::outFile) << "\n";
+    std::cerr << "Orphan file: " << (opt::orphanFile.empty() ? "none" : opt::orphanFile) << "\n";
     if(opt::bDiscardAmbiguous)
         std::cerr << "Discarding sequences with ambiguous bases\n";
     if(opt::bDustFilter)
         std::cerr << "Dust threshold: " << opt::dustThreshold << "\n";
     if(!opt::suffix.empty())
         std::cerr << "Suffix: " << opt::suffix << "\n";
+
     if(opt::adapterF.length() && opt::adapterR.length())
     {
         std::cerr << "Adapter sequence fwd: " << opt::adapterF << "\n";
@@ -185,6 +191,11 @@ int preprocessMain(int argc, char** argv)
         assertFileOpen(*pFile, opt::outFile);
         pWriter = pFile;
     }
+
+    // Create a filehandle to write orphaned reads to, if necessary
+    std::ostream* pOrphanWriter = NULL;
+    if(!opt::orphanFile.empty())
+        pOrphanWriter = createWriter(opt::orphanFile);
 
     if(opt::peMode == 0)
     {
@@ -279,13 +290,24 @@ int preprocessMain(int argc, char** argv)
                 bool passed1 = processRead(record1);
                 bool passed2 = processRead(record2);
 
-                if(passed1 && passed2 && samplePass())
+                if(!samplePass())
+                    continue;
+
+                if(passed1 && passed2)
                 {
                     record1.write(*pWriter);
                     record2.write(*pWriter);
                     s_numReadsKept += 2;
                     s_numBasesKept += record1.seq.length();
                     s_numBasesKept += record2.seq.length();
+                }
+                else if(passed1 && pOrphanWriter != NULL)
+                {
+                    record1.write(*pOrphanWriter);
+                }
+                else if(passed2 && pOrphanWriter != NULL)
+                {
+                    record2.write(*pOrphanWriter);
                 }
             }
 
@@ -304,6 +326,8 @@ int preprocessMain(int argc, char** argv)
 
     if(pWriter != &std::cout)
         delete pWriter;
+    if(pOrphanWriter != NULL)
+        delete pOrphanWriter;
 
     std::cerr << "\nPreprocess stats:\n";
     std::cerr << "Reads parsed:\t" << s_numReadsRead << "\n";
@@ -581,6 +605,7 @@ void parsePreprocessOptions(int argc, char** argv)
             case OPT_MINGC: arg >> opt::minGC; opt::bFilterGC = true; break;
             case OPT_MAXGC: arg >> opt::maxGC; opt::bFilterGC = true; break;
             case OPT_PHRED64: opt::qualityScale = QS_PHRED64; break;
+            case OPT_OUTPUTORPHANS: arg >> opt::orphanFile; break;
             case OPT_HELP:
                 std::cout << PREPROCESS_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
@@ -629,6 +654,12 @@ void parsePreprocessOptions(int argc, char** argv)
     if(opt::adapterF.empty() != opt::adapterR.empty())
     {
         std::cerr << SUBPROGRAM ": Forward and Reverse sequence is necessary to perform adapter removal.\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if(!opt::outFile.empty() && opt::outFile == opt::orphanFile)
+    {
+        std::cerr << SUBPROGRAM ": Output file and orphan file must be different\n";
         exit(EXIT_FAILURE);
     }
 }
