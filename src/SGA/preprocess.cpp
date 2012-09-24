@@ -30,7 +30,7 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2009 Wellcome Trust Sanger Institute\n";
 
 static const char *PREPROCESS_USAGE_MESSAGE =
-"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] --quality-scale=STR READS1 READS2 ...\n"
+"Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] READS1 READS2 ...\n"
 "Prepare READS1, READS2, ... data files for assembly\n"
 "If pe-mode is turned on (pe-mode=1) then if a read is discarded its pair will be discarded as well.\n"
 "\n"
@@ -639,22 +639,10 @@ void parsePreprocessOptions(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    if(opt::qualityScale == QS_UNDEFINED)
-    {
-        std::cerr << SUBPROGRAM ": required parameter --quality-scale not found, please specify this parameter\n";
-        exit(EXIT_FAILURE);
-    }
-
     if(opt::minLength < DEFAULT_MIN_LENGTH)
     {
         std::cerr << SUBPROGRAM ": WARNING - it is suggested that the min read length is " << DEFAULT_MIN_LENGTH << "\n";
         std::cerr << SUBPROGRAM ": Using very short reads may considerably impact the performance\n";
-    }
-
-    if(opt::qualityScale == QS_NONE && opt::qualityTrim > 0)
-    {
-        std::cerr << SUBPROGRAM ": If --quality-trim is specified, --quality-scale cannot be none\n";
-        exit(EXIT_FAILURE);
     }
 
     if(opt::adapterF.empty() != opt::adapterR.empty())
