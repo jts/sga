@@ -19,6 +19,12 @@ AC_CHECK_HEADER([zlib.h])
 AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib (http://www.zlib.net/)])])
 AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [clock_getttime found])], )
 
+# Check for openmp
+AC_SEARCH_LIBS([omp_set_num_threads],[gomp],[
+    openmp_cppflags="-fopenmp"
+    AC_DEFINE([HAVE_OPENMP], [1], [openmp found])]
+    ,)
+
 # Check for the bamtools library path
 # Bamtools has two different path formats
 # If it is built in place the files will be in {path}/lib/ and {path}/include/
@@ -61,7 +67,7 @@ fi
 AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror")
 AC_SUBST(CXXFLAGS, "-O3")
 AC_SUBST(CFLAGS, "-O3")
-AC_SUBST(CPPFLAGS, "$CPPFLAGS $sparsehash_include $bamtools_include")
+AC_SUBST(CPPFLAGS, "$CPPFLAGS $openmp_cppflags $sparsehash_include $bamtools_include")
 AC_SUBST(LDFLAGS, "$hoard_ldflags $bamtools_ldflags $LDFLAGS")
 
 # We always need to specify to link in bamtools

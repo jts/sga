@@ -12,6 +12,11 @@
 #include "SampledSuffixArray.h"
 #include "SAReader.h"
 #include "SAWriter.h"
+#include "config.h"
+
+#if HAVE_OPENMP
+#include <omp.h>
+#endif
 
 static const uint32_t SSA_MAGIC_NUMBER = 12412;
 #define SSA_READ(x) pReader->read(reinterpret_cast<char*>(&(x)), sizeof((x)));
@@ -150,13 +155,20 @@ void SampledSuffixArray::build(const BWT* pBWT, const ReadInfoTable* pRIT, int s
 }
 
 // A streamlined version of the above function
-void SampledSuffixArray::buildLexicoIndex(const BWT* pBWT)
+void SampledSuffixArray::buildLexicoIndex(const BWT* pBWT, int num_threads)
 {
-    size_t numStrings = pBWT->getNumStrings();
+    int64_t numStrings = pBWT->getNumStrings();
     m_saLexoIndex.resize(numStrings);
-    
-    size_t MAX_ELEMS = std::numeric_limits<SSA_INT_TYPE>::max();
-    for(size_t read_idx = 0; read_idx < numStrings; ++read_idx)
+    int64_t MAX_ELEMS = std::numeric_limits<SSA_INT_TYPE>::max();
+    assert(numStrings < MAX_ELEMS);
+
+    (void)num_threads;
+    // Parallelize this computaiton using openmp, if the compiler supports it
+#if HAVE_OPENMP
+    omp_set_num_threads(num_threads);
+    #pragma omp parallel for
+#endif
+    for(int64_t read_idx = 0; read_idx < numStrings; ++read_idx)
     {
         // For each read, start from the end of the read and backtrack through the suffix array/BWT
         // to calculate its lexicographic rank in the collection
@@ -167,7 +179,9 @@ void SampledSuffixArray::buildLexicoIndex(const BWT* pBWT)
             idx = pBWT->getPC(b) + pBWT->getOcc(b, idx - 1);
             if(b == '$')
             {
-                assert(read_idx < MAX_ELEMS);
+                // There is a one-to-one mapping between read_index and the element
+                // of the array that is set - therefore we can perform this operation
+                // without a lock.
                 m_saLexoIndex[idx] = read_idx;
                 break; // done;
             }

@@ -158,7 +158,7 @@ void indexInMemoryRopebwt()
 
         BWT* pBWT = new BWT(bwt_filename);
         SampledSuffixArray ssa;
-        ssa.buildLexicoIndex(pBWT);
+        ssa.buildLexicoIndex(pBWT, opt::numThreads);
         ssa.writeLexicoIndex(sai_filename);
         delete pBWT;
     }
@@ -172,7 +172,7 @@ void indexInMemoryRopebwt()
         std::cout << "\t done rbwt construction, generating .rsai file\n";
         BWT* pRBWT = new BWT(rbwt_filename);
         SampledSuffixArray ssa;
-        ssa.buildLexicoIndex(pRBWT);
+        ssa.buildLexicoIndex(pRBWT, opt::numThreads);
         ssa.writeLexicoIndex(rsai_filename);
         delete pRBWT;
     }
