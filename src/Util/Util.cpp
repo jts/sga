@@ -256,6 +256,14 @@ bool isFastq(const std::string& filename)
 }
 
 
+// Returns the size of the file. Code from stackoverflow.
+std::ifstream::pos_type getFilesize(const std::string& filename)
+{
+    std::ifstream in(filename.c_str(), std::ifstream::in | std::ifstream::binary);
+    in.seekg(0, std::ifstream::end);
+    return in.tellg();
+}
+
 // Open a file that may or may not be gzipped for reading
 // The caller is responsible for freeing the handle
 std::istream* createReader(const std::string& filename, std::ios_base::openmode mode)
