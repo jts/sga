@@ -46,7 +46,7 @@ void remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDelet
 void remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
 
 // Create the edges described by the overlap.
-Edge* createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o, bool allowContained);
+Edge* createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o, bool allowContained, size_t maxEdges = -1);
 
 // Calculate the error rate between the two vertices
 double calcErrorRate(const Vertex* pX, const Vertex* pY, const Overlap& ovrXY);

@@ -13,7 +13,7 @@
 #include "SGVisitors.h"
 
 StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int minOverlap, 
-                              bool allowContainments)
+                              bool allowContainments, size_t maxEdges)
 {
     // Initialize graph
     StringGraph* pGraph = new StringGraph;
@@ -107,12 +107,16 @@ StringGraph* SGUtil::loadASQG(const std::string& filename, const unsigned int mi
 
                 // Add the edge to the graph
                 if(ovr.match.getMinOverlapLength() >= (int)minOverlap)
-                    SGAlgorithms::createEdgesFromOverlap(pGraph, ovr, allowContainments);
+                    SGAlgorithms::createEdgesFromOverlap(pGraph, ovr, allowContainments, maxEdges);
                 break;
             }
         }
         ++line;
     }
+
+    // Completely delete the edges for all nodes that were marked as super-repetitive in the graph
+    SGSuperRepeatVisitor superRepeatVisitor;
+    pGraph->visit(superRepeatVisitor);
 
     // Remove any duplicate edges
     SGDuplicateVisitor dupVisit;

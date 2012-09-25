@@ -986,6 +986,30 @@ void SGBubbleEdgeVisitor::postvisit(StringGraph* pGraph)
     assert(pGraph->checkColors(GC_WHITE));
 }
 
+// Remove all edges of nodes that have been marked as super repeats
+void SGSuperRepeatVisitor::previsit(StringGraph*)
+{
+    m_num_superrepeats = 0;
+}
+
+//
+bool SGSuperRepeatVisitor::visit(StringGraph*, Vertex* pVertex)
+{
+    if(pVertex->isSuperRepeat())
+    {
+        pVertex->deleteEdges();
+        m_num_superrepeats += 1;
+        return true;
+    }
+    return false;
+}
+
+//
+void SGSuperRepeatVisitor::postvisit(StringGraph*)
+{
+    printf("Deleted edges for %zu super repetitive vertices\n", m_num_superrepeats); 
+}
+
 //
 // SGSmoothingVisitor - Find branches in the graph
 // which arise from variation and remove them

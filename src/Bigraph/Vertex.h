@@ -125,6 +125,7 @@ class Vertex
         void setSeq(const std::string& s) { m_seq = s; }
         void setColor(GraphColor c) { m_color = c; }
         void setContained(bool c) { m_isContained = c; }
+        void setSuperRepeat(bool b) { m_isSuperRepeat = b; }
 
         // getters
         VertexID getID() const { return m_id; }
@@ -134,6 +135,7 @@ class Vertex
         size_t getSeqLen() const { return m_seq.length(); }
         size_t getMemSize() const;
         bool isContained() const { return m_isContained; }
+        bool isSuperRepeat() const { return m_isSuperRepeat; }
         uint16_t getCoverage() const { return m_coverage; }
 
         // Memory management
@@ -172,6 +174,7 @@ class Vertex
         uint16_t m_coverage; 
 
         bool m_isContained;
+        bool m_isSuperRepeat;
 };
 
 #endif

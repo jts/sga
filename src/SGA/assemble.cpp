@@ -38,6 +38,8 @@ static const char *ASSEMBLE_USAGE_MESSAGE =
 "      -m, --min-overlap=LEN            only use overlaps of at least LEN. This can be used to filter\n"
 "                                       the overlap set so that the overlap step only needs to be run once.\n"
 "          --transitive-reduction       remove transitive edges from the graph. Off by default.\n"
+"          --max-edges=N                limit each vertex to a maximum of N edges. For highly repetitive regions\n"
+"                                       this helps save memory by culling excessive edges around unresolvable repeats (default: 128)\n"
 "\nBubble/Variation removal parameters:\n"
 "      -b, --bubble=N                   perform N bubble removal steps (default: 3)\n"
 "      -d, --max-divergence=F           only remove variation if the divergence between sequences is less than F (default: 0.05)\n"
@@ -66,6 +68,7 @@ namespace opt
     static bool bEdgeStats = false;
     static bool bSmoothGraph = false;
     static int resolveSmallRepeatLen = -1;
+    static size_t maxEdges = 128;
 
     // Trim parameters
     static int numTrimRounds = 10;
@@ -86,7 +89,7 @@ namespace opt
 
 static const char* shortopts = "p:o:m:d:g:b:a:c:r:x:l:sv";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT, OPT_MAXINDEL, OPT_TR };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT, OPT_MAXINDEL, OPT_TR, OPT_MAXEDGES };
 
 static const struct option longopts[] = {
     { "verbose",               no_argument,       NULL, 'v' },
@@ -100,6 +103,7 @@ static const struct option longopts[] = {
     { "max-divergence",        required_argument, NULL, 'd' },
     { "max-gap-divergence",    required_argument, NULL, 'g' },
     { "max-indel",             required_argument, NULL, OPT_MAXINDEL },
+    { "max-edges",             required_argument, NULL, OPT_MAXEDGES },
     { "smooth",                no_argument,       NULL, 's' },
     { "transitive-reduction",  no_argument,       NULL, OPT_TR },
     { "edge-stats",            no_argument,       NULL, OPT_EDGESTATS },
@@ -126,7 +130,7 @@ int assembleMain(int argc, char** argv)
 void assemble()
 {
     Timer t("sga assemble");
-    StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, opt::minOverlap, true);
+    StringGraph* pGraph = SGUtil::loadASQG(opt::asqgFile, opt::minOverlap, true, opt::maxEdges);
     if(opt::bExact)
         pGraph->setExactMode(true);
     pGraph->printMemSize();
@@ -264,6 +268,7 @@ void parseAssembleOptions(int argc, char** argv)
             case 'x': arg >> opt::numTrimRounds; break;
             case 'c': arg >> opt::coverageCutoff; break;
             case 'r': arg >> opt::resolveSmallRepeatLen; break;
+            case OPT_MAXEDGES: arg >> opt::maxEdges; break;
             case OPT_TR: opt::bPerformTR = true; break;
             case OPT_MAXINDEL: arg >> opt::maxIndelLength; break;
             case OPT_EXACT: opt::bExact = true; break;

@@ -13,7 +13,7 @@
 #include <iterator>
 
 // add edges to the graph for the given overlap
-Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o, bool allowContained)
+Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o, bool allowContained, size_t maxEdges)
 {
     // Initialize data and perform checks
     Vertex* pVerts[2];
@@ -45,6 +45,22 @@ Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o
             pGraph->setContainmentFlag(true);
             return NULL;
         }
+    }
+
+    // If either vertex has the maximum number of edges,
+    // do not add any more. This is to protect against ultra-dense
+    // regions of the graph inflating memory usage. The nodes that reach
+    // this limit, and nodes connected to them are marked as super repeats.
+    // After loading the graph, all edges to super repeats are cut to prevent
+    // misassembly.
+    size_t num_edges_0 = pVerts[0]->countEdges();
+    size_t num_edges_1 = pVerts[1]->countEdges();
+    if(num_edges_0 > maxEdges || num_edges_1 > maxEdges)
+    {
+        WARN_ONCE("Edge limit reached for vertex when loading graph");
+        pVerts[0]->setSuperRepeat(true);
+        pVerts[1]->setSuperRepeat(true);
+        return NULL;
     }
 
     if(!isContainment)

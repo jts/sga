@@ -196,6 +196,17 @@ struct SGBubbleEdgeVisitor
     int num_bubbles;
 };
 
+// Remove the edges of super-repetitive vertices in the graph
+struct SGSuperRepeatVisitor
+{
+    SGSuperRepeatVisitor() {}
+    void previsit(StringGraph* pGraph);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*);
+
+    size_t m_num_superrepeats;
+};
+
 // Smooth out variation in the graph
 struct SGSmoothingVisitor
 {

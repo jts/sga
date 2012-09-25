@@ -21,7 +21,7 @@ namespace SGUtil
 // Main string graph loading function
 // The allowContainments flag forces the string graph to retain identical vertices
 // Vertices that are substrings of other vertices (SS flag = 1) are never kept
-StringGraph* loadASQG(const std::string& filename, const unsigned int minOverlap, bool allowContainments = false);
+StringGraph* loadASQG(const std::string& filename, const unsigned int minOverlap, bool allowContainments = false, size_t maxEdges = -1);
 
 // Load a string graph from a fasta file.
 // Returns a graph where each sequence in the fasta is a vertex but there are no edges in the graph.
