@@ -1806,7 +1806,7 @@ ReadHaplotypeAlignment DindelRealignWindow::computeReadHaplotypeAlignment(size_t
     else { assert(1==0); }
 
 
-    assert(!isnan(logLik));
+    assert(!std::isnan(logLik));
     assert(logLik<0.0);
 
     logLik -= log(double(DINDEL_HMM_BANDWIDTH)); // added for consistency with the HMM, which has a prior
