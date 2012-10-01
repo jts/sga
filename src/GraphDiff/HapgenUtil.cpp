@@ -116,7 +116,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
         std::sort(candidates.begin(), candidates.end(), CandidateKmerAlignment::sortByStart);
         CandidateVector::iterator new_end = std::unique(candidates.begin(), candidates.end(), CandidateKmerAlignment::equalByStart);
         candidates.resize(new_end - candidates.begin());
-
+        
         for(size_t j = 0; j < candidates.size(); ++j)
         {
             // Extract window around reference

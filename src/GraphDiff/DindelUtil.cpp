@@ -194,13 +194,11 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     for(std::set<DindelReferenceMapping>::iterator it = refMappings.begin(); it != refMappings.end(); it++) 
         it->referenceAlignmentScore = 1000;
      
-    /*
     std::cout << "REFERENCE MAPPINGS: \n";
     int c = 0;
     for(std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++) {
         std::cout << c << " " << it->refName << " start: " << it->refStart << " end: " << it->refStart + it->refSeq.size()-1 << " score: " << it->referenceAlignmentScore << "\n";
     }
-    */
 
     // make flankingHaplotypes unique
     std::set< std::string > setFlanking(flankingHaplotypes.begin(), flankingHaplotypes.end());

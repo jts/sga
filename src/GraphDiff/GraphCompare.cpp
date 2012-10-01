@@ -23,6 +23,7 @@
 #include "HaplotypeBuilder.h"
 #include "DeBruijnHaplotypeBuilder.h"
 #include "OverlapHaplotypeBuilder.h"
+#include "StringHaplotypeBuilder.h"
 #include "Profiler.h"
 
 // #define GRAPH_DIFF_DEBUG 1
@@ -241,14 +242,15 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
     } 
     else if(m_parameters.algorithm == GCA_STRING_GRAPH)
     {
-        OverlapHaplotypeBuilder overlap_builder(m_parameters);
+        StringHaplotypeBuilder overlap_builder(m_parameters);
         overlap_builder.setInitialHaplotype(str);
         overlap_builder.run(result.variant_haplotypes);
     }
 
     // Haplotype QC
     size_t num_assembled = result.variant_haplotypes.size();
-    qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
+    std::cout << "WARNING QC TURNED OFF\n";
+    //qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
     size_t num_qc = result.variant_haplotypes.size();
 
     // If any assembled haplotypes failed QC, do not try to call variants
@@ -276,6 +278,8 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
         size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.variantIndex);
         size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.baseIndex);
         
+        printf("HaplotypeQC: %zu %zu\n", max_variant_k, max_base_k);
+
         //
         if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 31)
             temp_haplotypes.push_back(variant_haplotypes[i]);

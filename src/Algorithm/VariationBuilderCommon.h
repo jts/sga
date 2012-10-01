@@ -41,7 +41,7 @@ struct BubbleResult
     BubbleResultCode returnCode;
 };
 
-// A directed node in the de Bruijn graph that
+// A directed node in a graph that
 // has not had it's neighbors visited
 struct BuilderExtensionNode
 {
