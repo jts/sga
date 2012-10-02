@@ -22,7 +22,7 @@
 #include "ErrorCorrectProcess.h"
 #include "SGWalk.h"
 #include "KmerOverlaps.h"
-#include "CachedKmerExtractor.h"
+#include "OverlapExtractorWithCorrection.h"
 #include <queue>
 
 // Build haplotypes starting from a given sequence.
@@ -52,7 +52,7 @@ class StringHaplotypeBuilder
         
         // Get overlaps for the given sequence
         SequenceOverlapPairVector getCorrectedOverlaps(const std::string& sequence, EdgeDir direction);
-        SequenceOverlapPairVector getCorrectedOverlapsExtractor(const std::string& sequence, EdgeDir direction);
+        SequenceOverlapPairVector getCorrectedOverlaps2(const std::string& sequence, EdgeDir direction);
         
         // Add an edge to the graph between the described vertices
         void addEdge(Vertex* vertex1, Vertex* vertex2, SequenceOverlap overlap);
@@ -74,7 +74,7 @@ class StringHaplotypeBuilder
         //
         GraphCompareParameters m_parameters;
         ErrorCorrectProcess* m_corrector;
-        CachedKmerExtractor* m_extractor;
+        IOverlapExtractor* m_extractor;
 
         StringGraph* m_graph;
         size_t m_numReads;

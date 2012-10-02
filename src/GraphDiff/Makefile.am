@@ -20,4 +20,5 @@ libgraphdiff_a_SOURCES = \
         HapgenUtil.h HapgenUtil.cpp \
         VCFTester.h VCFTester.cpp \
         GraphCompare.h GraphCompare.cpp \
-        CachedKmerExtractor.h CachedKmerExtractor.cpp
+        OverlapExtractorWithCorrection.h OverlapExtractorWithCorrection.cpp \
+        IOverlapExtractor.h

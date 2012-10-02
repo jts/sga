@@ -51,7 +51,7 @@ StringHaplotypeBuilder::StringHaplotypeBuilder(const GraphCompareParameters& par
 
     m_graph = new StringGraph;
     m_corrector = new ErrorCorrectProcess(correction_params);
-    m_extractor = new CachedKmerExtractor(31, m_parameters.variantIndex, m_parameters.minOverlap, 0.95);
+    m_extractor = new OverlapExtractorWithCorrection(31, m_parameters.variantIndex, m_corrector, m_parameters.minOverlap, 0.95);
 }
 
 //
@@ -299,9 +299,30 @@ void StringHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, s
         reads->push_back(read_sequence);
     }
 }
+SequenceOverlapPairVector StringHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence, EdgeDir direction)
+{
+    SequenceOverlapPairVector initial_overlaps = m_extractor->getExactOverlaps(sequence);
+
+    // Filter out the overlaps that aren't in the requested direction
+    SequenceOverlapPairVector directional_overlaps;
+    for(size_t i = 0; i < initial_overlaps.size(); ++i)
+    {
+        // Recompute the overlap, using the previous overlap as a guide
+        const SequenceOverlap& overlap = initial_overlaps[i].overlap;
+        bool is_prefix_overlap = overlap.match[0].start == 0;
+        bool is_suffix_overlap = overlap.match[0].end == ((int)sequence.size() - 1);
+
+        bool valid_direction = (is_prefix_overlap && direction == ED_ANTISENSE) ||
+                               (is_suffix_overlap && direction == ED_SENSE);
+
+        if(valid_direction)
+            directional_overlaps.push_back(initial_overlaps[i]);
+    }
+    return directional_overlaps;
+}
 
 //
-SequenceOverlapPairVector StringHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence, EdgeDir direction)
+SequenceOverlapPairVector StringHaplotypeBuilder::getCorrectedOverlaps2(const std::string& sequence, EdgeDir direction)
 {
     PROFILE_FUNC("StringHaplotypeBuilder::getCorrectedOverlaps")
     
