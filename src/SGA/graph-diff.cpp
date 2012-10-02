@@ -305,6 +305,8 @@ void runGraphDiff(GraphCompareParameters& parameters)
 {
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(parameters.variantIndex.pBWT->getBWLen());
+    
+    Timer gdbenchmark("benchmark");
 
     // This call can throw via dindel
     GraphCompareAggregateResults* pSharedResults;

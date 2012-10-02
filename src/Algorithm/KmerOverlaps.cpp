@@ -71,7 +71,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
     assert(indices.pBWT != NULL);
     assert(indices.pSSA != NULL);
 
-    int64_t max_interval_size = 200;
+    int64_t max_interval_size = 500;
     SequenceOverlapPairVector overlap_vector;
 
     // Use the FM-index to look up intervals for each kmer of the read. Each index
@@ -192,5 +192,6 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
             overlap_vector.push_back(op);
         }
     }
+
     return overlap_vector;
 }

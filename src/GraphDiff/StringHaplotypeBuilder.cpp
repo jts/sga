@@ -25,7 +25,9 @@
 //
 //
 //
-StringHaplotypeBuilder::StringHaplotypeBuilder(const GraphCompareParameters& params) : m_parameters(params), m_numReads(0), m_overlapLengthFrac(0.75)
+StringHaplotypeBuilder::StringHaplotypeBuilder(const GraphCompareParameters& params) : m_parameters(params), 
+                                                                                       m_numReads(0), 
+                                                                                       m_overlapLengthFrac(0.75)
 {
     assert(m_parameters.minOverlap > 25);
 
@@ -49,6 +51,7 @@ StringHaplotypeBuilder::StringHaplotypeBuilder(const GraphCompareParameters& par
 
     m_graph = new StringGraph;
     m_corrector = new ErrorCorrectProcess(correction_params);
+    m_extractor = new CachedKmerExtractor(31, m_parameters.variantIndex, m_parameters.minOverlap, 0.95);
 }
 
 //
@@ -56,6 +59,7 @@ StringHaplotypeBuilder::~StringHaplotypeBuilder()
 {
     delete m_corrector;
     delete m_graph;
+    delete m_extractor;
 }
 
 // The source string is the string the bubble starts from
@@ -147,7 +151,7 @@ Vertex* StringHaplotypeBuilder::extendSeed(Vertex* seed_vertex, EdgeDir directio
         // Check if we are extending a unipath
         if(queue.size() == 1)
         {
-            if(queue.front().distance > 10)
+            if(queue.front().distance > 10 || (queue.front().distance > 5 && isJoinSequence(queue.front().pVertex->getStr(), queue.front().direction)))
             {
                 std::cout << "Single path, ending\n";
                 return queue.front().pVertex;
@@ -299,13 +303,16 @@ void StringHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, s
 //
 SequenceOverlapPairVector StringHaplotypeBuilder::getCorrectedOverlaps(const std::string& sequence, EdgeDir direction)
 {
-    PROFILE_FUNC("OverlapHaplotypeBuilder::getCorrectedOverlaps")
-
+    PROFILE_FUNC("StringHaplotypeBuilder::getCorrectedOverlaps")
+    
     // Extract reads that share a short kmer with the input sequence
+    
     size_t k = 31;
     SequenceOverlapPairVector overlap_vector = KmerOverlaps::retrieveMatches(sequence, k, m_parameters.minOverlap,
                                                                              0.95, 2, m_parameters.variantIndex);
-
+    
+    //SequenceOverlapPairVector overlap_vector = m_extractor->queryOverlaps(sequence);
+    
     // Copy out the read sequences so they can be corrected
     // We use the original sequencing strand of the read here - if
     // it was reversed when we extracted it, we flip it back
@@ -321,6 +328,8 @@ SequenceOverlapPairVector StringHaplotypeBuilder::getCorrectedOverlaps(const std
 #ifdef OVERLAP_HAP_DEBUG
     printf("Extracted %zu reads\n", overlap_vector.size());
 #endif
+    
+    //m_extractor->queryOverlaps(sequence);
 
     // Correct the reads
     correctReads(&reads);
@@ -437,6 +446,27 @@ void StringHaplotypeBuilder::trimTip(Vertex* x, EdgeDir direction)
     // Recurse to x's neighbors if it is now a tip
     if(x_neighbor != NULL && x_neighbor != x)
         trimTip(x_neighbor, direction);
+}
+
+//
+bool StringHaplotypeBuilder::isJoinSequence(const std::string& sequence, EdgeDir dir)
+{
+    // Check if this sequence forms a complete k-mer path in the base/reference sequence
+    size_t k = m_parameters.kmer;
+    if(sequence.size() < k)
+        return false;
+
+    // Check if the start/end kmer of the sequence is present in the reference
+    // depending on the extension direction
+    std::string kmer_seq;
+    if(dir == ED_ANTISENSE)
+        kmer_seq = sequence.substr(0, k);
+    else
+        kmer_seq = sequence.substr(sequence.size() - k);
+
+    // Count occurrences of the terminal kmer in the reference
+    size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer_seq, m_parameters.baseIndex); 
+    return base_count > 0;
 }
 
 // 

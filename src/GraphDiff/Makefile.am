@@ -19,4 +19,5 @@ libgraphdiff_a_SOURCES = \
         DeBruijnHaplotypeBuilder.h DeBruijnHaplotypeBuilder.cpp \
         HapgenUtil.h HapgenUtil.cpp \
         VCFTester.h VCFTester.cpp \
-        GraphCompare.h GraphCompare.cpp 
+        GraphCompare.h GraphCompare.cpp \
+        CachedKmerExtractor.h CachedKmerExtractor.cpp

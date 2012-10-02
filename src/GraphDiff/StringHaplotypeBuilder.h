@@ -22,6 +22,7 @@
 #include "ErrorCorrectProcess.h"
 #include "SGWalk.h"
 #include "KmerOverlaps.h"
+#include "CachedKmerExtractor.h"
 #include <queue>
 
 // Build haplotypes starting from a given sequence.
@@ -51,6 +52,7 @@ class StringHaplotypeBuilder
         
         // Get overlaps for the given sequence
         SequenceOverlapPairVector getCorrectedOverlaps(const std::string& sequence, EdgeDir direction);
+        SequenceOverlapPairVector getCorrectedOverlapsExtractor(const std::string& sequence, EdgeDir direction);
         
         // Add an edge to the graph between the described vertices
         void addEdge(Vertex* vertex1, Vertex* vertex2, SequenceOverlap overlap);
@@ -64,11 +66,16 @@ class StringHaplotypeBuilder
         // Remove tips from the graph
         void trimTip(Vertex* x, EdgeDir direction);
 
+        // Returns true if the sequence represents a junction in the variation graph
+        bool isJoinSequence(const std::string& sequence, EdgeDir dir);
+
         //
         // Data
         //
         GraphCompareParameters m_parameters;
         ErrorCorrectProcess* m_corrector;
+        CachedKmerExtractor* m_extractor;
+
         StringGraph* m_graph;
         size_t m_numReads;
         double m_overlapLengthFrac;
