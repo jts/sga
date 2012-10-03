@@ -32,22 +32,37 @@ SequenceOverlapPairVector OverlapExtractorWithCorrection::getExactOverlaps(const
 {
     PROFILE_FUNC("OverlapExtractorWithCorrection::queryOverlaps")
 
+    SequenceOverlapPairVector raw_overlaps;
+
+    // 
+    // Get inexact overlaps between the query and uncorrected reads by direct FM-index lookups
+    //
+    getRawOverlapsDirect(query, &raw_overlaps);
+
+    /*
+    //
+    // Get inexact overlaps between the query and uncorrected reads using the k-mer cache
+    //
     // Extract new reads from the FM-index and update the cache
     extractAndUpdate(query);
     extractAndUpdate(reverseComplement(query));
 
     // Compute overlaps between the query sequence and the raw extracted reads
-    SequenceOverlapPairVector raw_overlaps;
-    getRawOverlaps(query, false, &raw_overlaps);
-    getRawOverlaps(query, true, &raw_overlaps);
-
+    getRawOverlapsCached(query, false, &raw_overlaps);
+    getRawOverlapsCached(query, true, &raw_overlaps);
+    */
     // Convert raw overlaps to corrected, exact overlaps
     SequenceOverlapPairVector out_overlaps;
     getCorrectedExactOverlaps(query, &raw_overlaps, &out_overlaps);
     return out_overlaps;
 }
 
-void OverlapExtractorWithCorrection::getRawOverlaps(const std::string& query, bool is_reverse, SequenceOverlapPairVector* out_vector)
+void OverlapExtractorWithCorrection::getRawOverlapsDirect(const std::string& query, SequenceOverlapPairVector* out_vector)
+{
+    *out_vector = KmerOverlaps::retrieveMatches(query, m_k, m_minOverlap, m_minIdentity, 2, m_index_set);
+}
+
+void OverlapExtractorWithCorrection::getRawOverlapsCached(const std::string& query, bool is_reverse, SequenceOverlapPairVector* out_vector)
 {
     PROFILE_FUNC("OverlapExtractorWithCorrection::getRawOverlaps")
 
@@ -113,6 +128,7 @@ void OverlapExtractorWithCorrection::getCorrectedExactOverlaps(const std::string
                                                                const SequenceOverlapPairVector* raw_vector,
                                                                SequenceOverlapPairVector* out_vector)
 {
+    PROFILE_FUNC("OverlapExtractorWithCorrection::getCorrectedExactOverlaps")
     for(size_t i = 0; i < raw_vector->size(); ++i)
     {
         // Get the sequence of the raw read, on its original sequencing strand

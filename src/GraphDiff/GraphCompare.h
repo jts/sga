@@ -126,7 +126,7 @@ class GraphCompare
         ~GraphCompare();
         
         // Process a read and all its kmers
-        GraphCompareResult process(const SequenceWorkItem& item);
+        GraphCompareResult process(const SequenceWorkItem& item) const;
         void debug(const std::string& debugFilename);
         void testKmersFromFile(const std::string& kmerFilename);
         void testKmer(const std::string& kmer);
@@ -141,20 +141,19 @@ class GraphCompare
         //
 
         // Attempt to assemble a variant kmer into haplotypes
-        GraphBuildResult processVariantKmer(const std::string& str, int count);
+        GraphBuildResult processVariantKmer(const std::string& str, int count) const;
         
         // Perform quality checks on the variant haplotypes
         void qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes);
 
         // Build haplotypes in the base sequence that are parallel to the variant haplotypes
-        void buildParallelBaseHaplotypes(const StringVector& variant_haplotypes,
-                                         StringVector& base_haplotypes);
+        void buildParallelBaseHaplotypes(const StringVector& variant_haplotypes, StringVector& base_haplotypes) const;
 
         // Generate a bitmask of kmers that have already been used 
         std::vector<bool> generateKmerMask(const std::string& str) const;
 
         // Mark all the kmers in str as being visited
-        void markVariantSequenceKmers(const std::string& str);
+        void markVariantSequenceKmers(const std::string& str) const;
         
         // Calculate the largest k such that every k-mer in the sequence is present at least min_depth times in the BWT
         size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices);

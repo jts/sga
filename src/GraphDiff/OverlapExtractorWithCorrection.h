@@ -33,8 +33,11 @@ class OverlapExtractorWithCorrection : public IOverlapExtractor
 
     private:
 
-        // Get inexact overlaps between the query and reads
-        void getRawOverlaps(const std::string& query, bool is_reverse, SequenceOverlapPairVector* out_vector);
+        // Get inexact overlaps between the query and reads by direct lookup in the FM-index
+        void getRawOverlapsDirect(const std::string& query, SequenceOverlapPairVector* out_vector);
+
+        // Get inexact overlaps between the query and reads using the kmer cache
+        void getRawOverlapsCached(const std::string& query, bool is_reverse, SequenceOverlapPairVector* out_vector);
     
         // Convert raw overlaps to corrected, exact overlaps
         void getCorrectedExactOverlaps(const std::string& query, 

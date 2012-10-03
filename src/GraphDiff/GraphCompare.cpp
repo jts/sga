@@ -99,7 +99,7 @@ GraphCompare::~GraphCompare()
 {
 }
 
-GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
+GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
 {
     PROFILE_FUNC("GraphCompare::process")
     GraphCompareResult result;
@@ -227,7 +227,7 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 }
 
 //
-GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*count*/)
+GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*count*/) const
 {
     PROFILE_FUNC("GraphCompare::processVariantKmer")
 
@@ -290,7 +290,7 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
 }
 
 // Update the bit vector with the kmers that were assembled into str
-void GraphCompare::markVariantSequenceKmers(const std::string& str)
+void GraphCompare::markVariantSequenceKmers(const std::string& str) const
 {
     assert(str.size() >= m_parameters.kmer);
     size_t n = str.size() - m_parameters.kmer + 1;
@@ -318,7 +318,7 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str)
 
 //
 void GraphCompare::buildParallelBaseHaplotypes(const StringVector& variant_haplotypes,
-                                               StringVector& base_haplotypes)
+                                               StringVector& base_haplotypes) const
 {
     size_t haplotype_builder_kmer = m_parameters.kmer;
     // Run haplotype builder on the normal graph

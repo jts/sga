@@ -100,7 +100,7 @@ HaplotypeBuilderReturnCode StringHaplotypeBuilder::run(StringVector& out_haploty
     size_t seed_idx = 0;
     while(seed_idx < reads.size() && reads[seed_idx].empty())
         seed_idx++;
-    
+
     if(seed_idx >= reads.size())
         return HBRC_OK;
 
