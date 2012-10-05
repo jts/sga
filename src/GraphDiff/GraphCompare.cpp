@@ -113,11 +113,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
     if(w.size() <= m_parameters.kmer)
         return result;
 
-    // Generate a mask that indicates whether a kmer starting at a specific
-    // position has already been used a different read. 
-    // Such kmers are skipped below
-    std::vector<bool> visitedKmers = generateKmerMask(w);
-
     // Process the kmers that have not been previously visited
     // We only try to find variants from one k-mer per read. 
     // This heurestic handles the situation where we process a kmer,
@@ -129,20 +124,19 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
     bool variantAttempted = false;
     for(int j = 0; j < num_kmers; ++j)
     {
-        if(visitedKmers[j])
-            continue; // skip marked kmers
-
         std::string kmer = w.substr(j, m_parameters.kmer);
+        std::string rc_kmer = reverseComplement(kmer);
+
+        // Use the lexicographically lower of the kmer and its pair as the key in the bloom filter
+        std::string& key_kmer = kmer < rc_kmer ? kmer : rc_kmer;
+
+        // Check if this k-mer is marked as used by the bloom filter
+        if(m_parameters.pBloomFilter->test(key_kmer.c_str(), key_kmer.size()))
+            continue;
         
     	// Get the interval for this kmer
         BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, kmer);
-
-        // Check if this interval has been marked by a previous iteration of the loop
-        assert(interval.isValid());
-        if(m_parameters.pBitVector->test(interval.lower))
-            continue;
-
-        BWTInterval rc_interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, reverseComplement(kmer));
+        BWTInterval rc_interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, rc_kmer);
         
         size_t count = interval.size();
         if(rc_interval.isValid())
@@ -153,6 +147,9 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
 
         if(count >= m_parameters.minDiscoveryCount && count < m_parameters.maxDiscoveryCount && !variantAttempted && both_strands)
         {
+            // Update the bloom filter to contain this kmer
+            m_parameters.pBloomFilter->add(key_kmer.c_str(), key_kmer.size());
+
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.baseIndex);
             
@@ -208,13 +205,15 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
                 }
             }
         }
-
+        
+        /*
         // Update the bit vector to mark this kmer has been used
         for(int64_t i = interval.lower; i <= interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
 
         for(int64_t i = rc_interval.lower; i <= rc_interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
+        */
     }
     
     return result;
@@ -289,7 +288,7 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
     variant_haplotypes.swap(temp_haplotypes);
 }
 
-// Update the bit vector with the kmers that were assembled into str
+// Update the bloom filter with the kmers that were assembled into str
 void GraphCompare::markVariantSequenceKmers(const std::string& str) const
 {
     assert(str.size() >= m_parameters.kmer);
@@ -297,22 +296,10 @@ void GraphCompare::markVariantSequenceKmers(const std::string& str) const
 
     for(size_t i = 0; i < n; ++i)
     {
-        std::string kseq = str.substr(i, m_parameters.kmer);
-        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, kseq);
-        if(interval.isValid())
-        {
-            for(int64_t j = interval.lower; j <= interval.upper; ++j)
-                m_parameters.pBitVector->updateCAS(j, false, true);
-        }
-
-        // Mark the reverse complement k-mers too
-        std::string rc_kseq = reverseComplement(kseq);
-        interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, rc_kseq);
-        if(interval.isValid())
-        {
-            for(int64_t j = interval.lower; j <= interval.upper; ++j)
-                m_parameters.pBitVector->updateCAS(j, false, true);
-        }
+        std::string kmer = str.substr(i, m_parameters.kmer);
+        std::string rc_kmer = reverseComplement(kmer);
+        std::string& key_kmer = kmer < rc_kmer ? kmer : rc_kmer;
+        m_parameters.pBloomFilter->add(key_kmer.c_str(), key_kmer.size());
     }
 }
 

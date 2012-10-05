@@ -27,6 +27,7 @@
 #include "BWTIntervalCache.h"
 #include "SampledSuffixArray.h"
 #include "DindelRealignWindow.h"
+#include "BloomFilter.h"
 
 enum GraphCompareAlgorithm
 {
@@ -51,6 +52,9 @@ struct GraphCompareParameters
     // Bitvector to mark used kmers
     BitVector* pBitVector;
  
+    // Bloom filter to mark user kmers
+    BloomFilter* pBloomFilter;
+
     // Parameters
     GraphCompareAlgorithm algorithm;
     size_t kmer;

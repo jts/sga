@@ -198,8 +198,9 @@ size_t processWorkParallel(Generator& generator,
                     outputBuffers[i]->clear();
                 }
 
-                if(generator.getNumConsumed() % (50 * BUFFER_SIZE * numThreads) == 0)
-                    printf("[sga] Processed %zu sequences\n", generator.getNumConsumed());
+                double proc_time_secs = timer.getElapsedWallTime();
+                if(generator.getNumConsumed() % (10 * BUFFER_SIZE * numThreads) == 0)
+                    printf("[sga] Processed %zu sequences in %lfs (%lf sequences/s)\n", generator.getNumConsumed(), proc_time_secs, (double)generator.getNumConsumed() / proc_time_secs);
 
                 // This should never loop more than twice
                 assert(numLoops < 2);
