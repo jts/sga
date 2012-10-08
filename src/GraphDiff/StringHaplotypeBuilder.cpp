@@ -416,31 +416,14 @@ void StringHaplotypeBuilder::correctReads(StringVector* reads)
     StringVector out_reads;
     for(size_t i = 0; i < reads->size(); ++i)
     {
-        // Check if this read has been corrected before
+        // Perform correction
         std::string corrected_sequence;
-        HashMap<std::string, std::string>::iterator find_iter = m_correction_cache.find(reads->at(i));
-        if(find_iter != m_correction_cache.end())
-        {
-            corrected_sequence = find_iter->second;
-        }
-        else
-        {
-            // Perform correction
-            DNAString dna(reads->at(i));
-            SeqRecord record = { "null", dna, "" };
-            SequenceWorkItem wi(0, record);
-            ErrorCorrectResult r = m_corrector->correct(wi);
-            if(r.kmerQC || r.overlapQC)
-                corrected_sequence = r.correctSequence.toString();
-            
-            // Insert the sequence into the cache
-            // We allow it to be empty 
-            m_correction_cache.insert(std::make_pair(reads->at(i), corrected_sequence));
-        }
-
-        //std::cout << "EXTRACT: " << (*reads)[i] << "\n";
-        //std::cout << "CORRECT: " << corrected_sequence << "\n";
-
+        DNAString dna(reads->at(i));
+        SeqRecord record = { "null", dna, "" };
+        SequenceWorkItem wi(0, record);
+        ErrorCorrectResult r = m_corrector->correct(wi);
+        if(r.kmerQC || r.overlapQC)
+            corrected_sequence = r.correctSequence.toString();
         // We allow the sequence to be null if the read could not be corrected
         out_reads.push_back(corrected_sequence);
     }
