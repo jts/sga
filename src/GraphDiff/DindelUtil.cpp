@@ -22,7 +22,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
                                                    const GraphCompareParameters& parameters,
                                                    std::ostream& baseOut,
                                                    std::ostream& variantOut,
-                                                   std::ostream& callsOut)
+                                                   std::ostream& callsOut,
+                                                   DindelReadReferenceAlignmentVector* pReadAlignments)
 {
     PROFILE_FUNC("runDindelPairMatePair")
 
@@ -259,7 +260,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         try
         {
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
-            dRealignWindow.run("hmm", vcfCollections[i], id, pThisResult, pPreviousResult);
+            dRealignWindow.run("hmm", vcfCollections[i], pReadAlignments, id, pThisResult, pPreviousResult);
         }
         catch(std::string e)
         {

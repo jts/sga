@@ -121,6 +121,41 @@ std::string StdAlnTools::expandCigar(const std::string& cigar)
     return expanded;
 }
 
+// Compact an expanded CIGAR string into a regular cigar string
+std::string StdAlnTools::compactCigar(const std::string& expanded_cigar)
+{
+    if(expanded_cigar.empty())
+        return "";
+
+    std::stringstream parser(expanded_cigar);
+    std::stringstream writer;
+
+    char prev_code = '\0';
+    char curr_code;
+    int curr_length = 0;
+    while(parser >> curr_code)
+    {
+        if(curr_code == prev_code)
+        {
+            curr_length += 1;
+        }
+        else
+        {
+            // write the previous cigar character
+            if(prev_code != '\0')
+                writer << curr_length << prev_code;
+            prev_code = curr_code;
+            curr_length = 1;
+        }
+    }
+
+    // Write the last symbol
+    writer << curr_length << prev_code;
+
+    return writer.str();
+}
+
+
 // Remove padding characters from str
 std::string StdAlnTools::unpad(const std::string& str)
 {

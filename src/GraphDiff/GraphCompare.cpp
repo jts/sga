@@ -25,6 +25,8 @@
 #include "OverlapHaplotypeBuilder.h"
 #include "StringHaplotypeBuilder.h"
 #include "Profiler.h"
+#include "api/SamHeader.h"
+#include "api/BamAlignment.h"
 
 // #define GRAPH_DIFF_DEBUG 1
 
@@ -177,13 +179,16 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
                 std::stringstream baseVCFSS;
                 std::stringstream variantVCFSS;
                 std::stringstream callsVCFSS;
+                DindelReadReferenceAlignmentVector alignments;
+
                 DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
                                                                          build_result.base_haplotypes,
                                                                          build_result.variant_haplotypes,
                                                                          m_parameters,
                                                                          baseVCFSS,
                                                                          variantVCFSS,
-                                                                         callsVCFSS);
+                                                                         callsVCFSS,
+                                                                         &alignments);
                 
                 //
                 if(m_parameters.verbose > 0)
@@ -202,6 +207,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
 
                     result.varStrings.insert(result.varStrings.end(), 
                                              build_result.variant_haplotypes.begin(), build_result.variant_haplotypes.end());
+                
+                    result.projectedReadAlignments = alignments;
                 }
             }
         }
@@ -248,8 +255,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 
     // Haplotype QC
     size_t num_assembled = result.variant_haplotypes.size();
-    std::cout << "WARNING QC TURNED OFF\n";
-    //qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
+    qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
     size_t num_qc = result.variant_haplotypes.size();
 
     // If any assembled haplotypes failed QC, do not try to call variants
@@ -263,7 +269,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 }
 
 //
-void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes)
+void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes) const
 {
     PROFILE_FUNC("GraphCompare::qcVariantHaplotypes")
     // Calculate the maximum k such that every kmer is present in the variant and base BWT
@@ -280,7 +286,7 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
         printf("HaplotypeQC: %zu %zu\n", max_variant_k, max_base_k);
 
         //
-        if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 31)
+        if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 41)
             temp_haplotypes.push_back(variant_haplotypes[i]);
     }
 
@@ -376,7 +382,7 @@ std::vector<bool> GraphCompare::generateKmerMask(const std::string& str) const
 }
 
 //
-size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices)
+size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices) const
 {
     size_t min_k = 15;
     for(size_t k = 99; k >= min_k; --k)
@@ -494,7 +500,8 @@ void GraphCompare::testKmer(const std::string& kmer)
                                                                  m_parameters,
                                                                  baseVCFSS,
                                                                  variantVCFSS,
-                                                                 callsVCFSS);
+                                                                 callsVCFSS,
+                                                                 NULL);
         
         std::cout << "base:    " << baseVCFSS.str() << "\n";
         std::cout << "variant: " << variantVCFSS.str() << "\n";
@@ -521,10 +528,12 @@ void GraphCompare::showMappingLocations(const std::string& str)
 //
 // GraphCompareAggregateResult
 //
-GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix, const StringVector& samples) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
-                                                                                            m_variantVCFFile(fileprefix + ".variant.vcf","w"),
-                                                                                            m_callsVCFFile(fileprefix + ".calls.vcf","w"),
-                                                                                            m_numVariants(0)
+GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix, 
+                                                           const StringVector& samples,
+                                                           const ReadTable& refTable) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
+                                                                                        m_variantVCFFile(fileprefix + ".variant.vcf","w"),
+                                                                                        m_callsVCFFile(fileprefix + ".calls.vcf","w"),
+                                                                                        m_numVariants(0)
 {
     //
     m_pWriter = createWriter(fileprefix + ".strings.fa");
@@ -534,9 +543,26 @@ GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fi
     m_variantVCFFile.setSamples(samples);
     m_callsVCFFile.setSamples(samples);
 
+    // Initialize VCF
     m_baseVCFFile.outputHeader("stub", "stub");
     m_variantVCFFile.outputHeader("stub", "stub");
     m_callsVCFFile.outputHeader("stub", "stub");
+
+    // Initialize BAM
+    BamTools::SamHeader null_header;
+
+    // Build a RefVector for bamtools
+    BamTools::RefVector ref_vector;
+    for(size_t i = 0; i < refTable.getCount(); ++i)
+    {
+        const SeqItem& ref_item = refTable.getRead(i);
+        BamTools::RefData rd(ref_item.id, ref_item.seq.length());
+        ref_vector.push_back(rd);
+
+        m_refNameToIndexMap.insert(std::make_pair(ref_item.id, i));
+    }
+
+    m_evidenceBamFile.Open(fileprefix + ".evidence.bam", null_header, ref_vector);
 
     // Initialize mutex
     int ret = pthread_mutex_init(&m_mutex, NULL);
@@ -558,6 +584,8 @@ GraphCompareAggregateResults::~GraphCompareAggregateResults()
         std::cerr << "Mutex destruction failed with error " << ret << ", aborting" << std::endl;
         exit(EXIT_FAILURE);
     }
+
+    m_evidenceBamFile.Close();
 }
 
 //
@@ -590,6 +618,42 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
     // Write out the final calls
     for(size_t i = 0; i < result.calledVCFStrings.size(); ++i)
         m_callsVCFFile.getOutputStream() << result.calledVCFStrings[i];
+
+    // Write the read-to-reference alignment to the bam file
+    for(size_t i = 0; i < result.projectedReadAlignments.size(); ++i)
+    {
+        DindelReadReferenceAlignment drra = result.projectedReadAlignments[i];
+        
+        // Set core data
+        BamTools::BamAlignment bam_align;
+        bam_align.Name = "*";
+        bam_align.QueryBases = drra.read_sequence;
+        bam_align.Qualities = "*";
+        bam_align.MapQuality = 255;
+
+        // Find reference index
+        std::map<std::string, size_t>::iterator ref_iter = m_refNameToIndexMap.find(drra.reference_name);
+        assert(ref_iter != m_refNameToIndexMap.end());
+        bam_align.RefID = ref_iter->second;
+        bam_align.Position = drra.reference_start_position - 1;
+
+        // Build CigarOp
+        std::stringstream parser(drra.cigar);
+        int length;
+        char symbol;
+        while(parser >> length >> symbol)
+            bam_align.CigarData.push_back(BamTools::CigarOp(symbol, length));
+
+        // Set flags
+        bam_align.SetIsMapped(true);
+        bam_align.SetIsPrimaryAlignment(true);
+        bam_align.SetIsReverseStrand(false);
+        bam_align.SetIsProperPair(false);
+        bam_align.SetIsFailedQC(false);
+        
+        // write
+        m_evidenceBamFile.SaveAlignment(bam_align);
+    }
 }
 
 //

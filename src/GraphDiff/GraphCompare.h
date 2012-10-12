@@ -28,6 +28,7 @@
 #include "SampledSuffixArray.h"
 #include "DindelRealignWindow.h"
 #include "BloomFilter.h"
+#include "api/BamWriter.h"
 
 enum GraphCompareAlgorithm
 {
@@ -87,6 +88,8 @@ struct GraphCompareResult
     StringVector baseVCFStrings;
     StringVector variantVCFStrings;
     StringVector calledVCFStrings;
+
+    DindelReadReferenceAlignmentVector projectedReadAlignments;
 };
 
 //
@@ -148,7 +151,7 @@ class GraphCompare
         GraphBuildResult processVariantKmer(const std::string& str, int count) const;
         
         // Perform quality checks on the variant haplotypes
-        void qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes);
+        void qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes) const;
 
         // Build haplotypes in the base sequence that are parallel to the variant haplotypes
         void buildParallelBaseHaplotypes(const StringVector& variant_haplotypes, StringVector& base_haplotypes) const;
@@ -160,7 +163,7 @@ class GraphCompare
         void markVariantSequenceKmers(const std::string& str) const;
         
         // Calculate the largest k such that every k-mer in the sequence is present at least min_depth times in the BWT
-        size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices);
+        size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices) const;
 
         // Calculate the number of high coverage branches off a haplotype path through the de Bruijn graph
         size_t calculateHaplotypeBranches(const std::string& sequence, size_t k, size_t min_branch_depth, const BWTIndexSet& indices);
@@ -190,7 +193,7 @@ class GraphCompareAggregateResults
 {
 
     public:
-        GraphCompareAggregateResults(const std::string& fileprefix, const StringVector& samples);
+        GraphCompareAggregateResults(const std::string& fileprefix, const StringVector& samples, const ReadTable& refTable);
         ~GraphCompareAggregateResults();
 
         void process(const SequenceWorkItem& item, const GraphCompareResult& result);
@@ -209,6 +212,10 @@ class GraphCompareAggregateResults
         VCFFile m_baseVCFFile;
         VCFFile m_variantVCFFile;
         VCFFile m_callsVCFFile;
+
+        // Bam file output
+        BamTools::BamWriter m_evidenceBamFile;
+        std::map<std::string, size_t> m_refNameToIndexMap;
 
         size_t m_numVariants;
 };

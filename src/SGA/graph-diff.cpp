@@ -328,7 +328,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
         // If in multi-sample mode, write sample names in the VCF header
         if(parameters.variantIndex.pPopIdx != NULL)
             samples = parameters.variantIndex.pPopIdx->getSamples();
-        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix, samples);
+        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix, samples, *parameters.pRefTable);
     }
     catch(std::string e)
     {

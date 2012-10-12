@@ -205,6 +205,12 @@ size_t MultiAlignment::getNumColumns() const
     return m_alignData.front().padded.size();
 }
 
+std::string MultiAlignment::getCigar(size_t rowIdx) const
+{
+    assert(rowIdx < m_alignData.size());
+    return StdAlnTools::compactCigar(m_alignData[rowIdx].expandedCigar);
+}
+
 //
 char MultiAlignment::getSymbol(size_t rowIdx, size_t colIdx) const
 {

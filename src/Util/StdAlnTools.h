@@ -85,6 +85,9 @@ namespace StdAlnTools
     // Expand a Cigar string so there is one symbol per code
     std::string expandCigar(const std::string& cigar);
     
+    // Compact an expanded cigar string
+    std::string compactCigar(const std::string& cigar);
+
     // Convert a std::string into the stdAln required packed format.
     // This function allocates memory which the caller must free.
     uint8_t* createPacked(const std::string& s, size_t start = 0, size_t length = std::string::npos);
