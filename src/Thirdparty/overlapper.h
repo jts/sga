@@ -35,7 +35,8 @@
 struct SequenceInterval
 {
     // functions
-    
+    SequenceInterval();
+        
     // Check that the interval is valid
     bool isValid() const { return start <= end; }
     
@@ -68,7 +69,8 @@ struct SequenceInterval
 struct SequenceOverlap
 {
     // Functions
-    
+    SequenceOverlap();
+
     // Check that the record is properly formed
     bool isValid() const;
 

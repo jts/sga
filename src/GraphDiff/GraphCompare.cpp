@@ -628,6 +628,7 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
         BamTools::BamAlignment bam_align;
         bam_align.Name = "*";
         bam_align.QueryBases = drra.read_sequence;
+        bam_align.Length = drra.read_sequence.size();
         bam_align.Qualities = "*";
         bam_align.MapQuality = 255;
 
@@ -650,7 +651,7 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
         bam_align.SetIsReverseStrand(false);
         bam_align.SetIsProperPair(false);
         bam_align.SetIsFailedQC(false);
-        
+
         // write
         m_evidenceBamFile.SaveAlignment(bam_align);
     }

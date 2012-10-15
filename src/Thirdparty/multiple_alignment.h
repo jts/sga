@@ -153,6 +153,12 @@ class MultipleAlignment
         // return false if so
         bool isValid() const;
 
+        // Calculate the edit distance between two rows in the multiple alignment
+        size_t calculateEditDistanceBetweenRows(size_t row0, size_t row1) const;
+
+        // Calculate an expanded cigar string between two rows
+        std::string calculateExpandedCigarBetweenRows(size_t row0, size_t row1) const;
+    
         // Calculate a new consensus sequence for the base sequence of the multiple alignment
         // A base call is changed only if it has been seen in less than min_call_coverage sequences
         // Leading/trailing bases are trimmed from the consensus sequence if there is less than
@@ -214,7 +220,7 @@ class MultipleAlignment
         void _addSequence(const std::string& name, 
                           const std::string& sequence, 
                           const std::string& quality, 
-                          MultipleAlignmentElement* template_element, 
+                          size_t template_element_index, 
                           const SequenceOverlap& overlap,
                           bool is_extension);
         

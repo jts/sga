@@ -1942,9 +1942,11 @@ void DindelRealignWindow::algorithm_hmm(VCFCollection& out,
     result.outputVCF(out);
 
     // If the alignment output pointer is not NULL, copy the alignments out.
-    if(pOutAlignments != NULL)
-        pOutAlignments->insert(pOutAlignments->end(), m_readReferenceAlignments.begin(), m_readReferenceAlignments.end());
 
+    if(pOutAlignments != NULL)
+    {
+        std::copy(m_readReferenceAlignments.begin(), m_readReferenceAlignments.end(), std::back_inserter(*pOutAlignments));
+    }
     if (DINDEL_DEBUG) 
         std::cout << "DindelRealignWindow::algorithm_hmm DONE" << std::endl;
 }
@@ -2843,10 +2845,19 @@ void DindelRealignWindow::addCalledHaplotypeSingleRead(int hapIdx,
     bool indelAdded = false;
 
     // store haplotype calling results.
-    std::pair<DindelRealignWindowResult::HapIdxToInference::iterator, bool> hapit_pair = result.hapIdxToInference.insert(DindelRealignWindowResult::HapIdxToInference::value_type(hapIdx,DindelRealignWindowResult::Inference()));
+    std::pair<DindelRealignWindowResult::HapIdxToInference::iterator, bool> hapit_pair = 
+            result.hapIdxToInference.insert(DindelRealignWindowResult::HapIdxToInference::value_type(hapIdx,DindelRealignWindowResult::Inference()));
+
     DindelRealignWindowResult::Inference & hapInf = hapit_pair.first->second;
 
-    hapInf.numReadsForward=0; hapInf.numReadsReverse=0; hapInf.numReadsForwardZeroMismatch=0; hapInf.numReadsReverseZeroMismatch=0; hapInf.numUnmapped = 0; hapInf.numLibraries = 0; hapInf.numReadNames = 0;
+    hapInf.numReadsForward=0; 
+    hapInf.numReadsReverse=0; 
+    hapInf.numReadsForwardZeroMismatch=0; 
+    hapInf.numReadsReverseZeroMismatch=0; 
+    hapInf.numUnmapped = 0; 
+    hapInf.numLibraries = 0; 
+    hapInf.numReadNames = 0;
+    
     // store order of adding haplotypes.
     result.addOrder.push_back(hapIdx);
 
@@ -2863,7 +2874,9 @@ void DindelRealignWindow::addCalledHaplotypeSingleRead(int hapIdx,
             DindelRealignWindowResult::VarToInference::iterator vit = result.variantInference.find(vars[x]);
             if (vit == result.variantInference.end())
             {
-                std::pair<DindelRealignWindowResult::VarToInference::iterator, bool> it_pair = result.variantInference.insert(DindelRealignWindowResult::VarToInference::value_type(vars[x],hapInf));
+                std::pair<DindelRealignWindowResult::VarToInference::iterator, bool> it_pair = 
+                        result.variantInference.insert(DindelRealignWindowResult::VarToInference::value_type(vars[x],hapInf));
+
                 vit = it_pair.first;
                 vit->second.numRealignedReads = int(reads.size());
                 vit->second.qual = 0.0;
@@ -2901,11 +2914,11 @@ void DindelRealignWindow::addCalledHaplotypeSingleRead(int hapIdx,
                             {
 
                                 // read overlaps the variant.
-
-
-                                if (DINDEL_DEBUG_3 && 0)
+                                if (DINDEL_DEBUG_3)
                                 {
-                                    std::cout << "\t likelihood hapIdx: " << hapIdx << " read_idx: " << read_idx << " lik: " << hapReadAlignments[hapIdx][read_idx].logLik << "\n";
+                                    std::cout << "\t likelihood hapIdx: " << hapIdx << 
+                                                 " read_idx: " << read_idx << " lik: " << 
+                                                 hapReadAlignments[hapIdx][read_idx].logLik << "\n";
                                 }
 
                                 // use it only once if it overlaps. Maybe in some read-haplotype alignments this read doesn't support the variant...
@@ -3001,6 +3014,9 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
 
     const DindelHaplotype& aligned_haplotype = haplotypes[hapIdx].getSingleMappingHaplotype(refIdx);
     const DindelReferenceMapping& reference_mapping = aligned_haplotype.getReferenceMapping();
+
+    printf("RefIdx: %d Refname: %s Refpos: %d Refseq: %s\n", refIdx, reference_mapping.refName.c_str(), reference_mapping.refStart, reference_mapping.refSeq.c_str());
+
     const std::string& reference = reference_mapping.refSeq;
     std::string haplotype = aligned_haplotype.getSequence();
     if(reference_mapping.isRC)
@@ -3012,21 +3028,21 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     // Get the alignment of the haplotype on the reference
     SequenceOverlap hap2ref_overlap;
     hap2ref_overlap.match[0].start = 0;
-    hap2ref_overlap.match[0].end = reference.size() - 1;
+    hap2ref_overlap.match[0].end = haplotype.size() - 1;
     
     hap2ref_overlap.match[1].start = 0;
-    hap2ref_overlap.match[1].end = haplotype.size() - 1;
+    hap2ref_overlap.match[1].end = reference.size() - 1;
     hap2ref_overlap.cigar = haplotypeAlignment(haplotype, reference);
+    hap2ref_overlap.printAlignment(haplotype, reference);
 
     // Align read to haplotype
     SequenceOverlap read2hap_overlap = Overlapper::computeOverlap(haplotype, read_sequence);
+    read2hap_overlap.printAlignment(haplotype, read_sequence);
 
-    /*
     std::cout << "hap2ref:  " << hap2ref_overlap.cigar << "\n";
     std::cout << "read2hap: " << read2hap_overlap.cigar << "\n";
-    std::cout << "Expanded: " << StdAlnTools::expandCigar(read2hap_overlap.cigar) << "\n";
+    //std::cout << "Expanded: " << StdAlnTools::expandCigar(read2hap_overlap.cigar) << "\n";
     std::cout << "Compacted: " << StdAlnTools::compactCigar(StdAlnTools::expandCigar(read2hap_overlap.cigar)) << "\n";
-    */
 
     // NB: This code uses the new, more featured MultipleAlignment class from ThirdParty/
     // This is different from MultiAlignment used elsewhere in Dindel.
@@ -3034,6 +3050,7 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     projector_ma.addBaseSequence("haplotype", haplotype, "");
     projector_ma.addOverlap("reference", reference, "", hap2ref_overlap);
     projector_ma.addOverlap("read", read_sequence, "", read2hap_overlap);
+    projector_ma.print(500);
 
     // Calculate the alignment of the read onto the reference sequence
     size_t REF_ROW = 1;
@@ -3065,7 +3082,7 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
             }
             else if(read_symbol != '-' && ref_symbol == '-')
             {
-                // Deletion wrt reference
+                // Insertion wrt reference
                 expanded_cigar.push_back('I');
             }
             else if(read_symbol != '-' && ref_symbol != '-')

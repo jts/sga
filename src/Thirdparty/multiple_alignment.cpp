@@ -130,7 +130,8 @@ void MultipleAlignmentElement::insertGapBeforeColumn(size_t column_index)
     // If the column index is one greater than the offset, then we want to 
     // insert a gap before the first base. This is equivalent to just
     // extending the offset.
-    if(column_index <= leading_columns + 1) {
+    size_t first_sequence_column_index = leading_columns;
+    if(column_index <= first_sequence_column_index) {
         leading_columns += 1;
     }
     else {
@@ -233,8 +234,7 @@ void MultipleAlignment::addOverlap(const std::string& incoming_name,
 {
     // This function cannot be called before a base element has been added
     assert(!m_sequences.empty());
-    MultipleAlignmentElement* template_element = &m_sequences.front();
-    _addSequence(incoming_name, incoming_sequence, incoming_quality, template_element, reference_incoming_overlap, false);
+    _addSequence(incoming_name, incoming_sequence, incoming_quality, 0, reference_incoming_overlap, false);
 }
 
 //
@@ -245,8 +245,7 @@ void MultipleAlignment::addExtension(const std::string& incoming_name,
 {
     // This function cannot be called before a base element has been added
     assert(!m_sequences.empty());
-    MultipleAlignmentElement* template_element = &m_sequences.back();
-    _addSequence(incoming_name, incoming_sequence, incoming_quality, template_element, previous_incoming_overlap, true);
+    _addSequence(incoming_name, incoming_sequence, incoming_quality, m_sequences.size() - 1, previous_incoming_overlap, true);
 }
 
 // Adds a new string into the multiple alignment using the overlap
@@ -255,10 +254,12 @@ void MultipleAlignment::addExtension(const std::string& incoming_name,
 void MultipleAlignment::_addSequence(const std::string& name,
                                      const std::string& sequence,
                                      const std::string& quality, 
-                                     MultipleAlignmentElement* template_element, 
+                                     size_t template_element_index, 
                                      const SequenceOverlap& overlap,
                                      bool is_extension)
 {
+    MultipleAlignmentElement* template_element = &m_sequences[template_element_index];
+
     // Get the padded sequence for the template element
     const std::string& template_padded = template_element->padded_sequence;
 
@@ -293,6 +294,8 @@ void MultipleAlignment::_addSequence(const std::string& name,
     std::cout << "Cigar: " << expanded_cigar << "\n";
     std::cout << "template: " << template_padded.substr(template_index) << "\n";
     std::cout << "incoming: " << sequence.substr(incoming_index) << "\n";
+    std::cout << "Template leading: " << template_leading << "\n";
+    std::cout << "Incoming leading: " << incoming_leading << "\n";
     std::cout << "Pairwise:\n";
     overlap.printAlignment(template_element->getUnpaddedSequence(), sequence);
 #endif
@@ -388,6 +391,12 @@ void MultipleAlignment::_addSequence(const std::string& name,
                                               incoming_leading, incoming_trailing);
 
     m_sequences.push_back(incoming_element);
+
+    /*
+    std::string calculated_cigar = calculateExpandedCigarBetweenRows(template_element_index, m_sequences.size() - 1);
+    printf("Incoming cigar: %s\n", expanded_cigar.c_str());
+    printf("Calculated cigar: %s\n", calculated_cigar.c_str());
+    */
 }
 
 bool MultipleAlignment::isValid() const
@@ -400,6 +409,51 @@ bool MultipleAlignment::isValid() const
         ++i;
     }
     return true;
+}
+
+size_t MultipleAlignment::calculateEditDistanceBetweenRows(size_t row0, size_t row1) const
+{
+    size_t num_columns = getNumColumns();
+    assert(row0 < m_sequences.size());
+    assert(row1 < m_sequences.size());
+    size_t edit_distance = 0;
+
+    for(size_t i = 0; i < num_columns; ++i)
+    {
+        char row0_symbol = getSymbol(row0, i);
+        char row1_symbol = getSymbol(row1, i);
+
+        if(row0_symbol == '\0' || row1_symbol == '\0')
+            continue;
+
+        if(row0_symbol != row1_symbol)
+            edit_distance += 1;
+    }
+    return edit_distance;
+}
+
+std::string MultipleAlignment::calculateExpandedCigarBetweenRows(size_t row0, size_t row1) const
+{
+    size_t num_columns = getNumColumns();
+    assert(row0 < m_sequences.size());
+    assert(row1 < m_sequences.size());
+    std::string cigar;
+
+    for(size_t i = 0; i < num_columns; ++i)
+    {
+        char row0_symbol = getSymbol(row0, i);
+        char row1_symbol = getSymbol(row1, i);
+
+        if(row0_symbol == '\0' || row1_symbol == '\0' || (row0_symbol == '-' && row1_symbol == '-'))
+            continue;
+        if(row0_symbol == '-')
+            cigar.push_back('I');
+        else if(row1_symbol == '-')
+            cigar.push_back('D');
+        else
+            cigar.push_back('M');
+    }
+    return cigar;
 }
 
 std::string MultipleAlignment::calculateBaseConsensus(int min_call_coverage, int min_trim_coverage)
@@ -785,7 +839,7 @@ void MultipleAlignment::print(size_t max_columns) const
             }
             // Check if this string is blank, if so don't print it
             if(print_string.find_first_not_of(" ") != std::string::npos)
-                printf("\t%s\t%s\n", print_string.c_str(), m_sequences[i].name.c_str());
+                printf("\t%s\t%s\n", print_string.c_str(), m_sequences[current_index].name.c_str());
         }
         printf("\n\n");
     }

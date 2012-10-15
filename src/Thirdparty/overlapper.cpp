@@ -32,13 +32,27 @@
 #include <limits>
 #include <stdio.h>
 
-OverlapperParams default_params = { 2, -5, -3 };
+OverlapperParams default_params = { 2, -6, -3 };
 OverlapperParams ungapped_params = { 2, -10000, -3 };
 
 //
 #define max3(x,y,z) std::max(std::max(x,y), z)
 //#define DEBUG_OVERLAPPER 1
 //#define DEBUG_EXTEND 1
+
+// 
+SequenceInterval::SequenceInterval() : start(0), end(-1)
+{
+
+}
+
+SequenceOverlap::SequenceOverlap()
+{
+    length[0] = length[1] = 0;
+    score = -1;
+    edit_distance = -1;
+    total_columns = -1;
+}
 
 //
 bool SequenceOverlap::isValid() const

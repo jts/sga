@@ -474,7 +474,7 @@ public:
     const std::string & getSequence() const { return m_seq; }
     const std::vector<DindelVariant> & getVariants(int refIdx) const { return m_haplotypes[refIdx].getVariants(); }
     int getNumReferenceMappings() const { return int(m_referenceMappings.size()); }
-    const DindelHaplotype & getSingleMappingHaplotype(int refIdx) const { return m_haplotypes[refIdx]; }
+    const DindelHaplotype & getSingleMappingHaplotype(int refIdx) const { assert(refIdx < (int)m_referenceMappings.size()); return m_haplotypes[refIdx]; }
     int getHomopolymerLength(int b) const { return getSingleMappingHaplotype(0).getHomopolymerLength(b); }
     int getHomopolymerLength(const std::string & chrom, int refPos) const;
     int length() const { return getSingleMappingHaplotype(0).length(); }
@@ -1118,7 +1118,7 @@ class DindelRealignWindow
         double getHaplotypePrior(const DindelHaplotype & h1, const DindelHaplotype & h2) const;
 
         // this is a function that hides how the read information is actually stored in the various ReadTables
-        const DindelRead & getRead(size_t readIndex) const { return (*m_pDindelReads)[readIndex]; }
+        const DindelRead & getRead(size_t readIndex) const { return m_pDindelReads->at(readIndex); }
 
         // haplotype-read likelihoods
         
