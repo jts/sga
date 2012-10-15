@@ -1242,9 +1242,6 @@ void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequ
 
 void DindelWindow::doMultipleHaplotypeAlignment()
 {
-    
-   
-
     // globally align haplotypes to the first haplotype (arbitrary)
     std::vector< MAlignData > maVector;
 
@@ -3029,7 +3026,6 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     SequenceOverlap hap2ref_overlap;
     hap2ref_overlap.match[0].start = 0;
     hap2ref_overlap.match[0].end = haplotype.size() - 1;
-    
     hap2ref_overlap.match[1].start = 0;
     hap2ref_overlap.match[1].end = reference.size() - 1;
     hap2ref_overlap.cigar = haplotypeAlignment(haplotype, reference);
@@ -3057,6 +3053,7 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     size_t READ_ROW = 2;
     size_t num_columns = projector_ma.getNumColumns();
     size_t read_offset = 0;
+
     std::string expanded_cigar;
     for(size_t i = 0; i < num_columns; ++i)
     {
@@ -3068,10 +3065,8 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
 
         if(read_symbol == '\0')
         {
-            if(expanded_cigar.empty())
+            if(expanded_cigar.empty() && ref_symbol != '-')
                 read_offset += 1; // leading empty character
-            else
-                break; // alignment of the read has ended
         }
         else
         {
@@ -3082,8 +3077,7 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
             }
             else if(read_symbol != '-' && ref_symbol == '-')
             {
-                // Insertion wrt reference
-                expanded_cigar.push_back('I');
+                expanded_cigar.push_back('I'); // normal insertion wrt reference
             }
             else if(read_symbol != '-' && ref_symbol != '-')
             {

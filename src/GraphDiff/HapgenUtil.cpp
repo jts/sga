@@ -123,7 +123,6 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             size_t window_size = 200;
             int ref_start = candidates[j].target_extrapolated_start - window_size;
             int ref_end = candidates[j].target_extrapolated_end + window_size;
-
             const DNAString& ref_sequence = pReferenceTable->getRead(candidates[j].target_sequence_id).seq;
             if(ref_start < 0)
                 ref_start = 0;
