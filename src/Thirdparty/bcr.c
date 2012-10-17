@@ -144,7 +144,7 @@ void ld_destroy(longdna_t *ld)
 	free(ld->a); free(ld);
 }
 
-inline void ld_set(longdna_t *h, int64_t x, int c)
+static inline void ld_set(longdna_t *h, int64_t x, int c)
 {
 	int k = x >> LD_SHIFT, l = x & LD_MASK;
 	if (k >= h->max) {
