@@ -732,6 +732,52 @@ void SGSmallRepeatResolveVisitor::postvisit(StringGraph* pGraph)
 }
 
 //
+// OverlapRatio Visitor - Only keep edges in the graph when the ratio
+// between their length and the length of the longest overlap meets a minimum cutoff
+// 
+void SGOverlapRatioVisitor::previsit(StringGraph*)
+{
+
+}
+
+//
+bool SGOverlapRatioVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
+{
+    bool changed = false;
+
+    for(size_t idx = 0; idx < ED_COUNT; idx++)
+    {
+        EdgeDir dir = EDGE_DIRECTIONS[idx];
+        EdgePtrVec x_edges = pX->getEdges(dir); // These edges are already sorted
+
+        if(x_edges.size() < 2)
+            continue;
+
+        size_t x_longest_len = x_edges.front()->getOverlap().getOverlapLength(0);
+        for(size_t i = 1; i < x_edges.size(); ++i)
+        {
+            size_t curr_len = x_edges[i]->getOverlap().getOverlapLength(0);
+            double ratio = (double)curr_len / x_longest_len;
+            if(ratio < m_minRatio)
+            {
+                x_edges[i]->setColor(GC_RED);
+                x_edges[i]->getTwin()->setColor(GC_RED);
+                changed = true;
+            }
+        }
+    }
+
+    return changed;
+}
+
+//
+void SGOverlapRatioVisitor::postvisit(StringGraph* pGraph)
+{
+    pGraph->sweepEdges(GC_RED);
+}
+
+
+//
 // SGBubbleVisitor - Find and collapse variant
 // "bubbles" in the graph
 //

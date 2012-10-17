@@ -108,6 +108,19 @@ struct SGSmallRepeatResolveVisitor
     int m_minDiff;
 };
 
+// Remove edges from the graph when the ratio between an edge's overlap length
+// and the longest overlap for the vertex is less than the given parameter
+struct SGOverlapRatioVisitor
+{
+    SGOverlapRatioVisitor(double minRatio) : m_minRatio(minRatio) {}
+    void previsit(StringGraph* pGraph);
+    bool visit(StringGraph* pGraph, Vertex* pVertex);
+    void postvisit(StringGraph*);
+
+    double m_minRatio;
+};
+
+
 // Compute edge summary statistics 
 struct SGEdgeStatsVisitor
 {
