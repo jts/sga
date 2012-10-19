@@ -937,7 +937,7 @@ std::string MultipleAlignment::expandCigar(const std::string& cigar)
 //
 int MultipleAlignment::symbol2index(char symbol) const
 {
-    switch(symbol) {
+    switch(std::toupper(symbol)) {
         case 'A':
             return 0;
         case 'C':
@@ -946,10 +946,10 @@ int MultipleAlignment::symbol2index(char symbol) const
             return 2;
         case 'T':
             return 3;
-        case 'N':
-            return 4;
         case '-':
             return 5;
+        default:
+            return 4; // all ambiguity codes get index 4
     }
 
     std::cerr << "Error: Unrecognized symbol in multiple alignment\n";
