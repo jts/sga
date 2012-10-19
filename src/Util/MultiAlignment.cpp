@@ -208,6 +208,7 @@ size_t MultiAlignment::getNumColumns() const
 std::string MultiAlignment::getCigar(size_t rowIdx) const
 {
     assert(rowIdx < m_alignData.size());
+    std::cout << "MA has " << m_alignData.size() << " elements\n";
     return StdAlnTools::compactCigar(m_alignData[rowIdx].expandedCigar);
 }
 

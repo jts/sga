@@ -397,7 +397,7 @@ void DindelHaplotype::alignHaplotype()
 {
     // semi-globally align haplotypes to the first haplotype (arbitrary)
     std::vector< MAlignData > maVector;
-    const std::string  rootSequence = m_refMapping.refSeq;
+    const std::string& rootSequence = m_refMapping.refSeq;
     std::string alignSeq;
     if (m_refMapping.isRC)
         alignSeq = reverseComplement(m_seq);
@@ -772,11 +772,17 @@ void DindelHaplotype::extractVariants()
                     }
 
 
-                    
-                    
-
                     // Use leftmost position for the variant (which can only be change for an insertion or deletion)
-                    if (DINDEL_DEBUG || 0) std::cout << "VARIANT: " << m_refMapping.refName << " " << refString << "/" << varString << " pos: " << refBaseOffsetMinPos+m_refMapping.refStart << " varBaseOffsetMinPos: " << varBaseOffsetMinPos << " varBaseOffsetMaxPos: " << varBaseOffsetMaxPos << " m_refMapping.refStart: " << m_refMapping.refStart << std::endl;
+                    if (DINDEL_DEBUG || 0) 
+                    {
+                        std::cout << "VARIANT: " << m_refMapping.refName << " " 
+                                  << refString << "/" << varString 
+                                  << " pos: " << refBaseOffsetMinPos+m_refMapping.refStart 
+                                  << " varBaseOffsetMinPos: " << varBaseOffsetMinPos 
+                                  << " varBaseOffsetMaxPos: " << varBaseOffsetMaxPos 
+                                  << " m_refMapping.refStart: " << m_refMapping.refStart << std::endl;
+                    }
+
                     DindelVariant var(m_refMapping.refName, refString, varString, refBaseOffsetMinPos+m_refMapping.refStart);
                     var.setHPLen(int(hplen));
                     var.setPriorProb(0.001); //FIXME
@@ -784,7 +790,9 @@ void DindelHaplotype::extractVariants()
                     var.setHaplotypeUnique(varBaseOffsetMinPos, varBaseOffsetMaxPos);
                     m_variants.push_back(var);
                     // this will be used in getClosestDistance
-                    std::pair < HashMap<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  m_variant_to_pos.insert( HashMap<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(varBaseOffsetMinPos, varBaseOffsetMaxPos)));
+                    std::pair < HashMap<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  
+                               m_variant_to_pos.insert( HashMap<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(varBaseOffsetMinPos, varBaseOffsetMaxPos)));
+
                     assert (ins_pair.second == true);
                 }
                 // Reset state
@@ -801,56 +809,52 @@ void DindelHaplotype::extractVariants()
 
 DindelHaplotype::DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping)
 {
-
-
     // initialize
     m_pMA = NULL;
     m_deleteMA = false;
  
     m_seq = haplotypeSequence;
     m_refMapping = refMapping;
+
 #ifdef DEBUG_NEW
-    std::cout << "refMapping " << m_refMapping.refName << " " << m_refMapping.refStart << " length: " << m_refMapping.refSeq.size() << " score: " << m_refMapping.referenceAlignmentScore << "\n";
+    std::cout << "refMapping " << m_refMapping.refName << " " 
+              << m_refMapping.refStart 
+              << " length: " << m_refMapping.refSeq.size() 
+              << " score: " << m_refMapping.referenceAlignmentScore << "\n";
 #endif
+
     // determine haplotype sequence properties
     determineHomopolymerLengths();
-
-    
 
     // align haplotype to the reference location.
     alignHaplotype();
 
     // extract the variants from the alignment of haplotype to reference sequence
     extractVariants();
-
-    
 }
 
 DindelHaplotype::~DindelHaplotype()
 {
-    if (m_pMA!=NULL && m_deleteMA) delete m_pMA;
+    if (m_pMA != NULL && m_deleteMA) 
+    {
+        delete m_pMA;
+        m_pMA = NULL;
+    }
 }
 
 void DindelHaplotype::copy(const DindelHaplotype & haplotype, int copyOptions)
 {
-   if (copyOptions == 0)
-   {
-       // copy variants and m_refPos from haplotype
-
-       m_seq = haplotype.m_seq;
-       m_refPos = haplotype.m_refPos;
-       m_hplen = haplotype.m_hplen;
-       m_variants = haplotype.m_variants;
-       m_variant_to_pos = haplotype.m_variant_to_pos;
-       m_refMapping = haplotype.m_refMapping;
-       m_isReference = haplotype.m_isReference;
-       m_pMA = haplotype.m_pMA;
-       m_deleteMA = false;
-       // DO NOT CALL initHaploype()
-   } else
-   {
-       assert (1==0);
-   }
+   assert(copyOptions == 0);
+   m_seq = haplotype.m_seq;
+   m_refPos = haplotype.m_refPos;
+   m_hplen = haplotype.m_hplen;
+   m_variants = haplotype.m_variants;
+   m_variant_to_pos = haplotype.m_variant_to_pos;
+   m_refMapping = haplotype.m_refMapping;
+   m_isReference = haplotype.m_isReference;
+   m_pMA = haplotype.m_pMA;
+   m_deleteMA = false;
+   // DO NOT CALL initHaploype()
 }
 
 DindelHaplotype::DindelHaplotype(const DindelHaplotype & haplotype, int copyOptions)
@@ -867,23 +871,23 @@ void DindelHaplotype::determineHomopolymerLengths()
 {
    
     // determine homopolymer length in sequence
-
     m_hplen = std::vector<int>(m_seq.size(), 1);
-
     std::vector<int> hp_forward = std::vector<int>(m_seq.size(), 0);
     std::vector<int> hp_reverse = std::vector<int>(m_seq.size(), 0);
 
     for (size_t r=1;r<m_seq.size();r++)
     {
         int add=0;
-        if (m_seq[r]==m_seq[r-1]) add=hp_forward[r-1]+1;
+        if(m_seq[r]==m_seq[r-1]) 
+            add=hp_forward[r-1]+1;
         hp_forward[r] = add;
     }
 
     for (int r=int(m_seq.size())-2;r>=0;r--)
     {
         int add=0;
-        if (m_seq[r]==m_seq[r+1]) add=hp_reverse[r+1]+1;
+        if(m_seq[r]==m_seq[r+1]) 
+            add=hp_reverse[r+1]+1;
         hp_reverse[r] = add;
     }
 
@@ -3006,6 +3010,7 @@ void DindelRealignWindow::addCalledHaplotypeSingleRead(int hapIdx,
 void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<DindelMultiHaplotype> & haplotypes,
                                                           int readIdx, int hapIdx, int refIdx)
 {
+    PROFILE_FUNC("DindelRealignWindow::projectReadAlignmentToReference")
     const DindelRead& read = getRead(readIdx);
     std::string read_sequence = read.getSequence();
 
@@ -3015,6 +3020,7 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     printf("RefIdx: %d Refname: %s Refpos: %d Refseq: %s\n", refIdx, reference_mapping.refName.c_str(), reference_mapping.refStart, reference_mapping.refSeq.c_str());
 
     const std::string& reference = reference_mapping.refSeq;
+
     std::string haplotype = aligned_haplotype.getSequence();
     if(reference_mapping.isRC)
     {
@@ -3022,13 +3028,16 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
         read_sequence = reverseComplement(read_sequence);
     }
 
-    // Get the alignment of the haplotype on the reference
+    // Get the alignment of the reference onto the haplotype using a local alignment
+    LocalAlignmentResult local_aln = StdAlnTools::localAlignment(haplotype, reference);
+
     SequenceOverlap hap2ref_overlap;
-    hap2ref_overlap.match[0].start = 0;
-    hap2ref_overlap.match[0].end = haplotype.size() - 1;
-    hap2ref_overlap.match[1].start = 0;
-    hap2ref_overlap.match[1].end = reference.size() - 1;
-    hap2ref_overlap.cigar = haplotypeAlignment(haplotype, reference);
+    hap2ref_overlap.match[0].start = local_aln.targetStartPosition;
+    hap2ref_overlap.match[0].end = local_aln.targetEndPosition;
+    hap2ref_overlap.match[1].start = local_aln.queryStartPosition;
+    hap2ref_overlap.match[1].end = local_aln.queryEndPosition;
+    hap2ref_overlap.cigar = local_aln.cigar;
+
     hap2ref_overlap.printAlignment(haplotype, reference);
 
     // Align read to haplotype
@@ -3054,52 +3063,94 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     size_t num_columns = projector_ma.getNumColumns();
     size_t read_offset = 0;
 
+    // Find the bounds of the alignment of the read on the reference
+    size_t read_align_start = 0;
+    size_t read_align_end = num_columns - 1;
+    size_t ref_bases_pre_skipped = hap2ref_overlap.match[1].start;
+    size_t read_bases_pre_skipped = 0;
+    size_t read_bases_post_skipped = 0;
+
+    // Find the start
+    while(read_align_start < num_columns)
+    {
+        char ref_symbol = projector_ma.getSymbol(REF_ROW, read_align_start);
+        char read_symbol = projector_ma.getSymbol(READ_ROW, read_align_start);
+        bool is_read_base = read_symbol != '\0' && read_symbol != '-';
+        bool is_ref_base = ref_symbol != '\0' && ref_symbol != '-';
+
+        if(is_read_base && is_ref_base)
+            break; // start found
+
+        if( is_read_base && ref_symbol == '\0')
+            read_bases_pre_skipped += 1;
+        if( is_ref_base && read_symbol == '\0')
+            ref_bases_pre_skipped += 1;
+
+        read_align_start += 1;
+    }
+
+    // Find the end
+    bool end_found = false;
+    size_t i = read_align_start;
+    while(i < num_columns)
+    {
+        char ref_symbol = projector_ma.getSymbol(REF_ROW, i);
+        char read_symbol = projector_ma.getSymbol(READ_ROW, i);
+        bool is_read_base = read_symbol != '\0' && read_symbol != '-';
+
+        if( (ref_symbol == '\0' || read_symbol == '\0') && !end_found)
+        {
+            end_found = true;
+            read_align_end = i - 1;
+        }
+        
+        if( is_read_base && ref_symbol == '\0')
+            read_bases_post_skipped += 1;
+
+        i += 1;
+    }
+
+    printf("Coords: [%zu %zu]\n", read_align_start, read_align_end);
+
+    // Fill in the cigar.
     std::string expanded_cigar;
-    for(size_t i = 0; i < num_columns; ++i)
+    for(size_t i = read_align_start; i <= read_align_end; ++i)
     {
         char ref_symbol = projector_ma.getSymbol(REF_ROW, i);
         char read_symbol = projector_ma.getSymbol(READ_ROW, i);
 
-        // Ensure the reference and haplotype are completely aligned
+        // Within the range of columns there should be a proper alignment between the read and reference
+        // with no skipped bases.
         assert(ref_symbol != '\0');
+        assert(read_symbol != '\0');
 
-        if(read_symbol == '\0')
-        {
-            if(expanded_cigar.empty() && ref_symbol != '-')
-                read_offset += 1; // leading empty character
-        }
-        else
-        {
-            if(read_symbol == '-' && ref_symbol != '-')
-            {
-                // Deletion wrt reference
-                expanded_cigar.push_back('D');
-            }
-            else if(read_symbol != '-' && ref_symbol == '-')
-            {
-                expanded_cigar.push_back('I'); // normal insertion wrt reference
-            }
-            else if(read_symbol != '-' && ref_symbol != '-')
-            {
-                expanded_cigar.push_back('M');
-            }   
-        }
+        if(read_symbol == '-' && ref_symbol != '-')
+            expanded_cigar.push_back('D');
+        else if(read_symbol != '-' && ref_symbol == '-')
+            expanded_cigar.push_back('I');
+        else if(read_symbol != '-' && ref_symbol != '-')
+            expanded_cigar.push_back('M');
     }
 
     // Add softclipping to the cigar if the read was not completely aligned to the haplotype
-    size_t start_clip = read2hap_overlap.match[1].start;
+    size_t start_clip = read2hap_overlap.match[1].start + read_bases_pre_skipped;
     if(start_clip > 0)
         expanded_cigar.insert(0, start_clip, 'S');
     
-    size_t end_clip = read_sequence.size() - (read2hap_overlap.match[1].end + 1);
+    size_t end_clip = read_sequence.size() - (read2hap_overlap.match[1].end + 1) + read_bases_post_skipped;
     if(end_clip > 0)
         expanded_cigar.append(end_clip, 'S');
     
+
     DindelReadReferenceAlignment drra;
     drra.cigar = StdAlnTools::compactCigar(expanded_cigar);
     drra.read_sequence = read_sequence;
     drra.reference_name = reference_mapping.refName;
-    drra.reference_start_position = reference_mapping.refStart + read_offset;
+    drra.reference_start_position = reference_mapping.refStart + read_offset + ref_bases_pre_skipped;
+    
+    std::cout << "Read2ref: " << drra.cigar << "\n";
+    std::cout << "Read2refp: " << drra.reference_start_position << "\n";
+
     m_readReferenceAlignments.push_back(drra);
 }   
 

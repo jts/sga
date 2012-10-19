@@ -357,6 +357,14 @@ void MultipleAlignment::_addSequence(const std::string& name,
                     cigar_index += 1;
                     template_index += 1;
                     break;
+                case 'S':
+                    cigar_index += 1;
+                    template_index += 1;
+                    break;
+                default:
+                    std::cerr << "Error: unhandled cigar symbol " << expanded_cigar[cigar_index] << "\n";
+                    exit(EXIT_FAILURE);
+                    break;
             }
         }
     }

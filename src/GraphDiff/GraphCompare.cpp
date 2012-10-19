@@ -248,7 +248,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
     } 
     else if(m_parameters.algorithm == GCA_STRING_GRAPH)
     {
-        StringHaplotypeBuilder overlap_builder(m_parameters);
+        OverlapHaplotypeBuilder overlap_builder(m_parameters);
         overlap_builder.setInitialHaplotype(str);
         overlap_builder.run(result.variant_haplotypes);
     }

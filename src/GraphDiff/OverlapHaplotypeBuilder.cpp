@@ -115,7 +115,7 @@ HaplotypeBuilderReturnCode OverlapHaplotypeBuilder::run(StringVector& out_haplot
         SGTransitiveReductionVisitor trVisit;
         m_graph->visit(trVisit);
 
-        // Check for walks that cover all seed vertices
+        // Check for walks that cover seed vertices
         checkWalks(&out_haplotypes);
         
         size_t num_vertices = m_graph->getNumVertices();

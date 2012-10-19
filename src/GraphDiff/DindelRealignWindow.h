@@ -449,12 +449,10 @@ class DindelHaplotype
         // list of VCF4 style variants contained in haplotype
         std::vector<DindelVariant> m_variants;
         HashMap<std::string, std::pair<int, int> > m_variant_to_pos;
-
   
         bool m_isReference;
     
         // constants for m_refPos
-        
         MultiAlignment *m_pMA;
         bool m_deleteMA;
         DindelReferenceMapping m_refMapping;
