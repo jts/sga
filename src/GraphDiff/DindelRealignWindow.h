@@ -151,6 +151,7 @@ class DindelReadReferenceAlignment
         std::string reference_name;
         int reference_start_position;
         std::string cigar;
+        bool is_reference_reverse_strand;
 };
 typedef std::vector<DindelReadReferenceAlignment> DindelReadReferenceAlignmentVector;
 
@@ -178,19 +179,13 @@ class DindelRead
 
         // Functions
 
-        const std::string  getSequence() const { return m_seqRecord.seq.toString(); }
+        const std::string getSequence() const { return m_seqRecord.seq.toString(); }
         const std::vector<double> getBaseQuals() const;
         const std::string getID() const { return m_seqRecord.id; }
         double getMappingQual() const { return m_mappingQual; } //return double(bam->core.qual); }
         double getLogProbNotMapping() const { return m_mappingQual*0.23026; }
-        bool isForward() const { return m_isForward; } //FIXME
+        bool isForward() const { return m_isForward; }
         bool mateIsForward() const { assert(false); return false; } //FIXME
-        
-        //BAM bool BAMCigarHasIndel() const;
-        //BAM int getBamStartPos() const { return bam->core.pos; }
-        //BAM int getBamStartPosAdjusted() const;
-        //BAM int getBAMEnd() const { return bam->core.n_cigar? bam_calend(&bam->core, bam1_cigar(bam)) : bam->core.pos + 1; }
-        //BAM int getBAMEndAdjusted() const;
         
         bool isUnmapped() const {  return false; } //FIXME
         bool mateIsUnmapped() const { assert(false); return false; } //FIXME
@@ -214,10 +209,9 @@ class DindelRead
         void setupHash();
 
         // Data
-        //BAM const bam1_t *bam;
-        //BAM const DindelBAM *m_pDindelBAM;
         double m_mappingQual;
-        bool m_rcRead, m_isForward, m_setupHash; // reverse-complement the read. Intended for unmapped reads. Determined using the status of the mate.
+        // reverse-complement the read. Intended for unmapped reads. Determined using the status of the mate.
+        bool m_rcRead, m_isForward, m_setupHash; 
         SampleName m_sampleName;
         SeqRecord m_seqRecord;
         

@@ -157,9 +157,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     if(flankingHaplotypes[0].size() == 0)
         return DRC_NO_ALIGNMENT;
 
-
     // Make Dindel referenceMappings
-    // std::vector< std::vector<DindelReferenceMapping> > dindelRefMappings(flankingHaplotypes.size());
     StringVector dindelHaplotypes;
     std::set<DindelReferenceMapping> refMappings;
 
@@ -169,7 +167,9 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         std::string upstream, defined, downstream;
         std::string refName = parameters.pRefTable->getRead(candidateAlignments[i].referenceID).id;
 
-        HapgenUtil::extractReferenceSubstrings(candidateAlignments[i],parameters.pRefTable, FLANKING_SIZE, upstream, defined, downstream);
+        HapgenUtil::extractReferenceSubstrings(candidateAlignments[i],parameters.pRefTable, 
+                                               FLANKING_SIZE, upstream, defined, downstream);
+
         std::string refSeq = upstream + defined + downstream;
      
         int refStart = candidateAlignments[i].position - int(upstream.size()) + 1;
@@ -177,8 +177,12 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         // Here the score is used as an estimate of how unique "defined" is in the reference sequence.
         // "defined" is not the reference sequence but a candidate haplotype.
         // It is conservative because the flanking sequence is not used in this estimation.
-        // DindelReferenceMapping rm(refName, refSeq, refStart, double(candidateAlignments[i].score), candidateAlignments[i].isRC);
-    	DindelReferenceMapping rm(refName, refSeq, refStart, candidateAlignments[i].score+2*FLANKING_SIZE, candidateAlignments[i].isRC);
+    	DindelReferenceMapping rm(refName, 
+                                  refSeq, 
+                                  refStart, 
+                                  candidateAlignments[i].score+2*FLANKING_SIZE, 
+                                  candidateAlignments[i].isRC);
+
         std::set<DindelReferenceMapping>::iterator rmit = refMappings.find(rm);
         if(rmit == refMappings.end())
         {

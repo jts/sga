@@ -3141,13 +3141,19 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     if(end_clip > 0)
         expanded_cigar.append(end_clip, 'S');
     
-
     DindelReadReferenceAlignment drra;
     drra.cigar = StdAlnTools::compactCigar(expanded_cigar);
-    drra.read_sequence = read_sequence;
     drra.reference_name = reference_mapping.refName;
     drra.reference_start_position = reference_mapping.refStart + read_offset + ref_bases_pre_skipped;
-    
+
+    // DindelReads are on the same strand as the haplotype. 
+    // Write the read sequence field as the original sequencing strand
+    drra.read_sequence = read.isForward() ? read.getSequence() : reverseComplement(read.getSequence());
+
+    // Calculate the the read's strand with respect to the refernce
+    bool rc_to_ref = read.isForward() ? reference_mapping.isRC : !reference_mapping.isRC;
+    drra.is_reference_reverse_strand = rc_to_ref;
+
     std::cout << "Read2ref: " << drra.cigar << "\n";
     std::cout << "Read2refp: " << drra.reference_start_position << "\n";
 

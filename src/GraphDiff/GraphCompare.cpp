@@ -627,7 +627,10 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
         // Set core data
         BamTools::BamAlignment bam_align;
         bam_align.Name = "*";
-        bam_align.QueryBases = drra.read_sequence;
+
+        // In BAM, we must feed in the reverse complement of the read when we set the IsReverseStrand flag
+        bam_align.QueryBases = drra.is_reference_reverse_strand ? reverseComplement(drra.read_sequence) 
+                                                                : drra.read_sequence;
         bam_align.Length = drra.read_sequence.size();
         bam_align.Qualities = "*";
         bam_align.MapQuality = 255;
@@ -648,7 +651,7 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
         // Set flags
         bam_align.SetIsMapped(true);
         bam_align.SetIsPrimaryAlignment(true);
-        bam_align.SetIsReverseStrand(false);
+        bam_align.SetIsReverseStrand(drra.is_reference_reverse_strand);
         bam_align.SetIsProperPair(false);
         bam_align.SetIsFailedQC(false);
 
