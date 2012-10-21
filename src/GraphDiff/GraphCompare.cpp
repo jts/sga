@@ -626,7 +626,7 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
         
         // Set core data
         BamTools::BamAlignment bam_align;
-        bam_align.Name = "*";
+        bam_align.Name = drra.read_name;
 
         // In BAM, we must feed in the reverse complement of the read when we set the IsReverseStrand flag
         bam_align.QueryBases = drra.is_reference_reverse_strand ? reverseComplement(drra.read_sequence) 

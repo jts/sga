@@ -3143,6 +3143,7 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     
     DindelReadReferenceAlignment drra;
     drra.cigar = StdAlnTools::compactCigar(expanded_cigar);
+    drra.read_name = read.getID();
     drra.reference_name = reference_mapping.refName;
     drra.reference_start_position = reference_mapping.refStart + read_offset + ref_bases_pre_skipped;
 

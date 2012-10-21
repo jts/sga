@@ -147,6 +147,7 @@ void parseRegionString(const std::string & region, std::string & chrom, int & st
 class DindelReadReferenceAlignment
 {
     public:
+        std::string read_name;
         std::string read_sequence;
         std::string reference_name;
         int reference_start_position;
