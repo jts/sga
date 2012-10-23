@@ -70,7 +70,6 @@ typedef std::vector<LocalAlignmentResult> LocalAlignmentResultVector;
 
 namespace StdAlnTools
 {
-
     // Perform a global alignment between target and query using stdaln
     // If bPrint is true, the padded alignment is printed // to stdout.
     // The alignment score is returned.

@@ -139,6 +139,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             double percent_aligned = (double)overlap.getOverlapLength() / query.size();
             if(percent_aligned < 0.95f)
                 continue;
+
             /*
             // Skip alignments that are not full-length matches of the haplotype
             if(overlap.match[0].start != 0 || overlap.match[0].end != (int)haplotype.size() - 1)

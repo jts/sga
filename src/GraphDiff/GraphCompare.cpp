@@ -237,6 +237,8 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 {
     PROFILE_FUNC("GraphCompare::processVariantKmer")
 
+    std::cout << "Kmer: " << str << "\n";
+
     //
     GraphBuildResult result;
 

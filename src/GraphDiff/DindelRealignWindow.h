@@ -137,6 +137,9 @@ std::string globalHaplotypeAlignment(const std::string& h1, const std::string& h
 // cigar strings to give an end-to-end alignment
 std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2);
 
+// Build a MAlignData object between a haplotype and some bit of the reference
+MAlignData buildMAlignData(const std::string& haplotype, const std::string& reference); 
+
 // Parse a colon-separated string into a chromosome/start/end triple
 void parseRegionString(const std::string & region, std::string & chrom, int & start, int & end);
 
@@ -521,15 +524,9 @@ class DindelWindow
         // candidate haplotypes
         std::vector<DindelMultiHaplotype> m_haplotypes;
       
-
-        // links variant to haplotype
-        // std::vector<std::vector<int> > m_variantToHaplotype;
-
         // keeps track of haplotypes.
         std::map<std::string, int> m_hashAltHaps;
 
-        //Fasta *m_pFasta; // pointer to Fasta class for getting the reference sequence
-        
         std::vector< DindelReferenceMapping > m_referenceMappings;
 
         //parameters

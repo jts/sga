@@ -888,9 +888,13 @@ std::string MultipleAlignment::getPaddedConsensus() const
     std::string out;
     for(size_t i = 0; i < getNumColumns(); ++i) {
         SymbolCountVector symbol_counts = getSymbolCountVector(i);
-        assert(!symbol_counts.empty());
-        std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
-        out.append(1, symbol_counts.front().symbol);
+        char symbol;
+        if(symbol_counts.empty()) {
+            symbol = ' ';
+        } else {
+            std::sort(symbol_counts.begin(), symbol_counts.end(), SymbolCount::countOrderDescending);
+            out.append(1, symbol_counts.front().symbol);
+        }
     }
     return out;
 }

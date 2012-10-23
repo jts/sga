@@ -146,6 +146,21 @@ std::string globalHaplotypeAlignment(const std::string& h1, const std::string& h
     return StdAlnTools::globalAlignmentCigar(h1, h2);
 }
 
+LocalAlignmentResult localHaplotypeAlignment(const std::string& h1, const std::string& h2)
+{
+    return StdAlnTools::localAlignment(h1, h2);
+}
+
+MAlignData buildMAlignData(const std::string& name, const std::string& haplotype, const std::string& base)
+{
+    MAlignData _ma;
+    _ma.str = haplotype;
+    _ma.name = name;
+    _ma.position = 0;
+    _ma.expandedCigar = StdAlnTools::expandCigar(haplotypeAlignment(haplotype, base));
+    return _ma;
+}
+
 std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2)
 {
     // Compute semi-global alignment between the pair of haplotypes to find the best
@@ -404,14 +419,12 @@ void DindelHaplotype::alignHaplotype()
     else
         alignSeq = m_seq;
 
-    MAlignData _ma;
-    _ma.position = 0;
-    _ma.str = alignSeq;
-    _ma.name = std::string("haplotype-1");
-    
-    std::string cigar = haplotypeAlignment(alignSeq, rootSequence);
-    _ma.expandedCigar = StdAlnTools::expandCigar(cigar);
+    MAlignData _ma = buildMAlignData("haplotype-1", alignSeq, rootSequence);
     maVector.push_back(_ma);
+
+    //std::string cigar = haplotypeAlignment(alignSeq, rootSequence);
+    //_ma.expandedCigar = StdAlnTools::expandCigar(cigar);
+
     m_pMA = new MultiAlignment(rootSequence, maVector, std::string("haplotype-0"));
     m_deleteMA = true;
     
@@ -465,8 +478,6 @@ void DindelHaplotype::extractVariants()
         if (rs != '-') ridx++;
         if (vs != '-') hidx++;
 
-        
-
         if(leftOverhang)
         {
             if(rs != '-')
@@ -488,7 +499,6 @@ void DindelHaplotype::extractVariants()
                     m_refPos[hidx] = SNP;
                 else
                     m_refPos[hidx] = m_refMapping.refStart + ma.getBaseIdx(refRow, i);
-
             }
 
             if (rs == '-')
@@ -509,8 +519,6 @@ void DindelHaplotype::extractVariants()
     if (inRefDeletion)
     {
         // ref deletion extends to end of alignment, right overhang.
-	// 
-        
         if (!(m_refPos[hDelStart-1] >=0) && DINDEL_DEBUG_3)
         {
             std::cout << "hDelStart: " << hDelStart << "m_refPos[hDelStart-1]: " << m_refPos[hDelStart-1] << std::endl;
@@ -1231,8 +1239,6 @@ void DindelWindow::copy(const DindelWindow & window)
 void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequences,
                                   const std::vector<DindelReferenceMapping>  & referenceMappings)
 {
-    
-
     for(size_t i = 0; i < haplotypeSequences.size(); ++i)
     {
         if(m_hashAltHaps.find(haplotypeSequences[i]) == m_hashAltHaps.end())
@@ -1247,26 +1253,17 @@ void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequ
 void DindelWindow::doMultipleHaplotypeAlignment()
 {
     // globally align haplotypes to the first haplotype (arbitrary)
-    std::vector< MAlignData > maVector;
+    std::vector<MAlignData> maVector;
 
     assert(m_haplotypes.size() >= 1);
 
-    const std::string  rootSequence = m_haplotypes[0].getSequence();
-
+    const std::string&  rootSequence = m_haplotypes[0].getSequence();
     for (size_t h = 0; h < m_haplotypes.size(); ++h)
     {
-        MAlignData _ma;
-        _ma.position = 0;
-        _ma.str = m_haplotypes[h].getSequence();
-
         std::stringstream ss; ss << "haplotype-" << h;
-
-        _ma.name = ss.str();
-        std::string cigar = haplotypeAlignment(m_haplotypes[h].getSequence(), rootSequence);
-        _ma.expandedCigar = StdAlnTools::expandCigar(cigar);
-
-        if (DINDEL_DEBUG) std::cout << "DindelWindow::DindelWindow globalAlignmentCigar " << h << " vs root: " << _ma.expandedCigar << std::endl;
-
+        MAlignData _ma = buildMAlignData(ss.str(), m_haplotypes[h].getSequence(), rootSequence);
+        if (DINDEL_DEBUG) 
+            std::cout << "DindelWindow::DindelWindow globalAlignmentCigar " << h << " vs root: " << _ma.expandedCigar << std::endl;
         maVector.push_back(_ma);
     }
 
@@ -3515,37 +3512,21 @@ void DindelRealignWindow::doReadHaplotypeAlignment(int H, const std::vector<Dind
         std::string hid;
         {
             int j = h;
-            MAlignData _ma;
-            _ma.position = 0;
-            _ma.str = haplotypes[j].getSequence();
-
             std::stringstream ss;
-            if (j!=h)
-                ss << "haplotype-" << j;
-            else
-                ss << "HAPLOTYPE-" << j;
-            _ma.name = ss.str();
-            std::string cigar = haplotypeAlignment(haplotypes[j].getSequence(), rootSequence);
-            _ma.expandedCigar = StdAlnTools::expandCigar(cigar);
+            ss << "haplotype-" << j;
+            MAlignData _ma = buildMAlignData(ss.str(),  haplotypes[j].getSequence(), rootSequence);
             maVector.push_back(_ma);
         }
 
-
         for(size_t r = 0; r < dReads.size(); ++r)
         {
-            MAlignData _ma;
-            _ma.position = 0;
-            _ma.str = dReads[r].getSequence();
-
             std::stringstream ss;
             if (r<dReads.size()/2)
                 ss << "read-" << r << "("  << dReads[r].getID() << ")";
             else
                 ss << "MATE read-" << r;
 
-            _ma.name = ss.str();
-            std::string cigar = haplotypeAlignment(dReads[r].getSequence(), rootSequence);
-            _ma.expandedCigar = StdAlnTools::expandCigar(cigar);
+            MAlignData _ma = buildMAlignData(ss.str(), dReads[r].getSequence(), rootSequence);
             maVector.push_back(_ma);
         }
 
