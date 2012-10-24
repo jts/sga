@@ -353,7 +353,6 @@ void DindelUtil::doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> 
     {
         std::cout << "ALIGNING EVERYTHING AGAINST HAPLOTYPE " << h << "\n";
         MultipleAlignment ma;
-        std::vector< MAlignData > maVector;
         const std::string rootSequence = haplotypes[h];
         ma.addBaseSequence("root", rootSequence, "");
 

@@ -75,6 +75,12 @@ size_t MultipleAlignmentElement::getEndColumn() const
 {
     return getNumColumns() - trailing_columns - 1;
 }
+    
+bool MultipleAlignmentElement::hasBaseInColumn(size_t column_idx) const
+{
+    char s = getColumnSymbol(column_idx);
+    return s != '\0' && s != '-';
+}
 
 //
 char MultipleAlignmentElement::getColumnSymbol(size_t column_idx) const
@@ -82,8 +88,7 @@ char MultipleAlignmentElement::getColumnSymbol(size_t column_idx) const
     assert(column_idx < getNumColumns());
     if(column_idx < leading_columns || column_idx >= leading_columns + padded_sequence.size()) {
         return '\0';
-    }
-    else {
+    } else {
         assert(column_idx - leading_columns < padded_sequence.size());
         return padded_sequence[column_idx - leading_columns];
     }
@@ -104,6 +109,18 @@ char MultipleAlignmentElement::getColumnQuality(size_t column_idx) const
     }
 }
 
+//
+std::string MultipleAlignmentElement::getPaddedSubstr(size_t start_column, size_t length) const
+{
+    std::string out;
+    out.reserve(length);
+
+    for(size_t i = start_column; i < start_column + length; ++i)
+        out.push_back(getColumnSymbol(i));
+
+    assert(out.size() == length);
+    return out;
+}
 
 //
 int MultipleAlignmentElement::getPaddedPositionOfBase(size_t idx) const
@@ -772,6 +789,83 @@ size_t MultipleAlignment::getNumRows() const
     return m_sequences.size();
 }
 
+// Calculate the index of the base in the original sequence for a given column
+size_t MultipleAlignment::columnIndexToBaseIndex(size_t row, size_t col) const 
+{ 
+    assert(row < m_sequences.size());
+    assert(col < getNumColumns());
+
+    // It is only valid to call this function for columns where
+    // this row has an actual sequence symbol
+    if(!m_sequences[row].hasBaseInColumn(col)) {
+        std::cerr << "Error: MultipleAlignment::columnToBaseIndex called on an empty column\n";
+        exit(EXIT_FAILURE);
+    }
+
+    size_t base_index = 0;
+    for(size_t i = 0; i < col; ++i)
+    {
+        if(m_sequences[row].hasBaseInColumn(i))
+            base_index += 1;
+    }
+    return base_index;
+}
+
+//
+size_t MultipleAlignment::countHomopolymer(size_t row, int from, int to) const
+{
+    int num_columns = getNumColumns();
+    assert(row < m_sequences.size());
+    assert(from < num_columns);
+    
+    //
+    if(to == -1)
+        to = num_columns - 1; // inclusive
+
+    // Determine iteration direction
+    int step = from <= to ? 1 : -1;
+    
+    // The first or last column of the multiple alignment was requested
+    // This can only be a homopolymer of length 1
+    if(from == num_columns - 1 || (from == 0 && step < 0))
+        return 1;
+    
+    // Advance to the next base symbol in the sequence
+    char b = '\0';
+    int max_position = num_columns - 1;
+    while(from >= 0 && from <= max_position) {
+        if(!m_sequences[row].hasBaseInColumn(from)) {
+            from += step;
+        } else {
+            b = getSymbol(row, from);
+            break;
+        }
+    }
+
+    // Count the length, skipping padding symbols
+    size_t length = 1;
+    do
+    {
+        from += step;
+        if(from < 0 || from > max_position)
+            return length;
+
+        char s = getSymbol(row, from);
+
+        // skip gaps
+        if(s == '-')
+            continue;
+
+        // matches the key base
+        if(s == b)
+            length += 1;
+        else // break on mismatch or end of the alignment
+            break;
+    }
+    while(from != to);
+    return length;
+}
+
 //
 std::string MultipleAlignment::getPileup(size_t idx) const
 {
@@ -880,6 +974,12 @@ void MultipleAlignment::printPileup() const
         }
         printf("%zu\t%s\t%s\t%s\n", i, pileup.c_str(), quality.c_str(), counts_str.c_str());
     }
+}
+
+std::string MultipleAlignment::getPaddedSubstr(size_t row, size_t start, size_t length) const
+{
+    assert(row < m_sequences.size());
+    return m_sequences[row].getPaddedSubstr(start, length);
 }
 
 //

@@ -161,12 +161,6 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             m_alignData[i].padded.append(1,outSym);
         }
     }
-
-    // replace trailing '.'
-    for(size_t i = 0; i < iterVec.size(); ++i)
-    {
-        for(size_t j = m_alignData[i].padded.size(); j > 0 && m_alignData[i].padded[--j] == '.';) m_alignData[i].padded[j]='-';
-    }
 }
 
 // 

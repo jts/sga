@@ -49,6 +49,9 @@ struct MultipleAlignmentElement
     // or a gap character
     char getColumnSymbol(size_t column_idx) const;
 
+    // Returns true if there is a base symbol [ACGT] in the given column
+    bool hasBaseInColumn(size_t column_idx) const;
+
     // Returns the quality symbol for the requested column
     // If there is no quality information or the column is in the leading/trailing segment
     // this will return '\0'. Otherwise it will return a quality or a gap character
@@ -66,6 +69,10 @@ struct MultipleAlignmentElement
     // the unpadded sequence.
     // Precondition: idx is less than the number of sequence bases
     int getPaddedPositionOfBase(size_t idx) const;
+
+    // Returns a substring of the padded sequence
+    // This can have NULL characters if the substring contains leading/trailing columns.
+    std::string getPaddedSubstr(size_t start_column, size_t length) const;
 
     // Returns the column index for the first/last base of the sequence
     size_t getStartColumn() const;
@@ -191,9 +198,20 @@ class MultipleAlignment
         // Returns the complete sequence for row r without any padding characters
         std::string getUnpaddedSequence(size_t row) const;
 
+        // Returns a padded substring of a given row 
+        std::string getPaddedSubstr(size_t row, size_t start, size_t length) const;
+
         // Returns the symbol in row r and column c
         // May be the null character if this sequence does not have a base call in this position
         char getSymbol(size_t row, size_t col) const;
+
+        // Calculate the index of the base in the original sequence for a given column
+        size_t columnIndexToBaseIndex(size_t row, size_t col) const;
+
+        // Count the length of the homopolymer run in the substring [from, to] inclusive
+        // If to is -1, then it is assumed to be until the end of the string
+        // if to < from, then the count proceeds backwards, towards the beginning of the string
+        size_t countHomopolymer(size_t rowIdx, int from, int to = -1) const;
 
         // Returns the total number of columns in the multiple alignment.
         // Only valid to call this function if the multiple alignment has been initialized

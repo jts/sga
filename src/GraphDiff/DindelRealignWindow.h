@@ -13,7 +13,7 @@
 #include <fstream>
 #include "Util.h"
 #include "HashMap.h"
-#include "MultiAlignment.h"
+#include "multiple_alignment.h"
 #include "VCFUtil.h"
 #include <iomanip>
 #include <list>
@@ -136,9 +136,6 @@ std::string globalHaplotypeAlignment(const std::string& h1, const std::string& h
 // Align two haplotypes against each other semi-globally and adjust
 // cigar strings to give an end-to-end alignment
 std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2);
-
-// Build a MAlignData object between a haplotype and some bit of the reference
-MAlignData buildMAlignData(const std::string& haplotype, const std::string& reference); 
 
 // Parse a colon-separated string into a chromosome/start/end triple
 void parseRegionString(const std::string & region, std::string & chrom, int & start, int & end);
@@ -394,8 +391,6 @@ class DindelHaplotype
         // Constructors
         // a DindelHaplotype must be constructed starting from the reference haplotype.
         // Differences with the reference can be added by calling addVariant
-        // DindelHaplotype(const std::string & refSeq, int refSeqStart, bool isReference);
-        //DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, size_t varRow, size_t refRow);
         DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping);
         DindelHaplotype(const DindelHaplotype & haplotype, int copyOptions);
         DindelHaplotype(const DindelHaplotype & haplotype);
@@ -427,7 +422,6 @@ class DindelHaplotype
         int getClosestDistance(const DindelVariant& variant, int hapPosStartRead, int hapPosEndRead, const DindelRead & read) const;
 
         const DindelReferenceMapping getReferenceMapping() const { return m_refMapping; }
-        std::string getReferenceCigar() const { assert(m_pMA != NULL); return m_pMA->getCigar(1); }
 
     private:
         void copy(const DindelHaplotype & haplotype, int copyOptions);
@@ -449,9 +443,7 @@ class DindelHaplotype
         HashMap<std::string, std::pair<int, int> > m_variant_to_pos;
   
         bool m_isReference;
-    
-        // constants for m_refPos
-        MultiAlignment *m_pMA;
+        MultipleAlignment *m_pMA;
         bool m_deleteMA;
         DindelReferenceMapping m_refMapping;
 
@@ -502,7 +494,7 @@ class DindelWindow
     public:
         
         // Create window from a set of haplotypes and a reference sequence.
-        // Uses SGA MultiAlignment to annotate the variations in the haplotypes with respect to the reference sequence.
+        // Uses MultipleAlignment to annotate the variations in the haplotypes with respect to the reference sequence.
         DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::vector<DindelReferenceMapping>  & referenceMappings);
         DindelWindow(const DindelWindow & window);
         ~DindelWindow();
@@ -532,7 +524,7 @@ class DindelWindow
         //parameters
         DindelWindowCandHapAlgorithm m_candHapAlgorithm;
         
-        MultiAlignment *m_pHaplotype_ma;
+        MultipleAlignment *m_pHaplotype_ma;
         bool m_deleteMA;
 };
 
