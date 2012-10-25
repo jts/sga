@@ -424,7 +424,13 @@ class DindelHaplotype
         const DindelReferenceMapping getReferenceMapping() const { return m_refMapping; }
 
     private:
+
+        // 
         void copy(const DindelHaplotype & haplotype, int copyOptions);
+
+        // Do not allow default constructor
+        DindelHaplotype();
+
         // Functions
 
         // initializes haplotype from reference sequence
@@ -437,6 +443,7 @@ class DindelHaplotype
         std::string m_seq;
         std::vector<int> m_hplen; // gives the homopolymer run length for any base in the haplotype sequence going left and right.
         std::vector<int> m_refPos; // position of haplotype base on reference.
+        int m_firstAlignedBase;
 
         // list of VCF4 style variants contained in haplotype
         std::vector<DindelVariant> m_variants;
@@ -444,10 +451,7 @@ class DindelHaplotype
   
         bool m_isReference;
         MultipleAlignment *m_pMA;
-        bool m_deleteMA;
         DindelReferenceMapping m_refMapping;
-
-
 };
 
 
@@ -525,7 +529,6 @@ class DindelWindow
         DindelWindowCandHapAlgorithm m_candHapAlgorithm;
         
         MultipleAlignment *m_pHaplotype_ma;
-        bool m_deleteMA;
 };
 
 //

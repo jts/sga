@@ -151,18 +151,38 @@ LocalAlignmentResult localHaplotypeAlignment(const std::string& h1, const std::s
     return StdAlnTools::localAlignment(h1, h2);
 }
 
-void addHaplotypeToMultipleAlignment(MultipleAlignment* pMA,
-                                     const std::string& base_sequence, 
-                                     const std::string& incoming_name, 
-                                     const std::string& incoming_sequence)
+// Convert a local alignment structure into a SequenceOverlap object
+SequenceOverlap localAlignmentToSequenceOverlap(const LocalAlignmentResult& local_aln)
 {
-    LocalAlignmentResult local_aln = StdAlnTools::localAlignment(base_sequence, incoming_sequence);
     SequenceOverlap overlap;
     overlap.match[0].start = local_aln.targetStartPosition;
     overlap.match[0].end = local_aln.targetEndPosition;
     overlap.match[1].start = local_aln.queryStartPosition;
     overlap.match[1].end = local_aln.queryEndPosition;
     overlap.cigar = local_aln.cigar;
+    return overlap;
+}
+
+SequenceOverlap computeHaplotypeAlignment(const std::string& base_sequence, const std::string& haplotype)
+{
+    LocalAlignmentResult local_aln = StdAlnTools::localAlignment(base_sequence, haplotype);
+    SequenceOverlap overlap = localAlignmentToSequenceOverlap(local_aln);
+    overlap.printAlignment(base_sequence, haplotype);
+    if(overlap.match[1].start != 0 || overlap.match[1].end != (int)haplotype.size() - 1)
+    {
+        for(size_t i = 0; i < 5; ++i)
+            std::cerr << "HAPLOTYPE INCOMPLETELY ALIGNED\n";
+    }
+
+    return overlap;
+}
+
+void addHaplotypeToMultipleAlignment(MultipleAlignment* pMA,
+                                     const std::string& base_sequence, 
+                                     const std::string& incoming_name, 
+                                     const std::string& incoming_sequence)
+{
+    SequenceOverlap overlap = computeHaplotypeAlignment(base_sequence, incoming_sequence);
     pMA->addOverlap(incoming_name, incoming_sequence, "", overlap);
 }
 
@@ -390,13 +410,15 @@ void DindelVariant::setup()
 
 int DindelVariant::getHaplotypeLeftUnique() const
 {
-    if (m_leftUniquePos==-1) throw std::string("DindelVariant::call_determineLeftRightUnique_first");
+    if(m_leftUniquePos==-1)
+         throw std::string("DindelVariant::call_determineLeftRightUnique_first");
     return m_leftUniquePos;
 }
 
 int DindelVariant::getHaplotypeRightUnique() const
 {
-    if (m_rightUniquePos==-1) throw std::string("DindelVariant::call_determineLeftRightUnique_first");
+    if(m_rightUniquePos==-1)
+         throw std::string("DindelVariant::call_determineLeftRightUnique_first");
     return m_rightUniquePos;
 }
 
@@ -416,10 +438,9 @@ void DindelVariant::write(std::ostream & out) const
 void DindelHaplotype::alignHaplotype()
 {
     // semi-globally align haplotypes to the first haplotype (arbitrary)
-    std::vector< MAlignData > maVector;
     const std::string& rootSequence = m_refMapping.refSeq;
     std::string alignSeq;
-    if (m_refMapping.isRC)
+    if(m_refMapping.isRC)
         alignSeq = reverseComplement(m_seq);
     else
         alignSeq = m_seq;
@@ -430,13 +451,11 @@ void DindelHaplotype::alignHaplotype()
 
     m_pMA = new MultipleAlignment();
     m_pMA->addBaseSequence(ref_ss.str(), rootSequence, "");
-    addHaplotypeToMultipleAlignment(m_pMA, rootSequence, "haplotype", alignSeq);
+    SequenceOverlap hap_overlap = computeHaplotypeAlignment(rootSequence, alignSeq);
+    m_pMA->addOverlap("haplotype", alignSeq, "", hap_overlap);
+    m_firstAlignedBase = hap_overlap.match[1].start;
+    printf("Setting first base: %d\n", m_firstAlignedBase);
 
-    //std::string cigar = haplotypeAlignment(alignSeq, rootSequence);
-    //_ma.expandedCigar = StdAlnTools::expandCigar(cigar);
-
-    m_deleteMA = true;
-    
     if (DINDEL_DEBUG || DINDEL_DEBUG_3)
     {
         std::cout << "DindelHaplotype::alignHaplotype:\n";
@@ -449,108 +468,75 @@ void DindelHaplotype::extractVariants()
 {
     const int verbose = 0;
     // extract variants from alignment
-    size_t numCols = m_pMA->getNumColumns();
-
-    if (DINDEL_DEBUG) std::cout << "DindelHaplotype::extractVariants numCols: " << numCols << std::endl;
+    int numCols = m_pMA->getNumColumns();
 
     int refRow = 0;
     int varRow = 1;
-    
 
-    // position of haplotype base on reference. <0
+    // position of haplotype base on reference.
     m_refPos = std::vector<int>(m_seq.size(), 0);
-    this->m_isReference = false;
+    m_isReference = false;
 
+    printf("First aligned haplotype base: %d\n", m_firstAlignedBase);
 
-    // set m_refPos
-    int hidx=-1, ridx=-1, hDelStart=-1;
-    int numRightOverhang = 0;
-    int numLeftOverhang = 0;
-    bool inRefDeletion = false;
-    bool leftOverhang = true;
+    // Compute a mapping from a haplotype base to its aligned position on the reference sequence
+    int first_aligned_column = m_pMA->getFirstAlignedBaseColumn(refRow, varRow);
+    int last_aligned_column = m_pMA->getLastAlignedBaseColumn(refRow, varRow);
+    
+    printf("First aligned column: %d\n", first_aligned_column);
+    printf("Last aligned column: %d\n", last_aligned_column);
+    
+    // This calculation assumes the haplotype was completely aligned!
+    assert(m_pMA->columnIndexToBaseIndex(varRow, first_aligned_column) == 0);
+    int first_aligned_haplotype_base = m_firstAlignedBase + m_pMA->columnIndexToBaseIndex(varRow, first_aligned_column);
 
-    /*
-      note that the following case still needs to be dealt with if left or right overhang is allowed
-    0       TGCTATTCTCTCCAACAAGACCGTTGAAC----------A        REF.chr10
-    1       TGCTATTCTCTCCAACAAGACCGTTGAACAATTGGGGCAA        haplotype-1
-    2       TGCTATTCTCTCCAACAAGACCGTTGAACAATTGGGGCAA        haplotype-2
-    */
+    // Fill in the lefthand unaligned haplotype sequence
+    for(int i = 0; i < first_aligned_haplotype_base; ++i)
+    {
+        assert(i < (int)m_refPos.size());
+        m_refPos[i] = LEFTOVERHANG;
+    }
 
-    for(size_t i = 0; i < numCols; ++i)
+    for(int i = first_aligned_column; i <= last_aligned_column; ++i)
     {
         char rs = m_pMA->getSymbol(refRow,i);
         char vs = m_pMA->getSymbol(varRow,i);
 
-        if (rs != '-') ridx++;
-        if (vs != '-') hidx++;
+        // Skip if this is a deleted haplotype base - it has no reference coordinate
+        if(vs == '-')
+            continue;
 
-        if(leftOverhang)
+        assert(rs != '\0' && vs != '\0');
+        size_t hap_idx = m_firstAlignedBase + m_pMA->columnIndexToBaseIndex(varRow, i);
+        assert(hap_idx < m_refPos.size());
+
+        if (rs == '-' && vs != '-') 
+            m_refPos[hap_idx] = INSERTION;
+
+        if (rs != '-' && vs != '-')
         {
-            if(rs != '-')
-            {
-                // end of left overhang of haplotype with reference
-                for(size_t j= 0 ; j < i; j++) m_refPos[j] = LEFTOVERHANG;
-                leftOverhang = false;
-                numLeftOverhang = int(i);
-            }
-        }
-
-        if(!leftOverhang)
-        {
-            if (rs == '-' && vs != '-') m_refPos[hidx] = INSERTION;
-
-            if (rs != '-' && vs != '-')
-            {
-                if(rs != vs)
-                    m_refPos[hidx] = SNP;
-                else
-                    m_refPos[hidx] = m_refMapping.refStart + m_pMA->columnIndexToBaseIndex(refRow, i);
-            }
-
-            if (rs == '-')
-            {
-                if(!inRefDeletion)
-                {
-                    inRefDeletion = true;
-                    hDelStart = m_pMA->columnIndexToBaseIndex(varRow,i);
-                }
-            }
+            if(rs != vs)
+                m_refPos[hap_idx] = SNP;
             else
-                inRefDeletion = false;
+                m_refPos[hap_idx] = m_refMapping.refStart + m_pMA->columnIndexToBaseIndex(refRow, i);
         }
-
     }
 
-
-    if (inRefDeletion)
+    // Fill in the righthand unaligned haplotype sequence
+    int last_aligned_haplotype_base = m_firstAlignedBase + m_pMA->columnIndexToBaseIndex(varRow, last_aligned_column);
+    for(int i = last_aligned_haplotype_base; i < (int)m_refPos.size(); ++i)
     {
-        // ref deletion extends to end of alignment, right overhang.
-        if (!(m_refPos[hDelStart-1] >=0) && DINDEL_DEBUG_3)
-        {
-            std::cout << "hDelStart: " << hDelStart << "m_refPos[hDelStart-1]: " << m_refPos[hDelStart-1] << std::endl;
-            m_pMA->print(1000);
-        }
-
-        assert(hDelStart != -1);
-        
-        for(int h = hDelStart; h < int(m_refPos.size()); h++)
-        {
-            m_refPos[h] = RIGHTOVERHANG;
-            numRightOverhang++;
-        }
+        assert(i < (int)m_refPos.size());
+        m_refPos[i] = RIGHTOVERHANG;
     }
-
     
-    if(DINDEL_DEBUG || verbose)
+    if(DINDEL_DEBUG || verbose || true)
     {
         std::cout << "m_refPos: ";
-        for (size_t i = 0; i < m_refPos.size(); i++) std::cout << "[" << i << " " << m_refPos[i] << "]";
+        for (int i = 0; i < (int)m_refPos.size(); i++) 
+            std::cout << "[" << i << " " << m_refPos[i] << "]";
         std::cout << "\n";
-
-        std::cout << "numLeftOverhang: " << numLeftOverhang << " numRightOverhang: " << numRightOverhang << "\n";
     }
-
-    
 
     int leftExactMatch = 0;
     int rightExactMatch = 0;
@@ -561,29 +547,7 @@ void DindelHaplotype::extractVariants()
     bool isComplex = false;
     bool inLeftExact = true;
 
-    // Compute the first and last column of the multiple alignment
-    // were the haplotype and reference match.
-    size_t first_aligned_column = 0;
-    size_t last_aligned_column = numCols - 1;
-    while(first_aligned_column < numCols)
-    {
-        char refSymbol = m_pMA->getSymbol(refRow, first_aligned_column);
-        char varSymbol = m_pMA->getSymbol(varRow, first_aligned_column);
-        if(refSymbol == varSymbol && refSymbol != '-' && refSymbol != '.')
-            break;
-        first_aligned_column += 1;
-    }
-
-    while(last_aligned_column > 0)
-    {
-        char refSymbol = m_pMA->getSymbol(refRow, last_aligned_column);
-        char varSymbol = m_pMA->getSymbol(varRow, last_aligned_column);
-        if(refSymbol == varSymbol && refSymbol != '-' && refSymbol != '.')
-            break;
-        last_aligned_column -= 1;
-    }
-
-    for(size_t i = 0; i < numCols; ++i)
+    for(int i = first_aligned_column; i <= last_aligned_column; ++i)
     {
         char refSymbol = m_pMA->getSymbol(refRow, i);
         char varSymbol = m_pMA->getSymbol(varRow, i);
@@ -649,18 +613,20 @@ void DindelHaplotype::extractVariants()
                 // Again, we need to move back to the last full column.
 
                 bool okEvent = true;
-                if(isIndel && (eventStart == 0 || eventEnd == (int)numCols - 1) ) okEvent = false;
-
-                if ((eventStart-numLeftOverhang < MIN_EVENT_DIST_FROM_EDGE || eventEnd > int(numCols) - numRightOverhang - MIN_EVENT_DIST_FROM_EDGE) ) okEvent = false;
+                if(isIndel && (eventStart == 0 || eventEnd == (int)numCols - 1) )
+                    okEvent = false;
+                
+                int left_distance_to_end = eventStart - first_aligned_column;
+                int right_distance_to_end = last_aligned_column - eventEnd;
+                if(left_distance_to_end < MIN_EVENT_DIST_FROM_EDGE || right_distance_to_end < MIN_EVENT_DIST_FROM_EDGE) 
+                    okEvent = false;
                 
                 if(okEvent)
                 {
                     if(isIndel)
                     {
-                        // It is impossible to extract a reference string if the indel is at the beginning
-                        // or end of th multiple alignment so we just fail out here
-
-                        while(eventStart >= 0)
+                        // Move the event leftwards until the reference and haplotype both have a non-gap symbol
+                        while(eventStart >= (int)first_aligned_column)
                         {
                             char rc = m_pMA->getSymbol(refRow, eventStart);
                             char vc = m_pMA->getSymbol(varRow, eventStart);
@@ -669,11 +635,10 @@ void DindelHaplotype::extractVariants()
                             else
                                 break;
                         }
-
-                        assert(eventStart >= 0);
+                        assert(eventStart >= (int)first_aligned_column);
                     }
 
-                    size_t eventLength = eventEnd - eventStart + 1;
+                    int eventLength = eventEnd - eventStart + 1;
                     std::string refStringPadded = m_pMA->getPaddedSubstr(refRow, eventStart, eventLength);
                     std::string varStringPadded = m_pMA->getPaddedSubstr(varRow, eventStart, eventLength);
                     std::string refString = StdAlnTools::unpad(refStringPadded);
@@ -686,69 +651,11 @@ void DindelHaplotype::extractVariants()
                     }
 
                     assert(!refString.empty());
-                    //assert(!baseString.empty());
                     assert(!varString.empty());
 
-                    // minPos and maxPos are coordinates of window in MultiAlignment where variant can be ambiguously positioned
-                    int minPos = eventStart, maxPos = eventStart+eventLength-1;
-
-                    if(isIndel && !isComplex && REPOSITIONVARIANTSSLOW)
-                    {
-                        // If it is a clean indel event, see how far it can be moved to the left or right
-                        bool isDeletion = refString.size() > varString.size();
-                        std::string refPadded = m_pMA->getPaddedSubstr(refRow,0,numCols);
-                        int indelLength = int(eventLength) - 1;
-                        assert(indelLength>=1);
-
-                        // ---AT-GAATCG-T-- REF  There might be multiple events
-                        // ATCATCGA--CGATCG ALT
-
-                        // ignore overlaps of the haplotype with the reference at the ends
-                        minPos = refPadded.size()-1;
-                        maxPos = 0;
-
-                        // create candidate haplotype with just this variant removed
-                        std::string changeHaplotype = m_pMA->getPaddedSubstr(varRow,0,numCols);
-                        changeHaplotype.replace(eventStart, eventLength, m_pMA->getPaddedSubstr(refRow, eventStart, eventLength));
-                        std::string indelSeq = isDeletion ? refStringPadded.substr(1,indelLength) : varStringPadded.substr(1,indelLength) ;
-
-                        if(DINDEL_DEBUG) 
-                            std::cout << "CHANGEHAPLOTYPE: " << changeHaplotype << std::endl;
-                        
-                        for(int j=0;j<int(numCols)-indelLength;j++) if (m_pMA->getSymbol(refRow, j)!='-')
-                        {
-                            std::string alt(changeHaplotype);
-
-                            int k=0,numModified=0;
-                            if (isDeletion)
-                            {
-                                while (numModified<indelLength && j+k<int(numCols))
-                                {
-                                    if(alt[j+k]!='-')
-                                    {
-                                        alt[j+k]='-';
-                                        numModified++;
-                                    }
-                                    k++;
-                                }
-
-                            }
-                            else
-                            {
-                                alt.insert(size_t(j),indelSeq);
-                                numModified=indelLength;
-                            }
-                            
-
-                            std::string altUnpadded = StdAlnTools::unpad(alt);
-                            if(numModified == indelLength && altUnpadded == m_seq)
-                            {
-                                if (DINDEL_DEBUG) std::cout << "CHANGEHAPLOTYPE equal " << j << std::endl;
-                                if(j<minPos) minPos = j;
-                                if(j>maxPos) maxPos = j;
-                            }
-                        }
-                    }
+                    // minPos and maxPos are coordinates of window in MultiAlignment where variant can be unambiguously positioned
+                    int minPos = eventStart;
+                    int maxPos = eventStart + eventLength - 1;
 
                     // Get the base position in the reference string. This is not necessarily the
                     // same as the eventStart column as the reference may be padded
@@ -759,12 +666,12 @@ void DindelHaplotype::extractVariants()
                     size_t hplen_after = m_pMA->countHomopolymer(refRow, minPos + 1, -1) + m_pMA->countHomopolymer(refRow, minPos + 1, 0) - 1;
                     size_t hplen = std::max(std::max(hplen_before, hplen_at), hplen_after);
 
-                    if (minPos+1<int(m_pMA->getNumColumns()))
+                    if( minPos + 1 < numCols)
                         hplen += m_pMA->countHomopolymer(refRow, minPos,0)-1;
 
-                    while (minPos>0 && m_pMA->getSymbol(varRow, minPos)== '-' )
+                    while( minPos > 0 && m_pMA->getSymbol(varRow, minPos)== '-' )
                         minPos--;
-                    while (maxPos<int(numCols)-1 && m_pMA->getSymbol(varRow, maxPos)== '-' )
+                    while( maxPos < numCols - 1 && m_pMA->getSymbol(varRow, maxPos)== '-' )
                         maxPos++;
 
                     int varBaseOffsetMinPos = m_pMA->columnIndexToBaseIndex(varRow, minPos);
@@ -774,8 +681,8 @@ void DindelHaplotype::extractVariants()
                     if(m_refMapping.isRC)
                     {
                         int tmp = varBaseOffsetMaxPos;
-                        varBaseOffsetMaxPos = int(m_seq.length())-1-varBaseOffsetMinPos;
-                        varBaseOffsetMinPos = int(m_seq.length())-1-tmp;
+                        varBaseOffsetMaxPos = int(m_seq.length()) - 1 - varBaseOffsetMinPos;
+                        varBaseOffsetMinPos = int(m_seq.length()) - 1 - tmp;
                         //assert(varBaseOffsetMinPos<=varBaseOffsetMaxPos);
 
                         if(!(varBaseOffsetMaxPos<int(m_seq.length())))
@@ -809,15 +716,17 @@ void DindelHaplotype::extractVariants()
                     DindelVariant var(m_refMapping.refName, refString, varString, refBaseOffsetMinPos+m_refMapping.refStart);
                     var.setHPLen(int(hplen));
                     var.setPriorProb(0.001); //FIXME
-                    
                     var.setHaplotypeUnique(varBaseOffsetMinPos, varBaseOffsetMaxPos);
+
                     m_variants.push_back(var);
+
                     // this will be used in getClosestDistance
                     std::pair < HashMap<std::string, std::pair<int, int> >::iterator, bool> ins_pair =  
                                m_variant_to_pos.insert( HashMap<std::string, std::pair<int, int> >::value_type ( var.getID(), std::pair<int,int>(varBaseOffsetMinPos, varBaseOffsetMaxPos)));
 
                     assert (ins_pair.second == true);
                 }
+
                 // Reset state
                 eventStart = -1;
                 eventEnd = -1;
@@ -826,19 +735,15 @@ void DindelHaplotype::extractVariants()
             }
         }
     }
-
-  
 }
 
 DindelHaplotype::DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping)
 {
     // initialize
     m_pMA = NULL;
-    m_deleteMA = false;
- 
     m_seq = haplotypeSequence;
     m_refMapping = refMapping;
-
+    m_firstAlignedBase = 0;
 #ifdef DEBUG_NEW
     std::cout << "refMapping " << m_refMapping.refName << " " 
               << m_refMapping.refStart 
@@ -858,7 +763,7 @@ DindelHaplotype::DindelHaplotype(const std::string & haplotypeSequence, const Di
 
 DindelHaplotype::~DindelHaplotype()
 {
-    if (m_pMA != NULL && m_deleteMA) 
+    if (m_pMA != NULL) 
     {
         delete m_pMA;
         m_pMA = NULL;
@@ -875,8 +780,13 @@ void DindelHaplotype::copy(const DindelHaplotype & haplotype, int copyOptions)
    m_variant_to_pos = haplotype.m_variant_to_pos;
    m_refMapping = haplotype.m_refMapping;
    m_isReference = haplotype.m_isReference;
-   m_pMA = haplotype.m_pMA;
-   m_deleteMA = false;
+   m_firstAlignedBase = haplotype.m_firstAlignedBase;
+
+   if(haplotype.m_pMA != NULL)
+       m_pMA = new MultipleAlignment(*haplotype.m_pMA);
+   else
+       m_pMA = NULL;
+
    // DO NOT CALL initHaploype()
 }
 
@@ -892,7 +802,6 @@ DindelHaplotype::DindelHaplotype(const DindelHaplotype & haplotype)
 
 void DindelHaplotype::determineHomopolymerLengths()
 {
-   
     // determine homopolymer length in sequence
     m_hplen = std::vector<int>(m_seq.size(), 1);
     std::vector<int> hp_forward = std::vector<int>(m_seq.size(), 0);
@@ -914,14 +823,17 @@ void DindelHaplotype::determineHomopolymerLengths()
         hp_reverse[r] = add;
     }
 
-    for (size_t r=0;r<m_seq.size();r++) m_hplen[r] = hp_reverse[r]+hp_forward[r]+1;
+    for (size_t r=0;r<m_seq.size();r++) 
+        m_hplen[r] = hp_reverse[r] + hp_forward[r] + 1;
 }
 
 void DindelHaplotype::write(std::ostream & out) const
 {
     out << "VARIANTS: "; for (size_t x=0;x<m_variants.size();x++) out << " " << m_variants[x].getID(); out << std::endl;
-    for (size_t x=0;x<m_seq.size(); x++) out << m_seq[x]; out << std::endl;
-    for (size_t x=0;x<m_refPos.size(); x++) out << " " << m_refPos[x]-m_refPos[0]; out << std::endl;
+    for (size_t x=0; x<m_seq.size(); x++) 
+        out << m_seq[x]; out << std::endl;
+    for (size_t x=0; x<m_refPos.size(); x++) 
+        out << " " << m_refPos[x]-m_refPos[0]; out << std::endl;
 }
 
 
@@ -930,11 +842,13 @@ int DindelHaplotype::getClosestDistance(const DindelVariant& variant, int hapPos
     HashMap<std::string, std::pair<int, int> >::const_iterator it = this->m_variant_to_pos.find(variant.getID());
     if (it == this->m_variant_to_pos.end())
     {
-    std::cout << " query variant: " << variant.getID() << std::endl;
-    std::cout << " haplotype variants: "; for (it = m_variant_to_pos.begin();it != m_variant_to_pos.end();it++) std::cout << " " << it->first; std::cout << std::endl;
-    std::cout << " h2 variants:        "; for (size_t x=0;x<m_variants.size();x++) std::cout << " " << m_variants[x].getID(); std::cout << std::endl;
+        std::cout << " query variant: " << variant.getID() << std::endl;
+        std::cout << " haplotype variants: "; for (it = m_variant_to_pos.begin();it != m_variant_to_pos.end();it++) std::cout << " " << it->first; std::cout << std::endl;
+        std::cout << " h2 variants:        "; for (size_t x=0;x<m_variants.size();x++) std::cout << " " << m_variants[x].getID(); std::cout << std::endl;
         return -1;
-    } else {
+    } 
+    else 
+    {
         int s = it->second.first;
         int e = it->second.second;
     
@@ -1065,7 +979,9 @@ int DindelHaplotype::getClosestDistance(const DindelVariant& variant, int hapPos
 
 int DindelHaplotype::getHapBase(int refPos) const
 {
-    for (size_t x=0;x<this->m_refPos.size();x++) if (m_refPos[x]==refPos) return x;
+    for(size_t x=0; x<this->m_refPos.size(); x++) 
+        if (m_refPos[x] == refPos) 
+            return x;
     return -1;
 }
 
@@ -1076,7 +992,7 @@ int DindelHaplotype::getHapBase(int refPos) const
 
  */
 
-DindelMultiHaplotype::DindelMultiHaplotype(const std::vector< DindelReferenceMapping > & referenceMappings, const std::string & haplotypeSequence  )
+DindelMultiHaplotype::DindelMultiHaplotype(const std::vector< DindelReferenceMapping > & referenceMappings, const std::string & haplotypeSequence)
 {
 #ifdef DEBUG_NEW
     std::cout << "There are " << referenceMappings.size() << " reference mappings.\n";
@@ -1084,7 +1000,11 @@ DindelMultiHaplotype::DindelMultiHaplotype(const std::vector< DindelReferenceMap
     m_referenceMappings = referenceMappings;
     
     for (size_t i = 0; i < m_referenceMappings.size(); ++i)
+    {
+        std::cout << "HEAD PTR BEFORE MULTIHAP PUSH: " << &m_haplotypes[0] << "\n";
         m_haplotypes.push_back(DindelHaplotype(haplotypeSequence, m_referenceMappings[i]));
+        std::cout << "HEAD PTR AFTER MULTIHAP PUSH: " << &m_haplotypes[0] << "\n";
+    }
 
     m_seq = haplotypeSequence;
 
@@ -1224,16 +1144,13 @@ DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences,
 {
 
     m_pHaplotype_ma = NULL;
-    m_deleteMA = false;
     m_referenceMappings = referenceMappings;
+    
     // filter out duplicate haplotype sequences.
     initHaplotypes(haplotypeSequences, referenceMappings);
 
-
     // do multiple alignment of all haplotypes to each other.
     doMultipleHaplotypeAlignment();
-       
-
 }
 
 DindelWindow::DindelWindow(const DindelWindow & window)
@@ -1247,8 +1164,12 @@ void DindelWindow::copy(const DindelWindow & window)
     m_hashAltHaps = window.m_hashAltHaps;
     m_candHapAlgorithm = window.m_candHapAlgorithm;
     m_referenceMappings = window.m_referenceMappings;
-    m_pHaplotype_ma = window.m_pHaplotype_ma;
-    m_deleteMA = false;
+
+    // Deep copy
+    if(window.m_pHaplotype_ma != NULL)
+        m_pHaplotype_ma = new MultipleAlignment(*window.m_pHaplotype_ma);
+    else
+        m_pHaplotype_ma = NULL;
 }
 
 void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequences,
@@ -1260,7 +1181,9 @@ void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequ
         {
             if (DINDEL_DEBUG_3)
                 std::cout << "DindelWindow::MultiHaplotype " << m_haplotypes.size() << "\n";
+            std::cout << "HEAD PTR BEFORE WINDOW PUSH: " << &m_haplotypes[0] << "\n";
             m_haplotypes.push_back(DindelMultiHaplotype(referenceMappings, haplotypeSequences[i]));
+            std::cout << "HEAD PTR AFTER WINDOW PUSH: " << &m_haplotypes[0] << "\n";
         }
     }
 }
@@ -1289,12 +1212,12 @@ void DindelWindow::doMultipleHaplotypeAlignment()
         m_pHaplotype_ma->print(500);
 
     }
-    m_deleteMA = true;
 }
 
 DindelWindow::~DindelWindow()
 {
-    if (m_pHaplotype_ma!=NULL && m_deleteMA) delete m_pHaplotype_ma;
+    if (m_pHaplotype_ma!=NULL)
+        delete m_pHaplotype_ma;
 }
 
 
@@ -1414,23 +1337,21 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
             std::cout << "==outputAsVCF: iteration: " << iteration << " notPost: " << notPost << " lnprob: " << lnprob << " saves: " << saves << "\n";
 
     }
-
     
     double probNoHaplotypeMaps = exp(logProbNoHaplotypeMaps);
     if (probNoHaplotypeMaps<1e-6) probNoHaplotypeMaps=1e-6;
     int hapMappingQual = int(round(-10.0*log10(probNoHaplotypeMaps)));
-
     
     double vcfQual = -lnprob/.2303;
     //double vcfQual = -10.0*log10(1.0-exp(lvprob));
     if (hapPropString.str().empty()) 
         hapPropString << "NoMappings";
-
     
     // FIXME Add this as a parameter?
-    if (!hasHighMappingQualityVariants) return;
+    if (!hasHighMappingQualityVariants) 
+        return;
 
-    int iqual = (vcfQual<0.0)?0:int(round(vcfQual));
+    int iqual = (vcfQual<0.0) ? 0 : int(round(vcfQual));
 
     // determine support for filter tag
     int totInHist = 0;
@@ -1555,7 +1476,8 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
                 sampleString << ":" << int(gc.qual);
                 //out <<  std::iostream::fixed;
                 sampleString << std::setprecision(5) << ":" << gc.gl[0] << "," << gc.gl[1] << "," << gc.gl[2];
-            } else
+            } 
+            else
             {
                 sampleString << "."; // no call
             }
@@ -1701,7 +1623,13 @@ void DindelRealignWindow::run(const std::string & algorithm,
 
 }
 
-ReadHaplotypeAlignment DindelRealignWindow::computeReadHaplotypeAlignment(size_t readIndex, const DindelMultiHaplotype& haplotype, int start, int end, const std::vector<double> & lpError, const std::vector<double> & lpCorrect, bool rcReadSeq)
+ReadHaplotypeAlignment DindelRealignWindow::computeReadHaplotypeAlignment(size_t readIndex, 
+                                                                          const DindelMultiHaplotype& haplotype, 
+                                                                          int start, 
+                                                                          int end, 
+                                                                          const std::vector<double> & lpError, 
+                                                                          const std::vector<double> & lpCorrect, 
+                                                                          bool rcReadSeq)
 {
     const DindelRead & read = (*m_pDindelReads)[readIndex];
     // compute the log-likelihood of a single candidate alignment
@@ -1763,8 +1691,8 @@ ReadHaplotypeAlignment DindelRealignWindow::computeReadHaplotypeAlignment(size_t
 
         double ll=0.0;
         int b=0;
-	double all_match = 0.0;
-	nmm=0;
+    	double all_match = 0.0;
+	    nmm=0;
         if (!rcReadSeq) {
 	    for (int x=start;x<=end;x++,b++)
             {
@@ -1955,9 +1883,8 @@ void DindelRealignWindow::algorithm_hmm(VCFCollection& out,
     // If the alignment output pointer is not NULL, copy the alignments out.
 
     if(pOutAlignments != NULL)
-    {
         std::copy(m_readReferenceAlignments.begin(), m_readReferenceAlignments.end(), std::back_inserter(*pOutAlignments));
-    }
+    
     if (DINDEL_DEBUG) 
         std::cout << "DindelRealignWindow::algorithm_hmm DONE" << std::endl;
 }
@@ -1998,7 +1925,13 @@ void DindelRealignWindow::HMMAlignReadAgainstHaplotypes(size_t readIndex, size_t
         ReadHaplotypeAlignment rha_hmm = hmm.getAlignment();
 
         if (DINDEL_DEBUG)
-            std::cout << " HMM read " << readIndex << " haplotype " <<  h  << " loglik: " << rha_hmm.logLik << " postProb: " << rha_hmm.postProbLastReadBase << " hapPosLastReadBase: " << rha_hmm.hapPosLastReadBase << std::endl;
+        {
+            std::cout << " HMM read " << readIndex 
+                      << " haplotype " <<  h  
+                      << " loglik: " << rha_hmm.logLik 
+                      << " postProb: " << rha_hmm.postProbLastReadBase 
+                      << " hapPosLastReadBase: " << rha_hmm.hapPosLastReadBase << std::endl;
+        }
 
         // attempt ungapped alignment for detecting SNPs
         if (rha_hmm.postProbLastReadBase>this->realignParameters.minPostProbLastReadBaseForUngapped)

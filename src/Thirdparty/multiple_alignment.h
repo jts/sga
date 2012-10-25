@@ -160,6 +160,12 @@ class MultipleAlignment
         // return false if so
         bool isValid() const;
 
+        // Returns the index of the first/last column with a symbol of row0 aligned to a symbol of row1.
+        // This EXCLUDES leading/trailing gaps. If there is no alignment between the rows, this returns
+        // an invalid column index.
+        size_t getFirstAlignedBaseColumn(size_t row0, size_t row1) const;
+        size_t getLastAlignedBaseColumn(size_t row0, size_t row1) const;
+
         // Calculate the edit distance between two rows in the multiple alignment
         size_t calculateEditDistanceBetweenRows(size_t row0, size_t row1) const;
 
