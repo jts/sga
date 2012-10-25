@@ -135,7 +135,7 @@ std::string globalHaplotypeAlignment(const std::string& h1, const std::string& h
 
 // Align two haplotypes against each other semi-globally and adjust
 // cigar strings to give an end-to-end alignment
-std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2);
+SequenceOverlap semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2);
 
 // Parse a colon-separated string into a chromosome/start/end triple
 void parseRegionString(const std::string & region, std::string & chrom, int & start, int & end);
@@ -389,12 +389,11 @@ class DindelHaplotype
     public:
 
         // Constructors
-        // a DindelHaplotype must be constructed starting from the reference haplotype.
-        // Differences with the reference can be added by calling addVariant
         DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping);
         DindelHaplotype(const DindelHaplotype & haplotype, int copyOptions);
         DindelHaplotype(const DindelHaplotype & haplotype);
         ~DindelHaplotype();
+
         // Functions
         bool addVariant(const DindelVariant & var);
         const std::vector<DindelVariant> & getVariants() const { return m_variants; }
@@ -402,7 +401,6 @@ class DindelHaplotype
         bool isReference() const { return m_isReference; } 
         void write(std::ostream & out) const;
         int getHomopolymerLength(int b) const { return m_hplen[b]; }
-        
         
         int getHomopolymerLengthRefPos(int refPos) const 
         { 

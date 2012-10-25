@@ -163,17 +163,26 @@ SequenceOverlap localAlignmentToSequenceOverlap(const LocalAlignmentResult& loca
     return overlap;
 }
 
+SequenceOverlap semiGlobalHaplotypeAlignment(const std::string& base, const std::string& incoming)
+{
+    // Compute semi-global alignment between the pair of haplotypes to find the best
+    // matching substrings of each haplotype
+    SequenceOverlap overlap = Overlapper::computeOverlap(base, incoming);
+
+    // Realign the substring of each sequence using gap-extension scoring
+    // TODO: Add a new function to Overlapper to do this internally
+    std::string sub1 = base.substr(overlap.match[0].start, overlap.match[0].length());
+    std::string sub2 = incoming.substr(overlap.match[1].start, overlap.match[1].length());
+
+    std::string out_cigar = StdAlnTools::globalAlignmentCigar(sub1, sub2);
+    overlap.cigar = out_cigar;
+    return overlap;
+}
+
 SequenceOverlap computeHaplotypeAlignment(const std::string& base_sequence, const std::string& haplotype)
 {
-    LocalAlignmentResult local_aln = StdAlnTools::localAlignment(base_sequence, haplotype);
-    SequenceOverlap overlap = localAlignmentToSequenceOverlap(local_aln);
+    SequenceOverlap overlap = semiGlobalHaplotypeAlignment(base_sequence, haplotype);
     overlap.printAlignment(base_sequence, haplotype);
-    if(overlap.match[1].start != 0 || overlap.match[1].end != (int)haplotype.size() - 1)
-    {
-        for(size_t i = 0; i < 5; ++i)
-            std::cerr << "HAPLOTYPE INCOMPLETELY ALIGNED\n";
-    }
-
     return overlap;
 }
 
@@ -184,48 +193,6 @@ void addHaplotypeToMultipleAlignment(MultipleAlignment* pMA,
 {
     SequenceOverlap overlap = computeHaplotypeAlignment(base_sequence, incoming_sequence);
     pMA->addOverlap(incoming_name, incoming_sequence, "", overlap);
-}
-
-std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2)
-{
-    // Compute semi-global alignment between the pair of haplotypes to find the best
-    // matching substrings of each haplotype
-    SequenceOverlap overlap = Overlapper::computeOverlap(h1, h2);
-
-    // If the align sequence is not aligned end-to-end adjust the cigar string
-    // by padding with deletion characters
-//    printf("i0: [%d %d] i1: [%d %d]\n", overlap.match[0].start, overlap.match[0].end, overlap.match[1].start, overlap.match[1].end);
-    std::stringstream out_cigar_ss;
-
-    int end_overhang_1 = (h1.size() - 1) - overlap.match[0].end;
-    int end_overhang_2 = (h2.size() - 1) - overlap.match[1].end;
-    
-    // Make sure the alignments are sane
-    assert(overlap.match[0].start == 0 || overlap.match[1].start == 0);
-    assert(end_overhang_1 == 0 || end_overhang_2 == 0);
-
-    // Pad the beginning of the cigar string to handle overhangs
-    if(overlap.match[0].start > 0)
-        out_cigar_ss << overlap.match[0].start << "D";
-    else if(overlap.match[1].start > 0)
-        out_cigar_ss << overlap.match[1].start << "I";
-
-    // Realign the substring of each sequence using gap-extension scoring
-    std::string sub1 = h1.substr(overlap.match[0].start, overlap.match[0].length());
-    std::string sub2 = h2.substr(overlap.match[1].start, overlap.match[1].length());
-
-    std::string out_cigar = StdAlnTools::globalAlignmentCigar(sub1, sub2);
-    out_cigar_ss << out_cigar;
-
-    // Pad the end as well
-    if(end_overhang_1 > 0)
-        out_cigar_ss << end_overhang_1 << "D";
-    else if(end_overhang_2 > 0)
-        out_cigar_ss << end_overhang_2 << "I";
-
-    //overlap.cigar = out_cigar_ss.str();
-    //overlap.printAlignment(h1, h2);
-    return out_cigar_ss.str();
 }
 
 /*
