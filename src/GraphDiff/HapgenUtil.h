@@ -13,6 +13,7 @@
 
 #include "BWTIndexSet.h"
 #include "StdAlnTools.h"
+#include "overlapper.h"
 
 // Simple alignment object representing
 // the placement of a string onto a reference genome
@@ -118,6 +119,10 @@ namespace HapgenUtil
                                        SeqRecordVector* pOutReads, 
                                        SeqRecordVector* pOutMates);
 
+    
+    // Perform an alignment between a haplotype sequence and a reference sequence
+    SequenceOverlap alignHaplotypeToReference(const std::string& reference,
+                                              const std::string& haplotype);
 
     // Compute the best local alignment for each read in the array to the given sequence
     LocalAlignmentResultVector alignReadsLocally(const std::string& target, const SeqItemVector& reads);

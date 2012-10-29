@@ -70,6 +70,8 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceKmer")
     int64_t max_interval_size = 4;
 
+    std::cout << "Attempting alignment of haplotype: " << haplotype << "\n";
+
     if(haplotype.size() < k)
         return;
 
@@ -133,20 +135,17 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             std::string ref_substring = ref_sequence.substr(ref_start, ref_end - ref_start);
 
             // Align haplotype to the reference
-            SequenceOverlap overlap = Overlapper::computeOverlap(query, ref_substring);
+            SequenceOverlap overlap = alignHaplotypeToReference(ref_substring, query);
+            if(overlap.score < 0 || !overlap.isValid())
+                continue;
 
             // Skip terrible alignments
-            double percent_aligned = (double)overlap.getOverlapLength() / query.size();
-            if(percent_aligned < 0.95f)
+            double mismatch_rate = overlap.calculateMismatchFraction(ref_substring, query);
+            if(mismatch_rate > 0.05f || overlap.total_columns < 50)
                 continue;
-
-            /*
-            // Skip alignments that are not full-length matches of the haplotype
-            if(overlap.match[0].start != 0 || overlap.match[0].end != (int)haplotype.size() - 1)
-                continue;
-            */
-            int alignment_start = ref_start + overlap.match[1].start;
-            int alignment_end = ref_start + overlap.match[1].end; // inclusive
+            
+            int alignment_start = ref_start + overlap.match[0].start;
+            int alignment_end = ref_start + overlap.match[0].end; // inclusive
             int alignment_length = alignment_end - alignment_start + 1;
             
             // Crude count of the number of distinct variation events
@@ -185,6 +184,77 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
     }
 }
 
+SequenceOverlap HapgenUtil::alignHaplotypeToReference(const std::string& reference,
+                                                      const std::string& haplotype)
+{
+    StdAlnTools::globalAlignment(reference, haplotype, true);
+    SequenceOverlap overlap;
+
+    // Stage 1: Find initial alignments of the start/end of the haplotype to the reference substring
+    size_t seed_length = 31;
+    assert(haplotype.size() >= seed_length);
+
+    std::string start = haplotype.substr(0, seed_length);
+    std::string end = haplotype.substr(haplotype.size() - seed_length);
+
+    LocalAlignmentResult s_align = StdAlnTools::localAlignment(reference, start);
+    LocalAlignmentResult e_align = StdAlnTools::localAlignment(reference, end);
+
+    printf("Query End1: %d\n", (int)s_align.queryEndIndex);
+    printf("Query End2: %d\n", (int)e_align.queryEndIndex);
+    printf("Alignment bounds: [%zu %zu]\n", s_align.targetStartIndex, e_align.targetEndIndex);
+
+    int reference_length = e_align.targetEndIndex - s_align.targetStartIndex + 1; 
+    size_t length_difference = abs(reference_length - haplotype.size());
+
+    if(s_align.queryStartIndex != 0 || s_align.queryEndIndex != (int)seed_length - 1 ||
+       e_align.queryStartIndex != 0 || e_align.queryEndIndex != (int)seed_length - 1 ||
+       e_align.targetStartIndex <= s_align.targetStartIndex ||
+       e_align.targetEndIndex < s_align.targetStartIndex ||
+       length_difference > 50)
+    {
+        std::cout << "Resorting to full global\n";
+        overlap = Overlapper::computeOverlap(reference, haplotype);
+        /*
+        // Cannot find a good candidate seed pair. Resort to global alignment
+        std::string cigar;
+        int score;
+        StdAlnTools::globalAlignment(reference, haplotype, cigar, score);
+        overlap.match[0].start = 0;
+        overlap.match[0].end = reference.size() - 1;
+        overlap.match[1].start = 0;
+        overlap.match[1].end = haplotype.size() - 1;
+        overlap.cigar = cigar;
+        overlap.score = score;
+        */
+    }
+    else
+    {
+        std::cout << "using guided global\n";
+        // Compute the global alignment between the seed pair
+        std::string reference_region = reference.substr(s_align.targetStartIndex, reference_length);
+        std::string cigar;
+        int score;
+        StdAlnTools::globalAlignment(reference_region, haplotype, cigar, score);
+
+        overlap.match[0].start = s_align.targetStartIndex;
+        overlap.match[0].end = e_align.targetEndIndex;
+        overlap.match[1].start = 0;
+        overlap.match[1].end = haplotype.size() - 1;
+        overlap.cigar = cigar;
+        overlap.score = score;
+    }
+
+    // Fill in edit distance information within the overlap
+    overlap.edit_distance = overlap.calculateEditDistance(reference, haplotype);
+    overlap.total_columns = overlap.calculateTotalColumns();
+    printf("ED: %d TC: %d\n", overlap.edit_distance, overlap.total_columns);
+
+    overlap.printAlignment(reference, haplotype);
+    return overlap;
+}
+
+
 // Coalesce a set of alignments into distinct locations
 void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
 {
@@ -207,7 +277,7 @@ void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
     for(size_t i = alignments.size()-1; i-- > 0;)
     {
         // Check this alignment against the last alignment added to the output set
-        const HapgenAlignment& prevAlign = outAlignments.back();
+        HapgenAlignment& prevAlign = outAlignments.back();
         const HapgenAlignment& currAlign = alignments[i];
 
         int s1 = prevAlign.position;
@@ -218,7 +288,15 @@ void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
         bool intersecting = Interval::isIntersecting(s1, e1, s2, e2);
 
         if(prevAlign.referenceID != currAlign.referenceID || !intersecting)
+        {
             outAlignments.push_back(currAlign);
+        }
+        else
+        {
+            // merge the intersecting alignment into a window that covers both
+            prevAlign.position = std::min(s1, s2);
+            prevAlign.length = std::max(e1, e2) - prevAlign.position;
+        }
     }
 
     alignments = outAlignments;
@@ -338,8 +416,8 @@ bool HapgenUtil::checkAlignmentsAreConsistent(const std::string& refString, cons
     size_t i = 0;
     for(size_t j = 1; j < alignments.size(); ++j)
     {
-        if(alignments[i].targetStartPosition != alignments[j].targetStartPosition ||
-           alignments[j].targetEndPosition != alignments[j].targetEndPosition)
+        if(alignments[i].targetStartIndex != alignments[j].targetStartIndex ||
+           alignments[j].targetEndIndex != alignments[j].targetEndIndex)
         {
             //std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
             //std::cerr << "A[" << i << "]: " << alignments[i] << "\n";

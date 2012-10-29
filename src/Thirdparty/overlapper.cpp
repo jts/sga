@@ -76,6 +76,91 @@ std::ostream& operator<<(std::ostream& out, const SequenceOverlap& overlap)
 }
 
 //
+int SequenceOverlap::calculateEditDistance(const std::string& s1, const std::string& s2) const
+{
+    // Recalculate the edit distance between the pair of strings, given this alignment
+    int new_edit_distance = 0;
+
+    // Process the matching region using the cigar operations
+    size_t current_1 = match[0].start;
+    size_t current_2 = match[1].start;
+
+    std::stringstream cigar_parser(cigar);
+    int length = -1;
+    char code;
+    while(cigar_parser >> length >> code) {
+        assert(length > 0);
+        if(code == 'M') {
+            for(int i = 0; i < length; ++i) {
+                if(s1[current_1 + i] != s2[current_2 + i])
+                    new_edit_distance++;
+            }
+            current_1 += length;
+            current_2 += length;
+        }
+        else if(code == 'D') {
+            new_edit_distance += length;
+            current_1 += length;
+        }
+        else if(code == 'I') {
+            new_edit_distance += length;
+            current_2 += length;
+        }
+        length = -1;
+    }
+
+    return new_edit_distance;
+}
+
+//
+int SequenceOverlap::calculateTotalColumns() const
+{
+    // Recalculate the edit distance between the pair of strings, given this alignment
+    int total_columns = 0;
+
+    std::stringstream cigar_parser(cigar);
+    int length = -1;
+    char code;
+    while(cigar_parser >> length >> code) {
+        assert(length > 0);
+        total_columns += length;
+    }
+
+    return total_columns;
+}
+
+//
+double SequenceOverlap::calculateMismatchFraction(const std::string& s1, const std::string& s2) const
+{
+    // Recalculate the edit distance between the pair of strings, given this alignment
+    int total_matched_columns = 0;
+    int total_mismatches = 0;
+
+    // Process the matching region using the cigar operations
+    size_t current_1 = match[0].start;
+    size_t current_2 = match[1].start;
+
+    std::stringstream cigar_parser(cigar);
+    int length = -1;
+    char code;
+    while(cigar_parser >> length >> code) {
+        assert(length > 0);
+        if(code == 'M') {
+            for(int i = 0; i < length; ++i) {
+                if(s1[current_1 + i] != s2[current_2 + i])
+                    total_mismatches += 1;
+            }
+            total_matched_columns += length;
+            current_1 += length;
+            current_2 += length;
+        }
+        length = -1;
+    }
+
+    return (double)total_mismatches / total_matched_columns;
+}
+
+//
 void SequenceOverlap::printAlignment(const std::string& s1, const std::string& s2) const
 {
     assert(isValid());

@@ -76,7 +76,16 @@ struct SequenceOverlap
 
     // Print the alignment with padding characters
     void printAlignment(const std::string& s1, const std::string& s2) const;
+
+    // Compute the fraction of matched columns that show different bases    
+    double calculateMismatchFraction(const std::string& s1, const std::string& s2) const;
+
+    // Recalculate the edit distance between the strings using this alignment
+    int calculateEditDistance(const std::string& s1, const std::string& s2) const;
     
+    // Recalculate the number of columns in the alignment
+    int calculateTotalColumns() const;
+
     // Return the percent identity which we define to be
     // the number of matching columns divided by the total number of columns
     double getPercentIdentity() const;
@@ -133,7 +142,7 @@ namespace Overlapper
 {
 
 // Compute the highest-scoring overlap between s1 and s2.
-// This is a naive O(M*N) algorithm
+// This is a naive O(M*N) algorithm with a linear gap penalty.
 SequenceOverlap computeOverlap(const std::string& s1, const std::string& s2, const OverlapperParams params = default_params);
 
 // Extend a match between s1 and s2 into a full overlap using banded dynamic programming.

@@ -36,6 +36,7 @@
 #include "VCFUtil.h"
 #include "overlapper.h"
 #include "multiple_alignment.h"
+#include "HapgenUtil.h"
 #include <cmath>
 
 const int DINDEL_DEBUG=0;
@@ -136,54 +137,21 @@ std::vector<std::string> SplitString(const std::string & str, char sep)
     return split;
 }
 
-std::string haplotypeAlignment(const std::string& h1, const std::string& h2)
-{
-    return globalHaplotypeAlignment(h1, h2);
-}
-
-std::string globalHaplotypeAlignment(const std::string& h1, const std::string& h2)
-{
-    return StdAlnTools::globalAlignmentCigar(h1, h2);
-}
-
-LocalAlignmentResult localHaplotypeAlignment(const std::string& h1, const std::string& h2)
-{
-    return StdAlnTools::localAlignment(h1, h2);
-}
-
 // Convert a local alignment structure into a SequenceOverlap object
 SequenceOverlap localAlignmentToSequenceOverlap(const LocalAlignmentResult& local_aln)
 {
     SequenceOverlap overlap;
-    overlap.match[0].start = local_aln.targetStartPosition;
-    overlap.match[0].end = local_aln.targetEndPosition;
-    overlap.match[1].start = local_aln.queryStartPosition;
-    overlap.match[1].end = local_aln.queryEndPosition;
+    overlap.match[0].start = local_aln.targetStartIndex;
+    overlap.match[0].end = local_aln.targetEndIndex;
+    overlap.match[1].start = local_aln.queryStartIndex;
+    overlap.match[1].end = local_aln.queryEndIndex;
     overlap.cigar = local_aln.cigar;
-    return overlap;
-}
-
-SequenceOverlap semiGlobalHaplotypeAlignment(const std::string& base, const std::string& incoming)
-{
-    // Compute semi-global alignment between the pair of haplotypes to find the best
-    // matching substrings of each haplotype
-    SequenceOverlap overlap = Overlapper::computeOverlap(base, incoming);
-
-    // Realign the substring of each sequence using gap-extension scoring
-    // TODO: Add a new function to Overlapper to do this internally
-    std::string sub1 = base.substr(overlap.match[0].start, overlap.match[0].length());
-    std::string sub2 = incoming.substr(overlap.match[1].start, overlap.match[1].length());
-
-    std::string out_cigar = StdAlnTools::globalAlignmentCigar(sub1, sub2);
-    overlap.cigar = out_cigar;
     return overlap;
 }
 
 SequenceOverlap computeHaplotypeAlignment(const std::string& base_sequence, const std::string& haplotype)
 {
-    SequenceOverlap overlap = semiGlobalHaplotypeAlignment(base_sequence, haplotype);
-    overlap.printAlignment(base_sequence, haplotype);
-    return overlap;
+    return HapgenUtil::alignHaplotypeToReference(base_sequence, haplotype);
 }
 
 void addHaplotypeToMultipleAlignment(MultipleAlignment* pMA,
@@ -497,7 +465,7 @@ void DindelHaplotype::extractVariants()
         m_refPos[i] = RIGHTOVERHANG;
     }
     
-    if(DINDEL_DEBUG || verbose || true)
+    if(DINDEL_DEBUG || verbose)
     {
         std::cout << "m_refPos: ";
         for (int i = 0; i < (int)m_refPos.size(); i++) 
@@ -967,11 +935,7 @@ DindelMultiHaplotype::DindelMultiHaplotype(const std::vector< DindelReferenceMap
     m_referenceMappings = referenceMappings;
     
     for (size_t i = 0; i < m_referenceMappings.size(); ++i)
-    {
-        std::cout << "HEAD PTR BEFORE MULTIHAP PUSH: " << &m_haplotypes[0] << "\n";
         m_haplotypes.push_back(DindelHaplotype(haplotypeSequence, m_referenceMappings[i]));
-        std::cout << "HEAD PTR AFTER MULTIHAP PUSH: " << &m_haplotypes[0] << "\n";
-    }
 
     m_seq = haplotypeSequence;
 
@@ -1148,9 +1112,7 @@ void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequ
         {
             if (DINDEL_DEBUG_3)
                 std::cout << "DindelWindow::MultiHaplotype " << m_haplotypes.size() << "\n";
-            std::cout << "HEAD PTR BEFORE WINDOW PUSH: " << &m_haplotypes[0] << "\n";
             m_haplotypes.push_back(DindelMultiHaplotype(referenceMappings, haplotypeSequences[i]));
-            std::cout << "HEAD PTR AFTER WINDOW PUSH: " << &m_haplotypes[0] << "\n";
         }
     }
 }
@@ -2942,10 +2904,10 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     LocalAlignmentResult local_aln = StdAlnTools::localAlignment(haplotype, reference);
 
     SequenceOverlap hap2ref_overlap;
-    hap2ref_overlap.match[0].start = local_aln.targetStartPosition;
-    hap2ref_overlap.match[0].end = local_aln.targetEndPosition;
-    hap2ref_overlap.match[1].start = local_aln.queryStartPosition;
-    hap2ref_overlap.match[1].end = local_aln.queryEndPosition;
+    hap2ref_overlap.match[0].start = local_aln.targetStartIndex;
+    hap2ref_overlap.match[0].end = local_aln.targetEndIndex;
+    hap2ref_overlap.match[1].start = local_aln.queryStartIndex;
+    hap2ref_overlap.match[1].end = local_aln.queryEndIndex;
     hap2ref_overlap.cigar = local_aln.cigar;
 
     hap2ref_overlap.printAlignment(haplotype, reference);
@@ -3430,7 +3392,8 @@ void DindelRealignWindow::doReadHaplotypeAlignment(int H, const std::vector<Dind
         {
             std::stringstream r_ss;
             r_ss << "read-" << r << "("  << dReads[r].getID() << ")";
-            addHaplotypeToMultipleAlignment(&ma, rootSequence, r_ss.str(), dReads[r].getSequence());
+            SequenceOverlap overlap = Overlapper::computeOverlap(rootSequence, dReads[r].getSequence());
+            ma.addOverlap(r_ss.str(), dReads[r].getSequence(), "", overlap);
         }
         ma.print(100000);
     }

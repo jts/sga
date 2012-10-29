@@ -53,16 +53,18 @@ struct GlobalAlnParams
 
 struct LocalAlignmentResult
 {
-    int64_t targetStartPosition;
-    int64_t targetEndPosition;
-    int64_t queryStartPosition;
-    int64_t queryEndPosition;
+    // Indices of the start/end base in the aligning
+    // substrings. INCLUSIVE coordinates.
+    int64_t targetStartIndex;
+    int64_t targetEndIndex;
+    int64_t queryStartIndex;
+    int64_t queryEndIndex;
     std::string cigar;
     int score;
 
     friend std::ostream& operator<<(std::ostream& out, const LocalAlignmentResult& a)
     {
-        out << "S:" << a.score << " P:" << a.targetStartPosition << " C:" << a.cigar;
+        out << "S:" << a.score << " [" << a.targetStartIndex << " " << a.targetEndIndex << "] C:" << a.cigar;
         return out;
     }
 };
@@ -77,6 +79,9 @@ namespace StdAlnTools
 
     // Perform a global alignment between the two strings and return a CIGAR string
     std::string globalAlignmentCigar(const std::string& target, const std::string& query);
+
+    // Perform global alignment and return the cigar and score as out parameters
+    void globalAlignment(const std::string& target, const std::string& query, std::string& cigar, int& score);
 
     // Perform a local alignment
     LocalAlignmentResult localAlignment(const std::string& target, const std::string& query);

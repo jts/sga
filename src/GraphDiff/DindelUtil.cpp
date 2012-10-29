@@ -69,8 +69,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     int FLANKING_SIZE = 0;
     if (parameters.dindelRealignParameters.realignMatePairs)
         FLANKING_SIZE = 1000;
-    else
-        FLANKING_SIZE = 0;
     StringVector flankingHaplotypes;
 
     // This vector contains the internal portion of the haplotypes, without the flanking sequence
@@ -438,7 +436,7 @@ DindelReturnCode DindelUtil::computeBestAlignment(const StringVector& inHaplotyp
 
         for(size_t j = 0; j < localAlignments.size(); ++j)
         {
-            double max_score = localAlignments[j].queryEndPosition - localAlignments[j].queryStartPosition;
+            double max_score = localAlignments[j].queryEndIndex - localAlignments[j].queryStartIndex + 1;
             double frac = (double)localAlignments[j].score / max_score;
             //printf("Score: %d frac: %lf\n", localAlignments[j].score, frac);
             sum += frac;

@@ -504,10 +504,10 @@ MultiAlignment MultiAlignmentTools::alignSequencesLocal(const SeqItemVector& seq
         
         // Initialize the multiple alignment data
         MAlignData maData;
-        maData.position = result.queryStartPosition;
+        maData.position = result.queryStartIndex;
         // If the non-base sequence overhangs the base, clip it
-        if(result.targetStartPosition > 0)
-            maData.str = seq.substr(result.targetStartPosition);
+        if(result.targetStartIndex > 0)
+            maData.str = seq.substr(result.targetStartIndex);
         else
             maData.str = seq;
 
