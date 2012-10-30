@@ -171,7 +171,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
                 markVariantSequenceKmers(build_result.variant_haplotypes[vhi]);
             
             // If we assembled anything, run Dindel on the haplotypes
-            if(build_result.variant_haplotypes.size() > 0 /*&& build_result.base_haplotypes.size() > 0*/)
+            if(build_result.variant_haplotypes.size() > 0)
             {
                 if(m_parameters.verbose > 0)
                     std::cout << "Running dindel\n";

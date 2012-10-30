@@ -35,10 +35,37 @@
 OverlapperParams default_params = { 2, -6, -3 };
 OverlapperParams ungapped_params = { 2, -10000, -3 };
 
+
+
+
 //
 #define max3(x,y,z) std::max(std::max(x,y), z)
 //#define DEBUG_OVERLAPPER 1
 //#define DEBUG_EXTEND 1
+
+// Compact an expanded CIGAR string into a regular cigar string
+std::string compactCigar(const std::string& ecigar)
+{
+    if(ecigar.empty())
+        return "";
+
+    std::stringstream compact_cigar;
+    char curr_symbol = ecigar[0];
+    int curr_run = 1;
+    for(size_t i = 1; i < ecigar.size(); ++i) {
+        if(ecigar[i] == curr_symbol) {
+            curr_run += 1;
+        } else {
+            compact_cigar << curr_run << curr_symbol;
+            curr_symbol = ecigar[i];
+            curr_run = 1;
+        }
+    }
+
+    // Add last symbol/run
+    compact_cigar << curr_run << curr_symbol;
+    return compact_cigar.str();
+}
 
 // 
 SequenceInterval::SequenceInterval() : start(0), end(-1)
@@ -370,24 +397,7 @@ SequenceOverlap Overlapper::computeOverlap(const std::string& s1, const std::str
     // The backtracking produces a cigar string in reversed order, flip it
     std::reverse(cigar.begin(), cigar.end());
     assert(!cigar.empty());
-
-    std::stringstream compact_cigar;
-    char curr_symbol = cigar[0];
-    int curr_run = 1;
-    for(size_t i = 1; i < cigar.size(); ++i) {
-        if(cigar[i] == curr_symbol) {
-            curr_run += 1;
-        }
-        else {
-            compact_cigar << curr_run << curr_symbol;
-            curr_symbol = cigar[i];
-            curr_run = 1;
-        }
-    }
-
-    // Add last symbol/run
-    compact_cigar << curr_run << curr_symbol;
-    output.cigar = compact_cigar.str();
+    output.cigar = compactCigar(cigar);
     return output;
 }
 
@@ -633,23 +643,177 @@ SequenceOverlap Overlapper::extendMatch(const std::string& s1, const std::string
     // The backtracking produces a cigar string in reversed order, flip it
     std::reverse(cigar.begin(), cigar.end());
     assert(!cigar.empty());
+    output.cigar = compactCigar(cigar);
+    return output;
+}
 
-    std::stringstream compact_cigar;
-    char curr_symbol = cigar[0];
-    int curr_run = 1;
-    for(size_t i = 1; i < cigar.size(); ++i) {
-        if(cigar[i] == curr_symbol) {
-            curr_run += 1;
+// The score for this cell coming from a match, deletion and insertion
+struct AffineCell
+{
+    AffineCell() : G(0), I(-std::numeric_limits<int>::max()), D(-std::numeric_limits<int>::max()) {}
+
+    //
+    int G;
+    int I;
+    int D;
+};
+
+typedef std::vector<AffineCell> AffineCells;
+typedef std::vector<AffineCells> AffineMatrix;
+
+SequenceOverlap Overlapper::computeOverlapAffine(const std::string& s1, const std::string& s2, const OverlapperParams params)
+{
+    // Exit with invalid intervals if either string is zero length
+    SequenceOverlap output;
+    if(s1.empty() || s2.empty()) {
+        std::cerr << "Overlapper::computeOverlap error: empty input sequence\n";
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialize the scoring matrix
+    size_t num_columns = s1.size() + 1;
+    size_t num_rows = s2.size() + 1;
+
+    int gap_open = 5;
+    int gap_ext = 2;
+
+    AffineMatrix score_matrix;
+    score_matrix.resize(num_columns);
+    for(size_t i = 0; i < score_matrix.size(); ++i)
+        score_matrix[i].resize(num_rows);
+
+    // Calculate scores
+    for(size_t i = 1; i < num_columns; ++i) {
+        for(size_t j = 1; j < num_rows; ++j) {
+
+            // Calculate the score for entry (i,j)
+            int idx_1 = i - 1;
+            int idx_2 = j - 1;
+
+            int diagonal = score_matrix[i-1][j-1].G + (s1[idx_1] == s2[idx_2] ? params.match_score : params.mismatch_penalty);
+
+            // When computing the score starting from the left/right cells, we have to determine
+            // whether to extend an existing gap or start a new one.
+            AffineCell& curr = score_matrix[i][j];
+
+            AffineCell& up = score_matrix[i][j-1];
+            if(up.I > up.G - gap_open)
+                curr.I = up.I - gap_ext;
+            else
+                curr.I = up.G - (gap_open + gap_ext);
+
+            AffineCell& left = score_matrix[i-1][j];
+            if(left.D > left.G - gap_open)
+                curr.D = left.D - gap_ext;
+            else
+                curr.D = left.G - (gap_open + gap_ext);
+            
+            curr.G = max3(curr.D, curr.I, diagonal);
         }
-        else {
-            compact_cigar << curr_run << curr_symbol;
-            curr_symbol = cigar[i];
-            curr_run = 1;
+    }
+ 
+    // The location of the highest scoring match in the
+    // last row or last column is the maximum scoring overlap
+    // for the pair of strings. We start the backtracking from
+    // that cell
+    int max_row_value = std::numeric_limits<int>::min();
+    int max_column_value = std::numeric_limits<int>::min();
+    size_t max_row_index = 0;
+    size_t max_column_index = 0;
+
+    // Check every column of the last row
+    // The first column is skipped to avoid empty alignments
+    for(size_t i = 1; i < num_columns; ++i) {
+        int v = score_matrix[i][num_rows - 1].G;
+        if(v > max_row_value) {
+            max_row_value = v;
+            max_row_index = i;
         }
     }
 
-    // Add last symbol/run
-    compact_cigar << curr_run << curr_symbol;
-    output.cigar = compact_cigar.str();
+    // Check every row of the last column
+    for(size_t j = 1; j < num_rows; ++j) {
+        int v = score_matrix[num_columns - 1][j].G;
+        if(v > max_column_value) {
+            max_column_value = v;
+            max_column_index = j;
+        }
+    }
+
+    // Compute the location at which to start the backtrack
+    size_t i;
+    size_t j;
+
+    if(max_column_value > max_row_value) {
+        i = num_columns - 1;
+        j = max_column_index;
+        output.score = max_column_value;
+    } else {
+        i = max_row_index;
+        j = num_rows - 1;
+        output.score = max_row_value;
+    }
+
+    // Set the alignment endpoints to be the index of the last aligned base
+    output.match[0].end = i - 1;
+    output.match[1].end = j - 1;
+    output.length[0] = s1.length();
+    output.length[1] = s2.length();
+#ifdef DEBUG_OVERLAPPER
+    printf("Endpoints selected: (%d %d) with score %d\n", output.match[0].end, output.match[1].end, output.score);
+#endif
+
+    output.edit_distance = 0;
+    output.total_columns = 0;
+
+    std::string cigar;
+    while(i > 0 && j > 0) {
+        // Compute the possible previous locations of the path
+        int idx_1 = i - 1;
+        int idx_2 = j - 1;
+
+        bool is_match = s1[idx_1] == s2[idx_2];
+        int diagonal = score_matrix[i - 1][j - 1].G + (is_match ? params.match_score : params.mismatch_penalty);
+        int up1 = score_matrix[i][j-1].G - (gap_open + gap_ext);
+        int up2 = score_matrix[i][j-1].I - gap_ext;
+
+        int left1 = score_matrix[i-1][j].G - (gap_open + gap_ext);
+        int left2 = score_matrix[i-1][j].D - gap_ext;
+
+        int curr = score_matrix[i][j].G;
+
+        // If there are multiple possible paths to this cell
+        // we break ties in order of insertion,deletion,match
+        // this helps left-justify matches for homopolymer runs
+        // of unequal lengths
+        if(curr == up1 || curr == up2) {
+            cigar.push_back('I');
+            j -= 1;
+            output.edit_distance += 1;
+        } else if(curr == left1 || curr == left2) {
+            cigar.push_back('D');
+            i -= 1;
+            output.edit_distance += 1;
+        } else {
+            assert(curr == diagonal);
+            if(!is_match)
+                output.edit_distance += 1;
+            cigar.push_back('M');
+            i -= 1;
+            j -= 1;
+        }
+
+        output.total_columns += 1;
+    }
+
+    // Set the alignment startpoints
+    output.match[0].start = i;
+    output.match[1].start = j;
+
+    // Compact the expanded cigar string into the canonical run length encoding
+    // The backtracking produces a cigar string in reversed order, flip it
+    std::reverse(cigar.begin(), cigar.end());
+    assert(!cigar.empty());
+    output.cigar = compactCigar(cigar);
     return output;
 }

@@ -187,69 +187,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 SequenceOverlap HapgenUtil::alignHaplotypeToReference(const std::string& reference,
                                                       const std::string& haplotype)
 {
-    StdAlnTools::globalAlignment(reference, haplotype, true);
-    SequenceOverlap overlap;
-
-    // Stage 1: Find initial alignments of the start/end of the haplotype to the reference substring
-    size_t seed_length = 31;
-    assert(haplotype.size() >= seed_length);
-
-    std::string start = haplotype.substr(0, seed_length);
-    std::string end = haplotype.substr(haplotype.size() - seed_length);
-
-    LocalAlignmentResult s_align = StdAlnTools::localAlignment(reference, start);
-    LocalAlignmentResult e_align = StdAlnTools::localAlignment(reference, end);
-
-    printf("Query End1: %d\n", (int)s_align.queryEndIndex);
-    printf("Query End2: %d\n", (int)e_align.queryEndIndex);
-    printf("Alignment bounds: [%zu %zu]\n", s_align.targetStartIndex, e_align.targetEndIndex);
-
-    int reference_length = e_align.targetEndIndex - s_align.targetStartIndex + 1; 
-    size_t length_difference = abs(reference_length - haplotype.size());
-
-    if(s_align.queryStartIndex != 0 || s_align.queryEndIndex != (int)seed_length - 1 ||
-       e_align.queryStartIndex != 0 || e_align.queryEndIndex != (int)seed_length - 1 ||
-       e_align.targetStartIndex <= s_align.targetStartIndex ||
-       e_align.targetEndIndex < s_align.targetStartIndex ||
-       length_difference > 50)
-    {
-        std::cout << "Resorting to full global\n";
-        overlap = Overlapper::computeOverlap(reference, haplotype);
-        /*
-        // Cannot find a good candidate seed pair. Resort to global alignment
-        std::string cigar;
-        int score;
-        StdAlnTools::globalAlignment(reference, haplotype, cigar, score);
-        overlap.match[0].start = 0;
-        overlap.match[0].end = reference.size() - 1;
-        overlap.match[1].start = 0;
-        overlap.match[1].end = haplotype.size() - 1;
-        overlap.cigar = cigar;
-        overlap.score = score;
-        */
-    }
-    else
-    {
-        std::cout << "using guided global\n";
-        // Compute the global alignment between the seed pair
-        std::string reference_region = reference.substr(s_align.targetStartIndex, reference_length);
-        std::string cigar;
-        int score;
-        StdAlnTools::globalAlignment(reference_region, haplotype, cigar, score);
-
-        overlap.match[0].start = s_align.targetStartIndex;
-        overlap.match[0].end = e_align.targetEndIndex;
-        overlap.match[1].start = 0;
-        overlap.match[1].end = haplotype.size() - 1;
-        overlap.cigar = cigar;
-        overlap.score = score;
-    }
-
-    // Fill in edit distance information within the overlap
-    overlap.edit_distance = overlap.calculateEditDistance(reference, haplotype);
-    overlap.total_columns = overlap.calculateTotalColumns();
-    printf("ED: %d TC: %d\n", overlap.edit_distance, overlap.total_columns);
-
+    SequenceOverlap overlap = Overlapper::computeOverlapAffine(reference, haplotype);
     overlap.printAlignment(reference, haplotype);
     return overlap;
 }

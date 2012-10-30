@@ -318,7 +318,6 @@ void MultipleAlignment::_addSequence(const std::string& name,
 #endif
 
     while(cigar_index < expanded_cigar.size()) {
-
         // Check if we are in an existing template gap. This must be handled
         // seperately
         bool in_template_gap = template_padded[template_index] == '-';
@@ -376,7 +375,6 @@ void MultipleAlignment::_addSequence(const std::string& name,
                     break;
                 case 'S':
                     cigar_index += 1;
-                    template_index += 1;
                     break;
                 default:
                     std::cerr << "Error: unhandled cigar symbol " << expanded_cigar[cigar_index] << "\n";

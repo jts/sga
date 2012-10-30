@@ -47,7 +47,7 @@ const int DEBUG_CALLINDEL=0;
 const int REPOSITION_INDEL_WINDOW=1000;
 const int SHOWHAPFREQ=0;
 const int REPOSITIONVARIANTSSLOW=0; // uses slow code to reposition indels.
-const int DINDEL_DEBUG_3 = 1; // useful debugging
+const int DINDEL_DEBUG_3 = 0; // useful debugging
 const int DINDEL_ADJUST_MAPPINGQUAL = 1;
 //#define OVERLAPPER // build overlapper
 
@@ -2888,9 +2888,6 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
 
     const DindelHaplotype& aligned_haplotype = haplotypes[hapIdx].getSingleMappingHaplotype(refIdx);
     const DindelReferenceMapping& reference_mapping = aligned_haplotype.getReferenceMapping();
-
-    printf("RefIdx: %d Refname: %s Refpos: %d Refseq: %s\n", refIdx, reference_mapping.refName.c_str(), reference_mapping.refStart, reference_mapping.refSeq.c_str());
-
     const std::string& reference = reference_mapping.refSeq;
 
     std::string haplotype = aligned_haplotype.getSequence();
@@ -2910,24 +2907,22 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     hap2ref_overlap.match[1].end = local_aln.queryEndIndex;
     hap2ref_overlap.cigar = local_aln.cigar;
 
-    hap2ref_overlap.printAlignment(haplotype, reference);
-
     // Align read to haplotype
     SequenceOverlap read2hap_overlap = Overlapper::computeOverlap(haplotype, read_sequence);
-    read2hap_overlap.printAlignment(haplotype, read_sequence);
 
+    /*
     std::cout << "hap2ref:  " << hap2ref_overlap.cigar << "\n";
     std::cout << "read2hap: " << read2hap_overlap.cigar << "\n";
-    //std::cout << "Expanded: " << StdAlnTools::expandCigar(read2hap_overlap.cigar) << "\n";
     std::cout << "Compacted: " << StdAlnTools::compactCigar(StdAlnTools::expandCigar(read2hap_overlap.cigar)) << "\n";
+    hap2ref_overlap.printAlignment(haplotype, reference);
+    read2hap_overlap.printAlignment(haplotype, read_sequence);
+    */
 
-    // NB: This code uses the new, more featured MultipleAlignment class from ThirdParty/
-    // This is different from MultiAlignment used elsewhere in Dindel.
     MultipleAlignment projector_ma;
     projector_ma.addBaseSequence("haplotype", haplotype, "");
     projector_ma.addOverlap("reference", reference, "", hap2ref_overlap);
     projector_ma.addOverlap("read", read_sequence, "", read2hap_overlap);
-    projector_ma.print(500);
+//    projector_ma.print(500);
 
     // Calculate the alignment of the read onto the reference sequence
     size_t REF_ROW = 1;
@@ -2982,8 +2977,6 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
         i += 1;
     }
 
-    printf("Coords: [%zu %zu]\n", read_align_start, read_align_end);
-
     // Fill in the cigar.
     std::string expanded_cigar;
     for(size_t i = read_align_start; i <= read_align_end; ++i)
@@ -3026,10 +3019,6 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     // Calculate the the read's strand with respect to the refernce
     bool rc_to_ref = read.isForward() ? reference_mapping.isRC : !reference_mapping.isRC;
     drra.is_reference_reverse_strand = rc_to_ref;
-
-    std::cout << "Read2ref: " << drra.cigar << "\n";
-    std::cout << "Read2refp: " << drra.reference_start_position << "\n";
-
     m_readReferenceAlignments.push_back(drra);
 }   
 

@@ -151,6 +151,9 @@ SequenceOverlap computeOverlap(const std::string& s1, const std::string& s2, con
 // the overlap with banded dynamic programming
 SequenceOverlap extendMatch(const std::string& s1, const std::string& s2, int start_1, int start_2, int bandwidth);
 
+// Perform an alignment using affine gap penalties
+SequenceOverlap computeOverlapAffine(const std::string& s1, const std::string& s2, const OverlapperParams params = default_params);
+
 }
 
 #endif
