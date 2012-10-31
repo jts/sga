@@ -233,6 +233,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
     sharedParameters.verbose = opt::verbose;
+    sharedParameters.maxHaplotypes = 5;
 
     if (opt::lowCoverage)
         sharedParameters.dindelRealignParameters.multiSample = 1;

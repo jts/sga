@@ -65,6 +65,9 @@ struct GraphCompareParameters
     int minOverlap;
     bool bReferenceMode;
     int verbose;
+
+    // Filtering
+    size_t maxHaplotypes;
     
     // Dindel params
     DindelRealignParameters dindelRealignParameters;

@@ -94,6 +94,11 @@ void GraphCompareStats::print() const
 GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params)
 {
     m_stats.clear();
+
+    // Parameter sanity checking
+    assert(m_parameters.maxHaplotypes > 0);
+    assert(m_parameters.kmer > 0);
+    assert(m_parameters.minDiscoveryCount > 0);
 }
 
 //
@@ -257,7 +262,14 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 
     // Haplotype QC
     size_t num_assembled = result.variant_haplotypes.size();
-    qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
+    if(num_assembled > m_parameters.maxHaplotypes)
+    {
+        result.variant_haplotypes.clear();
+        return result;
+    }
+
+    printf("Assembled %zu haplotypes\n", num_assembled);
+    //qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
     size_t num_qc = result.variant_haplotypes.size();
 
     // If any assembled haplotypes failed QC, do not try to call variants
