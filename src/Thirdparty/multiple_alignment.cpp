@@ -422,6 +422,31 @@ void MultipleAlignment::_addSequence(const std::string& name,
     */
 }
 
+SequenceOverlap MultipleAlignment::getAlignment(size_t row0, size_t row1) const
+{
+    size_t start_column = getFirstAlignedBaseColumn(row0, row1);
+    size_t end_column = getFirstAlignedBaseColumn(row0, row1);
+
+    SequenceOverlap overlap;
+    overlap.match[0].start = columnIndexToBaseIndex(row0, start_column);
+    overlap.match[0].end = columnIndexToBaseIndex(row0, end_column);
+    overlap.length[0] = getUnpaddedSequence(row0).length();
+
+    overlap.match[1].start = columnIndexToBaseIndex(row1, start_column);
+    overlap.match[1].end = columnIndexToBaseIndex(row1, end_column);
+    overlap.length[1] = getUnpaddedSequence(row1).length();
+
+    overlap.cigar = calculateCigarBetweenRows(row0, row1);
+    overlap.total_columns = overlap.calculateTotalColumns();
+    
+    // These fields are unavailable
+    overlap.score = -1;
+    overlap.edit_distance = -1;
+
+    return overlap;
+}
+
+
 bool MultipleAlignment::isValid() const
 {
     size_t total_columns = getNumColumns();
@@ -486,20 +511,29 @@ size_t MultipleAlignment::calculateEditDistanceBetweenRows(size_t row0, size_t r
     return edit_distance;
 }
 
-std::string MultipleAlignment::calculateExpandedCigarBetweenRows(size_t row0, size_t row1) const
+std::string MultipleAlignment::calculateCigarBetweenRows(size_t row0, size_t row1) const
 {
-    size_t num_columns = getNumColumns();
     assert(row0 < m_sequences.size());
     assert(row1 < m_sequences.size());
     std::string cigar;
+    
+    size_t start_column = getFirstAlignedBaseColumn(row0, row1);
+    size_t end_column = getLastAlignedBaseColumn(row0, row1);
 
-    for(size_t i = 0; i < num_columns; ++i)
+    for(size_t i = start_column; i <= end_column; ++i)
     {
         char row0_symbol = getSymbol(row0, i);
         char row1_symbol = getSymbol(row1, i);
 
-        if(row0_symbol == '\0' || row1_symbol == '\0' || (row0_symbol == '-' && row1_symbol == '-'))
+        // Since we calculated the first/last column above, we can
+        // assume every base within the alignment is a valid alignment symbol
+        assert(row0_symbol != '\0');
+        assert(row1_symbol != '\0');
+
+        // Both in a gap, skip
+        if(row0_symbol == '-' && row1_symbol == '-')
             continue;
+
         if(row0_symbol == '-')
             cigar.push_back('I');
         else if(row1_symbol == '-')
@@ -507,7 +541,7 @@ std::string MultipleAlignment::calculateExpandedCigarBetweenRows(size_t row0, si
         else
             cigar.push_back('M');
     }
-    return cigar;
+    return Overlapper::compactCigar(cigar);
 }
 
 std::string MultipleAlignment::calculateBaseConsensus(int min_call_coverage, int min_trim_coverage)

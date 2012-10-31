@@ -154,6 +154,9 @@ SequenceOverlap extendMatch(const std::string& s1, const std::string& s2, int st
 // Perform an alignment using affine gap penalties
 SequenceOverlap computeOverlapAffine(const std::string& s1, const std::string& s2, const OverlapperParams params = default_params);
 
+// Compact an expanded CIGAR string into a regular cigar string
+std::string compactCigar(const std::string& ecigar);
+
 }
 
 #endif

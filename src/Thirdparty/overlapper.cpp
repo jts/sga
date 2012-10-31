@@ -43,29 +43,6 @@ OverlapperParams ungapped_params = { 2, -10000, -3 };
 //#define DEBUG_OVERLAPPER 1
 //#define DEBUG_EXTEND 1
 
-// Compact an expanded CIGAR string into a regular cigar string
-std::string compactCigar(const std::string& ecigar)
-{
-    if(ecigar.empty())
-        return "";
-
-    std::stringstream compact_cigar;
-    char curr_symbol = ecigar[0];
-    int curr_run = 1;
-    for(size_t i = 1; i < ecigar.size(); ++i) {
-        if(ecigar[i] == curr_symbol) {
-            curr_run += 1;
-        } else {
-            compact_cigar << curr_run << curr_symbol;
-            curr_symbol = ecigar[i];
-            curr_run = 1;
-        }
-    }
-
-    // Add last symbol/run
-    compact_cigar << curr_run << curr_symbol;
-    return compact_cigar.str();
-}
 
 // 
 SequenceInterval::SequenceInterval() : start(0), end(-1)
@@ -816,4 +793,28 @@ SequenceOverlap Overlapper::computeOverlapAffine(const std::string& s1, const st
     assert(!cigar.empty());
     output.cigar = compactCigar(cigar);
     return output;
+}
+
+// Compact an expanded CIGAR string into a regular cigar string
+std::string Overlapper::compactCigar(const std::string& ecigar)
+{
+    if(ecigar.empty())
+        return "";
+
+    std::stringstream compact_cigar;
+    char curr_symbol = ecigar[0];
+    int curr_run = 1;
+    for(size_t i = 1; i < ecigar.size(); ++i) {
+        if(ecigar[i] == curr_symbol) {
+            curr_run += 1;
+        } else {
+            compact_cigar << curr_run << curr_symbol;
+            curr_symbol = ecigar[i];
+            curr_run = 1;
+        }
+    }
+
+    // Add last symbol/run
+    compact_cigar << curr_run << curr_symbol;
+    return compact_cigar.str();
 }

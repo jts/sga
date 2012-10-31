@@ -421,6 +421,13 @@ class DindelHaplotype
 
         const DindelReferenceMapping getReferenceMapping() const { return m_refMapping; }
 
+        // Compute the alignment of the reference sequence onto the haplotype sequence
+        // This returns the haplotype as the first element of SequenceOverlap.match
+        SequenceOverlap getReferenceToHaplotypeAlignment() const { return m_pMA->getAlignment(1, 0); }
+        
+        // As above, but with the reference sequence as the first element
+        SequenceOverlap getHaplotypeToReferenceAlignment() const { return m_pMA->getAlignment(0, 1); }
+
     private:
 
         // 

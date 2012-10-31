@@ -2896,22 +2896,15 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
         haplotype = reverseComplement(haplotype);
         read_sequence = reverseComplement(read_sequence);
     }
+    
+    // Query the haplotype to get the reference-to-haplotype alignment
+    SequenceOverlap ref2hap_overlap = aligned_haplotype.getReferenceToHaplotypeAlignment();
 
-    // Get the alignment of the reference onto the haplotype using a local alignment
-    LocalAlignmentResult local_aln = StdAlnTools::localAlignment(haplotype, reference);
-
-    SequenceOverlap hap2ref_overlap;
-    hap2ref_overlap.match[0].start = local_aln.targetStartIndex;
-    hap2ref_overlap.match[0].end = local_aln.targetEndIndex;
-    hap2ref_overlap.match[1].start = local_aln.queryStartIndex;
-    hap2ref_overlap.match[1].end = local_aln.queryEndIndex;
-    hap2ref_overlap.cigar = local_aln.cigar;
-
-    // Align read to haplotype
+    // Align the read to the haplotype using overlapper
     SequenceOverlap read2hap_overlap = Overlapper::computeOverlap(haplotype, read_sequence);
 
     /*
-    std::cout << "hap2ref:  " << hap2ref_overlap.cigar << "\n";
+    std::cout << "ref2hap:  " << ref2hap_overlap.cigar << "\n";
     std::cout << "read2hap: " << read2hap_overlap.cigar << "\n";
     std::cout << "Compacted: " << StdAlnTools::compactCigar(StdAlnTools::expandCigar(read2hap_overlap.cigar)) << "\n";
     hap2ref_overlap.printAlignment(haplotype, reference);
@@ -2920,9 +2913,9 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
 
     MultipleAlignment projector_ma;
     projector_ma.addBaseSequence("haplotype", haplotype, "");
-    projector_ma.addOverlap("reference", reference, "", hap2ref_overlap);
+    projector_ma.addOverlap("reference", reference, "", ref2hap_overlap);
     projector_ma.addOverlap("read", read_sequence, "", read2hap_overlap);
-//    projector_ma.print(500);
+    //projector_ma.print(500);
 
     // Calculate the alignment of the read onto the reference sequence
     size_t REF_ROW = 1;
@@ -2933,7 +2926,7 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     // Find the bounds of the alignment of the read on the reference
     size_t read_align_start = 0;
     size_t read_align_end = num_columns - 1;
-    size_t ref_bases_pre_skipped = hap2ref_overlap.match[1].start;
+    size_t ref_bases_pre_skipped = ref2hap_overlap.match[1].start;
     size_t read_bases_pre_skipped = 0;
     size_t read_bases_post_skipped = 0;
 

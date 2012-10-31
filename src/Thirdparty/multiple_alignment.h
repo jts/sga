@@ -154,6 +154,9 @@ class MultipleAlignment
                           const std::string& incoming_quality,
                           const SequenceOverlap& previous_incoming_overlap);
 
+        // Returns an overlap object describing the alignment between the pair of rows
+        SequenceOverlap getAlignment(size_t row0, size_t row1) const;
+
         // Check if the multiple alignment is valid
         // In extension mode after filtering the multiple alignment
         // may not be contiguous. This function checks for this case and
@@ -169,8 +172,8 @@ class MultipleAlignment
         // Calculate the edit distance between two rows in the multiple alignment
         size_t calculateEditDistanceBetweenRows(size_t row0, size_t row1) const;
 
-        // Calculate an expanded cigar string between two rows
-        std::string calculateExpandedCigarBetweenRows(size_t row0, size_t row1) const;
+        // Calculate a cigar string between two rows
+        std::string calculateCigarBetweenRows(size_t row0, size_t row1) const;
     
         // Calculate a new consensus sequence for the base sequence of the multiple alignment
         // A base call is changed only if it has been seen in less than min_call_coverage sequences
