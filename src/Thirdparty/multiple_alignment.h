@@ -41,13 +41,25 @@ struct MultipleAlignmentElement
 
     // Returns the total number of columns in the multiple alignment
     // All elements in the alignment have the same number of columns
-    size_t getNumColumns() const;
+    inline size_t getNumColumns() const
+    {
+        return leading_columns + padded_sequence.size() + trailing_columns;
+    }
 
     // Returns the symbol for the requested column
     // If the column is in the leading/trailing segment
     // this will return '\0'. Otherwise it will return a base
     // or a gap character
-    char getColumnSymbol(size_t column_idx) const;
+    inline char getColumnSymbol(size_t column_idx) const
+    {
+        assert(column_idx < getNumColumns());
+        if(column_idx < leading_columns || column_idx >= leading_columns + padded_sequence.size()) {
+            return '\0';
+        } else {
+            assert(column_idx - leading_columns < padded_sequence.size());
+            return padded_sequence[column_idx - leading_columns];
+        }
+    }
 
     // Returns true if there is a base symbol [ACGT] in the given column
     bool hasBaseInColumn(size_t column_idx) const;
@@ -55,7 +67,18 @@ struct MultipleAlignmentElement
     // Returns the quality symbol for the requested column
     // If there is no quality information or the column is in the leading/trailing segment
     // this will return '\0'. Otherwise it will return a quality or a gap character
-    char getColumnQuality(size_t column_idx) const;
+    inline char getColumnQuality(size_t column_idx) const
+    {
+        assert(column_idx < getNumColumns());
+        if(padded_quality.empty() || 
+           column_idx < leading_columns || 
+           column_idx >= leading_columns + padded_quality.size()) {
+            return '\0';
+        } else {
+            assert(column_idx - leading_columns < padded_sequence.size());
+            return padded_quality[column_idx - leading_columns];
+        }
+    }
 
     // Returns the sequence with all padding characters removed
     std::string getUnpaddedSequence() const;
@@ -181,8 +204,11 @@ class MultipleAlignment
         // min_trim_coverage depth at the ends of the base sequence.
         std::string calculateBaseConsensus(int min_call_coverage, int min_trim_coverage);
 
-        // Calculate consensus sequence that maximizes the likelihood of the multiple alignment
+        // Calculate consensus sequence of the base element that maximizes the likelihood of the multiple alignment
         void calculateBaseConsensusLikelihood(std::string* consensus_sequence, std::string* consensus_quality);
+        
+        // Calculate the consensus over all columns
+        void calculateFullConsensusLikelihood(std::string* consensus_sequence, std::string* consensus_quality);
 
         // Filter out sequences in the multiple alignment by finding columns with a discrepant
         // consensus base. If two bases in a given column have count more than min_count,
@@ -251,6 +277,12 @@ class MultipleAlignment
                           const SequenceOverlap& overlap,
                           bool is_extension);
         
+        // Calculate the consensus over the range of columns
+        void _likelihoodConsensus(size_t start_column, 
+                                  size_t end_column, 
+                                  std::string* consensus_sequence, 
+                                  std::string* consensus_quality);
+
         // Returns a string with the most frequent base for each column
         // including padding symbols
         std::string getPaddedConsensus() const;

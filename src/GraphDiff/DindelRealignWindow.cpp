@@ -389,7 +389,6 @@ void DindelHaplotype::alignHaplotype()
     SequenceOverlap hap_overlap = computeHaplotypeAlignment(rootSequence, alignSeq);
     m_pMA->addOverlap("haplotype", alignSeq, "", hap_overlap);
     m_firstAlignedBase = hap_overlap.match[1].start;
-    printf("Setting first base: %d\n", m_firstAlignedBase);
 
     if (DINDEL_DEBUG || DINDEL_DEBUG_3)
     {

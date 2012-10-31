@@ -74,6 +74,10 @@ struct SequenceOverlap
     // Check that the record is properly formed
     bool isValid() const;
 
+    // Return padded versions of the matching portions of the strings
+    void makePaddedMatches(const std::string& s1, const std::string& s2,
+                           std::string* p1, std::string* p2) const;
+
     // Print the alignment with padding characters
     void printAlignment(const std::string& s1, const std::string& s2) const;
 

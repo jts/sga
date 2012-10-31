@@ -79,6 +79,40 @@ std::ostream& operator<<(std::ostream& out, const SequenceOverlap& overlap)
     return out;
 }
 
+void SequenceOverlap::makePaddedMatches(const std::string& s1, const std::string& s2,
+                                        std::string* p1, std::string* p2) const
+{
+    assert(isValid() && p1 != NULL && p2 != NULL);
+
+    // Process the matching region using the cigar operations
+    size_t current_1 = match[0].start;
+    size_t current_2 = match[1].start;
+
+    std::stringstream cigar_parser(cigar);
+    int length = -1;
+    char code;
+    while(cigar_parser >> length >> code) {
+        assert(length > 0);
+        if(code == 'M') {
+            p1->append(s1.substr(current_1, length));
+            p2->append(s2.substr(current_2, length));
+            current_1 += length;
+            current_2 += length;
+        }
+        else if(code == 'D') {
+            p1->append(s1.substr(current_1, length));
+            p2->append(length, '-');
+            current_1 += length;
+        }
+        else if(code == 'I') {
+            p1->append(length, '-');
+            p2->append(s2.substr(current_2, length));
+            current_2 += length;
+        }
+        length = -1;
+    }
+}
+
 //
 int SequenceOverlap::calculateEditDistance(const std::string& s1, const std::string& s2) const
 {
