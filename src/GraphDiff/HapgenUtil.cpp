@@ -188,7 +188,6 @@ SequenceOverlap HapgenUtil::alignHaplotypeToReference(const std::string& referen
                                                       const std::string& haplotype)
 {
     SequenceOverlap overlap = Overlapper::computeOverlapAffine(reference, haplotype);
-    overlap.printAlignment(reference, haplotype);
     return overlap;
 }
 

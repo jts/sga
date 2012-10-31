@@ -76,7 +76,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     StringVector candidateHaplotypes;
     for(size_t i = 0; i < candidateAlignments.size(); ++i)
     {
-        // FIXME. Maybe should use only inHaplotypes[i]???
         HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i],
                                            parameters.pRefTable,
                                            FLANKING_SIZE,

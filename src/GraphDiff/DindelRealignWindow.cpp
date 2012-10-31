@@ -412,14 +412,10 @@ void DindelHaplotype::extractVariants()
     m_refPos = std::vector<int>(m_seq.size(), 0);
     m_isReference = false;
 
-    printf("First aligned haplotype base: %d\n", m_firstAlignedBase);
 
     // Compute a mapping from a haplotype base to its aligned position on the reference sequence
     int first_aligned_column = m_pMA->getFirstAlignedBaseColumn(refRow, varRow);
     int last_aligned_column = m_pMA->getLastAlignedBaseColumn(refRow, varRow);
-    
-    printf("First aligned column: %d\n", first_aligned_column);
-    printf("Last aligned column: %d\n", last_aligned_column);
     
     // This calculation assumes the haplotype was completely aligned!
     assert(m_pMA->columnIndexToBaseIndex(varRow, first_aligned_column) == 0);
