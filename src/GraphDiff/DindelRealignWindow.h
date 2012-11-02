@@ -926,6 +926,10 @@ class DindelRealignWindow
         DindelWindow m_dindelWindow;
         std::vector<DindelRead> *m_pDindelReads;
         DindelRealignParameters realignParameters;
+
+        // A set of variant indices that assigned to a called haplotype containing a variant
+        std::set<size_t> m_variantReadIndices;
+
         DindelReadReferenceAlignmentVector m_readReferenceAlignments;
 
         std::string m_outputID; // to be output in VCF
@@ -1123,16 +1127,16 @@ class DindelRealignWindow
         void computeReadHaplotypeAlignmentsUsingHMM(size_t firstHap, size_t lastHap);
         void addDiploidGenotypes(DindelRealignWindowResult & result, bool useEstimatedHaplotypeFrequencies);
         void addDiploidGenotypes(DindelRealignWindowResult& result, const std::vector<int> & allowedHaplotype, const std::vector< std::vector<double> > & hrLik);
-        // result
-        DindelRealignWindowResult m_result;
-
+        
         // algorithms
-
-        // initial try: ungapped alignment of read to candidate haplotype, doesn't use base qualities
         void algorithm_hmm(VCFCollection& out,
                            DindelReadReferenceAlignmentVector* pOutAlignments,
                            DindelRealignWindowResult * pThisResult,
                            const DindelRealignWindowResult * pPreviousResult);
+
+        // result
+        DindelRealignWindowResult m_result;
+    
 };
 
 //

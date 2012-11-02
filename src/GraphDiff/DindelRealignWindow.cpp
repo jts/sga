@@ -18,8 +18,6 @@
 
 
  */
-
-
 #include <string>
 #include <sstream>
 #include <algorithm>
@@ -37,6 +35,7 @@
 #include "overlapper.h"
 #include "multiple_alignment.h"
 #include "HapgenUtil.h"
+#include "Quality.h"
 #include <cmath>
 
 const int DINDEL_DEBUG=0;
@@ -1896,18 +1895,19 @@ void DindelRealignWindow::computeProjectedMappingQuality()
         printf("\t P(R) = %lf\n", lp_r);
 
         // For each alignment, compute the mapping quality
-//        AlignPtrVec& alignments = iter->second;
-//        for(size_t i = 0; i < alignments.size(); ++i)
-        for(size_t loc_idx = 0; loc_idx < num_locations; ++loc_idx)
+        AlignPtrVec& alignments = iter->second;
+        for(size_t i = 0; i < alignments.size(); ++i)
         {
-//            size_t loc_idx = alignments[i]->dindel_ref_index;
+            size_t loc_idx = alignments[i]->dindel_ref_index;
             const DindelReferenceMapping& mapping = references[loc_idx];
             assert(loc_idx < joint_read_loc_lprobs.size());
             double lp_loc = joint_read_loc_lprobs[loc_idx];
             lp_loc -= lp_r;
+            int mapq = Quality::prob2phred(1.0f - exp(lp_loc));
 
-            printf("Alignment %zu Ref: %s Pos: %d lp_loc: %lf p: %lf\n", loc_idx, mapping.refName.c_str(), 
-                                                                         mapping.refStart, lp_loc, exp(lp_loc));
+            printf("Alignment %zu Ref: %s Pos: %d lp_loc: %lf p: %lf MQ: %d\n", loc_idx, mapping.refName.c_str(), 
+                                                                         mapping.refStart, lp_loc, exp(lp_loc), mapq);
+
         }
     }
 }
@@ -2035,22 +2035,6 @@ void DindelRealignWindow::printReadAlignments(int readIdx, std::ostream & out, i
    
 
    out << "ALIGNMENTS for read " << read.getID() << " sample: " << read.getSampleName() << " seq: " << read.getSequence() << " ref lik: " << hapReadAlignments[0][readIdx].logLik <<  std::endl;
-
-   /*
-   for (int h=0;h<int(haplotypes.size());h++)
-   {
-
-       const DindelHaplotype & haplotype = haplotypes[h];
-       
-       std::cout << "\n HASH Haplotype " << h << std::endl;
-       
-       std::cout << "\nreadkeys:" << std::endl;
-       const std::vector<unsigned int> & readKeys = read.getHashKeys();
-       for (int x=0;x<int(readKeys.size());x++) { 
-        std::cout << "\treadpos: " << x << " " << readKeys[x] << " hapHash lookup: " << haplotype.getHash().lookup(readKeys[x]) << std::endl;
-       }
-   }
-   */
 
    int hstart = 0;
    if (supportAlt) hstart = 0;
@@ -2899,7 +2883,7 @@ void DindelRealignWindow::addCalledHaplotypeSingleRead(int hapIdx,
                                 varInf.addMapQToHistogram(reads[read_idx].getMappingQual());
                                 libraries[reads[read_idx].getLibraryName()]=1;
                                 readnames[reads[read_idx].getID()]=1;
-
+                                
                                 // Project the alignment of read to the haplotype onto the reference
                                 projectReadAlignmentToReference(haplotypes, read_idx, hapIdx, refIdx);
                             }
@@ -2942,6 +2926,8 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
                                                           int readIdx, int hapIdx, int refIdx)
 {
     PROFILE_FUNC("DindelRealignWindow::projectReadAlignmentToReference")
+    printf("Projecting %d %d %d\n", readIdx, hapIdx, refIdx);
+
     const DindelRead& read = getRead(readIdx);
     std::string read_sequence = read.getSequence();
 
