@@ -1859,7 +1859,7 @@ void DindelRealignWindow::computeProjectedMappingQuality()
         size_t read_index = iter->second.front()->dindel_read_index;
         assert(read_index < readLikelihoods.size());
 
-        printf("Read[%zu] %s has %zu alignments\n", read_index, iter->first.c_str(), iter->second.size());
+        //printf("Read[%zu] %s has %zu alignments\n", read_index, iter->first.c_str(), iter->second.size());
     
         // Compute the joint probability P(R, loc) for each location
         std::vector<double> joint_read_loc_lprobs;
@@ -1874,8 +1874,8 @@ void DindelRealignWindow::computeProjectedMappingQuality()
                 double lp_hap_given_loc = haplotypes[hap].getLogMappingProbability(loc);
                 double c = lp_read_given_hap + lp_hap_given_loc + lp_location_prior;
                 posteriors.push_back(c);
-                printf("\t P(R|h]) = %lf P(h|loc) = %lf P(loc) = %lf\n", lp_read_given_hap, lp_hap_given_loc, lp_location_prior);
-                printf("\t P(R|h[%zu]) = %lf\n", hap, c);
+                //printf("\t P(R|h]) = %lf P(h|loc) = %lf P(loc) = %lf\n", lp_read_given_hap, lp_hap_given_loc, lp_location_prior);
+                //printf("\t P(R|h[%zu]) = %lf\n", hap, c);
             }
 
             // Sum over haplotypes
@@ -1885,14 +1885,14 @@ void DindelRealignWindow::computeProjectedMappingQuality()
 
             // Store
             joint_read_loc_lprobs.push_back(lp_rloc);
-            printf("\t P(R,loc) = %lf\n", lp_rloc);
+            //printf("\t P(R,loc) = %lf\n", lp_rloc);
         }
 
         // Compute the normalizing constant P(R)
         double lp_r = joint_read_loc_lprobs[0];
         for(size_t i = 1; i < joint_read_loc_lprobs.size(); ++i)
             lp_r = addLogs(lp_r, joint_read_loc_lprobs[i]);
-        printf("\t P(R) = %lf\n", lp_r);
+        //printf("\t P(R) = %lf\n", lp_r);
 
         // For each alignment, compute the mapping quality
         AlignPtrVec& alignments = iter->second;
@@ -2845,7 +2845,6 @@ void DindelRealignWindow::addCalledHaplotypeSingleRead(int hapIdx,
                                                                                                                reads[read_idx]);
                             if(dist != -1)
                             {
-
                                 // read overlaps the variant.
                                 if (DINDEL_DEBUG_3)
                                 {
@@ -2926,7 +2925,6 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
                                                           int readIdx, int hapIdx, int refIdx)
 {
     PROFILE_FUNC("DindelRealignWindow::projectReadAlignmentToReference")
-    printf("Projecting %d %d %d\n", readIdx, hapIdx, refIdx);
 
     const DindelRead& read = getRead(readIdx);
     std::string read_sequence = read.getSequence();
