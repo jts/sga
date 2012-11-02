@@ -56,5 +56,6 @@ sga_SOURCES = sga.cpp \
               gapfill.h gapfill.cpp \
               metagenome.h metagenome.cpp \
               variant-detectability.h variant-detectability.cpp \
+              rewrite-evidence-bam.h rewrite-evidence-bam.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

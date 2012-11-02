@@ -37,6 +37,7 @@
 #include "gapfill.h"
 #include "metagenome.h"
 #include "variant-detectability.h"
+#include "rewrite-evidence-bam.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -53,34 +54,34 @@ static const char *SGA_USAGE_MESSAGE =
 "Contact: " AUTHOR " [" PACKAGE_BUGREPORT "]\n"
 "Usage: " PROGRAM_BIN " <command> [options]\n\n"
 "Commands:\n"
-"           preprocess      filter and quality-trim reads\n"
-"           index           build the BWT and FM-index for a set of reads\n"
-"           merge           merge multiple BWT/FM-index files into a single index\n"
-"           correct         correct sequencing errors in a set of reads\n"
-"           fm-merge        merge unambiguously overlapped sequences using the FM-index\n"
-"           overlap         compute overlaps between reads\n"
-"           assemble        generate contigs from an assembly graph\n"
-"           oview           view overlap alignments\n"
-"           subgraph        extract a subgraph from a graph\n"
-"           filter          remove reads from a data set\n"
-"           bwt2fa          transform a bwt back into a set of sequences\n"
-"           convert-beetl   convert an index file constructed with BEETL into SGA's format\n"
+"           preprocess            filter and quality-trim reads\n"
+"           index                 build the BWT and FM-index for a set of reads\n"
+"           merge                 merge multiple BWT/FM-index files into a single index\n"
+"           bwt2fa                transform a bwt back into a set of sequences\n"
+"           correct               correct sequencing errors in a set of reads\n"
+"           fm-merge              merge unambiguously overlapped sequences using the FM-index\n"
+"           overlap               compute overlaps between reads\n"
+"           assemble              generate contigs from an assembly graph\n"
+"           oview                 view overlap alignments\n"
+"           subgraph              extract a subgraph from a graph\n"
+"           filter                remove reads from a data set\n"
+"           rmdup                 duplicate read removal\n"
+"           gen-ssa               generate a sampled suffix array for the given set of reads\n"
+"           scaffold              generate ordered sets of contigs using distance estimates\n"
+"           scaffold2fasta        convert the output of the scaffold subprogram into a fasta file\n"
+"           gapfill               fill intra-scaffold gaps\n"
+"\n\nVariant Calling Commands:\n"
+"           graph-diff            compare reads to find sequence variants\n"
+"           rewrite-evidence-bam  fill in sequence and quality information for a variant evidence BAM\n"
 "\n\nExperimental commands:\n"
-"           graph-diff      find and report strings that differ between two graphs\n"
-"           gen-ssa         generate a sampled suffix array for the given set of reads\n"
-"           correct-long    correct long reads\n"
-"           stats           print useful statistics about the read set\n"
-"           connect         resolve the complete sequence of a paired-end fragment\n"
-"           scaffold        generate ordered sets of contigs using distance estimates\n"
-"           scaffold2fasta  convert the output of the scaffold subprogram into a fasta file\n"
-"           filterBAM       filter out contaminating mate-pair data in a BAM file\n"
-"           cluster         find clusters of reads belonging to the same connected component\n"
-"           var2vcf         convert aligned variant sequences found by graph-diff into a VCF file\n"
-"           hapgen          generate candidate haplotypes from an assembly graph\n"
-"           gapfill         fill intra-scaffold gaps\n"
-"           metagenome      assemble contigs from metagenomics data\n"
-"\n\nDeprecated commands:\n"
-"           rmdup           duplicate read removal - superceded by sga filter\n"
+"           stats                 print summary statistics about a read set\n"
+"           filterBAM             filter out contaminating mate-pair data in a BAM file\n"
+"           cluster               find clusters of reads belonging to the same connected component in an assembly graph\n"
+"           metagenome            assemble contigs from metagenomics data\n"
+//"           correct-long    correct long reads\n"
+//"           connect         resolve the complete sequence of a paired-end fragment\n"
+//"           var2vcf         convert aligned variant sequences found by graph-diff into a VCF file\n"
+//"           hapgen          generate candidate haplotypes from an assembly graph\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 int main(int argc, char** argv)
@@ -162,6 +163,8 @@ int main(int argc, char** argv)
             metagenomeMain(argc - 1, argv + 1);
         else if(command == "variant-detectability")
             variantDetectabilityMain(argc - 1, argv + 1);
+        else if(command == "rewrite-evidence-bam")
+            rewriteEvidenceBAMMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
