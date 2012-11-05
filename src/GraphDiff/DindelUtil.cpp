@@ -35,7 +35,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // First, extract the reads from the normal and variant data sets that match each haplotype
     //
     assert(inHaplotypes.size() > 0);
-    size_t MAX_READS = 100000;
+    size_t MAX_READS = 1000000;
 
     // Get canidate alignments for the input haplotypes
     HapgenAlignmentVector candidateAlignments;
@@ -282,7 +282,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             curr_out << vcfCollections[i].records[j] << "\n";
     }
 
-    /*
     // Copy raw VCFRecords to stdout
     for(size_t i = 0; i <= 1; ++i)
     {
@@ -290,7 +289,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         for(size_t j = 0; j < vcfCollections[i].records.size(); ++j)
             std::cout << vcfCollections[i].records[j] << "\n";
     }
-     */
     
     // Make comparative calls
     size_t VARIANT_IDX = 1;

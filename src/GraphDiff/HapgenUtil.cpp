@@ -136,6 +136,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 
             // Align haplotype to the reference
             SequenceOverlap overlap = alignHaplotypeToReference(ref_substring, query);
+            overlap.printAlignment(ref_substring, query);
             if(overlap.score < 0 || !overlap.isValid())
                 continue;
 
@@ -378,7 +379,7 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
                                        SeqRecordVector* pOutMates)
 {
     // Skip repetitive kmers with more than this many occurrences
-    int64_t SKIP_INTERVAL_SIZE = 500;
+    int64_t SKIP_INTERVAL_SIZE = 50000;
 
     // Extract the set of reads that have at least one kmer shared with these haplotypes
     // This is a bit of a lengthy procedure with a few steps:
