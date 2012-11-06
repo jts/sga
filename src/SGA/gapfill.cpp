@@ -100,17 +100,15 @@ int gapfillMain(int argc, char** argv)
     // In the BWTs and create interval caches
     assert(!opt::prefix.empty());
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
-    BWT* pRevBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
     pBWT->printInfo();
 
     BWTIntervalCache* pBWTCache = new BWTIntervalCache(opt::cacheLength, pBWT);
-    BWTIntervalCache* pRevBWTCache = new BWTIntervalCache(opt::cacheLength, pRevBWT);
 
     GapFillParameters parameters;
     parameters.pBWT = pBWT;
-    parameters.pRevBWT = pRevBWT;
+    parameters.pRevBWT = NULL;
     parameters.pBWTCache = pBWTCache;
-    parameters.pRevBWTCache = pRevBWTCache;
+    parameters.pRevBWTCache = NULL;
     parameters.startKmer = opt::startKmer;
     parameters.endKmer = opt::endKmer;
     parameters.stride = opt::stride;
@@ -133,9 +131,7 @@ int gapfillMain(int argc, char** argv)
     // Cleanup
     delete pWriter;
     delete pBWT;
-    delete pRevBWT;
     delete pBWTCache;
-    delete pRevBWTCache;
 
     if(opt::numThreads > 1)
         pthread_exit(NULL);
