@@ -181,6 +181,11 @@ int correctMain(int argc, char** argv)
     ecParams.algorithm = opt::algorithm;
     ecParams.trim = true;
 
+    ecParams.pBloomFilter = new BloomFilter;
+    size_t num_hashes = 3;
+    size_t num_bits = pBWT->getBWLen();
+    ecParams.pBloomFilter->initialize(num_bits / num_hashes, num_hashes);
+    
     ecParams.minOverlap = opt::minOverlap;
     ecParams.numOverlapRounds = opt::numOverlapRounds;
     ecParams.minIdentity = 1.0f - opt::errorRate;

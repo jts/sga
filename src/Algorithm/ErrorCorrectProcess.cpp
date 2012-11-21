@@ -41,6 +41,20 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
     
 ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem)
 {
+    /*
+    ErrorCorrectResult iresult = fmiCorrect(workItem, 21);
+    if(!iresult.kmerQC)
+    {
+        //std::cout << "KMER\n";
+        return kmerCorrection(workItem);
+    }
+    else
+    {
+        //std::cout << "FMI\n";
+        return iresult;
+    }
+    */
+
     switch(m_params.algorithm)
     {
         case ECA_HYBRID:
@@ -423,6 +437,176 @@ bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t m
         return true;
     }
     return false;
+}
+
+// Returns true if the kmer at the given index of the sequence has more than threshold occurrences
+// in the read set
+inline bool isSolid(const std::string sequence, const int k_index, const int k, const int threshold, const BWTIndexSet indices)
+{
+    int count = BWTAlgorithms::countSequenceOccurrences(sequence.substr(k_index, k), indices);
+    //printf("\t%s = %d\n", sequence.substr(k_index, k).c_str(), count);
+    return count >= threshold;
+}
+
+struct CorrectionPath
+{
+    std::string sequence;
+    int sum_phred;
+    int edit_distance;
+};
+
+ErrorCorrectResult ErrorCorrectProcess::fmiCorrect(const SequenceWorkItem& workItem, int k)
+{
+    ErrorCorrectResult result;
+    std::string read_sequence = workItem.read.seq.toString();
+    std::string read_quality = workItem.read.qual;
+    assert(read_quality.size() == read_sequence.size());
+
+    //int k = m_params.kmerLength;
+    int nk = read_sequence.size() - k + 1;
+    int solid_threshold = 5;
+
+    if(nk < 0)
+    {
+        // Read is shorter than the k-mer length
+        result.correctSequence = read_sequence;
+        result.kmerQC = true;
+        return result;        
+    }
+    
+    // Compute the index of the first solid kmer in the read
+    // We skip up to the first 5 basees of the read
+    int start_k_index = 0;
+
+    // Compute the last solid kmer of the read start
+    int k_index = start_k_index;
+    while(k_index < nk && isSolid(read_sequence, k_index, k, solid_threshold, m_params.indices))
+        k_index += 1;
+
+    // Set k_index to be the index of the last solid kmer
+    k_index -= 1;
+
+    if(k_index < 0)
+    {
+        // No solid starting kmers in the read
+        result.correctSequence = read_sequence;
+        result.kmerQC = false;
+        return result;
+    }
+
+    if(k_index == nk - 1)
+    {
+        // All kmers solid, the read does not require correction
+        result.correctSequence = read_sequence.substr(start_k_index);
+        result.kmerQC = true;
+        return result;
+    }
+    
+    // Start a new corrected string with the solid prefix of the read
+    CorrectionPath* start = new CorrectionPath;
+    start->sequence = read_sequence.substr(start_k_index, k_index + k - start_k_index);
+    start->sum_phred = 0;
+    start->edit_distance = 0;
+
+    // Vectors holding the corrected versions of the string
+    std::vector<CorrectionPath*> corrected;
+    std::vector<CorrectionPath*> next;
+    corrected.push_back(start);
+
+//    printf("Starting prefix: %s\n", start->c_str());
+    size_t total_branched = 0;
+    k_index += 1;
+    while(k_index < nk)
+    {   
+        // Set the index of the next base to examine
+        int b_index = k_index + k - 1;
+        char b = read_sequence[b_index];
+        char q = read_quality[b_index];
+
+        // Extend each sequence by one base, branching if necessary
+        for(size_t i = 0; i < corrected.size(); ++i)
+        {
+            CorrectionPath* current = corrected[i];
+            current->sequence.push_back(b);
+            
+            // If the actual base in the read gives a solid k-mer, do not branch the search
+            if(isSolid(current->sequence, k_index, k, solid_threshold, m_params.indices))
+            {
+                next.push_back(current);
+            }
+            else
+            {
+                // Branch the search to alternate bases
+                int branches = 0;
+                static const char* bases = "ACGT";
+                for(size_t j = 0; j < 4; ++j)
+                {
+                    char alt = bases[j];
+                    if(alt == b)
+                        continue;
+                    
+                    assert((int)current->sequence.size() == b_index + 1);
+
+                    current->sequence[b_index] = alt;
+                    if(isSolid(current->sequence, k_index, k, solid_threshold, m_params.indices))
+                    {
+                        // Make a new copy of the string
+                        CorrectionPath* c_copy = new CorrectionPath;
+                        c_copy->sequence = current->sequence;
+                        c_copy->sum_phred = current->sum_phred + Quality::char2phred(q);
+                        c_copy->edit_distance = current->edit_distance + 1;
+                        next.push_back(c_copy);
+                        branches += 1;
+                    }
+                }
+                
+                if(branches > 1)
+                    total_branched += 1;
+
+                // Either there is no correction or we copied an alternate
+                // version of this sequence into the next vector. We can
+                // safely delete the original copy
+                delete current;
+            }
+        }
+
+        // Swap the next and corrected vector for the next iteration of the loop
+        next.swap(corrected);
+        next.clear();
+        k_index += 1;
+    }
+    
+    //if(corrected.size() == 1)
+    //    printf("Best: %d ed: %d s: %s\n", corrected[0]->sum_phred, corrected[0]->edit_distance, corrected[0]->sequence.c_str());
+
+    if(corrected.size() == 1 && corrected[0]->sum_phred < 30)
+    {
+        result.correctSequence = corrected[0]->sequence;
+        result.kmerQC = true;
+    }
+    else
+    {
+        result.correctSequence = read_sequence;
+        result.kmerQC = false;
+    }
+
+//    printf("Correction branched %zu times, ended with %zu strings\n", total_branched, corrected.size());
+
+/*
+    // Debug
+    if(total_branched > 0)
+    {
+        printf(">Original\n%s\n", read_sequence.c_str());
+        for(size_t i = 0; i < corrected.size(); ++i)
+            printf(">Corrected[%zu]:%d\n%s\n", i, corrected[i]->sum_phred, corrected[i]->sequence.c_str());
+    }
+*/
+    // Cleanup
+    for(size_t i = 0; i < corrected.size(); ++i)
+        delete corrected[i];
+    corrected.clear();
+
+    return result;
 }
 
 //

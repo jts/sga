@@ -94,6 +94,8 @@ class ErrorCorrectProcess
     private:
 
         bool attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence);
+        
+        ErrorCorrectResult fmiCorrect(const SequenceWorkItem& workItem, int k);
 
         OverlapBlockList m_blockList;
         ErrorCorrectParameters m_params;
