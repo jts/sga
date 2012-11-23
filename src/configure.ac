@@ -38,12 +38,34 @@ if test "$with_bamtools" -a -d "$with_bamtools"; then
     bamtools_include="-I$with_bamtools/include -I$with_bamtools/include/bamtools"
 fi
 
+# Support for tcmalloc/jemalloc/hoard
+
+# Check for the jemalloc memory allocator
+AC_ARG_WITH(jemalloc, AS_HELP_STRING([--with-jemalloc=PATH],
+	[specify directory containing the jemalloc library]))
+
+# Check for the tcmalloc
+AC_ARG_WITH(tcmalloc, AS_HELP_STRING([--with-tcmalloc=PATH],
+	[specify directory containing the tcmalloc library]))
+
 # Check for the hoard memory allocator
 AC_ARG_WITH(hoard, AS_HELP_STRING([--with-hoard=PATH],
 	[specify directory containing the hoard memory allocator library]))
+
+# Set library path to user-selected allocator
 if test "$with_hoard" -a -d "$with_hoard"; then
-	hoard_ldflags="-Wl,-rpath,$with_hoard -L$with_hoard"
+	external_malloc_ldflags="-Wl,-rpath,$with_hoard -L$with_hoard"
     enable_hoard=1
+fi
+
+if test "$with_tcmalloc" -a -d "$with_tcmalloc"; then
+	external_malloc_ldflags="-Wl,-rpath,$with_tcmalloc -L$with_tcmalloc"
+    enable_tcmalloc=1
+fi
+
+if test "$with_jemalloc" -a -d "$with_jemalloc"; then
+	external_malloc_ldflags="-Wl,-rpath,$with_jemalloc -L$with_jemalloc"
+    enable_jemalloc=1
 fi
 
 # Check for the google sparse hash
@@ -68,15 +90,24 @@ AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror")
 AC_SUBST(CXXFLAGS, "-O3")
 AC_SUBST(CFLAGS, "-O3")
 AC_SUBST(CPPFLAGS, "$CPPFLAGS $openmp_cppflags $sparsehash_include $bamtools_include")
-AC_SUBST(LDFLAGS, "$hoard_ldflags $bamtools_ldflags $LDFLAGS")
+AC_SUBST(LDFLAGS, "$external_malloc_ldflags $bamtools_ldflags $LDFLAGS")
 
 # We always need to specify to link in bamtools
 AC_SUBST(LIBS, "$LIBS -lbamtools")
 
 #
 if test "$enable_hoard"; then
-    AC_SEARCH_LIBS([hoardmalloc], [hoard])
+    AC_CHECK_LIB([hoard], [malloc])
 fi
+
+if test "$enable_tcmalloc"; then
+    AC_CHECK_LIB([tcmalloc], [malloc])
+fi
+
+if test "$enable_jemalloc"; then
+    AC_CHECK_LIB([jemalloc], [malloc])
+fi
+
 
 # Ensure the sparse hash is available
 AC_CHECK_HEADERS([google/sparse_hash_set],,[AC_MSG_ERROR([google sparse hash library is required: http://code.google.com/p/google-sparsehash/])])
