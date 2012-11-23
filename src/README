@@ -15,7 +15,7 @@ SGA dependencies:
     -google sparse hash library (http://code.google.com/p/google-sparsehash/)
     -the bamtools library (https://github.com/pezmaster31/bamtools)
     -zlib (http://www.zlib.net/)
-    -(optional but suggested) the hoard memory allocator (http://www.hoard.org/)
+    -(optional but suggested) the jemalloc memory allocator (http://www.canonware.com/jemalloc/download.html)
 
 Additionally, the pipeline python scripts use the following modules. These
 are not required to build SGA but must be available if you want to use the relevant 
