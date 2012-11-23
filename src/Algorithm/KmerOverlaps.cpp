@@ -21,7 +21,6 @@ MultipleAlignment KmerOverlaps::buildMultipleAlignment(const std::string& query,
                                                        const BWTIndexSet& indices)
 {
     SequenceOverlapPairVector overlap_vector = retrieveMatches(query, k, min_overlap, min_identity, bandwidth, indices);
-    std::cout << "Found " << overlap_vector.size() << " matches\n";
     MultipleAlignment multiple_alignment;
     multiple_alignment.addBaseSequence("query", query, "");
     for(size_t i = 0; i < overlap_vector.size(); ++i)

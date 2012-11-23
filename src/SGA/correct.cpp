@@ -149,7 +149,7 @@ int correctMain(int argc, char** argv)
     BWT* pRBWT = NULL;
     SampledSuffixArray* pSSA = NULL;
 
-    if(opt::algorithm == ECA_OVERLAP)
+    if(opt::algorithm == ECA_OVERLAP || opt::algorithm == ECA_HYBRID)
         pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
 
     BWTIntervalCache* pIntervalCache = new BWTIntervalCache(opt::intervalCacheLength, pBWT);
