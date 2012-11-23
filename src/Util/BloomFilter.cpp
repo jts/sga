@@ -69,7 +69,7 @@ bool BloomFilter::test(const void* key, int num_bytes) const
     }
 
     m_test_counter++;
-    if(m_test_counter % 500000 == 0) {
+    if(m_test_counter % 5000000 == 0) {
         double p = (double)m_occupancy / m_width;
         printf("Access: %zu Occupancy: %zu P: %1.4lf\n", m_test_counter, m_occupancy, p);
     }

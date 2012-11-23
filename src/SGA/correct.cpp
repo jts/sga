@@ -183,7 +183,7 @@ int correctMain(int argc, char** argv)
 
     ecParams.pBloomFilter = new BloomFilter;
     size_t num_hashes = 3;
-    size_t num_bits = pBWT->getBWLen();
+    size_t num_bits = 2*pBWT->getBWLen();
     ecParams.pBloomFilter->initialize(num_bits / num_hashes, num_hashes);
     
     ecParams.minOverlap = opt::minOverlap;

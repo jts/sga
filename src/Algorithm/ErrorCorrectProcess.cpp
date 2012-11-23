@@ -42,7 +42,7 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
 ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem)
 {
     /*
-    ErrorCorrectResult iresult = fmiCorrect(workItem, 21);
+    ErrorCorrectResult iresult = fmiCorrect(workItem, 31);
     if(!iresult.kmerQC)
     {
         //std::cout << "KMER\n";
@@ -54,7 +54,6 @@ ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem
         return iresult;
     }
     */
-
     switch(m_params.algorithm)
     {
         case ECA_HYBRID:
@@ -441,11 +440,26 @@ bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t m
 
 // Returns true if the kmer at the given index of the sequence has more than threshold occurrences
 // in the read set
-inline bool isSolid(const std::string sequence, const int k_index, const int k, const int threshold, const BWTIndexSet indices)
+inline bool isSolid(const std::string& sequence, const int k_index, const int k, const int threshold, const ErrorCorrectParameters& params)
 {
-    int count = BWTAlgorithms::countSequenceOccurrences(sequence.substr(k_index, k), indices);
+    if(params.pBloomFilter->test(sequence.c_str() + k_index, k))
+    {
+        return true;
+    }
+    else
+    {
+        int count = BWTAlgorithms::countSequenceOccurrences(sequence.substr(k_index, k), params.indices);
+        if(count >= threshold)
+        {
+            params.pBloomFilter->add(sequence.c_str() + k_index, k);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
     //printf("\t%s = %d\n", sequence.substr(k_index, k).c_str(), count);
-    return count >= threshold;
 }
 
 struct CorrectionPath
@@ -480,7 +494,7 @@ ErrorCorrectResult ErrorCorrectProcess::fmiCorrect(const SequenceWorkItem& workI
 
     // Compute the last solid kmer of the read start
     int k_index = start_k_index;
-    while(k_index < nk && isSolid(read_sequence, k_index, k, solid_threshold, m_params.indices))
+    while(k_index < nk && isSolid(read_sequence, k_index, k, solid_threshold, m_params))
         k_index += 1;
 
     // Set k_index to be the index of the last solid kmer
@@ -514,6 +528,8 @@ ErrorCorrectResult ErrorCorrectProcess::fmiCorrect(const SequenceWorkItem& workI
     corrected.push_back(start);
 
 //    printf("Starting prefix: %s\n", start->c_str());
+    int MAX_PHRED_SUM = 30;
+
     size_t total_branched = 0;
     k_index += 1;
     while(k_index < nk)
@@ -530,7 +546,7 @@ ErrorCorrectResult ErrorCorrectProcess::fmiCorrect(const SequenceWorkItem& workI
             current->sequence.push_back(b);
             
             // If the actual base in the read gives a solid k-mer, do not branch the search
-            if(isSolid(current->sequence, k_index, k, solid_threshold, m_params.indices))
+            if(isSolid(current->sequence, k_index, k, solid_threshold, m_params))
             {
                 next.push_back(current);
             }
@@ -548,15 +564,19 @@ ErrorCorrectResult ErrorCorrectProcess::fmiCorrect(const SequenceWorkItem& workI
                     assert((int)current->sequence.size() == b_index + 1);
 
                     current->sequence[b_index] = alt;
-                    if(isSolid(current->sequence, k_index, k, solid_threshold, m_params.indices))
+                    if(isSolid(current->sequence, k_index, k, solid_threshold, m_params))
                     {
                         // Make a new copy of the string
-                        CorrectionPath* c_copy = new CorrectionPath;
-                        c_copy->sequence = current->sequence;
-                        c_copy->sum_phred = current->sum_phred + Quality::char2phred(q);
-                        c_copy->edit_distance = current->edit_distance + 1;
-                        next.push_back(c_copy);
-                        branches += 1;
+                        int new_phred = current->sum_phred + Quality::char2phred(q);
+                        if(new_phred < MAX_PHRED_SUM)
+                        {
+                            CorrectionPath* c_copy = new CorrectionPath;
+                            c_copy->sequence = current->sequence;
+                            c_copy->sum_phred = new_phred;
+                            c_copy->edit_distance = current->edit_distance + 1;
+                            next.push_back(c_copy);
+                            branches += 1;
+                        }
                     }
                 }
                 
@@ -567,6 +587,7 @@ ErrorCorrectResult ErrorCorrectProcess::fmiCorrect(const SequenceWorkItem& workI
                 // version of this sequence into the next vector. We can
                 // safely delete the original copy
                 delete current;
+                corrected[i] = NULL;
             }
         }
 
