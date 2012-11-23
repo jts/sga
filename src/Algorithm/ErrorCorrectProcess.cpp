@@ -47,7 +47,7 @@ ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem
         {
             ErrorCorrectResult result = kmerCorrection(workItem);
             if(!result.kmerQC)
-                return overlapCorrection(workItem);
+                return overlapCorrectionNew(workItem);
             else
                 return result;
             break;
