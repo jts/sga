@@ -110,6 +110,7 @@ class DPAlignment
                 default:
                     assert(false);
             }
+            return 0;
         }
 
         //
@@ -124,6 +125,7 @@ class DPAlignment
                 default:
                     assert(false);
             }
+            return 0;
         }
 
         //
@@ -138,6 +140,7 @@ class DPAlignment
                 default:
                     assert(false);
             }
+            return a;
         }
 
         void initializeDPMatrix();
