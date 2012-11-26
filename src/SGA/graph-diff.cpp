@@ -87,7 +87,7 @@ namespace opt
     
     static int kmer = 55;
     static int minDiscoveryCount = 2;
-    static int maxDiscoveryCount = 400;
+    static int maxDiscoveryCount = 10000;
     static int minOverlap = 61;
 
     static bool deBruijnMode = false;
