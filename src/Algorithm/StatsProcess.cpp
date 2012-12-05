@@ -19,15 +19,24 @@ StatsProcess::StatsProcess(const BWT* pBWT, const BWT* pRBWT, int kmerLength, in
                             m_kmerLength(kmerLength),
                             m_minOverlap(minOverlap),
                             m_branchCutoff(branchCutoff),
-                            m_bNoOverlap(bNoOverlap)
+                            m_bNoOverlap(bNoOverlap),
+                            m_pAllOverlapper(NULL)
 {
-    m_pAllOverlapper = new OverlapAlgorithm(m_pBWT, m_pRBWT, 0.05, 16, 16, false, m_branchCutoff);
+    if (!m_bNoOverlap)
+    {
+        assert(m_pRBWT);
+        m_pAllOverlapper = new OverlapAlgorithm(m_pBWT, m_pRBWT, 0.05, 16, 16, false, m_branchCutoff);
+    }
 }
 
 //
 StatsProcess::~StatsProcess()
 {
-    delete m_pAllOverlapper;
+    if(m_pAllOverlapper)
+    {
+        delete m_pAllOverlapper;
+        m_pAllOverlapper = NULL;
+    }
 }
 
 //
