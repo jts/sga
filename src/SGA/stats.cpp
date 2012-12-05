@@ -104,7 +104,11 @@ int statsMain(int argc, char** argv)
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT, opt::sampleRate);
-    BWT* pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
+    BWT* pRBWT = NULL;
+
+    // Do not need the reverse BWT if the overlap statistics are disabled
+    if (!opt::bNoOverlap)
+        pRBWT = new BWT(opt::prefix + RBWT_EXT, opt::sampleRate);
 
     if(opt::bPrintRunLengths)
     {
@@ -147,7 +151,8 @@ int statsMain(int argc, char** argv)
     }
 
     delete pBWT;
-    delete pRBWT;
+    if (pRBWT)
+        delete pRBWT;
     delete pTimer;
 
     if(opt::numThreads > 1)
