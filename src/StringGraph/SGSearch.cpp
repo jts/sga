@@ -71,12 +71,13 @@ bool SGSearch::findWalks(Vertex* pX, Vertex* pY, EdgeDir initialDir,
 }
 
 // Search the graph for a set of walks that represent alternate
-// versions of the same sequence. Theese walks are found by searching
+// versions of the same sequence. These walks are found by searching
 // the graph for a set of walks that start/end at a common vertex and cover
 // every vertex inbetween the start/end points. Additionally, the internal
 // vertices cannot have an edge to any vertex that is not in the set of vertices
-// indicated by the walks.
-// If these two conditions are met, we can retain one of the walks and cleanly remove
+// indicated by the walks. Finally, all walks must have the same orientation for the
+// end vertex.
+// If these conditions are met, we can retain one of the walks and cleanly remove
 // the others.
 void SGSearch::findVariantWalks(Vertex* pX, 
                                 EdgeDir initialDir, 
@@ -92,19 +93,38 @@ void SGSearch::findVariantWalks(Vertex* pX,
         return;
     }
 
+    Edge* pLastEdge = outWalks.front().getLastEdge();
+    Vertex* pLastVertex = pLastEdge->getEnd();
+    EdgeDir lastDir = pLastEdge->getTwinDir();
+
     // Validate that any of the returned walks can be removed cleanly.
     // This means that for all the internal vertices on each walk (between
-    // the common endpoints) the only links are to other vertices in the set
+    // the common endpoints) the only links are to other vertices in the set,
+    // and that the last vertex has the same orientation for all walks.
 
     // Construct the set of vertex IDs
     std::set<Vertex*> completeVertexSet;
+    bool sameOrientation = true;
     for(size_t i = 0; i < outWalks.size(); ++i)
     {
+        if (outWalks[i].getLastEdge()->getTwinDir() != lastDir)
+        {
+            sameOrientation = false;
+            break;
+        }
+
         VertexPtrVec verts = outWalks[i].getVertices();
         for(size_t j = 0; j < verts.size(); ++j)
         {
             completeVertexSet.insert(verts[j]);
         }
+    }
+
+    // Return if the walks do not have the same orientation for the last vertex
+    if(!sameOrientation)
+    {
+        outWalks.clear();
+        return;
     }
 
     // Check that each vertex in the internal nodes only has
@@ -119,12 +139,7 @@ void SGSearch::findVariantWalks(Vertex* pX,
 
     // Ensure that all the vertex linked to the last vertex
     // in the incoming direction are preset
-    Edge* pLastEdge = outWalks.front().getLastEdge();
-    Vertex* pLastVertex = pLastEdge->getEnd();
-    EdgeDir lastDir = pLastEdge->getTwinDir();
-    
     epv = pLastVertex->getEdges(lastDir);
-
     cleanlyRemovable = cleanlyRemovable && checkEndpointsInSet(epv, completeVertexSet);
 
     // Check that each vertex connected to an interval vertex is also present
