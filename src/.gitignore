@@ -9,3 +9,6 @@ depcomp
 install-sh
 missing
 build*
+*.o
+*.a
+Makefile
