@@ -106,6 +106,7 @@ namespace HapgenUtil
                                int k,
                                bool doReverse,
                                size_t maxReads,
+                               int64_t maxIntervalSize,
                                SeqRecordVector* pOutReads, 
                                SeqRecordVector* pOutMates);
 
@@ -116,6 +117,7 @@ namespace HapgenUtil
                                        int k,
                                        bool doReverse,
                                        size_t maxReads,
+                                       int64_t maxIntervalSize,
                                        SeqRecordVector* pOutReads, 
                                        SeqRecordVector* pOutMates);
 

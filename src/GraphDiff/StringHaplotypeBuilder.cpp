@@ -280,10 +280,10 @@ void StringHaplotypeBuilder::getReadsForKmers(const StringVector& kmer_vector, s
     SeqRecordVector rev_si;
 
     // Forward reads
-    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.variantIndex, k, false, 100000, &fwd_si, NULL);
+    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.variantIndex, k, false, m_parameters.maxReads, m_parameters.maxExtractionIntervalSize, &fwd_si, NULL);
 
     // Reverse reads
-    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.variantIndex, k, true, 100000, &rev_si, NULL);
+    HapgenUtil::extractHaplotypeReads(kmer_vector, m_parameters.variantIndex, k, true, m_parameters.maxReads, m_parameters.maxExtractionIntervalSize, &rev_si, NULL);
 
     // Copy reads into the positioned read vector, initially with unset positions
     for(size_t i = 0; i < fwd_si.size(); ++i)

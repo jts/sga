@@ -70,8 +70,6 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceKmer")
     int64_t max_interval_size = 4;
 
-    std::cout << "Attempting alignment of haplotype: " << haplotype << "\n";
-
     if(haplotype.size() < k)
         return;
 
@@ -136,7 +134,6 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 
             // Align haplotype to the reference
             SequenceOverlap overlap = alignHaplotypeToReference(ref_substring, query);
-            overlap.printAlignment(ref_substring, query);
             if(overlap.score < 0 || !overlap.isValid())
                 continue;
 
@@ -318,12 +315,14 @@ bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln,
     outHaplotypes.push_back(referenceHaplotype);
 
     // Check that all sequences match the reference haplotype properly
+    /*
     bool checkOk = checkAlignmentsAreConsistent(referenceFlanking, inHaplotypes);
     if(!checkOk)
     {
         outHaplotypes.clear();
         return false;
     }
+    */
 
     // Make the flanking sequences for each haplotype
     for(size_t i = 0; i < inHaplotypes.size(); ++i)
@@ -357,9 +356,9 @@ bool HapgenUtil::checkAlignmentsAreConsistent(const std::string& refString, cons
         if(alignments[i].targetStartIndex != alignments[j].targetStartIndex ||
            alignments[j].targetEndIndex != alignments[j].targetEndIndex)
         {
-            //std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
-            //std::cerr << "A[" << i << "]: " << alignments[i] << "\n";
-            ///std::cerr << "A[" << j << "]: " << alignments[j] << "\n";
+            std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
+            std::cerr << "A[" << i << "]: " << alignments[i] << "\n";
+            std::cerr << "A[" << j << "]: " << alignments[j] << "\n";
             return false;
         }
     }
@@ -375,12 +374,11 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
                                        int k,
                                        bool doReverse,
                                        size_t maxReads,
+                                       int64_t maxIntervalSize,
                                        SeqRecordVector* pOutReads, 
                                        SeqRecordVector* pOutMates)
 {
-    // Skip repetitive kmers with more than this many occurrences
-    int64_t SKIP_INTERVAL_SIZE = 50000;
-
+    PROFILE_FUNC("HapgenUtil::extractHaplotypeReads")
     // Extract the set of reads that have at least one kmer shared with these haplotypes
     // This is a bit of a lengthy procedure with a few steps:
     // 1) extract all the kmers in the haplotypes
@@ -410,9 +408,7 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
     for(std::set<std::string>::const_iterator iter = kmerSet.begin(); iter != kmerSet.end(); ++iter)
     {
         BWTInterval interval = BWTAlgorithms::findInterval(indices, *iter);
-        if(interval.size() > (int64_t)maxReads)
-            return false;
-        if(interval.size() < SKIP_INTERVAL_SIZE)
+        if(interval.size() < maxIntervalSize)
             intervals.push_back(interval);
     }
 
@@ -482,6 +478,7 @@ bool HapgenUtil::extractHaplotypeSpecificReads(const StringVector& haplotypes,
                                                int k,
                                                bool doReverse,
                                                size_t maxReads,
+                                               int64_t maxIntervalSize,
                                                SeqRecordVector* pOutReads, 
                                                SeqRecordVector* pOutMates)
 {
@@ -506,7 +503,7 @@ bool HapgenUtil::extractHaplotypeSpecificReads(const StringVector& haplotypes,
     }
 
     printf("%zu of %zu kmers are haplotype-unique\n", specific_kmer_vector.size(), kmer_map.size());
-    return extractHaplotypeReads(specific_kmer_vector, indices, k, doReverse, maxReads, pOutReads, pOutMates);
+    return extractHaplotypeReads(specific_kmer_vector, indices, k, doReverse, maxReads, maxIntervalSize, pOutReads, pOutMates);
 }
 
 

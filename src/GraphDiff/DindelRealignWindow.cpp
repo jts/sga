@@ -46,7 +46,7 @@ const int DEBUG_CALLINDEL=0;
 const int REPOSITION_INDEL_WINDOW=1000;
 const int SHOWHAPFREQ=0;
 const int REPOSITIONVARIANTSSLOW=0; // uses slow code to reposition indels.
-const int DINDEL_DEBUG_3 = 1; // useful debugging
+const int DINDEL_DEBUG_3 = 0; // useful debugging
 const int DINDEL_ADJUST_MAPPINGQUAL = 1;
 //#define OVERLAPPER // build overlapper
 
@@ -1899,14 +1899,16 @@ void DindelRealignWindow::computeProjectedMappingQuality()
         for(size_t i = 0; i < alignments.size(); ++i)
         {
             size_t loc_idx = alignments[i]->dindel_ref_index;
-            const DindelReferenceMapping& mapping = references[loc_idx];
+            //const DindelReferenceMapping& mapping = references[loc_idx];
             assert(loc_idx < joint_read_loc_lprobs.size());
             double lp_loc = joint_read_loc_lprobs[loc_idx];
             lp_loc -= lp_r;
-            int mapq = Quality::prob2phred(1.0f - exp(lp_loc));
-
+            //int mapq = Quality::prob2phred(1.0f - exp(lp_loc));
+            
+            /*
             printf("Alignment %zu Ref: %s Pos: %d lp_loc: %lf p: %lf MQ: %d\n", loc_idx, mapping.refName.c_str(), 
                                                                          mapping.refStart, lp_loc, exp(lp_loc), mapq);
+            */
 
         }
     }
@@ -1935,9 +1937,8 @@ void MaPosToCandidateSNP::addSNP(int readIndex, int refPos, char refBase, char a
 void DindelRealignWindow::HMMAlignReadAgainstHaplotypes(size_t readIndex, size_t firstHap, size_t lastHap, const std::vector<double> & lpCorrect, const std::vector<double> & lpError)
 {
 
-    const std::vector<DindelMultiHaplotype> & haplotypes = m_dindelWindow.getHaplotypes();
-
-    DindelRead & read = *(m_pDindelReads->begin()+readIndex);
+    const std::vector<DindelMultiHaplotype>& haplotypes = m_dindelWindow.getHaplotypes();
+    DindelRead& read = m_pDindelReads->at(readIndex);
 
     for (size_t h=firstHap;h<=lastHap;++h)
     {
@@ -1969,16 +1970,19 @@ void DindelRealignWindow::HMMAlignReadAgainstHaplotypes(size_t readIndex, size_t
                 rha_hmm.isUngapped=true;
                 rha_hmm.nmm = rha_ung.nmm;
             }
-        if (DINDEL_DEBUG) std::cout << " HMM read " << readIndex << " haplotype " << h  << " ungapped loglik: " << rha_ung.logLik << " nmm: " << rha_ung.nmm << std::endl;
+
+            if(DINDEL_DEBUG) 
+                std::cout << " HMM read " << readIndex << " haplotype " << h  << " ungapped loglik: " << rha_ung.logLik << " nmm: " << rha_ung.nmm << std::endl;
         }
     
         hapReadAlignments[h][readIndex]=rha_hmm;
     }
-
 }
 
 void DindelRealignWindow::computeReadHaplotypeAlignmentsUsingHMM(size_t firstHap, size_t lastHap)
 {
+    PROFILE_FUNC("DindelRealignWindow::computeReadHaplotypeAlignmentsUsingHMM")
+
     if (firstHap>lastHap) return;
     if (DINDEL_DEBUG)
         std::cout << "DindelRealignWindow::computeReadHaplotypeAlignmentsUsingHMM firstHap " << firstHap << " " << lastHap << std::endl;
@@ -2125,6 +2129,8 @@ void DindelRealignWindow::printReadAlignments(int readIdx, std::ostream & out, i
 
 void DindelRealignWindow::doEM(const std::vector< std::vector<double> > & hrLik, const std::vector<int> & calledHaplotypes, std::vector<double> & haplotypeFrequencies)
 {
+    PROFILE_FUNC("DindelRealignWindow::doEM")
+
     // first remove uncalled haplotypes
     size_t nh=0;
     for(size_t h=0;h < calledHaplotypes.size(); ++h) if (calledHaplotypes[h]) nh++;
@@ -2259,8 +2265,9 @@ void DindelRealignWindow::doEMMultiSample(int numSamples,
                                           const std::vector<double> & initHaplotypeFrequencies,
                                           std::vector<double> & haplotypeFrequencies)
 {
-    // llHapPairs is ordered by sample then by haplotype pair h1,h2 with h2>=h1
+    PROFILE_FUNC("DindelRealignWindow::doEMMultiSample")
 
+    // llHapPairs is ordered by sample then by haplotype pair h1,h2 with h2>=h1
     size_t ns = (size_t) numSamples;
     size_t nh = allowedHaplotypes.size();
     size_t numPairs = nh*(nh+1)/2;
@@ -3049,8 +3056,6 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
     drra.read_name = read.getID();
     drra.reference_name = reference_mapping.refName;
     drra.reference_start_position = reference_mapping.refStart + read_offset + ref_bases_pre_skipped;
-
-    printf("READ: %s REF: %s POS: %d\n", drra.read_name.c_str(), drra.reference_name.c_str(), drra.reference_start_position);
 
     // DindelReads are on the same strand as the haplotype. 
     // Write the read sequence field as the original sequencing strand

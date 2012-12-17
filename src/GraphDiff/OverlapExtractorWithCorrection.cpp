@@ -210,7 +210,7 @@ void OverlapExtractorWithCorrection::extractAndUpdate(const std::string& query)
     // For the kmers not in the cache, lookup the reads using the FM-index
     SeqRecordVector left_vector;
     HapgenUtil::extractHaplotypeReads(not_cached_kmers, m_index_set,
-                                      m_k, false, 1000000, &left_vector, NULL);
+                                      m_k, false, 1000000, 500, &left_vector, NULL);
     
     // Insert the new kmers into the cache. The updateStrings() function below will update
     // the strings vector and the kmer -> index cache

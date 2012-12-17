@@ -40,6 +40,10 @@ enum GraphCompareAlgorithm
 class GraphCompareAggregateResults;
 struct GraphCompareParameters
 {
+    //
+    // Data structures
+    //
+
     // Base reads index
     BWTIndexSet baseIndex;
     
@@ -56,15 +60,25 @@ struct GraphCompareParameters
     // Bloom filter to mark user kmers
     BloomFilter* pBloomFilter;
 
+    //
     // Parameters
+    //
+
+    // Compare against reference genome?
+    bool bReferenceMode;
+
+    // Haplotype assembly
     GraphCompareAlgorithm algorithm;
     size_t kmer;
     size_t minDiscoveryCount;
     size_t maxDiscoveryCount;
     size_t minDBGCount;
     int minOverlap;
-    bool bReferenceMode;
     int verbose;
+
+    // Read extraction parameters
+    size_t maxExtractionIntervalSize;
+    size_t maxReads;
 
     // Filtering
     size_t maxHaplotypes;

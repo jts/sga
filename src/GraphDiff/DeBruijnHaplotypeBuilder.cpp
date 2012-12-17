@@ -49,7 +49,7 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
     // We search until we find the first common vertex in each direction
     size_t MIN_TARGET_COUNT = m_parameters.bReferenceMode ? 1 : 2;
     size_t MAX_ITERATIONS = 2000;
-    size_t MAX_SIMULTANEOUS_BRANCHES = 20;
+    size_t MAX_SIMULTANEOUS_BRANCHES = 40;
     size_t MAX_TOTAL_BRANCHES = 50;
 
     // Tracking stats
@@ -85,7 +85,7 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_parameters.variantIndex.pBWT, curr.direction);
-        std::cout << "Extensions[" << curr.direction << "] NC: " << extensionCounts << "\n";
+        //std::cout << "Extensions[" << curr.direction << "] NC: " << extensionCounts << "\n";
         size_t max_count = extensionCounts.getMaxCount();
 
         std::string extensionsUsed;
@@ -94,10 +94,9 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
             double ratio = (double)count / max_count;
-            bool acceptExt = /*count >= m_parameters.minDBGCount &&*/ ratio > 0.2;
+            bool acceptExt = /*count >= m_parameters.minDBGCount &&*/ ratio > 0.2 && count > 5;
             if(!acceptExt)
                 continue;
-            printf("   branching %c %zu %.2flf\n", b, count, ratio);
 
             extensionsUsed.push_back(b);
             std::string newStr = VariationBuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
@@ -119,6 +118,7 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
             // Check if this sequence is present in the FM-index of the target
             // If so, it is the join point of the de Bruijn graph and we extend no further.
             size_t targetCount = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.baseIndex);
+
             if(targetCount >= MIN_TARGET_COUNT)
             {
                 if(curr.direction == ED_SENSE)
@@ -130,6 +130,7 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
             {
                 // Add the vertex to the extension queue
                 queue.push(BuilderExtensionNode(pVertex, curr.direction));
+                queue.push(BuilderExtensionNode(pVertex, !curr.direction));
             }
         }
         

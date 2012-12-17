@@ -241,8 +241,6 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 {
     PROFILE_FUNC("GraphCompare::processVariantKmer")
 
-    std::cout << "Kmer: " << str << "\n";
-
     //
     GraphBuildResult result;
 
@@ -267,7 +265,6 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
         return result;
     }
 
-    printf("Assembled %zu haplotypes\n", num_assembled);
     //qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
     size_t num_qc = result.variant_haplotypes.size();
 

@@ -36,8 +36,8 @@ void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBlo
 #define PROCESS_GDIFF_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, GraphCompareResult, \
                                                                               GraphCompare, GraphCompareAggregateResults>
 
-#define PROCESS_GDIFF_PARALLEL SequenceProcessFramework::processSequencesParallel<SequenceWorkItem, GraphCompareResult, \
-                                                                                  GraphCompare, GraphCompareAggregateResults>
+#define PROCESS_GDIFF_PARALLEL SequenceProcessFramework::processSequencesParallelOpenMP<SequenceWorkItem, GraphCompareResult, \
+                                                                                        GraphCompare, GraphCompareAggregateResults>
 
    
 //
@@ -234,9 +234,16 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.minOverlap = opt::minOverlap;
     sharedParameters.verbose = opt::verbose;
     sharedParameters.maxHaplotypes = 5;
+    sharedParameters.maxReads = 10000;
+    sharedParameters.maxExtractionIntervalSize = 500;
 
-    if (opt::lowCoverage)
+    // Set population variant calling parameters
+    if(opt::lowCoverage)
+    {
+        sharedParameters.maxExtractionIntervalSize = 5000;
+        sharedParameters.maxReads = 100000;
         sharedParameters.dindelRealignParameters.multiSample = 1;
+    }
 
     if(!opt::debugFile.empty())
     {
@@ -272,7 +279,7 @@ int graphDiffMain(int argc, char** argv)
     delete referenceIndex.pSSA;
 
     if(opt::numThreads > 1)
-        pthread_exit(NULL);
+       pthread_exit(NULL);
 
     return 0;
 }
