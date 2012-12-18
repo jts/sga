@@ -184,6 +184,7 @@ class DindelRead
         // Functions
 
         const std::string getSequence() const { return m_seqRecord.seq.toString(); }
+        const std::string& getQualString() const { return m_seqRecord.qual; }
         const std::vector<double> getBaseQuals() const;
         const std::string getID() const { return m_seqRecord.id; }
         double getMappingQual() const { return m_mappingQual; } //return double(bam->core.qual); }
@@ -955,7 +956,8 @@ class DindelRealignWindow
                                            size_t firstHap, 
                                            size_t lastHap, 
                                            const std::vector<double> & lpCorrect, 
-                                           const std::vector<double> & lpError);
+                                           const std::vector<double> & lpError,
+                                           HashMap<std::string, ReadHaplotypeAlignment>& hmm_alignment_cache);
 
         // HAPLOTYPE FREQUENCY ESTIMATION BUSINESS
 

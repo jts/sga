@@ -85,16 +85,13 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
         // Calculate de Bruijn extensions for this node
         std::string vertStr = curr.pVertex->getSeq().toString();
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_parameters.variantIndex.pBWT, curr.direction);
-        //std::cout << "Extensions[" << curr.direction << "] NC: " << extensionCounts << "\n";
-        size_t max_count = extensionCounts.getMaxCount();
 
         std::string extensionsUsed;
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-            double ratio = (double)count / max_count;
-            bool acceptExt = /*count >= m_parameters.minDBGCount &&*/ ratio > 0.2 && count > 5;
+            bool acceptExt = count >= m_parameters.minDBGCount;
             if(!acceptExt)
                 continue;
 

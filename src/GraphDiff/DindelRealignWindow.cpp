@@ -1934,17 +1934,34 @@ void MaPosToCandidateSNP::addSNP(int readIndex, int refPos, char refBase, char a
 
 
 
-void DindelRealignWindow::HMMAlignReadAgainstHaplotypes(size_t readIndex, size_t firstHap, size_t lastHap, const std::vector<double> & lpCorrect, const std::vector<double> & lpError)
+void DindelRealignWindow::HMMAlignReadAgainstHaplotypes(size_t readIndex, size_t firstHap, size_t lastHap, 
+                                                        const std::vector<double> & lpCorrect, const std::vector<double> & lpError,
+                                                        HashMap<std::string, ReadHaplotypeAlignment>& hmm_alignment_cache)
 {
-
     const std::vector<DindelMultiHaplotype>& haplotypes = m_dindelWindow.getHaplotypes();
     DindelRead& read = m_pDindelReads->at(readIndex);
 
     for (size_t h=firstHap;h<=lastHap;++h)
     {
         const DindelMultiHaplotype & haplotype = haplotypes[h];
-        DindelHMM hmm(read, haplotype);
-        ReadHaplotypeAlignment rha_hmm = hmm.getAlignment();
+
+        // Look up the read in the alignment cache using the haplotype index, the read sequence and read quality string as a key
+        std::stringstream cache_key;
+        cache_key << h << ":" << read.getSequence() << ":" << read.getQualString();
+        ReadHaplotypeAlignment rha_hmm;
+
+        HashMap<std::string, ReadHaplotypeAlignment>::iterator iter = hmm_alignment_cache.find(cache_key.str());
+        if(iter != hmm_alignment_cache.end())
+        {
+            // Use the cached alignment
+            rha_hmm = iter->second;
+        }
+        else
+        {
+            DindelHMM hmm(read, haplotype);
+            rha_hmm = hmm.getAlignment();
+            hmm_alignment_cache[cache_key.str()] = rha_hmm;
+        }
 
         if (DINDEL_DEBUG)
         {
@@ -1958,8 +1975,6 @@ void DindelRealignWindow::HMMAlignReadAgainstHaplotypes(size_t readIndex, size_t
         // attempt ungapped alignment for detecting SNPs
         if (rha_hmm.postProbLastReadBase>this->realignParameters.minPostProbLastReadBaseForUngapped)
         {
-    
-
             int end = rha_hmm.hapPosLastReadBase;
             int start = end-read.length()+1;
             bool rcReadSeq=read.getRCRead();
@@ -1997,6 +2012,9 @@ void DindelRealignWindow::computeReadHaplotypeAlignmentsUsingHMM(size_t firstHap
         else
             hapReadAlignments.push_back( std::vector<ReadHaplotypeAlignment>(m_pDindelReads->size(), ReadHaplotypeAlignment(realignParameters.minLogLikAlignToAlt,-1)));
     }
+    
+    // We cache the results of the HMM alignment to save time when the read set contains many duplicate reads (like 1000 genomes).
+    HashMap<std::string, ReadHaplotypeAlignment> hmm_alignment_cache;
 
     for (size_t r=0;r<m_pDindelReads->size();r++)
     {
@@ -2007,7 +2025,7 @@ void DindelRealignWindow::computeReadHaplotypeAlignmentsUsingHMM(size_t firstHap
         std::vector<double> lpCorrect, lpError;
         read.getLogProbCorrectError(lpCorrect, lpError);
 
-        HMMAlignReadAgainstHaplotypes(r, firstHap, lastHap, lpCorrect, lpError);
+        HMMAlignReadAgainstHaplotypes(r, firstHap, lastHap, lpCorrect, lpError, hmm_alignment_cache);
     }
 }
 
@@ -2932,7 +2950,6 @@ void DindelRealignWindow::projectReadAlignmentToReference(const std::vector<Dind
                                                           int readIdx, int hapIdx, int refIdx)
 {
     PROFILE_FUNC("DindelRealignWindow::projectReadAlignmentToReference")
-
     const DindelRead& read = getRead(readIdx);
     std::string read_sequence = read.getSequence();
 
