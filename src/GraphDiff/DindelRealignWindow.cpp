@@ -589,14 +589,14 @@ void DindelHaplotype::extractVariants()
                     // Get the base position in the reference string. This is not necessarily the
                     // same as the eventStart column as the reference may be padded
                     // get positions in haplotype where indel variant may be ambiguously positioned
-                    int refBaseOffsetMinPos = m_pMA->columnIndexToBaseIndex(refRow, minPos);       
-                    size_t hplen_before = m_pMA->countHomopolymer(refRow, minPos - 1, -1) + m_pMA->countHomopolymer(refRow, minPos - 1, 0) - 1;
-                    size_t hplen_at = m_pMA->countHomopolymer(refRow, minPos, -1) + m_pMA->countHomopolymer(refRow, minPos, 0) - 1;
-                    size_t hplen_after = m_pMA->countHomopolymer(refRow, minPos + 1, -1) + m_pMA->countHomopolymer(refRow, minPos + 1, 0) - 1;
+                    int refBaseOffsetMinPos = m_pMA->columnIndexToBaseIndex(refRow, minPos);
+                    
+                    const static int HP_COUNT_TOWARDS_END = -1;
+                    const static int HP_COUNT_TOWARDS_START = 0;
+                    size_t hplen_before = m_pMA->countHomopolymer(refRow, minPos - 1, HP_COUNT_TOWARDS_END) + m_pMA->countHomopolymer(refRow, minPos - 1, HP_COUNT_TOWARDS_START) - 1;
+                    size_t hplen_at = m_pMA->countHomopolymer(refRow, minPos, HP_COUNT_TOWARDS_END) + m_pMA->countHomopolymer(refRow, minPos, HP_COUNT_TOWARDS_START) - 1;
+                    size_t hplen_after = m_pMA->countHomopolymer(refRow, minPos + 1, HP_COUNT_TOWARDS_END) + m_pMA->countHomopolymer(refRow, minPos + 1, HP_COUNT_TOWARDS_START) - 1;
                     size_t hplen = std::max(std::max(hplen_before, hplen_at), hplen_after);
-
-                    if( minPos + 1 < numCols)
-                        hplen += m_pMA->countHomopolymer(refRow, minPos,0)-1;
 
                     while( minPos > 0 && m_pMA->getSymbol(varRow, minPos)== '-' )
                         minPos--;
