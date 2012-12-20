@@ -127,7 +127,6 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
             {
                 // Add the vertex to the extension queue
                 queue.push(BuilderExtensionNode(pVertex, curr.direction));
-                queue.push(BuilderExtensionNode(pVertex, !curr.direction));
             }
         }
         
