@@ -37,7 +37,8 @@ namespace DindelUtil
                                            const GraphCompareParameters& parameters,
                                            std::ostream& baseOut,
                                            std::ostream& variantOut,
-                                           std::ostream& callsOut);
+                                           std::ostream& callsOut,
+                                           DindelReadReferenceAlignmentVector* pReadAlignments);
 
     // Run a naive caller
     DindelReturnCode runNaiveCaller(const std::string& normalString,
@@ -56,6 +57,14 @@ namespace DindelUtil
                                           const SeqItemVector& variantRCMates,
                                           const GraphCompareParameters& parameters,
                                           HapgenAlignment& bestAlignment);
+
+    // Convert a read-haplotype alignment to a reference alignment in BAM format
+    void readHaplotypeAlignmentToBAM(const std::string& readID,
+                                     const std::string& readSequence,
+                                     const std::string& readHaplotypeCigar,
+                                     const int haplotype_reference_position,
+                                     const std::string& haplotypeReferenceCigar);
+
 
     // Convert a SeqItem to a dindel read
     DindelRead convertToDindelRead(const BWTIndexSet* indices, const SeqRecord& record, bool is_forward);

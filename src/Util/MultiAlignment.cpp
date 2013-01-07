@@ -161,12 +161,6 @@ MultiAlignment::MultiAlignment(std::string rootStr, const MAlignDataVector& inDa
             m_alignData[i].padded.append(1,outSym);
         }
     }
-
-    // replace trailing '.'
-    for(size_t i = 0; i < iterVec.size(); ++i)
-    {
-        for(size_t j = m_alignData[i].padded.size(); j > 0 && m_alignData[i].padded[--j] == '.';) m_alignData[i].padded[j]='-';
-    }
 }
 
 // 
@@ -203,6 +197,13 @@ size_t MultiAlignment::getNumColumns() const
 {
     assert(!m_alignData.empty());
     return m_alignData.front().padded.size();
+}
+
+std::string MultiAlignment::getCigar(size_t rowIdx) const
+{
+    assert(rowIdx < m_alignData.size());
+    std::cout << "MA has " << m_alignData.size() << " elements\n";
+    return StdAlnTools::compactCigar(m_alignData[rowIdx].expandedCigar);
 }
 
 //
@@ -503,10 +504,10 @@ MultiAlignment MultiAlignmentTools::alignSequencesLocal(const SeqItemVector& seq
         
         // Initialize the multiple alignment data
         MAlignData maData;
-        maData.position = result.queryStartPosition;
+        maData.position = result.queryStartIndex;
         // If the non-base sequence overhangs the base, clip it
-        if(result.targetStartPosition > 0)
-            maData.str = seq.substr(result.targetStartPosition);
+        if(result.targetStartIndex > 0)
+            maData.str = seq.substr(result.targetStartIndex);
         else
             maData.str = seq;
 

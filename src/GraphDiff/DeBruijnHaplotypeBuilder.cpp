@@ -49,7 +49,7 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
     // We search until we find the first common vertex in each direction
     size_t MIN_TARGET_COUNT = m_parameters.bReferenceMode ? 1 : 2;
     size_t MAX_ITERATIONS = 2000;
-    size_t MAX_SIMULTANEOUS_BRANCHES = 20;
+    size_t MAX_SIMULTANEOUS_BRANCHES = 40;
     size_t MAX_TOTAL_BRANCHES = 50;
 
     // Tracking stats
@@ -91,7 +91,6 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-
             bool acceptExt = count >= m_parameters.minDBGCount;
             if(!acceptExt)
                 continue;
@@ -116,6 +115,7 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
             // Check if this sequence is present in the FM-index of the target
             // If so, it is the join point of the de Bruijn graph and we extend no further.
             size_t targetCount = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.baseIndex);
+
             if(targetCount >= MIN_TARGET_COUNT)
             {
                 if(curr.direction == ED_SENSE)

@@ -23,7 +23,10 @@
 #include "HaplotypeBuilder.h"
 #include "DeBruijnHaplotypeBuilder.h"
 #include "OverlapHaplotypeBuilder.h"
+#include "StringHaplotypeBuilder.h"
 #include "Profiler.h"
+#include "api/SamHeader.h"
+#include "api/BamAlignment.h"
 
 // #define GRAPH_DIFF_DEBUG 1
 
@@ -91,6 +94,11 @@ void GraphCompareStats::print() const
 GraphCompare::GraphCompare(const GraphCompareParameters& params) : m_parameters(params)
 {
     m_stats.clear();
+
+    // Parameter sanity checking
+    assert(m_parameters.maxHaplotypes > 0);
+    assert(m_parameters.kmer > 0);
+    assert(m_parameters.minDiscoveryCount > 0);
 }
 
 //
@@ -98,7 +106,7 @@ GraphCompare::~GraphCompare()
 {
 }
 
-GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
+GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
 {
     PROFILE_FUNC("GraphCompare::process")
     GraphCompareResult result;
@@ -112,11 +120,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     if(w.size() <= m_parameters.kmer)
         return result;
 
-    // Generate a mask that indicates whether a kmer starting at a specific
-    // position has already been used a different read. 
-    // Such kmers are skipped below
-    std::vector<bool> visitedKmers = generateKmerMask(w);
-
     // Process the kmers that have not been previously visited
     // We only try to find variants from one k-mer per read. 
     // This heurestic handles the situation where we process a kmer,
@@ -128,20 +131,19 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
     bool variantAttempted = false;
     for(int j = 0; j < num_kmers; ++j)
     {
-        if(visitedKmers[j])
-            continue; // skip marked kmers
-
         std::string kmer = w.substr(j, m_parameters.kmer);
+        std::string rc_kmer = reverseComplement(kmer);
+
+        // Use the lexicographically lower of the kmer and its pair as the key in the bloom filter
+        std::string& key_kmer = kmer < rc_kmer ? kmer : rc_kmer;
+
+        // Check if this k-mer is marked as used by the bloom filter
+        if(m_parameters.pBloomFilter->test(key_kmer.c_str(), key_kmer.size()))
+            continue;
         
     	// Get the interval for this kmer
         BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, kmer);
-
-        // Check if this interval has been marked by a previous iteration of the loop
-        assert(interval.isValid());
-        if(m_parameters.pBitVector->test(interval.lower))
-            continue;
-
-        BWTInterval rc_interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, reverseComplement(kmer));
+        BWTInterval rc_interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, rc_kmer);
         
         size_t count = interval.size();
         if(rc_interval.isValid())
@@ -149,9 +151,11 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
         bool both_strands = interval.size() > 0 && rc_interval.size() > 0;
         size_t min_base_coverage = 1;
-
         if(count >= m_parameters.minDiscoveryCount && count < m_parameters.maxDiscoveryCount && !variantAttempted && both_strands)
         {
+            // Update the bloom filter to contain this kmer
+            m_parameters.pBloomFilter->add(key_kmer.c_str(), key_kmer.size());
+
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.baseIndex);
             
@@ -171,7 +175,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 markVariantSequenceKmers(build_result.variant_haplotypes[vhi]);
             
             // If we assembled anything, run Dindel on the haplotypes
-            if(build_result.variant_haplotypes.size() > 0 /*&& build_result.base_haplotypes.size() > 0*/)
+            if(build_result.variant_haplotypes.size() > 0)
             {
                 if(m_parameters.verbose > 0)
                     std::cout << "Running dindel\n";
@@ -179,13 +183,16 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
                 std::stringstream baseVCFSS;
                 std::stringstream variantVCFSS;
                 std::stringstream callsVCFSS;
+                DindelReadReferenceAlignmentVector alignments;
+
                 DindelReturnCode drc = DindelUtil::runDindelPairMatePair(kmer,
                                                                          build_result.base_haplotypes,
                                                                          build_result.variant_haplotypes,
                                                                          m_parameters,
                                                                          baseVCFSS,
                                                                          variantVCFSS,
-                                                                         callsVCFSS);
+                                                                         callsVCFSS,
+                                                                         &alignments);
                 
                 //
                 if(m_parameters.verbose > 0)
@@ -204,16 +211,20 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item)
 
                     result.varStrings.insert(result.varStrings.end(), 
                                              build_result.variant_haplotypes.begin(), build_result.variant_haplotypes.end());
+                
+                    result.projectedReadAlignments = alignments;
                 }
             }
         }
-
+        
+        /*
         // Update the bit vector to mark this kmer has been used
         for(int64_t i = interval.lower; i <= interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
 
         for(int64_t i = rc_interval.lower; i <= rc_interval.upper; ++i)
             m_parameters.pBitVector->set(i, true);
+        */
     }
     
     return result;
@@ -226,7 +237,7 @@ void GraphCompare::updateSharedStats(GraphCompareAggregateResults* pSharedStats)
 }
 
 //
-GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*count*/)
+GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*count*/) const
 {
     PROFILE_FUNC("GraphCompare::processVariantKmer")
 
@@ -248,7 +259,13 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 
     // Haplotype QC
     size_t num_assembled = result.variant_haplotypes.size();
-    qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
+    if(num_assembled > m_parameters.maxHaplotypes)
+    {
+        result.variant_haplotypes.clear();
+        return result;
+    }
+
+    //qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
     size_t num_qc = result.variant_haplotypes.size();
 
     // If any assembled haplotypes failed QC, do not try to call variants
@@ -262,7 +279,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 }
 
 //
-void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes)
+void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes) const
 {
     PROFILE_FUNC("GraphCompare::qcVariantHaplotypes")
     // Calculate the maximum k such that every kmer is present in the variant and base BWT
@@ -276,8 +293,10 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
         size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.variantIndex);
         size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.baseIndex);
         
+        printf("HaplotypeQC: %zu %zu\n", max_variant_k, max_base_k);
+
         //
-        if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 31)
+        if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 41)
             temp_haplotypes.push_back(variant_haplotypes[i]);
     }
 
@@ -285,36 +304,24 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
     variant_haplotypes.swap(temp_haplotypes);
 }
 
-// Update the bit vector with the kmers that were assembled into str
-void GraphCompare::markVariantSequenceKmers(const std::string& str)
+// Update the bloom filter with the kmers that were assembled into str
+void GraphCompare::markVariantSequenceKmers(const std::string& str) const
 {
     assert(str.size() >= m_parameters.kmer);
     size_t n = str.size() - m_parameters.kmer + 1;
 
     for(size_t i = 0; i < n; ++i)
     {
-        std::string kseq = str.substr(i, m_parameters.kmer);
-        BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, kseq);
-        if(interval.isValid())
-        {
-            for(int64_t j = interval.lower; j <= interval.upper; ++j)
-                m_parameters.pBitVector->updateCAS(j, false, true);
-        }
-
-        // Mark the reverse complement k-mers too
-        std::string rc_kseq = reverseComplement(kseq);
-        interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, rc_kseq);
-        if(interval.isValid())
-        {
-            for(int64_t j = interval.lower; j <= interval.upper; ++j)
-                m_parameters.pBitVector->updateCAS(j, false, true);
-        }
+        std::string kmer = str.substr(i, m_parameters.kmer);
+        std::string rc_kmer = reverseComplement(kmer);
+        std::string& key_kmer = kmer < rc_kmer ? kmer : rc_kmer;
+        m_parameters.pBloomFilter->add(key_kmer.c_str(), key_kmer.size());
     }
 }
 
 //
 void GraphCompare::buildParallelBaseHaplotypes(const StringVector& variant_haplotypes,
-                                               StringVector& base_haplotypes)
+                                               StringVector& base_haplotypes) const
 {
     size_t haplotype_builder_kmer = m_parameters.kmer;
     // Run haplotype builder on the normal graph
@@ -385,7 +392,7 @@ std::vector<bool> GraphCompare::generateKmerMask(const std::string& str) const
 }
 
 //
-size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices)
+size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices) const
 {
     size_t min_k = 15;
     for(size_t k = 99; k >= min_k; --k)
@@ -503,7 +510,8 @@ void GraphCompare::testKmer(const std::string& kmer)
                                                                  m_parameters,
                                                                  baseVCFSS,
                                                                  variantVCFSS,
-                                                                 callsVCFSS);
+                                                                 callsVCFSS,
+                                                                 NULL);
         
         std::cout << "base:    " << baseVCFSS.str() << "\n";
         std::cout << "variant: " << variantVCFSS.str() << "\n";
@@ -530,10 +538,12 @@ void GraphCompare::showMappingLocations(const std::string& str)
 //
 // GraphCompareAggregateResult
 //
-GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix, const StringVector& samples) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
-                                                                                            m_variantVCFFile(fileprefix + ".variant.vcf","w"),
-                                                                                            m_callsVCFFile(fileprefix + ".calls.vcf","w"),
-                                                                                            m_numVariants(0)
+GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix, 
+                                                           const StringVector& samples,
+                                                           const ReadTable& refTable) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
+                                                                                        m_variantVCFFile(fileprefix + ".variant.vcf","w"),
+                                                                                        m_callsVCFFile(fileprefix + ".calls.vcf","w"),
+                                                                                        m_numVariants(0)
 {
     //
     m_pWriter = createWriter(fileprefix + ".strings.fa");
@@ -543,9 +553,26 @@ GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fi
     m_variantVCFFile.setSamples(samples);
     m_callsVCFFile.setSamples(samples);
 
+    // Initialize VCF
     m_baseVCFFile.outputHeader("stub", "stub");
     m_variantVCFFile.outputHeader("stub", "stub");
     m_callsVCFFile.outputHeader("stub", "stub");
+
+    // Initialize BAM
+    BamTools::SamHeader null_header;
+
+    // Build a RefVector for bamtools
+    BamTools::RefVector ref_vector;
+    for(size_t i = 0; i < refTable.getCount(); ++i)
+    {
+        const SeqItem& ref_item = refTable.getRead(i);
+        BamTools::RefData rd(ref_item.id, ref_item.seq.length());
+        ref_vector.push_back(rd);
+
+        m_refNameToIndexMap.insert(std::make_pair(ref_item.id, i));
+    }
+
+    m_evidenceBamFile.Open(fileprefix + ".evidence.bam", null_header, ref_vector);
 
     // Initialize mutex
     int ret = pthread_mutex_init(&m_mutex, NULL);
@@ -567,6 +594,8 @@ GraphCompareAggregateResults::~GraphCompareAggregateResults()
         std::cerr << "Mutex destruction failed with error " << ret << ", aborting" << std::endl;
         exit(EXIT_FAILURE);
     }
+
+    m_evidenceBamFile.Close();
 }
 
 //
@@ -599,6 +628,46 @@ void GraphCompareAggregateResults::process(const SequenceWorkItem& /*item*/, con
     // Write out the final calls
     for(size_t i = 0; i < result.calledVCFStrings.size(); ++i)
         m_callsVCFFile.getOutputStream() << result.calledVCFStrings[i];
+
+    // Write the read-to-reference alignment to the bam file
+    for(size_t i = 0; i < result.projectedReadAlignments.size(); ++i)
+    {
+        DindelReadReferenceAlignment drra = result.projectedReadAlignments[i];
+        
+        // Set core data
+        BamTools::BamAlignment bam_align;
+        bam_align.Name = drra.read_name;
+
+        // In BAM, we must feed in the reverse complement of the read when we set the IsReverseStrand flag
+        bam_align.QueryBases = drra.is_reference_reverse_strand ? reverseComplement(drra.read_sequence) 
+                                                                : drra.read_sequence;
+        bam_align.Length = drra.read_sequence.size();
+        bam_align.Qualities = "*";
+        bam_align.MapQuality = 255;
+
+        // Find reference index
+        std::map<std::string, size_t>::iterator ref_iter = m_refNameToIndexMap.find(drra.reference_name);
+        assert(ref_iter != m_refNameToIndexMap.end());
+        bam_align.RefID = ref_iter->second;
+        bam_align.Position = drra.reference_start_position - 1;
+
+        // Build CigarOp
+        std::stringstream parser(drra.cigar);
+        int length;
+        char symbol;
+        while(parser >> length >> symbol)
+            bam_align.CigarData.push_back(BamTools::CigarOp(symbol, length));
+
+        // Set flags
+        bam_align.SetIsMapped(true);
+        bam_align.SetIsPrimaryAlignment(true);
+        bam_align.SetIsReverseStrand(drra.is_reference_reverse_strand);
+        bam_align.SetIsProperPair(false);
+        bam_align.SetIsFailedQC(false);
+
+        // write
+        m_evidenceBamFile.SaveAlignment(bam_align);
+    }
 }
 
 //

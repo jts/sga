@@ -53,16 +53,18 @@ struct GlobalAlnParams
 
 struct LocalAlignmentResult
 {
-    int64_t targetStartPosition;
-    int64_t targetEndPosition;
-    int64_t queryStartPosition;
-    int64_t queryEndPosition;
+    // Indices of the start/end base in the aligning
+    // substrings. INCLUSIVE coordinates.
+    int64_t targetStartIndex;
+    int64_t targetEndIndex;
+    int64_t queryStartIndex;
+    int64_t queryEndIndex;
     std::string cigar;
     int score;
 
     friend std::ostream& operator<<(std::ostream& out, const LocalAlignmentResult& a)
     {
-        out << "S:" << a.score << " P:" << a.targetStartPosition << " C:" << a.cigar;
+        out << "S:" << a.score << " [" << a.targetStartIndex << " " << a.targetEndIndex << "] C:" << a.cigar;
         return out;
     }
 };
@@ -70,7 +72,6 @@ typedef std::vector<LocalAlignmentResult> LocalAlignmentResultVector;
 
 namespace StdAlnTools
 {
-
     // Perform a global alignment between target and query using stdaln
     // If bPrint is true, the padded alignment is printed // to stdout.
     // The alignment score is returned.
@@ -79,12 +80,18 @@ namespace StdAlnTools
     // Perform a global alignment between the two strings and return a CIGAR string
     std::string globalAlignmentCigar(const std::string& target, const std::string& query);
 
+    // Perform global alignment and return the cigar and score as out parameters
+    void globalAlignment(const std::string& target, const std::string& query, std::string& cigar, int& score);
+
     // Perform a local alignment
     LocalAlignmentResult localAlignment(const std::string& target, const std::string& query);
 
     // Expand a Cigar string so there is one symbol per code
     std::string expandCigar(const std::string& cigar);
     
+    // Compact an expanded cigar string
+    std::string compactCigar(const std::string& cigar);
+
     // Convert a std::string into the stdAln required packed format.
     // This function allocates memory which the caller must free.
     uint8_t* createPacked(const std::string& s, size_t start = 0, size_t length = std::string::npos);

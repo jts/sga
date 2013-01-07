@@ -35,7 +35,8 @@
 struct SequenceInterval
 {
     // functions
-    
+    SequenceInterval();
+        
     // Check that the interval is valid
     bool isValid() const { return start <= end; }
     
@@ -68,13 +69,27 @@ struct SequenceInterval
 struct SequenceOverlap
 {
     // Functions
-    
+    SequenceOverlap();
+
     // Check that the record is properly formed
     bool isValid() const;
 
+    // Return padded versions of the matching portions of the strings
+    void makePaddedMatches(const std::string& s1, const std::string& s2,
+                           std::string* p1, std::string* p2) const;
+
     // Print the alignment with padding characters
     void printAlignment(const std::string& s1, const std::string& s2) const;
+
+    // Compute the fraction of matched columns that show different bases    
+    double calculateMismatchFraction(const std::string& s1, const std::string& s2) const;
+
+    // Recalculate the edit distance between the strings using this alignment
+    int calculateEditDistance(const std::string& s1, const std::string& s2) const;
     
+    // Recalculate the number of columns in the alignment
+    int calculateTotalColumns() const;
+
     // Return the percent identity which we define to be
     // the number of matching columns divided by the total number of columns
     double getPercentIdentity() const;
@@ -131,7 +146,7 @@ namespace Overlapper
 {
 
 // Compute the highest-scoring overlap between s1 and s2.
-// This is a naive O(M*N) algorithm
+// This is a naive O(M*N) algorithm with a linear gap penalty.
 SequenceOverlap computeOverlap(const std::string& s1, const std::string& s2, const OverlapperParams params = default_params);
 
 // Extend a match between s1 and s2 into a full overlap using banded dynamic programming.
@@ -139,6 +154,12 @@ SequenceOverlap computeOverlap(const std::string& s1, const std::string& s2, con
 // are used to estimate where the overlap begins. The estimated alignment is refined by calculating
 // the overlap with banded dynamic programming
 SequenceOverlap extendMatch(const std::string& s1, const std::string& s2, int start_1, int start_2, int bandwidth);
+
+// Perform an alignment using affine gap penalties
+SequenceOverlap computeOverlapAffine(const std::string& s1, const std::string& s2, const OverlapperParams params = default_params);
+
+// Compact an expanded CIGAR string into a regular cigar string
+std::string compactCigar(const std::string& ecigar);
 
 }
 

@@ -60,6 +60,9 @@ class MultiAlignment
 
         // Return the total number of columns in the MA
         size_t getNumColumns() const;
+        
+        // Return the cigar string for one of the alignments
+        std::string getCigar(size_t rowIdx) const;
 
         // Filter the multiple alignment by removing sequences that are more than max_edit_distance from the root sequence
         void filterByEditDistance(int max_edit_distance);

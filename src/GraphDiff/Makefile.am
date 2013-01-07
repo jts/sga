@@ -15,7 +15,10 @@ libgraphdiff_a_SOURCES = \
         DindelRealignWindow.h DindelRealignWindow.cpp \
         DindelHMM.h DindelHMM.cpp \
         OverlapHaplotypeBuilder.h OverlapHaplotypeBuilder.cpp \
+        StringHaplotypeBuilder.h StringHaplotypeBuilder.cpp \
         DeBruijnHaplotypeBuilder.h DeBruijnHaplotypeBuilder.cpp \
         HapgenUtil.h HapgenUtil.cpp \
         VCFTester.h VCFTester.cpp \
-        GraphCompare.h GraphCompare.cpp 
+        GraphCompare.h GraphCompare.cpp \
+        OverlapExtractorWithCorrection.h OverlapExtractorWithCorrection.cpp \
+        IOverlapExtractor.h

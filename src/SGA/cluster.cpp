@@ -38,9 +38,9 @@ void readLimitKmers(std::set<std::string>* limit_kmers);
                                                                          ClusterReader, ClusterProcess, \
                                                                          ClusterPostProcess>
 
-#define PROCESS_EXTEND_PARALLEL SequenceProcessFramework::processWorkParallel<ClusterVector, ClusterResult, \
-                                                                             ClusterReader, ClusterProcess, \
-                                                                             ClusterPostProcess>
+#define PROCESS_EXTEND_PARALLEL SequenceProcessFramework::processWorkParallelPthread<ClusterVector, ClusterResult, \
+                                                                                     ClusterReader, ClusterProcess, \
+                                                                                     ClusterPostProcess>
 //
 // Getopt
 //

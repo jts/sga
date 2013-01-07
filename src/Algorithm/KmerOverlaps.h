@@ -20,6 +20,9 @@ struct SequenceOverlapPair
     std::string sequence[2];
     bool is_reversed;
     SequenceOverlap overlap;
+
+    static bool sortByOverlapLengthDesc(const SequenceOverlapPair& a, const SequenceOverlapPair& b) { return a.overlap.getOverlapLength() > b.overlap.getOverlapLength(); }
+
 };
 typedef std::vector<SequenceOverlapPair> SequenceOverlapPairVector;
 

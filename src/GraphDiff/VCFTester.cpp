@@ -79,7 +79,8 @@ void VCFTester::process(const VCFFile::VCFEntry& record)
                                                               m_parameters,
                                                               baseSS,
                                                               variantSS,
-                                                              callsSS);
+                                                              callsSS,
+                                                              NULL);
 
     m_returnCodes[code] += 1;
 

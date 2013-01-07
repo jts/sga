@@ -191,5 +191,6 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
             overlap_vector.push_back(op);
         }
     }
+
     return overlap_vector;
 }

@@ -32,6 +32,7 @@ libutil_a_SOURCES = \
 		StdAlnTools.h StdAlnTools.cpp \
         VCFUtil.h VCFUtil.cpp \
         QualityTable.h QualityTable.cpp \
+        BloomFilter.h BloomFilter.cpp \
         Timer.h \
         EncodedString.h \
         DNACodec.h \

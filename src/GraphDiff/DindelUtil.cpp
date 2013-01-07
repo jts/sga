@@ -22,7 +22,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
                                                    const GraphCompareParameters& parameters,
                                                    std::ostream& baseOut,
                                                    std::ostream& variantOut,
-                                                   std::ostream& callsOut)
+                                                   std::ostream& callsOut,
+                                                   DindelReadReferenceAlignmentVector* pReadAlignments)
 {
     PROFILE_FUNC("runDindelPairMatePair")
 
@@ -34,7 +35,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // First, extract the reads from the normal and variant data sets that match each haplotype
     //
     assert(inHaplotypes.size() > 0);
-    size_t MAX_READS = 100000;
 
     // Get canidate alignments for the input haplotypes
     HapgenAlignmentVector candidateAlignments;
@@ -55,7 +55,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
 
         candidateAlignments.insert(candidateAlignments.end(), thisCandidateAlignments.begin(), thisCandidateAlignments.end());
     }
-    
+   
     // Remove duplicate or bad alignment pairs
     HapgenUtil::coalesceAlignments(candidateAlignments);
     
@@ -68,8 +68,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     int FLANKING_SIZE = 0;
     if (parameters.dindelRealignParameters.realignMatePairs)
         FLANKING_SIZE = 1000;
-    else
-        FLANKING_SIZE = 0;
     StringVector flankingHaplotypes;
 
     // This vector contains the internal portion of the haplotypes, without the flanking sequence
@@ -77,7 +75,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     StringVector candidateHaplotypes;
     for(size_t i = 0; i < candidateAlignments.size(); ++i)
     {
-        // FIXME. Maybe should use only inHaplotypes[i]???
         HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i],
                                            parameters.pRefTable,
                                            FLANKING_SIZE,
@@ -106,14 +103,14 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     {
         // Reads on the same strand as the haplotype
         extractOK = HapgenUtil::extractHaplotypeReads(candidateHaplotypes, parameters.baseIndex, extractionKmer, 
-                                                      false, MAX_READS, &normalReads, NULL);
+                                                      false, parameters.maxReads, parameters.maxExtractionIntervalSize, &normalReads, NULL);
 
         if(!extractOK)
             return DRC_OVER_DEPTH;
 
         // Reads on the reverse strand
         extractOK = HapgenUtil::extractHaplotypeReads(candidateHaplotypes, parameters.baseIndex, extractionKmer, 
-                                                      true, MAX_READS, &normalRCReads, NULL);
+                                                      true, parameters.maxReads, parameters.maxExtractionIntervalSize, &normalRCReads, NULL);
 
         if(!extractOK)
             return DRC_OVER_DEPTH;
@@ -124,13 +121,13 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     SeqRecordVector variantRCReads;
 
     extractOK = HapgenUtil::extractHaplotypeReads(candidateHaplotypes, parameters.variantIndex, extractionKmer, 
-                                                  false, MAX_READS, &variantReads, NULL);
+                                                  false, parameters.maxReads, parameters.maxExtractionIntervalSize, &variantReads, NULL);
 
     if(!extractOK)
         return DRC_OVER_DEPTH;
 
     extractOK = HapgenUtil::extractHaplotypeReads(candidateHaplotypes, parameters.variantIndex, extractionKmer, 
-                                                  true, MAX_READS, &variantRCReads, NULL);
+                                                  true, parameters.maxReads, parameters.maxExtractionIntervalSize, &variantRCReads, NULL);
 
     if(!extractOK)
         return DRC_OVER_DEPTH;
@@ -139,14 +136,14 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     size_t variant_reads = variantReads.size() + variantRCReads.size();
     size_t total_reads = normal_reads + variant_reads;
 
-    if(total_reads > MAX_READS)
+    if(total_reads > parameters.maxReads)
         return DRC_OVER_DEPTH;
 
     if (total_reads == 0)
         return DRC_UNDER_DEPTH;
 
     // Generate the input haplotypes for dindel
-    // We need at least 2 haplotypes
+    // We need at least 2 haplotypes (one is the reference)
     size_t totFlankingHaplotypes = flankingHaplotypes.size();
 
     if(totFlankingHaplotypes < 2)
@@ -156,9 +153,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     if(flankingHaplotypes[0].size() == 0)
         return DRC_NO_ALIGNMENT;
 
-
     // Make Dindel referenceMappings
-    // std::vector< std::vector<DindelReferenceMapping> > dindelRefMappings(flankingHaplotypes.size());
     StringVector dindelHaplotypes;
     std::set<DindelReferenceMapping> refMappings;
 
@@ -168,7 +163,9 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         std::string upstream, defined, downstream;
         std::string refName = parameters.pRefTable->getRead(candidateAlignments[i].referenceID).id;
 
-        HapgenUtil::extractReferenceSubstrings(candidateAlignments[i],parameters.pRefTable, FLANKING_SIZE, upstream, defined, downstream);
+        HapgenUtil::extractReferenceSubstrings(candidateAlignments[i],parameters.pRefTable, 
+                                               FLANKING_SIZE, upstream, defined, downstream);
+
         std::string refSeq = upstream + defined + downstream;
      
         int refStart = candidateAlignments[i].position - int(upstream.size()) + 1;
@@ -176,8 +173,12 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         // Here the score is used as an estimate of how unique "defined" is in the reference sequence.
         // "defined" is not the reference sequence but a candidate haplotype.
         // It is conservative because the flanking sequence is not used in this estimation.
-        // DindelReferenceMapping rm(refName, refSeq, refStart, double(candidateAlignments[i].score), candidateAlignments[i].isRC);
-    	DindelReferenceMapping rm(refName, refSeq, refStart, candidateAlignments[i].score+2*FLANKING_SIZE, candidateAlignments[i].isRC);
+    	DindelReferenceMapping rm(refName, 
+                                  refSeq, 
+                                  refStart, 
+                                  candidateAlignments[i].score+2*FLANKING_SIZE, 
+                                  candidateAlignments[i].isRC);
+
         std::set<DindelReferenceMapping>::iterator rmit = refMappings.find(rm);
         if(rmit == refMappings.end())
         {
@@ -193,7 +194,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     // RESET MAPPING SCORES
     for(std::set<DindelReferenceMapping>::iterator it = refMappings.begin(); it != refMappings.end(); it++) 
         it->referenceAlignmentScore = 1000;
-     
+    
     /*
     std::cout << "REFERENCE MAPPINGS: \n";
     int c = 0;
@@ -261,7 +262,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         try
         {
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
-            dRealignWindow.run("hmm", vcfCollections[i], id, pThisResult, pPreviousResult);
+            dRealignWindow.run("hmm", vcfCollections[i], pReadAlignments, id, pThisResult, pPreviousResult);
         }
         catch(std::string e)
         {
@@ -282,15 +283,16 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             curr_out << vcfCollections[i].records[j] << "\n";
     }
 
-    /*
     // Copy raw VCFRecords to stdout
-    for(size_t i = 0; i <= 1; ++i)
+    if(parameters.verbose > 0)
     {
-        std::cout << ((i==0)?"BASE:\t" : "VARI:\t");
-        for(size_t j = 0; j < vcfCollections[i].records.size(); ++j)
-            std::cout << vcfCollections[i].records[j] << "\n";
+        for(size_t i = 0; i <= 1; ++i)
+        {
+            std::cout << ((i==0)?"BASE:\t" : "VARI:\t");
+            for(size_t j = 0; j < vcfCollections[i].records.size(); ++j)
+                std::cout << vcfCollections[i].records[j] << "\n";
+        }
     }
-     */
     
     // Make comparative calls
     size_t VARIANT_IDX = 1;
@@ -350,7 +352,6 @@ void DindelUtil::doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> 
     {
         std::cout << "ALIGNING EVERYTHING AGAINST HAPLOTYPE " << h << "\n";
         MultipleAlignment ma;
-        std::vector< MAlignData > maVector;
         const std::string rootSequence = haplotypes[h];
         ma.addBaseSequence("root", rootSequence, "");
 
@@ -436,7 +437,7 @@ DindelReturnCode DindelUtil::computeBestAlignment(const StringVector& inHaplotyp
 
         for(size_t j = 0; j < localAlignments.size(); ++j)
         {
-            double max_score = localAlignments[j].queryEndPosition - localAlignments[j].queryStartPosition;
+            double max_score = localAlignments[j].queryEndIndex - localAlignments[j].queryStartIndex + 1;
             double frac = (double)localAlignments[j].score / max_score;
             //printf("Score: %d frac: %lf\n", localAlignments[j].score, frac);
             sum += frac;

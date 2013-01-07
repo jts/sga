@@ -37,14 +37,22 @@ int StdAlnTools::globalAlignment(const std::string& target, const std::string& q
 // Perform a global alignment between the given strings and return the CIGAR string
 std::string StdAlnTools::globalAlignmentCigar(const std::string& target, const std::string& query)
 {
-    path_t* path;
-    int path_len = 0;
+    std::string cigar;
     int score = 0;
-    createGlobalAlignmentPath(target, query, &path, &path_len, &score);
-    std::string cigar = makeCigar(path, path_len);
-    free(path);
+    globalAlignment(target, query, cigar, score);
     return cigar;
 }
+
+// Perform a global alignment between the given strings and return the CIGAR string and score
+void StdAlnTools::globalAlignment(const std::string& target, const std::string& query, std::string& cigar, int& score)
+{
+    path_t* path;
+    int path_len = 0;
+    createGlobalAlignmentPath(target, query, &path, &path_len, &score);
+    cigar = makeCigar(path, path_len);
+    free(path);
+}
+
 
 // Perform a local alignment
 LocalAlignmentResult StdAlnTools::localAlignment(const std::string& target, const std::string& query)
@@ -70,31 +78,29 @@ LocalAlignmentResult StdAlnTools::localAlignment(const std::string& target, cons
     result.cigar = makeCigar(path, path_len);
 
     // Calculate the aligned coordinates
-    // Same code as bwape.c by Heng Li
+    // This returns inclusive coordinates of the substrings aligned
     path_t* p = path + path_len - 1;
-    result.targetStartPosition = (p->i ? p->i : 1) - 1;
-    result.targetEndPosition = path->i;
-    result.queryStartPosition = (p->j ? p->j : 1) - 1;
-    result.queryEndPosition = path->j;
+    result.targetStartIndex = (p->i ? p->i : 1) - 1;
+    result.targetEndIndex = path->i - 1;
+    result.queryStartIndex = (p->j ? p->j : 1) - 1;
+    result.queryEndIndex = path->j - 1;
     
     // Update cigar
-    if(result.queryStartPosition > 0)
+    if(result.queryStartIndex > 0)
     {
         std::stringstream csa;
-        csa << result.queryStartPosition << "S";
+        csa << result.queryStartIndex << "S";
         result.cigar.insert(0, csa.str());
     }
 
-    if(result.queryEndPosition < (int64_t)query.length())
+    int query_left_overhang = query.length() - (result.queryEndIndex + 1);
+
+    if(query_left_overhang > 0)
     {
         std::stringstream csa;
-        csa << query.length() - result.queryEndPosition << "S";
+        csa << query_left_overhang << "S";
         result.cigar.append(csa.str());
     }
-
-    //std::string targetSS = target.substr(result.targetStartPosition, result.targetEndPosition - result.targetStartPosition);
-    //std::string querySS = query.substr(result.queryStartPosition, result.queryEndPosition - result.queryStartPosition);
-    //globalAlignment(targetSS, querySS, true);
 
     // Clean up
     delete [] pQueryT;
@@ -120,6 +126,41 @@ std::string StdAlnTools::expandCigar(const std::string& cigar)
     }
     return expanded;
 }
+
+// Compact an expanded CIGAR string into a regular cigar string
+std::string StdAlnTools::compactCigar(const std::string& expanded_cigar)
+{
+    if(expanded_cigar.empty())
+        return "";
+
+    std::stringstream parser(expanded_cigar);
+    std::stringstream writer;
+
+    char prev_code = '\0';
+    char curr_code;
+    int curr_length = 0;
+    while(parser >> curr_code)
+    {
+        if(curr_code == prev_code)
+        {
+            curr_length += 1;
+        }
+        else
+        {
+            // write the previous cigar character
+            if(prev_code != '\0')
+                writer << curr_length << prev_code;
+            prev_code = curr_code;
+            curr_length = 1;
+        }
+    }
+
+    // Write the last symbol
+    writer << curr_length << prev_code;
+
+    return writer.str();
+}
+
 
 // Remove padding characters from str
 std::string StdAlnTools::unpad(const std::string& str)

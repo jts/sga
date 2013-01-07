@@ -28,8 +28,6 @@ void VCFRecord::addComment(const std::string& key, const std::string& value)
     std::string out = key;
     out.append(1, '=');
     out.append(value);
-
-
     comments.push_back(out);
 }
 

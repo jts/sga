@@ -13,7 +13,7 @@
 #include <fstream>
 #include "Util.h"
 #include "HashMap.h"
-#include "MultiAlignment.h"
+#include "multiple_alignment.h"
 #include "VCFUtil.h"
 #include <iomanip>
 #include <list>
@@ -135,10 +135,29 @@ std::string globalHaplotypeAlignment(const std::string& h1, const std::string& h
 
 // Align two haplotypes against each other semi-globally and adjust
 // cigar strings to give an end-to-end alignment
-std::string semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2);
+SequenceOverlap semiGlobalHaplotypeAlignment(const std::string& h1, const std::string& h2);
 
 // Parse a colon-separated string into a chromosome/start/end triple
 void parseRegionString(const std::string & region, std::string & chrom, int & start, int & end);
+
+//
+// Minimal information describing a read's alignment on the reference
+// These alignments are calculated indirectly by projecting the alignment via a called haplotype.
+//
+class DindelReadReferenceAlignment
+{
+    public:
+        std::string read_name;
+        std::string read_sequence;
+        std::string reference_name;
+        int reference_start_position;
+        std::string cigar;
+        bool is_reference_reverse_strand;
+
+        size_t dindel_ref_index;
+        size_t dindel_read_index;
+};
+typedef std::vector<DindelReadReferenceAlignment> DindelReadReferenceAlignmentVector;
 
 //
 // VariantPriors - Prior probability values for various variant types
@@ -164,19 +183,14 @@ class DindelRead
 
         // Functions
 
-        const std::string  getSequence() const { return m_seqRecord.seq.toString(); }
+        const std::string getSequence() const { return m_seqRecord.seq.toString(); }
+        const std::string& getQualString() const { return m_seqRecord.qual; }
         const std::vector<double> getBaseQuals() const;
         const std::string getID() const { return m_seqRecord.id; }
         double getMappingQual() const { return m_mappingQual; } //return double(bam->core.qual); }
         double getLogProbNotMapping() const { return m_mappingQual*0.23026; }
-        bool isForward() const { return m_isForward; } //FIXME
+        bool isForward() const { return m_isForward; }
         bool mateIsForward() const { assert(false); return false; } //FIXME
-        
-        //BAM bool BAMCigarHasIndel() const;
-        //BAM int getBamStartPos() const { return bam->core.pos; }
-        //BAM int getBamStartPosAdjusted() const;
-        //BAM int getBAMEnd() const { return bam->core.n_cigar? bam_calend(&bam->core, bam1_cigar(bam)) : bam->core.pos + 1; }
-        //BAM int getBAMEndAdjusted() const;
         
         bool isUnmapped() const {  return false; } //FIXME
         bool mateIsUnmapped() const { assert(false); return false; } //FIXME
@@ -200,10 +214,9 @@ class DindelRead
         void setupHash();
 
         // Data
-        //BAM const bam1_t *bam;
-        //BAM const DindelBAM *m_pDindelBAM;
         double m_mappingQual;
-        bool m_rcRead, m_isForward, m_setupHash; // reverse-complement the read. Intended for unmapped reads. Determined using the status of the mate.
+        // reverse-complement the read. Intended for unmapped reads. Determined using the status of the mate.
+        bool m_rcRead, m_isForward, m_setupHash; 
         SampleName m_sampleName;
         SeqRecord m_seqRecord;
         
@@ -338,17 +351,20 @@ class DindelSequenceHash
         std::list<int> emptyList;
 };
 
-// TODO: Integrate with SGA data type?
 // DindelReferenceMapping
 class DindelReferenceMapping
 {
 public:
     DindelReferenceMapping() { refName = ""; refSeq = ""; refStart = 0; referenceAlignmentScore = 0; isRC = false; probMapCorrect = 0.0; };
-    DindelReferenceMapping(const std::string & _refName, const std::string & _refSeq, int _refStart, int _referenceAlignmentScore, bool _isRC) : refName(_refName),
-                                                                                                                                                refSeq(_refSeq),
-                                                                                                                                                refStart(_refStart),
-                                                                                                                                                referenceAlignmentScore(_referenceAlignmentScore),
-                                                                                                                                                isRC(_isRC){};
+    DindelReferenceMapping(const std::string & _refName, 
+                           const std::string & _refSeq, 
+                           int _refStart, 
+                           int _referenceAlignmentScore, 
+                           bool _isRC) : refName(_refName),
+                                         refSeq(_refSeq),
+                                         refStart(_refStart),
+                                         referenceAlignmentScore(_referenceAlignmentScore),
+                                         isRC(_isRC){};
     std::string refName, refSeq;
     int refStart;
     mutable int referenceAlignmentScore;
@@ -361,8 +377,6 @@ public:
         if (a.refName != b.refName) return a.refName<b.refName;
         else if (a.refStart != b.refStart) return a.refStart<b.refStart;
         else return a.refSeq.size()<b.refSeq.size();
-        //else return a.referenceAlignmentScore<b.referenceAlignmentScore;
-        //else return a.referenceAlignmentScore<b.referenceAlignmentScore;
     }
 
 };
@@ -376,14 +390,11 @@ class DindelHaplotype
     public:
 
         // Constructors
-        // a DindelHaplotype must be constructed starting from the reference haplotype.
-        // Differences with the reference can be added by calling addVariant
-        // DindelHaplotype(const std::string & refSeq, int refSeqStart, bool isReference);
-        //DindelHaplotype(const std::string & refName, const std::string & refSeq, int refSeqStart, const MultiAlignment & ma, size_t varRow, size_t refRow);
         DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping);
         DindelHaplotype(const DindelHaplotype & haplotype, int copyOptions);
         DindelHaplotype(const DindelHaplotype & haplotype);
         ~DindelHaplotype();
+
         // Functions
         bool addVariant(const DindelVariant & var);
         const std::vector<DindelVariant> & getVariants() const { return m_variants; }
@@ -391,7 +402,6 @@ class DindelHaplotype
         bool isReference() const { return m_isReference; } 
         void write(std::ostream & out) const;
         int getHomopolymerLength(int b) const { return m_hplen[b]; }
-        
         
         int getHomopolymerLengthRefPos(int refPos) const 
         { 
@@ -409,9 +419,24 @@ class DindelHaplotype
         bool hasVariant(const DindelVariant & variant) const ;
         int getClosestDistance(const DindelVariant & variant, int hapPos1, int hapPos2) const;
         int getClosestDistance(const DindelVariant& variant, int hapPosStartRead, int hapPosEndRead, const DindelRead & read) const;
+
+        const DindelReferenceMapping getReferenceMapping() const { return m_refMapping; }
+
+        // Compute the alignment of the reference sequence onto the haplotype sequence
+        // This returns the haplotype as the first element of SequenceOverlap.match
+        SequenceOverlap getReferenceToHaplotypeAlignment() const { return m_pMA->getAlignment(1, 0); }
         
+        // As above, but with the reference sequence as the first element
+        SequenceOverlap getHaplotypeToReferenceAlignment() const { return m_pMA->getAlignment(0, 1); }
+
     private:
+
+        // 
         void copy(const DindelHaplotype & haplotype, int copyOptions);
+
+        // Do not allow default constructor
+        DindelHaplotype();
+
         // Functions
 
         // initializes haplotype from reference sequence
@@ -424,21 +449,15 @@ class DindelHaplotype
         std::string m_seq;
         std::vector<int> m_hplen; // gives the homopolymer run length for any base in the haplotype sequence going left and right.
         std::vector<int> m_refPos; // position of haplotype base on reference.
+        int m_firstAlignedBase;
 
         // list of VCF4 style variants contained in haplotype
         std::vector<DindelVariant> m_variants;
         HashMap<std::string, std::pair<int, int> > m_variant_to_pos;
-
   
         bool m_isReference;
-    
-        // constants for m_refPos
-        
-        MultiAlignment *m_pMA;
-        bool m_deleteMA;
+        MultipleAlignment *m_pMA;
         DindelReferenceMapping m_refMapping;
-
-
 };
 
 
@@ -453,7 +472,7 @@ public:
     const std::string & getSequence() const { return m_seq; }
     const std::vector<DindelVariant> & getVariants(int refIdx) const { return m_haplotypes[refIdx].getVariants(); }
     int getNumReferenceMappings() const { return int(m_referenceMappings.size()); }
-    const DindelHaplotype & getSingleMappingHaplotype(int refIdx) const { return m_haplotypes[refIdx]; }
+    const DindelHaplotype & getSingleMappingHaplotype(int refIdx) const { assert(refIdx < (int)m_referenceMappings.size()); return m_haplotypes[refIdx]; }
     int getHomopolymerLength(int b) const { return getSingleMappingHaplotype(0).getHomopolymerLength(b); }
     int getHomopolymerLength(const std::string & chrom, int refPos) const;
     int length() const { return getSingleMappingHaplotype(0).length(); }
@@ -484,46 +503,34 @@ class DindelWindow
 {
     public:
         
-        
         // Create window from a set of haplotypes and a reference sequence.
-        // Uses SGA MultiAlignment to annotate the variations in the haplotypes with respect to the reference sequence.
+        // Uses MultipleAlignment to annotate the variations in the haplotypes with respect to the reference sequence.
         DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::vector<DindelReferenceMapping>  & referenceMappings);
         DindelWindow(const DindelWindow & window);
         ~DindelWindow();
 
-        // Functions
-  
         const std::vector<DindelMultiHaplotype> & getHaplotypes() const { return m_haplotypes; }
         const std::vector< DindelReferenceMapping > & getReferenceMappings() const { return m_referenceMappings; }
         void addVariant(const DindelVariant& variant, bool addToAll);
         
     private:
-    
+        
+        //
         void initHaplotypes(const std::vector<std::string> & haplotypeSequences, const std::vector<DindelReferenceMapping> & referenceMappings);
         void doMultipleHaplotypeAlignment();
         void copy(const DindelWindow & window);
 
         // Data
         
-        // candidate haplotypes
-        std::vector<DindelMultiHaplotype> m_haplotypes;
-      
-
-        // links variant to haplotype
-        // std::vector<std::vector<int> > m_variantToHaplotype;
-
-        // keeps track of haplotypes.
-        std::map<std::string, int> m_hashAltHaps;
-
-        //Fasta *m_pFasta; // pointer to Fasta class for getting the reference sequence
-        
-        std::vector< DindelReferenceMapping > m_referenceMappings;
-
         //parameters
         DindelWindowCandHapAlgorithm m_candHapAlgorithm;
         
-        MultiAlignment *m_pHaplotype_ma;
-        bool m_deleteMA;
+        // candidate haplotypes
+        std::vector<DindelMultiHaplotype> m_haplotypes;
+        std::map<std::string, int> m_hashAltHaps;
+        std::vector< DindelReferenceMapping > m_referenceMappings;
+
+        MultipleAlignment *m_pHaplotype_ma;
 };
 
 //
@@ -605,7 +612,9 @@ class DindelRealignWindowResult
         class HaplotypeProperties
         {
         public:
-            HaplotypeProperties(double _logMappingProb, double _haplotypeQual, double _freq, int _iteration) : logMappingProb(_logMappingProb), qual(_haplotypeQual), freq(_freq), iteration(_iteration) {};
+            HaplotypeProperties(double _logMappingProb, double _haplotypeQual, 
+                                double _freq, int _iteration) : logMappingProb(_logMappingProb), qual(_haplotypeQual), 
+                                                                freq(_freq), iteration(_iteration) {};
             double logMappingProb;
             double qual;
             double freq;
@@ -617,11 +626,16 @@ class DindelRealignWindowResult
             public:
 
                 // Functions
-                Inference() :  strandBias(0.0),numReadsForward(0), numReadsReverse(0), numReadsForwardZeroMismatch(0), numReadsReverseZeroMismatch(0), numUnmapped(0), numLibraries(0), numReadNames(0), numRealignedReads(0), numCalledHaplotypes(0) {};
+                Inference() :  strandBias(0.0), numReadsForward(0), numReadsReverse(0), 
+                               numReadsForwardZeroMismatch(0), numReadsReverseZeroMismatch(0), 
+                               numUnmapped(0), numLibraries(0), numReadNames(0), 
+                               numRealignedReads(0), numCalledHaplotypes(0) {};
+                
+                // Output variants in VCF format and read alignments
                 void outputAsVCF(const DindelVariant & var, 
                                  const DindelRealignWindowResult & result, 
                                  VCFCollection& out) const;
-
+                
                 static double computeStrandBias(int numForward, int numReverse);
                 
                 // these functions will take care of scaling and initialization
@@ -669,7 +683,6 @@ class DindelRealignWindowResult
         };
 
         // Typedefs
-
         typedef std::map<DindelVariant, Inference> VarToInference;
         typedef std::map<DindelVariant, GenotypeCall> VarToGenotypeCall;
         typedef HashMap<std::string, VarToGenotypeCall> SampleToGenotypes;
@@ -694,8 +707,6 @@ class DindelRealignWindowResult
         SampleToGenotypes sampleToGenotypes;
         
         // haplotype results
-
-
         typedef HashMap<int, Inference> HapIdxToInference;
         HapIdxToInference hapIdxToInference;
         std::vector<int> addOrder;
@@ -885,6 +896,8 @@ class DindelRealignParameters
 // pOverlapper and dindelReads should correspond 1-1. It is assumed that pOverlapper gives back indices into the dindelReads array.
 class DindelRealignWindow
 {
+    friend class DindelRealignWindowResult;
+
     public:
         
         // Constructors
@@ -896,6 +909,7 @@ class DindelRealignWindow
         void run(const std::string & algorithm, std::ostream& out);
         void run(const std::string & algorithm,
                  VCFCollection& out,
+                 DindelReadReferenceAlignmentVector* pOutAlignments, 
                  const std::string id,
                  DindelRealignWindowResult * pThisResult,
                  const DindelRealignWindowResult * pPreviousResult);
@@ -913,7 +927,12 @@ class DindelRealignWindow
         DindelWindow m_dindelWindow;
         std::vector<DindelRead> *m_pDindelReads;
         DindelRealignParameters realignParameters;
-        std::vector<int> m_readMapsToReference;
+
+        // A set of variant indices that assigned to a called haplotype containing a variant
+        std::set<size_t> m_variantReadIndices;
+
+        DindelReadReferenceAlignmentVector m_readReferenceAlignments;
+
         std::string m_outputID; // to be output in VCF
 
         // HAPLOTYPE ALIGNMENT BUSINESS
@@ -937,7 +956,8 @@ class DindelRealignWindow
                                            size_t firstHap, 
                                            size_t lastHap, 
                                            const std::vector<double> & lpCorrect, 
-                                           const std::vector<double> & lpError);
+                                           const std::vector<double> & lpError,
+                                           HashMap<std::string, ReadHaplotypeAlignment>& hmm_alignment_cache);
 
         // HAPLOTYPE FREQUENCY ESTIMATION BUSINESS
 
@@ -994,6 +1014,13 @@ class DindelRealignWindow
                                 const std::vector< HashMap<int, double> > & addReads,
                                 double minLogLikAlignToAlt,
                                 int numReads);
+
+        // Project the alignment of a single read from its position on a haplotype to the reference genome.
+        void projectReadAlignmentToReference(const std::vector<DindelMultiHaplotype> & haplotypes, 
+                                             int readIdx, int hapIdx, int refIdx);
+
+        // Compute the mapping quality of each read onto the reference
+        void computeProjectedMappingQuality();
 
         void setAddReadsMatePairs(int type,
                          int h,
@@ -1085,10 +1112,13 @@ class DindelRealignWindow
                                                                                         const DindelRealignWindowResult * pPreviousResult,
                                                                                         bool print);
 
+        //
+        std::vector< std::vector<double> > fillReadHaplotypeLikelihoods() const;
+
         double getHaplotypePrior(const DindelHaplotype & h1, const DindelHaplotype & h2) const;
 
         // this is a function that hides how the read information is actually stored in the various ReadTables
-        const DindelRead & getRead(size_t readIndex) const { return (*m_pDindelReads)[readIndex]; }
+        const DindelRead & getRead(size_t readIndex) const { return m_pDindelReads->at(readIndex); }
 
         // haplotype-read likelihoods
         
@@ -1099,15 +1129,16 @@ class DindelRealignWindow
         void computeReadHaplotypeAlignmentsUsingHMM(size_t firstHap, size_t lastHap);
         void addDiploidGenotypes(DindelRealignWindowResult & result, bool useEstimatedHaplotypeFrequencies);
         void addDiploidGenotypes(DindelRealignWindowResult& result, const std::vector<int> & allowedHaplotype, const std::vector< std::vector<double> > & hrLik);
-        // result
-        DindelRealignWindowResult m_result;
-
+        
         // algorithms
-
-        // initial try: ungapped alignment of read to candidate haplotype, doesn't use base qualities
         void algorithm_hmm(VCFCollection& out,
+                           DindelReadReferenceAlignmentVector* pOutAlignments,
                            DindelRealignWindowResult * pThisResult,
                            const DindelRealignWindowResult * pPreviousResult);
+
+        // result
+        DindelRealignWindowResult m_result;
+    
 };
 
 //

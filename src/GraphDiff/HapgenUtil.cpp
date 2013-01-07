@@ -116,14 +116,13 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
         std::sort(candidates.begin(), candidates.end(), CandidateKmerAlignment::sortByStart);
         CandidateVector::iterator new_end = std::unique(candidates.begin(), candidates.end(), CandidateKmerAlignment::equalByStart);
         candidates.resize(new_end - candidates.begin());
-
+        
         for(size_t j = 0; j < candidates.size(); ++j)
         {
             // Extract window around reference
             size_t window_size = 200;
             int ref_start = candidates[j].target_extrapolated_start - window_size;
             int ref_end = candidates[j].target_extrapolated_end + window_size;
-
             const DNAString& ref_sequence = pReferenceTable->getRead(candidates[j].target_sequence_id).seq;
             if(ref_start < 0)
                 ref_start = 0;
@@ -134,19 +133,17 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             std::string ref_substring = ref_sequence.substr(ref_start, ref_end - ref_start);
 
             // Align haplotype to the reference
-            SequenceOverlap overlap = Overlapper::computeOverlap(query, ref_substring);
+            SequenceOverlap overlap = alignHaplotypeToReference(ref_substring, query);
+            if(overlap.score < 0 || !overlap.isValid())
+                continue;
 
             // Skip terrible alignments
-            double percent_aligned = (double)overlap.getOverlapLength() / query.size();
-            if(percent_aligned < 0.95f)
+            double mismatch_rate = overlap.calculateMismatchFraction(ref_substring, query);
+            if(mismatch_rate > 0.05f || overlap.total_columns < 50)
                 continue;
-            /*
-            // Skip alignments that are not full-length matches of the haplotype
-            if(overlap.match[0].start != 0 || overlap.match[0].end != (int)haplotype.size() - 1)
-                continue;
-            */
-            int alignment_start = ref_start + overlap.match[1].start;
-            int alignment_end = ref_start + overlap.match[1].end; // inclusive
+            
+            int alignment_start = ref_start + overlap.match[0].start;
+            int alignment_end = ref_start + overlap.match[0].end; // inclusive
             int alignment_length = alignment_end - alignment_start + 1;
             
             // Crude count of the number of distinct variation events
@@ -185,6 +182,14 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
     }
 }
 
+SequenceOverlap HapgenUtil::alignHaplotypeToReference(const std::string& reference,
+                                                      const std::string& haplotype)
+{
+    SequenceOverlap overlap = Overlapper::computeOverlapAffine(reference, haplotype);
+    return overlap;
+}
+
+
 // Coalesce a set of alignments into distinct locations
 void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
 {
@@ -207,7 +212,7 @@ void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
     for(size_t i = alignments.size()-1; i-- > 0;)
     {
         // Check this alignment against the last alignment added to the output set
-        const HapgenAlignment& prevAlign = outAlignments.back();
+        HapgenAlignment& prevAlign = outAlignments.back();
         const HapgenAlignment& currAlign = alignments[i];
 
         int s1 = prevAlign.position;
@@ -218,7 +223,15 @@ void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
         bool intersecting = Interval::isIntersecting(s1, e1, s2, e2);
 
         if(prevAlign.referenceID != currAlign.referenceID || !intersecting)
+        {
             outAlignments.push_back(currAlign);
+        }
+        else
+        {
+            // merge the intersecting alignment into a window that covers both
+            prevAlign.position = std::min(s1, s2);
+            prevAlign.length = std::max(e1, e2) - prevAlign.position;
+        }
     }
 
     alignments = outAlignments;
@@ -302,12 +315,14 @@ bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln,
     outHaplotypes.push_back(referenceHaplotype);
 
     // Check that all sequences match the reference haplotype properly
+    /*
     bool checkOk = checkAlignmentsAreConsistent(referenceFlanking, inHaplotypes);
     if(!checkOk)
     {
         outHaplotypes.clear();
         return false;
     }
+    */
 
     // Make the flanking sequences for each haplotype
     for(size_t i = 0; i < inHaplotypes.size(); ++i)
@@ -338,12 +353,12 @@ bool HapgenUtil::checkAlignmentsAreConsistent(const std::string& refString, cons
     size_t i = 0;
     for(size_t j = 1; j < alignments.size(); ++j)
     {
-        if(alignments[i].targetStartPosition != alignments[j].targetStartPosition ||
-           alignments[j].targetEndPosition != alignments[j].targetEndPosition)
+        if(alignments[i].targetStartIndex != alignments[j].targetStartIndex ||
+           alignments[j].targetEndIndex != alignments[j].targetEndIndex)
         {
-            //std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
-            //std::cerr << "A[" << i << "]: " << alignments[i] << "\n";
-            ///std::cerr << "A[" << j << "]: " << alignments[j] << "\n";
+            std::cerr << "Warning: inconsistent alignments found for haplotype realignment\n";
+            std::cerr << "A[" << i << "]: " << alignments[i] << "\n";
+            std::cerr << "A[" << j << "]: " << alignments[j] << "\n";
             return false;
         }
     }
@@ -359,12 +374,11 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
                                        int k,
                                        bool doReverse,
                                        size_t maxReads,
+                                       int64_t maxIntervalSize,
                                        SeqRecordVector* pOutReads, 
                                        SeqRecordVector* pOutMates)
 {
-    // Skip repetitive kmers with more than this many occurrences
-    int64_t SKIP_INTERVAL_SIZE = 500;
-
+    PROFILE_FUNC("HapgenUtil::extractHaplotypeReads")
     // Extract the set of reads that have at least one kmer shared with these haplotypes
     // This is a bit of a lengthy procedure with a few steps:
     // 1) extract all the kmers in the haplotypes
@@ -394,9 +408,7 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
     for(std::set<std::string>::const_iterator iter = kmerSet.begin(); iter != kmerSet.end(); ++iter)
     {
         BWTInterval interval = BWTAlgorithms::findInterval(indices, *iter);
-        if(interval.size() > (int64_t)maxReads)
-            return false;
-        if(interval.size() < SKIP_INTERVAL_SIZE)
+        if(interval.size() < maxIntervalSize)
             intervals.push_back(interval);
     }
 
@@ -466,6 +478,7 @@ bool HapgenUtil::extractHaplotypeSpecificReads(const StringVector& haplotypes,
                                                int k,
                                                bool doReverse,
                                                size_t maxReads,
+                                               int64_t maxIntervalSize,
                                                SeqRecordVector* pOutReads, 
                                                SeqRecordVector* pOutMates)
 {
@@ -490,7 +503,7 @@ bool HapgenUtil::extractHaplotypeSpecificReads(const StringVector& haplotypes,
     }
 
     printf("%zu of %zu kmers are haplotype-unique\n", specific_kmer_vector.size(), kmer_map.size());
-    return extractHaplotypeReads(specific_kmer_vector, indices, k, doReverse, maxReads, pOutReads, pOutMates);
+    return extractHaplotypeReads(specific_kmer_vector, indices, k, doReverse, maxReads, maxIntervalSize, pOutReads, pOutMates);
 }
 
 

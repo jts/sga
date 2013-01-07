@@ -23,19 +23,21 @@
 #include "VCFTester.h"
 #include "DindelRealignWindow.h"
 #include "QualityTable.h"
+#include "BloomFilter.h"
 #include "graph-diff.h"
 
 // Functions
 void runVCFTester(GraphCompareParameters& parameters);
 void runGraphDiff(GraphCompareParameters& parameters);
 void runDebug(GraphCompareParameters& parameters);
+void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBloomFilter);
 
 // Defines to clarify awful template function calls
 #define PROCESS_GDIFF_SERIAL SequenceProcessFramework::processSequencesSerial<SequenceWorkItem, GraphCompareResult, \
                                                                               GraphCompare, GraphCompareAggregateResults>
 
-#define PROCESS_GDIFF_PARALLEL SequenceProcessFramework::processSequencesParallel<SequenceWorkItem, GraphCompareResult, \
-                                                                                  GraphCompare, GraphCompareAggregateResults>
+#define PROCESS_GDIFF_PARALLEL SequenceProcessFramework::processSequencesParallelOpenMP<SequenceWorkItem, GraphCompareResult, \
+                                                                                        GraphCompare, GraphCompareAggregateResults>
 
    
 //
@@ -85,7 +87,7 @@ namespace opt
     
     static int kmer = 55;
     static int minDiscoveryCount = 2;
-    static int maxDiscoveryCount = 400;
+    static int maxDiscoveryCount = 10000;
     static int minOverlap = 61;
 
     static bool deBruijnMode = false;
@@ -231,9 +233,17 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
     sharedParameters.verbose = opt::verbose;
+    sharedParameters.maxHaplotypes = 5;
+    sharedParameters.maxReads = 10000;
+    sharedParameters.maxExtractionIntervalSize = 500;
 
-    if (opt::lowCoverage)
+    // Set population variant calling parameters
+    if(opt::lowCoverage)
+    {
+        sharedParameters.maxExtractionIntervalSize = 5000;
+        sharedParameters.maxReads = 100000;
         sharedParameters.dindelRealignParameters.multiSample = 1;
+    }
 
     if(!opt::debugFile.empty())
     {
@@ -268,8 +278,9 @@ int graphDiffMain(int argc, char** argv)
     delete referenceIndex.pBWT;
     delete referenceIndex.pSSA;
 
-    if(opt::numThreads > 1)
-        pthread_exit(NULL);
+    //
+    //if(opt::numThreads > 1)
+    //   pthread_exit(NULL);
 
     return 0;
 }
@@ -303,8 +314,20 @@ void runVCFTester(GraphCompareParameters& parameters)
 
 void runGraphDiff(GraphCompareParameters& parameters)
 {
+    // Initialize a bloom filter
+    size_t occupancy_factor = 20;
+    size_t expected_bits = 60000000;
+    std::cout << "WARNING BLOOM FILTER SET TO 60000000\n";
+    size_t bloom_size = occupancy_factor * expected_bits;
+    BloomFilter* pBloomFilter = new BloomFilter(bloom_size, 3);
+    parameters.pBloomFilter = pBloomFilter;
+
+    preloadBloomFilter(parameters.pRefTable, parameters.kmer, pBloomFilter);
+
     // Create the shared bit vector and shared results aggregator
     BitVector* pSharedBitVector = new BitVector(parameters.variantIndex.pBWT->getBWLen());
+    
+    Timer gdbenchmark("benchmark");
 
     // This call can throw via dindel
     GraphCompareAggregateResults* pSharedResults;
@@ -314,7 +337,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
         // If in multi-sample mode, write sample names in the VCF header
         if(parameters.variantIndex.pPopIdx != NULL)
             samples = parameters.variantIndex.pPopIdx->getSamples();
-        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix, samples);
+        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix, samples, *parameters.pRefTable);
     }
     catch(std::string e)
     {
@@ -358,11 +381,38 @@ void runGraphDiff(GraphCompareParameters& parameters)
     }
 
     pSharedResults->printStats();
+
+    delete pBloomFilter;
     
     delete pSharedBitVector;
     parameters.pBitVector = NULL;
 
     delete pSharedResults;
+}
+
+//
+void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBloomFilter)
+{
+    for(size_t i = 0; i < pReadTable->getCount(); ++i)
+    {
+        const SeqItem& si = pReadTable->getRead(i);
+        if(si.id != "20")
+        {
+            std::cout << "Warning: skipping chromosome " << si.id << "\n";
+        } 
+        else 
+        {
+            std::cout << "Preloading k-mers from chromosome " << si.id << "\n";
+            const DNAString& seq = si.seq;
+            for(size_t j = 0; j < seq.length() - k + 1; ++j)
+            {       
+                std::string kmer = seq.substr(j, k);
+                std::string rc_kmer = reverseComplement(kmer);
+                std::string& key_kmer = kmer < rc_kmer ? kmer : rc_kmer;
+                pBloomFilter->add(key_kmer.c_str(), k);
+            }
+        }
+    }
 }
 
 // Run in debug mode
