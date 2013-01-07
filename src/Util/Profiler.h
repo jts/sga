@@ -13,11 +13,11 @@
 #include <iostream>
 #include "config.h"
 
-#define USE_PROFILER 1
+//#define USE_PROFILER 1
 #if defined(HAVE_CLOCK_GETTIME) && defined(USE_PROFILER)
 
 // Change this to determine how often the profile should print
-#define PROFILE_TICKS_BEFORE_PRINT 100
+#define PROFILE_TICKS_BEFORE_PRINT 10000
 
 // This class writes the lifespan of the object
 // to the output variable, in nanoseconds
