@@ -59,6 +59,11 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -p, --prefix=NAME                prefix the output files with NAME\n"
 "      -t, --threads=NUM                use NUM computation threads\n"
+"          --genome-size=N              (optional) set the size of the genome to be N bases\n"
+"                                       this is used to determine the number of bits to use in the bloom filter\n"
+"                                       if unset, it will be calculated from the reference genome FASTA file\n"
+"          --precache-reference=STR     precache the named chromosome of the reference genome\n"
+"                                       If STR is \"all\" the entire reference will be cached\n"
 //"          --test=VCF                   test the variants in the provided VCF file\n"
 "\n"
 "Index options:\n"
@@ -80,22 +85,28 @@ PACKAGE_NAME "::" SUBPROGRAM;
 
 namespace opt
 {
+    // These parameters control run time and memory usage
     static unsigned int verbose = 0;
     static int numThreads = 1;
     static int cacheLength = 10;
     static int sampleRate = 128;
-    
+    static int bloomGenomeSize = -1;
+    static std::string precacheReference;
+
+    // Calling parameters
     static int kmer = 55;
     static int minDiscoveryCount = 2;
     static int minOverlap = 61;
-
-    static bool deBruijnMode = false;
     static int minDBGCount = 2;
-    static bool lowCoverage = false;
 
+    // Calling modes
+    static bool deBruijnMode = false;
+    static bool lowCoverage = false;
     static bool referenceMode = false;
     static bool useQualityScores = false;
-    static std::string outPrefix = "graphdiff";
+
+    // I/O
+    static std::string outPrefix = "sgavariants";
     static std::string indexPrefix;
     static std::string debugFile;
     static std::string referenceFile;
@@ -106,7 +117,18 @@ namespace opt
 
 static const char* shortopts = "b:r:o:k:d:t:x:y:p:m:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_TESTVCF, OPT_DEBUG, OPT_MIN_DBG_COUNT, OPT_INDEX, OPT_DEBRUIJN, OPT_LOWCOVERAGE, OPT_QUALSCORES };
+enum { OPT_HELP = 1, 
+       OPT_VERSION, 
+       OPT_REFERENCE, 
+       OPT_TESTVCF, 
+       OPT_DEBUG, 
+       OPT_MIN_DBG_COUNT, 
+       OPT_INDEX, 
+       OPT_DEBRUIJN, 
+       OPT_LOWCOVERAGE, 
+       OPT_QUALSCORES,
+       OPT_BLOOM_GENOME,
+       OPT_PRECACHE_REFERENCE };
 
 static const struct option longopts[] = {
     { "verbose",              no_argument,       NULL, 'v' },
@@ -125,6 +147,8 @@ static const struct option longopts[] = {
     { "min-dbg-count",        required_argument, NULL, OPT_MIN_DBG_COUNT },
     { "debug",                required_argument, NULL, OPT_DEBUG },
     { "reference",            required_argument, NULL, OPT_REFERENCE },
+    { "genome-size",          required_argument, NULL, OPT_BLOOM_GENOME },
+    { "precache-reference",   required_argument, NULL, OPT_PRECACHE_REFERENCE },
     { "test"      ,           required_argument, NULL, OPT_TESTVCF },
     { "help",                 no_argument,       NULL, OPT_HELP },
     { "version",              no_argument,       NULL, OPT_VERSION },
@@ -144,7 +168,6 @@ int graphDiffMain(int argc, char** argv)
     // Use debug index prefix if specified
     if(!opt::indexPrefix.empty())
         variantPrefix = opt::indexPrefix;
-
 
     //
     // Initialize indices
@@ -226,7 +249,6 @@ int graphDiffMain(int argc, char** argv)
 
     sharedParameters.algorithm = opt::deBruijnMode ? GCA_DEBRUIJN_GRAPH : GCA_STRING_GRAPH;
     sharedParameters.kmer = opt::kmer;
-    sharedParameters.pBitVector = NULL;
     sharedParameters.minDiscoveryCount = opt::minDiscoveryCount;
     sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
@@ -281,53 +303,36 @@ int graphDiffMain(int argc, char** argv)
     return 0;
 }
 
-void runVCFTester(GraphCompareParameters& parameters)
-{
-    std::cout << "Testing variants in " << opt::inputVCFFile << "\n";
-    std::string line;
-
-    VCFTester tester(parameters);
-    try
-    {
-        VCFFile input(opt::inputVCFFile, "r");
-        VCFFile::VCFEntry record;
-
-        while(1)
-        {
-            record = input.getNextEntry();
-            if(record.isEmpty())
-                break;
-            else
-                tester.process(record);
-        }
-    }
-    catch(std::string e)
-    {
-        std::cerr << "Exception: " << e << "\n";
-        exit(EXIT_FAILURE);
-    }
-}
-
 void runGraphDiff(GraphCompareParameters& parameters)
 {
     // Initialize a bloom filter
+    size_t expected_bits = 0;
+    if(opt::bloomGenomeSize == -1)
+    {
+        // Calculate the expected bits using the number of bases in the reference
+        for(size_t i = 0; i < parameters.pRefTable->getCount(); ++i)
+            expected_bits += parameters.pRefTable->getReadLength(i);
+    }
+    else 
+    {
+        expected_bits = opt::bloomGenomeSize;
+    }
+
     size_t occupancy_factor = 20;
-    size_t expected_bits = 60000000;
-    std::cout << "WARNING BLOOM FILTER SET TO 60000000\n";
     size_t bloom_size = occupancy_factor * expected_bits;
+    if(opt::verbose > 0)
+        printf("Initializing bloom filter -- expected bits: %zu total bits: %zu\n", expected_bits, bloom_size);
+
     BloomFilter* pBloomFilter = new BloomFilter(bloom_size, 3);
     parameters.pBloomFilter = pBloomFilter;
-
     preloadBloomFilter(parameters.pRefTable, parameters.kmer, pBloomFilter);
 
-    // Create the shared bit vector and shared results aggregator
-    BitVector* pSharedBitVector = new BitVector(parameters.variantIndex.pBWT->getBWLen());
-    
     Timer gdbenchmark("benchmark");
 
     // This call can throw via dindel
     GraphCompareAggregateResults* pSharedResults;
-    try {
+    try 
+    {
         StringVector samples;
 
         // If in multi-sample mode, write sample names in the VCF header
@@ -341,10 +346,6 @@ void runGraphDiff(GraphCompareParameters& parameters)
         exit(EXIT_FAILURE);
     }
 
-    std::cout << "Bit vector capacity: " << pSharedBitVector->capacity() << "\n";
-
-    // Set the bit vector
-    parameters.pBitVector = pSharedBitVector;
 
     if(opt::numThreads <= 1)
     {
@@ -379,10 +380,6 @@ void runGraphDiff(GraphCompareParameters& parameters)
     pSharedResults->printStats();
 
     delete pBloomFilter;
-    
-    delete pSharedBitVector;
-    parameters.pBitVector = NULL;
-
     delete pSharedResults;
 }
 
@@ -392,11 +389,7 @@ void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBlo
     for(size_t i = 0; i < pReadTable->getCount(); ++i)
     {
         const SeqItem& si = pReadTable->getRead(i);
-        if(si.id != "20")
-        {
-            std::cout << "Warning: skipping chromosome " << si.id << "\n";
-        } 
-        else 
+        if(si.id == opt::precacheReference || opt::precacheReference == "all")
         {
             std::cout << "Preloading k-mers from chromosome " << si.id << "\n";
             const DNAString& seq = si.seq;
@@ -411,15 +404,40 @@ void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBlo
     }
 }
 
+//
+// DEBUG functions
+//
+void runVCFTester(GraphCompareParameters& parameters)
+{
+    std::cout << "Testing variants in " << opt::inputVCFFile << "\n";
+    std::string line;
+
+    VCFTester tester(parameters);
+    try
+    {
+        VCFFile input(opt::inputVCFFile, "r");
+        VCFFile::VCFEntry record;
+
+        while(1)
+        {
+            record = input.getNextEntry();
+            if(record.isEmpty())
+                break;
+            else
+                tester.process(record);
+        }
+    }
+    catch(std::string e)
+    {
+        std::cerr << "Exception: " << e << "\n";
+        exit(EXIT_FAILURE);
+    }
+}
+
+
 // Run in debug mode
 void runDebug(GraphCompareParameters& parameters)
 {
-    // Create the shared bit vector and shared results aggregator
-    BitVector* pSharedBitVector = new BitVector(parameters.variantIndex.pBWT->getBWLen());
-
-    // Set the bit vector
-    parameters.pBitVector = pSharedBitVector;
-
     GraphCompare graphCompare(parameters); 
     graphCompare.testKmersFromFile(opt::debugFile);
 }
@@ -449,6 +467,8 @@ void parseGraphDiffOptions(int argc, char** argv)
             case OPT_DEBRUIJN: opt::deBruijnMode = true; break;
             case OPT_LOWCOVERAGE: opt::lowCoverage = true; break;
             case OPT_MIN_DBG_COUNT: arg >> opt::minDBGCount; break;
+            case OPT_BLOOM_GENOME: arg >> opt::bloomGenomeSize; break;
+            case OPT_PRECACHE_REFERENCE: arg >> opt::precacheReference; break;
             case OPT_DEBUG: arg >> opt::debugFile; break;
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
             case OPT_INDEX: arg >> opt::indexPrefix; break;

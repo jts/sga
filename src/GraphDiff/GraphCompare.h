@@ -54,9 +54,6 @@ struct GraphCompareParameters
     BWTIndexSet referenceIndex;
     const ReadTable* pRefTable;
 
-    // Bitvector to mark used kmers
-    BitVector* pBitVector;
- 
     // Bloom filter to mark user kmers
     BloomFilter* pBloomFilter;
 
@@ -172,9 +169,6 @@ class GraphCompare
 
         // Build haplotypes in the base sequence that are parallel to the variant haplotypes
         void buildParallelBaseHaplotypes(const StringVector& variant_haplotypes, StringVector& base_haplotypes) const;
-
-        // Generate a bitmask of kmers that have already been used 
-        std::vector<bool> generateKmerMask(const std::string& str) const;
 
         // Mark all the kmers in str as being visited
         void markVariantSequenceKmers(const std::string& str) const;

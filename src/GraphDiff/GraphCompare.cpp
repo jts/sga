@@ -354,33 +354,6 @@ void GraphCompare::buildParallelBaseHaplotypes(const StringVector& variant_haplo
 }
 
 //
-std::vector<bool> GraphCompare::generateKmerMask(const std::string& str) const
-{
-    size_t len = str.size();
-    int num_kmers = len - m_parameters.kmer + 1;
-    std::vector<bool> visitedKmers(false, num_kmers);
-    int j = len - 1;
-    char curr = str[j];
-    BWTInterval interval;
-    BWTAlgorithms::initInterval(interval, curr, m_parameters.variantIndex.pBWT);
-    --j;
-
-    for(;j >= 0; --j)
-    {
-        curr = str[j];
-        BWTAlgorithms::updateInterval(interval, curr, m_parameters.variantIndex.pBWT);
-
-        assert(interval.isValid());
-
-        // At this point interval represents the suffix [j,len)
-        // Check if the starting point of this interval is set
-        if(j < num_kmers)
-            visitedKmers[j] = m_parameters.pBitVector->test(interval.lower);
-    }
-    return visitedKmers;
-}
-
-//
 size_t GraphCompare::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices) const
 {
     size_t min_k = 15;
