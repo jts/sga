@@ -278,10 +278,6 @@ int graphDiffMain(int argc, char** argv)
     delete referenceIndex.pBWT;
     delete referenceIndex.pSSA;
 
-    //
-    //if(opt::numThreads > 1)
-    //   pthread_exit(NULL);
-
     return 0;
 }
 

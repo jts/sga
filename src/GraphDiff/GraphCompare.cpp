@@ -216,15 +216,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
                 }
             }
         }
-        
-        /*
-        // Update the bit vector to mark this kmer has been used
-        for(int64_t i = interval.lower; i <= interval.upper; ++i)
-            m_parameters.pBitVector->set(i, true);
-
-        for(int64_t i = rc_interval.lower; i <= rc_interval.upper; ++i)
-            m_parameters.pBitVector->set(i, true);
-        */
     }
     
     return result;
@@ -292,8 +283,6 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
         // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
         size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.variantIndex);
         size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.baseIndex);
-        
-        printf("HaplotypeQC: %zu %zu\n", max_variant_k, max_base_k);
 
         //
         if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 41)
