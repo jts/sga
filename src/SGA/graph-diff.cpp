@@ -87,7 +87,6 @@ namespace opt
     
     static int kmer = 55;
     static int minDiscoveryCount = 2;
-    static int maxDiscoveryCount = 10000;
     static int minOverlap = 61;
 
     static bool deBruijnMode = false;
@@ -229,17 +228,18 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.kmer = opt::kmer;
     sharedParameters.pBitVector = NULL;
     sharedParameters.minDiscoveryCount = opt::minDiscoveryCount;
-    sharedParameters.maxDiscoveryCount = opt::maxDiscoveryCount;
     sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
     sharedParameters.verbose = opt::verbose;
     sharedParameters.maxHaplotypes = 5;
     sharedParameters.maxReads = 10000;
     sharedParameters.maxExtractionIntervalSize = 500;
+    sharedParameters.maxDiscoveryCount = 500;
 
     // Set population variant calling parameters
     if(opt::lowCoverage)
     {
+        sharedParameters.maxDiscoveryCount = 10000;
         sharedParameters.maxExtractionIntervalSize = 5000;
         sharedParameters.maxReads = 100000;
         sharedParameters.dindelRealignParameters.multiSample = 1;
