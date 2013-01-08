@@ -162,6 +162,13 @@ int graphDiffMain(int argc, char** argv)
 {
     parseGraphDiffOptions(argc, argv);
 
+    if(opt::lowCoverage)
+        std::cout << "Initializing population calling\n";
+    else if(opt::referenceMode)
+        std::cout << "Initializing reference calling\n";
+    else
+        std::cout << "Initializing contrast calling (" << opt::variantFile << " vs " << opt::baseFile << ")\n";
+
     // Create indices for the variant reads
     std::string variantPrefix = stripGzippedExtension(opt::variantFile);
 
@@ -174,6 +181,7 @@ int graphDiffMain(int argc, char** argv)
     //
 
     // Variant reads
+    std::cout << "Loading variant read index..." << std::flush;
     BWTIndexSet variantIndex;
     variantIndex.pBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     variantIndex.pSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
@@ -187,19 +195,27 @@ int graphDiffMain(int argc, char** argv)
     if(opt::useQualityScores)
         variantQuals->loadQualities(opt::variantFile);
     variantIndex.pQualityTable = variantQuals;
+    std::cout << "done" << std::endl; 
 
     // Reference genome
+    std::cout << "Loading reference index..." << std::flush;
     BWTIndexSet referenceIndex;
     std::string refPrefix = stripExtension(opt::referenceFile);
 
     referenceIndex.pBWT = new BWT(refPrefix + BWT_EXT, opt::sampleRate);
     referenceIndex.pSSA = new SampledSuffixArray(refPrefix + SSA_EXT);
+    
+    // Read in the reference sequences
+    ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
+    refTable.indexReadsByID();
+    std::cout << "done" << std::endl;
 
     // Base reads, only if not in reference mode
     BWTIndexSet baseIndex;
 
     if(!opt::referenceMode)
     {
+        std::cout << "Loading base read index index..." << std::flush;
         std::string basePrefix = stripExtension(opt::baseFile);
         baseIndex.pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
         baseIndex.pSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
@@ -210,6 +226,7 @@ int graphDiffMain(int argc, char** argv)
         if(opt::useQualityScores)
             baseQuals->loadQualities(opt::baseFile);
         baseIndex.pQualityTable = baseQuals;
+        std::cout << "done" << std::endl;
     }
     else
     {
@@ -217,26 +234,6 @@ int graphDiffMain(int argc, char** argv)
         baseIndex.pSSA = referenceIndex.pSSA;
         baseIndex.pCache = NULL;
     }
-
-    // 
-    std::cout << "Base index memory info\n";
-    baseIndex.pBWT->printInfo();
-    baseIndex.pSSA->printInfo();
-
-    //
-    std::cout << "Variant index memory info\n";
-    variantIndex.pBWT->printInfo();
-    variantIndex.pSSA->printInfo();
-    variantIndex.pQualityTable->printSize();
-
-    //
-    std::cout << "Reference index memory info\n";
-    referenceIndex.pBWT->printInfo();
-    referenceIndex.pSSA->printInfo();
-
-    // Read in the reference 
-    ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
-    refTable.indexReadsByID();
 
     // Set the parameters shared between all threads
     GraphCompareParameters sharedParameters;
@@ -320,8 +317,6 @@ void runGraphDiff(GraphCompareParameters& parameters)
 
     size_t occupancy_factor = 20;
     size_t bloom_size = occupancy_factor * expected_bits;
-    if(opt::verbose > 0)
-        printf("Initializing bloom filter -- expected bits: %zu total bits: %zu\n", expected_bits, bloom_size);
 
     BloomFilter* pBloomFilter = new BloomFilter(bloom_size, 3);
     parameters.pBloomFilter = pBloomFilter;
@@ -349,15 +344,12 @@ void runGraphDiff(GraphCompareParameters& parameters)
 
     if(opt::numThreads <= 1)
     {
-        printf("[%s] starting serial-mode graph diff\n", PROGRAM_IDENT);
         GraphCompare graphCompare(parameters); 
         PROCESS_GDIFF_SERIAL(opt::variantFile, &graphCompare, pSharedResults);
         graphCompare.updateSharedStats(pSharedResults);
     }
     else
     {
-        printf("[%s] starting parallel-mode graph diff with %d threads\n", PROGRAM_IDENT, opt::numThreads);
-        
         std::vector<GraphCompare*> processorVector;
         for(int i = 0; i < opt::numThreads; ++i)
         {
@@ -386,12 +378,12 @@ void runGraphDiff(GraphCompareParameters& parameters)
 //
 void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBloomFilter)
 {
+    std::cout << "Initializing bloom filter..." << std::flush;
     for(size_t i = 0; i < pReadTable->getCount(); ++i)
     {
         const SeqItem& si = pReadTable->getRead(i);
         if(si.id == opt::precacheReference || opt::precacheReference == "all")
         {
-            std::cout << "Preloading k-mers from chromosome " << si.id << "\n";
             const DNAString& seq = si.seq;
             for(size_t j = 0; j < seq.length() - k + 1; ++j)
             {       
@@ -402,6 +394,7 @@ void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBlo
             }
         }
     }
+    std::cout << "done" << std::endl;
 }
 
 //
@@ -502,10 +495,7 @@ void parseGraphDiffOptions(int argc, char** argv)
     }
 
     if(opt::baseFile.empty())
-    {
-        std::cerr << SUBPROGRAM ": reference-based calling enabled\n";
         opt::referenceMode = true;
-    }
 
     if(opt::referenceFile.empty())
     {
