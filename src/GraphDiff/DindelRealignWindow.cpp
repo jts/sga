@@ -4984,36 +4984,28 @@ void VCFFile::setSamples(const std::vector<std::string> & samples)
     m_samples = samples;
 }
 
-void VCFFile::outputHeader(const std::string & refFile, const std::string & paramString)
+void VCFFile::outputHeader(const std::string & refFile, const std::string & /*paramString*/)
 {
     assert(m_isOpen && m_mode == "w");
-    m_outputFileHandle << "##fileformat=VCFv4.0" << std::endl;
-    m_outputFileHandle << "##source=Dindel2.0" << std::endl;
+    m_outputFileHandle << "##fileformat=VCFv4.1" << std::endl;
+    m_outputFileHandle << "##source=SGA/Dindel" << std::endl;
     m_outputFileHandle << "##reference=" << refFile << std::endl;
 
     //m_outputFileHandle << "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">"<< std::endl;
     //m_outputFileHandle << "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Total Depth\">"<< std::endl;
-    m_outputFileHandle << "##INFO=<ID=AC,Number=1,Type=Float,Description=\"Allele count\">"<< std::endl;
-    m_outputFileHandle << "##INFO=<ID=AF,Number=1,Type=Float,Description=\"Allele Frequency\">"<< std::endl;
-    m_outputFileHandle << "##INFO=<ID=NR,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on forward strand\">"<< std::endl;
-    m_outputFileHandle << "##INFO=<ID=NF,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on reverse strand\">"<< std::endl;
-    m_outputFileHandle << "##INFO=<ID=HSR,Number=1,Type=Integer,Description=\"Number of haplotype-specific (informative) reads\">"<< std::endl;
-    m_outputFileHandle << "##INFO=<ID=HPLen,Number=1,Type=Integer,Description=\"Homopolymer length\">"<< std::endl;
-    //m_outputFileHandle << "##INFO=<ID=AA,Number=1,Type=String,Description=\"Ancestral Allele\">"<< std::endl;
-    //m_outputFileHandle << "##INFO=<ID=DB,Number=0,Type=Flag,Description=\"dbSNP membership, build 129\">"<< std::endl;
-    //m_outputFileHandle << "##INFO=<ID=H2,Number=0,Type=Flag,Description=\"HapMap2 membership\">"<< std::endl;
-    m_outputFileHandle << "##FILTER=<ID=Candidate,Description=\"Variant is candidate for testing\">"<< std::endl;
-    m_outputFileHandle << "##FILTER=<ID=q10,Description=\"Quality below 10\">"<< std::endl;
-    m_outputFileHandle << "##FILTER=<ID=NoCall,Description=\"No call made\">"<< std::endl;
-    m_outputFileHandle << "##FILTER=<ID=LowQuality,Description=\"Low quality variant\">"<< std::endl;
-    //m_outputFileHandle << "##FILTER=<ID=s50,Description=\"Less than 50% of samples have data\">"<< std::endl;
-    m_outputFileHandle << "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">"<< std::endl;
-    m_outputFileHandle << "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">"<< std::endl;
-    //m_outputFileHandle << "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read Depth\">"<< std::endl;
-    m_outputFileHandle << "##FORMAT=<ID=HQ,Number=2,Type=Integer,Description=\"Haplotype Quality\">"<< std::endl;
-    m_outputFileHandle << "##DindelParameters=\"" << paramString << "\"" << std::endl;
-
-    
+    m_outputFileHandle << "##INFO=<ID=AC,Number=1,Type=Float,Description=\"Allele count\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=AF,Number=1,Type=Float,Description=\"Allele Frequency\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=NR,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on forward strand\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=NF,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on reverse strand\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HSR,Number=1,Type=Integer,Description=\"Number of haplotype-specific (informative) reads\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HPLen,Number=1,Type=Integer,Description=\"Homopolymer length\">" << std::endl;
+    m_outputFileHandle << "##FILTER=<ID=Candidate,Description=\"Variant is candidate for testing\">" << std::endl;
+    m_outputFileHandle << "##FILTER=<ID=NoCall,Description=\"No call made\">" << std::endl;
+    m_outputFileHandle << "##FILTER=<ID=LowQuality,Description=\"Low quality variant\">" << std::endl;
+    m_outputFileHandle << "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">" << std::endl;
+    m_outputFileHandle << "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">" << std::endl;
+    m_outputFileHandle << "##FORMAT=<ID=HQ,Number=2,Type=Integer,Description=\"Haplotype Quality\">" << std::endl;
+    m_outputFileHandle << "##FORMAT=<ID=GL,Number=G,Type=Float,Description=\"Genotype Log-likelihoods\">" << std::endl;
     m_outputFileHandle << "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO";
 
     if (m_samples.size()>0)
