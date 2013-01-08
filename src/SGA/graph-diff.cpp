@@ -80,9 +80,6 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "          --min-dbg-count=T            only use k-mers seen T times when assembling using a de Bruijn graph\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
-static const char* PROGRAM_IDENT =
-PACKAGE_NAME "::" SUBPROGRAM;
-
 namespace opt
 {
     // These parameters control run time and memory usage
@@ -165,7 +162,7 @@ int graphDiffMain(int argc, char** argv)
     if(opt::lowCoverage)
         std::cout << "Initializing population calling\n";
     else if(opt::referenceMode)
-        std::cout << "Initializing reference calling\n";
+        std::cout << "Initializing single genome calling\n";
     else
         std::cout << "Initializing contrast calling (" << opt::variantFile << " vs " << opt::baseFile << ")\n";
 
@@ -181,7 +178,7 @@ int graphDiffMain(int argc, char** argv)
     //
 
     // Variant reads
-    std::cout << "Loading variant read index..." << std::flush;
+    std::cout << "Loading variant read index... " << std::flush;
     BWTIndexSet variantIndex;
     variantIndex.pBWT = new BWT(variantPrefix + BWT_EXT, opt::sampleRate);
     variantIndex.pSSA = new SampledSuffixArray(variantPrefix + SAI_EXT, SSA_FT_SAI);
@@ -198,7 +195,7 @@ int graphDiffMain(int argc, char** argv)
     std::cout << "done" << std::endl; 
 
     // Reference genome
-    std::cout << "Loading reference index..." << std::flush;
+    std::cout << "Loading reference index... " << std::flush;
     BWTIndexSet referenceIndex;
     std::string refPrefix = stripExtension(opt::referenceFile);
 
@@ -215,7 +212,7 @@ int graphDiffMain(int argc, char** argv)
 
     if(!opt::referenceMode)
     {
-        std::cout << "Loading base read index index..." << std::flush;
+        std::cout << "Loading base read index index... " << std::flush;
         std::string basePrefix = stripExtension(opt::baseFile);
         baseIndex.pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
         baseIndex.pSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
@@ -333,7 +330,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
         // If in multi-sample mode, write sample names in the VCF header
         if(parameters.variantIndex.pPopIdx != NULL)
             samples = parameters.variantIndex.pPopIdx->getSamples();
-        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix, samples, *parameters.pRefTable);
+        pSharedResults = new GraphCompareAggregateResults(opt::outPrefix, samples, *parameters.pRefTable, stripDirectories(opt::referenceFile));
     }
     catch(std::string e)
     {
@@ -378,7 +375,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
 //
 void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBloomFilter)
 {
-    std::cout << "Initializing bloom filter..." << std::flush;
+    std::cout << "Initializing bloom filter... " << std::flush;
     for(size_t i = 0; i < pReadTable->getCount(); ++i)
     {
         const SeqItem& si = pReadTable->getRead(i);

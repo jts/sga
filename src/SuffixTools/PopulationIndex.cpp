@@ -13,8 +13,6 @@
 
 PopulationIndex::PopulationIndex(const std::string& filename)
 {
-    std::cout << "Loading population index from " << filename << "\n";
-
     std::istream* reader = createReader(filename);
     std::string line;
     while(getline(*reader, line))

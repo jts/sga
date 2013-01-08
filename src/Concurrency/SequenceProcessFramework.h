@@ -322,7 +322,6 @@ size_t processWorkParallelOpenMP(Generator& generator,
     }
 
     assert(n == (size_t)-1 || generator.getNumConsumed() == n);
-    printf("READ: %zu WROTE: %zu\n", numWorkItemsRead, numWorkItemsWrote);
     assert(numWorkItemsRead == numWorkItemsWrote);
 
     double proc_time_secs = timer.getElapsedWallTime();

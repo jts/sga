@@ -204,7 +204,11 @@ class GraphCompareAggregateResults
 {
 
     public:
-        GraphCompareAggregateResults(const std::string& fileprefix, const StringVector& samples, const ReadTable& refTable);
+        GraphCompareAggregateResults(const std::string& fileprefix, 
+                                     const StringVector& samples, 
+                                     const ReadTable& refTable,
+                                     const std::string& referenceFilename);
+
         ~GraphCompareAggregateResults();
 
         void process(const SequenceWorkItem& item, const GraphCompareResult& result);

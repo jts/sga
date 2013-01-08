@@ -502,10 +502,11 @@ void GraphCompare::showMappingLocations(const std::string& str)
 //
 GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fileprefix, 
                                                            const StringVector& samples,
-                                                           const ReadTable& refTable) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
-                                                                                        m_variantVCFFile(fileprefix + ".variant.vcf","w"),
-                                                                                        m_callsVCFFile(fileprefix + ".calls.vcf","w"),
-                                                                                        m_numVariants(0)
+                                                           const ReadTable& refTable,
+                                                           const std::string& referenceFilename) : m_baseVCFFile(fileprefix + ".base.vcf","w"),
+                                                                                                   m_variantVCFFile(fileprefix + ".variant.vcf","w"),
+                                                                                                   m_callsVCFFile(fileprefix + ".calls.vcf","w"),
+                                                                                                   m_numVariants(0)
 {
     //
     m_pWriter = createWriter(fileprefix + ".strings.fa");
@@ -516,9 +517,9 @@ GraphCompareAggregateResults::GraphCompareAggregateResults(const std::string& fi
     m_callsVCFFile.setSamples(samples);
 
     // Initialize VCF
-    m_baseVCFFile.outputHeader("stub", "stub");
-    m_variantVCFFile.outputHeader("stub", "stub");
-    m_callsVCFFile.outputHeader("stub", "stub");
+    m_baseVCFFile.outputHeader(referenceFilename, "");
+    m_variantVCFFile.outputHeader(referenceFilename, "");
+    m_callsVCFFile.outputHeader(referenceFilename, "");
 
     // Initialize BAM
     BamTools::SamHeader null_header;
