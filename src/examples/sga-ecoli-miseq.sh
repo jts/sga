@@ -4,10 +4,12 @@
 # Example assembly of 150bp E. coli reads
 #
 
-# Download the E. coli FASTQ files from http://www.illumina.com/systems/miseq/ecoli.ilmn
-# Set IN1 and IN2 to be the paths to two files
-IN1=MiSeq_Ecoli_MG1655_110527_R1.fastq
-IN2=MiSeq_Ecoli_MG1655_110527_R2.fastq
+# Download the E. coli FASTQ files from Illumina's website
+wget ftp://webdata:webdata@ussd-ftp.illumina.com/Data/SequencingRuns/MG1655/MiSeq_Ecoli_MG1655_110721_PF_R1.fastq.gz
+wget ftp://webdata:webdata@ussd-ftp.illumina.com/Data/SequencingRuns/MG1655/MiSeq_Ecoli_MG1655_110721_PF_R2.fastq.gz
+
+IN1=MiSeq_Ecoli_MG1655_110721_PF_R1.fastq.gz
+IN2=MiSeq_Ecoli_MG1655_110721_PF_R2.fastq.gz
 
 #
 # Parameters
