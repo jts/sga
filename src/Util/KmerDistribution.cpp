@@ -32,7 +32,6 @@ double KmerDistribution::getCumulativeProportionLEQ(int n) const
         sum += countVector[i];
     }
 
-
     std::vector<double> cumulativeVector(countVector.size());
     int64_t runningSum = 0;
     for(size_t i = 0; i < cumulativeVector.size(); ++i)
@@ -151,7 +150,7 @@ std::vector<int> KmerDistribution::toCountVector() const
         return out;
 
     int min = 0;
-    int max = 200;//m_data.rbegin()->first;
+    int max = 1000;//m_data.rbegin()->first;
 
     for(int i = min; i <= max; ++i)
     {
