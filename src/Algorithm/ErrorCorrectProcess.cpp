@@ -41,8 +41,7 @@ ErrorCorrectResult ErrorCorrectProcess::process(const SequenceWorkItem& workItem
     
 ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem)
 {
-    /*
-    ErrorCorrectResult iresult = fmiCorrect(workItem, 31);
+    ErrorCorrectResult iresult = fmiCorrect(workItem, 25);
     if(!iresult.kmerQC)
     {
         //std::cout << "KMER\n";
@@ -53,7 +52,7 @@ ErrorCorrectResult ErrorCorrectProcess::correct(const SequenceWorkItem& workItem
         //std::cout << "FMI\n";
         return iresult;
     }
-    */
+
     switch(m_params.algorithm)
     {
         case ECA_HYBRID:

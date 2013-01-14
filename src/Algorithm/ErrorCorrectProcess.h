@@ -19,6 +19,7 @@
 #include "BWTIndexSet.h"
 #include "SampledSuffixArray.h"
 #include "multiple_alignment.h"
+#include "BloomFilter.h"
 
 enum ErrorCorrectAlgorithm
 {
@@ -44,6 +45,7 @@ struct ErrorCorrectParameters
     //
     const OverlapAlgorithm* pOverlapper;
     BWTIndexSet indices;
+    BloomFilter* pBloomFilter;
     bool trim;
 
     // Overlap-based corrector params

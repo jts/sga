@@ -224,7 +224,12 @@ void assemble()
             pGraph->visit(smoothingVisit);
         pGraph->simplify();
     }
-    
+
+    // Resolve repeats by overlap length    
+    SGOverlapRatioVisitor ratioVisit(0.7);
+    pGraph->visit(ratioVisit);
+    pGraph->simplify();
+
     pGraph->renameVertices("contig-");
 
     std::cout << "\n[Stats] Final graph:\n";
