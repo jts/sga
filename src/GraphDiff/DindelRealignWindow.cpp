@@ -1390,10 +1390,13 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
                 DindelRealignWindowResult::VarToGenotypeCall::const_iterator it_var = sample_it->second.find(var);
                 assert(it_var!=sample_it->second.end());
                 const DindelRealignWindowResult::GenotypeCall & gc = it_var->second;
-
-                if (gc.count == 0) sampleString << "0/0";
-                else if (gc.count == 1) sampleString << "0/1";
-                else if (gc.count == 2) sampleString << "1/1";
+                if (gc.qual>5.0) {
+                    if (gc.count == 0) sampleString << "0/0";
+                    else if (gc.count == 1) sampleString << "0/1";
+                    else if (gc.count == 2) sampleString << "1/1";
+                } else {                    
+                    sampleString << "./.";
+                }
                 sampleString << ":" << int(gc.qual);
                 //out <<  std::iostream::fixed;
                 sampleString << std::setprecision(5) << ":" << gc.gl[0] << "," << gc.gl[1] << "," << gc.gl[2];
@@ -1416,7 +1419,9 @@ double DindelRealignWindowResult::Inference::computeStrandBias(int numForward, i
     // Even in the case of no strand bias, the expected frequency is allowed to differ from 0.5 in order to allow for
     // mapper bias.
     int total = numForward+numReverse;
-    
+    if (total == 0)
+	return 0.0;
+
     const int N=50;
     double p = (1.0)/double(N);
 
@@ -1425,17 +1430,25 @@ double DindelRealignWindowResult::Inference::computeStrandBias(int numForward, i
 
     double nf = numForward;
     double nr = numReverse;
-    double comb=(total<=10) ? double(combinations(total, numForward )) : exp( lgamma(double(total+1))-lgamma(nf+1.0)-lgamma(double(total-numForward+1)));
+    //double comb=(total<=10) ? double(combinations(total, numForward )) : exp( lgamma(double(total+1))-lgamma(nf+1.0)-lgamma(double(total-numForward+1)));
+    double comb;
+    if (total<=10) {
+       comb = log(double(combinations(total, numForward )));
+    } else {
+       comb = lgamma(double(total+1))-lgamma(nf+1.0)-lgamma(double(total-numForward+1));
+    }
 
     double tBias = 0.35; // point at which we believe there is a bias
-
+    double lbBias = -HUGE_VAL, lbNoBias = -HUGE_VAL;
     for (int i=0;i<N/2;i++)
     {
         double q = double(i+1)*tBias/(double(N+1)/2.0);
         bBias += pow(q,nf)*pow(1.0-q,nr)*p*comb;
+	lbBias = addLogs(lbBias, log(q)*nf+log(1.0-q)*nr+log(p)+comb);
 
         q = 1.0-double(i+1)*tBias/(double(N+1)*2.0);
         bBias += pow(q,nf)*pow(1.0-q,nr)*p*comb;
+	lbBias = addLogs(lbBias, log(q)*nf+log(1.0-q)*nr+log(p)+comb);
     }
 
     
@@ -1443,14 +1456,18 @@ double DindelRealignWindowResult::Inference::computeStrandBias(int numForward, i
     {
         double q = 0.5+(0.5-tBias)*double(i+1)/(double(N+1)/2.0);
         bNoBias += pow(q,nf)*pow(1.0-q,nr)*p*comb;
+	lbNoBias = addLogs(lbNoBias, log(q)*nf+log(1.0-q)*nr+log(p)+comb);
 
         q = 0.5-(0.5-tBias)*double(i+1)/(double(N+1)/2.0);
         bNoBias += pow(q,nf)*pow(1.0-q,nr)*p*comb;
+	lbNoBias = addLogs(lbNoBias, log(q)*nf+log(1.0-q)*nr+log(p)+comb);
     }
     
+     //std::cout << "::compSB nf: " << nf << " nr: " << nr << " comb: " << comb << " bBias: " << bBias << " bNoBias: " << bNoBias << " lbBias: " << lbBias << " lbNoBias: " << lbNoBias << " lgamma(double(total+1)): " << lgamma(double(total+1)) << " lgamma(nf+1.0): " << lgamma(nf+1.0) << " lgamma(double(total-numForward+1)): " << lgamma(double(total-numForward+1)) << std::endl;
+   
+    //double bf = log(bBias)-log(bNoBias);
     
-    double bf = log(bBias)-log(bNoBias);
-    return bf;
+    return lbBias-lbNoBias;
 }
 
 void DindelRealignWindowResult::Inference::addDistanceToHistogram(int distance)
@@ -2565,7 +2582,7 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
            {
                int count = it1->second.count;
                double qual = 1000.0;
-               for (int c=0;c<3;c++)
+               for (int c=2;c>0;c--)
                {
                    double d = it1->second.gl[count]-it1->second.gl[c];
                    if (c!=count && d<qual)
@@ -2575,6 +2592,9 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
                }
                if (qual<0.0) qual = 0.0;
                it1->second.qual = 10.0*qual/log(10.0);
+               // prevent non-ref genotype calls when there is little evidence
+               if (count != 0 && abs(it1->second.gl[count]-it1->second.gl[0])<0.05)
+                   it1->second.count = 0; // assign ref 
            }
        }
    }
@@ -4984,7 +5004,7 @@ void VCFFile::setSamples(const std::vector<std::string> & samples)
     m_samples = samples;
 }
 
-void VCFFile::outputHeader(const std::string & refFile, const std::string & /*paramString*/)
+void VCFFile::outputHeader(const std::string & refFile, const std::string& /*paramString*/)
 {
     assert(m_isOpen && m_mode == "w");
     m_outputFileHandle << "##fileformat=VCFv4.1" << std::endl;
