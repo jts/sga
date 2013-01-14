@@ -375,7 +375,6 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
             const double MIN_TRIM_RATIO = 0.65;
             result.correctSequence = readSequence.substr(0, lastSolidBase);
             double len_ratio = (double)result.correctSequence.length() / workItem.read.seq.length();
-//            printf("LSB: %d TRIMMED TO [%zu %zu] = %lf %s\n", lastSolidBase, result.correctSequence.length(), workItem.read.seq.length(), len_ratio, result.correctSequence.toString().c_str());
             if(len_ratio >= MIN_TRIM_RATIO)
                 result.kmerQC = true;
             else
@@ -770,6 +769,7 @@ void ErrorCorrectPostProcess::process(const SequenceWorkItem& item, const ErrorC
 
     SeqRecord record = item.read;
     record.seq = result.correctSequence;
+    record.qual = "";
 
     if(readQCPass || m_pDiscardWriter == NULL)
     {
