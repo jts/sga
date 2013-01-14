@@ -5,6 +5,7 @@ AC_INIT(sga, 0.9.39, js18@sanger.ac.uk)
 AM_INIT_AUTOMAKE(foreign)
 AC_CONFIG_SRCDIR([SGA/sga.cpp])
 AC_CONFIG_HEADER([config.h])
+m4_include([m4/m4_ax_openmp.m4])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -20,10 +21,7 @@ AC_SEARCH_LIBS([gzopen],[z],,[AC_MSG_ERROR([libz not found, please install zlib 
 AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [clock_getttime found])], )
 
 # Check for openmp
-AC_SEARCH_LIBS([omp_set_num_threads],[gomp],[
-    openmp_cppflags="-fopenmp"
-    AC_DEFINE([HAVE_OPENMP], [1], [openmp found])]
-    ,)
+AX_OPENMP
 
 # Check for the bamtools library path
 # Bamtools has two different path formats
