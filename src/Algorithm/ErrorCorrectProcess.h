@@ -44,6 +44,7 @@ struct ErrorCorrectParameters
     //
     const OverlapAlgorithm* pOverlapper;
     BWTIndexSet indices;
+    bool trim;
 
     // Overlap-based corrector params
     int minOverlap;

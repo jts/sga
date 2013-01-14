@@ -179,6 +179,7 @@ int correctMain(int argc, char** argv)
     ecParams.pOverlapper = NULL;
     ecParams.indices = indexSet;
     ecParams.algorithm = opt::algorithm;
+    ecParams.trim = true;
 
     ecParams.minOverlap = opt::minOverlap;
     ecParams.numOverlapRounds = opt::numOverlapRounds;

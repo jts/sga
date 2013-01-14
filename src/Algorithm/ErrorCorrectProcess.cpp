@@ -236,6 +236,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     
     // Are all kmers in the read well-represented?
     bool allSolid = false;
+    int lastSolidBase = -1;
     bool done = false;
     int rounds = 0;
     int maxAttempts = m_params.numKmerRounds;
@@ -298,6 +299,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
         }
 
         allSolid = true;
+        lastSolidBase = -1;
         for(int i = 0; i < n; ++i)
         {
 #ifdef KMER_TESTING
@@ -305,6 +307,8 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 #endif
             if(solidVector[i] != 1)
                 allSolid = false;
+            else
+                lastSolidBase = i;
         }
         
 #ifdef KMER_TESTING  
@@ -353,8 +357,23 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     }
     else
     {
-        result.correctSequence = workItem.read.seq.toString();
-        result.kmerQC = false;
+        // trim the read if requested and it could not be completely corrected
+        if(m_params.trim && lastSolidBase > 0)
+        {
+            const double MIN_TRIM_RATIO = 0.65;
+            result.correctSequence = readSequence.substr(0, lastSolidBase);
+            double len_ratio = (double)result.correctSequence.length() / workItem.read.seq.length();
+//            printf("LSB: %d TRIMMED TO [%zu %zu] = %lf %s\n", lastSolidBase, result.correctSequence.length(), workItem.read.seq.length(), len_ratio, result.correctSequence.toString().c_str());
+            if(len_ratio >= MIN_TRIM_RATIO)
+                result.kmerQC = true;
+            else
+                result.kmerQC = false;
+        }
+        else
+        {
+            result.correctSequence = result.correctSequence = workItem.read.seq.toString();
+            result.kmerQC = false;
+        }
     }
     return result;
 }
