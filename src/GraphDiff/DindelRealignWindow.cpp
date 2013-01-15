@@ -1332,14 +1332,9 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     record.addComment("NR", numReadsReverse);
     record.addComment("NF0", this->numReadsForwardZeroMismatch);
     record.addComment("NR0", this->numReadsReverseZeroMismatch);
-    record.addComment("NU", numUnmapped);
-    record.addComment("NU", result.numCalledHaplotypes);
     record.addComment("HSR", result.numHapSpecificReads);
     record.addComment("HPLen", hp);
     record.addComment("SB", this->strandBias);
-    record.addComment("NumLib", this->numLibraries);
-    record.addComment("NumFragments", this->numReadNames);
-
     
     // HistDist
     std::stringstream histdist_ss;
@@ -1372,11 +1367,11 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
         record.addComment("HistMapQ", histmap_ss.str());
 
 
-   // output genotyping information
+    // output genotyping information
+    printf("OUTPUT GT? %d SAMPLES: %zu\n", result.outputGenotypes, out.samples.size());
 
     if (out.samples.size()>0 && result.outputGenotypes)
     {
-        
         record.formatStr = "GT:GQ:GL";
        
         for (size_t x=0;x<out.samples.size();x++)
@@ -4284,7 +4279,6 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
                                                                                                    const DindelRealignWindowResult *pPreviousResult,
                                                                                                    bool print = false)
 {
-
    (void) pPreviousResult;
    if (DINDEL_DEBUG_3)
        std::cout << "DindelRealignWindow::estimateHaplotypeFrequenciesModelSelectionSingleReadsMultiSample START" << std::endl;
@@ -4537,81 +4531,63 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
 
 
        if(done)
-       {
-           /*
-           if (pPreviousResult != NULL)
-           {
-              if(this->realignParameters.graphDiffStyle == 1)
-              {
-                  // set values for first haplotype
-                  int h = result.addOrder[0];
-                  setAddReads(1, h, hrLik, addReads, addLL, numReadPairs, numHaps, added);
-                  double qual = this->realignParameters.logPriorAddHaplotype + addLL[h];
-                  haplotypeQual[h] = qual;
-                  addCalledHaplotype(h, result, haplotypes, addReads, minLogLikAlignToAlt, numReadPairs);
-              }
-           }
-           */
            stopLoop = true;
-       }
-
 
        iteration++;
    }
 
-   if (DINDEL_DEBUG_3)
-       std::cout << "Number of haplotypes added: " << numAdded << "\n";
+    if (DINDEL_DEBUG_3)
+        std::cout << "Number of haplotypes added: " << numAdded << "\n";
 
-   // estimate haplotype frequencies for called haplotypes using EM. 
-   doEMMultiSample(numSamples, 25, llHapPairs, added, haplotypeFrequencies, haplotypeFrequencies);
+    // estimate haplotype frequencies for called haplotypes using EM. 
+    doEMMultiSample(numSamples, 25, llHapPairs, added, haplotypeFrequencies, haplotypeFrequencies);
 
-   if (realignParameters.genotyping)
-       this->addDiploidGenotypes(result, added, hrLik);
+    if (realignParameters.genotyping) {
+        this->addDiploidGenotypes(result, added, hrLik);
+        result.outputGenotypes = true;
+    } else {
+        result.outputGenotypes = false;
+    }
 
-   if (!QUIET) std::cout << "DindelRealignWindow::estimateHaplotypeFrequencies Added " << numAdded << " out of " << haplotypes.size() << " haplotypes." << std::endl;
+    if (!QUIET) std::cout << "DindelRealignWindow::estimateHaplotypeFrequencies Added " << numAdded << " out of " << haplotypes.size() << " haplotypes." << std::endl;
 
-   if (realignParameters.showCallReads && print)
-   {
-       for (int h=0;h<numHaps;h++)
-       {
+    if (realignParameters.showCallReads && print)
+    {
+        for (int h=0;h<numHaps;h++)
                std::cout << "DindelRealignWindow::estimateHaplotypeFrequencies final penalty haplotype[" <<h << "]: " << haplotypeQual[h] << std::endl;
-       }
+    }
 
-   }
+    // compute the expected sum of haplotype frequencies for each mapping location
+    const std::vector< DindelReferenceMapping > & refMappings = this->m_dindelWindow.getReferenceMappings();
+    result.weightedRefMapFrequencies = std::vector<double>(refMappings.size(), 0.0);
 
-   // compute the expected sum of haplotype frequencies for each mapping location
+    for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
+    {
+        double hq = haplotypeQual[hapIdx];
+        if (hq<0.)
+            hq = 0.0;
+        double probHap = 1.0-exp(-hq);
+        double hapFreq = haplotypeFrequencies[hapIdx];
 
-   const std::vector< DindelReferenceMapping > & refMappings = this->m_dindelWindow.getReferenceMappings();
-   result.weightedRefMapFrequencies = std::vector<double>(refMappings.size(), 0.0);
+        for (int refIdx = 0; refIdx < haplotypes[hapIdx].getNumReferenceMappings(); ++refIdx)
+        {
+            double mapProb = exp(haplotypes[hapIdx].getLogMappingProbability(refIdx));
+            result.weightedRefMapFrequencies[refIdx] += hapFreq * probHap * mapProb;
+        }
+    }
 
-   for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
-   {
-       double hq = haplotypeQual[hapIdx];
-       if (hq<0.)
-           hq = 0.0;
-       double probHap = 1.0-exp(-hq);
-       double hapFreq = haplotypeFrequencies[hapIdx];
+    if (DINDEL_DEBUG_3)
+    {
+        for (size_t x = 0; x < result.weightedRefMapFrequencies.size();x++) {
+            std::cout << " refMapping #" << x << " : weighted hapFreq " << result.weightedRefMapFrequencies[x] << "\n";
+        }
+    }
 
-       for (int refIdx = 0; refIdx < haplotypes[hapIdx].getNumReferenceMappings(); ++refIdx)
-       {
-           double mapProb = exp(haplotypes[hapIdx].getLogMappingProbability(refIdx));
-           result.weightedRefMapFrequencies[refIdx] += hapFreq * probHap * mapProb;
-       }
-   }
-
-   if (DINDEL_DEBUG_3)
-   {
-       for (size_t x = 0; x < result.weightedRefMapFrequencies.size();x++) {
-           std::cout << " refMapping #" << x << " : weighted hapFreq " << result.weightedRefMapFrequencies[x] << "\n";
-       }
-
-   }
-
-   // Add haplotype properties for all variants
-   for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
-   {
-       double hapQual = haplotypeQual[hapIdx]/.23026;
-       double hapFreq = haplotypeFrequencies[hapIdx];
+    // Add haplotype properties for all variants
+    for (int hapIdx = 0; hapIdx < numHaps; ++hapIdx)
+    {
+        double hapQual = haplotypeQual[hapIdx]/.23026;
+        double hapFreq = haplotypeFrequencies[hapIdx];
 
         for (int refIdx = 0; refIdx < haplotypes[hapIdx].getNumReferenceMappings(); ++refIdx)
         {
@@ -4637,22 +4613,18 @@ DindelRealignWindowResult DindelRealignWindow::estimateHaplotypeFrequenciesModel
 
             }
         }
-
-   }
-
+    }
 
 
-  // assign result
 
+    // assign result
+    result.haplotypeFrequencies = haplotypeFrequencies;
+    size_t totReads = 0; for (size_t x=0;x<addReads.size();x++) totReads += addReads[x].size();
+    result.numHapSpecificReads = (int) totReads;
+    result.numCalledHaplotypes = (int) numAdded; // -1 makes sure we don't count the reference haplotype. CHANGE when we are doing proper genotyping, because then we align each read to each haplotype
+    result.outputID = this->m_outputID;
 
-   result.haplotypeFrequencies = haplotypeFrequencies;
-   size_t totReads = 0; for (size_t x=0;x<addReads.size();x++) totReads += addReads[x].size();
-   result.numHapSpecificReads = (int) totReads;
-   result.numCalledHaplotypes = (int) numAdded; // -1 makes sure we don't count the reference haplotype. CHANGE when we are doing proper genotyping, because then we align each read to each haplotype
-
-   result.outputID = this->m_outputID;
-
-   return result;
+    return result;
 
 }
 
@@ -5011,17 +4983,30 @@ void VCFFile::outputHeader(const std::string & refFile, const std::string& /*par
     m_outputFileHandle << "##source=SGA/Dindel" << std::endl;
     m_outputFileHandle << "##reference=" << refFile << std::endl;
 
-    //m_outputFileHandle << "##INFO=<ID=NS,Number=1,Type=Integer,Description=\"Number of Samples With Data\">"<< std::endl;
-    //m_outputFileHandle << "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Total Depth\">"<< std::endl;
-    m_outputFileHandle << "##INFO=<ID=AC,Number=1,Type=Float,Description=\"Allele count\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=AF,Number=1,Type=Float,Description=\"Allele Frequency\">" << std::endl;
-    m_outputFileHandle << "##INFO=<ID=NR,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on forward strand\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=NumReads,Number=1,Type=Integer,Description=\"Number of reads passed to Dindel\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=NumCalledHaps,Number=1,Type=Integer,Description=\"Number of haplotypes Dindel called\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=ExpNumHapsWithVarMappingHere,Number=1,Type=Float,Description=\"TODO\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=VarQual,Number=1,Type=Float,Description=\"TODO\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HV,Number=1,Type=String,Description=\"Haplotype propery string\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HMQ,Number=1,Type=Integer,Description=\"Haplotype mapping quality\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=VarDP,Number=1,Type=Integer,Description=\"Number of reads containing the variant\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=NF,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on reverse strand\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=NR,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on forward strand\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=NF0,Number=1,Type=Integer,Description=\"Number of perfect reads preferentially aligning to variant haplotype on reverse strand\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=NR0,Number=1,Type=Integer,Description=\"Number of perfect reads preferentially aligning to variant haplotype on forward strand\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=HSR,Number=1,Type=Integer,Description=\"Number of haplotype-specific (informative) reads\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=HPLen,Number=1,Type=Integer,Description=\"Homopolymer length\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=SB,Number=1,Type=Float,Description=\"Strand bias\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HPLen,Number=1,Type=Integer,Description=\"Homopolymer length\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HistDist,Number=25,Type=Integer,Description=\"Histogram of variant distance from the end of the reads\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HistLik,Number=25,Type=Integer,Description=\"Histogram of read likelihoods\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HistMapQ,Number=8,Type=Integer,Description=\"Histogram of mapping quality\">" << std::endl;
+
     m_outputFileHandle << "##FILTER=<ID=Candidate,Description=\"Variant is candidate for testing\">" << std::endl;
     m_outputFileHandle << "##FILTER=<ID=NoCall,Description=\"No call made\">" << std::endl;
     m_outputFileHandle << "##FILTER=<ID=LowQuality,Description=\"Low quality variant\">" << std::endl;
+
     m_outputFileHandle << "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">" << std::endl;
     m_outputFileHandle << "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype Quality\">" << std::endl;
     m_outputFileHandle << "##FORMAT=<ID=HQ,Number=2,Type=Integer,Description=\"Haplotype Quality\">" << std::endl;
