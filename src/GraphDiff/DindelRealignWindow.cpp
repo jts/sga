@@ -1368,8 +1368,6 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
 
 
     // output genotyping information
-    printf("OUTPUT GT? %d SAMPLES: %zu\n", result.outputGenotypes, out.samples.size());
-
     if (out.samples.size()>0 && result.outputGenotypes)
     {
         record.formatStr = "GT:GQ:GL";
@@ -4985,10 +4983,10 @@ void VCFFile::outputHeader(const std::string & refFile, const std::string& /*par
 
     m_outputFileHandle << "##INFO=<ID=AF,Number=1,Type=Float,Description=\"Allele Frequency\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=NumReads,Number=1,Type=Integer,Description=\"Number of reads passed to Dindel\">" << std::endl;
-    m_outputFileHandle << "##INFO=<ID=NumCalledHaps,Number=1,Type=Integer,Description=\"Number of haplotypes Dindel called\">" << std::endl;
-    m_outputFileHandle << "##INFO=<ID=ExpNumHapsWithVarMappingHere,Number=1,Type=Float,Description=\"TODO\">" << std::endl;
-    m_outputFileHandle << "##INFO=<ID=VarQual,Number=1,Type=Float,Description=\"TODO\">" << std::endl;
-    m_outputFileHandle << "##INFO=<ID=HV,Number=1,Type=String,Description=\"Haplotype propery string\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=NumCalledHaps,Number=1,Type=Integer,Description=\"Number of haplotypes called by Dindel\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=ExpNumHapsWithVarMappingHere,Number=1,Type=Float,Description=\"Expected number of haplotypes mapping to this location\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=VarQual,Number=1,Type=Float,Description=\"Variant quality\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HV,Number=1,Type=String,Description=\"Haplotype property string\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=HMQ,Number=1,Type=Integer,Description=\"Haplotype mapping quality\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=VarDP,Number=1,Type=Integer,Description=\"Number of reads containing the variant\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=NF,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on reverse strand\">" << std::endl;
