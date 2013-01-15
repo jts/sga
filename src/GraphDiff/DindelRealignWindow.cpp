@@ -4986,7 +4986,7 @@ void VCFFile::outputHeader(const std::string & refFile, const std::string& /*par
     m_outputFileHandle << "##INFO=<ID=NumCalledHaps,Number=1,Type=Integer,Description=\"Number of haplotypes called by Dindel\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=ExpNumHapsWithVarMappingHere,Number=1,Type=Float,Description=\"Expected number of haplotypes mapping to this location\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=VarQual,Number=1,Type=Float,Description=\"Variant quality\">" << std::endl;
-    m_outputFileHandle << "##INFO=<ID=HV,Number=1,Type=String,Description=\"Haplotype property string\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=HV,Number=.,Type=String,Description=\"Haplotype property string\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=HMQ,Number=1,Type=Integer,Description=\"Haplotype mapping quality\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=VarDP,Number=1,Type=Integer,Description=\"Number of reads containing the variant\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=NF,Number=1,Type=Integer,Description=\"Number of reads preferentially aligning to variant haplotype on reverse strand\">" << std::endl;
