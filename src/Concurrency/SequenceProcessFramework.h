@@ -262,6 +262,7 @@ size_t processWorkParallelOpenMP(Generator& generator,
                                  PostProcessor* pPostProcessor, 
                                  size_t n = -1)
 {
+#if HAVE_OPENMP
     Timer timer("SequenceProcess", true);
 
     // Helpful typedefs
@@ -328,6 +329,14 @@ size_t processWorkParallelOpenMP(Generator& generator,
     printf("[sga::process] processed %zu sequences in %lfs (%lf sequences/s)\n", 
             generator.getNumConsumed(), proc_time_secs, (double)generator.getNumConsumed() / proc_time_secs);
     return generator.getNumConsumed();
+#else // OPENMP
+    (void)generator;
+    (void)processPtrVector;
+    (void)pPostProcessor;
+    (void)n;
+    printf("Error: threading enabled but you did not compile with OpenMP\n");
+    exit(EXIT_FAILURE);
+#endif
 }
 
 // Wrapper function for operating over n elements of from a SeqReader
