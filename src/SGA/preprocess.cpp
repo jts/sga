@@ -190,8 +190,7 @@ int preprocessMain(int argc, char** argv)
     }
     else
     {
-        std::ofstream* pFile = new std::ofstream(opt::outFile.c_str());
-        assertFileOpen(*pFile, opt::outFile);
+        std::ostream* pFile = createWriter(opt::outFile);
         pWriter = pFile;
     }
 
