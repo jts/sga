@@ -17,7 +17,7 @@
 #if defined(HAVE_CLOCK_GETTIME) && defined(USE_PROFILER)
 
 // Change this to determine how often the profile should print
-#define PROFILE_TICKS_BEFORE_PRINT 10000
+#define PROFILE_TICKS_BEFORE_PRINT 1000
 
 // This class writes the lifespan of the object
 // to the output variable, in nanoseconds

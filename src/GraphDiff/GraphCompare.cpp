@@ -150,7 +150,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
             count += rc_interval.size();
 
         bool both_strands = interval.size() > 0 && rc_interval.size() > 0;
-        size_t min_base_coverage = 2;
+
+        size_t min_base_coverage = 1;
         if(count >= m_parameters.minDiscoveryCount && count < m_parameters.maxDiscoveryCount && !variantAttempted && both_strands)
         {
             // Update the bloom filter to contain this kmer
