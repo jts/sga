@@ -17,7 +17,7 @@ my $SGA_BIN = "~/work/devel/sga/src/build-lenny/SGA/sga";
 # Variant calling parameters
 # If these are -1, the defaults will be used
 my $k = -1;
-my $x = -1;
+my $x = 5;
 my $m = -1;
 
 GetOptions("query-reads=s"         => \$query_file,
@@ -130,7 +130,7 @@ sub indexReads
 sub callVariantsSingle
 {
     my($in_file, $reference) = @_;
-    run("$SGA_BIN graph-diff --reference $reference --variant $in_file");
+    run("$SGA_BIN graph-diff -t $threads --debruijn -x $x --reference $reference --variant $in_file");
 }
 
 # Preprocess reads, compress the output. 
