@@ -9,8 +9,7 @@
 #include <stdio.h>
 #include "MurmurHash3.h"
 
-//#define IS_POWER_OF_2(x) ((x) & ((x) - 1)) == 0
-//#define MOD_POWER_2(x, y) (x) & ((y) - 1)
+//#define TRACK_OCCUPANCY 1
 
 //
 BloomFilter::BloomFilter() : m_occupancy(0), m_test_counter(0)
@@ -23,6 +22,7 @@ void BloomFilter::initialize(size_t width, size_t num_hashes)
 {
     m_width = width;
     m_bitvector.resize(width);
+    m_occupancy = 0;
 
     // Create seeds for murmer hash
     // TODO: Check how independent this method of selecting
@@ -41,9 +41,11 @@ void BloomFilter::add(const void* key, int num_bytes)
         MurmurHash3_x64_128(key, num_bytes, m_hashes[i], &h);
         size_t idx = h[0] % m_width;
 
+        bool was_set = m_bitvector.updateCAS(idx, false, true);
+#if TRACK_OCCUPANCY
         // This call uses an atomic update and returns true if the
         // bit was sucessfully set
-        if(m_bitvector.updateCAS(idx, false, true))
+        if(was_set)
         {
             // A bit was set, update the occupancy
             bool set = false;
@@ -53,8 +55,10 @@ void BloomFilter::add(const void* key, int num_bytes)
                 set = __sync_bool_compare_and_swap(&m_occupancy, old_occ, new_occ);
             } while(!set);
         }
+#else
+        (void)was_set;
+#endif
     }
-
 }
 
 //
@@ -68,12 +72,24 @@ bool BloomFilter::test(const void* key, int num_bytes) const
             return false;
     }
 
+#if TRACK_OCCUPANCY
     m_test_counter++;
     if(m_test_counter % 500000 == 0) {
         double p = (double)m_occupancy / m_width;
+        printf("WIDTH: %zu OCC: %zu\n", m_width, m_occupancy);
         printf("Access: %zu Occupancy: %zu P: %1.4lf\n", m_test_counter, m_occupancy, p);
     }
+#endif
     return true;
+}
+
+//
+void BloomFilter::printOccupancy() const
+{
+    size_t set_count = 0;
+    for(size_t i = 0; i < m_width; ++i)
+        set_count += m_bitvector.test(i);
+    printf("%zu out of %zu bits are set\n", set_count, m_width);
 }
 
 //

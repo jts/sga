@@ -53,6 +53,11 @@ class BloomFilter
         */
         void printMemory() const;
 
+        /**
+        * @brief Count how many bits are set and print to stdout
+        */
+        void printOccupancy() const;
+
     private:
         BitVector m_bitvector;
         std::vector<uint32_t> m_hashes;
