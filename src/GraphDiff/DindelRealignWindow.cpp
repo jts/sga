@@ -473,7 +473,6 @@ void DindelHaplotype::extractVariants()
     int eventStart = -1;
     int eventEnd = -1;
     bool isIndel = false;
-    bool isComplex = false;
     bool inLeftExact = true;
 
     for(int i = first_aligned_column; i <= last_aligned_column; ++i)
@@ -510,7 +509,6 @@ void DindelHaplotype::extractVariants()
             {
                 // Extend the event
                 // NOTE that a SNP next to an indel will be annotated as a single event.
-                isComplex = (!isIndel && (varSymbol == '-' || refSymbol == '-')) || (isIndel && varSymbol !='-' && refSymbol != '-');
                 assert(eventEnd != -1);
                 eventEnd += 1;
             }
@@ -660,7 +658,6 @@ void DindelHaplotype::extractVariants()
                 eventStart = -1;
                 eventEnd = -1;
                 isIndel = false;
-                isComplex = false;
             }
         }
     }
