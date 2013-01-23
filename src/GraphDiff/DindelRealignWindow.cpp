@@ -2586,7 +2586,7 @@ void DindelRealignWindow::addDiploidGenotypes(DindelRealignWindowResult& result,
                if (qual<0.0) qual = 0.0;
                it1->second.qual = 10.0*qual/log(10.0);
                // prevent non-ref genotype calls when there is little evidence
-               if (count != 0 && abs(it1->second.gl[count]-it1->second.gl[0])<0.05)
+               if (count != 0 && fabs(it1->second.gl[count]-it1->second.gl[0])<0.05)
                    it1->second.count = 0; // assign ref 
            }
        }
