@@ -87,10 +87,21 @@ indexReference($reference_file);
 my $pp_query_file = preprocessReads($query_file);
 indexReads($pp_query_file);
 
+# Index the control reads, if they exist
+my $pp_control_file = "";
+if($control_file ne "") {
+    $pp_control_file = preprocessReads($control_file);
+    indexReads($pp_control_file);
+}
+
 #
 # Run the caller
 #
-callVariantsSingle($pp_query_file, $reference_file);
+if($control_file eq "") {
+    callVariantsSingle($pp_query_file, $reference_file);
+} else {
+    callVariantsCompare($pp_query_file, $pp_control_file, $reference_file);
+}
 
 # Cleanup
 close(LOG);
@@ -98,6 +109,20 @@ close(LOG);
 #
 # Utilities
 #
+
+# Call variants for a single file versus the reference
+sub callVariantsSingle
+{
+    my($in_file, $reference) = @_;
+    run("$SGA_BIN graph-diff -t $threads --debruijn -x $x --reference $reference --variant $in_file");
+}
+
+# Call variants by comparing two sets of reads
+sub callVariantsCompare
+{
+    my($in_query_file, $in_control_file, $reference) = @_;
+    run("$SGA_BIN graph-diff -t $threads -x $x --reference $reference --variant $in_query_file --base $in_control_file");
+}
 
 # Index a reference genome 
 sub indexReference
@@ -124,13 +149,6 @@ sub indexReads
         print "Starting to index reads in file $in_file\n";
         run("$SGA_BIN index -a ropebwt --no-reverse --threads $threads $in_file");
     }
-}
-
-# Call variants for a single file versus the reference
-sub callVariantsSingle
-{
-    my($in_file, $reference) = @_;
-    run("$SGA_BIN graph-diff -t $threads --debruijn -x $x --reference $reference --variant $in_file");
 }
 
 # Preprocess reads, compress the output. 

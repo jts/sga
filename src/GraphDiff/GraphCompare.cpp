@@ -249,7 +249,9 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
         overlap_builder.run(result.variant_haplotypes);
     }
 
+    //
     // Haplotype QC
+    //
     size_t num_assembled = result.variant_haplotypes.size();
     if(num_assembled > m_parameters.maxHaplotypes)
     {
@@ -257,7 +259,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
         return result;
     }
 
-    //qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
+    qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
     size_t num_qc = result.variant_haplotypes.size();
 
     // If any assembled haplotypes failed QC, do not try to call variants
@@ -270,28 +272,91 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
     return result;
 }
 
-//
+// Perform quality checks on each haplotype
 void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes) const
 {
     PROFILE_FUNC("GraphCompare::qcVariantHaplotypes")
-    // Calculate the maximum k such that every kmer is present in the variant and base BWT
-    // The difference between these values must be at least MIN_COVER_K_DIFF
-    size_t MIN_COVER_K_DIFF = 10;
-    size_t MIN_COVERAGE = bReferenceMode ? 1 : 2;
-    StringVector temp_haplotypes;
-    for(size_t i = 0; i < variant_haplotypes.size(); ++i)
+    if(!bReferenceMode) 
     {
-        // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
-        size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.variantIndex);
-        size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.baseIndex);
+        // If in comparative mode, check whether the haplotype has sparse coverage by the base
+        //static const size_t MIN_UNIQUE_KMERS = 10;
 
-        //
-        if( max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 41)
-            temp_haplotypes.push_back(variant_haplotypes[i]);
+        for(size_t i = 0; i < variant_haplotypes.size(); ++i) 
+        {
+            std::string& haplotype = variant_haplotypes[i];
+            size_t k = m_parameters.kmer;
+            size_t n = haplotype.size();
+            size_t nk = haplotype.size() - k + 1;
+            size_t num_covered_kmers = 0;
+            std::vector<size_t> start_positions;
+            BitVector covered_bases(n);
+
+            for(size_t j = 0; j < nk; ++j) 
+            {
+                size_t c = BWTAlgorithms::countSequenceOccurrences(haplotype.substr(j, k), m_parameters.baseIndex);
+                if(c > 0) 
+                {
+                    num_covered_kmers += 1;
+                    for(size_t m = j; m < j + k; ++m)
+                        covered_bases.set(m, true);
+                    start_positions.push_back(j);
+                }
+            }
+
+            size_t num_uncovered_kmers = nk - num_covered_kmers;
+            size_t num_uncovered_bases = 0;
+            size_t max_d = std::numeric_limits<size_t>::min();
+            size_t sum_d = 0;
+            if(!start_positions.empty()) 
+            {
+                size_t prev_start = start_positions[0];
+                for(size_t j = 1; j < start_positions.size(); ++j)
+                {
+                    size_t d = start_positions[j] - prev_start;
+                    if(d > max_d)
+                        max_d = d;
+                    sum_d += d - 1;
+                    prev_start = start_positions[j];
+                }
+            }
+
+            for(size_t j = 0; j < n; j++)
+                num_uncovered_bases += covered_bases.test(j) ? 0 : 1;
+
+            //if(num_uncovered_kmers < MIN_UNIQUE_KMERS || num_uncovered_bases == 0)
+            if(max_d < k / 2)
+                haplotype = "";
+
+            //double frac_covered = (double)num_covered / nk;
+            printf("HAP[%zu] NK %zu NC %zu NUC %zu NUB %zu MAX_D: %zu SUM_D: %zu\n", i, nk, num_covered_kmers, num_uncovered_kmers, num_uncovered_bases, max_d, sum_d);
+        }
+
+        // Calculate the maximum k such that every kmer is present in the variant and base BWT
+        // The difference between these values must be at least MIN_COVER_K_DIFF
+        size_t MIN_COVER_K_DIFF = 10;
+        size_t MIN_COVERAGE = bReferenceMode ? 1 : 2;
+        for(size_t i = 0; i < variant_haplotypes.size(); ++i)
+        {
+            if(variant_haplotypes[i] == "")
+                continue;
+
+            // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
+            size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.variantIndex);
+            size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.baseIndex);
+            printf("Hap2[%zu] MVK: %zu MBK: %zu\n", i, max_variant_k, max_base_k);
+
+            //
+            if( ! (max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 41))
+                variant_haplotypes[i] = "";
+        }
     }
-
-    // Update the variant haplotypes with those remaining
-    variant_haplotypes.swap(temp_haplotypes);
+    // Copy over the remaining haplotypes
+    StringVector tmp_haplotypes;
+    for(size_t i = 0; i < variant_haplotypes.size(); ++i) {
+        if(!variant_haplotypes[i].empty())
+            tmp_haplotypes.push_back(variant_haplotypes[i]);
+    }
+    variant_haplotypes.swap(tmp_haplotypes);
 }
 
 // Update the bloom filter with the kmers that were assembled into str

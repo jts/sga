@@ -213,7 +213,7 @@ int graphDiffMain(int argc, char** argv)
     if(!opt::referenceMode)
     {
         std::cout << "Loading base read index index... " << std::flush;
-        std::string basePrefix = stripExtension(opt::baseFile);
+        std::string basePrefix = stripGzippedExtension(opt::baseFile);
         baseIndex.pBWT = new BWT(basePrefix + BWT_EXT, opt::sampleRate);
         baseIndex.pSSA = new SampledSuffixArray(basePrefix + SAI_EXT, SSA_FT_SAI);
         baseIndex.pCache = new BWTIntervalCache(opt::cacheLength, baseIndex.pBWT);
