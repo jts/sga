@@ -40,9 +40,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     HapgenAlignmentVector candidateAlignments;
 
     // Choose the kmer size for alignment
-    //size_t MAX_ALIGN_KMER = 51;
-    //size_t ALIGN_KMER_OFFSET = 5;
-    //size_t align_kmer = std::min(MAX_ALIGN_KMER, parameters.kmer - ALIGN_KMER_OFFSET);
     size_t align_kmer = 31;
     for(size_t i = 0; i < inHaplotypes.size(); ++i)
     {
