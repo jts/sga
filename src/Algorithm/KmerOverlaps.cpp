@@ -34,9 +34,9 @@ MultipleAlignment KmerOverlaps::buildMultipleAlignment(const std::string& query,
 // The is_reverse flag indicates the strand of the partial match
 struct KmerMatch
 {
-    int64_t position:16;
-    int64_t index:47;
-    int64_t is_reverse:1;
+    size_t position:16;
+    size_t index:47;
+    size_t is_reverse:1;
 
     friend bool operator<(const KmerMatch& a, const KmerMatch& b)
     {
@@ -90,7 +90,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
             {
-                KmerMatch match = { i, j, false };
+                KmerMatch match = { i, static_cast<size_t>(j), false };
                 prematchMap.insert(std::make_pair(match, false));
             }
         }
@@ -101,7 +101,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
         {
             for(int64_t j = interval.lower; j <= interval.upper; ++j)
             {
-                KmerMatch match = { i, j, true };
+                KmerMatch match = { i, static_cast<size_t>(j), true };
                 prematchMap.insert(std::make_pair(match, false));
             }
         }

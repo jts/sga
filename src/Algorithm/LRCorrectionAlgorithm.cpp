@@ -159,7 +159,7 @@ std::string correctDeBruijnPath(const std::string& query,
         std::string ks = query.substr(i, kmer);
         size_t count = BWTAlgorithms::countSequenceOccurrences(ks, pTargetBWT);
 
-        AnchorSequence anchor = { ks, i, count };
+        AnchorSequence anchor = { ks, static_cast<int>(i), static_cast<int>(count) };
         if(verbose)
             std::cout << anchor << "\n";
         if(count >= kmerThreshold)
