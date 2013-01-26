@@ -128,7 +128,8 @@ class DPAlignment
             return 0;
         }
 
-        //
+        // GCC 4.7 warns on this
+#pragma GCC diagnostic ignored "-Wuninitialized"
         inline int compare3(int a, int b, int c) const
         {
             switch(m_scoring)
@@ -139,6 +140,7 @@ class DPAlignment
                     return min3(a,b,c);
                 default:
                     assert(false);
+                    return a;
             }
             return a;
         }
