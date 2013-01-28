@@ -259,7 +259,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
         return result;
     }
 
-    qcVariantHaplotypes(m_parameters.bReferenceMode, result.variant_haplotypes);
+    qcVariantHaplotypes(str, m_parameters.bReferenceMode, result.variant_haplotypes);
     size_t num_qc = result.variant_haplotypes.size();
 
     // If any assembled haplotypes failed QC, do not try to call variants
@@ -273,7 +273,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 }
 
 // Perform quality checks on each haplotype
-void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes) const
+void GraphCompare::qcVariantHaplotypes(const std::string& source_kmer, bool bReferenceMode, StringVector& variant_haplotypes) const
 {
     PROFILE_FUNC("GraphCompare::qcVariantHaplotypes")
     if(!bReferenceMode) 
@@ -323,12 +323,39 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
             for(size_t j = 0; j < n; j++)
                 num_uncovered_bases += covered_bases.test(j) ? 0 : 1;
 
+            // Calculate the base/non-ref density around the source kmer.
+            size_t density_distance = 20;
+            size_t skp = haplotype.find(source_kmer);
+            printf("SKP: %zu\n", skp);
+            double density = -1.0f;
+            if(skp != std::string::npos)
+            {
+                size_t startp = skp > density_distance ? skp - density_distance : 0;
+                size_t endp = std::min(skp + density_distance, nk - 1);
+                size_t distance = 0;
+                size_t density_kmer_count = 0;
+                for(size_t j = startp; j <= endp; ++j)
+                {
+                    // skip seed k-mer, which we know is not covered by the base
+                    if(j == skp)
+                        continue;
+                    std::string curr_kmer = haplotype.substr(j, k);
+                    size_t c = BWTAlgorithms::countSequenceOccurrences(curr_kmer, m_parameters.baseIndex);
+                    size_t r = BWTAlgorithms::countSequenceOccurrences(curr_kmer, m_parameters.referenceIndex);
+                    if(c > 0 && r == 0)
+                        density_kmer_count += 1;
+                    distance += 1;
+                }
+                printf("dkc: %zu d: %zu\n", density_kmer_count, distance);
+                density = (double)density_kmer_count / (double)distance;
+
+            }
             //if(num_uncovered_kmers < MIN_UNIQUE_KMERS || num_uncovered_bases == 0)
             if(max_d < k / 2)
                 haplotype = "";
 
             //double frac_covered = (double)num_covered / nk;
-            printf("HAP[%zu] NK %zu NC %zu NUC %zu NUB %zu MAX_D: %zu SUM_D: %zu\n", i, nk, num_covered_kmers, num_uncovered_kmers, num_uncovered_bases, max_d, sum_d);
+            printf("HAP[%zu] NK %zu NC %zu NUC %zu NUB %zu MAX_D: %zu SUM_D: %zu DENS: %.2lf\n", i, nk, num_covered_kmers, num_uncovered_kmers, num_uncovered_bases, max_d, sum_d, density);
         }
 
         // Calculate the maximum k such that every kmer is present in the variant and base BWT

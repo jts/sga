@@ -165,7 +165,7 @@ class GraphCompare
         GraphBuildResult processVariantKmer(const std::string& str, int count) const;
         
         // Perform quality checks on the variant haplotypes
-        void qcVariantHaplotypes(bool bReferenceMode, StringVector& variant_haplotypes) const;
+        void qcVariantHaplotypes(const std::string& source_kmer, bool bReferenceMode, StringVector& variant_haplotypes) const;
 
         // Build haplotypes in the base sequence that are parallel to the variant haplotypes
         void buildParallelBaseHaplotypes(const StringVector& variant_haplotypes, StringVector& base_haplotypes) const;
