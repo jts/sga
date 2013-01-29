@@ -38,6 +38,7 @@
 #include "metagenome.h"
 #include "variant-detectability.h"
 #include "rewrite-evidence-bam.h"
+#include "haplotype-filter.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -73,6 +74,7 @@ static const char *SGA_USAGE_MESSAGE =
 "\n\nVariant Calling Commands:\n"
 "           graph-diff            compare reads to find sequence variants\n"
 "           rewrite-evidence-bam  fill in sequence and quality information for a variant evidence BAM\n"
+"           haplotype-filter      filter out low-quality haplotypes\n"
 "\n\nExperimental commands:\n"
 "           stats                 print summary statistics about a read set\n"
 "           filterBAM             filter out contaminating mate-pair data in a BAM file\n"
@@ -165,6 +167,8 @@ int main(int argc, char** argv)
             variantDetectabilityMain(argc - 1, argv + 1);
         else if(command == "rewrite-evidence-bam")
             rewriteEvidenceBAMMain(argc - 1, argv + 1);
+        else if(command == "haplotype-filter")
+            haplotypeFilterMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
