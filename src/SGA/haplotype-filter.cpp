@@ -27,11 +27,12 @@ bool applyFilter(const std::string& kmer, const BWTIndexSet& indices);
 std::vector<size_t> getPopulationCoverageCount(const std::string& kmer, const BWTIndexSet& indices);
 double calculateLogProbabilityNullMultinomial(const std::vector<size_t>& sample_count);
 double calculateLogProbabilitySegregating(const std::vector<size_t>& sample_count);
-double LM(double d, const std::vector<size_t>& sample_count);
+double LMHaploid(double d, const std::vector<size_t>& sample_count);
 double LMHaploidNaive(double d, const std::vector<size_t>& sample_count);
-double LMDiploid(const std::vector<size_t>& sample_count);
+double LMDiploidNew(double d, const std::vector<size_t>& sample_count);
 std::vector<size_t> simulateCoverageNull(double d, size_t o, size_t N);
 std::vector<size_t> simulateCoverageHaploid(double d, size_t o, size_t N);
+std::vector<size_t> simulateCoverageDiploid(double d, size_t o, size_t N);
 void runSimulation();
 
 //
@@ -89,8 +90,9 @@ static const struct option longopts[] = {
 int haplotypeFilterMain(int argc, char** argv)
 {
     parseHaplotypeFilterOptions(argc, argv);
-    runSimulation();
-    exit(0);
+    
+    //runSimulation();
+    //exit(0);
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
@@ -127,8 +129,9 @@ int haplotypeFilterMain(int argc, char** argv)
         std::vector<size_t> sample_coverage = getPopulationCoverageCount(kmer, indices);
         std::copy(sample_coverage.begin(), sample_coverage.end(), std::ostream_iterator<size_t>(std::cout, " "));
         std::cout << "\n";
-
-        double val = LMDiploid(sample_coverage);
+        
+        double d = 4;
+        double val = LMDiploidNew(d, sample_coverage);
         std::stringstream lmss;
         lmss << fields[7];
         lmss << ";LM=" << val << ";";
@@ -180,15 +183,16 @@ void runSimulation()
 {
     size_t trials = 2000;
     size_t N = 1000;
-    double d = 4;
+    double d = 2;
 
     size_t min_o = 5;
     size_t max_o = round(N * d);
     (void)min_o;
     (void)max_o;
+    srand(NULL);
+    bool use_diploid = true;
 
     double fpr = 0.5;
-
     size_t n_tp = 0;
     size_t n_fp = 0;
     size_t n_tn = 0;
@@ -203,16 +207,17 @@ void runSimulation()
         if(is_fp)
             counts = simulateCoverageNull(d, o, N);
         else
-            counts = simulateCoverageHaploid(d, o, N);
+            counts = simulateCoverageDiploid(d, o, N);
 
         if(opt::verbose > 0)
         {
             std::copy(counts.begin(), counts.end(), std::ostream_iterator<size_t>(std::cout, " "));
             std::cout << "\n";
         }
+        double s_h = LMHaploidNaive(d, counts);
+        double s_d = LMDiploidNew(d, counts);
 
-        double s = LM(d, counts);
-
+        double s = use_diploid ? s_d : s_h;
         if(is_fp && s < 0)
             n_tn += 1;
         else if(is_fp && s > 0)
@@ -221,7 +226,7 @@ void runSimulation()
             n_fn += 1;
         else
             n_tp += 1;
-        printf("%zu\t%d\t%zu\t%lf\n", i, is_fp, o, s);
+        printf("%zu\t%d\t%zu\t%lf\t%lf\n", i, is_fp, o, s_d, s_h);
     }
     fprintf(stderr, "tp: %zu fp: %zu tn: %zu fn: %zu\n", n_tp, n_fp, n_tn, n_fn);
 }
@@ -235,11 +240,11 @@ bool applyFilter(const std::string& kmer, const BWTIndexSet& indices)
     std::cout << "\n";
 
     double d = 4;
-    double lr = LM(d, sample_coverage);
+    double lr = LMHaploid(d, sample_coverage);
     return lr > 0;
 }
 
-double LM(double d, const std::vector<size_t>& sample_count)
+double LMHaploid(double d, const std::vector<size_t>& sample_count)
 {
     size_t N = sample_count.size();
     std::map<size_t, size_t> samples_with_count;
@@ -276,9 +281,10 @@ double LM(double d, const std::vector<size_t>& sample_count)
 
     if(opt::verbose > 0)
     {
-        printf("o: %lf M: %lf\n", o, M);
-        printf("n0: %lf q: %lf r: %lf log(Q(M)): %lf\n", n_0, q, r, log_Q_M);
-        printf("T1: %lf T2: %lf LM: %lf\n", t1, t2, t1 + t2);
+        printf("LMHaploid:\n");
+        printf("\to: %lf M: %lf\n", o, M);
+        printf("\tn0: %lf q: %lf r: %lf log(Q(M)): %lf\n", n_0, q, r, log_Q_M);
+        printf("\tT1: %lf T2: %lf LM: %lf\n", t1, t2, t1 + t2);
     }
 
     return t1 + t2;
@@ -326,64 +332,62 @@ double LMHaploidNaive(double d, const std::vector<size_t>& sample_count)
 
     if(opt::verbose > 0)
     {
-        printf("o: %lf M: %lf N: %zu p: %lf q: %lf n0: %zu\n", o, M, N, p, q, n0);
+        printf("LMHaploidNaive:\n");
+        printf("\to: %lf M: %lf N: %zu p: %lf q: %lf n0: %zu\n", o, M, N, p, q, n0);
     }
 
     return sum;
 }
 
-double LMDiploid(const std::vector<size_t>& sample_count)
+double LMDiploidNew(double d, const std::vector<size_t>& sample_count)
 {
     size_t N = sample_count.size();
-    std::map<size_t, size_t> samples_with_count;
     double o = 0;
+    size_t n0 = 0;
     for(size_t i = 0; i < N; ++i)
     {
+        if(sample_count[i] == 0)
+            n0 += 1;
+
         o += sample_count[i];
-        samples_with_count[sample_count[i]] += 1;
     }
 
-    double n_0 = samples_with_count[0]; // number of samples with no depth
-    // n_0 is an estimate of the number of ref-ref HOMs. Calculate 
-    double ref_ref_proportion = n_0 / N;
+    double M = round(o/d);
+    double f = M / (2 * N);
 
-    // Proportion of ref alleles in the population
-    double hw_p = sqrt(ref_ref_proportion);
+    // Clamp M at the number of samples
+    M = std::min((double)N, M);
 
-    // Proportion of non-ref alleles in the population
-    double hw_q = 1.0f - hw_p;
-    double d = 4; // HACK HACK, estimate this
-    (void)d;
-
-    // estimated number of non-ref alleles in the population
-    double M = round(N * hw_q);
-    double TWO_N = 2*N; // total alleles 
-    assert(M < TWO_N);
-
-    // Mean depth under the error model
     double p = o / N;
-
-    // Mean depth of alt allele under segregating model
     double q = o / M;
 
-    printf("LMDiploid params -- n0: %lf hw_p: %lf hw_q: %lf o: %lf p: %lf q: %lf\n", n_0, hw_p, hw_q, o, p, q);
-
-    double sum = 0.0f;
-    for(size_t i = 0; i < N; ++i)
+    double sum = 0;
+    for(size_t i = 0; i < sample_count.size(); ++i)
     {
         size_t oi = sample_count[i];
-
-        // Seg model
-        double LOG_POIS = Stats::logPoisson(oi, q);
-        double T1 = pow((M / TWO_N), 2) * pow(2, oi) * exp(-q);
-        double T2 = ((TWO_N - M) / N) * (M / TWO_N);
-        double S1 = log(T1 + T2);
-
-        // Null model
-        double LOG_NULL = Stats::logPoisson(oi, p);
-        sum += (LOG_POIS + S1 - LOG_NULL);
+        if(oi == 0)
+        {
+            double h1_zero = pow(1 - f, 2) + 2 * f * (1-f) * exp(-q) + pow(f, 2) * exp(-2*q);
+            double log_h0_zero = -p;
+            double log_pzero = log(h1_zero) - log_h0_zero;
+            sum += log_pzero;
+        }
+        else
+        {
+            double log_null = Stats::logPoisson(oi, p);
+            double t1 = 2 * f * (1 - f) * pow(q, oi) * exp(-q) + pow(f, 2) * pow(2 * q, oi) * exp(-2 * q);
+            double t2 = Stats::logFactorial(oi);
+            double t3 = log(t1) - t2;
+            sum += t3 - log_null;
+        }
     }
-    printf("LMDiploid: %lf\n", sum);
+
+    if(opt::verbose > 0)
+    {
+        printf("LMDiploidNew:\n");
+        printf("\to: %lf M: %lf N: %zu p: %lf q: %lf n0: %zu f: %lf\n", o, M, N, p, q, n0, f);
+    }
+
     return sum;
 }
 
@@ -423,6 +427,53 @@ std::vector<size_t> simulateCoverageHaploid(double d, size_t o, size_t N)
 
     return counts;
 }
+
+std::vector<size_t> simulateCoverageDiploid(double d, size_t o, size_t N)
+{
+    // Here M is the number of non-reference alleles
+    double M = round(o / d);
+    assert(M <= N);
+    
+    // Proportion of non-reference alleles in the population
+    double q = M / (2 * N);
+    size_t num_hom_alt = round(pow(q, 2) * N);
+    size_t num_het = M - (2*num_hom_alt);
+    
+    if(opt::verbose > 0)
+    {
+        printf("Simulate diploid %zu reads across %lf alleles\n", o, M);
+        printf("    q: %lf num_hom_alt: %zu num_het: %zu\n", q, num_hom_alt, num_het);
+    }
+
+    // Select indices at random to become carries of the variant
+    std::vector<size_t> initial_indices(N);
+    for(size_t i = 0; i < N; ++i)
+        initial_indices[i] = i;
+    std::random_shuffle(initial_indices.begin(), initial_indices.end());
+
+    // The first num_hom_alt entries will carry two alleles
+    std::vector<size_t> final_indices(M);
+    for(size_t i = 0; i < num_hom_alt; ++i)
+    {
+        final_indices[2*i] = initial_indices[i];
+        final_indices[2*i + 1] = initial_indices[i];
+    }
+
+    // The next num_het entries carry one allele
+    for(size_t i = 0; i < num_het; ++i)
+        final_indices[2*num_hom_alt + i] = initial_indices[num_hom_alt + i];    
+
+    // Distribute o reads over M individuals
+    std::vector<size_t> counts(N);
+    for(size_t i = 0; i < o; ++i)
+    {
+        size_t idx = final_indices[rand() % (size_t)M];
+        counts[idx]++;
+    }
+
+    return counts;
+}
+
 
 //
 std::vector<size_t> getPopulationCoverageCount(const std::string& kmer, const BWTIndexSet& indices)
