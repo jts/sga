@@ -115,10 +115,15 @@ int haplotypeFilterMain(int argc, char** argv)
         // Shrink the VCF kmer
         kmer = kmer.substr(10, opt::k);
         
-        double val = LM(getPopulationCoverageCount(kmer, indices));
+        printf("Kmer --- %s\n", kmer.c_str());
+        std::vector<size_t> sample_coverage = getPopulationCoverageCount(kmer, indices);
+        std::copy(sample_coverage.begin(), sample_coverage.end(), std::ostream_iterator<size_t>(std::cout, " "));
+        std::cout << "\n";
+
+        double val = LM(sample_coverage);
         std::stringstream lmss;
         lmss << fields[7];
-        lmss << ";LM=" << val;
+        lmss << ";LM=" << val << ";";
         fields[7] = lmss.str();
         for(size_t i = 0; i < fields.size(); ++i)
             outFile << fields[i] << "\t";

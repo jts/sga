@@ -17,7 +17,7 @@ class IOverlapExtractor
 {
     public:
 
-        virtual ~IOverlapExtractor();
+        virtual ~IOverlapExtractor() {};
 
         // Return a vector of reads that exactly overlap a given query
         virtual SequenceOverlapPairVector getExactOverlaps(const std::string& query) = 0;
