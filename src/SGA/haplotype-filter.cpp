@@ -24,15 +24,30 @@
 
 // Functions
 bool applyFilter(const std::string& kmer, const BWTIndexSet& indices);
+
+// Get the number of times the kmer appears in each samples
 std::vector<size_t> getPopulationCoverageCount(const std::string& kmer, const BWTIndexSet& indices);
-double calculateLogProbabilityNullMultinomial(const std::vector<size_t>& sample_count);
-double calculateLogProbabilitySegregating(const std::vector<size_t>& sample_count);
+
+// Get the mean depth of a random k-mer in each sample
+std::vector<double> getSampleMeanKmerDepth(size_t k, const BWTIndexSet& indices);
+
+//
 double LMHaploid(double d, const std::vector<size_t>& sample_count);
 double LMHaploidNaive(double d, const std::vector<size_t>& sample_count);
 double LMDiploidNew(double d, const std::vector<size_t>& sample_count);
+
+//
+std::vector<double> loadSampleDepthsFromFile(std::string filename);
+
+// Simulation functions
 std::vector<size_t> simulateCoverageNull(double d, size_t o, size_t N);
 std::vector<size_t> simulateCoverageHaploid(double d, size_t o, size_t N);
 std::vector<size_t> simulateCoverageDiploid(double d, size_t o, size_t N);
+std::vector<size_t> simulateCoverageNullNonUniform(std::vector<double> sample_coverage, size_t o);
+std::vector<size_t> simulateCoverageDiploidNonUniform(std::vector<double> sample_coverage, size_t o);
+std::vector<double> simulateSampleKmerDepths(size_t mean_depth, size_t N);
+
+//
 void runSimulation();
 
 //
@@ -91,8 +106,8 @@ int haplotypeFilterMain(int argc, char** argv)
 {
     parseHaplotypeFilterOptions(argc, argv);
     
-    //runSimulation();
-    //exit(0);
+    runSimulation();
+    exit(0);
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
@@ -104,6 +119,8 @@ int haplotypeFilterMain(int argc, char** argv)
     indices.pSSA = new SampledSuffixArray(prefix + SAI_EXT, SSA_FT_SAI);
     indices.pQualityTable = new QualityTable();
     std::cout << "done\n";
+
+    getSampleMeanKmerDepth(opt::k, indices);
 
     std::ofstream outFile(opt::outFile.c_str());
     std::ifstream inFile(opt::vcfFile.c_str());
@@ -129,12 +146,17 @@ int haplotypeFilterMain(int argc, char** argv)
         std::vector<size_t> sample_coverage = getPopulationCoverageCount(kmer, indices);
         std::copy(sample_coverage.begin(), sample_coverage.end(), std::ostream_iterator<size_t>(std::cout, " "));
         std::cout << "\n";
-        
+      
+        size_t total_coverage = 0;
+        for(size_t i = 0; i < sample_coverage.size(); ++i)
+            total_coverage += sample_coverage[i];
+              
         double d = 4;
         double val = LMDiploidNew(d, sample_coverage);
         std::stringstream lmss;
         lmss << fields[7];
         lmss << ";LM=" << val << ";";
+        lmss << ";O=" << total_coverage << ";";
         fields[7] = lmss.str();
         for(size_t i = 0; i < fields.size(); ++i)
             outFile << fields[i] << "\t";
@@ -183,7 +205,7 @@ void runSimulation()
 {
     size_t trials = 2000;
     size_t N = 1000;
-    double d = 2;
+    double d = 3;
 
     size_t min_o = 5;
     size_t max_o = round(N * d);
@@ -198,6 +220,16 @@ void runSimulation()
     size_t n_tn = 0;
     size_t n_fn = 0;
 
+    //std::vector<double> depths = simulateSampleKmerDepths(d, N);
+    std::vector<double> depths = loadSampleDepthsFromFile("depths.txt");
+
+    if(opt::verbose > 0)
+    {
+        printf("Per-sample depth:\n");
+        std::copy(depths.begin(), depths.end(), std::ostream_iterator<double>(std::cout, " "));
+        std::cout << "\n";
+    }
+
     for(size_t i = 0; i < trials; ++i)
     {
         double p = (double)rand() / RAND_MAX;
@@ -205,9 +237,9 @@ void runSimulation()
         std::vector<size_t> counts;
         bool is_fp = p < fpr;
         if(is_fp)
-            counts = simulateCoverageNull(d, o, N);
+            counts = simulateCoverageNullNonUniform(depths, o);
         else
-            counts = simulateCoverageDiploid(d, o, N);
+            counts = simulateCoverageDiploidNonUniform(depths, o);
 
         if(opt::verbose > 0)
         {
@@ -474,6 +506,149 @@ std::vector<size_t> simulateCoverageDiploid(double d, size_t o, size_t N)
     return counts;
 }
 
+//
+std::vector<size_t> simulateCoverageNullNonUniform(std::vector<double> sample_coverage, size_t o)
+{
+    size_t N = sample_coverage.size();
+
+    // Make a discrete distribution using the per-sample coverage depths
+    std::vector<double> distribution(N);
+    double sum = 0.f;
+    for(size_t i = 0; i < N; ++i)
+    {
+        double p = sample_coverage[i] / 2;
+        distribution[i] = sum + p;
+        sum = distribution[i];
+    }
+
+    // Normalize
+    for(size_t i = 0; i < N; ++i)
+        distribution[i] /= sum;
+
+    // Distribute o reads over the individuals according to the read depth
+    std::vector<size_t> counts(N);
+    for(size_t i = 0; i < o; ++i)
+    {
+        double p = (double)rand() / RAND_MAX;
+        size_t j = 0;
+        if(p > distribution[0])
+        {
+            while(p > distribution[j])
+                j += 1;
+            j -= 1;
+        }
+        counts[j]++;
+    }
+
+    return counts;
+}
+//
+std::vector<size_t> simulateCoverageDiploidNonUniform(std::vector<double> sample_coverage, size_t o)
+{
+    size_t N = sample_coverage.size();
+    double mean_coverage = 0.0f;
+    for(size_t i = 0; i < N; ++i)
+        mean_coverage += sample_coverage[i];
+    mean_coverage /= N;
+
+    // Here M is the number of non-reference alleles
+    double M = round(o / mean_coverage);
+    M = std::min(M, (double)N);
+    assert(M <= N);
+    
+    // Proportion of non-reference alleles in the population
+    double q = M / (2 * N);
+    size_t num_hom_alt = round(pow(q, 2) * N);
+    size_t num_het = M - (2*num_hom_alt);
+    
+    if(opt::verbose > 0)
+    {
+        printf("SimulateNonUniform diploid %zu reads across %lf alleles\n", o, M);
+        printf("    q: %lf num_hom_alt: %zu num_het: %zu\n", q, num_hom_alt, num_het);
+    }
+
+    // Select indices at random to become carriers of the variant
+    std::vector<size_t> initial_indices(N);
+    for(size_t i = 0; i < N; ++i)
+        initial_indices[i] = i;
+    std::random_shuffle(initial_indices.begin(), initial_indices.end());
+
+    // The first num_hom_alt entries will carry two alleles
+    std::vector<size_t> allele_indices(M);
+    for(size_t i = 0; i < num_hom_alt; ++i)
+    {
+        allele_indices[2*i] = initial_indices[i];
+        allele_indices[2*i + 1] = initial_indices[i];
+    }
+
+    // The next num_het entries carry one allele
+    for(size_t i = 0; i < num_het; ++i)
+        allele_indices[2*num_hom_alt + i] = initial_indices[num_hom_alt + i];    
+
+    // Make a discrete distribution using the per-sample coverage depths
+    std::vector<double> distribution(allele_indices.size());
+    double sum = 0.f;
+    for(size_t i = 0; i < allele_indices.size(); ++i)
+    {
+        double p = sample_coverage[allele_indices[i]] / 2;
+        distribution[i] = sum + p;
+        sum = distribution[i];
+    }
+
+    // Normalize
+    for(size_t i = 0; i < allele_indices.size(); ++i)
+        distribution[i] /= sum;
+
+    // Distribute o reads over the individuals according to the read depth
+    std::vector<size_t> counts(N);
+    for(size_t i = 0; i < o; ++i)
+    {
+        double p = (double)rand() / RAND_MAX;
+        size_t j = 0; 
+        if(p > distribution[0])
+        {
+            while(p > distribution[j])
+                j += 1;
+            j -= 1;
+        }
+
+        size_t idx = allele_indices[j];
+        counts[idx]++;
+    }
+
+    return counts;
+}
+
+std::vector<double> loadSampleDepthsFromFile(std::string filename)
+{
+    std::ifstream stream(filename.c_str());
+    if(!stream.good())
+    {
+        std::cerr << "Could not load depths from file " << filename << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    std::vector<double> depths;
+    double d;
+    while(stream >> d)
+        depths.push_back(d);
+    return depths;
+}
+
+std::vector<double> simulateSampleKmerDepths(size_t mean_depth, size_t N)
+{
+    std::vector<double> depths(N);
+    for(size_t i = 0; i < N; ++i)
+    {
+        // uniform
+        //depths[i] = ((double)rand() / RAND_MAX) * mean_depth + mean_depth / 2;
+        
+        // exponential
+        double p = (double)rand() / RAND_MAX;
+        depths[i] = log(1 - p) * -1 * mean_depth; 
+    }
+    return depths;
+}
 
 //
 std::vector<size_t> getPopulationCoverageCount(const std::string& kmer, const BWTIndexSet& indices)
@@ -484,8 +659,6 @@ std::vector<size_t> getPopulationCoverageCount(const std::string& kmer, const BW
     kmers.push_back(reverseComplement(kmer));
     SeqRecordVector records;
     HapgenUtil::extractHaplotypeReads(kmers, indices, opt::k, false, -1, 100000, &records, NULL);
-
-    printf("Found %zu reads\n", records.size());
 
     // Count the number of reads per samples using their index in the BWT
     std::vector<size_t> sample_counts(indices.pPopIdx->getNumSamples());
@@ -499,6 +672,49 @@ std::vector<size_t> getPopulationCoverageCount(const std::string& kmer, const BW
         sample_counts[s_idx]++;
     }
     return sample_counts;
+}
+
+//
+std::vector<double> getSampleMeanKmerDepth(size_t k, const BWTIndexSet& indices)
+{
+    size_t N = indices.pPopIdx->getNumSamples();
+    std::vector<double> average_counts(N);
+    
+    printf("starting sampling\n");
+    size_t target_samples = 1000;
+    size_t used_samples = 0;
+    for(size_t i = 0; i < target_samples; ++i)
+    {
+        if(i % 100 == 0)
+            printf("sampling iteration %zu\n", i);
+
+        std::string r_str = BWTAlgorithms::sampleRandomString(indices.pBWT);
+
+        // We use the first k-mer in the read
+        std::string test_kmer = r_str.substr(0, k);
+
+        // Screen out ultra-low depth k-mers
+        size_t count = BWTAlgorithms::countSequenceOccurrences(test_kmer, indices);
+        if(count < 5)
+            continue;
+
+        //
+        std::vector<size_t> incoming_counts = getPopulationCoverageCount(test_kmer, indices);
+
+        for(size_t i = 0; i < incoming_counts.size(); ++i)
+            average_counts[i] += incoming_counts[i];
+        used_samples += 1;
+    }
+
+    printf("average counts:\n");
+    for(size_t i = 0; i < average_counts.size(); ++i)
+    {
+        average_counts[i] /= used_samples;
+        printf("%.2lf ", average_counts[i]);
+    }
+    printf("\n");
+
+    return average_counts;
 }
 
 // 
