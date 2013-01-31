@@ -106,7 +106,7 @@ namespace opt
     static std::string referenceFile;
 }
 
-static const char* shortopts = "o:r:t:v";
+static const char* shortopts = "o:r:k:t:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE };
 
