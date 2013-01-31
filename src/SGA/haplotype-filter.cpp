@@ -86,6 +86,7 @@ static const char *HAPLOTYPE_FILTER_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -r, --reads=FILE                 load the FM-index of the reads in FILE\n"
+"          --reference=STR              load the reference genome from FILE\n"
 "      -o, --out-prefix=STR             write the passed haplotypes and variants to STR.vcf and STR.fa\n" 
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -97,22 +98,24 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
-    static size_t k = 41;
+    static size_t k = 31;
     static std::string readsFile;
     static std::string outFile = "hapfilter.vcf";
     static std::string haplotypeFile;
     static std::string vcfFile;
+    static std::string referenceFile;
 }
 
 static const char* shortopts = "o:r:t:v";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE };
 
 static const struct option longopts[] = {
     { "verbose",               no_argument,       NULL, 'v' },
     { "threads",               required_argument, NULL, 't' },
     { "outfile",               required_argument, NULL, 'o' },
     { "reads",                 required_argument, NULL, 'r' },
+    { "reference",             required_argument, NULL, OPT_REFERENCE },
     { "help",                  no_argument,       NULL, OPT_HELP },
     { "version",               no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -125,11 +128,12 @@ int haplotypeFilterMain(int argc, char** argv)
 {
     parseHaplotypeFilterOptions(argc, argv);
     
-    runSimulation();
-    exit(0);
+//    runSimulation();
+//    exit(0);
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
+    // Load FM-index of the reads
     std::cout << "Loading FM-index of " << opt::readsFile << "...";
     BWTIndexSet indices;
     std::string prefix = stripGzippedExtension(opt::readsFile);
@@ -139,8 +143,36 @@ int haplotypeFilterMain(int argc, char** argv)
     indices.pQualityTable = new QualityTable();
     std::cout << "done\n";
 
-    std::vector<double> depths = loadSampleDepthsFromFile("depths.txt");
-    //getSampleMeanKmerDepth(opt::k, indices);
+    // Load FM-index of the reference
+    std::cout << "Loading reference index... " << std::flush;
+    BWTIndexSet referenceIndex;
+    std::string refPrefix = stripExtension(opt::referenceFile);
+    referenceIndex.pBWT = new BWT(refPrefix + BWT_EXT);
+    std::cout << "done" << std::endl;
+
+    //std::vector<double> depths = loadSampleDepthsFromFile("depths.k31.txt");
+    std::vector<double> depths = getSampleMeanKmerDepth(opt::k, indices);
+
+    // Read haplotypes into a kmer hash
+    size_t assembly_k = 61; // hack hack
+    HashMap<std::string, size_t> kmer_to_haplotype;
+    StringVector haplotypes;
+
+    std::cout << "Loading haplotypes\n";
+    SeqReader haplotypeReader(opt::haplotypeFile);
+    SeqRecord hapRecord;
+    while(haplotypeReader.get(hapRecord))
+    {
+        std::string haplotype = hapRecord.seq.toString();
+        haplotypes.push_back(haplotype);
+
+        size_t nk = haplotype.size() - assembly_k + 1;
+        for(size_t i = 0; i < nk; ++i)
+        {
+            std::string kmer = haplotype.substr(i, assembly_k);
+            kmer_to_haplotype[kmer] = haplotypes.size() - 1;
+        }
+    }
 
     std::ofstream outFile(opt::outFile.c_str());
     std::ifstream inFile(opt::vcfFile.c_str());
@@ -156,27 +188,58 @@ int haplotypeFilterMain(int argc, char** argv)
         }
 
         StringVector fields = split(line, '\t');
-        std::string kmer = fields[2];
+        std::string vcf_kmer = fields[2];
         
-        // HACK
-        // Shrink the VCF kmer
-        kmer = kmer.substr(10, opt::k);
+        // Load the haplotype with this kmer
+        HashMap<std::string, size_t>::iterator iter = kmer_to_haplotype.find(vcf_kmer);
+        if(iter == kmer_to_haplotype.end())
+            iter = kmer_to_haplotype.find(reverseComplement(vcf_kmer));
+
+        assert(iter != kmer_to_haplotype.end());
+        std::string& haplotype = haplotypes[iter->second];
         
-        printf("Kmer --- %s\n", kmer.c_str());
-        std::vector<size_t> sample_coverage = getPopulationCoverageCount(kmer, indices);
-        std::copy(sample_coverage.begin(), sample_coverage.end(), std::ostream_iterator<size_t>(std::cout, " "));
-        std::cout << "\n";
-      
+        printf("Kmer --- %s\n", vcf_kmer.c_str());
+        printf("Haplotype --- %s\n", haplotype.c_str());
+
+        // Find the highest-depth non-reference kmer to use to calculate the segregation stats
+        size_t best_index = 0;
+        size_t best_count = 0;
+        size_t nk = haplotype.size() - opt::k + 1;
+        for(size_t i = 0; i < nk; ++i)
+        {
+            std::string seg_kmer = haplotype.substr(i, opt::k);
+            size_t ref_c = BWTAlgorithms::countSequenceOccurrences(seg_kmer, referenceIndex);
+            printf("seg_kmer --- %s ref_c? %zu\n", seg_kmer.c_str(), ref_c);
+            if(ref_c == 0)
+            {
+                size_t read_c = BWTAlgorithms::countSequenceOccurrences(seg_kmer, indices);
+                if(read_c > best_count)
+                {
+                    best_count = read_c;
+                    best_index = i;
+                }
+                printf("read_c: %zu\n", read_c);
+            }
+        }
+        
+        double LM = 0.f;
         size_t total_coverage = 0;
-        for(size_t i = 0; i < sample_coverage.size(); ++i)
-            total_coverage += sample_coverage[i];
-              
-        //double d = 4;
-        //double val = LMDiploid(d, sample_coverage);
-        double val = LMDiploidNonUniform(depths, sample_coverage);
+        if(best_count > 0)
+        {
+            std::string kmer = haplotype.substr(best_index, opt::k);
+            std::vector<size_t> sample_coverage = getPopulationCoverageCount(kmer, indices);
+            std::copy(sample_coverage.begin(), sample_coverage.end(), std::ostream_iterator<size_t>(std::cout, " "));
+            std::cout << "\n";
+          
+            for(size_t i = 0; i < sample_coverage.size(); ++i)
+                total_coverage += sample_coverage[i];
+                  
+            LM = LMDiploidNonUniform(depths, sample_coverage);
+        }
+
         std::stringstream lmss;
         lmss << fields[7];
-        lmss << ";LM=" << val << ";";
+        lmss << ";LM=" << LM << ";";
         lmss << ";O=" << total_coverage << ";";
         fields[7] = lmss.str();
         for(size_t i = 0; i < fields.size(); ++i)
@@ -213,6 +276,7 @@ int haplotypeFilterMain(int argc, char** argv)
     delete indices.pBWT;
     delete indices.pPopIdx;
     delete indices.pQualityTable;
+    delete referenceIndex.pBWT;
     delete pTimer;
 
     if(opt::numThreads > 1)
@@ -241,9 +305,9 @@ void runSimulation()
     size_t n_tn = 0;
     size_t n_fn = 0;
 
+    //std::vector<double> depths(N, d);
     //std::vector<double> depths = simulateSampleKmerDepths(d, N);
-    //std::vector<double> depths = loadSampleDepthsFromFile("depths.txt");
-    std::vector<double> depths(N, 3);
+    std::vector<double> depths = loadSampleDepthsFromFile("depths.txt");
 
     if(opt::verbose > 0)
     {
@@ -426,12 +490,12 @@ double LMHaploidNonUniform(const std::vector<double>& depths, const std::vector<
     }
 #endif
     
-    return _haploidNonUniform(depths, sample_count, M1);
+    return _haploidNonUniform(depths, sample_count, M_est);
 
     for(size_t M = N - n0; M < N; M += 10)
     {
         double log_prob_M = Stats::logPoisson(o, mean_depth*M) - log_normalization - log(M);
-        double LM = _haploidNonUniform(depths, sample_count, M_est);
+        double LM = _haploidNonUniform(depths, sample_count, M);
         LM += log_prob_M;
 
         //printf("M: %zu LM: %lf\n", i, LM);
@@ -464,29 +528,31 @@ double _haploidNonUniform(const std::vector<double>& depths, const std::vector<s
 
     std::vector<double> mean_p(N);
     std::vector<double> mean_q(N);
-    double sum_p = 0.0f;
+    double sum_depth = 0.0f;
     for(size_t i = 0; i < N; ++i)
     {
         if(sample_count[i] == 0)
             n0 += 1;
 
         o += sample_count[i];
-        mean_p[i] = depths[i];
-        mean_q[i] = depths[i];
-        sum_p += mean_p[i];
+        sum_depth += depths[i];
     }
+
+    double expected_reads_per_allele_null = o / N;
+    double expected_reads_per_allele_alt = o / M;
+    double mean_depth = sum_depth / N;
 
     // Compute the expected mean depth under the NULL and H1
     for(size_t i = 0; i < N; ++i)
     {
-        mean_p[i] = (mean_p[i] / sum_p) * o;
-        mean_q[i] = (mean_q[i] / sum_p) * o * N / M;
+        mean_p[i] = (depths[i] /  mean_depth) * expected_reads_per_allele_null;
+        mean_q[i] = (depths[i] /  mean_depth) * expected_reads_per_allele_alt;
     }
 
     if(opt::verbose > 0)
     {
-        printf("HAP_NU Parameters -- mean_p %lf\n", mean_p[0]);
-        printf("HAP_NU Parameters -- mean_q %lf\n", mean_q[0]);
+        printf("HAP_NU Parameters -- mean_p0 %lf\n", mean_p[0]);
+        printf("HAP_NU Parameters -- mean_q0 %lf\n", mean_q[0]);
         printf("HAP_NU Parameters -- M %lf\n", M);
     }
 
@@ -612,33 +678,34 @@ double LMDiploidNonUniform(const std::vector<double>& depths, const std::vector<
     double M2 = o / mean_depth;
     double M_est = std::max(M1, M2);
     if(opt::verbose)
-        printf("n0: %zu M1: %lf M2: %lf\n", n0, M1, M2);
+        printf("n0: %zu M1: %lf M2: %lf Mest: %lf\n", n0, M1, M2, M_est);
     
     double best_M = -1;
     double best_LM = -std::numeric_limits<double>::max();
-    return _diploidNonUniform(depths, sample_count, M_est);
+    return _diploidNonUniform(depths, sample_count, M2);
 
     double log_normalization = 0.0f;
-    size_t min_alleles = 0; //(size_t)std::max((int)M2 - 50, 0);
+//    size_t min_alleles = 1; //(size_t)std::max((int)M2 - 50, 0);
+    size_t min_alleles = std::min(M1, M2);
     size_t max_alleles = 2*N; //std::min((size_t)M2 + 50, 2 * N);
-    size_t stride = 2;
+    size_t stride = 10;
     
     for(size_t M = min_alleles; M < max_alleles; M += stride)
     {
-        double log_prob_M = Stats::logPoisson(o, mean_depth*M) - log(M);
-        log_normalization = addLogs(log_normalization, log_prob_M);
+        double log_prob_M = Stats::logPoisson(o, mean_depth * M) - log(M);
+        if(!isnan(log_prob_M))
+            log_normalization = addLogs(log_normalization, log_prob_M);
     }
 
     //
     for(size_t M = min_alleles; M < max_alleles; M += stride)
     {
-        double log_prob_M = Stats::logPoisson(o, mean_depth*M) - log_normalization - log(M);
+        double log_prob_M = Stats::logPoisson(o, mean_depth * M) - log_normalization - log(M);
         double LM = _diploidNonUniform(depths, sample_count, M);
         if(opt::verbose)
             printf("\tM: %zu log_prob_M %lf LM %lf\n", M, log_prob_M, LM);
 
         LM += log_prob_M;
-
         if(LM > best_LM)
         {
             best_LM = LM;
@@ -663,34 +730,45 @@ double _diploidNonUniform(const std::vector<double>& depths, const std::vector<s
     double hom_ref_prop = pow(1.0 - f, 2.0f);
 
     double o = 0;
-    double sum_p = 0.0f;
+    double sum_depth = 0.0f;
     std::vector<double> mean_p(N);
     std::vector<double> mean_q(N);
     
     for(size_t i = 0; i < N; ++i)
     {
         o += sample_count[i];
-        mean_p[i] = depths[i];
-        mean_q[i] = depths[i];
-        sum_p += mean_p[i];
+        sum_depth += depths[i];
     }
-    double mean_depth = sum_p / 2 * N;
-    (void)mean_depth;
+
+    double expected_reads_per_allele_null = o / N;
+    double expected_reads_per_allele_alt = o / M;
+    double mean_depth = sum_depth / N;
+
     // Compute the expected mean depth under the NULL and H1
+    double sum_p = 0.0f;
+    double sum_q = 0.0f;
+
     for(size_t i = 0; i < N; ++i)
     {
-        //mean_p[i] = (mean_p[i] / sum_p) * o;
-        //mean_q[i] = (mean_q[i] / sum_p) * o  * 2 * N / M;
-        //mean_q[i] = (o / M) * depths[i] / mean_depth;
-        mean_p[i] = o / N;
-        mean_q[i] = o / M;
+        mean_p[i] = (depths[i] /  mean_depth) * expected_reads_per_allele_null;
+        //mean_q[i] = o / M;
+        mean_q[i] = (depths[i] /  mean_depth) * expected_reads_per_allele_alt;
+
+        sum_p += mean_p[i];
+        sum_q += mean_q[i];
     }
+
 
     if(opt::verbose)
     {
         printf("DIP_NU Parameters -- M: %lf\n", M);
-        printf("DIP_NU Parameters -- mean_p: %lf\n", o/N);
-        printf("DIP_NU Parameters -- mean_q: %lf\n", o/M);
+        printf("DIP_NU parameters -- mean depth: %lf\n", mean_depth);
+        printf("DIP_NU parameters -- exp reads null: %lf\n", expected_reads_per_allele_null);
+        printf("DIP_NU parameters -- exp reads alt: %lf\n", expected_reads_per_allele_alt);
+        printf("DIP_NU parameters -- sum_p: %lf\n", sum_p);
+        printf("DIP_NU parameters -- sum_q: %lf\n", sum_q);
+        printf("DIP_NU Parameters -- mean_p0: %lf\n", mean_p[0]);
+        printf("DIP_NU Parameters -- mean_q0: %lf\n", mean_q[0]);
         printf("DIP_NU Parameters -- f: %lf\n", f);
         printf("DIP_NU Parameters -- hom_alt_prop: %lf\n", hom_alt_prop);
         printf("DIP_NU Parameters -- het_prop: %lf\n", het_prop);
@@ -732,7 +810,7 @@ double _diploidNonUniform(const std::vector<double>& depths, const std::vector<s
         sum_null += L_NULL;
 
         if(opt::verbose > 1)
-            printf("DIP_NU o: %zu LA: %lf LN: %lf S: %lf\n", oi, L_ALT, L_NULL, sum);
+            printf("DIP_NU i %zu d: %lf p: %lf q: %lf o: %zu LA: %lf LN: %lf S: %lf\n", i, depths[i], p, q, oi, L_ALT, L_NULL, sum);
     }
 
     if(opt::verbose > 0)
@@ -837,9 +915,9 @@ std::vector<size_t> simulateCoverageNullNonUniform(std::vector<double> sample_co
     double sum = 0.f;
     for(size_t i = 0; i < N; ++i)
     {
-        double p = sample_coverage[i] / 2;
-        distribution[i] = sum + p;
-        sum = distribution[i];
+        double p = sample_coverage[i];
+        sum += p;
+        distribution[i] = sum;
     }
 
     // Normalize
@@ -852,12 +930,8 @@ std::vector<size_t> simulateCoverageNullNonUniform(std::vector<double> sample_co
     {
         double p = (double)rand() / RAND_MAX;
         size_t j = 0;
-        if(p > distribution[0])
-        {
-            while(p > distribution[j])
-                j += 1;
-            j -= 1;
-        }
+        while(p > distribution[j])
+            j += 1;
         counts[j]++;
     }
     return counts;
@@ -911,12 +985,8 @@ std::vector<size_t> simulateCoverageHaploidNonUniform(std::vector<double> sample
     {
         double p = (double)rand() / RAND_MAX;
         size_t j = 0; 
-        if(p > distribution[0])
-        {
-            while(p > distribution[j])
-                j += 1;
-            j -= 1;
-        }
+        while(p > distribution[j])
+            j += 1;
 
         size_t idx = allele_indices[j];
         counts[idx]++;
@@ -1002,12 +1072,8 @@ std::vector<size_t> simulateCoverageDiploidNonUniform(std::vector<double> sample
     {
         double p = (double)rand() / RAND_MAX;
         size_t j = 0; 
-        if(p > distribution[0])
-        {
-            while(p > distribution[j])
-                j += 1;
-            j -= 1;
-        }
+        while(p > distribution[j])
+            j += 1;
 
         size_t idx = allele_indices[j];
         counts[idx]++;
@@ -1129,6 +1195,7 @@ void parseHaplotypeFilterOptions(int argc, char** argv)
             case 'o': arg >> opt::outFile; break;
             case 't': arg >> opt::numThreads; break;
             case 'r': arg >> opt::readsFile; break;
+            case OPT_REFERENCE: arg >> opt::referenceFile; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
@@ -1154,6 +1221,12 @@ void parseHaplotypeFilterOptions(int argc, char** argv)
     if(opt::numThreads <= 0)
     {
         std::cerr << SUBPROGRAM ": invalid number of threads: " << opt::numThreads << "\n";
+        die = true;
+    }
+
+    if(opt::referenceFile.empty())
+    {
+        std::cerr << SUBPROGRAM ": a reference file must be given: " << opt::referenceFile << "\n";
         die = true;
     }
 
