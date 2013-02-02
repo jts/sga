@@ -87,6 +87,7 @@ static const char *HAPLOTYPE_FILTER_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -r, --reads=FILE                 load the FM-index of the reads in FILE\n"
 "          --reference=STR              load the reference genome from FILE\n"
+"          --haploid                    force use of the haploid model\n"
 "      -o, --out-prefix=STR             write the passed haplotypes and variants to STR.vcf and STR.fa\n" 
 "      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -97,6 +98,7 @@ PACKAGE_NAME "::" SUBPROGRAM;
 namespace opt
 {
     static unsigned int verbose;
+    static bool bHaploid = false;
     static int numThreads = 1;
     static size_t k = 31;
     static std::string readsFile;
@@ -108,7 +110,7 @@ namespace opt
 
 static const char* shortopts = "o:r:k:t:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_HAPLOID };
 
 static const struct option longopts[] = {
     { "verbose",               no_argument,       NULL, 'v' },
@@ -116,6 +118,7 @@ static const struct option longopts[] = {
     { "outfile",               required_argument, NULL, 'o' },
     { "reads",                 required_argument, NULL, 'r' },
     { "reference",             required_argument, NULL, OPT_REFERENCE },
+    { "haploid",               no_argument,       NULL, OPT_HAPLOID },
     { "help",                  no_argument,       NULL, OPT_HELP },
     { "version",               no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -128,8 +131,8 @@ int haplotypeFilterMain(int argc, char** argv)
 {
     parseHaplotypeFilterOptions(argc, argv);
     
-//    runSimulation();
-//    exit(0);
+    //runSimulation();
+    //exit(0);
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
@@ -233,8 +236,11 @@ int haplotypeFilterMain(int argc, char** argv)
           
             for(size_t i = 0; i < sample_coverage.size(); ++i)
                 total_coverage += sample_coverage[i];
-                  
-            LM = LMDiploidNonUniform(depths, sample_coverage);
+            
+            if(opt::bHaploid)
+                LM = LMHaploidNonUniform(depths, sample_coverage);
+            else
+                LM = LMDiploidNonUniform(depths, sample_coverage);
         }
 
         std::stringstream lmss;
@@ -437,15 +443,17 @@ double LMHaploidNonUniform(const std::vector<double>& depths, const std::vector<
     double M2 = o / mean_depth;
     double M_est = std::max(M1, M2);
     if(opt::verbose)
-        printf("M1: %lf M2: %lf\n", M1, M2);
+        printf("HAP ParamEst o: %zu n0: %zu M1: %lf M2: %lf M_est %lf\n", (size_t)o, n0, M1, M2, M_est);
 
-    double best_M = -1;
-    double best_LM = -std::numeric_limits<double>::max();
-    double sum_exp = 0.0f;
+    return _haploidNonUniform(depths, sample_count, M2);
     //double lsum = 0.0f;
 
     // Bayesian integration model
     //double p = o / N;
+#if 0
+    double best_M = -1;
+    double best_LM = -std::numeric_limits<double>::max();
+    double sum_exp = 0.0f;
 
     double log_normalization = 0.0f;
     for(size_t i = N - n0; i < N; ++i)
@@ -453,44 +461,6 @@ double LMHaploidNonUniform(const std::vector<double>& depths, const std::vector<
         double log_prob_M = Stats::logPoisson(o, mean_depth*i) - log(i);
         log_normalization = addLogs(log_normalization, log_prob_M);
     }
-
-#if 0
-    for(double M = N - n0; M < (double)N; M += 10)
-    {
-        double q = o / M;
-        
-        /*
-        double QM = (M/N) * exp(-q) + ((N - M) / N);
-        double t1 = pow(QM / exp(-p), n0);
-        double t2 = pow( (M * exp(-q)) / (N * exp(-p)), N - n0);
-        double t3 = pow(N / M, o);
-        double s1 = t1 * t2 * t3 / M;
-        */
-        double QM = (M/N) * exp(-q) + ((N - M) / N);
-        double t1 = n0 * (log(QM) + p);
-        //double t2 = (N - n0) * ( (log(M) - q) - ( log(N) - p));
-        double t2 = (N - n0) * ( log(M * exp(-q)) - log(N * exp(-p)) );
-        double t3 = o * (log(N) - log(M));
-        //double log_prob_M = log(M);
-
-        double log_prob_M = Stats::logPoisson(o, mean_depth*M) - log_normalization - log(M);
-        double s1 = t1 + t2 + t3 + log_prob_M;
-
-        if(s1 > best_LM)
-            best_LM = s1;
-        sum_exp += exp(s1);
-        lsum = addLogs(lsum, s1);
-        //printf("exp(s1) %lf\n", exp(s1));
-        if(opt::verbose)
-        {
-            printf("M: %lf M2: %lf log_prob_m: %lf p(M) %lf\n", M, M2, log_prob_M, exp(log_prob_M));
-            printf("M %zu\nQM %lf\nt1 %lf\nt2 %lf\nt3 %lf\ns1 %lf\n", (size_t)M, QM, t1, t2, t3, s1);
-            printf("M %zu\ts1 %lf sum %lf\n", (size_t)M, s1, lsum);
-        }
-    }
-#endif
-    
-    return _haploidNonUniform(depths, sample_count, M_est);
 
     for(size_t M = N - n0; M < N; M += 10)
     {
@@ -515,6 +485,7 @@ double LMHaploidNonUniform(const std::vector<double>& depths, const std::vector<
 //    if(opt::verbose)
 //        printf("Optimal %lf Sum: %lf is_inf %d\n", best_LM, sum, isinf(sum));
     return best_LM;
+#endif
 }
 
 // 
@@ -664,6 +635,8 @@ double LMDiploidNonUniform(const std::vector<double>& depths, const std::vector<
     double o = 0;
     size_t n0 = 0;
     double sum_depth = 0.0;
+    double M3 = 0.0f;
+
     for(size_t i = 0; i < N; ++i)
     {
         if(sample_count[i] == 0)
@@ -671,22 +644,25 @@ double LMDiploidNonUniform(const std::vector<double>& depths, const std::vector<
 
         o += sample_count[i];
         sum_depth += depths[i];
+        M3 += sample_count[i] / depths[i];
     }
+    M3 *= 2;
     
     double mean_depth = sum_depth / (2 * N);
+    
     double M1 = N - n0;
     double M2 = o / mean_depth;
     double M_est = std::max(M1, M2);
     if(opt::verbose)
-        printf("n0: %zu M1: %lf M2: %lf Mest: %lf\n", n0, M1, M2, M_est);
+        printf("DIP ParamEst o: %zu n0: %zu M1: %lf M2: %lf M3: %lf M_est: %lf\n", (size_t)o, n0, M1, M2, M3, M_est);
     
     double best_M = -1;
     double best_LM = -std::numeric_limits<double>::max();
-    return _diploidNonUniform(depths, sample_count, M2);
+    return _diploidNonUniform(depths, sample_count, M3);
 
     double log_normalization = 0.0f;
 //    size_t min_alleles = 1; //(size_t)std::max((int)M2 - 50, 0);
-    size_t min_alleles = std::min(M1, M2);
+    size_t min_alleles = 0;//std::min(M1, M2);
     size_t max_alleles = 2*N; //std::min((size_t)M2 + 50, 2 * N);
     size_t stride = 10;
     
@@ -1196,6 +1172,7 @@ void parseHaplotypeFilterOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case 'r': arg >> opt::readsFile; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
+            case OPT_HAPLOID: opt::bHaploid = true; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
