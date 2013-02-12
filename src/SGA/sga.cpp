@@ -38,6 +38,7 @@
 #include "metagenome.h"
 #include "variant-detectability.h"
 #include "rewrite-evidence-bam.h"
+#include "preqc.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -74,6 +75,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           graph-diff            compare reads to find sequence variants\n"
 "           rewrite-evidence-bam  fill in sequence and quality information for a variant evidence BAM\n"
 "\n\nExperimental commands:\n"
+"           preqc                 perform pre-assembly quality checks on a set of reads\n"
 "           stats                 print summary statistics about a read set\n"
 "           filterBAM             filter out contaminating mate-pair data in a BAM file\n"
 "           cluster               find clusters of reads belonging to the same connected component in an assembly graph\n"
@@ -165,6 +167,8 @@ int main(int argc, char** argv)
             variantDetectabilityMain(argc - 1, argv + 1);
         else if(command == "rewrite-evidence-bam")
             rewriteEvidenceBAMMain(argc - 1, argv + 1);
+        else if(command == "preqc")
+            preQCMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";
