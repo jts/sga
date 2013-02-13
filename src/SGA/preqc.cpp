@@ -17,8 +17,28 @@
 #include "BWT.h"
 #include "BWTAlgorithms.h"
 #include "SGACommon.h"
+#include "HashMap.h"
+#include "KmerDistribution.h"
+
+#if HAVE_OPENMP
+#include <omp.h>
+#endif
+
+// Statics
+static const char* KMER_DIST_TAG = "KMD";
+static const char* UNIPATH_LENGTH_TAG = "UPL";
 
 // Functions
+
+// Compute the distribution of unipath lengths from the k-de Bruijn graph.
+// A branch in the graph with coverage c will be ignored when 
+//    c / max_c < coverage_ratio_threshold 
+//    where max_c is the highest-coverage branch
+// 
+void unipath_length_distribution(const BWTIndexSet& index_set, 
+                                 size_t k,
+                                 double coverage_ratio_threshold, 
+                                 size_t n_samples);
 
 //
 // Getopt
@@ -70,6 +90,37 @@ static const struct option longopts[] = {
     { NULL, 0, NULL, 0 }
 };
 
+void generate_unipath_length_data(const BWTIndexSet& index_set)
+{
+    for(size_t k = 16; k < 96; k += 5)
+        unipath_length_distribution(index_set, k, 0.9, 1000);
+}
+
+void generate_kmer_coverage(const BWTIndexSet& index_set)
+{
+    size_t n_samples = 10000;
+    size_t k = 51;
+    
+    KmerDistribution kmerDistribution;
+    for(size_t i = 0; i < n_samples; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        int n = s.size();
+        int nk = n - k + 1;
+        for(int j = 0; j < nk; ++j)
+        {
+            std::string kmer = s.substr(j, k);
+            int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+            kmerDistribution.add(count);
+        }
+    }
+
+    int max = kmerDistribution.getCutoffForProportion(0.95f);
+    std::vector<int> count_vector = kmerDistribution.toCountVector(max);
+    for(size_t i = 1; i < count_vector.size(); ++i)
+        printf("%s\t%zu\t%zu\t%d\n", KMER_DIST_TAG, k, i, count_vector[i]);
+}
+
 //
 // Main
 //
@@ -78,19 +129,99 @@ int preQCMain(int argc, char** argv)
     parsePreQCOptions(argc, argv);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
-    printf("Loading FM-index of %s\n", opt::readsFile.c_str());
+    fprintf(stderr, "Loading FM-index of %s\n", opt::readsFile.c_str());
     BWTIndexSet index_set;
     index_set.pBWT = new BWT(opt::prefix + BWT_EXT);
+    index_set.pCache = new BWTIntervalCache(10, index_set.pBWT);
+
+    generate_unipath_length_data(index_set);
+    generate_kmer_coverage(index_set);
 
     delete index_set.pBWT;
+    delete index_set.pCache;
     delete pTimer;
-
-    if(opt::numThreads > 1)
-        pthread_exit(NULL);
-
     return 0;
 }
 
+//
+void unipath_length_distribution(const BWTIndexSet& index_set, 
+                                 size_t k,
+                                 double coverage_ratio_threshold, 
+                                 size_t n_samples)
+{
+#if HAVE_OPENMP
+    omp_set_num_threads(opt::numThreads);
+    #pragma omp parallel for
+#endif
+    for(int i = 0; i < (int)n_samples; ++i)
+    {
+        // Get a random read from the BWT
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+
+        // Use the first-kmer of the read to seed the seach
+        if(s.size() < k)
+            continue;
+        
+        HashMap<std::string, bool> loop_check;
+        std::string start_kmer = s.substr(0, k);
+        std::string curr_kmer = start_kmer;
+
+        size_t walk_length = 0;
+        bool done = false;
+        while(!done)
+        {
+            loop_check[curr_kmer] = true;
+
+            AlphaCount64 counts = 
+                BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(curr_kmer, 
+                                                                     index_set.pBWT,
+                                                                     ED_SENSE,
+                                                                     index_set.pCache);
+
+            // Get the highest coverage extension 
+            char max_b = '\0';
+            size_t max_c = 0;
+            for(size_t j = 0; j < 4; ++j)
+            {
+                char b = "ACGT"[j];
+                size_t c = counts.get(b);
+                if(c > max_c)
+                {
+                    max_c = c;
+                    max_b = b;
+                }
+            }
+
+            int num_valid_branches = 0;
+            for(size_t j = 0; j < 4; ++j)
+            {
+                char b = "ACGT"[j];
+                size_t c = counts.get(b);
+                if(c > 0 && (double)c / max_c >= coverage_ratio_threshold)
+                    num_valid_branches += 1;
+            }
+            
+            if(num_valid_branches == 1)
+            {
+                curr_kmer.erase(0, 1);
+                curr_kmer.append(1, max_b);
+
+                if(loop_check.find(curr_kmer) == loop_check.end())
+                    walk_length += 1;
+                else
+                    done = true;
+            }
+            else
+            {
+                done = true;
+            }
+        }
+#ifdef HAVE_OPENMP
+        #pragma omp critical
+#endif
+        printf("%s\t%zu\t%zu\n", UNIPATH_LENGTH_TAG, k, walk_length);
+    }
+}
 // 
 // Handle command line arguments
 //

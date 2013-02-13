@@ -25,7 +25,7 @@ void KmerDistribution::add(int kcount)
 
 double KmerDistribution::getCumulativeProportionLEQ(int n) const
 {
-    std::vector<int> countVector = toCountVector();
+    std::vector<int> countVector = toCountVector(1000);
     int64_t sum = 0;
     for(size_t i = 0; i < countVector.size(); ++i)
     {
@@ -45,11 +45,28 @@ double KmerDistribution::getCumulativeProportionLEQ(int n) const
     return cumulativeVector[n];
 }
 
+size_t KmerDistribution::getCutoffForProportion(double p) const
+{
+    int MAX_COUNT = 1000;
+    std::vector<int> countVector = toCountVector(MAX_COUNT);
+    int64_t sum = 0;
+    for(size_t i = 0; i < countVector.size(); ++i)
+        sum += countVector[i];
+
+    double c = 0.0f;
+    for(size_t i = 0; i < countVector.size(); ++i)
+    {
+        c += (double)countVector[i] / sum;
+        if(c > p)
+            return i;
+    }
+    return MAX_COUNT;
+}
 
 //
 int KmerDistribution::findFirstLocalMinimum() const
 {
-    std::vector<int> countVector = toCountVector();
+    std::vector<int> countVector = toCountVector(1000);
     if(countVector.empty())
         return -1;
 
@@ -70,7 +87,7 @@ int KmerDistribution::findFirstLocalMinimum() const
 
 int KmerDistribution::getCensoredMode(size_t n) const
 {
-    std::vector<int> countVector = toCountVector();
+    std::vector<int> countVector = toCountVector(1000);
     if(countVector.size() < n)
         return -1;
     int modeIdx = -1;
@@ -97,7 +114,7 @@ int KmerDistribution::findErrorBoundary() const
         return -1;
 
     std::cout << "Trusted kmer mode: " << mode  << "\n";
-    std::vector<int> countVector = toCountVector();
+    std::vector<int> countVector = toCountVector(1000);
     if(countVector.empty())
         return -1;
 
@@ -127,7 +144,7 @@ int KmerDistribution::findErrorBoundaryByRatio(double ratio) const
         return -1;
 
     std::cout << "Trusted kmer mode: " << mode  << "\n";
-    std::vector<int> countVector = toCountVector();
+    std::vector<int> countVector = toCountVector(1000);
     if(countVector.empty())
         return -1;
 
@@ -143,14 +160,13 @@ int KmerDistribution::findErrorBoundaryByRatio(double ratio) const
 }
 
 // 
-std::vector<int> KmerDistribution::toCountVector() const
+std::vector<int> KmerDistribution::toCountVector(int max) const
 {
     std::vector<int> out;
     if(m_data.empty())
         return out;
 
     int min = 0;
-    int max = 1000;//m_data.rbegin()->first;
 
     for(int i = min; i <= max; ++i)
     {
