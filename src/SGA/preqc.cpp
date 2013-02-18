@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <iterator>
+#include <queue>
 #include "Util.h"
 #include "preqc.h"
 #include "Timer.h"
@@ -19,6 +20,7 @@
 #include "SGACommon.h"
 #include "HashMap.h"
 #include "KmerDistribution.h"
+#include "KmerOverlaps.h"
 
 #if HAVE_OPENMP
 #include <omp.h>
@@ -27,6 +29,8 @@
 // Statics
 static const char* KMER_DIST_TAG = "KMD";
 static const char* UNIPATH_LENGTH_TAG = "UPL";
+static const char* ERROR_BY_POSITION_TAG = "EBP";
+static const char* GRAPH_COMPLEXITY_TAG = "LGC";
 
 // Functions
 
@@ -90,12 +94,45 @@ static const struct option longopts[] = {
     { NULL, 0, NULL, 0 }
 };
 
+// Returns the valid SUFFIX neighbors of the kmer
+// in the de Bruijn graph. The neighbors are encoded
+// as the single base they add. A coverage threshold
+// is applied to filter out low-coverage extensions.
+std::string get_valid_dbg_neighbors(const std::string& kmer,
+                                    const BWTIndexSet& index_set,
+                                    double coverage_ratio_threshold)
+{
+    std::string out;
+    AlphaCount64 counts = 
+        BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, 
+                                                              index_set.pBWT,
+                                                              ED_SENSE,
+                                                              index_set.pCache);
+    
+    if(!counts.hasDNAChar())
+        return out; // no extensions
+
+    char max_b = counts.getMaxDNABase();
+    size_t max_c = counts.get(max_b);
+
+    for(size_t j = 0; j < 4; ++j)
+    {
+        char b = "ACGT"[j];
+        size_t c = counts.get(b);
+        if(c > 0 && (double)c / max_c >= coverage_ratio_threshold)
+            out.push_back(b);
+    }
+    return out;
+}
+
+//
 void generate_unipath_length_data(const BWTIndexSet& index_set)
 {
     for(size_t k = 16; k < 96; k += 5)
         unipath_length_distribution(index_set, k, 0.9, 1000);
 }
 
+//
 void generate_kmer_coverage(const BWTIndexSet& index_set)
 {
     size_t n_samples = 10000;
@@ -122,6 +159,217 @@ void generate_kmer_coverage(const BWTIndexSet& index_set)
 }
 
 //
+void generate_position_of_first_error(const BWTIndexSet& index_set)
+{
+    size_t n_samples = 10000;
+    size_t k = 41;
+    size_t t = 5;
+    double ratio_t = 0.1;
+    std::vector<size_t> position_count;
+    std::vector<size_t> error_count;
+    for(size_t i = 0; i < n_samples; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        size_t nk = s.size() - k + 1;
+        size_t first_kmer_count = 
+            BWTAlgorithms::countSequenceOccurrences(s.substr(0, k), index_set.pBWT);
+
+        // Skip reads with a weak starting kmer
+        if(first_kmer_count < t)
+            continue;
+
+        for(size_t j = 1; j < nk; ++j)
+        {
+            size_t kmer_count =
+                BWTAlgorithms::countSequenceOccurrences(s.substr(j, k), index_set.pBWT);
+
+            if(j >= position_count.size())
+            {
+                position_count.resize(j+1);
+                error_count.resize(j+1);
+            }
+            position_count[j] += 1;
+            double r = (double)kmer_count / first_kmer_count;
+
+            if(r < ratio_t)
+            {
+                error_count[j] += 1;
+                //printf("K %zu FC: %zu KC: %zu R: %lf\n", j, first_kmer_count, kmer_count, r);
+                break;
+            }
+        }
+    }
+
+    for(size_t i = 0; i < position_count.size(); ++i)
+        printf("%s\t%zu\t%zu\t%zu\n", ERROR_BY_POSITION_TAG, i, position_count[i], error_count[i]);    
+}
+
+//
+void generate_errors_per_base(const BWTIndexSet& index_set)
+{
+    size_t n_samples = 10000;
+    size_t k = 21;
+    double max_error_rate = 0.85;
+    size_t min_overlap = 30;
+    
+    std::vector<size_t> position_count;
+    std::vector<size_t> error_count;
+
+    for(size_t i = 0; i < n_samples; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        MultipleAlignment ma = 
+            KmerOverlaps::buildMultipleAlignment(s, k, min_overlap, max_error_rate, 2, index_set);
+
+        size_t ma_cols = ma.getNumColumns();
+        size_t position = 0;
+        for(size_t j = 0; j < ma_cols; ++j)
+        {
+            char s_symbol = ma.getSymbol(0, j);
+
+            // Skip gaps
+            if(s_symbol == '-' || s_symbol == '\0')
+                continue;
+            
+            SymbolCountVector scv = ma.getSymbolCountVector(j);
+            int s_symbol_count = 0;
+            char max_symbol = 0;
+            int max_count = 0;
+
+            for(size_t k = 0; k < scv.size(); ++k)
+            {
+                if(scv[k].symbol == s_symbol)
+                    s_symbol_count = scv[k].count;
+                if(scv[k].count > max_count)
+                {
+                    max_count = scv[k].count;
+                    max_symbol = scv[k].symbol;
+                }
+            }
+
+            //printf("P: %zu S: %c M: %c MC: %d\n", position, s_symbol, max_symbol, max_count);
+
+            // Call an error at this position if the consensus symbol differs from the read
+            //    and the support for the read symbol is less than 4 and the consensus symbol
+            //    is strongly supported.
+            bool is_error = s_symbol != max_symbol && s_symbol_count < 4 && max_count >= 3;
+
+            if(position >= position_count.size())
+            {
+                position_count.resize(position+1);
+                error_count.resize(position+1);
+            }
+
+            position_count[position]++;
+            error_count[position] += is_error;
+            position += 1;
+        }
+    }
+
+    for(size_t i = 0; i < position_count.size(); ++i)
+        printf("%s\t%zu\t%zu\t%zu\n", ERROR_BY_POSITION_TAG, i, position_count[i], error_count[i]);
+}
+
+// Generate local graph complexity measure
+void generate_local_graph_complexity(const BWTIndexSet& index_set)
+{
+    size_t n_samples = 100000;
+    size_t k = 31;
+    size_t min_coverage = 5;
+    double coverage_cutoff = 0.75f;
+    for(size_t i = 0; i < n_samples; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        if(s.size() < k)
+            continue;
+
+        std::string start_kmer = s.substr(0, k);
+        std::string end_kmer = s.substr(s.size() - k);
+
+        size_t start_count = BWTAlgorithms::countSequenceOccurrences(start_kmer, index_set);
+        size_t end_count = BWTAlgorithms::countSequenceOccurrences(end_kmer, index_set);
+        if(start_count < min_coverage || end_count < min_coverage)
+            continue;
+
+        // Search from the start kmer until the end kmer is found and record the number of nodes visited
+        std::queue<std::string> search_queue;
+        search_queue.push(start_kmer);
+        
+        size_t num_kmers_visited = 0;
+        size_t num_branches = 0;
+        bool end_kmer_found = false;
+        while(!search_queue.empty() && num_kmers_visited < 500)
+        {
+            std::string curr_kmer = search_queue.front();
+            search_queue.pop();
+
+            if(curr_kmer == end_kmer)
+            {
+                end_kmer_found = true;
+                break;
+            }
+
+            std::string extensions = get_valid_dbg_neighbors(curr_kmer, index_set, coverage_cutoff);
+            for(size_t j = 0; j < extensions.size(); ++j)
+            {
+                std::string new_kmer = curr_kmer.substr(1, k - 1);
+                new_kmer.append(1, extensions[j]);
+                search_queue.push(new_kmer);
+            }
+
+            num_branches += extensions.size() > 1;
+            num_kmers_visited += 1;
+        }
+
+        if(end_kmer_found)
+            printf("%s\t%zu\t%zu\t%zu\n", GRAPH_COMPLEXITY_TAG, k, num_kmers_visited, num_branches);
+    }
+}
+
+// Generate local graph complexity measure
+void generate_local_graph_complexity_v2(const BWTIndexSet& index_set)
+{
+    int n_samples = 50000;
+    size_t min_coverage = 5;
+    double coverage_cutoff = 0.75f;
+
+    for(size_t k = 16; k < 86; k += 5)
+    {
+        size_t num_branches = 0;
+        size_t num_kmers = 0;
+
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+        for(int i = 0; i < n_samples; ++i)
+        {
+            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+            if(s.size() < k)
+                continue;
+            
+            bool read_is_valid_path = true;
+
+            for(size_t j = 0; j < s.size() - k + 1; ++j)
+            {
+                std::string kmer = s.substr(j, k);
+                size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set);
+                if(count < min_coverage)
+                {
+                    read_is_valid_path = false;
+                    break;
+                }
+
+                std::string extensions = get_valid_dbg_neighbors(kmer, index_set, coverage_cutoff);
+                num_branches += extensions.size() > 1;
+                num_kmers += 1;
+            }
+        }
+        printf("%s\t%zu\t%zu\t%zu\n", GRAPH_COMPLEXITY_TAG, k, num_kmers, num_branches);
+    }
+}
+
+//
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -132,12 +380,17 @@ int preQCMain(int argc, char** argv)
     fprintf(stderr, "Loading FM-index of %s\n", opt::readsFile.c_str());
     BWTIndexSet index_set;
     index_set.pBWT = new BWT(opt::prefix + BWT_EXT);
+    index_set.pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
     index_set.pCache = new BWTIntervalCache(10, index_set.pBWT);
-
-    generate_unipath_length_data(index_set);
+    
+//    generate_errors_per_base(index_set);
+//    generate_position_of_first_error(index_set);
+    generate_local_graph_complexity_v2(index_set);
+//    generate_unipath_length_data(index_set);
     generate_kmer_coverage(index_set);
 
     delete index_set.pBWT;
+    delete index_set.pSSA;
     delete index_set.pCache;
     delete pTimer;
     return 0;
@@ -171,40 +424,11 @@ void unipath_length_distribution(const BWTIndexSet& index_set,
         while(!done)
         {
             loop_check[curr_kmer] = true;
-
-            AlphaCount64 counts = 
-                BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(curr_kmer, 
-                                                                     index_set.pBWT,
-                                                                     ED_SENSE,
-                                                                     index_set.pCache);
-
-            // Get the highest coverage extension 
-            char max_b = '\0';
-            size_t max_c = 0;
-            for(size_t j = 0; j < 4; ++j)
-            {
-                char b = "ACGT"[j];
-                size_t c = counts.get(b);
-                if(c > max_c)
-                {
-                    max_c = c;
-                    max_b = b;
-                }
-            }
-
-            int num_valid_branches = 0;
-            for(size_t j = 0; j < 4; ++j)
-            {
-                char b = "ACGT"[j];
-                size_t c = counts.get(b);
-                if(c > 0 && (double)c / max_c >= coverage_ratio_threshold)
-                    num_valid_branches += 1;
-            }
-            
-            if(num_valid_branches == 1)
+            std::string extensions = get_valid_dbg_neighbors(curr_kmer, index_set, coverage_ratio_threshold);
+            if(extensions.size() == 1)
             {
                 curr_kmer.erase(0, 1);
-                curr_kmer.append(1, max_b);
+                curr_kmer.append(1, extensions[0]);
 
                 if(loop_check.find(curr_kmer) == loop_check.end())
                     walk_length += 1;
