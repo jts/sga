@@ -9,6 +9,7 @@ TAG_UNIPATH_LENGTH    = 'UPL'
 TAG_KMER_DISTRIBUTION = 'KMD'
 TAG_GRAPH_COMPLEXITY = 'LGC'
 TAG_RANDOM_WALK = 'RWL'
+TAG_FIRST_ERROR_POSITION = 'PFE'
 KMER_DISTRIBUTION_MAX = 80
 
 def test():
@@ -47,6 +48,7 @@ def plot_mean_unipath_lengths(pp, data):
 
     pl.xlabel("k")
     pl.ylabel("Mean unipath length")
+    pl.title("Mean length of unambiguous segments of the k-de Bruijn graph")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
@@ -66,6 +68,7 @@ def plot_random_walk(pp, data):
 
     pl.xlabel("k")
     pl.ylabel("Mean Random Walk Length")
+    pl.title("Mean length of a random walk through the k-de Bruijn graph")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
@@ -87,6 +90,21 @@ def plot_kmer_distribution(pp, data):
 
     pl.xlabel(str(k) + "-mer count")
     pl.ylabel("Proportion")
+    pl.title(str(k) + "-mer count distribution")
+    pl.legend(names)
+    pl.savefig(pp, format='pdf')
+    pl.close()
+
+def plot_first_error_position(pp, data):
+    names = data.keys()
+    for name in names:
+        positions = sorted(data[name].keys())
+        proportion_error = [ float(data[name][p][0].errors) / data[name][p][0].samples for p in positions ]
+        pl.plot(positions, proportion_error)
+
+    pl.xlabel("k-mer Position")
+    pl.ylabel("Proportion")
+    pl.title("Position of first error in the read")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
@@ -104,8 +122,9 @@ def plot_graph_complexity(pp, data):
             y.append(float(data[name][k][0].num_branches) / data[name][k][0].num_kmers)
         pl.plot(x,y, 'o-')
     pl.yscale('log')
-    #pl.xlabel("Number of branches in the local graph")
-    #pl.ylabel("Frequency")
+    pl.xlabel("k")
+    pl.ylabel("High-coverage branch frequency")
+    pl.title("Frequency of high-coverage branches in the graph")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
@@ -148,6 +167,14 @@ def parse_random_walk(data, fields):
     d = RandomWalkTuple(output[0], output[1])
     data[k].append(d)
 
+def parse_first_error_position(data, fields):
+    output = map(int, fields[1:])
+    position = output[0]
+    if position not in data:
+        data[position] = list()
+    d = FirstErrorPositionTuple(output[0], output[1], output[2])
+    data[position].append(d)
+
 def load_data(data, name, filename):
     file = open(filename, 'r')
 
@@ -173,6 +200,8 @@ def load_data(data, name, filename):
             parse_graph_complexity(data[tag][name], line)
         elif tag == TAG_RANDOM_WALK:
             parse_random_walk(data[tag][name], line)
+        elif tag == TAG_FIRST_ERROR_POSITION:
+            parse_first_error_position(data[tag][name], line)
 
 #
 # Start of program
@@ -181,6 +210,7 @@ def load_data(data, name, filename):
 # Describe tuples for type of data
 GraphComplexityTuple = namedtuple('GraphComplexityTuple', 'k num_kmers num_branches')
 RandomWalkTuple = namedtuple('RandomWalkTuple', 'k walk_length')
+FirstErrorPositionTuple = namedtuple('FirstErrorPositionTuple', 'position samples errors')
 
 # Load the data files
 data = {}
@@ -193,13 +223,15 @@ pp = PdfPages("test_report.pdf")
 if TAG_KMER_DISTRIBUTION in data:
     plot_kmer_distribution(pp, data[TAG_KMER_DISTRIBUTION])
 
-if TAG_UNIPATH_LENGTH in data:
-    plot_mean_unipath_lengths(pp, data[TAG_UNIPATH_LENGTH])
-
-if TAG_GRAPH_COMPLEXITY in data:
-    plot_graph_complexity(pp, data[TAG_GRAPH_COMPLEXITY])
+if TAG_FIRST_ERROR_POSITION in data:
+    plot_first_error_position(pp, data[TAG_FIRST_ERROR_POSITION])
 
 if TAG_RANDOM_WALK in data:
     plot_random_walk(pp, data[TAG_RANDOM_WALK])
 
+if TAG_GRAPH_COMPLEXITY in data:
+    plot_graph_complexity(pp, data[TAG_GRAPH_COMPLEXITY])
+
+if TAG_UNIPATH_LENGTH in data:
+    plot_mean_unipath_lengths(pp, data[TAG_UNIPATH_LENGTH])
 pp.close()

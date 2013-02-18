@@ -30,6 +30,7 @@
 static const char* KMER_DIST_TAG = "KMD";
 static const char* UNIPATH_LENGTH_TAG = "UPL";
 static const char* ERROR_BY_POSITION_TAG = "EBP";
+static const char* POSITION_OF_FIRST_ERROR_TAG = "PFE";
 static const char* GRAPH_COMPLEXITY_TAG = "LGC";
 static const char* RANDOM_WALK_TAG = "RWL";
 
@@ -162,7 +163,7 @@ void generate_kmer_coverage(const BWTIndexSet& index_set)
 //
 void generate_position_of_first_error(const BWTIndexSet& index_set)
 {
-    size_t n_samples = 10000;
+    size_t n_samples = 100000;
     size_t k = 41;
     size_t t = 5;
     double ratio_t = 0.1;
@@ -176,7 +177,7 @@ void generate_position_of_first_error(const BWTIndexSet& index_set)
             BWTAlgorithms::countSequenceOccurrences(s.substr(0, k), index_set.pBWT);
 
         // Skip reads with a weak starting kmer
-        if(first_kmer_count < t)
+        if(first_kmer_count < 10)
             continue;
 
         for(size_t j = 1; j < nk; ++j)
@@ -189,20 +190,22 @@ void generate_position_of_first_error(const BWTIndexSet& index_set)
                 position_count.resize(j+1);
                 error_count.resize(j+1);
             }
+
             position_count[j] += 1;
             double r = (double)kmer_count / first_kmer_count;
-
-            if(r < ratio_t)
+            (void)r;
+            (void)ratio_t;
+            if(/*r < ratio_t*/ kmer_count < t)
             {
                 error_count[j] += 1;
-                //printf("K %zu FC: %zu KC: %zu R: %lf\n", j, first_kmer_count, kmer_count, r);
                 break;
             }
         }
     }
-
-    for(size_t i = 0; i < position_count.size(); ++i)
-        printf("%s\t%zu\t%zu\t%zu\n", ERROR_BY_POSITION_TAG, i, position_count[i], error_count[i]);    
+    
+    // skip 0 since there is no possibility of an error
+    for(size_t i = 1; i < position_count.size(); ++i)
+        printf("%s\t%zu\t%zu\t%zu\n", POSITION_OF_FIRST_ERROR_TAG, i, position_count[i], error_count[i]);    
 }
 
 //
@@ -357,6 +360,9 @@ void generate_random_walk_length(const BWTIndexSet& index_set)
                     break;
                 }
             }
+#if HAVE_OPENMP
+        #pragma omp critical
+#endif
             printf("%s\t%zu\t%zu\n", RANDOM_WALK_TAG, k, walk_length);
         }
     }
@@ -375,10 +381,10 @@ int preQCMain(int argc, char** argv)
     index_set.pCache = new BWTIntervalCache(10, index_set.pBWT);
     
 //    generate_errors_per_base(index_set);
-//    generate_position_of_first_error(index_set);
+      generate_position_of_first_error(index_set);
       generate_random_walk_length(index_set);
       generate_local_graph_complexity(index_set);
-//    generate_unipath_length_data(index_set);
+      generate_unipath_length_data(index_set);
       generate_kmer_coverage(index_set);
 
     delete index_set.pBWT;
