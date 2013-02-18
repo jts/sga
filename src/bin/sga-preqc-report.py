@@ -8,6 +8,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 TAG_UNIPATH_LENGTH    = 'UPL'
 TAG_KMER_DISTRIBUTION = 'KMD'
 TAG_GRAPH_COMPLEXITY = 'LGC'
+TAG_RANDOM_WALK = 'RWL'
 KMER_DISTRIBUTION_MAX = 80
 
 def test():
@@ -30,6 +31,7 @@ def n50(values):
         if total >= target:
             return v
     return 0
+
 #
 def plot_mean_unipath_lengths(pp, data):
     names = data.keys()
@@ -45,6 +47,25 @@ def plot_mean_unipath_lengths(pp, data):
 
     pl.xlabel("k")
     pl.ylabel("Mean unipath length")
+    pl.legend(names)
+    pl.savefig(pp, format='pdf')
+    pl.close()
+
+#
+def plot_random_walk(pp, data):
+    names = data.keys()
+    
+    for name in names:
+        kmers = data[name].keys()
+        kmers.sort()
+        means = list()
+        for k in kmers:
+            values = map(attrgetter('walk_length'), data[name][k])
+            means.append(np.mean(values))
+        pl.plot(kmers, means, 'o-')
+
+    pl.xlabel("k")
+    pl.ylabel("Mean Random Walk Length")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
@@ -76,7 +97,6 @@ def plot_graph_complexity(pp, data):
     for name in names:
 
         k = data[name].keys()
-
         x = sorted(data[name].keys())
         y = list()
 
@@ -89,7 +109,6 @@ def plot_graph_complexity(pp, data):
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
-
 
 #
 def parse_unipath_length(data, fields):
@@ -120,7 +139,15 @@ def parse_graph_complexity(data, fields):
         data[k] = list()
     d = GraphComplexityTuple(output[0], output[1], output[2])
     data[k].append(d)
-    
+
+def parse_random_walk(data, fields):
+    output = map(int, fields[1:])
+    k = output[0]
+    if k not in data:
+        data[k] = list()
+    d = RandomWalkTuple(output[0], output[1])
+    data[k].append(d)
+
 def load_data(data, name, filename):
     file = open(filename, 'r')
 
@@ -144,14 +171,16 @@ def load_data(data, name, filename):
             parse_kmer_distribution(data[tag][name], line)
         elif tag == TAG_GRAPH_COMPLEXITY:
             parse_graph_complexity(data[tag][name], line)
+        elif tag == TAG_RANDOM_WALK:
+            parse_random_walk(data[tag][name], line)
 
 #
 # Start of program
 #
 
 # Describe tuples for type of data
-GraphComplexityTuple = namedtuple('GraphComplexityRow', 'k num_kmers num_branches')
-
+GraphComplexityTuple = namedtuple('GraphComplexityTuple', 'k num_kmers num_branches')
+RandomWalkTuple = namedtuple('RandomWalkTuple', 'k walk_length')
 
 # Load the data files
 data = {}
@@ -169,5 +198,8 @@ if TAG_UNIPATH_LENGTH in data:
 
 if TAG_GRAPH_COMPLEXITY in data:
     plot_graph_complexity(pp, data[TAG_GRAPH_COMPLEXITY])
+
+if TAG_RANDOM_WALK in data:
+    plot_random_walk(pp, data[TAG_RANDOM_WALK])
 
 pp.close()

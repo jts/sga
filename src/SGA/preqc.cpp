@@ -31,6 +31,7 @@ static const char* KMER_DIST_TAG = "KMD";
 static const char* UNIPATH_LENGTH_TAG = "UPL";
 static const char* ERROR_BY_POSITION_TAG = "EBP";
 static const char* GRAPH_COMPLEXITY_TAG = "LGC";
+static const char* RANDOM_WALK_TAG = "RWL";
 
 // Functions
 
@@ -273,62 +274,6 @@ void generate_errors_per_base(const BWTIndexSet& index_set)
 // Generate local graph complexity measure
 void generate_local_graph_complexity(const BWTIndexSet& index_set)
 {
-    size_t n_samples = 100000;
-    size_t k = 31;
-    size_t min_coverage = 5;
-    double coverage_cutoff = 0.75f;
-    for(size_t i = 0; i < n_samples; ++i)
-    {
-        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
-        if(s.size() < k)
-            continue;
-
-        std::string start_kmer = s.substr(0, k);
-        std::string end_kmer = s.substr(s.size() - k);
-
-        size_t start_count = BWTAlgorithms::countSequenceOccurrences(start_kmer, index_set);
-        size_t end_count = BWTAlgorithms::countSequenceOccurrences(end_kmer, index_set);
-        if(start_count < min_coverage || end_count < min_coverage)
-            continue;
-
-        // Search from the start kmer until the end kmer is found and record the number of nodes visited
-        std::queue<std::string> search_queue;
-        search_queue.push(start_kmer);
-        
-        size_t num_kmers_visited = 0;
-        size_t num_branches = 0;
-        bool end_kmer_found = false;
-        while(!search_queue.empty() && num_kmers_visited < 500)
-        {
-            std::string curr_kmer = search_queue.front();
-            search_queue.pop();
-
-            if(curr_kmer == end_kmer)
-            {
-                end_kmer_found = true;
-                break;
-            }
-
-            std::string extensions = get_valid_dbg_neighbors(curr_kmer, index_set, coverage_cutoff);
-            for(size_t j = 0; j < extensions.size(); ++j)
-            {
-                std::string new_kmer = curr_kmer.substr(1, k - 1);
-                new_kmer.append(1, extensions[j]);
-                search_queue.push(new_kmer);
-            }
-
-            num_branches += extensions.size() > 1;
-            num_kmers_visited += 1;
-        }
-
-        if(end_kmer_found)
-            printf("%s\t%zu\t%zu\t%zu\n", GRAPH_COMPLEXITY_TAG, k, num_kmers_visited, num_branches);
-    }
-}
-
-// Generate local graph complexity measure
-void generate_local_graph_complexity_v2(const BWTIndexSet& index_set)
-{
     int n_samples = 50000;
     size_t min_coverage = 5;
     double coverage_cutoff = 0.75f;
@@ -369,7 +314,53 @@ void generate_local_graph_complexity_v2(const BWTIndexSet& index_set)
     }
 }
 
-//
+// Generate random walk length
+void generate_random_walk_length(const BWTIndexSet& index_set)
+{
+    int n_samples = 1000;
+    size_t min_coverage = 5;
+    double coverage_cutoff = 0.75f;
+    size_t max_length = 30000;
+
+    for(size_t k = 31; k < 86; k += 5)
+    {
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+        for(int i = 0; i < n_samples; ++i)
+        {
+            size_t walk_length = 0;
+            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+            if(s.size() < k)
+                continue;
+            std::string kmer = s.substr(0, k);
+            if(BWTAlgorithms::countSequenceOccurrences(kmer, index_set) < min_coverage)
+                continue;
+
+            std::set<std::string> seen;
+            seen.insert(kmer);
+
+            while(walk_length < max_length) 
+            {
+                std::string extensions = get_valid_dbg_neighbors(kmer, index_set, coverage_cutoff);
+                if(!extensions.empty())
+                {
+                    kmer.erase(0, 1);
+                    kmer.append(1, extensions[rand() % extensions.size()]);
+                    if(seen.find(kmer) != seen.end())
+                        break;
+                    walk_length += 1;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            printf("%s\t%zu\t%zu\n", RANDOM_WALK_TAG, k, walk_length);
+        }
+    }
+}
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -385,9 +376,10 @@ int preQCMain(int argc, char** argv)
     
 //    generate_errors_per_base(index_set);
 //    generate_position_of_first_error(index_set);
-    generate_local_graph_complexity_v2(index_set);
+      generate_random_walk_length(index_set);
+      generate_local_graph_complexity(index_set);
 //    generate_unipath_length_data(index_set);
-    generate_kmer_coverage(index_set);
+      generate_kmer_coverage(index_set);
 
     delete index_set.pBWT;
     delete index_set.pSSA;
