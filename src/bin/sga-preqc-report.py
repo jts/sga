@@ -104,7 +104,7 @@ def plot_first_error_position(pp, data):
 
     pl.xlabel("k-mer Position")
     pl.ylabel("Proportion")
-    pl.title("Position of first error in the read")
+    pl.title("k-mer position of first error")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()

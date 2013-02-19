@@ -165,8 +165,9 @@ void generate_position_of_first_error(const BWTIndexSet& index_set)
 {
     size_t n_samples = 100000;
     size_t k = 41;
-    size_t t = 5;
-    double ratio_t = 0.1;
+    size_t starting_count = 10;
+    size_t min_count = 3;
+
     std::vector<size_t> position_count;
     std::vector<size_t> error_count;
     for(size_t i = 0; i < n_samples; ++i)
@@ -177,7 +178,7 @@ void generate_position_of_first_error(const BWTIndexSet& index_set)
             BWTAlgorithms::countSequenceOccurrences(s.substr(0, k), index_set.pBWT);
 
         // Skip reads with a weak starting kmer
-        if(first_kmer_count < 10)
+        if(first_kmer_count < starting_count)
             continue;
 
         for(size_t j = 1; j < nk; ++j)
@@ -192,10 +193,7 @@ void generate_position_of_first_error(const BWTIndexSet& index_set)
             }
 
             position_count[j] += 1;
-            double r = (double)kmer_count / first_kmer_count;
-            (void)r;
-            (void)ratio_t;
-            if(/*r < ratio_t*/ kmer_count < t)
+            if(kmer_count < min_count)
             {
                 error_count[j] += 1;
                 break;
