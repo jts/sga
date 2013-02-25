@@ -33,6 +33,7 @@ static const char* ERROR_BY_POSITION_TAG = "EBP";
 static const char* POSITION_OF_FIRST_ERROR_TAG = "PFE";
 static const char* GRAPH_COMPLEXITY_TAG = "LGC";
 static const char* RANDOM_WALK_TAG = "RWL";
+static const char* GC_BY_COUNT_TAG = "GCC";
 
 // Functions
 
@@ -125,6 +126,34 @@ std::string get_valid_dbg_neighbors(const std::string& kmer,
             out.push_back(b);
     }
     return out;
+}
+
+std::string get_valid_dbg_neighbors_fixed_coverage(const std::string& kmer,
+                                                   const BWTIndexSet& index_set,
+                                                   size_t min_coverage,
+                                                   double min_ratio)
+{
+    std::string out;
+    AlphaCount64 counts = 
+        BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, 
+                                                              index_set.pBWT,
+                                                              ED_SENSE,
+                                                              index_set.pCache);
+    
+    if(!counts.hasDNAChar())
+        return out; // no extensions
+
+    char max_b = counts.getMaxDNABase();
+    size_t max_c = counts.get(max_b);
+
+    for(size_t j = 0; j < 4; ++j)
+    {
+        char b = "ACGT"[j];
+        size_t c = counts.get(b);
+        if(c >= min_coverage && (double)c / max_c >= min_ratio)
+            out.push_back(b);
+    }
+    return out;    
 }
 
 //
@@ -276,8 +305,9 @@ void generate_errors_per_base(const BWTIndexSet& index_set)
 void generate_local_graph_complexity(const BWTIndexSet& index_set)
 {
     int n_samples = 50000;
-    size_t min_coverage = 5;
-    double coverage_cutoff = 0.75f;
+    size_t min_coverage_to_test = 5;
+    size_t min_coverage_for_branch = 3;
+    double min_coverage_ratio = 0.5f;
 
     for(size_t k = 16; k < 86; k += 5)
     {
@@ -294,21 +324,22 @@ void generate_local_graph_complexity(const BWTIndexSet& index_set)
             if(s.size() < k)
                 continue;
             
-            bool read_is_valid_path = true;
-
             for(size_t j = 0; j < s.size() - k + 1; ++j)
             {
                 std::string kmer = s.substr(j, k);
                 size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set);
-                if(count < min_coverage)
-                {
-                    read_is_valid_path = false;
+                if(count < min_coverage_to_test)
                     break;
+
+                std::string extensions = get_valid_dbg_neighbors_fixed_coverage(kmer, index_set, min_coverage_for_branch, min_coverage_ratio);
+#if HAVE_OPENMP
+                #pragma omp critical
+#endif
+                {    
+                    num_branches += extensions.size() > 1;
+                    num_kmers += 1;
                 }
 
-                std::string extensions = get_valid_dbg_neighbors(kmer, index_set, coverage_cutoff);
-                num_branches += extensions.size() > 1;
-                num_kmers += 1;
             }
         }
         printf("%s\t%zu\t%zu\t%zu\n", GRAPH_COMPLEXITY_TAG, k, num_kmers, num_branches);
@@ -365,6 +396,48 @@ void generate_random_walk_length(const BWTIndexSet& index_set)
         }
     }
 }
+
+void generate_gc_by_kmer_count(const BWTIndexSet& index_set)
+{
+    int n_samples = 10000;
+    size_t min_coverage = 5;
+    size_t k = 41;
+
+    std::vector<size_t> num_gc;
+    std::vector<size_t> num_at;
+
+    for(int i = 0; i < n_samples; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        if(s.size() < k)
+            continue;
+        std::string kmer = s.substr(0, k);
+        size_t c = BWTAlgorithms::countSequenceOccurrences(kmer, index_set);
+        if(c >= min_coverage)
+        {
+            if(c > num_gc.size())
+            {
+                num_gc.resize(c+1);
+                num_at.resize(c+1);
+            }
+
+            for(size_t j = 0; j < s.size(); ++j)
+            {
+                if(s[j] == 'C' || s[j] == 'G')
+                    num_gc[c] += 1;
+                else
+                    num_at[c] += 1;
+            }
+        }
+    }
+
+    for(size_t i = min_coverage; i < num_gc.size() && i < 80; ++i)
+    {
+        double p = (double)num_gc[i] / (num_gc[i] + num_at[i]);
+        printf("%s\t%zu\t%.2lf\n", GC_BY_COUNT_TAG, i, p);
+    }
+}
+
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -379,11 +452,13 @@ int preQCMain(int argc, char** argv)
     index_set.pCache = new BWTIntervalCache(10, index_set.pBWT);
     
 //    generate_errors_per_base(index_set);
-      generate_position_of_first_error(index_set);
-      generate_random_walk_length(index_set);
+//    generate_gc_by_kmer_count(index_set);
+
+//      generate_position_of_first_error(index_set);
+//      generate_random_walk_length(index_set);
       generate_local_graph_complexity(index_set);
-      generate_unipath_length_data(index_set);
-      generate_kmer_coverage(index_set);
+//      generate_unipath_length_data(index_set);
+//      generate_kmer_coverage(index_set);
 
     delete index_set.pBWT;
     delete index_set.pSSA;
@@ -436,7 +511,7 @@ void unipath_length_distribution(const BWTIndexSet& index_set,
                 done = true;
             }
         }
-#ifdef HAVE_OPENMP
+#if HAVE_OPENMP
         #pragma omp critical
 #endif
         printf("%s\t%zu\t%zu\n", UNIPATH_LENGTH_TAG, k, walk_length);
