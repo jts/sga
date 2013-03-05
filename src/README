@@ -47,6 +47,9 @@ the jemalloc memory allocator, specify the path as follows:
 
 ./configure --with-jemalloc=/home/jsimpson/jemalloc/lib/
 
+The Hoard and tcmalloc allocators are also supported and can be enabled 
+using --with-hoard/--with-tcmalloc if desired.
+
 --------------
 Installing SGA
 
