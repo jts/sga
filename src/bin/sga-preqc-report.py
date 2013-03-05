@@ -1,26 +1,20 @@
 import sys, os.path
 import pylab as pl
 import numpy as np
+import json
 from collections import namedtuple
 from operator import attrgetter
 from matplotlib.backends.backend_pdf import PdfPages
 
-TAG_UNIPATH_LENGTH    = 'UPL'
-TAG_KMER_DISTRIBUTION = 'KMD'
-TAG_GRAPH_COMPLEXITY = 'LGC'
-TAG_RANDOM_WALK = 'RWL'
-TAG_FIRST_ERROR_POSITION = 'PFE'
+# String constants
+KMER_DISTRIBUTION_NAME = "KmerDistribution"
+FIRST_ERROR_NAME = "FirstErrorPosition"
+PCR_DUPLICATE_NAME = "PCRDuplicates"
+ERRORS_PER_BASE_NAME = "ErrorsPerBase"
+UNIPATH_LENGTH_NAME = "UnipathLength"
+GRAPH_COMPLEXITY_NAME =  "LocalGraphComplexity"
+RANDOM_WALK_NAME = "RandomWalkLength"
 KMER_DISTRIBUTION_MAX = 80
-
-def test():
-    X = np.linspace(-np.pi, np.pi, 256, endpoint=True);
-    C, S = np.cos(X), np.sin(X)
-    pl.plot(X, C)
-    pl.plot(X, S)
-
-    pp = PdfPages("test.pdf")
-    pl.savefig(pp, format='pdf')
-    pp.close()
 
 # Return the N50 of the list of numbers
 def n50(values):
@@ -33,18 +27,25 @@ def n50(values):
             return v
     return 0
 
+# Returns true if any of the data sets has a field
+# with the given key
+def any_set_has_key(data, key):
+    for n in data:
+        if key in data[n]:
+            return 1
+    return 0
+
 #
 def plot_mean_unipath_lengths(pp, data):
     names = data.keys()
     
     for name in names:
-        kmers = data[name].keys()
-        kmers.sort()
-        means = list()
-        for k in kmers:
-            means.append(np.mean(data[name][k]))
-
-        pl.plot(kmers, means, 'o-')
+        kmers = list()
+        values = list()
+        for t in data[name][UNIPATH_LENGTH_NAME]:
+            kmers.append(t['k'])
+            values.append(np.mean(t['walk_lengths']))
+        pl.plot(kmers, values, 'o-')
 
     pl.xlabel("k")
     pl.ylabel("Mean unipath length")
@@ -58,13 +59,14 @@ def plot_random_walk(pp, data):
     names = data.keys()
     
     for name in names:
-        kmers = data[name].keys()
-        kmers.sort()
-        means = list()
-        for k in kmers:
-            values = map(attrgetter('walk_length'), data[name][k])
-            means.append(np.mean(values))
-        pl.plot(kmers, means, 'o-')
+
+        kmers = list()
+        values = list()
+
+        for t in data[name]['RandomWalkLength']:
+            kmers.append(t['k'])
+            values.append(np.mean(t['walk_lengths']))
+        pl.plot(kmers, values, 'o-')
 
     pl.xlabel("k")
     pl.ylabel("Mean Random Walk Length")
@@ -76,16 +78,16 @@ def plot_random_walk(pp, data):
 def plot_kmer_distribution(pp, data):
     names = data.keys()
     for name in names:
-        k = data[name].keys()[0]
-        
-        x = range(1, KMER_DISTRIBUTION_MAX);
+        k = data[name][KMER_DISTRIBUTION_NAME]['k']
+        x = list()
+        y = list()
+        for t in data[name][KMER_DISTRIBUTION_NAME]['distribution']:
+            x.append(t['kmer-depth'])
+            y.append(t['count'])
 
-        y = [ data[name][k][v] if v in data[name][k] else 0 for v in x ]
         s = sum(y)
-
         # Normalize y
         ny = [ float(v) / s for v in y ]
-
         pl.plot(x, ny)
 
     pl.xlabel(str(k) + "-mer count")
@@ -98,9 +100,12 @@ def plot_kmer_distribution(pp, data):
 def plot_first_error_position(pp, data):
     names = data.keys()
     for name in names:
-        positions = sorted(data[name].keys())
-        proportion_error = [ float(data[name][p][0].errors) / data[name][p][0].samples for p in positions ]
-        pl.plot(positions, proportion_error)
+        
+        indices = data[name][FIRST_ERROR_NAME]['indices']
+        base_count = data[name][FIRST_ERROR_NAME]['base_count']
+        error_count = data[name][FIRST_ERROR_NAME]['error_count']
+        proportion_error = [ float(e) / b for b,e in zip(base_count, error_count) ]
+        pl.plot(indices, proportion_error)
 
     pl.xlabel("k-mer Position")
     pl.ylabel("Proportion")
@@ -109,18 +114,36 @@ def plot_first_error_position(pp, data):
     pl.savefig(pp, format='pdf')
     pl.close()
 
+def plot_errors_per_base(pp, data):
+    names = data.keys()
+    for name in names:
+
+        base_count = data[name][ERRORS_PER_BASE_NAME]['base_count']
+        error_count = data[name][ERRORS_PER_BASE_NAME]['error_count']
+        positions = np.arange(len(base_count))
+        proportion_error = [ float(e) / b for b,e in zip(base_count, error_count) ]
+        pl.plot(positions, proportion_error)
+
+    pl.xlabel("base position")
+    pl.ylabel("Error rate")
+    pl.title("Per-position error rate")
+    pl.legend(names)
+    pl.savefig(pp, format='pdf')
+    pl.close()    
+
 def plot_graph_complexity(pp, data):
     names = data.keys()
     out = list()
     for name in names:
 
-        k = data[name].keys()
-        x = sorted(data[name].keys())
-        y = list()
+        kmers = list()
+        branch_rate = list()
 
-        for k in x:
-            y.append(float(data[name][k][0].num_branches) / data[name][k][0].num_kmers)
-        pl.plot(x,y, 'o-')
+        for t in data[name][GRAPH_COMPLEXITY_NAME]:
+            kmers.append(t['k'])
+            branch_rate.append(float(t['num_branches']) / t['num_kmers'])
+
+        pl.plot(kmers,branch_rate, 'o-')
     pl.yscale('log')
     pl.xlabel("k")
     pl.ylabel("High-coverage branch frequency")
@@ -129,94 +152,48 @@ def plot_graph_complexity(pp, data):
     pl.savefig(pp, format='pdf')
     pl.close()
 
-#
-def parse_unipath_length(data, fields):
+def plot_pcr_duplicates(pp, data):
+    names = data.keys()
+    out = list()
+    for name in names:
+        n_dups = data[name][PCR_DUPLICATE_NAME]['num_duplicates']
+        n_pairs = data[name][PCR_DUPLICATE_NAME]['num_pairs']
+        out.append(float(n_dups) / n_pairs)
+    width = 0.35
+    ind = np.arange(len(names))
+    pl.bar(ind, out, width)
+    pl.xticks(ind + width/2, names)
+    pl.savefig(pp, format='pdf')
+    pl.close()    
 
-    # Parse a unipath length record
-    k,l = int(fields[1]), int(fields[2])
-
-    # Initialize dictionaries
-    if k not in data:
-        data[k] = list()
-
-    data[k].append(l)
-
-#
-def parse_kmer_distribution(data, fields):
-
-    # Parse a unipath length record
-    k,occ,count = int(fields[1]), int(fields[2]), int(fields[3])
-
-    if k not in data:
-        data[k] = dict()
-    data[k][occ] = count
-
-def parse_graph_complexity(data, fields):
-    output = map(int, fields[1:])
-    k = output[0]
-    if k not in data:
-        data[k] = list()
-    d = GraphComplexityTuple(output[0], output[1], output[2])
-    data[k].append(d)
-
-def parse_random_walk(data, fields):
-    output = map(int, fields[1:])
-    k = output[0]
-    if k not in data:
-        data[k] = list()
-    d = RandomWalkTuple(output[0], output[1])
-    data[k].append(d)
-
-def parse_first_error_position(data, fields):
-    output = map(int, fields[1:])
-    position = output[0]
-    if position not in data:
-        data[position] = list()
-    d = FirstErrorPositionTuple(output[0], output[1], output[2])
-    data[position].append(d)
-
-def load_data(data, name, filename):
+def load_json(filename):
     file = open(filename, 'r')
-
-    for line in file:
-        line = line.rstrip().split('\t')
-        
-        # Parse the type of data
-        tag = line[0]
-
-        if len(line[0]) != 3:
-            continue
-
-        if tag not in data:
-            data[tag] = dict()
-        if name not in data[tag]:
-            data[tag][name] = dict()
-
-        if tag == TAG_UNIPATH_LENGTH:
-            parse_unipath_length(data[tag][name], line)
-        elif tag == TAG_KMER_DISTRIBUTION:
-            parse_kmer_distribution(data[tag][name], line)
-        elif tag == TAG_GRAPH_COMPLEXITY:
-            parse_graph_complexity(data[tag][name], line)
-        elif tag == TAG_RANDOM_WALK:
-            parse_random_walk(data[tag][name], line)
-        elif tag == TAG_FIRST_ERROR_POSITION:
-            parse_first_error_position(data[tag][name], line)
+    return json.load(file)
 
 #
 # Start of program
 #
 
-# Describe tuples for type of data
-GraphComplexityTuple = namedtuple('GraphComplexityTuple', 'k num_kmers num_branches')
-RandomWalkTuple = namedtuple('RandomWalkTuple', 'k walk_length')
-FirstErrorPositionTuple = namedtuple('FirstErrorPositionTuple', 'position samples errors')
-
-# Load the data files
 data = {}
 for f in sys.argv[1:]:
     name = os.path.splitext(os.path.basename(f))[0]
-    load_data(data, name, f)
+    data[name] = json.load(open(f, 'r'))
+
+pp = PdfPages("test_report.pdf")
+first_name = data.keys()[0]
+
+if any_set_has_key(data, KMER_DISTRIBUTION_NAME):
+    plot_kmer_distribution(pp, data)
+
+plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
+plot_pcr_duplicates(pp, data) if any_set_has_key(data, PCR_DUPLICATE_NAME) else 0
+plot_errors_per_base(pp, data) if any_set_has_key(data, ERRORS_PER_BASE_NAME) else 0
+plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
+plot_random_walk(pp, data) if any_set_has_key(data, RANDOM_WALK_NAME) else 0
+plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
+pp.close()
+
+sys.exit(0)
 
 # Make the plots
 pp = PdfPages("test_report.pdf")

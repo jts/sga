@@ -144,6 +144,8 @@ It also uses zlib, the google sparse hash and gzstream by Deepak Bandyopadhyay a
 SGA also uses the stdaln dynamic programming functions written by Heng Li. The ropebwt implementation is by Heng Li
 (https://raw.github.com/lh3/ropebwt).
 
+SGA also uses the rapidjson library by Milo Yip (http://code.google.com/p/rapidjson/).
+
 This Software includes an implementation of the algorithm published by Bauer et al. 
 [Markus J. Bauer, Anthony J. Cox and Giovanna Rosone: Lightweight BWT Construction 
 for Very Large String Collections. Lecture Notes in Computer Science 6661 

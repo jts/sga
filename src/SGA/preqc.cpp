@@ -21,19 +21,20 @@
 #include "HashMap.h"
 #include "KmerDistribution.h"
 #include "KmerOverlaps.h"
+#include "BloomFilter.h"
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/filestream.h"
 
 #if HAVE_OPENMP
 #include <omp.h>
 #endif
 
 // Statics
-static const char* KMER_DIST_TAG = "KMD";
-static const char* UNIPATH_LENGTH_TAG = "UPL";
-static const char* ERROR_BY_POSITION_TAG = "EBP";
-static const char* POSITION_OF_FIRST_ERROR_TAG = "PFE";
-static const char* GRAPH_COMPLEXITY_TAG = "LGC";
-static const char* RANDOM_WALK_TAG = "RWL";
 static const char* GC_BY_COUNT_TAG = "GCC";
+
+// Typedefs
+typedef rapidjson::PrettyWriter<rapidjson::FileStream> JSONWriter;
 
 // Functions
 
@@ -42,7 +43,8 @@ static const char* GC_BY_COUNT_TAG = "GCC";
 //    c / max_c < coverage_ratio_threshold 
 //    where max_c is the highest-coverage branch
 // 
-void unipath_length_distribution(const BWTIndexSet& index_set, 
+void unipath_length_distribution(JSONWriter* pWriter,
+                                 const BWTIndexSet& index_set,
                                  size_t k,
                                  double coverage_ratio_threshold, 
                                  size_t n_samples);
@@ -157,17 +159,25 @@ std::string get_valid_dbg_neighbors_fixed_coverage(const std::string& kmer,
 }
 
 //
-void generate_unipath_length_data(const BWTIndexSet& index_set)
+void generate_unipath_length_data(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
+    pWriter->String("UnipathLength");
+    pWriter->StartArray();
     for(size_t k = 16; k < 96; k += 5)
-        unipath_length_distribution(index_set, k, 0.9, 1000);
+        unipath_length_distribution(pWriter, index_set, k, 0.9, 1000);
+    pWriter->EndArray();
 }
 
 //
-void generate_kmer_coverage(const BWTIndexSet& index_set)
+void generate_kmer_coverage(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
+    pWriter->String("KmerDistribution");
+    pWriter->StartObject();
     size_t n_samples = 10000;
     size_t k = 51;
+    
+    pWriter->String("k");
+    pWriter->Int(k);
     
     KmerDistribution kmerDistribution;
     for(size_t i = 0; i < n_samples; ++i)
@@ -183,14 +193,26 @@ void generate_kmer_coverage(const BWTIndexSet& index_set)
         }
     }
 
+    pWriter->String("distribution");
+    pWriter->StartArray();
     int max = kmerDistribution.getCutoffForProportion(0.95f);
     std::vector<int> count_vector = kmerDistribution.toCountVector(max);
     for(size_t i = 1; i < count_vector.size(); ++i)
-        printf("%s\t%zu\t%zu\t%d\n", KMER_DIST_TAG, k, i, count_vector[i]);
+    {
+        pWriter->StartObject();
+        pWriter->String("kmer-depth");
+        pWriter->Int(i);
+        pWriter->String("count");
+        pWriter->Int(count_vector[i]);
+        pWriter->EndObject();
+    }
+
+    pWriter->EndArray();
+    pWriter->EndObject();
 }
 
 //
-void generate_position_of_first_error(const BWTIndexSet& index_set)
+void generate_position_of_first_error(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
     size_t n_samples = 100000;
     size_t k = 41;
@@ -229,16 +251,34 @@ void generate_position_of_first_error(const BWTIndexSet& index_set)
             }
         }
     }
-    
-    // skip 0 since there is no possibility of an error
+
+    pWriter->String("FirstErrorPosition");
+    pWriter->StartObject();
+
+    pWriter->String("indices");
+    pWriter->StartArray();
     for(size_t i = 1; i < position_count.size(); ++i)
-        printf("%s\t%zu\t%zu\t%zu\n", POSITION_OF_FIRST_ERROR_TAG, i, position_count[i], error_count[i]);    
+        pWriter->Int(i);
+    pWriter->EndArray();
+
+    pWriter->String("base_count");
+    pWriter->StartArray();
+    for(size_t i = 1; i < position_count.size(); ++i)
+        pWriter->Int(position_count[i]);
+    pWriter->EndArray();
+
+    pWriter->String("error_count");
+    pWriter->StartArray();
+    for(size_t i = 1; i < position_count.size(); ++i)
+        pWriter->Int(error_count[i]);
+    pWriter->EndArray();
+    pWriter->EndObject();
 }
 
 //
-void generate_errors_per_base(const BWTIndexSet& index_set)
+void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
-    size_t n_samples = 10000;
+    int n_samples = 10000;
     size_t k = 21;
     double max_error_rate = 0.85;
     size_t min_overlap = 30;
@@ -246,11 +286,20 @@ void generate_errors_per_base(const BWTIndexSet& index_set)
     std::vector<size_t> position_count;
     std::vector<size_t> error_count;
 
-    for(size_t i = 0; i < n_samples; ++i)
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+    for(int i = 0; i < n_samples; ++i)
     {
         std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
         MultipleAlignment ma = 
             KmerOverlaps::buildMultipleAlignment(s, k, min_overlap, max_error_rate, 2, index_set);
+
+        // Skip when there is insufficient depth to classify errors
+        size_t ma_rows = ma.getNumRows();
+        if(ma_rows <= 1)
+            continue;
 
         size_t ma_cols = ma.getNumColumns();
         size_t position = 0;
@@ -285,30 +334,51 @@ void generate_errors_per_base(const BWTIndexSet& index_set)
             //    is strongly supported.
             bool is_error = s_symbol != max_symbol && s_symbol_count < 4 && max_count >= 3;
 
-            if(position >= position_count.size())
+#if HAVE_OPENMP
+            #pragma omp critical
+#endif
             {
-                position_count.resize(position+1);
-                error_count.resize(position+1);
-            }
+                if(position >= position_count.size())
+                {
+                    position_count.resize(position+1);
+                    error_count.resize(position+1);
+                }
 
-            position_count[position]++;
-            error_count[position] += is_error;
+                position_count[position]++;
+                error_count[position] += is_error;
+            }
             position += 1;
         }
     }
-
+    
+    pWriter->String("ErrorsPerBase");
+    pWriter->StartObject();
+    
+    pWriter->String("base_count");
+    pWriter->StartArray();
     for(size_t i = 0; i < position_count.size(); ++i)
-        printf("%s\t%zu\t%zu\t%zu\n", ERROR_BY_POSITION_TAG, i, position_count[i], error_count[i]);
+        pWriter->Int(position_count[i]);
+    pWriter->EndArray();
+    
+    pWriter->String("error_count");
+    pWriter->StartArray();
+    for(size_t i = 0; i < position_count.size(); ++i)
+        pWriter->Int(error_count[i]);
+    pWriter->EndArray();
+
+    pWriter->EndObject();
 }
 
 // Generate local graph complexity measure
-void generate_local_graph_complexity(const BWTIndexSet& index_set)
+void generate_local_graph_complexity(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
     int n_samples = 50000;
     size_t min_coverage_to_test = 5;
     size_t min_coverage_for_branch = 3;
     double min_coverage_ratio = 0.5f;
 
+    pWriter->String("LocalGraphComplexity");
+    pWriter->StartArray();
     for(size_t k = 16; k < 86; k += 5)
     {
         size_t num_branches = 0;
@@ -342,20 +412,44 @@ void generate_local_graph_complexity(const BWTIndexSet& index_set)
 
             }
         }
-        printf("%s\t%zu\t%zu\t%zu\n", GRAPH_COMPLEXITY_TAG, k, num_kmers, num_branches);
+
+        pWriter->StartObject();
+        pWriter->String("k");
+        pWriter->Int(k);
+        pWriter->String("num_kmers");
+        pWriter->Int(num_kmers);
+        pWriter->String("num_branches");
+        pWriter->Int(num_branches);
+        pWriter->EndObject();
     }
+    pWriter->EndArray();
 }
 
 // Generate random walk length
-void generate_random_walk_length(const BWTIndexSet& index_set)
+void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
     int n_samples = 1000;
     size_t min_coverage = 5;
     double coverage_cutoff = 0.75f;
     size_t max_length = 30000;
+    
+    // Create a bloom filter to mark
+    // visited kmers. We do not allow a new
+    // walk to start at one of these kmers
+    size_t bf_overcommit = 20;
+    BloomFilter* bloom_filter = new BloomFilter;;
+    bloom_filter->initialize(n_samples * max_length * bf_overcommit, 3);
+
+    pWriter->String("RandomWalkLength");
+    pWriter->StartArray();
 
     for(size_t k = 31; k < 86; k += 5)
     {
+        pWriter->StartObject();
+        pWriter->String("k");
+        pWriter->Int(k);
+        pWriter->String("walk_lengths");
+        pWriter->StartArray();
 #if HAVE_OPENMP
         omp_set_num_threads(opt::numThreads);
         #pragma omp parallel for
@@ -367,11 +461,9 @@ void generate_random_walk_length(const BWTIndexSet& index_set)
             if(s.size() < k)
                 continue;
             std::string kmer = s.substr(0, k);
-            if(BWTAlgorithms::countSequenceOccurrences(kmer, index_set) < min_coverage)
+            if(bloom_filter->test(kmer.c_str(), k) || BWTAlgorithms::countSequenceOccurrences(kmer, index_set) < min_coverage)
                 continue;
-
-            std::set<std::string> seen;
-            seen.insert(kmer);
+            bloom_filter->add(kmer.c_str(), k);
 
             while(walk_length < max_length) 
             {
@@ -380,9 +472,8 @@ void generate_random_walk_length(const BWTIndexSet& index_set)
                 {
                     kmer.erase(0, 1);
                     kmer.append(1, extensions[rand() % extensions.size()]);
-                    if(seen.find(kmer) != seen.end())
-                        break;
                     walk_length += 1;
+                    bloom_filter->add(kmer.c_str(), k);
                 }
                 else
                 {
@@ -392,9 +483,14 @@ void generate_random_walk_length(const BWTIndexSet& index_set)
 #if HAVE_OPENMP
         #pragma omp critical
 #endif
-            printf("%s\t%zu\t%zu\n", RANDOM_WALK_TAG, k, walk_length);
+            pWriter->Int(walk_length);
         }
+        pWriter->EndArray();
+        pWriter->EndObject();
     }
+
+    pWriter->EndArray();
+    delete bloom_filter;
 }
 
 void generate_gc_by_kmer_count(const BWTIndexSet& index_set)
@@ -438,6 +534,78 @@ void generate_gc_by_kmer_count(const BWTIndexSet& index_set)
     }
 }
 
+void generate_duplication_rate(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
+{
+    int n_samples = 10000;
+    size_t k = 50;
+
+    size_t total_pairs = index_set.pBWT->getNumStrings() / 2;
+    size_t num_pairs_checked = 0;
+    size_t num_duplicates = 0;
+#if HAVE_OPENMP
+    omp_set_num_threads(opt::numThreads);
+    #pragma omp parallel for
+#endif
+    for(int i = 0; i < n_samples; ++i)
+    {
+        // Choose a read pair
+        int64_t source_pair_idx = rand() % total_pairs;
+        std::string r1 = BWTAlgorithms::extractString(index_set.pBWT, source_pair_idx * 2);
+        std::string r2 = BWTAlgorithms::extractString(index_set.pBWT, source_pair_idx * 2 + 1);
+
+        // Get the interval for $k1/$k2 which corresponds to the 
+        // lexicographic rank of reads starting with those kmers
+        std::string k1 = "$" + r1.substr(0, k);
+        std::string k2 = "$" + r2.substr(0, k);
+
+        BWTInterval i1 = BWTAlgorithms::findInterval(index_set.pBWT, k1);
+        BWTInterval i2 = BWTAlgorithms::findInterval(index_set.pBWT, k2);
+
+        std::vector<int64_t> pair_ids;
+        for(int64_t j = i1.lower; j <= i1.upper; ++j)
+        {
+            int64_t read_id = index_set.pSSA->lookupLexoRank(j);
+            if(read_id % 2 == 1)
+                continue;
+            
+            int64_t pair_id = read_id % 2 == 0 ? read_id / 2 : (read_id - 1) / 2;
+            if(pair_id != source_pair_idx)
+                pair_ids.push_back(pair_id);
+        }
+
+        for(int64_t j = i2.lower; j <= i2.upper; ++j)
+        {
+            int64_t read_id = index_set.pSSA->lookupLexoRank(j);
+            if(read_id % 2 == 0)
+                continue;
+            int64_t pair_id = read_id % 2 == 0 ? read_id / 2 : (read_id - 1) / 2;
+            if(pair_id != source_pair_idx)
+                pair_ids.push_back(pair_id);
+        }
+
+        std::sort(pair_ids.begin(), pair_ids.end());
+        std::vector<int64_t>::iterator iter = 
+            std::adjacent_find(pair_ids.begin(), pair_ids.end());
+                                           
+        bool has_duplicate = iter != pair_ids.end();
+#if HAVE_OPENMP
+        #pragma omp critical
+#endif
+        {
+            num_pairs_checked += 1;
+            num_duplicates += has_duplicate;
+        }
+    }
+
+    pJSONWriter->String("PCRDuplicates");
+    pJSONWriter->StartObject();
+    pJSONWriter->String("num_duplicates");
+    pJSONWriter->Int(num_duplicates);
+    pJSONWriter->String("num_pairs");
+    pJSONWriter->Int(num_pairs_checked);
+    pJSONWriter->EndObject();
+}
+
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -451,14 +619,22 @@ int preQCMain(int argc, char** argv)
     index_set.pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
     index_set.pCache = new BWTIntervalCache(10, index_set.pBWT);
     
-//    generate_errors_per_base(index_set);
-//    generate_gc_by_kmer_count(index_set);
+    rapidjson::FileStream f(stdout);
+    JSONWriter writer(f);
 
-//      generate_position_of_first_error(index_set);
-//      generate_random_walk_length(index_set);
-      generate_local_graph_complexity(index_set);
-//      generate_unipath_length_data(index_set);
-//      generate_kmer_coverage(index_set);
+    // Top-level document
+    writer.StartObject();
+
+    generate_kmer_coverage(&writer, index_set);
+    generate_position_of_first_error(&writer, index_set);
+    generate_errors_per_base(&writer, index_set);
+    generate_unipath_length_data(&writer, index_set);
+    generate_duplication_rate(&writer, index_set);
+    generate_random_walk_length(&writer, index_set);
+    generate_local_graph_complexity(&writer, index_set);
+    
+    // End document
+    writer.EndObject();
 
     delete index_set.pBWT;
     delete index_set.pSSA;
@@ -468,11 +644,18 @@ int preQCMain(int argc, char** argv)
 }
 
 //
-void unipath_length_distribution(const BWTIndexSet& index_set, 
+void unipath_length_distribution(JSONWriter* pWriter,
+                                 const BWTIndexSet& index_set, 
                                  size_t k,
                                  double coverage_ratio_threshold, 
                                  size_t n_samples)
 {
+    pWriter->StartObject();
+    pWriter->String("k");
+    pWriter->Int(k);
+    pWriter->String("walk_lengths");
+    pWriter->StartArray();
+
 #if HAVE_OPENMP
     omp_set_num_threads(opt::numThreads);
     #pragma omp parallel for
@@ -514,8 +697,10 @@ void unipath_length_distribution(const BWTIndexSet& index_set,
 #if HAVE_OPENMP
         #pragma omp critical
 #endif
-        printf("%s\t%zu\t%zu\n", UNIPATH_LENGTH_TAG, k, walk_length);
+        pWriter->Int(walk_length);
     }
+    pWriter->EndArray();
+    pWriter->EndObject();
 }
 // 
 // Handle command line arguments
