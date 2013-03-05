@@ -41,12 +41,11 @@ If bamtools or the sparsehash are installed elsewhere, you can specify their loc
 These directories should be the root of the install (in other words, the directories have
 include/ and lib/ as subdirectories contained the header files and libraries, respectively).
 
-The program uses pthread to parallelize most steps of the assembly. The use of a concurrent
-memory allocator like hoard can drastically improve running time. If you would like to enable
-use of the hoard memory allocator, specify the path to hoard as follows:
-can be specified as above:
+The program uses pthreads to parallelize most steps of the assembly. The use of a concurrent
+memory allocator like jemalloc can improve running time. If you would like to enable
+the jemalloc memory allocator, specify the path as follows:
 
-./configure --with-hoard=/home/jsimpson/hoard
+./configure --with-jemalloc=/home/jsimpson/jemalloc/lib/
 
 --------------
 Installing SGA
