@@ -166,49 +166,24 @@ def plot_pcr_duplicates(pp, data):
     pl.savefig(pp, format='pdf')
     pl.close()    
 
-def load_json(filename):
-    file = open(filename, 'r')
-    return json.load(file)
-
 #
 # Start of program
 #
 
 data = {}
 for f in sys.argv[1:]:
-    name = os.path.splitext(os.path.basename(f))[0]
-    data[name] = json.load(open(f, 'r'))
+    if os.path.getsize(f) > 0:
+        name = os.path.splitext(os.path.basename(f))[0]
+        data[name] = json.load(open(f, 'r'))
 
 pp = PdfPages("test_report.pdf")
-first_name = data.keys()[0]
 
-if any_set_has_key(data, KMER_DISTRIBUTION_NAME):
-    plot_kmer_distribution(pp, data)
-
+plot_kmer_distribution(pp, data) if any_set_has_key(data, KMER_DISTRIBUTION_NAME) else 0
 plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
 plot_pcr_duplicates(pp, data) if any_set_has_key(data, PCR_DUPLICATE_NAME) else 0
 plot_errors_per_base(pp, data) if any_set_has_key(data, ERRORS_PER_BASE_NAME) else 0
 plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
 plot_random_walk(pp, data) if any_set_has_key(data, RANDOM_WALK_NAME) else 0
 plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
-pp.close()
 
-sys.exit(0)
-
-# Make the plots
-pp = PdfPages("test_report.pdf")
-if TAG_KMER_DISTRIBUTION in data:
-    plot_kmer_distribution(pp, data[TAG_KMER_DISTRIBUTION])
-
-if TAG_FIRST_ERROR_POSITION in data:
-    plot_first_error_position(pp, data[TAG_FIRST_ERROR_POSITION])
-
-if TAG_RANDOM_WALK in data:
-    plot_random_walk(pp, data[TAG_RANDOM_WALK])
-
-if TAG_GRAPH_COMPLEXITY in data:
-    plot_graph_complexity(pp, data[TAG_GRAPH_COMPLEXITY])
-
-if TAG_UNIPATH_LENGTH in data:
-    plot_mean_unipath_lengths(pp, data[TAG_UNIPATH_LENGTH])
 pp.close()
