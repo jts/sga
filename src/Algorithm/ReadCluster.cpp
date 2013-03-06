@@ -115,7 +115,7 @@ void ReadCluster::run(size_t max_size, int max_iterations)
 
             // Add this node to the output
             m_outCluster.push_back(node);
-
+            
             // If we are using limit kmers, only try to extend this sequence if it does not contain a limit kmer
             bool extend_read = canExtendRead(node);
             if(!extend_read)
@@ -171,7 +171,6 @@ bool ReadCluster::canExtendRead(const ClusterNode& node) const
     // No limiting kmers
     if(m_pLimitKmers == NULL)
         return true;
-
     // Node too short
     if(node.sequence.size() < m_limitK)
         return false;
