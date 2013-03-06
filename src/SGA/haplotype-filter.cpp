@@ -299,10 +299,10 @@ void runSimulation()
     double d = 3;
 
     size_t min_o = 5;
-    size_t max_o = d * N;
+    size_t max_o = (size_t)(d * N);
     (void)min_o;
     (void)max_o;
-    srand(NULL);
+    srand(time(NULL));
     bool use_diploid = true;
 
     double fpr = 0.5;
@@ -668,7 +668,7 @@ double LMDiploidNonUniform(const std::vector<double>& depths, const std::vector<
     
     for(size_t M = min_alleles; M < max_alleles; M += stride)
     {
-        double log_prob_M = Stats::logPoisson(o, mean_depth * M) - log(M);
+        double log_prob_M = Stats::logPoisson((size_t)o, mean_depth * M) - log(M);
         if(!isnan(log_prob_M))
             log_normalization = addLogs(log_normalization, log_prob_M);
     }
@@ -676,7 +676,7 @@ double LMDiploidNonUniform(const std::vector<double>& depths, const std::vector<
     //
     for(size_t M = min_alleles; M < max_alleles; M += stride)
     {
-        double log_prob_M = Stats::logPoisson(o, mean_depth * M) - log_normalization - log(M);
+        double log_prob_M = Stats::logPoisson((size_t)o, mean_depth * M) - log_normalization - log(M);
         double LM = _diploidNonUniform(depths, sample_count, M);
         if(opt::verbose)
             printf("\tM: %zu log_prob_M %lf LM %lf\n", M, log_prob_M, LM);
@@ -840,8 +840,8 @@ std::vector<size_t> simulateCoverageDiploid(double d, size_t o, size_t N)
     
     // Proportion of non-reference alleles in the population
     double q = M / (2 * N);
-    size_t num_hom_alt = round(pow(q, 2) * N);
-    size_t num_het = M - (2*num_hom_alt);
+    size_t num_hom_alt = (size_t)round(pow(q, 2) * N);
+    size_t num_het = (size_t)(M - (2*num_hom_alt));
     
     if(opt::verbose > 0)
     {
@@ -856,7 +856,7 @@ std::vector<size_t> simulateCoverageDiploid(double d, size_t o, size_t N)
     std::random_shuffle(initial_indices.begin(), initial_indices.end());
 
     // The first num_hom_alt entries will carry two alleles
-    std::vector<size_t> final_indices(M);
+    std::vector<size_t> final_indices((size_t)M);
     for(size_t i = 0; i < num_hom_alt; ++i)
     {
         final_indices[2*i] = initial_indices[i];
@@ -937,7 +937,7 @@ std::vector<size_t> simulateCoverageHaploidNonUniform(std::vector<double> sample
     std::random_shuffle(initial_indices.begin(), initial_indices.end());
 
     // The first num_hom_alt entries will carry two alleles
-    std::vector<size_t> allele_indices(M);
+    std::vector<size_t> allele_indices((size_t)M);
     for(size_t i = 0; i < M; ++i)
         allele_indices[i] = initial_indices[i];
 
@@ -987,8 +987,8 @@ std::vector<size_t> simulateCoverageDiploidNonUniform(std::vector<double> sample
     
     // Proportion of non-reference alleles in the population
     double q = M / (2 * N);
-    size_t num_hom_alt = round(pow(q, 2) * N);
-    size_t num_het = M - (2*num_hom_alt);
+    size_t num_hom_alt = (size_t)round(pow(q, 2) * N);
+    size_t num_het = (size_t)(M - (2*num_hom_alt));
     
     if(opt::verbose > 0)
     {
@@ -1005,7 +1005,7 @@ std::vector<size_t> simulateCoverageDiploidNonUniform(std::vector<double> sample
     std::vector<size_t> allele_count(N);
 
     // The first num_hom_alt entries will carry two alleles
-    std::vector<size_t> allele_indices(M);
+    std::vector<size_t> allele_indices((size_t)M);
     for(size_t i = 0; i < num_hom_alt; ++i)
     {
         allele_indices[2*i] = initial_indices[i];
