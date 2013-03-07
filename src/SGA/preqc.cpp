@@ -30,9 +30,6 @@
 #include <omp.h>
 #endif
 
-// Statics
-static const char* GC_BY_COUNT_TAG = "GCC";
-
 // Typedefs
 typedef rapidjson::PrettyWriter<rapidjson::FileStream> JSONWriter;
 
@@ -497,14 +494,17 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
     delete bloom_filter;
 }
 
-void generate_gc_by_kmer_count(const BWTIndexSet& index_set)
+void generate_gc_by_kmer_count(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
 {
-    int n_samples = 10000;
+    int n_samples = 1000000;
     size_t min_coverage = 5;
+    size_t max_coverage = 80;
     size_t k = 41;
 
-    std::vector<size_t> num_gc;
-    std::vector<size_t> num_at;
+    typedef std::vector<double> double_vector;
+
+    std::vector<double_vector> gc_distribution_by_count;
+    gc_distribution_by_count.resize(max_coverage + 1);
 
     for(int i = 0; i < n_samples; ++i)
     {
@@ -513,29 +513,64 @@ void generate_gc_by_kmer_count(const BWTIndexSet& index_set)
             continue;
         std::string kmer = s.substr(0, k);
         size_t c = BWTAlgorithms::countSequenceOccurrences(kmer, index_set);
-        if(c >= min_coverage)
+        if(c >= min_coverage && c <= max_coverage)
         {
-            if(c > num_gc.size())
-            {
-                num_gc.resize(c+1);
-                num_at.resize(c+1);
-            }
-
+            assert(c < gc_distribution_by_count.size());
+            double gc = 0.f;
+            double at = 0.f;
             for(size_t j = 0; j < s.size(); ++j)
             {
                 if(s[j] == 'C' || s[j] == 'G')
-                    num_gc[c] += 1;
+                    gc += 1;
                 else
-                    num_at[c] += 1;
+                    at += 1;
             }
+
+            gc_distribution_by_count[c].push_back(gc / (gc + at));
         }
     }
 
-    for(size_t i = min_coverage; i < num_gc.size() && i < 80; ++i)
+    pJSONWriter->String("GCByCoverage");
+    pJSONWriter->StartObject();
+    pJSONWriter->String("data");
+    pJSONWriter->StartArray();
+    for(size_t i = min_coverage; i < gc_distribution_by_count.size() && i < 80; ++i)
     {
-        double p = (double)num_gc[i] / (num_gc[i] + num_at[i]);
-        printf("%s\t%zu\t%.2lf\n", GC_BY_COUNT_TAG, i, p);
+        double_vector& curr = gc_distribution_by_count[i];
+        if(curr.empty())
+            continue;
+
+        std::sort(curr.begin(), curr.end());
+        double median;
+        if(curr.size() % 2 == 0)
+            median = (curr[curr.size() / 2] + curr[curr.size() / 2 + 1]) / 2;
+        else
+            median = curr[curr.size() / 2];
+
+        double l_quartile = curr[curr.size() / 4];
+        double u_quartile = curr[3*curr.size() / 4];
+        
+        pJSONWriter->StartObject();
+
+        pJSONWriter->String("coverage");
+        pJSONWriter->Int(i);
+
+        pJSONWriter->String("n");
+        pJSONWriter->Int(curr.size());
+
+        pJSONWriter->String("median");
+        pJSONWriter->Double(median);
+
+        pJSONWriter->String("l_quartile");
+        pJSONWriter->Double(l_quartile);
+        
+        pJSONWriter->String("u_quartile");
+        pJSONWriter->Double(u_quartile);
+
+        pJSONWriter->EndObject();
     }
+    pJSONWriter->EndArray();
+    pJSONWriter->EndObject();
 }
 
 void generate_duplication_rate(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
@@ -739,6 +774,9 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
+    generate_gc_by_kmer_count(&writer, index_set);
+
+/*
     generate_quality_stats(&writer, opt::readsFile);
     generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
@@ -748,7 +786,7 @@ int preQCMain(int argc, char** argv)
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
     generate_local_graph_complexity(&writer, index_set);
-
+*/
     // End document
     writer.EndObject();
 

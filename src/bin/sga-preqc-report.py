@@ -17,6 +17,7 @@ GRAPH_COMPLEXITY_NAME =  "LocalGraphComplexity"
 RANDOM_WALK_NAME = "RandomWalkLength"
 FRAGMENT_SIZE_NAME = "FragmentSize"
 QUALITY_SCORE_NAME = "QualityScores"
+GC_COVERAGE_NAME = "GCByCoverage"
 
 # Return the N50 of the list of numbers
 def n50(values):
@@ -180,6 +181,26 @@ def plot_pcr_duplicates(pp, data):
     pl.savefig(pp, format='pdf')
     pl.close()
 
+def plot_gc_by_coverage(pp, data):
+    names = data.keys()
+    for idx,name in enumerate(names):
+        d = data[name][GC_COVERAGE_NAME]['data']
+        c = [ x['coverage'] for x in d if x['n'] > 100 ]
+        m = [ x['median'] for x in d if x['n'] > 100 ]
+        l = [ x['l_quartile'] for x in d if x['n'] > 100 ]
+        u = [ x['u_quartile'] for x in d if x['n'] > 100 ]
+
+        base_line, = pl.plot(c, m, '-')
+        #pl.plot(c, l, '--', color=base_line.get_color(), linewidth=1)
+        #pl.plot(c, u, '--', color=base_line.get_color(), linewidth=1)
+
+    pl.ylim([0, 1.0])
+    pl.xlabel("k-mer coverage")
+    pl.ylabel("GC Composition")
+    pl.title("GC composition by k-mer coverage")
+    pl.legend(names)
+    pl.savefig(pp, format='pdf')
+    pl.close()
 def plot_fragment_sizes(pp, data):
 
     # Trim outliers from the histograms
@@ -270,6 +291,7 @@ plot_fragment_sizes(pp, data) if any_set_has_key(data, FRAGMENT_SIZE_NAME) else 
 # Coverage plots
 plot_kmer_distribution(pp, data) if any_set_has_key(data, KMER_DISTRIBUTION_NAME) else 0
 plot_random_walk(pp, data) if any_set_has_key(data, RANDOM_WALK_NAME) else 0
+plot_gc_by_coverage(pp, data) if any_set_has_key(data, GC_COVERAGE_NAME) else 0
 
 # Graph topology plots
 plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
