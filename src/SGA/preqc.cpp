@@ -103,9 +103,9 @@ static const struct option longopts[] = {
 // in the de Bruijn graph. The neighbors are encoded
 // as the single base they add. A coverage threshold
 // is applied to filter out low-coverage extensions.
-std::string get_valid_dbg_neighbors(const std::string& kmer,
-                                    const BWTIndexSet& index_set,
-                                    double coverage_ratio_threshold)
+std::string get_valid_dbg_neighbors_ratio(const std::string& kmer,
+                                          const BWTIndexSet& index_set,
+                                          double coverage_ratio_threshold)
 {
     std::string out;
     AlphaCount64 counts = 
@@ -130,10 +130,10 @@ std::string get_valid_dbg_neighbors(const std::string& kmer,
     return out;
 }
 
-std::string get_valid_dbg_neighbors_fixed_coverage(const std::string& kmer,
-                                                   const BWTIndexSet& index_set,
-                                                   size_t min_coverage,
-                                                   double min_ratio)
+std::string get_valid_dbg_neighbors_coverage_and_ratio(const std::string& kmer,
+                                                       const BWTIndexSet& index_set,
+                                                       size_t min_coverage,
+                                                       double min_ratio)
 {
     std::string out;
     AlphaCount64 counts = 
@@ -401,7 +401,11 @@ void generate_local_graph_complexity(JSONWriter* pWriter, const BWTIndexSet& ind
                 if(count < min_coverage_to_test)
                     break;
 
-                std::string extensions = get_valid_dbg_neighbors_fixed_coverage(kmer, index_set, min_coverage_for_branch, min_coverage_ratio);
+                std::string extensions = 
+                    get_valid_dbg_neighbors_coverage_and_ratio(kmer, 
+                                                               index_set, 
+                                                               min_coverage_for_branch, 
+                                                               min_coverage_ratio);
 #if HAVE_OPENMP
                 #pragma omp critical
 #endif
@@ -467,7 +471,7 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
 
             while(walk_length < max_length) 
             {
-                std::string extensions = get_valid_dbg_neighbors(kmer, index_set, coverage_cutoff);
+                std::string extensions = get_valid_dbg_neighbors_ratio(kmer, index_set, coverage_cutoff);
                 if(!extensions.empty())
                 {
                     kmer.erase(0, 1);
@@ -606,6 +610,66 @@ void generate_duplication_rate(JSONWriter* pJSONWriter, const BWTIndexSet& index
     pJSONWriter->EndObject();
 }
 
+// Write a stream of calculated fragments sizes to the JSON file
+void generate_pe_fragment_sizes(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
+{
+    int n_samples = 100000;
+    size_t k = 51;
+    size_t MAX_INSERT = 1500;
+
+    std::vector<size_t> fragment_sizes;
+
+    size_t total_pairs = index_set.pBWT->getNumStrings() / 2;
+#if HAVE_OPENMP
+    omp_set_num_threads(opt::numThreads);
+    #pragma omp parallel for
+#endif
+    for(int i = 0; i < n_samples; ++i)
+    {
+        // Choose a read pair
+        int64_t source_pair_idx = rand() % total_pairs;
+        std::string start_kmer = BWTAlgorithms::extractString(index_set.pBWT, source_pair_idx * 2).substr(0, k);
+        std::string end_kmer = BWTAlgorithms::extractString(index_set.pBWT, source_pair_idx * 2 + 1).substr(0, k);
+        // We assume that the pairs are orientated F/R therefore we reverse-complement k_end
+        end_kmer = reverseComplement(end_kmer);
+
+        // Aggressively walk the de Bruijn graph starting from k_start until k_end is found or we give up
+        size_t steps = 0;
+        bool found = false;
+        while(!found && steps < MAX_INSERT)
+        {
+            // A coverage ratio of 1.0 will force use to only use the highest-coverage branch
+            // This may generate erroneous insert sizes in (rare?) cases but will give a good approximation
+            // to the real distribution
+            std::string extensions = get_valid_dbg_neighbors_ratio(start_kmer, index_set, 1.0f);
+            if(extensions.empty())
+                break;
+
+            start_kmer.erase(0, 1);
+            start_kmer.append(1, extensions[0]);
+            found = start_kmer == end_kmer;
+            steps += 1;
+        }
+
+        if(found)
+        {
+#if HAVE_OPENMP
+            #pragma omp critical
+#endif
+            fragment_sizes.push_back(steps + k);
+        }
+    }
+
+    pJSONWriter->String("FragmentSize");
+    pJSONWriter->StartObject();
+    pJSONWriter->String("sizes");
+    pJSONWriter->StartArray();
+    for(size_t i = 0; i < fragment_sizes.size(); ++i)
+        pJSONWriter->Int(fragment_sizes[i]);
+    pJSONWriter->EndArray();
+    pJSONWriter->EndObject();
+}
+
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -625,6 +689,7 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
+    generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
     generate_position_of_first_error(&writer, index_set);
     generate_errors_per_base(&writer, index_set);
@@ -632,7 +697,7 @@ int preQCMain(int argc, char** argv)
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
     generate_local_graph_complexity(&writer, index_set);
-    
+
     // End document
     writer.EndObject();
 
@@ -678,7 +743,7 @@ void unipath_length_distribution(JSONWriter* pWriter,
         while(!done)
         {
             loop_check[curr_kmer] = true;
-            std::string extensions = get_valid_dbg_neighbors(curr_kmer, index_set, coverage_ratio_threshold);
+            std::string extensions = get_valid_dbg_neighbors_ratio(curr_kmer, index_set, coverage_ratio_threshold);
             if(extensions.size() == 1)
             {
                 curr_kmer.erase(0, 1);

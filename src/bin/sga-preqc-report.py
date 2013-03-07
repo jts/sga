@@ -14,6 +14,7 @@ ERRORS_PER_BASE_NAME = "ErrorsPerBase"
 UNIPATH_LENGTH_NAME = "UnipathLength"
 GRAPH_COMPLEXITY_NAME =  "LocalGraphComplexity"
 RANDOM_WALK_NAME = "RandomWalkLength"
+FRAGMENT_SIZE_NAME = "FragmentSize"
 KMER_DISTRIBUTION_MAX = 80
 
 # Return the N50 of the list of numbers
@@ -164,6 +165,38 @@ def plot_pcr_duplicates(pp, data):
     pl.bar(ind, out, width)
     pl.xticks(ind + width/2, names)
     pl.savefig(pp, format='pdf')
+    pl.close()
+
+def plot_fragment_sizes(pp, data):
+
+    # Trim outliers from the histograms
+    DENSITY_CUTOFF = 0.98
+    names = data.keys()
+    for name in names:
+        h = data[name][FRAGMENT_SIZE_NAME]['sizes']
+        sizes = {}
+        for i in h:
+            if i not in sizes:
+                sizes[i] = 1
+            else:
+                sizes[i] += 1
+        n = len(h)
+        x = list()
+        y = list()
+        sum  = 0
+        for i,j in sorted(sizes.items()):
+            if sum < DENSITY_CUTOFF:
+                f = float(j) / n
+                x.append(i)
+                y.append(f)
+                sum += f
+        pl.plot(x, y)
+
+    pl.ylabel("Fragment Size (bp)")
+    pl.ylabel("Proportion")
+    pl.title("Estimated Fragment Size Histogram")
+    pl.legend(names)
+    pl.savefig(pp, format='pdf')
     pl.close()    
 
 #
@@ -178,6 +211,7 @@ for f in sys.argv[1:]:
 
 pp = PdfPages("test_report.pdf")
 
+plot_fragment_sizes(pp, data) if any_set_has_key(data, FRAGMENT_SIZE_NAME) else 0
 plot_kmer_distribution(pp, data) if any_set_has_key(data, KMER_DISTRIBUTION_NAME) else 0
 plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
 plot_pcr_duplicates(pp, data) if any_set_has_key(data, PCR_DUPLICATE_NAME) else 0
