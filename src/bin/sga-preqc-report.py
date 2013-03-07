@@ -15,6 +15,7 @@ UNIPATH_LENGTH_NAME = "UnipathLength"
 GRAPH_COMPLEXITY_NAME =  "LocalGraphComplexity"
 RANDOM_WALK_NAME = "RandomWalkLength"
 FRAGMENT_SIZE_NAME = "FragmentSize"
+QUALITY_SCORE_NAME = "QualityScores"
 KMER_DISTRIBUTION_MAX = 80
 
 # Return the N50 of the list of numbers
@@ -199,6 +200,35 @@ def plot_fragment_sizes(pp, data):
     pl.savefig(pp, format='pdf')
     pl.close()    
 
+def plot_quality_scores(pp, data):
+    names = data.keys()
+
+    # Plot mean quality
+    for name in names:
+
+        mean_quality = data[name][QUALITY_SCORE_NAME]['mean_quality']
+        indices = range(0, len(mean_quality))
+        pl.plot(indices, mean_quality)
+
+    pl.xlabel("Base position")
+    pl.ylabel("Mean Phred Score")
+    pl.title("Per-position quality scores")
+    pl.legend(names)
+    pl.savefig(pp, format='pdf')
+    pl.close()
+
+    # Plot >q30 fraction
+    for name in names:
+
+        q30_fraction = data[name][QUALITY_SCORE_NAME]['fraction_q30']
+        indices = range(0, len(q30_fraction))
+        pl.plot(indices, q30_fraction)
+
+    pl.xlabel("Base position")
+    pl.ylabel("Fraction at least Q30")
+    pl.legend(names)
+    pl.savefig(pp, format='pdf')
+    pl.close()    
 #
 # Start of program
 #
@@ -211,6 +241,7 @@ for f in sys.argv[1:]:
 
 pp = PdfPages("test_report.pdf")
 
+plot_quality_scores(pp, data) if any_set_has_key(data, QUALITY_SCORE_NAME) else 0
 plot_fragment_sizes(pp, data) if any_set_has_key(data, FRAGMENT_SIZE_NAME) else 0
 plot_kmer_distribution(pp, data) if any_set_has_key(data, KMER_DISTRIBUTION_NAME) else 0
 plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0

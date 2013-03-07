@@ -670,6 +670,56 @@ void generate_pe_fragment_sizes(JSONWriter* pJSONWriter, const BWTIndexSet& inde
     pJSONWriter->EndObject();
 }
 
+// Generate a report of the quality of each base
+void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename)
+{
+    double sample_rate = 0.02;
+    SeqReader reader(filename);
+    SeqRecord record;
+
+    std::vector<size_t> bases_checked;
+    std::vector<size_t> sum_quality;
+    std::vector<size_t> num_q30;
+
+    while(reader.get(record))
+    {
+        if((double)rand() / RAND_MAX < sample_rate && record.qual.length() == record.seq.length())
+        {
+            size_t l = record.seq.length();
+            if(l > bases_checked.size())
+            {
+                bases_checked.resize(l);
+                sum_quality.resize(l);
+                num_q30.resize(l);
+            }
+
+            for(size_t i = 0; i < l; ++i)
+            {
+                bases_checked[i]++;
+                size_t q = record.getPhredScore(i);
+                sum_quality[i] += q;
+                num_q30[i] += (q >= 30);
+            }
+        }
+    }
+
+    pJSONWriter->String("QualityScores");
+    pJSONWriter->StartObject();
+    
+    pJSONWriter->String("mean_quality");
+    pJSONWriter->StartArray();
+    for(size_t i = 0; i < bases_checked.size(); ++i)
+        pJSONWriter->Double((float)sum_quality[i] / bases_checked[i]);
+    pJSONWriter->EndArray();
+
+    pJSONWriter->String("fraction_q30");
+    pJSONWriter->StartArray();
+    for(size_t i = 0; i < bases_checked.size(); ++i)
+        pJSONWriter->Double((float)num_q30[i] / bases_checked[i]);
+    pJSONWriter->EndArray();
+    pJSONWriter->EndObject();
+}
+
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -689,6 +739,9 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
+    generate_quality_stats(&writer, opt::readsFile);
+
+    /*
     generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
     generate_position_of_first_error(&writer, index_set);
@@ -697,6 +750,7 @@ int preQCMain(int argc, char** argv)
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
     generate_local_graph_complexity(&writer, index_set);
+    */
 
     // End document
     writer.EndObject();
