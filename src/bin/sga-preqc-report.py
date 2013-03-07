@@ -2,6 +2,7 @@ import sys, os.path
 import pylab as pl
 import numpy as np
 import json
+import matplotlib
 from collections import namedtuple
 from operator import attrgetter
 from matplotlib.backends.backend_pdf import PdfPages
@@ -16,7 +17,6 @@ GRAPH_COMPLEXITY_NAME =  "LocalGraphComplexity"
 RANDOM_WALK_NAME = "RandomWalkLength"
 FRAGMENT_SIZE_NAME = "FragmentSize"
 QUALITY_SCORE_NAME = "QualityScores"
-KMER_DISTRIBUTION_MAX = 80
 
 # Return the N50 of the list of numbers
 def n50(values):
@@ -78,6 +78,7 @@ def plot_random_walk(pp, data):
     pl.close()
 
 def plot_kmer_distribution(pp, data):
+    CUTOFF = 0.95
     names = data.keys()
     for name in names:
         k = data[name][KMER_DISTRIBUTION_NAME]['k']
@@ -88,9 +89,18 @@ def plot_kmer_distribution(pp, data):
             y.append(t['count'])
 
         s = sum(y)
-        # Normalize y
-        ny = [ float(v) / s for v in y ]
-        pl.plot(x, ny)
+
+        # Normalize y and apply a cutoff
+        nx = list()
+        ny = list()
+        cumulative_sum = 0
+        for a,b in zip(x,y):
+            fb = float(b) / s
+            cumulative_sum += fb
+            if cumulative_sum < CUTOFF:
+                nx.append(a)
+                ny.append(fb)
+        pl.plot(nx, ny)
 
     pl.xlabel(str(k) + "-mer count")
     pl.ylabel("Proportion")
@@ -165,6 +175,8 @@ def plot_pcr_duplicates(pp, data):
     ind = np.arange(len(names))
     pl.bar(ind, out, width)
     pl.xticks(ind + width/2, names)
+    pl.ylabel("Duplicate Proportion")
+    pl.xlabel("Sample")
     pl.savefig(pp, format='pdf')
     pl.close()
 
@@ -208,12 +220,13 @@ def plot_quality_scores(pp, data):
 
         mean_quality = data[name][QUALITY_SCORE_NAME]['mean_quality']
         indices = range(0, len(mean_quality))
-        pl.plot(indices, mean_quality)
+        pl.plot(indices, mean_quality, linewidth=2)
 
+    pl.ylim([0, 40])
     pl.xlabel("Base position")
     pl.ylabel("Mean Phred Score")
-    pl.title("Per-position quality scores")
-    pl.legend(names)
+    pl.title("Mean quality score by position")
+    pl.legend(names, loc="lower left")
     pl.savefig(pp, format='pdf')
     pl.close()
 
@@ -226,7 +239,8 @@ def plot_quality_scores(pp, data):
 
     pl.xlabel("Base position")
     pl.ylabel("Fraction at least Q30")
-    pl.legend(names)
+    pl.title("Fraction of bases at least Q30")
+    pl.legend(names, loc="lower left")
     pl.savefig(pp, format='pdf')
     pl.close()    
 #
@@ -239,16 +253,26 @@ for f in sys.argv[1:]:
         name = os.path.splitext(os.path.basename(f))[0]
         data[name] = json.load(open(f, 'r'))
 
+# Configure the plot
+matplotlib.rcParams['lines.linewidth'] = 1.5
+matplotlib.rc('xtick', labelsize=14)
+matplotlib.rc('ytick', labelsize=14)
+
 pp = PdfPages("test_report.pdf")
 
+# Quality/Error rate plots
 plot_quality_scores(pp, data) if any_set_has_key(data, QUALITY_SCORE_NAME) else 0
-plot_fragment_sizes(pp, data) if any_set_has_key(data, FRAGMENT_SIZE_NAME) else 0
-plot_kmer_distribution(pp, data) if any_set_has_key(data, KMER_DISTRIBUTION_NAME) else 0
-plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
-plot_pcr_duplicates(pp, data) if any_set_has_key(data, PCR_DUPLICATE_NAME) else 0
+#plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
 plot_errors_per_base(pp, data) if any_set_has_key(data, ERRORS_PER_BASE_NAME) else 0
-plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
+plot_pcr_duplicates(pp, data) if any_set_has_key(data, PCR_DUPLICATE_NAME) else 0
+plot_fragment_sizes(pp, data) if any_set_has_key(data, FRAGMENT_SIZE_NAME) else 0
+
+# Coverage plots
+plot_kmer_distribution(pp, data) if any_set_has_key(data, KMER_DISTRIBUTION_NAME) else 0
 plot_random_walk(pp, data) if any_set_has_key(data, RANDOM_WALK_NAME) else 0
+
+# Graph topology plots
+plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
 plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
 
 pp.close()

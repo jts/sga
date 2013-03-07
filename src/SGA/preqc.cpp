@@ -447,7 +447,7 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
     pWriter->String("RandomWalkLength");
     pWriter->StartArray();
 
-    for(size_t k = 31; k < 86; k += 5)
+    for(size_t k = 16; k < 86; k += 5)
     {
         pWriter->StartObject();
         pWriter->String("k");
@@ -673,8 +673,8 @@ void generate_pe_fragment_sizes(JSONWriter* pJSONWriter, const BWTIndexSet& inde
 // Generate a report of the quality of each base
 void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename)
 {
-    double sample_rate = 0.02;
-    SeqReader reader(filename);
+    double sample_rate = 0.05;
+    SeqReader reader(filename, SRF_KEEP_CASE | SRF_NO_VALIDATION);
     SeqRecord record;
 
     std::vector<size_t> bases_checked;
@@ -740,8 +740,6 @@ int preQCMain(int argc, char** argv)
     writer.StartObject();
 
     generate_quality_stats(&writer, opt::readsFile);
-
-    /*
     generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
     generate_position_of_first_error(&writer, index_set);
@@ -750,7 +748,6 @@ int preQCMain(int argc, char** argv)
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
     generate_local_graph_complexity(&writer, index_set);
-    */
 
     // End document
     writer.EndObject();
