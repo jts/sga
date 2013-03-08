@@ -63,6 +63,7 @@ static const char *PREQC_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -t, --threads=NUM                use NUM threads (default: 1)\n"
+"          --reference=FILE             use the reference FILE to calculate GC plot\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -74,11 +75,12 @@ namespace opt
     static int numThreads = 1;
     static std::string prefix;
     static std::string readsFile;
+    static std::string referenceFile;
 }
 
 static const char* shortopts = "p:d:t:o:k:n:b:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_RUNLENGTHS, OPT_KMERDIST, OPT_NOOVERLAP};
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE };
 
 static const struct option longopts[] = {
     { "verbose",            no_argument,       NULL, 'v' },
@@ -88,9 +90,7 @@ static const struct option longopts[] = {
     { "kmer-size",          required_argument, NULL, 'k' },
     { "num-reads",          required_argument, NULL, 'n' },
     { "branch-cutoff",      required_argument, NULL, 'b' },
-    { "kmer-distribution",  no_argument,       NULL, OPT_KMERDIST },
-    { "no-overlap",         no_argument,       NULL, OPT_NOOVERLAP },
-    { "run-lengths",        no_argument,       NULL, OPT_RUNLENGTHS },
+    { "reference",          required_argument, NULL, OPT_REFERENCE },
     { "help",               no_argument,       NULL, OPT_HELP },
     { "version",            no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -494,82 +494,97 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
     delete bloom_filter;
 }
 
-void generate_gc_by_kmer_count(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
+void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
 {
-    int n_samples = 1000000;
-    size_t min_coverage = 5;
-    size_t max_coverage = 80;
-    size_t k = 41;
+    int n_samples = 100000;
+    size_t k = 31;
+    double gc_bin_size = 0.02;
 
-    typedef std::vector<double> double_vector;
+    std::vector<double> read_gc_sum;
+    size_t read_gc_n = 0;
+    
+    std::vector<double> ref_gc_sum;
+    size_t ref_gc_n = 0;
 
-    std::vector<double_vector> gc_distribution_by_count;
-    gc_distribution_by_count.resize(max_coverage + 1);
+    read_gc_sum.resize(1.0f / gc_bin_size + 1);
+    ref_gc_sum.resize(1.0f / gc_bin_size + 1);
 
+    // Calculate the gc content of sampled reads
     for(int i = 0; i < n_samples; ++i)
     {
         std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
         if(s.size() < k)
             continue;
-        std::string kmer = s.substr(0, k);
-        size_t c = BWTAlgorithms::countSequenceOccurrences(kmer, index_set);
-        if(c >= min_coverage && c <= max_coverage)
-        {
-            assert(c < gc_distribution_by_count.size());
-            double gc = 0.f;
-            double at = 0.f;
-            for(size_t j = 0; j < s.size(); ++j)
-            {
-                if(s[j] == 'C' || s[j] == 'G')
-                    gc += 1;
-                else
-                    at += 1;
-            }
 
-            gc_distribution_by_count[c].push_back(gc / (gc + at));
+        double gc = 0.f;
+        double at = 0.f;
+        for(size_t j = 0; j < s.size(); ++j)
+        {
+            if(s[j] == 'C' || s[j] == 'G')
+                gc += 1;
+            else
+                at += 1;
+        }
+        
+        double gc_f = gc / (gc + at);
+        size_t bin_idx = gc_f / gc_bin_size;
+        read_gc_sum[bin_idx] += gc_f;
+        read_gc_n += 1;
+    }
+
+    // If a reference file is provided, calculate the reference GC for comparison
+    if(!opt::referenceFile.empty())
+    {
+        size_t window_size = 100;
+        SeqReader reader(opt::referenceFile, SRF_NO_VALIDATION);
+        SeqRecord record;
+        while(reader.get(record))
+        {
+            DNAString& seq = record.seq;
+            size_t l = seq.length();
+            for(size_t i = 0; i < l; i += window_size)
+            {
+                double gc = 0.f;
+                double at = 0.f;
+                for(size_t j = i; j < i + window_size && j < l; ++j)
+                {
+                    char c = seq.get(j);
+                    if(c == 'C' || c == 'G')
+                        gc += 1;
+                    else if(c == 'A' || c == 'T') // IUPAC symbols may be found
+                        at += 1;
+                }
+                double gc_f = gc / (gc + at);
+                size_t bin_idx = gc_f / gc_bin_size;
+                ref_gc_sum[bin_idx] += gc_f;
+                ref_gc_n += 1;
+            }
         }
     }
 
-    pJSONWriter->String("GCByCoverage");
+    pJSONWriter->String("GCDistribution");
     pJSONWriter->StartObject();
-    pJSONWriter->String("data");
+
+    pJSONWriter->String("gc_bins");
     pJSONWriter->StartArray();
-    for(size_t i = min_coverage; i < gc_distribution_by_count.size() && i < 80; ++i)
-    {
-        double_vector& curr = gc_distribution_by_count[i];
-        if(curr.empty())
-            continue;
-
-        std::sort(curr.begin(), curr.end());
-        double median;
-        if(curr.size() % 2 == 0)
-            median = (curr[curr.size() / 2] + curr[curr.size() / 2 + 1]) / 2;
-        else
-            median = curr[curr.size() / 2];
-
-        double l_quartile = curr[curr.size() / 4];
-        double u_quartile = curr[3*curr.size() / 4];
-        
-        pJSONWriter->StartObject();
-
-        pJSONWriter->String("coverage");
-        pJSONWriter->Int(i);
-
-        pJSONWriter->String("n");
-        pJSONWriter->Int(curr.size());
-
-        pJSONWriter->String("median");
-        pJSONWriter->Double(median);
-
-        pJSONWriter->String("l_quartile");
-        pJSONWriter->Double(l_quartile);
-        
-        pJSONWriter->String("u_quartile");
-        pJSONWriter->Double(u_quartile);
-
-        pJSONWriter->EndObject();
-    }
+    for(size_t i = 0; i < read_gc_sum.size(); ++i)
+        pJSONWriter->Double(i * gc_bin_size + gc_bin_size / 2);
     pJSONWriter->EndArray();
+
+    pJSONWriter->String("read_gc_prop");
+    pJSONWriter->StartArray();
+    for(size_t i = 0; i < read_gc_sum.size(); ++i)
+        pJSONWriter->Double(read_gc_sum[i] / read_gc_n);
+    pJSONWriter->EndArray();
+
+    if(!opt::referenceFile.empty())
+    {
+        pJSONWriter->String("ref_gc_prop");
+        pJSONWriter->StartArray();
+        for(size_t i = 0; i < read_gc_sum.size(); ++i)
+            pJSONWriter->Double(ref_gc_sum[i] / ref_gc_n);
+        pJSONWriter->EndArray();
+    }
     pJSONWriter->EndObject();
 }
 
@@ -774,7 +789,7 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
-    generate_gc_by_kmer_count(&writer, index_set);
+    generate_gc_distribution(&writer, index_set);
 
 /*
     generate_quality_stats(&writer, opt::readsFile);
@@ -872,6 +887,7 @@ void parsePreQCOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_REFERENCE: arg >> opt::referenceFile; break;
             case OPT_HELP:
                 std::cout << PREQC_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
