@@ -101,6 +101,7 @@ def plot_kmer_distribution(pp, data):
             if cumulative_sum < CUTOFF:
                 nx.append(a)
                 ny.append(fb)
+                print a, fb, cumulative_sum
         pl.plot(nx, ny)
 
     pl.xlabel(str(k) + "-mer count")

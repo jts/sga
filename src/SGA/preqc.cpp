@@ -723,15 +723,17 @@ void generate_pe_fragment_sizes(JSONWriter* pJSONWriter, const BWTIndexSet& inde
 // Generate a report of the quality of each base
 void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename)
 {
+    size_t max_reads = 10000000;
     double sample_rate = 0.05;
     SeqReader reader(filename, SRF_KEEP_CASE | SRF_NO_VALIDATION);
     SeqRecord record;
 
+    size_t n_reads = 0;
     std::vector<size_t> bases_checked;
     std::vector<size_t> sum_quality;
     std::vector<size_t> num_q30;
 
-    while(reader.get(record))
+    while(reader.get(record) && n_reads++ < max_reads)
     {
         if((double)rand() / RAND_MAX < sample_rate && record.qual.length() == record.seq.length())
         {
@@ -790,8 +792,6 @@ int preQCMain(int argc, char** argv)
     writer.StartObject();
 
     generate_gc_distribution(&writer, index_set);
-
-/*
     generate_quality_stats(&writer, opt::readsFile);
     generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
@@ -801,7 +801,7 @@ int preQCMain(int argc, char** argv)
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
     generate_local_graph_complexity(&writer, index_set);
-*/
+
     // End document
     writer.EndObject();
 
@@ -924,5 +924,5 @@ void parsePreQCOptions(int argc, char** argv)
     opt::readsFile = argv[optind++];
 
     if(opt::prefix.empty())
-        opt::prefix = stripFilename(opt::readsFile);
+        opt::prefix = stripGzippedExtension(opt::readsFile);
 }
