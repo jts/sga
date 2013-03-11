@@ -446,46 +446,6 @@ double LMHaploidNonUniform(const std::vector<double>& depths, const std::vector<
         printf("HAP ParamEst o: %zu n0: %zu M1: %lf M2: %lf M_est %lf\n", (size_t)o, n0, M1, M2, M_est);
 
     return _haploidNonUniform(depths, sample_count, M2);
-    //double lsum = 0.0f;
-
-    // Bayesian integration model
-    //double p = o / N;
-#if 0
-    double best_M = -1;
-    double best_LM = -std::numeric_limits<double>::max();
-    double sum_exp = 0.0f;
-
-    double log_normalization = 0.0f;
-    for(size_t i = N - n0; i < N; ++i)
-    {
-        double log_prob_M = Stats::logPoisson(o, mean_depth*i) - log(i);
-        log_normalization = addLogs(log_normalization, log_prob_M);
-    }
-
-    for(size_t M = N - n0; M < N; M += 10)
-    {
-        double log_prob_M = Stats::logPoisson(o, mean_depth*M) - log_normalization - log(M);
-        double LM = _haploidNonUniform(depths, sample_count, M);
-        LM += log_prob_M;
-
-        //printf("M: %zu LM: %lf\n", i, LM);
-
-        if(LM > best_LM)
-        {
-            best_LM = LM;
-            best_M = M;
-        }
-    }
-    
-
-    double sum = log(sum_exp);
-    if(isinf(sum))
-        sum = 1000;
-
-//    if(opt::verbose)
-//        printf("Optimal %lf Sum: %lf is_inf %d\n", best_LM, sum, isinf(sum));
-    return best_LM;
-#endif
 }
 
 // 
@@ -656,7 +616,6 @@ double LMDiploidNonUniform(const std::vector<double>& depths, const std::vector<
     if(opt::verbose)
         printf("DIP ParamEst o: %zu n0: %zu M1: %lf M2: %lf M3: %lf M_est: %lf\n", (size_t)o, n0, M1, M2, M3, M_est);
     
-    double best_M = -1;
     double best_LM = -std::numeric_limits<double>::max();
     return _diploidNonUniform(depths, sample_count, M3);
 
@@ -685,7 +644,6 @@ double LMDiploidNonUniform(const std::vector<double>& depths, const std::vector<
         if(LM > best_LM)
         {
             best_LM = LM;
-            best_M = M;
         }
     }
     
