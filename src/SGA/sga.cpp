@@ -29,7 +29,6 @@
 #include "cluster.h"
 #include "gen-ssa.h"
 #include "correct-long.h"
-#include "convert-beetl.h"
 #include "bwt2fa.h"
 #include "graph-diff.h"
 #include "hapgen.h"
@@ -147,8 +146,6 @@ int main(int argc, char** argv)
             genSSAMain(argc - 1, argv + 1);
         else if(command == "correct-long")
             correctLongMain(argc - 1, argv + 1);
-        else if(command == "convert-beetl")
-            convertBeetlMain(argc - 1, argv + 1);
         else if(command == "bwt2fa")
             bwt2faMain(argc - 1, argv + 1);
         else if(command == "graph-diff")
