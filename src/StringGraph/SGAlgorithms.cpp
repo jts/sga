@@ -217,12 +217,29 @@ bool SGAlgorithms::isOverlapTransitive(const Vertex* pY, const Vertex* pZ, const
         return false;
 }
 
+// The following algorithms use these local types
+// defining an edge/overlap pair.
+typedef std::pair<EdgeDesc, Overlap> EdgeDescOverlapPair;
+
+// Compare two edges by their overlap length
+struct EDOPairCompare
+{
+    bool operator()(const EdgeDescOverlapPair& edpXY, const EdgeDescOverlapPair& edpXZ) {
+        return edpXY.second.match.coord[0].length() < edpXZ.second.match.coord[0].length();
+    }
+};
+
+// typedefs
+typedef std::priority_queue<EdgeDescOverlapPair, 
+                            std::vector<EdgeDescOverlapPair>,
+                            EDOPairCompare> EDOPairQueue;
+
 // Move the transitive edges from pOverlapMap to pTransitive
 void SGAlgorithms::partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap, 
                                                EdgeDescOverlapMap* pTransitive,
                                                double maxER, int minLength)
 {
-    SGAlgorithms::EDOPairQueue overlapQueue;
+    EDOPairQueue overlapQueue;
     for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = pOverlapMap->begin();
         iter != pOverlapMap->end(); ++iter)
     {
@@ -233,7 +250,7 @@ void SGAlgorithms::partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap,
     // the irreducible map to the transitive map
     while(!overlapQueue.empty())
     {
-        SGAlgorithms::EdgeDescOverlapPair edoPair = overlapQueue.top();
+        EdgeDescOverlapPair edoPair = overlapQueue.top();
         overlapQueue.pop();
 
         EdgeDesc& edXY = edoPair.first;
@@ -275,7 +292,7 @@ void SGAlgorithms::partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap,
 
 void SGAlgorithms::removeSubmaximalOverlaps(EdgeDescOverlapMap* pOverlapMap)
 {
-    SGAlgorithms::EDOPairQueue overlapQueue;
+    EDOPairQueue overlapQueue;
     for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = pOverlapMap->begin();
         iter != pOverlapMap->end(); ++iter)
     {
@@ -289,7 +306,7 @@ void SGAlgorithms::removeSubmaximalOverlaps(EdgeDescOverlapMap* pOverlapMap)
     // the irreducible map to the transitive map
     while(!overlapQueue.empty())
     {
-        SGAlgorithms::EdgeDescOverlapPair edoPair = overlapQueue.top();
+        EdgeDescOverlapPair edoPair = overlapQueue.top();
         overlapQueue.pop();
 
         EdgeDesc& edXY = edoPair.first;
@@ -324,12 +341,6 @@ bool SGAlgorithms::hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovr
 EdgeDesc SGAlgorithms::getEdgeDescFromEdge(Edge* pEdge)
 {
     return pEdge->getDesc();
-}
-
-//
-EdgeDesc SGAlgorithms::getEdgeDescFromPair(const EdgeDescOverlapPair& pair)
-{
-    return pair.first;
 }
 
 void SGAlgorithms::printOverlapMap(const EdgeDescOverlapMap& overlapMap)
