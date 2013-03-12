@@ -35,7 +35,6 @@
 #include "hapgen.h"
 #include "var2vcf.h"
 #include "gapfill.h"
-#include "metagenome.h"
 #include "variant-detectability.h"
 #include "rewrite-evidence-bam.h"
 #include "haplotype-filter.h"
@@ -79,7 +78,6 @@ static const char *SGA_USAGE_MESSAGE =
 "           stats                 print summary statistics about a read set\n"
 "           filterBAM             filter out contaminating mate-pair data in a BAM file\n"
 "           cluster               find clusters of reads belonging to the same connected component in an assembly graph\n"
-"           metagenome            assemble contigs from metagenomics data\n"
 //"           correct-long    correct long reads\n"
 //"           connect         resolve the complete sequence of a paired-end fragment\n"
 //"           var2vcf         convert aligned variant sequences found by graph-diff into a VCF file\n"
@@ -161,8 +159,6 @@ int main(int argc, char** argv)
             hapgenMain(argc - 1, argv + 1);
         else if(command == "gapfill")
             gapfillMain(argc - 1, argv + 1);
-        else if(command == "metagenome")
-            metagenomeMain(argc - 1, argv + 1);
         else if(command == "variant-detectability")
             variantDetectabilityMain(argc - 1, argv + 1);
         else if(command == "rewrite-evidence-bam")

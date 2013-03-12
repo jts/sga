@@ -33,7 +33,5 @@ libalgorithm_a_SOURCES = \
         ExtensionDP.h ExtensionDP.cpp \
         HaplotypeBuilder.h HaplotypeBuilder.cpp \
         GapFillProcess.h GapFillProcess.cpp \
-        MetAssembleProcess.h MetAssembleProcess.cpp \
-        MetagenomeBuilder.h MetagenomeBuilder.cpp \
         VariationBuilderCommon.h VariationBuilderCommon.cpp \
         KmerOverlaps.h KmerOverlaps.cpp

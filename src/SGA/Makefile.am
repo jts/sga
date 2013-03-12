@@ -54,7 +54,6 @@ sga_SOURCES = sga.cpp \
               var2vcf.h var2vcf.cpp \
               hapgen.h hapgen.cpp \
               gapfill.h gapfill.cpp \
-              metagenome.h metagenome.cpp \
               variant-detectability.h variant-detectability.cpp \
               rewrite-evidence-bam.h rewrite-evidence-bam.cpp \
               haplotype-filter.h haplotype-filter.cpp \
