@@ -303,33 +303,6 @@ MultiOverlap Vertex::getMultiOverlap() const
     return mo;
 }
 
-// Get a SeqTrie of the overlaps of this vertex
-void Vertex::fillTries(double p_error, SeqTrie* pSenseTrie, SeqTrie* pAntisenseTrie) const
-{
-    double lp = log(p_error);
-
-    if(m_edges.empty())
-        return;
-    
-    for(size_t i = 0; i < m_edges.size(); ++i)
-    {
-        Edge* pEdge = m_edges[i];
-        std::string overlapped = pEdge->getTwin()->getMatchStr();
-        if(pEdge->getComp() == EC_REVERSE)
-            overlapped = reverseComplement(overlapped);
-
-        if(pEdge->getDir() == ED_SENSE)
-        {
-            overlapped = reverse(overlapped);
-            pSenseTrie->insert(overlapped, lp);
-        }
-        else
-        {
-            pAntisenseTrie->insert(overlapped, lp);
-        }
-    }
-}
-
 // Add an edge
 void Vertex::addEdge(Edge* ep)
 {

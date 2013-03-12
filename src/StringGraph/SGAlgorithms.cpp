@@ -349,53 +349,6 @@ bool SGAlgorithms::hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovr
     return Match::doMatchesIntersect(match_yx, match_yz);
 }
 
-// Construct an extended multioverlap for a vertex
-MultiOverlap SGAlgorithms::makeExtendedMultiOverlap(const StringGraph* pGraph, const Vertex* pVertex)
-{
-    CompleteOverlapSet overlapSet(pVertex, pGraph->getErrorRate(), 1);
-    EdgeDescOverlapMap overlapMap = overlapSet.getOverlapMap();
-
-    MultiOverlap mo(pVertex->getID(), pVertex->getSeq().toString());
-    for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
-        iter != overlapMap.end(); ++iter)
-    {
-        mo.add(iter->first.pVertex->getSeq().toString(), iter->second);
-    }
-    return mo;
-}
-
-//
-void SGAlgorithms::makeExtendedSeqTries(const StringGraph* pGraph, const Vertex* pVertex, double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie)
-{
-    double lp = log(p_error);
-    CompleteOverlapSet overlapSet(pVertex, pGraph->getErrorRate(), 1);
-    EdgeDescOverlapMap overlapMap = overlapSet.getOverlapMap();
-
-    for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
-        iter != overlapMap.end(); ++iter)
-    {
-        // Coord[0] of the match is wrt pVertex, coord[1] is the other read
-        std::string overlapped = iter->second.match.coord[1].getSubstring(iter->first.pVertex->getSeq().toString());
-        if(iter->second.match.isRC())
-            overlapped = reverseComplement(overlapped);
-
-        if(iter->second.match.coord[0].isRightExtreme())
-        {
-            overlapped = reverse(overlapped);
-            pRightTrie->insert(overlapped, lp);
-        }
-        else if(iter->second.match.coord[0].isLeftExtreme())
-        {
-            pLeftTrie->insert(overlapped, lp);
-        }
-        else
-        {
-            // ignore substrings
-            //assert(iter->second.match.coord[0].isLeftExtreme());
-        }
-    }        
-}
-
 //
 EdgeDesc SGAlgorithms::getEdgeDescFromEdge(Edge* pEdge)
 {

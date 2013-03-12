@@ -9,7 +9,6 @@
 //
 #include "SGDebugAlgorithms.h"
 #include "SGAlgorithms.h"
-#include "SeqTrie.h"
 #include <algorithm>
 
 //

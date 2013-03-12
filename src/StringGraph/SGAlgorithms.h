@@ -78,13 +78,6 @@ void partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap,
 // This function removes any duplicates
 void removeSubmaximalOverlaps(EdgeDescOverlapMap* pOverlapMap);
 
-// Construct an extended multioverlap for a vertex
-MultiOverlap makeExtendedMultiOverlap(const StringGraph* pGraph, const Vertex* pVertex);
-
-// Construct SeqTries from the extended overlap set
-void makeExtendedSeqTries(const StringGraph* pGraph, const Vertex* pVertex, 
-                          double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie);
-
 // Simple getters for std::transform
 EdgeDesc getEdgeDescFromEdge(Edge* pEdge);
 EdgeDesc getEdgeDescFromPair(const EdgeDescOverlapPair& pair);

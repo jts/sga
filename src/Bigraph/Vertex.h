@@ -86,9 +86,6 @@ class Vertex
         // Get a multioverlap object representing the overlaps for this vertex
         MultiOverlap getMultiOverlap() const;
 
-        // Construct a trie from the edges, one for each each direction
-        void fillTries(double p_error, SeqTrie* pSenseTrie, SeqTrie* pAntisenseTrie) const;
-
         // Edge list operations
         void addEdge(Edge* ep);
         void removeEdge(Edge* pEdge);

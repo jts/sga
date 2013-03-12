@@ -13,7 +13,6 @@
 #include "Match.h"
 #include "Pileup.h"
 #include "DNADouble.h"
-#include "SeqTrie.h"
 
 class MultiOverlap
 {
