@@ -49,7 +49,6 @@ sga_SOURCES = sga.cpp \
               gen-ssa.h gen-ssa.cpp \
               bwt2fa.h bwt2fa.cpp \
               graph-diff.h graph-diff.cpp \
-              var2vcf.h var2vcf.cpp \
               hapgen.h hapgen.cpp \
               gapfill.h gapfill.cpp \
               variant-detectability.h variant-detectability.cpp \
