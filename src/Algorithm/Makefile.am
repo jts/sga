@@ -26,8 +26,6 @@ libalgorithm_a_SOURCES = \
         ClusterProcess.h ClusterProcess.cpp \
         ReadCluster.h ReadCluster.cpp \
         LRAlignment.h LRAlignment.cpp \
-        LRCorrectionAlgorithm.h LRCorrectionAlgorithm.cpp \
-        LRCorrectionProcess.h LRCorrectionProcess.cpp \
         StringThreader.h StringThreader.cpp \
         HapgenProcess.h HapgenProcess.cpp \
         ExtensionDP.h ExtensionDP.cpp \
