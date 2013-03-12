@@ -30,7 +30,6 @@
 #include "gen-ssa.h"
 #include "bwt2fa.h"
 #include "graph-diff.h"
-#include "hapgen.h"
 #include "gapfill.h"
 #include "variant-detectability.h"
 #include "rewrite-evidence-bam.h"
@@ -76,7 +75,6 @@ static const char *SGA_USAGE_MESSAGE =
 "           filterBAM             filter out contaminating mate-pair data in a BAM file\n"
 "           cluster               find clusters of reads belonging to the same connected component in an assembly graph\n"
 //"           connect         resolve the complete sequence of a paired-end fragment\n"
-//"           hapgen          generate candidate haplotypes from an assembly graph\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 int main(int argc, char** argv)
@@ -144,8 +142,6 @@ int main(int argc, char** argv)
             bwt2faMain(argc - 1, argv + 1);
         else if(command == "graph-diff")
             graphDiffMain(argc - 1, argv + 1);
-        else if(command == "hapgen")
-            hapgenMain(argc - 1, argv + 1);
         else if(command == "gapfill")
             gapfillMain(argc - 1, argv + 1);
         else if(command == "variant-detectability")

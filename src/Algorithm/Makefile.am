@@ -27,7 +27,6 @@ libalgorithm_a_SOURCES = \
         ReadCluster.h ReadCluster.cpp \
         LRAlignment.h LRAlignment.cpp \
         StringThreader.h StringThreader.cpp \
-        HapgenProcess.h HapgenProcess.cpp \
         ExtensionDP.h ExtensionDP.cpp \
         HaplotypeBuilder.h HaplotypeBuilder.cpp \
         GapFillProcess.h GapFillProcess.cpp \
