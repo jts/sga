@@ -397,3 +397,57 @@ std::string BWTAlgorithms::extractSubstring(const BWT* pBWT, uint64_t idx, size_
     return s.substr(start, length);
 }
 
+// Recursive traversal to extract all the strings needed for the above function
+void _extractRankedPrefixes(const BWT* pBWT, BWTInterval interval, const std::string& curr, RankedPrefixVector* pOutput)
+{
+    AlphaCount64 extensions = BWTAlgorithms::getExtCount(interval, pBWT);
+
+    for(size_t i = 0; i < 4; ++i)
+    {
+        char b = "ACGT"[i];
+
+        if(extensions.get(b) > 0)
+        {
+            BWTInterval ni = interval;
+            BWTAlgorithms::updateInterval(ni, b, pBWT);
+            _extractRankedPrefixes(pBWT, ni, curr + b, pOutput);
+        }
+
+    }
+
+    // If we have extended the prefix as far as possible, stop
+    BWTAlgorithms::updateInterval(interval, '$', pBWT);
+    for(int64_t i = interval.lower; i <= interval.upper; ++i)
+    {
+        // backwards search gives a reversed prefix, fix it
+        RankedPrefix rp = { i, reverse(curr) };
+        pOutput->push_back(rp);
+    }
+}
+
+// Extract all strings found from a backwards search starting at the given interval
+RankedPrefixVector BWTAlgorithms::extractRankedPrefixes(const BWT* pBWT, BWTInterval interval)
+{
+    std::string curr;
+    RankedPrefixVector output;
+    output.reserve(interval.size());
+    _extractRankedPrefixes(pBWT, interval, curr, &output);
+    return output;
+}
+
+std::string BWTAlgorithms::extractUntilInterval(const BWT* pBWT, int64_t start, const BWTInterval& check)
+{
+    std::string out;
+    BWTInterval interval(start, start);
+    while(interval.lower < check.lower || interval.lower > check.upper)
+    {
+        assert(interval.isValid());
+        char b = pBWT->getChar(interval.lower);
+        if(b == '$')
+            return "";
+        else
+            out.push_back(b);
+        updateInterval(interval, b, pBWT);
+    } 
+    return reverse(out);        
+}

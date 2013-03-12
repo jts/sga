@@ -275,14 +275,17 @@ void generate_position_of_first_error(JSONWriter* pWriter, const BWTIndexSet& in
 //
 void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
+
     int n_samples = 100000;
     size_t k = 25;
+
     double max_error_rate = 0.95;
     size_t min_overlap = 50;
     
     std::vector<size_t> position_count;
     std::vector<size_t> error_count;
 
+    Timer timer("test", true);
 #if HAVE_OPENMP
         omp_set_num_threads(opt::numThreads);
         #pragma omp parallel for
@@ -290,6 +293,11 @@ void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
     for(int i = 0; i < n_samples; ++i)
     {
         std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+//        KmerOverlaps::retrieveMatches(s, k, min_overlap, max_error_rate, 2, index_set);
+        (void)k;
+        KmerOverlaps::hackMatch(s, min_overlap, max_error_rate, 2, index_set);
+
+        /*
         MultipleAlignment ma = 
             KmerOverlaps::buildMultipleAlignment(s, k, min_overlap, max_error_rate, 2, index_set);
 
@@ -346,6 +354,7 @@ void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
             }
             position += 1;
         }
+        */
     }
     
     pWriter->String("ErrorsPerBase");
@@ -812,6 +821,9 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
+    generate_errors_per_base(&writer, index_set);
+
+    /*
     generate_gc_distribution(&writer, index_set);
     generate_quality_stats(&writer, opt::readsFile);
     generate_pe_fragment_sizes(&writer, index_set);
@@ -822,6 +834,7 @@ int preQCMain(int argc, char** argv)
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
     generate_local_graph_complexity(&writer, index_set);
+    */
 
     // End document
     writer.EndObject();
