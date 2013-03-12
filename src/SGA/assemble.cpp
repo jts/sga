@@ -139,8 +139,6 @@ void assemble()
     SGRemodelVisitor remodelVisit;
     SGEdgeStatsVisitor edgeStatsVisit;
     SGTrimVisitor trimVisit(opt::trimLengthThreshold);
-    SGBubbleVisitor bubbleVisit;
-    SGBubbleEdgeVisitor bubbleEdgeVisit;
 
     SGContainRemoveVisitor containVisit;
     SGValidateStructureVisitor validationVisit;

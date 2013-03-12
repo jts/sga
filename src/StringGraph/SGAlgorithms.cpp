@@ -117,35 +117,6 @@ Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o
 void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
 {
     assert(pVertex == pDeleteEdge->getStart());
-    double maxER = pGraph->getErrorRate();
-    int minLength = pGraph->getMinOverlap();
-    
-    CompleteOverlapSet vertexOverlapSet(pVertex, maxER, minLength);
-
-    vertexOverlapSet.removeOverlapsTo(pDeleteEdge->getEnd());
-    EdgeDescOverlapMap addMap;
-    EdgeDescOverlapMap removeMap;
-    EdgeDescOverlapMap containMap;
-    vertexOverlapSet.computeIrreducible(NULL, &containMap);
-    
-    vertexOverlapSet.getDiffMap(addMap, removeMap);
-       
-    //assert(removeMap.size() == 0);
-    for(EdgeDescOverlapMap::iterator iter = addMap.begin();
-        iter != addMap.end(); ++iter)
-    {
-        //std::cout << "Adding edge " << iter->second << "\n";
-        createEdgesFromOverlap(pGraph, iter->second, false);
-    }
-
-    // Set the contain flags based on newly discovered edges
-    updateContainFlags(pGraph, pVertex, containMap);
-}
-
-// Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
-void SGAlgorithms::remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
-{
-    assert(pVertex == pDeleteEdge->getStart());
     // If the edge is a containment edge, nothing needs to be done. No edges can be transitive
     // through containments
     if(pDeleteEdge->getOverlap().isContainment())

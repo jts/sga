@@ -24,7 +24,7 @@ namespace SGAlgorithms
 typedef std::pair<EdgeDesc, Overlap> EdgeDescOverlapPair;
 typedef std::set<VertexID> VertexIDSet;
 
-// Comparator
+// Compare two edges by their overlap length
 struct EDOPairCompare
 {
     bool operator()(const EdgeDescOverlapPair& edpXY, const EdgeDescOverlapPair& edpXZ)
@@ -41,9 +41,9 @@ typedef std::priority_queue<EdgeDescOverlapPair,
 typedef std::map<EdgeDesc, Overlap> EdgeDescOverlapMap;
 typedef std::set<EdgeDesc> EdgeDescSet;
 
-// Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
+// Remodel the graph by finding new edges for the given vertex to avoid
+// causing a disconnection when removing pDeleteEdge
 void remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
-void remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge);
 
 // Create the edges described by the overlap.
 Edge* createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o, bool allowContained, size_t maxEdges = -1);
