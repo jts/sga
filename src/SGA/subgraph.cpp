@@ -12,7 +12,6 @@
 #include "Util.h"
 #include "SGUtil.h"
 #include "SGAlgorithms.h"
-#include "SGPairedAlgorithms.h"
 #include "SGVisitors.h"
 #include "Timer.h"
 
