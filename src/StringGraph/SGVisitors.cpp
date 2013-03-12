@@ -67,8 +67,6 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
             Edge* pVWEdge = edges[i];
             Vertex* pWVert = pVWEdge->getEnd();
 
-            //std::cout << "Examining edges from " << pWVert->getID() << " longest: " << longestLen << "\n";
-            //std::cout << pWVert->getID() << " w_edges: \n";
             EdgeDir transDir = !pVWEdge->getTwinDir();
             if(pWVert->getColor() == GC_GRAY)
             {
@@ -83,7 +81,6 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
                         {
                             // X is the endpoint of an edge of V, therefore it is transitive
                             pWXEdge->getEnd()->setColor(GC_BLACK);
-                            //std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << "\n";
                         }
                     }
                     else
@@ -98,13 +95,10 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
             Edge* pVWEdge = edges[i];
             Vertex* pWVert = pVWEdge->getEnd();
 
-            //std::cout << "Examining edges from " << pWVert->getID() << " longest: " << longestLen << "\n";
-            //std::cout << pWVert->getID() << " w_edges: \n";
             EdgeDir transDir = !pVWEdge->getTwinDir();
             EdgePtrVec w_edges = pWVert->getEdges(transDir);
             for(size_t j = 0; j < w_edges.size(); ++j)
             {
-                //std::cout << "    edge: " << *w_edges[j] << "\n";
                 Edge* pWXEdge = w_edges[j];
                 size_t len = pWXEdge->getSeqLen();
 
@@ -114,8 +108,6 @@ bool SGTransitiveReductionVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVerte
                     {
                         // X is the endpoint of an edge of V, therefore it is transitive
                         pWXEdge->getEnd()->setColor(GC_BLACK);
-                        //std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << " in stage 2";
-                        //std::cout << " via " << pWVert->getID() << "\n";
                     }
                 }
                 else
@@ -335,14 +327,6 @@ bool SGTrimVisitor::visit(StringGraph* /*pGraph*/, Vertex* pVertex)
         }
     }
 
-    /*
-    if(isTrimmed)
-    {
-        std::stringstream ss;
-        ss << pVertex->getID() << "-trimmed";
-        writeFastaRecord(&m_tmpFile, ss.str(), pVertex->getSeq().toString());
-    }
-    */
     return false;
 }
 
@@ -447,12 +431,6 @@ bool SGSmallRepeatResolveVisitor::visit(StringGraph* /*pGraph*/, Vertex* pX)
 
             if(x_diff > m_minDiff && y_diff > m_minDiff)
             {
-                /*
-                printf("Edge %s -> %s is likely a repeat\n", pX->getID().c_str(), pY->getID().c_str());
-                printf("Actual overlap lengths: %zu and %zu\n", xy_len, yx_len);
-                printf("Spanned by longer edges of size: %zu and %zu\n", x_longest_len, y_longest_len);
-                printf("Differences: %d and %d\n", x_diff, y_diff);
-                */
                 pX->deleteEdge(pXY);
                 pY->deleteEdge(pYX);
                 changed = true;
@@ -726,14 +704,6 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                         cigarSS << cigarOp;
                     }
                     cigarStrings[i] = cigarSS.str();
-
-                    /*
-                    printf("1: %s\n", aln_global->out1);
-                    printf("M: %s\n", aln_global->outm);
-                    printf("2: %s\n", aln_global->out2);
-                    printf("CIGAR: %s\n", cigarStrings[i].c_str());
-                    */
-
                     aln_free_AlnAln(aln_global);
                 }
 
@@ -752,8 +722,6 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
                 gapPercent[i] = percentGap;
                 totalPercent[i] = percentDiff;
                 maxIndel[i] = maxGapLength;
-
-                //printf("ml: %d tmm: %d pd: %lf pg: %lf\n", matchLen, totalDiff, percentDiff, percentGap);
             }
 
             if(bIsDegenerate || bFailGapCheck || bFailDivergenceCheck || bFailIndelSizeCheck)
