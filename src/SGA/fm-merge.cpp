@@ -43,6 +43,7 @@ static const char *FMMERGE_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+"      -p, --prefix=PREFIX              use PREFIX for the names of the index files (default: prefix of the input file)\n"
 "      -t, --threads=NUM                use NUM worker threads (default: no threading)\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads to merge (default: 45)\n"
 "      -o, --outfile=FILE               write the merged sequences to FILE (default: basename.merged.fa)\n"
@@ -66,6 +67,7 @@ static const char* shortopts = "p:m:d:e:t:l:s:o:vix";
 enum { OPT_HELP = 1, OPT_VERSION };
 
 static const struct option longopts[] = {
+    { "prefix",      required_argument, NULL, 'p' },
     { "verbose",     no_argument,       NULL, 'v' },
     { "threads",     required_argument, NULL, 't' },
     { "min-overlap", required_argument, NULL, 'm' },
@@ -204,8 +206,16 @@ void parseFMMergeOptions(int argc, char** argv)
 
     // Parse the input filenames
     opt::readsFile = argv[optind++];
-    opt::prefix = stripFilename(opt::readsFile);
+
+    if(opt::prefix.empty())
+    {
+        opt::prefix = stripFilename(opt::readsFile);
+    }
 
     if(opt::outFile.empty())
+    {
         opt::outFile = opt::prefix + ".merged.fa";
+    }
+ 
 }
+
