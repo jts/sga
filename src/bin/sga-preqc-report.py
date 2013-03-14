@@ -52,6 +52,7 @@ def plot_mean_unipath_lengths(pp, data):
 
     pl.xlabel("k")
     pl.ylabel("Mean unipath length")
+    pl.ylim([0, 10000])
     pl.title("Mean length of unambiguous segments of the k-de Bruijn graph")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
@@ -74,12 +75,13 @@ def plot_random_walk(pp, data):
     pl.xlabel("k")
     pl.ylabel("Mean Random Walk Length")
     pl.title("Mean length of a random walk through the k-de Bruijn graph")
+    pl.ylim([0, 40000])
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
 
 def plot_kmer_distribution(pp, data):
-    CUTOFF = 0.95
+    CUTOFF = 0.99
     names = data.keys()
     for name in names:
         k = data[name][KMER_DISTRIBUTION_NAME]['k']
@@ -90,20 +92,19 @@ def plot_kmer_distribution(pp, data):
             y.append(t['count'])
 
         s = sum(y)
-
         # Normalize y and apply a cutoff
         nx = list()
         ny = list()
         cumulative_sum = 0
+
         for a,b in zip(x,y):
             fb = float(b) / s
             cumulative_sum += fb
             if cumulative_sum < CUTOFF:
                 nx.append(a)
                 ny.append(fb)
-                print a, fb, cumulative_sum
         pl.plot(nx, ny)
-
+    
     pl.xlabel(str(k) + "-mer count")
     pl.ylabel("Proportion")
     pl.title(str(k) + "-mer count distribution")
@@ -124,7 +125,7 @@ def plot_first_error_position(pp, data):
     pl.xlabel("k-mer Position")
     pl.ylabel("Proportion")
     pl.title("k-mer position of first error")
-    pl.legend(names)
+    pl.legend(names, loc="upper left")
     pl.savefig(pp, format='pdf')
     pl.close()
 
@@ -187,6 +188,7 @@ def plot_gc_distribution(pp, data):
     gc_bin_size = 0.02
 
     for idx,name in enumerate(names):
+
         bins = data[name][GC_DISTRIBUTION_NAME]['gc_bins']
         read_data = data[name][GC_DISTRIBUTION_NAME]['read_gc_prop']
         base_line, = pl.plot(bins, read_data)
@@ -194,7 +196,6 @@ def plot_gc_distribution(pp, data):
         if 'ref_gc_prop' in data[name][GC_DISTRIBUTION_NAME]:
             ref_data = data[name][GC_DISTRIBUTION_NAME]['ref_gc_prop']
             pl.plot(bins, ref_data, '--', color="red")
-
     pl.xlabel("GC content")
     pl.ylabel("Proportion")
     pl.title("GC histogram")
@@ -284,8 +285,8 @@ pp = PdfPages("test_report.pdf")
 
 # Quality/Error rate plots
 plot_quality_scores(pp, data) if any_set_has_key(data, QUALITY_SCORE_NAME) else 0
-#plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
-plot_errors_per_base(pp, data) if any_set_has_key(data, ERRORS_PER_BASE_NAME) else 0
+plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
+#plot_errors_per_base(pp, data) if any_set_has_key(data, ERRORS_PER_BASE_NAME) else 0
 plot_pcr_duplicates(pp, data) if any_set_has_key(data, PCR_DUPLICATE_NAME) else 0
 plot_fragment_sizes(pp, data) if any_set_has_key(data, FRAGMENT_SIZE_NAME) else 0
 
@@ -295,7 +296,7 @@ plot_random_walk(pp, data) if any_set_has_key(data, RANDOM_WALK_NAME) else 0
 plot_gc_distribution(pp, data) if any_set_has_key(data, GC_DISTRIBUTION_NAME) else 0
 
 # Graph topology plots
-plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
 plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
+plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
 
 pp.close()

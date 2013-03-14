@@ -275,10 +275,10 @@ void generate_position_of_first_error(JSONWriter* pWriter, const BWTIndexSet& in
 //
 void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
-    int n_samples = 10000;
-    size_t k = 21;
-    double max_error_rate = 0.85;
-    size_t min_overlap = 30;
+    int n_samples = 100000;
+    size_t k = 25;
+    double max_error_rate = 0.95;
+    size_t min_overlap = 50;
     
     std::vector<size_t> position_count;
     std::vector<size_t> error_count;
@@ -498,7 +498,7 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
 {
     int n_samples = 100000;
     size_t k = 31;
-    double gc_bin_size = 0.02;
+    double gc_bin_size = 0.05;
 
     std::vector<double> read_gc_sum;
     size_t read_gc_n = 0;
