@@ -236,10 +236,14 @@ struct ApproxSeed
     }
 };
 
-//
-SequenceOverlapPairVector KmerOverlaps::hackMatch(const std::string& query,
-                                                  int min_overlap, double min_identity,
-                                                  int bandwidth, const BWTIndexSet& indices)
+void _approximateSeededMatch(const std::string& in_query,
+                             int min_overlap, 
+                             double min_identity,
+                             int bandwidth, 
+                             int max_interval,
+                             bool do_reverse,
+                             const BWTIndexSet& indices,
+                             SequenceOverlapPairVector& out_vector)
 {
     Timer timer("test", true);
     assert(indices.pBWT != NULL);
@@ -254,59 +258,63 @@ SequenceOverlapPairVector KmerOverlaps::hackMatch(const std::string& query,
     n_calls++;
 
     int target_seed_length = 41;
-    //size_t seed_stride = 10;
-    size_t d = 2;
+    int seed_stride = target_seed_length / 2;
+    size_t d = 1;
 
     SequenceOverlapPairVector overlap_vector;
 
+    std::string strand_query = do_reverse ? reverseComplement(in_query) : in_query;
+
     // Initialize seeds 
-    int seed_end = query.size();
+    int seed_end = strand_query.size();
     int q = indices.pCache->getCachedLength();
 
     std::queue<ApproxSeed> seeds;
 
-    // For the last q bases of the seed, create all strings within edit distance d
-    std::string qmer = query.substr(seed_end - q, q);
-
-    // 0-distance seed
-    ApproxSeed seed;
-    seed.query_index = seed_end - q;
-    seed.interval = indices.pCache->lookup(qmer.c_str());
-    seed.length = q;
-    seeds.push(seed);
-
-    for(int i = 0; i < q; ++i)
+    while(seed_end > target_seed_length)
     {
-        // Switch base to other 3 symbols
-        char o = qmer[i];
-        for(size_t j = 0; j < 4; ++j)
+        // For the last q bases of the seed, create all strings within edit distance d
+        std::string qmer = strand_query.substr(seed_end - q, q);
+        assert((int)qmer.size() == q);
+        // 0-distance seed
+        ApproxSeed seed;
+        seed.query_index = seed_end - q;
+        seed.interval = indices.pCache->lookup(qmer.c_str());
+        seed.length = q;
+        seeds.push(seed);
+
+        for(int i = 0; i < q; ++i)
         {
-            char b = "ACGT"[j];
-            if(b != o)
+            // Switch base to other 3 symbols
+            char o = qmer[i];
+            for(size_t j = 0; j < 4; ++j)
             {
-                qmer[i] = b;
-                ApproxSeed seed;
-                seed.query_index = seed_end - q;
-                seed.interval = indices.pCache->lookup(qmer.c_str());
-                seed.length = q;
-                seed.edits.push_back(SeedEdit(i + seed.query_index, b));
-                seeds.push(seed);
+                char b = "ACGT"[j];
+                if(b != o)
+                {
+                    qmer[i] = b;
+                    ApproxSeed seed;
+                    seed.query_index = seed_end - q;
+                    seed.interval = indices.pCache->lookup(qmer.c_str());
+                    seed.length = q;
+                    seed.edits.push_back(SeedEdit(i + seed.query_index, b));
+                    seeds.push(seed);
+                }
             }
+            qmer[i] = o;
         }
-        qmer[i] = o;
+        seed_end -= seed_stride;
     }
     
-    std::vector<ApproxSeed> finished_seeds;
-
-
     // Extend seeds
+    std::vector<ApproxSeed> finished_seeds;
     while(!seeds.empty())
     {
         ApproxSeed& seed = seeds.front();
 
         // query_index is the index of the last base
         // in the seed. get the next base
-        char qb = query[seed.query_index - 1];
+        char qb = strand_query[seed.query_index - 1];
 
         // Branch to inexact match
         if(seed.edits.size() < d)
@@ -351,16 +359,23 @@ SequenceOverlapPairVector KmerOverlaps::hackMatch(const std::string& query,
     
     for(size_t i = 0; i < finished_seeds.size(); ++i)
     {
-        if(finished_seeds[i].interval.size() > 200)
+        if(finished_seeds[i].interval.size() > max_interval)
             continue;
 
-//        std::cout << finished_seeds[i] << "\n";
-        std::string query_seed = query.substr(finished_seeds[i].query_index);
+        //std::cout << finished_seeds[i] << "\n";
+        std::string query_seed = strand_query.substr(finished_seeds[i].query_index, target_seed_length);
         std::string match_seed = query_seed;
 
         // Apply edits to the new sequence
         for(size_t j = 0; j < finished_seeds[i].edits.size(); ++j)
             match_seed[finished_seeds[i].edits[j].index - finished_seeds[i].query_index] = finished_seeds[i].edits[j].base;
+
+        // Flip the seeds to match the strand of the query
+        if(do_reverse)
+        {
+            query_seed = reverseComplement(query_seed);
+            match_seed = reverseComplement(match_seed);
+        }
 
         // Extract the prefix of every occurrence of this seed
         RankedPrefixVector extensions = BWTAlgorithms::extractRankedPrefixes(indices.pBWT, finished_seeds[i].interval);
@@ -369,10 +384,11 @@ SequenceOverlapPairVector KmerOverlaps::hackMatch(const std::string& query,
         for(size_t j = 0; j < extensions.size(); ++j)
         {
             size_t rank = extensions[j].rank;
-            if(rank_set.find(rank) != rank_set.end())
-                continue;
 
-            rank_set.insert(rank);
+            // The second element of the returned pair is
+            // false if the set already contains this rank
+            if(!rank_set.insert(rank).second)
+                continue;
 
             // Extract the reminder of the read
             std::string& prefix = extensions[j].prefix;
@@ -384,22 +400,27 @@ SequenceOverlapPairVector KmerOverlaps::hackMatch(const std::string& query,
             std::string match_sequence = prefix + suffix;
 
             // Ignore identical matches
-            if(match_sequence == query)
+            if(match_sequence == strand_query)
                 continue;
+
+            // Change strands
+            if(do_reverse)
+                match_sequence = reverseComplement(match_sequence);
 
             // Compute the overlap
             SequenceOverlap overlap;
-            size_t pos_0 = query.find(query_seed);
+            size_t pos_0 = in_query.find(query_seed);
             size_t pos_1 = match_sequence.find(match_seed);
-            assert(pos_0 != std::string::npos && pos_1 != std::string::npos);
+            assert(pos_0 != std::string::npos);
+            assert(pos_1 != std::string::npos);
 
-            if(query.find(query_seed, pos_0 + 1) != std::string::npos || 
+            if(in_query.find(query_seed, pos_0 + 1) != std::string::npos || 
                match_sequence.find(match_seed, pos_1 + 1) != std::string::npos) {
                 // One of the reads has a second occurrence of the kmer. Use
                 // the slow overlapper.
-                overlap = Overlapper::computeOverlap(query, match_sequence);
+                overlap = Overlapper::computeOverlap(in_query, match_sequence);
             } else {
-                overlap = Overlapper::extendMatch(query, match_sequence, pos_0, pos_1, bandwidth);
+                overlap = Overlapper::extendMatch(in_query, match_sequence, pos_0, pos_1, bandwidth);
             }
 
             n_candidates += 1;
@@ -408,15 +429,15 @@ SequenceOverlapPairVector KmerOverlaps::hackMatch(const std::string& query,
 
             if(bPassedOverlap && bPassedIdentity)
             {
-                printf("Rank\t%zu\t%zu\t%s\t%.2lf\t%d\n", n_calls,
-                    rank, match_sequence.c_str(), overlap.getPercentIdentity(), overlap.getOverlapLength());
+                //printf("Rank\t%zu\t%zu\t%s\t%.2lf\t%d\n", n_calls,
+                //    rank, match_sequence.c_str(), overlap.getPercentIdentity(), overlap.getOverlapLength());
                 
                 SequenceOverlapPair op;
-                op.sequence[0] = query;
+                op.sequence[0] = in_query;
                 op.sequence[1] = match_sequence;
                 op.overlap = overlap;
-                op.is_reversed = false;
-                overlap_vector.push_back(op);
+                op.is_reversed = do_reverse;
+                out_vector.push_back(op);
                 n_output += 1;
             }                
         }
@@ -426,6 +447,18 @@ SequenceOverlapPairVector KmerOverlaps::hackMatch(const std::string& query,
     if(n_calls % 100 == 0)
         printf("[approx seeds] n: %zu candidates: %zu valid: %zu (%.2lf) time: %.2lfs\n", 
             n_calls, n_candidates, n_output, (double)n_output / n_candidates, t_time);
+}
 
-    return overlap_vector;
+//
+SequenceOverlapPairVector KmerOverlaps::approximateMatch(const std::string& query,
+                                                         int min_overlap, 
+                                                         double min_identity,
+                                                         int bandwidth, 
+                                                         int max_interval,
+                                                         const BWTIndexSet& indices)
+{
+    SequenceOverlapPairVector opv;
+    _approximateSeededMatch(query, min_overlap, min_identity, bandwidth, max_interval, false, indices, opv);
+    _approximateSeededMatch(query, min_overlap, min_identity, bandwidth, max_interval, true, indices, opv);
+    return opv;
 }

@@ -45,10 +45,12 @@ SequenceOverlapPairVector retrieveMatches(const std::string& query,
                                           int bandwidth,
                                           const BWTIndexSet& indices);
 
-SequenceOverlapPairVector hackMatch(const std::string& query,
-                                    int min_overlap, double min_identity,
-                                    int bandwidth, const BWTIndexSet& indices);
-
+SequenceOverlapPairVector approximateMatch(const std::string& query,
+                                           int min_overlap, 
+                                           double min_identity,
+                                           int bandwidth, 
+                                           int max_interval,
+                                           const BWTIndexSet& indices);
 };
 
 #endif
