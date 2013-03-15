@@ -187,7 +187,7 @@ def plot_gc_distribution(pp, data):
     names = data.keys()
     gc_bin_size = 0.02
 
-    for idx,name in enumerate(names):
+    for name in names:
 
         bins = data[name][GC_DISTRIBUTION_NAME]['gc_bins']
         read_data = data[name][GC_DISTRIBUTION_NAME]['read_gc_prop']
@@ -202,6 +202,21 @@ def plot_gc_distribution(pp, data):
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
+
+    # Plot the 2D histogram of coverage vs gc
+    for name in names:
+        x = [ i * 100 for i in data[name][GC_DISTRIBUTION_NAME]['gc_samples'] ]
+        y = data[name][GC_DISTRIBUTION_NAME]['cov_samples']
+
+        hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, 100] ])
+        extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
+        pl.imshow(hist.T,extent=extent,interpolation='nearest',origin='lower')
+        pl.colorbar()
+        pl.title(name + ' Read coverage vs GC content')
+        pl.xlabel("GC %")
+        pl.ylabel("Read coverage")
+        pl.savefig(pp, format='pdf')
+        pl.close()
 
 def plot_fragment_sizes(pp, data):
 
@@ -228,7 +243,7 @@ def plot_fragment_sizes(pp, data):
                 sum += f
         pl.plot(x, y)
 
-    pl.ylabel("Fragment Size (bp)")
+    pl.xlabel("Fragment Size (bp)")
     pl.ylabel("Proportion")
     pl.title("Estimated Fragment Size Histogram")
     pl.legend(names)

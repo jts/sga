@@ -496,7 +496,7 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
 
 void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
 {
-    int n_samples = 100000;
+    int n_samples = 1000000;
     size_t k = 31;
     double gc_bin_size = 0.05;
 
@@ -505,6 +505,9 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
     
     std::vector<double> ref_gc_sum;
     size_t ref_gc_n = 0;
+
+    std::vector<size_t> coverage_vector;
+    std::vector<double> gc_vector;
 
     read_gc_sum.resize(1.0f / gc_bin_size + 1);
     ref_gc_sum.resize(1.0f / gc_bin_size + 1);
@@ -515,6 +518,8 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
         std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
         if(s.size() < k)
             continue;
+
+        size_t cov = BWTAlgorithms::countSequenceOccurrences(s.substr(0, k), index_set.pBWT);
 
         double gc = 0.f;
         double at = 0.f;
@@ -530,6 +535,9 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
         size_t bin_idx = gc_f / gc_bin_size;
         read_gc_sum[bin_idx] += gc_f;
         read_gc_n += 1;
+
+        gc_vector.push_back(gc_f);
+        coverage_vector.push_back(cov);
     }
 
     // If a reference file is provided, calculate the reference GC for comparison
@@ -585,6 +593,19 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
             pJSONWriter->Double(ref_gc_sum[i] / ref_gc_n);
         pJSONWriter->EndArray();
     }
+
+    pJSONWriter->String("gc_samples");
+    pJSONWriter->StartArray();
+    for(size_t i = 0; i < gc_vector.size(); ++i)
+        pJSONWriter->Double(gc_vector[i]);
+    pJSONWriter->EndArray();
+
+    pJSONWriter->String("cov_samples");
+    pJSONWriter->StartArray();
+    for(size_t i = 0; i < gc_vector.size(); ++i)
+        pJSONWriter->Double(coverage_vector[i]);
+    pJSONWriter->EndArray();
+
     pJSONWriter->EndObject();
 }
 
