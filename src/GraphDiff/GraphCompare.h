@@ -71,7 +71,6 @@ struct GraphCompareParameters
     size_t maxDiscoveryCount;
     size_t minDBGCount;
     int minOverlap;
-    int verbose;
 
     // Read extraction parameters
     size_t maxExtractionIntervalSize;

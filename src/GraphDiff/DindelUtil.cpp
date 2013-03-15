@@ -12,6 +12,7 @@
 #include "HapgenUtil.h"
 #include "VCFUtil.h"
 #include "Profiler.h"
+#include "Verbosity.h"
 #include "overlapper.h"
 #include "multiple_alignment.h"
 
@@ -58,6 +59,9 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
    
     // Remove duplicate or bad alignment pairs
     HapgenUtil::coalesceAlignments(candidateAlignments);
+
+    if(Verbosity::Instance().getPrintLevel() > 3)
+        printf("runDindel -- %zu candidate alignments found\n", candidateAlignments.size());
     
     size_t MAX_ALIGNMENTS = 10;
     if(candidateAlignments.size() > MAX_ALIGNMENTS)
@@ -83,6 +87,9 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
                                            candidateHaplotypes);
     
     }
+
+    if(Verbosity::Instance().getPrintLevel() > 3)
+        printf("runDindel -- made %zu flanking haplotypes\n", candidateHaplotypes.size());
 
     // Normal reads
     SeqRecordVector normalReads;
@@ -195,14 +202,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     for(std::set<DindelReferenceMapping>::iterator it = refMappings.begin(); it != refMappings.end(); it++) 
         it->referenceAlignmentScore = 1000;
     
-    /*
-    std::cout << "REFERENCE MAPPINGS: \n";
-    int c = 0;
-    for(std::set<DindelReferenceMapping>::const_iterator it = refMappings.begin(); it != refMappings.end(); it++, c++) {
-        std::cout << c << " " << it->refName << " start: " << it->refStart << " end: " << it->refStart + it->refSeq.size()-1 << " score: " << it->referenceAlignmentScore << "\n";
-    }
-    */
-
     // make flankingHaplotypes unique
     std::set< std::string > setFlanking(flankingHaplotypes.begin(), flankingHaplotypes.end());
 
@@ -284,7 +283,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     }
 
     // Copy raw VCFRecords to stdout
-    if(parameters.verbose > 0)
+    if(Verbosity::Instance().getPrintLevel() > 0)
     {
         for(size_t i = 0; i <= 1; ++i)
         {

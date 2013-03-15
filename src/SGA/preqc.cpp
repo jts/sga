@@ -293,11 +293,9 @@ void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
     for(int i = 0; i < n_samples; ++i)
     {
         std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
-        //KmerOverlaps::retrieveMatches(s, k, min_overlap, max_error_rate, 2, index_set);
-        (void)k;
-        KmerOverlaps::approximateMatch(s, min_overlap, max_error_rate, 2, 200, index_set);
+        KmerOverlaps::retrieveMatches(s, k, min_overlap, max_error_rate, 2, index_set);
+        //KmerOverlaps::approximateMatch(s, min_overlap, max_error_rate, 2, 200, index_set);
 
-        /*
         MultipleAlignment ma = 
             KmerOverlaps::buildMultipleAlignment(s, k, min_overlap, max_error_rate, 2, index_set);
 
@@ -354,7 +352,6 @@ void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
             }
             position += 1;
         }
-        */
     }
     
     pWriter->String("ErrorsPerBase");

@@ -21,10 +21,12 @@
 #include "DindelRealignWindow.h"
 #include "DindelUtil.h"
 #include "HaplotypeBuilder.h"
+#include "PairedDeBruijnHaplotypeBuilder.h"
 #include "DeBruijnHaplotypeBuilder.h"
 #include "OverlapHaplotypeBuilder.h"
 #include "StringHaplotypeBuilder.h"
 #include "Profiler.h"
+#include "Verbosity.h"
 #include "api/SamHeader.h"
 #include "api/BamAlignment.h"
 
@@ -117,7 +119,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
     int num_kmers = len - m_parameters.kmer + 1;
 
     // Check if the read is long enough to be used
-    if(w.size() <= m_parameters.kmer)
+    if(w.size() < m_parameters.kmer)
         return result;
 
     // Process the kmers that have not been previously visited
@@ -164,9 +166,9 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
             if(base_count >= min_base_coverage)
                 continue;
             
-            if(m_parameters.verbose > 0)
+            if(Verbosity::Instance().getPrintLevel() > 0)
                 std::cout << "Variant read: " << w << "\n";
-            
+
             // variant k-mer, attempt to assemble it into haplotypes
             GraphBuildResult build_result = processVariantKmer(kmer, count);
             variantAttempted = true;
@@ -178,7 +180,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
             // If we assembled anything, run Dindel on the haplotypes
             if(build_result.variant_haplotypes.size() > 0)
             {
-                if(m_parameters.verbose > 0)
+                if(Verbosity::Instance().getPrintLevel() > 0)
                     std::cout << "Running dindel\n";
 
                 std::stringstream baseVCFSS;
@@ -196,7 +198,7 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
                                                                          &alignments);
                 
                 //
-                if(m_parameters.verbose > 0)
+                if(Verbosity::Instance().getPrintLevel() > 0)
                 {
                     std::cout << "Dindel returned " << drc << "\n";
                     std::cout << "base: " << baseVCFSS.str() << "\n";
@@ -238,7 +240,7 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 
     if(m_parameters.algorithm == GCA_DEBRUIJN_GRAPH)
     {
-        DeBruijnHaplotypeBuilder dbg_builder(m_parameters);
+        PairedDeBruijnHaplotypeBuilder dbg_builder(m_parameters);
         dbg_builder.setInitialHaplotype(str);
         dbg_builder.run(result.variant_haplotypes);
     } 
@@ -328,7 +330,11 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
                 haplotype = "";
 
             //double frac_covered = (double)num_covered / nk;
-            printf("HAP[%zu] NK %zu NC %zu NUC %zu NUB %zu MAX_D: %zu SUM_D: %zu\n", i, nk, num_covered_kmers, num_uncovered_kmers, num_uncovered_bases, max_d, sum_d);
+            if(Verbosity::Instance().getPrintLevel() > 2)
+            {
+                printf("HaplotypeQC for hap[%zu] NK %zu NC %zu NUC %zu NUB %zu MAX_D: %zu SUM_D: %zu\n", 
+                    i, nk, num_covered_kmers, num_uncovered_kmers, num_uncovered_bases, max_d, sum_d);
+            }
         }
 
         // Calculate the maximum k such that every kmer is present in the variant and base BWT
@@ -343,18 +349,23 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
             // Calculate the largest k such that the haplotype is walk through a de Bruijn graph of this k
             size_t max_variant_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.variantIndex);
             size_t max_base_k = calculateMaxCoveringK(variant_haplotypes[i], MIN_COVERAGE, m_parameters.baseIndex);
-            printf("Hap2[%zu] MVK: %zu MBK: %zu\n", i, max_variant_k, max_base_k);
+            if(Verbosity::Instance().getPrintLevel() > 2)
+                printf("HaplotypeQC hap[%zu] MVK: %zu MBK: %zu\n", i, max_variant_k, max_base_k);
 
             //
             if( ! (max_variant_k > max_base_k && max_variant_k - max_base_k >= MIN_COVER_K_DIFF && max_base_k < 41))
                 variant_haplotypes[i] = "";
         }
+
     }
     // Copy over the remaining haplotypes
     StringVector tmp_haplotypes;
     for(size_t i = 0; i < variant_haplotypes.size(); ++i) {
         if(!variant_haplotypes[i].empty())
             tmp_haplotypes.push_back(variant_haplotypes[i]);
+
+        if(Verbosity::Instance().getPrintLevel() > 2 && variant_haplotypes[i].empty())
+            printf("HaplotypeQC hap[%zu] failed QC\n", i);
     }
     variant_haplotypes.swap(tmp_haplotypes);
 }

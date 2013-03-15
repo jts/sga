@@ -81,9 +81,6 @@ struct SequenceOverlap
     // Print the alignment with padding characters
     void printAlignment(const std::string& s1, const std::string& s2) const;
 
-    // Compute the fraction of matched columns that show different bases    
-    double calculateMismatchFraction(const std::string& s1, const std::string& s2) const;
-
     // Recalculate the edit distance between the strings using this alignment
     int calculateEditDistance(const std::string& s1, const std::string& s2) const;
     

@@ -24,6 +24,7 @@
 #include "DindelRealignWindow.h"
 #include "QualityTable.h"
 #include "BloomFilter.h"
+#include "Verbosity.h"
 #include "graph-diff.h"
 
 // Functions
@@ -159,6 +160,9 @@ int graphDiffMain(int argc, char** argv)
 {
     parseGraphDiffOptions(argc, argv);
 
+    // Set the verbosity level for the entire package
+    Verbosity::Instance().setPrintLevel(opt::verbose);
+
     if(opt::lowCoverage)
         std::cout << "Initializing population calling\n";
     else if(opt::referenceMode)
@@ -246,7 +250,6 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.minDiscoveryCount = opt::minDiscoveryCount;
     sharedParameters.minDBGCount = opt::minDBGCount;
     sharedParameters.minOverlap = opt::minOverlap;
-    sharedParameters.verbose = opt::verbose;
     sharedParameters.maxHaplotypes = 5;
     sharedParameters.maxReads = 10000;
     sharedParameters.maxExtractionIntervalSize = 500;

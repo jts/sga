@@ -13,6 +13,7 @@
 #include "LRAlignment.h"
 #include "Interval.h"
 #include "Profiler.h"
+#include "Verbosity.h"
 #include "overlapper.h"
 
 // Align the haplotype to the reference genome represented by the BWT/SSA pair
@@ -123,7 +124,8 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             size_t window_size = 200;
             int ref_start = candidates[j].target_extrapolated_start - window_size;
             int ref_end = candidates[j].target_extrapolated_end + window_size;
-            const DNAString& ref_sequence = pReferenceTable->getRead(candidates[j].target_sequence_id).seq;
+            const SeqItem& ref_record = pReferenceTable->getRead(candidates[j].target_sequence_id);
+            const DNAString& ref_sequence = ref_record.seq;
             if(ref_start < 0)
                 ref_start = 0;
 
@@ -137,15 +139,10 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             if(overlap.score < 0 || !overlap.isValid())
                 continue;
 
-            // Skip terrible alignments
-            double mismatch_rate = overlap.calculateMismatchFraction(ref_substring, query);
-            if(mismatch_rate > 0.05f || overlap.total_columns < 50)
-                continue;
-            
             int alignment_start = ref_start + overlap.match[0].start;
             int alignment_end = ref_start + overlap.match[0].end; // inclusive
             int alignment_length = alignment_end - alignment_start + 1;
-            
+
             // Crude count of the number of distinct variation events
             int num_events = overlap.edit_distance;
             std::stringstream c_parser(overlap.cigar);
@@ -160,11 +157,26 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
                     num_events -= (len - 1);
             }
 
+            // Skip poor alignments
+            double mismatch_rate = 1.0f - (overlap.getPercentIdentity() / 100.f);
+            if(mismatch_rate > 0.05f || overlap.total_columns < 50)
+            {
+                if(Verbosity::Instance().getPrintLevel() > 4)
+                {
+                    printf("Haplotype Alignment - Ignoring low quality alignment (%.3lf, %dbp, %d events) to %s:%d\n", 
+                        1.0f - mismatch_rate, overlap.total_columns, num_events, ref_record.id.c_str(), ref_start);
+                }
+                continue;
+            }
 
             HapgenAlignment aln(candidates[j].target_sequence_id, alignment_start, alignment_length, overlap.score, is_reverse);
             tmp_alignments.push_back(aln);
             event_count_vector.push_back(num_events);
-            
+            if(Verbosity::Instance().getPrintLevel() > 4)
+            {
+                printf("Haplotype Alignment - Accepting alignment (%.3lf, %dbp, %d events) to %s:%d\n", 
+                    1.0f - mismatch_rate, overlap.total_columns, num_events, ref_record.id.c_str(), ref_start);
+            }            
             // Record the best edit distance
             if(num_events < min_events) 
                 min_events = num_events;
@@ -173,12 +185,16 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 
     // Copy the best alignments into the output
     int MAX_DIFF_TO_BEST = 10;
-    int MAX_EVENTS = 8;
+    int MAX_EVENTS = 30;
     assert(event_count_vector.size() == tmp_alignments.size());
     for(size_t i = 0; i < event_count_vector.size(); ++i)
     {
+
         if(event_count_vector[i] <= MAX_EVENTS && event_count_vector[i] - min_events <= MAX_DIFF_TO_BEST)
             outAlignments.push_back(tmp_alignments[i]);
+        else if(Verbosity::Instance().getPrintLevel() > 3)
+            printf("Haplotype Alignment - Ignoring alignment with too many events (%d)\n", event_count_vector[i]);
+
     }
 }
 
@@ -385,7 +401,6 @@ bool HapgenUtil::extractHaplotypeReads(const StringVector& haplotypes,
     // 2) find the intervals for the kmers in the fm-index
     // 3) compute the set of read indices of the reads from the intervals (using the sampled suffix array)
     // 4) finally, extract the read sequences from the index
-
     // Make a set of kmers from the haplotypes
     std::set<std::string> kmerSet;
     for(size_t i = 0; i < haplotypes.size(); ++i)
