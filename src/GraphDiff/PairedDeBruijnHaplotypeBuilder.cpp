@@ -156,14 +156,6 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
             if(pGraph->getVertex(newStr) != NULL)
                 continue;
             
-            // Check if this is a variant-only kmer. If so, add new guides/targets for it.
-            size_t base_count = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.baseIndex);
-            if(base_count == 0)
-            {
-                selectGuideAndTargetKmers(newStr, false, guide, target_set);
-                selectGuideAndTargetKmers(reverseComplement(newStr), true, guide, target_set);
-            }
-
             // Allocate the new vertex and add it to the graph
             Vertex* pVertex = new(pGraph->getVertexAllocator()) Vertex(newStr, newStr);
             pVertex->setColor(GC_BLACK);
