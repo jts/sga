@@ -22,4 +22,5 @@ libgraphdiff_a_SOURCES = \
         VCFTester.h VCFTester.cpp \
         GraphCompare.h GraphCompare.cpp \
         OverlapExtractorWithCorrection.h OverlapExtractorWithCorrection.cpp \
+        DBGPathGuide.h DBGPathGuide.cpp \
         IOverlapExtractor.h

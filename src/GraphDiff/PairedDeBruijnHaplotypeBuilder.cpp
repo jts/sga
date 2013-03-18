@@ -1,11 +1,11 @@
 ///----------------------------------------------
-// Copyright 2011 Wellcome Trust Sanger Institute
+// Copyright 2013 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
 // Released under the GPL
 //-----------------------------------------------
 //
-// PairedDeBruijnHaplotypeBuilder - Construct candidate
-// haplotypes from a pair of k-mer seeds.
+// PairedDeBruijnHaplotypeBuilder - Build haplotypes
+// using a de Bruijn graph and read pair constraints
 //
 #include "PairedDeBruijnHaplotypeBuilder.h"
 #include "BWTAlgorithms.h"
@@ -44,8 +44,6 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
     PROFILE_FUNC("GraphCompare::buildVariantStringGraph")
     assert(!m_startingKmer.empty());
     
-    std::map<std::string, int> kmerCountMap;
-
     // We search until we find the first common vertex in each direction
     //size_t MIN_TARGET_COUNT = m_parameters.bReferenceMode ? 1 : 2;
     size_t MAX_ITERATIONS = 50000;
@@ -57,12 +55,17 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
     size_t total_branches = 0;
     size_t iterations = 0;
 
-    // Select kmers from the pairs of reads containing the variant kmers
-    // We search the graph until we find these targets
+    // To simplify the search we use the full read sequences
+    // to guide the de Bruijn graph assembly. In addition, we
+    // require the search to end on a kmer of a read pair of
+    // one of the reads containing the initial kmer. 
+    // Set up these data structures now
+    DBGPathGuide guide(m_startingKmer.size());
     std::set<std::string> target_set;
-    selectTargetKmers(m_startingKmer, true, target_set);
-    selectTargetKmers(reverseComplement(m_startingKmer), false, target_set);
-    
+    selectGuideAndTargetKmers(m_startingKmer, false, guide, target_set);
+    selectGuideAndTargetKmers(reverseComplement(m_startingKmer), true, guide, target_set);
+    guide.printStats();
+
     if(Verbosity::Instance().getPrintLevel() > 3)
         printf("PairedDBGHaplotype: found %zu targets\n", target_set.size());
 
@@ -103,24 +106,64 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
         std::string vertStr = curr.pVertex->getSeq().toString();
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_parameters.variantIndex.pBWT, curr.direction);
 
-        std::string extensionsUsed;
+        // Check whether to accept this edge into the graph
+        bool count_passed[4] = { false, false, false, false };
+        bool guide_passed[4] = { false, false, false, false };
+        bool any_guide_passed = false;
+
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-            bool acceptExt = count >= m_parameters.minDBGCount;
-            if(!acceptExt)
-                continue;
+            bool count_ok = count >= m_parameters.minDBGCount;
 
+            if(count_ok)
+            {
+                count_passed[i] = true;
+                std::string pmer = vertStr;
+                if(curr.direction == ED_SENSE)
+                    pmer.append(1, b);
+                else
+                    pmer.insert(0, 1, b);
+
+                if(guide.hasPmer(pmer))
+                {
+                    guide_passed[i] = true;
+                    any_guide_passed = true;
+                }
+            }
+        }
+
+        // If there is any guide p-mer found, only use the guide pmers to extend the graph. Otherwise
+        // use all the pmers that passed the count threshold.
+        std::string extensions;
+        for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
+        {
+            char b = DNA_ALPHABET::getBase(i);
+            if( (any_guide_passed && guide_passed[i]) || (!any_guide_passed && count_passed[i]) )
+                extensions.push_back(b);
+        }
+
+        std::string extensionsUsed;
+        for(size_t i = 0; i < extensions.size(); ++i)
+        {
+            char b = extensions[i];
             extensionsUsed.push_back(b);
             std::string newStr = VariationBuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
-            kmerCountMap[newStr] = count;
 
             // Create the new vertex and edge in the graph
             // Skip if the vertex already exists
             if(pGraph->getVertex(newStr) != NULL)
                 continue;
             
+            // Check if this is a variant-only kmer. If so, add new guides/targets for it.
+            size_t base_count = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.baseIndex);
+            if(base_count == 0)
+            {
+                selectGuideAndTargetKmers(newStr, false, guide, target_set);
+                selectGuideAndTargetKmers(reverseComplement(newStr), true, guide, target_set);
+            }
+
             // Allocate the new vertex and add it to the graph
             Vertex* pVertex = new(pGraph->getVertexAllocator()) Vertex(newStr, newStr);
             pVertex->setColor(GC_BLACK);
@@ -188,18 +231,28 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
 }
  
 //
-void PairedDeBruijnHaplotypeBuilder::selectTargetKmers(const std::string& kmer, bool rc_targets, std::set<std::string>& target_set) const
+void PairedDeBruijnHaplotypeBuilder::selectGuideAndTargetKmers(const std::string& kmer, 
+                                                               bool is_kmer_reversed, 
+                                                               DBGPathGuide& guide,
+                                                               std::set<std::string>& target_set) const
 {
     size_t k = kmer.size();
     std::vector<size_t> ids = getReadIDs(kmer);
 
-    // Iterate over the pairs of the reads containing the input kmer
-    // and return the first reference kmer in any pair
+    // Set up guide
+    for(size_t i = 0; i < ids.size(); ++i)
+    {
+        std::string read = BWTAlgorithms::extractString(m_parameters.variantIndex.pBWT, ids[i]);
+        if(is_kmer_reversed)
+            read = reverseComplement(read);
+        guide.addSequence(read);
+    }
+
+    // Set up targets
     for(size_t i = 0; i < ids.size(); i++)
     {
         size_t pair_id = ids[i] % 2 == 0 ? ids[i] + 1 : ids[i] - 1;
         std::string pair = BWTAlgorithms::extractString(m_parameters.variantIndex.pBWT, pair_id);
-        printf(">PID:%zu\n%s\n", pair_id, pair.c_str());
 
         for(size_t j = 0; j < pair.size() - k + 1; ++j)
         {
@@ -207,7 +260,7 @@ void PairedDeBruijnHaplotypeBuilder::selectTargetKmers(const std::string& kmer, 
             size_t ref_count = BWTAlgorithms::countSequenceOccurrences(test_kmer, m_parameters.referenceIndex);
             size_t base_count = BWTAlgorithms::countSequenceOccurrences(test_kmer, m_parameters.baseIndex);
             if(ref_count == 1 && base_count > 0)
-                target_set.insert(rc_targets ? reverseComplement(test_kmer) : test_kmer);
+                target_set.insert(is_kmer_reversed ? test_kmer : reverseComplement(test_kmer));
         }
     }
 }
@@ -216,12 +269,8 @@ void PairedDeBruijnHaplotypeBuilder::selectTargetKmers(const std::string& kmer, 
 std::vector<size_t> PairedDeBruijnHaplotypeBuilder::getReadIDs(const std::string& kmer) const
 {
     BWTInterval interval = BWTAlgorithms::findInterval(m_parameters.variantIndex, kmer);
-    std::cout << "Kmer: " << kmer << "\n";
     std::vector<size_t> out;
     for(int64_t i = interval.lower; i <= interval.upper; ++i)
-    {
         out.push_back(m_parameters.variantIndex.pSSA->calcSA(i, m_parameters.variantIndex.pBWT).getID());
-        std::cout << "ID: " << out.back() << "\n";
-    }
     return out;
 }

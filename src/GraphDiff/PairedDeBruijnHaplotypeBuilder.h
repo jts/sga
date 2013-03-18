@@ -1,14 +1,14 @@
 ///----------------------------------------------
-// Copyright 2012 Wellcome Trust Sanger Institute
+// Copyright 2013 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
 // Released under the GPL
 //-----------------------------------------------
 //
-// DeBruijnHaplotypeBuilder - Build haplotypes
-// using a de Bruijn graph
+// PairedDeBruijnHaplotypeBuilder - Build haplotypes
+// using a de Bruijn graph and read pair constraints
 //
-#ifndef DEBRUIJN_HAPLOTYPE_BUILDER_H
-#define DEBRUIJN_HAPLOTYPE_BUILDER_H
+#ifndef PAIRED_DEBRUIJN_HAPLOTYPE_BUILDER_H
+#define PAIRED_DEBRUIJN_HAPLOTYPE_BUILDER_H
 
 #include "BWT.h"
 #include "SampledSuffixArray.h"
@@ -22,6 +22,7 @@
 #include "GraphCompare.h"
 #include "ErrorCorrectProcess.h"
 #include "SGWalk.h"
+#include "DBGPathGuide.h"
 #include <queue>
 
 // Build haplotypes starting from a given sequence.
@@ -45,7 +46,7 @@ class PairedDeBruijnHaplotypeBuilder
         std::vector<size_t> getReadIDs(const std::string& kmer) const;
 
         // 
-        void selectTargetKmers(const std::string& kmer, bool rc_targets, std::set<std::string>& target_set) const;
+        void selectGuideAndTargetKmers(const std::string& kmer, bool is_kmer_reversed, DBGPathGuide& guide, std::set<std::string>& target_set) const;
 
         //
         // Data
