@@ -496,7 +496,7 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
 
 void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
 {
-    int n_samples = 1000000;
+    int n_samples = 100000;
     size_t k = 31;
     double gc_bin_size = 0.05;
 
@@ -817,7 +817,7 @@ int preQCMain(int argc, char** argv)
     generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
     generate_position_of_first_error(&writer, index_set);
-    generate_errors_per_base(&writer, index_set);
+    //generate_errors_per_base(&writer, index_set);
     generate_unipath_length_data(&writer, index_set);
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
