@@ -49,6 +49,7 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
     size_t MAX_ITERATIONS = 50000;
     size_t MAX_SIMULTANEOUS_BRANCHES = 100;
     size_t MAX_TOTAL_BRANCHES = 500;
+    int MIN_TARGET_DISTANCE = 100;
 
     // Tracking stats
     size_t max_simul_branches_used = 0;
@@ -81,8 +82,8 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
     pGraph->addVertex(pVertex);
 
     // Add the vertex to the extension queue
-    queue.push(BuilderExtensionNode(pVertex, ED_SENSE));
-    queue.push(BuilderExtensionNode(pVertex, ED_ANTISENSE));
+    queue.push(BuilderExtensionNode(pVertex, ED_SENSE, 0));
+    queue.push(BuilderExtensionNode(pVertex, ED_ANTISENSE, 0));
 
     std::vector<Vertex*> sense_join_vector;
     std::vector<Vertex*> antisense_join_vector;
@@ -164,7 +165,7 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
             // Add edges
             VariationBuilderCommon::addSameStrandDeBruijnEdges(pGraph, curr.pVertex, pVertex, curr.direction);
             
-            if(target_set.find(newStr) != target_set.end())
+            if(target_set.find(newStr) != target_set.end() && curr.distance >= MIN_TARGET_DISTANCE)
             {
                 if(curr.direction == ED_SENSE)
                     sense_join_vector.push_back(pVertex);
@@ -175,7 +176,7 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
             else
             {
                 // Add the vertex to the extension queue
-                queue.push(BuilderExtensionNode(pVertex, curr.direction));
+                queue.push(BuilderExtensionNode(pVertex, curr.direction, curr.distance + 1));
             }
         }
         
@@ -205,7 +206,10 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
                                 outWalks);
 
             for(size_t k = 0; k < outWalks.size(); ++k)
+            {
+
                 out_haplotypes.push_back(outWalks[k].getString(SGWT_START_TO_END));
+            }
         }
     }
 

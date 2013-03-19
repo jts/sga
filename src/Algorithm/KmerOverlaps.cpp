@@ -12,6 +12,7 @@
 #include "BWTAlgorithms.h"
 #include "Profiler.h"
 #include "Timer.h"
+#include "Verbosity.h"
 
 //
 MultipleAlignment KmerOverlaps::buildMultipleAlignment(const std::string& query, 
@@ -205,7 +206,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
 
     t_time += timer.getElapsedCPUTime();
 
-    if(n_calls % 100 == 0)
+    if(Verbosity::Instance().getPrintLevel() > 6 && n_calls % 100 == 0)
         printf("[kmer overlaps] n: %zu candidates: %zu valid: %zu (%.2lf) time: %.2lfs\n", 
             n_calls, n_candidates, n_output, (double)n_output / n_candidates, t_time);
     return overlap_vector;
@@ -444,7 +445,7 @@ void _approximateSeededMatch(const std::string& in_query,
     }
     t_time += timer.getElapsedCPUTime();
     
-    if(n_calls % 100 == 0)
+    if(Verbosity::Instance().getPrintLevel() > 6 && n_calls % 100 == 0)
         printf("[approx seeds] n: %zu candidates: %zu valid: %zu (%.2lf) time: %.2lfs\n", 
             n_calls, n_candidates, n_output, (double)n_output / n_candidates, t_time);
 }

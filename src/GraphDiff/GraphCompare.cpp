@@ -201,8 +201,8 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
                 if(Verbosity::Instance().getPrintLevel() > 0)
                 {
                     std::cout << "Dindel returned " << drc << "\n";
-                    std::cout << "base: " << baseVCFSS.str() << "\n";
-                    std::cout << "vari: " << variantVCFSS.str() << "\n";
+                    std::cout << "base vcf records:\n" << baseVCFSS.str() << "\n";
+                    std::cout << "variant vcf records:\n" << variantVCFSS.str() << "\n";
                 }
                 
                 // DINDEL ran without error, push its results to the output
@@ -292,6 +292,7 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
             size_t num_covered_kmers = 0;
             std::vector<size_t> start_positions;
             BitVector covered_bases(n);
+            std::stringstream cov_ss;
 
             for(size_t j = 0; j < nk; ++j) 
             {
@@ -303,6 +304,11 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
                         covered_bases.set(m, true);
                     start_positions.push_back(j);
                 }
+
+                if(c > 9)
+                    cov_ss << 9;
+                else
+                    cov_ss << c;
             }
 
             size_t num_uncovered_kmers = nk - num_covered_kmers;
@@ -334,6 +340,7 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
             {
                 printf("HaplotypeQC for hap[%zu] NK %zu NC %zu NUC %zu NUB %zu MAX_D: %zu SUM_D: %zu\n", 
                     i, nk, num_covered_kmers, num_uncovered_kmers, num_uncovered_bases, max_d, sum_d);
+                printf("HaplotypeQC for hap[%zu] %s\n", i, cov_ss.str().c_str());
             }
         }
 

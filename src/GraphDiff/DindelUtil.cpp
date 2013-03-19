@@ -142,6 +142,9 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     size_t normal_reads = normalReads.size() + normalRCReads.size();
     size_t variant_reads = variantReads.size() + variantRCReads.size();
     size_t total_reads = normal_reads + variant_reads;
+    
+    if(Verbosity::Instance().getPrintLevel() > 3)
+        printf("Extracted %zu normal reads, %zu variant reads\n", normal_reads, variant_reads);
 
     if(total_reads > parameters.maxReads)
         return DRC_OVER_DEPTH;
@@ -252,9 +255,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             dReads.push_back(convertToDindelRead(indices, rcReads[j], false));
         }
 
-        //std::cout << "*******MULTIPLE ALIGNMENT of reads and haplotypes\n";
-        //doMultipleReadHaplotypeAlignment(dReads, flankingHaplotypes);
-
         pThisResult = new DindelRealignWindowResult();
 
         std::stringstream out_ss;
@@ -282,17 +282,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             curr_out << vcfCollections[i].records[j] << "\n";
     }
 
-    // Copy raw VCFRecords to stdout
-    if(Verbosity::Instance().getPrintLevel() > 0)
-    {
-        for(size_t i = 0; i <= 1; ++i)
-        {
-            std::cout << ((i==0)?"BASE:\t" : "VARI:\t");
-            for(size_t j = 0; j < vcfCollections[i].records.size(); ++j)
-                std::cout << vcfCollections[i].records[j] << "\n";
-        }
-    }
-    
     // Make comparative calls
     size_t VARIANT_IDX = 1;
     size_t BASE_IDX = 0;
