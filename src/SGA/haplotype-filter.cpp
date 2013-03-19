@@ -246,38 +246,13 @@ int haplotypeFilterMain(int argc, char** argv)
         std::stringstream lmss;
         lmss << fields[7];
         lmss << ";LM=" << LM << ";";
-        lmss << ";O=" << total_coverage << ";";
+        lmss << "O=" << total_coverage << ";";
         fields[7] = lmss.str();
-        for(size_t i = 0; i < fields.size(); ++i)
-            outFile << fields[i] << "\t";
+
+        std::copy(fields.begin(), fields.end(), std::ostream_iterator<std::string>(outFile, "\t"));
         outFile << "\n";
     }
     
-    /*
-    // Load a hash of k-mer -> haplotype
-    StringVector haplotypes;
-    HashMap<std::string, size_t> kmer_to_haplotype;
-
-    // Load haplotypes into hash
-    std::cout << "Loading haplotypes\n";
-    size_t hash_k = 61; // HACK
-    SeqReader reader(opt::haplotypeFile);
-    SeqRecord record;
-    while(reader.get(record))
-    {
-        haplotypes.push_back(record.seq.toString());
-        std::string& haplotype = haplotypes.back();
-
-        size_t nk = haplotypes.size() - hash_k + 1;
-        for(size_t i = 0; i < nk; ++i)
-        {
-            std::string kmer = haplotype.substr(i, hash_k);
-            kmer_to_haplotype[kmer] = haplotypes.size() - 1;
-        }
-//        applyFilter(record.seq.toString(), indices);
-    }
-    */
-
     // Cleanup
     delete indices.pBWT;
     delete indices.pPopIdx;
@@ -300,8 +275,6 @@ void runSimulation()
 
     size_t min_o = 5;
     size_t max_o = (size_t)(d * N);
-    (void)min_o;
-    (void)max_o;
     srand(time(NULL));
     bool use_diploid = true;
 
@@ -333,7 +306,6 @@ void runSimulation()
             counts = simulateCoverageNullNonUniform(depths, o);
         else
             counts = simulateCoverageDiploidNonUniform(depths, o, dbg_num_carriers);
-            //counts = simulateCoverageHaploidNonUniform(depths, o, dbg_num_carriers);
 
         if(opt::verbose > 0)
         {
@@ -341,7 +313,7 @@ void runSimulation()
             std::copy(counts.begin(), counts.end(), std::ostream_iterator<size_t>(std::cout, " "));
             std::cout << "\n";
         }
-//        double s_h = LMHaploid(d, counts);
+
         double s_h = 0.0f;
         double s_d_nu = LMDiploidNonUniform(depths, counts);
         double s_h_nu = LMHaploidNonUniform(depths, counts);
@@ -616,40 +588,7 @@ double LMDiploidNonUniform(const std::vector<double>& depths, const std::vector<
     if(opt::verbose)
         printf("DIP ParamEst o: %zu n0: %zu M1: %lf M2: %lf M3: %lf M_est: %lf\n", (size_t)o, n0, M1, M2, M3, M_est);
     
-    double best_LM = -std::numeric_limits<double>::max();
     return _diploidNonUniform(depths, sample_count, M3);
-
-    double log_normalization = 0.0f;
-//    size_t min_alleles = 1; //(size_t)std::max((int)M2 - 50, 0);
-    size_t min_alleles = 0;//std::min(M1, M2);
-    size_t max_alleles = 2*N; //std::min((size_t)M2 + 50, 2 * N);
-    size_t stride = 10;
-    
-    for(size_t M = min_alleles; M < max_alleles; M += stride)
-    {
-        double log_prob_M = Stats::logPoisson((size_t)o, mean_depth * M) - log(M);
-        if(!isnan(log_prob_M))
-            log_normalization = addLogs(log_normalization, log_prob_M);
-    }
-
-    //
-    for(size_t M = min_alleles; M < max_alleles; M += stride)
-    {
-        double log_prob_M = Stats::logPoisson((size_t)o, mean_depth * M) - log_normalization - log(M);
-        double LM = _diploidNonUniform(depths, sample_count, M);
-        if(opt::verbose)
-            printf("\tM: %zu log_prob_M %lf LM %lf\n", M, log_prob_M, LM);
-
-        LM += log_prob_M;
-        if(LM > best_LM)
-        {
-            best_LM = LM;
-        }
-    }
-    
-//    if(opt::verbose)
-//        printf("Optimal %lf Sum: %lf is_inf %d\n", best_LM, sum, isinf(sum));
-    return best_LM;
 }
 
 // 
