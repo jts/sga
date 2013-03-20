@@ -185,7 +185,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 
     // Copy the best alignments into the output
     int MAX_DIFF_TO_BEST = 10;
-    int MAX_EVENTS = 30;
+    int MAX_EVENTS = 8;
     assert(event_count_vector.size() == tmp_alignments.size());
     for(size_t i = 0; i < event_count_vector.size(); ++i)
     {
