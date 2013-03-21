@@ -19,7 +19,7 @@
 #include "Timer.h"
 #include "SequenceProcessFramework.h"
 #include "HapgenUtil.h"
-#include "Stats.h"
+#include "SGAStats.h"
 #include "HashMap.h"
 
 // Functions
@@ -248,7 +248,6 @@ int haplotypeFilterMain(int argc, char** argv)
         lmss << ";LM=" << LM << ";";
         lmss << "O=" << total_coverage << ";";
         fields[7] = lmss.str();
-
         std::copy(fields.begin(), fields.end(), std::ostream_iterator<std::string>(outFile, "\t"));
         outFile << "\n";
     }
@@ -381,7 +380,6 @@ double LMHaploid(double d, const std::vector<size_t>& sample_count)
         }
         else
         {
-            //sum += (log(M/N) + Stats::logPoisson(oi, q) - Stats::logPoisson(oi, p));
             sum += log(M/N) + oi * log(q) - oi * log(p) + p - q;
         }
     }
@@ -489,10 +487,8 @@ double _haploidNonUniform(const std::vector<double>& depths, const std::vector<s
         }
         else
         {
-            //sum += (log(M/N) + Stats::logPoisson(oi, q) - Stats::logPoisson(oi, p));
-            //sum += log(M/N) + oi * log(q) - oi * log(p) + p - q;
-            L_NULL = Stats::logPoisson(oi, p);
-            L_ALT = (log(M/N) + Stats::logPoisson(oi, q));
+            L_NULL = SGAStats::logPoisson(oi, p);
+            L_ALT = (log(M/N) + SGAStats::logPoisson(oi, q));
             sum += L_ALT - L_NULL;
         }
 
@@ -543,9 +539,9 @@ double LMDiploid(double d, const std::vector<size_t>& sample_count)
         }
         else
         {
-            double log_null = Stats::logPoisson(oi, p);
+            double log_null = SGAStats::logPoisson(oi, p);
             double t1 = 2 * f * (1 - f) * pow(q, oi) * exp(-q) + pow(f, 2) * pow(2 * q, oi) * exp(-2 * q);
-            double t2 = Stats::logFactorial(oi);
+            double t2 = SGAStats::logFactorial(oi);
             double t3 = log(t1) - t2;
             sum += t3 - log_null;
         }
@@ -670,9 +666,9 @@ double _diploidNonUniform(const std::vector<double>& depths, const std::vector<s
         }
         else
         {
-            double log_null = Stats::logPoisson(oi, p);
+            double log_null = SGAStats::logPoisson(oi, p);
             double t1 = het_prop * pow(q, oi) * exp(-q) + hom_alt_prop * pow(2 * q, oi) * exp(-2 * q);
-            double t2 = Stats::logFactorial(oi);
+            double t2 = SGAStats::logFactorial(oi);
             double t3 = log(t1) - t2;
             sum += t3 - log_null;
             L_NULL = log_null;
