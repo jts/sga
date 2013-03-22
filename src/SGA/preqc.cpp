@@ -818,9 +818,8 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
-    generate_errors_per_base(&writer, index_set);
+    //generate_errors_per_base(&writer, index_set);
 
-    /*
     generate_gc_distribution(&writer, index_set);
     generate_quality_stats(&writer, opt::readsFile);
     generate_pe_fragment_sizes(&writer, index_set);
@@ -831,7 +830,6 @@ int preQCMain(int argc, char** argv)
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
     generate_local_graph_complexity(&writer, index_set);
-    */
 
     // End document
     writer.EndObject();
