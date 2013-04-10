@@ -162,6 +162,9 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
             // Check if this k-mer is present in the other base index
             size_t base_count = BWTAlgorithms::countSequenceOccurrences(kmer, m_parameters.baseIndex);
             
+            if(Verbosity::Instance().getPrintLevel() > 6)
+                std::cout << "Read: " << currRead.id << " k: " << j << " CV: " << interval.size() << "/" << rc_interval.size() << " " << base_count << "\n";
+            
             // k-mer present in the base read set, skip it
             if(base_count >= min_base_coverage)
                 continue;

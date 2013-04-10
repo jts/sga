@@ -47,9 +47,9 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
     // We search until we find the first common vertex in each direction
     //size_t MIN_TARGET_COUNT = m_parameters.bReferenceMode ? 1 : 2;
     size_t MAX_ITERATIONS = 50000;
-    size_t MAX_SIMULTANEOUS_BRANCHES = 100;
-    size_t MAX_TOTAL_BRANCHES = 500;
-    int MIN_TARGET_DISTANCE = 100;
+    size_t MAX_SIMULTANEOUS_BRANCHES = 1000;
+    size_t MAX_TOTAL_BRANCHES = 5000;
+    int MIN_TARGET_DISTANCE = 50;
 
     // Tracking stats
     size_t max_simul_branches_used = 0;
@@ -164,7 +164,16 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
 
             // Add edges
             VariationBuilderCommon::addSameStrandDeBruijnEdges(pGraph, curr.pVertex, pVertex, curr.direction);
+            //size_t ref_count = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.referenceIndex);
+            size_t base_count = BWTAlgorithms::countSequenceOccurrences(newStr, m_parameters.baseIndex);
             
+            if(base_count == 0)
+            {
+                selectGuideAndTargetKmers(newStr, false, guide, target_set);
+                selectGuideAndTargetKmers(reverseComplement(newStr), true, guide, target_set);
+            }
+
+            //if((ref_count == 1 || target_set.find(newStr) != target_set.end()) && curr.distance >= MIN_TARGET_DISTANCE)
             if(target_set.find(newStr) != target_set.end() && curr.distance >= MIN_TARGET_DISTANCE)
             {
                 if(curr.direction == ED_SENSE)
