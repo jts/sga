@@ -100,7 +100,7 @@ def plot_kmer_distribution(pp, data):
         for a,b in zip(x,y):
             fb = float(b) / s
             cumulative_sum += fb
-            if cumulative_sum < CUTOFF:
+            if a < 80 and cumulative_sum < CUTOFF:
                 nx.append(a)
                 ny.append(fb)
         pl.plot(nx, ny)

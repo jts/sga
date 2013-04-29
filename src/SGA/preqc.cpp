@@ -130,13 +130,14 @@ std::string get_valid_dbg_neighbors_ratio(const std::string& kmer,
 std::string get_valid_dbg_neighbors_coverage_and_ratio(const std::string& kmer,
                                                        const BWTIndexSet& index_set,
                                                        size_t min_coverage,
-                                                       double min_ratio)
+                                                       double min_ratio,
+                                                       EdgeDir dir)
 {
     std::string out;
     AlphaCount64 counts = 
         BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, 
                                                               index_set.pBWT,
-                                                              ED_SENSE,
+                                                              dir,
                                                               index_set.pCache);
     
     if(!counts.hasDNAChar())
@@ -408,7 +409,8 @@ void generate_local_graph_complexity(JSONWriter* pWriter, const BWTIndexSet& ind
                     get_valid_dbg_neighbors_coverage_and_ratio(kmer, 
                                                                index_set, 
                                                                min_coverage_for_branch, 
-                                                               min_coverage_ratio);
+                                                               min_coverage_ratio,
+                                                               ED_SENSE);
 #if HAVE_OPENMP
                 #pragma omp critical
 #endif
@@ -417,6 +419,71 @@ void generate_local_graph_complexity(JSONWriter* pWriter, const BWTIndexSet& ind
                     num_kmers += 1;
                 }
 
+            }
+        }
+
+        pWriter->StartObject();
+        pWriter->String("k");
+        pWriter->Int(k);
+        pWriter->String("num_kmers");
+        pWriter->Int(num_kmers);
+        pWriter->String("num_branches");
+        pWriter->Int(num_branches);
+        pWriter->EndObject();
+    }
+    pWriter->EndArray();
+}
+
+// Measure genome repetitiveness using the rate of k-mers
+// that branch on both ends
+void generate_double_branch(JSONWriter* pWriter, const BWTIndexSet& index_set)
+{
+    int n_samples = 50000;
+    size_t min_coverage_to_test = 5;
+    size_t min_coverage_for_branch = 3;
+    double min_coverage_ratio = 0.5f;
+
+    pWriter->String("DoubleBranch");
+    pWriter->StartArray();
+    for(size_t k = 16; k < 86; k += 5)
+    {
+        size_t num_branches = 0;
+        size_t num_kmers = 0;
+
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+        for(int i = 0; i < n_samples; ++i)
+        {
+            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+            if(s.size() < k)
+                continue;
+
+            std::string kmer = s.substr(0, k);
+            size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set);
+            if(count >= min_coverage_to_test)
+            {
+                std::string right_extensions = 
+                    get_valid_dbg_neighbors_coverage_and_ratio(kmer, 
+                                                               index_set,
+                                                               min_coverage_for_branch, 
+                                                               min_coverage_ratio,
+                                                               ED_SENSE);
+
+                std::string left_extensions = 
+                    get_valid_dbg_neighbors_coverage_and_ratio(kmer, 
+                                                               index_set,
+                                                               min_coverage_for_branch, 
+                                                               min_coverage_ratio,
+                                                               ED_ANTISENSE);
+#if HAVE_OPENMP
+                    #pragma omp critical
+#endif
+                    {    
+                        num_branches += (left_extensions.size() > 1 && right_extensions.size() > 1);
+                        num_kmers += 1;
+                    }
             }
         }
 
@@ -819,7 +886,6 @@ int preQCMain(int argc, char** argv)
     writer.StartObject();
 
     //generate_errors_per_base(&writer, index_set);
-
     generate_gc_distribution(&writer, index_set);
     generate_quality_stats(&writer, opt::readsFile);
     generate_pe_fragment_sizes(&writer, index_set);
