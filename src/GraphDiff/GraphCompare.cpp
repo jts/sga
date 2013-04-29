@@ -243,10 +243,16 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
 
     if(m_parameters.algorithm == GCA_DEBRUIJN_GRAPH)
     {
+        DeBruijnHaplotypeBuilder dbg_builder(m_parameters);
+        dbg_builder.setInitialHaplotype(str);
+        dbg_builder.run(result.variant_haplotypes);
+    }
+    else if(m_parameters.algorithm == GCA_PAIRED_DEBRUIJN_GRAPH)
+    {
         PairedDeBruijnHaplotypeBuilder dbg_builder(m_parameters);
         dbg_builder.setInitialHaplotype(str);
         dbg_builder.run(result.variant_haplotypes);
-    } 
+    }
     else if(m_parameters.algorithm == GCA_STRING_GRAPH)
     {
         OverlapHaplotypeBuilder overlap_builder(m_parameters);

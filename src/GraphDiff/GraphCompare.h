@@ -33,7 +33,8 @@
 enum GraphCompareAlgorithm
 {
     GCA_STRING_GRAPH,
-    GCA_DEBRUIJN_GRAPH
+    GCA_DEBRUIJN_GRAPH,
+    GCA_PAIRED_DEBRUIJN_GRAPH
 };
 
 // Parameters structure

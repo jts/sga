@@ -77,6 +77,7 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "      -k, --kmer=K                     use K-mers to discover variants\n"
 "      -x, --min-discovery-count=T      require a variant k-mer to be seen at least T times\n"
 "          --debruijn                   use the de Bruijn graph assembly algorithm (default: string graph)\n"
+"          --paired-debruijn            use the de Bruijn graph assembly algorithm with paired-end constraints(default: string graph)\n"
 "      -m, --min-overlap=N              require at least N bp overlap when assembling using a string graph\n" 
 "          --min-dbg-count=T            only use k-mers seen T times when assembling using a de Bruijn graph\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -99,6 +100,7 @@ namespace opt
 
     // Calling modes
     static bool deBruijnMode = false;
+    static bool deBruijnPairedMode = false;
     static bool lowCoverage = false;
     static bool referenceMode = false;
     static bool useQualityScores = false;
@@ -123,6 +125,7 @@ enum { OPT_HELP = 1,
        OPT_MIN_DBG_COUNT, 
        OPT_INDEX, 
        OPT_DEBRUIJN, 
+       OPT_PAIRED_DEBRUIJN, 
        OPT_LOWCOVERAGE, 
        OPT_QUALSCORES,
        OPT_BLOOM_GENOME,
@@ -139,6 +142,7 @@ static const struct option longopts[] = {
     { "prefix",               required_argument, NULL, 'p' },
     { "min-overlap",          required_argument, NULL, 'm' },
     { "debruijn",             no_argument,       NULL, OPT_DEBRUIJN },
+    { "paired-debruijn",      no_argument,       NULL, OPT_PAIRED_DEBRUIJN },
     { "low-coverage",         no_argument,       NULL, OPT_LOWCOVERAGE },
     { "use-quality-scores",   no_argument,       NULL, OPT_QUALSCORES},
     { "index",                required_argument, NULL, OPT_INDEX },
@@ -458,6 +462,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
             case OPT_DEBRUIJN: opt::deBruijnMode = true; break;
+            case OPT_PAIRED_DEBRUIJN: opt::deBruijnPairedMode = true; break;
             case OPT_LOWCOVERAGE: opt::lowCoverage = true; break;
             case OPT_MIN_DBG_COUNT: arg >> opt::minDBGCount; break;
             case OPT_BLOOM_GENOME: arg >> opt::bloomGenomeSize; break;
