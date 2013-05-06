@@ -8,7 +8,7 @@ my $dbsnp_path = ""; # Filter variants against dbSNP at the given directory
 my $sga_file = "";
 my $dust_cutoff = 2.0;
 my $strand_cutoff = 2.0;
-my $hplen_cutoff = 2.0;
+my $hplen_cutoff = 7;
 
 GetOptions("dbsnp=s" => \$dbsnp_path,
            "sga=s" => \$sga_file);
