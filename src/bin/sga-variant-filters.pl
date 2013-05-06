@@ -3,6 +3,7 @@
 
 use strict;
 use Getopt::Long;
+use File::Basename;
 
 my $dbsnp_path = ""; # Filter variants against dbSNP at the given directory
 my $sga_file = "";
@@ -26,7 +27,8 @@ filter_annotations($sga_file);
 sub filter_annotations
 {
     my($in) = @_;
-    my $outname = "$in.filters.vcf";
+    my $base = basename($in, ".vcf");
+    my $outname = "$base.filters.vcf";
     open(OUT, ">$outname") || die("Cannot open $outname");
     open(IN, $in) || die("Cannot open $in");
     my $total_out = 0;
