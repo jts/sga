@@ -287,7 +287,8 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     {
         bool not_called_in_base = true;
         if(has_base_calls)
-            not_called_in_base = vcfCollections[BASE_IDX].records[i].passStr == "NoCall";
+            not_called_in_base = vcfCollections[BASE_IDX].records[i].passStr == "NoCall" ||
+                                 vcfCollections[BASE_IDX].records[i].passStr == "NoSupp";
 
         bool called_in_variant = vcfCollections[VARIANT_IDX].records[i].passStr == "PASS";
         if(called_in_variant && not_called_in_base)

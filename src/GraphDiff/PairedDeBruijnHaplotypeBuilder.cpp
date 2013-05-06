@@ -65,7 +65,6 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
     std::set<std::string> target_set;
     selectGuideAndTargetKmers(m_startingKmer, false, guide, target_set);
     selectGuideAndTargetKmers(reverseComplement(m_startingKmer), true, guide, target_set);
-    guide.printStats();
 
     if(Verbosity::Instance().getPrintLevel() > 3)
         printf("PairedDBGHaplotype: found %zu targets\n", target_set.size());
@@ -212,15 +211,6 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
 
                 out_haplotypes.push_back(outWalks[k].getString(SGWT_START_TO_END));
             }
-        }
-    }
-
-    if(!out_haplotypes.empty())
-    {
-        std::cout << "haplotypes found!\n";
-        for(size_t i = 0; i < out_haplotypes.size(); i++)
-        {
-            printf(">HID:%zu\n%s\n", i, out_haplotypes[i].c_str());
         }
     }
 

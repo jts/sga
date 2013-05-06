@@ -299,7 +299,7 @@ size_t processWorkParallelOpenMP(Generator& generator,
             outputBuffer.resize(inputBuffer.size());
 
             //
-            #pragma omp parallel for schedule(dynamic, 64)
+            #pragma omp parallel for schedule(dynamic, 256)
             for(int i = 0; i < (int)inputBuffer.size(); ++i)
             {
                 // Dispatch the work to a processor and write the output to the output buffer

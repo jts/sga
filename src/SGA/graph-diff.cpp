@@ -249,7 +249,13 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.pRefTable = &refTable;
     sharedParameters.bReferenceMode = opt::referenceMode;
 
-    sharedParameters.algorithm = opt::deBruijnMode ? GCA_DEBRUIJN_GRAPH : GCA_STRING_GRAPH;
+    if(opt::deBruijnPairedMode)
+        sharedParameters.algorithm = GCA_PAIRED_DEBRUIJN_GRAPH;
+    else if(opt::deBruijnMode)
+        sharedParameters.algorithm = GCA_DEBRUIJN_GRAPH;
+    else
+        sharedParameters.algorithm = GCA_STRING_GRAPH;
+
     sharedParameters.kmer = opt::kmer;
     sharedParameters.minDiscoveryCount = opt::minDiscoveryCount;
     sharedParameters.minDBGCount = opt::minDBGCount;
@@ -322,7 +328,7 @@ void runGraphDiff(GraphCompareParameters& parameters)
     size_t occupancy_factor = 20;
     size_t bloom_size = occupancy_factor * expected_bits;
 
-    BloomFilter* pBloomFilter = new BloomFilter(bloom_size, 3);
+    BloomFilter* pBloomFilter = new BloomFilter(bloom_size, 5);
     parameters.pBloomFilter = pBloomFilter;
     preloadBloomFilter(parameters.pRefTable, parameters.kmer, pBloomFilter);
 
