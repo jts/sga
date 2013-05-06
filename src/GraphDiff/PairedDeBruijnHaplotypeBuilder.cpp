@@ -107,31 +107,14 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
         AlphaCount64 extensionCounts = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_parameters.variantIndex.pBWT, curr.direction);
 
         // Check whether to accept this edge into the graph
+        // We currently only use the counts and not the guide kmers
         bool count_passed[4] = { false, false, false, false };
-        bool guide_passed[4] = { false, false, false, false };
-        bool any_guide_passed = false;
 
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
             size_t count = extensionCounts.get(b);
-            bool count_ok = count >= m_parameters.minDBGCount;
-
-            if(count_ok)
-            {
-                count_passed[i] = true;
-                std::string pmer = vertStr;
-                if(curr.direction == ED_SENSE)
-                    pmer.append(1, b);
-                else
-                    pmer.insert(0, 1, b);
-
-                if(guide.hasPmer(pmer))
-                {
-                    guide_passed[i] = true;
-                    any_guide_passed = true;
-                }
-            }
+            count_passed[i] = count >= m_parameters.minDBGCount;
         }
 
         // If there is any guide p-mer found, only use the guide pmers to extend the graph. Otherwise
@@ -140,7 +123,7 @@ HaplotypeBuilderReturnCode PairedDeBruijnHaplotypeBuilder::run(StringVector& out
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
-            if( (any_guide_passed && guide_passed[i]) || (!any_guide_passed && count_passed[i]) )
+            if( count_passed[i] ) 
                 extensions.push_back(b);
         }
 
