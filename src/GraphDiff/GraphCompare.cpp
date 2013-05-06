@@ -290,8 +290,6 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
     if(!bReferenceMode) 
     {
         // If in comparative mode, check whether the haplotype has sparse coverage by the base
-        //static const size_t MIN_UNIQUE_KMERS = 10;
-
         for(size_t i = 0; i < variant_haplotypes.size(); ++i) 
         {
             std::string& haplotype = variant_haplotypes[i];
@@ -340,7 +338,6 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
             for(size_t j = 0; j < n; j++)
                 num_uncovered_bases += covered_bases.test(j) ? 0 : 1;
 
-            //if(num_uncovered_kmers < MIN_UNIQUE_KMERS || num_uncovered_bases == 0)
             if(max_d < k / 2)
                 haplotype = "";
 

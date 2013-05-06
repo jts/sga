@@ -15,6 +15,7 @@
 #include "HashMap.h"
 #include "multiple_alignment.h"
 #include "VCFUtil.h"
+#include "BWTIndexSet.h"
 #include <iomanip>
 #include <list>
 #include <set>
@@ -259,6 +260,7 @@ class DindelVariant
         void setPriorProb(double prob) { m_priorProb = prob; }
         double getPriorProb() const { if (m_priorProb==-1.0) { std::cerr << "ERRVAR: "; write(std::cerr); } assert(m_priorProb!=-1.0); return m_priorProb; }
         void write(std::ostream & out) const;
+
         void setHPLen(int hplen) { m_hplen = hplen;}
         int getHPLen() const { return m_hplen; }
 
@@ -282,14 +284,19 @@ class DindelVariant
 
         // how far can indel be shifted to left and right?
         int m_leftUniquePos, m_rightUniquePos;
-        int m_hplen; // homopolymer length in reference at this position
+        
+        // homopolymer length in reference at this position
+        int m_hplen; 
+
+        // Dust score in a window around the variant
+        double m_dustScore;
+
         // does the variant change the length of the reference sequence?
         // m_dlen>0 is insertion
         int m_dlen;
 
-        int m_idx; // index of variant in vector of DindelWindow
-
-
+        // index of variant in vector of DindelWindow
+        int m_idx; 
 };
 
 //
@@ -634,7 +641,8 @@ class DindelRealignWindowResult
                 // Output variants in VCF format and read alignments
                 void outputAsVCF(const DindelVariant & var, 
                                  const DindelRealignWindowResult & result, 
-                                 VCFCollection& out) const;
+                                 VCFCollection& out,
+                                 const ReadTable* pRefTable) const;
                 
                 static double computeStrandBias(int numForward, int numReverse);
                 
@@ -692,7 +700,7 @@ class DindelRealignWindowResult
         DindelRealignWindowResult(const DindelRealignWindow & dindelRealignWindow) : m_pDindelRealignWindow(&dindelRealignWindow){ };
     
         // Functions
-        void outputVCF(VCFCollection& out);
+        void outputVCF(VCFCollection& out, const ReadTable* pRefTable);
 
         // Data
         std::vector<DindelHaplotype> haplotypes;
@@ -841,8 +849,6 @@ class DindelRealignParameters
         DindelRealignParameters(const std::string & paramString);
         DindelRealignParameters(const char * paramString);
 
-    //private:
-        
         // Functions
         std::string getDefaultParameters() const;
         void initFromString(const std::string & paramString);
@@ -912,8 +918,8 @@ class DindelRealignWindow
                  DindelReadReferenceAlignmentVector* pOutAlignments, 
                  const std::string id,
                  DindelRealignWindowResult * pThisResult,
-                 const DindelRealignWindowResult * pPreviousResult);
-
+                 const DindelRealignWindowResult * pPreviousResult,
+                 const ReadTable* pRefTable);
 
         const DindelWindow & getDindelWindow() const { return  m_dindelWindow; }
         const std::vector< std::vector< ReadHaplotypeAlignment > > & getHapReadAlignments() const 
@@ -1134,7 +1140,8 @@ class DindelRealignWindow
         void algorithm_hmm(VCFCollection& out,
                            DindelReadReferenceAlignmentVector* pOutAlignments,
                            DindelRealignWindowResult * pThisResult,
-                           const DindelRealignWindowResult * pPreviousResult);
+                           const DindelRealignWindowResult * pPreviousResult,
+                           const ReadTable* pRefTable);
 
         // result
         DindelRealignWindowResult m_result;

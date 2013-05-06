@@ -644,7 +644,7 @@ void DindelHaplotype::extractVariants()
                     var.setHPLen(int(hplen));
                     var.setPriorProb(0.001); //FIXME
                     var.setHaplotypeUnique(varBaseOffsetMinPos, varBaseOffsetMaxPos);
-
+                    
                     m_variants.push_back(var);
 
                     // this will be used in getClosestDistance
@@ -1140,21 +1140,15 @@ DindelWindow::~DindelWindow()
         delete m_pHaplotype_ma;
 }
 
+//
+// DindelRealignWindowResult
+//
 
-
-/*
-
-
-    DindelRealignWindowResult
-
-
-
- */
-
-
-
-// Need to add pointer to VCF Header instance
-void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, const DindelRealignWindowResult & result, VCFCollection& out) const
+//
+void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var, 
+                                                       const DindelRealignWindowResult & result, 
+                                                       VCFCollection& out,
+                                                       const ReadTable* pRefTable) const
 {
     VCFRecord record;
     std::stringstream hapPropString;
@@ -1282,6 +1276,23 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     hps.insert(var.getHPLen());
     int hp = *hps.rbegin();
 
+    // calculate the dust score around a 100bp window centered at the start of the variant
+    // 64-bp is the window size used in the SDUST paper
+    int dw_size = 64;
+    int dw_start = var.getPos() - dw_size/2;
+    dw_start = std::max(0, dw_start); // clamp to 0
+
+    int dw_end = var.getPos() + dw_size/2;
+    const DNAString& chromosome = pRefTable->getRead(var.getChrom()).seq;
+    dw_end = std::min(dw_end, (int)chromosome.length());
+
+    double dust_score = 0.0f;
+    if(dw_end - dw_start == dw_size)
+    {
+        std::string ref_dust_window = chromosome.substr(dw_start, dw_end - dw_start);
+        dust_score = calculateDustScore(ref_dust_window);
+    }
+
     // Apply filters
     std::string filter="NoCall";
     if (iqual == 0)
@@ -1331,6 +1342,7 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     record.addComment("NR0", this->numReadsReverseZeroMismatch);
     record.addComment("HSR", result.numHapSpecificReads);
     record.addComment("HPLen", hp);
+    record.addComment("Dust", dust_score);
     record.addComment("SB", this->strandBias);
     
     // HistDist
@@ -1490,11 +1502,11 @@ void DindelRealignWindowResult::Inference::addMapQToHistogram(double mappingQual
     if (bin>=0) histMapQ[bin]++;
 }
 
-void DindelRealignWindowResult::outputVCF(VCFCollection& out)
+void DindelRealignWindowResult::outputVCF(VCFCollection& out, const ReadTable* pRefTable)
 {
     VarToInference::const_iterator iter = variantInference.begin();
     for (;iter!=variantInference.end();iter++)
-        iter->second.outputAsVCF(iter->first, *this, out);
+        iter->second.outputAsVCF(iter->first, *this, out, pRefTable);
 }
 
 /*
@@ -1535,14 +1547,15 @@ void DindelRealignWindow::run(const std::string & algorithm,
                               DindelReadReferenceAlignmentVector* pOutAlignments, 
                               const std::string id,
                               DindelRealignWindowResult *pThisResult,
-                              const DindelRealignWindowResult *pPreviousResult)
+                              const DindelRealignWindowResult *pPreviousResult,
+                              const ReadTable* pRefTable)
 {
     PROFILE_FUNC("DindelRealignWindow::run")
 
     this->m_outputID = id;
     if (algorithm == "hmm")
     {
-        algorithm_hmm(out, pOutAlignments, pThisResult, pPreviousResult);
+        algorithm_hmm(out, pOutAlignments, pThisResult, pPreviousResult, pRefTable);
     }
     else
     {
@@ -1739,7 +1752,8 @@ void DindelRealignWindow::addSNPsToHaplotypes()
 void DindelRealignWindow::algorithm_hmm(VCFCollection& out, 
                                         DindelReadReferenceAlignmentVector* pOutAlignments, 
                                         DindelRealignWindowResult * pThisResult, 
-                                        const DindelRealignWindowResult *pPreviousResult)
+                                        const DindelRealignWindowResult *pPreviousResult,
+                                        const ReadTable* pRefTable)
 {
     if (DINDEL_DEBUG) std::cout << "DindelRealignWindow::algorithm_hmm STARTED" << std::endl;
 
@@ -1803,10 +1817,9 @@ void DindelRealignWindow::algorithm_hmm(VCFCollection& out,
         assert(1==0);
         //result = estimateHaplotypeFrequencies(realignParameters.minLogLikAlignToRef, realignParameters.minLogLikAlignToAlt, true, true);
     }
-        
    
     // output the VCF results. result does marginalization over haplotypes
-    result.outputVCF(out);
+    result.outputVCF(out, pRefTable);
 
     // Compute the read-to-reference mapping qualities for the projected variants
     computeProjectedMappingQuality();
@@ -4994,6 +5007,7 @@ void VCFFile::outputHeader(const std::string & refFile, const std::string& /*par
     m_outputFileHandle << "##INFO=<ID=HPLen,Number=1,Type=Integer,Description=\"Homopolymer length\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=SB,Number=1,Type=Float,Description=\"Strand bias\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=HPLen,Number=1,Type=Integer,Description=\"Homopolymer length\">" << std::endl;
+    m_outputFileHandle << "##INFO=<ID=Dust,Number=1,Type=Float,Description=\"Dust score for a 64bp window centered at the variant start\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=HistDist,Number=25,Type=Integer,Description=\"Histogram of variant distance from the end of the reads\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=HistLik,Number=25,Type=Integer,Description=\"Histogram of read likelihoods\">" << std::endl;
     m_outputFileHandle << "##INFO=<ID=HistMapQ,Number=8,Type=Integer,Description=\"Histogram of mapping quality\">" << std::endl;

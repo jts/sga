@@ -261,7 +261,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         try
         {
             DindelRealignWindow dRealignWindow(&dWindow, dReads, parameters.dindelRealignParameters);
-            dRealignWindow.run("hmm", vcfCollections[i], pReadAlignments, id, pThisResult, pPreviousResult);
+            dRealignWindow.run("hmm", vcfCollections[i], pReadAlignments, id, pThisResult, pPreviousResult, parameters.pRefTable);
         }
         catch(std::string e)
         {
