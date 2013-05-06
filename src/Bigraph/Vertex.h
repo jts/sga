@@ -19,10 +19,11 @@
 #include <iostream>
 #include <iterator>
 #include "GraphCommon.h"
-#include "TransitiveGroupCollection.h"
 #include "QualityVector.h"
 #include "EncodedString.h"
 #include "SimpleAllocator.h"
+#include "EdgeDesc.h"
+#include "MultiOverlap.h"
 
 // Forward declare
 class Edge;
@@ -77,17 +78,8 @@ class Vertex
         // Ensure that all the edges are unique
         bool markDuplicateEdges(GraphColor dupColor); 
 
-        // Compute the transitive groups for this vertex
-        // A transitive group is a set of edges s.t. one
-        // edge is irreducible and the other edges in the set
-        // are transitive w.r.t. the irreducible edge.
-        TransitiveGroupCollection computeTransitiveGroups(EdgeDir dir);
-
         // Get a multioverlap object representing the overlaps for this vertex
         MultiOverlap getMultiOverlap() const;
-
-        // Construct a trie from the edges, one for each each direction
-        void fillTries(double p_error, SeqTrie* pSenseTrie, SeqTrie* pAntisenseTrie) const;
 
         // Edge list operations
         void addEdge(Edge* ep);

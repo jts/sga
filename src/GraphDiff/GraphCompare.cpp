@@ -255,7 +255,8 @@ GraphBuildResult GraphCompare::processVariantKmer(const std::string& str, int /*
     }
     else if(m_parameters.algorithm == GCA_STRING_GRAPH)
     {
-        OverlapHaplotypeBuilder overlap_builder(m_parameters);
+        //OverlapHaplotypeBuilder overlap_builder(m_parameters);
+        StringHaplotypeBuilder overlap_builder(m_parameters);
         overlap_builder.setInitialHaplotype(str);
         overlap_builder.run(result.variant_haplotypes);
     }
@@ -341,7 +342,6 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
             if(max_d < k / 2)
                 haplotype = "";
 
-            //double frac_covered = (double)num_covered / nk;
             if(Verbosity::Instance().getPrintLevel() > 2)
             {
                 printf("HaplotypeQC for hap[%zu] NK %zu NC %zu NUC %zu NUB %zu MAX_D: %zu SUM_D: %zu\n", 

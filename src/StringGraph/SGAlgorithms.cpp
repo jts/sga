@@ -117,35 +117,6 @@ Edge* SGAlgorithms::createEdgesFromOverlap(StringGraph* pGraph, const Overlap& o
 void SGAlgorithms::remodelVertexForExcision(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
 {
     assert(pVertex == pDeleteEdge->getStart());
-    double maxER = pGraph->getErrorRate();
-    int minLength = pGraph->getMinOverlap();
-    
-    CompleteOverlapSet vertexOverlapSet(pVertex, maxER, minLength);
-
-    vertexOverlapSet.removeOverlapsTo(pDeleteEdge->getEnd());
-    EdgeDescOverlapMap addMap;
-    EdgeDescOverlapMap removeMap;
-    EdgeDescOverlapMap containMap;
-    vertexOverlapSet.computeIrreducible(NULL, &containMap);
-    
-    vertexOverlapSet.getDiffMap(addMap, removeMap);
-       
-    //assert(removeMap.size() == 0);
-    for(EdgeDescOverlapMap::iterator iter = addMap.begin();
-        iter != addMap.end(); ++iter)
-    {
-        //std::cout << "Adding edge " << iter->second << "\n";
-        createEdgesFromOverlap(pGraph, iter->second, false);
-    }
-
-    // Set the contain flags based on newly discovered edges
-    updateContainFlags(pGraph, pVertex, containMap);
-}
-
-// Find new edges for pVertex that are required if pDeleteEdge is removed from the graph
-void SGAlgorithms::remodelVertexForExcision2(StringGraph* pGraph, Vertex* pVertex, Edge* pDeleteEdge)
-{
-    assert(pVertex == pDeleteEdge->getStart());
     // If the edge is a containment edge, nothing needs to be done. No edges can be transitive
     // through containments
     if(pDeleteEdge->getOverlap().isContainment())
@@ -246,12 +217,29 @@ bool SGAlgorithms::isOverlapTransitive(const Vertex* pY, const Vertex* pZ, const
         return false;
 }
 
+// The following algorithms use these local types
+// defining an edge/overlap pair.
+typedef std::pair<EdgeDesc, Overlap> EdgeDescOverlapPair;
+
+// Compare two edges by their overlap length
+struct EDOPairCompare
+{
+    bool operator()(const EdgeDescOverlapPair& edpXY, const EdgeDescOverlapPair& edpXZ) {
+        return edpXY.second.match.coord[0].length() < edpXZ.second.match.coord[0].length();
+    }
+};
+
+// typedefs
+typedef std::priority_queue<EdgeDescOverlapPair, 
+                            std::vector<EdgeDescOverlapPair>,
+                            EDOPairCompare> EDOPairQueue;
+
 // Move the transitive edges from pOverlapMap to pTransitive
 void SGAlgorithms::partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap, 
                                                EdgeDescOverlapMap* pTransitive,
                                                double maxER, int minLength)
 {
-    SGAlgorithms::EDOPairQueue overlapQueue;
+    EDOPairQueue overlapQueue;
     for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = pOverlapMap->begin();
         iter != pOverlapMap->end(); ++iter)
     {
@@ -262,7 +250,7 @@ void SGAlgorithms::partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap,
     // the irreducible map to the transitive map
     while(!overlapQueue.empty())
     {
-        SGAlgorithms::EdgeDescOverlapPair edoPair = overlapQueue.top();
+        EdgeDescOverlapPair edoPair = overlapQueue.top();
         overlapQueue.pop();
 
         EdgeDesc& edXY = edoPair.first;
@@ -304,7 +292,7 @@ void SGAlgorithms::partitionTransitiveOverlaps(EdgeDescOverlapMap* pOverlapMap,
 
 void SGAlgorithms::removeSubmaximalOverlaps(EdgeDescOverlapMap* pOverlapMap)
 {
-    SGAlgorithms::EDOPairQueue overlapQueue;
+    EDOPairQueue overlapQueue;
     for(SGAlgorithms::EdgeDescOverlapMap::iterator iter = pOverlapMap->begin();
         iter != pOverlapMap->end(); ++iter)
     {
@@ -318,7 +306,7 @@ void SGAlgorithms::removeSubmaximalOverlaps(EdgeDescOverlapMap* pOverlapMap)
     // the irreducible map to the transitive map
     while(!overlapQueue.empty())
     {
-        SGAlgorithms::EdgeDescOverlapPair edoPair = overlapQueue.top();
+        EdgeDescOverlapPair edoPair = overlapQueue.top();
         overlapQueue.pop();
 
         EdgeDesc& edXY = edoPair.first;
@@ -349,63 +337,10 @@ bool SGAlgorithms::hasTransitiveOverlap(const Overlap& ovrXY, const Overlap& ovr
     return Match::doMatchesIntersect(match_yx, match_yz);
 }
 
-// Construct an extended multioverlap for a vertex
-MultiOverlap SGAlgorithms::makeExtendedMultiOverlap(const StringGraph* pGraph, const Vertex* pVertex)
-{
-    CompleteOverlapSet overlapSet(pVertex, pGraph->getErrorRate(), 1);
-    EdgeDescOverlapMap overlapMap = overlapSet.getOverlapMap();
-
-    MultiOverlap mo(pVertex->getID(), pVertex->getSeq().toString());
-    for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
-        iter != overlapMap.end(); ++iter)
-    {
-        mo.add(iter->first.pVertex->getSeq().toString(), iter->second);
-    }
-    return mo;
-}
-
-//
-void SGAlgorithms::makeExtendedSeqTries(const StringGraph* pGraph, const Vertex* pVertex, double p_error, SeqTrie* pLeftTrie, SeqTrie* pRightTrie)
-{
-    double lp = log(p_error);
-    CompleteOverlapSet overlapSet(pVertex, pGraph->getErrorRate(), 1);
-    EdgeDescOverlapMap overlapMap = overlapSet.getOverlapMap();
-
-    for(EdgeDescOverlapMap::const_iterator iter = overlapMap.begin();
-        iter != overlapMap.end(); ++iter)
-    {
-        // Coord[0] of the match is wrt pVertex, coord[1] is the other read
-        std::string overlapped = iter->second.match.coord[1].getSubstring(iter->first.pVertex->getSeq().toString());
-        if(iter->second.match.isRC())
-            overlapped = reverseComplement(overlapped);
-
-        if(iter->second.match.coord[0].isRightExtreme())
-        {
-            overlapped = reverse(overlapped);
-            pRightTrie->insert(overlapped, lp);
-        }
-        else if(iter->second.match.coord[0].isLeftExtreme())
-        {
-            pLeftTrie->insert(overlapped, lp);
-        }
-        else
-        {
-            // ignore substrings
-            //assert(iter->second.match.coord[0].isLeftExtreme());
-        }
-    }        
-}
-
 //
 EdgeDesc SGAlgorithms::getEdgeDescFromEdge(Edge* pEdge)
 {
     return pEdge->getDesc();
-}
-
-//
-EdgeDesc SGAlgorithms::getEdgeDescFromPair(const EdgeDescOverlapPair& pair)
-{
-    return pair.first;
 }
 
 void SGAlgorithms::printOverlapMap(const EdgeDescOverlapMap& overlapMap)

@@ -8,7 +8,6 @@
 //
 #include "Vertex.h"
 #include "Edge.h"
-#include "TransitiveGroup.h"
 #include <algorithm>
 
 Vertex::~Vertex()
@@ -155,142 +154,6 @@ bool Vertex::markDuplicateEdges(EdgeDir dir, GraphColor dupColor)
     return true;
 }
 
-
-// Compute the transitive groups for this vertex
-// A transitive group is a set of edges s.t. one
-// edge is irreducible and the other edges in the set
-// are transitive w.r.t. the irreducible edge.
-TransitiveGroupCollection Vertex::computeTransitiveGroups(EdgeDir dir)
-{
-    WARN_ONCE("Compute transitive groups could be better");
-    TransitiveGroupCollection tgc(this, dir);
-
-    // The edges must be sorted by the length of the overlap
-    sortAdjListByLen();
-
-    static const size_t FUZZ = 10; // see myers
-    
-    EdgePtrVec edges = getEdges(dir);
-
-    if(edges.size() == 0)
-        return tgc;
-
-    // Set all the vertices connected to this as unvisited
-    for(size_t i = 0; i < edges.size(); ++i)
-        (edges[i])->getEnd()->setColor(GC_GRAY);
-
-    Edge* pLongestEdge = edges.back();
-    size_t longestLen = pLongestEdge->getSeqLen() + FUZZ;
-    
-    // Stage 1
-    for(size_t i = 0; i < edges.size(); ++i)
-    {
-        Edge* pVWEdge = edges[i];
-        Vertex* pWVert = pVWEdge->getEnd();
-
-        EdgeDir transDir = !pVWEdge->getTwinDir();
-        if(pWVert->getColor() == GC_GRAY)
-        {
-            EdgePtrVec w_edges = pWVert->getEdges(transDir);
-            for(size_t j = 0; j < w_edges.size(); ++j)
-            {
-                Edge* pWXEdge = w_edges[j];
-                size_t trans_len = pVWEdge->getSeqLen() + pWXEdge->getSeqLen();
-                if(trans_len <= longestLen)
-                {
-                    if(pWXEdge->getEnd()->getColor() == GC_GRAY)
-                    {
-                        // X is the endpoint of an edge of V, therefore it is transitive
-                        pWXEdge->getEnd()->setColor(GC_BLACK);
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-    }
-    
-    /*
-    // Stage 2
-    for(size_t i = 0; i < edges.size(); ++i)
-    {
-        Edge* pVWEdge = edges[i];
-        Vertex* pWVert = pVWEdge->getEnd();
-
-        //std::cout << "Examining edges from " << pWVert->getID() << " longest: " << longestLen << "\n";
-        //std::cout << pWVert->getID() << " w_edges: \n";
-        EdgeDir transDir = !pVWEdge->getTwinDir();
-        EdgePtrVec w_edges = pWVert->getEdges(transDir);
-        for(size_t j = 0; j < w_edges.size(); ++j)
-        {
-            //std::cout << "    edge: " << *w_edges[j] << "\n";
-            Edge* pWXEdge = w_edges[j];
-            size_t len = pWXEdge->getSeqLen();
-
-            if(len < FUZZ || j == 0)
-            {
-                if(pWXEdge->getEnd()->getColor() == GC_GRAY)
-                {
-                    // X is the endpoint of an edge of V, therefore it is transitive
-                    pWXEdge->getEnd()->setColor(GC_BLACK);
-                    ++marked_verts;
-                    //std::cout << "Marking " << pWXEdge->getEndID() << " as transitive to " << pVertex->getID() << " in stage 2\n";
-                }
-            }
-            else
-                break;
-        }
-    }
-    */
-    
-    // At this point the vertices of transitive edges are marked black
-    // and the vertices of irredicuble edges are GRAY. Create the transitive groups
-    for(size_t i = 0; i < edges.size(); ++i)
-    {
-        if(edges[i]->getEnd()->getColor() == GC_GRAY)
-        {
-            Edge* pIrreducibleEdge = edges[i];
-            tgc.createGroup(pIrreducibleEdge);
-        }
-        
-        // Reset colors
-        edges[i]->getEnd()->setColor(GC_WHITE);
-    }
-
-    // Fill out the newly created group
-    for(size_t i = 0; i < tgc.numGroups(); ++i)
-    {
-        TransitiveGroup& group = tgc.getGroup(i);
-        Edge* pIrreducibleEdge = group.getIrreducible();
-        Vertex* pIrreducibleVert = pIrreducibleEdge->getEnd();
-        EdgeDir transDir = !pIrreducibleEdge->getTwinDir();
-        EdgePtrVec irrEdges = pIrreducibleVert->getEdges(transDir);
-        
-        // Mark the reachable edges as black
-        for(size_t j = 0; j < irrEdges.size(); ++j)
-        {
-            irrEdges[j]->getEnd()->setColor(GC_BLACK);
-        }
-    
-        // Add the black edges reachable from *this to the group
-        for(size_t j = 0; j < edges.size(); ++j)
-        {
-            if(edges[j]->getEnd()->getColor() == GC_BLACK)
-            {
-                group.add(edges[j]);
-            }
-        }
-
-        for(size_t j = 0; j < irrEdges.size(); ++j)
-        {
-            irrEdges[j]->getEnd()->setColor(GC_WHITE);
-        }
-    }    
-    return tgc;
-}
-
 // Get a multioverlap object representing the overlaps for this vertex
 MultiOverlap Vertex::getMultiOverlap() const
 {
@@ -301,33 +164,6 @@ MultiOverlap Vertex::getMultiOverlap() const
         mo.add(pEdge->getEnd()->getSeq().toString(), pEdge->getOverlap());
     }
     return mo;
-}
-
-// Get a SeqTrie of the overlaps of this vertex
-void Vertex::fillTries(double p_error, SeqTrie* pSenseTrie, SeqTrie* pAntisenseTrie) const
-{
-    double lp = log(p_error);
-
-    if(m_edges.empty())
-        return;
-    
-    for(size_t i = 0; i < m_edges.size(); ++i)
-    {
-        Edge* pEdge = m_edges[i];
-        std::string overlapped = pEdge->getTwin()->getMatchStr();
-        if(pEdge->getComp() == EC_REVERSE)
-            overlapped = reverseComplement(overlapped);
-
-        if(pEdge->getDir() == ED_SENSE)
-        {
-            overlapped = reverse(overlapped);
-            pSenseTrie->insert(overlapped, lp);
-        }
-        else
-        {
-            pAntisenseTrie->insert(overlapped, lp);
-        }
-    }
 }
 
 // Add an edge

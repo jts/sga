@@ -44,21 +44,35 @@ PopulationIndex::PopulationIndex(const std::string& filename)
 }
 
 //
-std::string PopulationIndex::getName(size_t index) const
+std::string PopulationIndex::getName(size_t read_index) const
 {
-    assert(index <= m_population.back().end);
+    std::vector<PopulationMember>::const_iterator iter = getIterByReadIndex(read_index);
+    return iter->name;
+}
+
+//
+size_t PopulationIndex::getSampleIndex(size_t read_index) const
+{
+    std::vector<PopulationMember>::const_iterator iter = getIterByReadIndex(read_index);
+    return iter - m_population.begin();
+}
+
+//
+std::vector<PopulationMember>::const_iterator PopulationIndex::getIterByReadIndex(size_t read_index) const
+{
+    assert(read_index <= m_population.back().end);
     // Perform a binary search to identify the first element of the population
     // that is strictly greater than the index. This returns an iterator that is 
     // guarenteed to be one past the individual that index belongs to.
-    PopulationMember search = { index, index, "" };
+    PopulationMember search = { read_index, read_index, "" };
     std::vector<PopulationMember>::const_iterator iter = std::upper_bound(m_population.begin(), 
                                                                           m_population.end(), 
                                                                           search, 
                                                                           PopulationMember::compareByStart);
     assert(iter != m_population.begin());
     iter--;
-    assert(index >= iter->start && index <= iter->end);
-    return iter->name;
+    assert(read_index >= iter->start && read_index <= iter->end);
+    return iter;
 }
 
 //

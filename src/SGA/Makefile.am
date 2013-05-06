@@ -47,16 +47,12 @@ sga_SOURCES = sga.cpp \
               filterBAM.h filterBAM.cpp \
               cluster.h cluster.cpp \
               gen-ssa.h gen-ssa.cpp \
-              correct-long.h correct-long.cpp \
-              convert-beetl.h convert-beetl.cpp \
               bwt2fa.h bwt2fa.cpp \
               graph-diff.h graph-diff.cpp \
-              var2vcf.h var2vcf.cpp \
-              hapgen.h hapgen.cpp \
               gapfill.h gapfill.cpp \
-              metagenome.h metagenome.cpp \
               preqc.h preqc.cpp \
               variant-detectability.h variant-detectability.cpp \
               rewrite-evidence-bam.h rewrite-evidence-bam.cpp \
+              haplotype-filter.h haplotype-filter.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 

@@ -1,17 +1,17 @@
 //-----------------------------------------------
-// Copyright 2009 Wellcome Trust Sanger Institute
+// Copyright 2009-2013 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
 // Released under the GPL
 //-----------------------------------------------
 //
-// Stats - Common statistics functions used 
+// SGAStats - Common statistics functions used 
 // throughout the program
 //
 
-#ifndef STATS_H
+#ifndef SGASTATS_H
 #define STATS_H
 
-namespace Stats
+namespace SGAStats
 {
 //
 // Probability
@@ -19,5 +19,5 @@ namespace Stats
 double logPoisson(unsigned int k, double m);
 double logFactorial(unsigned int k);
 
-};
+}
 #endif

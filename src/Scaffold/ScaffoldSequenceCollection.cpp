@@ -23,7 +23,13 @@ GraphSequenceCollection::GraphSequenceCollection(StringGraph* pGraph) : m_pGraph
 std::string GraphSequenceCollection::getSequence(const std::string& id) const
 {
     Vertex* pVertex = m_pGraph->getVertex(id);
-    assert(pVertex != NULL);
+    if(pVertex == NULL)
+    {
+        std::cerr << "Error: could not find the contig record with id " << id << "\n";
+        std::cerr << "Check to make sure you have loaded the correct set of contigs\n";
+        exit(EXIT_FAILURE);
+    }
+
     return pVertex->getSeq().toString();
 }
 

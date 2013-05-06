@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.59)
-AC_INIT(sga, 0.9.43, js18@sanger.ac.uk)
+AC_INIT(sga, 0.10.1, js18@sanger.ac.uk)
 AM_INIT_AUTOMAKE(foreign)
 AC_CONFIG_SRCDIR([SGA/sga.cpp])
 AC_CONFIG_HEADER([config.h])
@@ -84,7 +84,7 @@ else
 fi
 
 # Set compiler flags.
-AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror")
+AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror -Wno-unknown-pragmas")
 AC_SUBST(CXXFLAGS, "-O3")
 AC_SUBST(CFLAGS, "-O3")
 AC_SUBST(CPPFLAGS, "$CPPFLAGS $openmp_cppflags $sparsehash_include $bamtools_include")

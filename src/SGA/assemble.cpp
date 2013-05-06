@@ -12,8 +12,6 @@
 #include "assemble.h"
 #include "SGUtil.h"
 #include "SGAlgorithms.h"
-#include "SGPairedAlgorithms.h"
-#include "SGDebugAlgorithms.h"
 #include "SGVisitors.h"
 #include "Timer.h"
 #include "EncodedString.h"
@@ -81,13 +79,12 @@ namespace opt
     static int maxIndelLength = 20;
 
     // 
-    static int coverageCutoff = 0;
     static bool bValidate;
     static bool bExact = true;
     static bool bPerformTR = false;
 }
 
-static const char* shortopts = "p:o:m:d:g:b:a:c:r:x:l:sv";
+static const char* shortopts = "p:o:m:d:g:b:a:r:x:l:sv";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_VALIDATE, OPT_EDGESTATS, OPT_EXACT, OPT_MAXINDEL, OPT_TR, OPT_MAXEDGES };
 
@@ -99,7 +96,6 @@ static const struct option longopts[] = {
     { "cut-terminal",          required_argument, NULL, 'x' },
     { "min-branch-length",     required_argument, NULL, 'l' },
     { "resolve-small",         required_argument, NULL, 'r' },
-    { "coverage",              required_argument, NULL, 'c' },    
     { "max-divergence",        required_argument, NULL, 'd' },
     { "max-gap-divergence",    required_argument, NULL, 'g' },
     { "max-indel",             required_argument, NULL, OPT_MAXINDEL },
@@ -138,12 +134,7 @@ void assemble()
     // Visitor functors
     SGTransitiveReductionVisitor trVisit;
     SGGraphStatsVisitor statsVisit;
-    SGRemodelVisitor remodelVisit;
-    SGEdgeStatsVisitor edgeStatsVisit;
     SGTrimVisitor trimVisit(opt::trimLengthThreshold);
-    SGBubbleVisitor bubbleVisit;
-    SGBubbleEdgeVisitor bubbleEdgeVisit;
-
     SGContainRemoveVisitor containVisit;
     SGValidateStructureVisitor validationVisit;
 
@@ -201,17 +192,6 @@ void assemble()
         pGraph->visit(statsVisit);
     }
 
-    //
-    if(opt::coverageCutoff > 0)
-    {
-        std::cout << "Coverage visit\n";
-        SGCoverageVisitor coverageVisit(opt::coverageCutoff);
-        pGraph->visit(coverageVisit);
-        pGraph->visit(trimVisit);
-        pGraph->visit(trimVisit);
-        pGraph->visit(trimVisit);
-    }
-
     // Peform another round of simplification
     pGraph->simplify();
     
@@ -266,7 +246,6 @@ void parseAssembleOptions(int argc, char** argv)
             case 'g': arg >> opt::maxBubbleGapDivergence; break;
             case 's': opt::bSmoothGraph = true; break;
             case 'x': arg >> opt::numTrimRounds; break;
-            case 'c': arg >> opt::coverageCutoff; break;
             case 'r': arg >> opt::resolveSmallRepeatLen; break;
             case OPT_MAXEDGES: arg >> opt::maxEdges; break;
             case OPT_TR: opt::bPerformTR = true; break;

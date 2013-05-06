@@ -42,6 +42,10 @@ ClusterResult ClusterProcess::process(const SequenceWorkItem& item)
         }
     }
     
+    // Add sequences to be used to stop extension, if requested
+    if(m_parameters.pLimitKmers != NULL)
+        cluster.setLimitKmers(m_parameters.pLimitKmers, m_parameters.limitK);
+
     // Run the clustering process
     cluster.run(m_parameters.maxClusterSize, 0);
 

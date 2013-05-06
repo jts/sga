@@ -30,21 +30,6 @@ struct SGFastaVisitor
     std::ofstream m_fileHandle;
 };
 
-// Visit each node and write the overlaps to the specified file
-struct SGOverlapWriterVisitor
-{
-    SGOverlapWriterVisitor(std::string filename) : m_fileHandle(filename.c_str()) {}
-    ~SGOverlapWriterVisitor() { m_fileHandle.close(); }
-
-    // functions
-    void previsit(StringGraph* /*pGraph*/) {}
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph* /*pGraph*/) {}
-
-    // data
-    std::ofstream m_fileHandle;
-};
-
 // Run the Myers transitive reduction algorithm on each node
 struct SGTransitiveReductionVisitor
 {
@@ -87,17 +72,6 @@ struct SGValidateStructureVisitor
 };
 
 // Remodel the graph to infer missing edges or remove erroneous edges
-struct SGRemodelVisitor
-{
-    SGRemodelVisitor() {}
-    void previsit(StringGraph* pGraph);
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*);
-
-    double m_remodelER;
-};
-
-// Remodel the graph to infer missing edges or remove erroneous edges
 struct SGSmallRepeatResolveVisitor
 {
     SGSmallRepeatResolveVisitor(int minDiff) : m_minDiff(minDiff) {}
@@ -118,38 +92,6 @@ struct SGOverlapRatioVisitor
     void postvisit(StringGraph*);
 
     double m_minRatio;
-};
-
-
-// Compute edge summary statistics 
-struct SGEdgeStatsVisitor
-{
-    struct Candidate
-    {
-        Candidate(Vertex* pv, const Overlap& o) : pEndpoint(pv), ovr(o) {}
-        Vertex* pEndpoint;
-        Overlap ovr;
-    };
-    typedef std::vector<Candidate> CandidateVector;
-    typedef std::map<int, int> IntIntMap;
-    typedef std::map<int, IntIntMap> CountMatrix;
-
-    //
-    SGEdgeStatsVisitor() {}
-    void previsit(StringGraph* pGraph);
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*);
-
-    CandidateVector getMissingCandidates(StringGraph* pGraph, Vertex* pVertex, int minOverlap) const;
-    void addOverlapToCount(int ol, int nd, CountMatrix& matrix);
-    void printCounts(CountMatrix& matrix);
-
-    //
-    CountMatrix foundCounts;
-    CountMatrix missingCounts;
-    int maxDiff;
-    int minOverlap;
-    int maxOverlap;
 };
 
 // Detects and removes small "tip" vertices from the graph
@@ -176,37 +118,6 @@ struct SGDuplicateVisitor
 
     bool m_hasDuplicate;
     bool m_bSilent;
-};
-
-// Detect small island vertices and removal them
-struct SGIslandVisitor
-{
-    SGIslandVisitor() {}
-    void previsit(StringGraph* pGraph);
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*);
-};
-
-
-// Detect whether vertices are bubbles and mark them for removal
-struct SGBubbleVisitor
-{
-    SGBubbleVisitor() {}
-    void previsit(StringGraph* pGraph);
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*);
-    int num_bubbles;
-};
-
-// Detect whether bubble edges and remove them
-struct SGBubbleEdgeVisitor
-{
-    SGBubbleEdgeVisitor() {}
-    void previsit(StringGraph* pGraph);
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*);
-
-    int num_bubbles;
 };
 
 // Remove the edges of super-repetitive vertices in the graph
@@ -246,18 +157,6 @@ struct SGSmoothingVisitor
     std::ofstream m_outFile;
 };
 
-// Remove vertices/edges that have low coverage
-struct SGCoverageVisitor
-{
-    SGCoverageVisitor(int cutoff) : m_cutoff(cutoff) {}
-    void previsit(StringGraph* pGraph);
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*);
-
-    int m_cutoff;
-    int m_numRemoved;
-};
-
 // Compile summary statistics for the graph
 struct SGGraphStatsVisitor
 {
@@ -274,23 +173,6 @@ struct SGGraphStatsVisitor
     int num_edges;
     int num_vertex;
     size_t sum_edgeLen;
-};
-
-// Write out any vertices that are going to be cause a contig to terminate
-// to the file
-struct SGBreakWriteVisitor
-{
-    SGBreakWriteVisitor(const std::string& filename) { m_pWriter = createWriter(filename); }
-    ~SGBreakWriteVisitor() { delete m_pWriter; }
-
-    void previsit(StringGraph*) {}
-    bool visit(StringGraph* pGraph, Vertex* pVertex);
-    void postvisit(StringGraph*) {}
-    void writeBreak(const std::string& type, Vertex* pVertex);
-    int calculateOverlapLengthDifference(const Vertex* pVertex, EdgeDir dir);
-
-    std::ostream* m_pWriter;
-
 };
 
 #endif
