@@ -22,6 +22,7 @@
 #include "KmerDistribution.h"
 #include "KmerOverlaps.h"
 #include "BloomFilter.h"
+#include "SGAStats.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filestream.h"
@@ -866,6 +867,87 @@ void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename
     pJSONWriter->EndObject();
 }
 
+size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set)
+{
+    //
+    size_t n_samples = 20000;
+    size_t sum_read_length = 0;
+    KmerDistribution kmerDistribution;
+    for(size_t i = 0; i < n_samples; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        int n = s.size();
+        int nk = n - k + 1;
+        for(int j = 0; j < nk; ++j)
+        {
+            std::string kmer = s.substr(j, k);
+            int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+            kmerDistribution.add(count);
+        }
+        sum_read_length += s.size();
+    }
+
+    // find the mode of the distribution, ignoring low-count k-mers that are likely errors
+    size_t mode_start = 3;
+    double mode = kmerDistribution.getCensoredMode(mode_start);
+
+    size_t total_kmers_in_distribution = kmerDistribution.getTotalKmers();
+    double prop_kmers_with_error = 0.0;
+    double prior_error = 0.1;
+
+    // We fit the error counts using a zero-truncated poisson distribution
+    double error_rate_prior = 0.01;
+    double error_pois_mean = mode * error_rate_prior;
+
+    // we do have zero counts in our distribution so we re-scale the truncated poisson
+    double zero_trunc_scale = 1 / (1 - exp(-error_pois_mean));
+
+    for(size_t c = 1; c <= 5; ++c) {
+        // Calculate the proportion of k-mers with count c 
+        // that are expected to be true genomic k-mers
+
+        // Calculate the probability that kmers with count c
+        // contain errors
+        // P(error | c) =        P(c | error) P(error)
+        //                --------------------------------------
+        //                P(c|error) P(error) + P(c|real)P(real)
+        
+        // zero-truncated poisson
+        double p_c_error = exp(SGAStats::logPoisson(c, error_pois_mean)) * zero_trunc_scale;
+        double p_c_real = exp(SGAStats::logPoisson(c, mode)) * (1.0f - prior_error);
+        double p_error = p_c_error / (p_c_error + p_c_real);
+
+        // Get the proportion of kmers with count c
+        double prop_c = (double)kmerDistribution.getNumberWithCount(c) / total_kmers_in_distribution;
+        prop_kmers_with_error += (prop_c * p_error);
+        //printf("\tc: %zu p_error: %.3lf p_c: %.3lf p_e: %.3lf\n", c, p_error, prop_c, prop_kmers_with_error);
+    }
+    size_t avg_rl = sum_read_length / n_samples;
+    size_t n = index_set.pBWT->getNumStrings();
+    double total_read_kmers = n * (avg_rl - k + 1);
+    double corrected_mode = mode / (1.0f - prop_kmers_with_error);
+    //printf("k: %zu mode: %.2lf c_mode: %.2lf g_m: %.2lf g_cm: %.2lf \n", k, mode, corrected_mode, total_read_kmers / mode, total_read_kmers / corrected_mode);
+    return total_read_kmers / corrected_mode;
+}
+
+void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
+{
+
+    /* Debug 
+    for(size_t k = 16; k < 81; k += 5)
+        estimate_genome_size_from_k_counts(k, index_set);
+    */
+
+    size_t estimate_k = 31;
+    size_t g_size = estimate_genome_size_from_k_counts(estimate_k, index_set);
+    pJSONWriter->String("GenomeSize");
+    pJSONWriter->StartObject();
+    pJSONWriter->String("k");
+    pJSONWriter->Int(estimate_k);
+    pJSONWriter->String("size");
+    pJSONWriter->Int(g_size);
+    pJSONWriter->EndObject();
+}
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -885,6 +967,9 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
+    generate_genome_size(&writer, index_set);
+
+    /*
     //generate_errors_per_base(&writer, index_set);
     generate_gc_distribution(&writer, index_set);
     generate_quality_stats(&writer, opt::readsFile);
@@ -896,6 +981,7 @@ int preQCMain(int argc, char** argv)
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
     generate_local_graph_complexity(&writer, index_set);
+    */
 
     // End document
     writer.EndObject();
