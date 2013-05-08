@@ -8,6 +8,7 @@
 // graph are supported by a subset of sequence reads
 //
 #include "DBGPathGuide.h"
+#include <stdio.h>
 
 DBGPathGuide::DBGPathGuide(size_t k) : m_k(k), m_pmers_checked(0), m_pmers_passed(0)
 {
