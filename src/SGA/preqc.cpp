@@ -23,6 +23,7 @@
 #include "KmerOverlaps.h"
 #include "BloomFilter.h"
 #include "SGAStats.h"
+#include "DindelRealignWindow.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filestream.h"
@@ -943,11 +944,217 @@ void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
     pJSONWriter->String("GenomeSize");
     pJSONWriter->StartObject();
     pJSONWriter->String("k");
-    pJSONWriter->Int(estimate_k);
+    pJSONWriter->Int64(estimate_k);
     pJSONWriter->String("size");
     pJSONWriter->Int(g_size);
     pJSONWriter->EndObject();
 }
+
+void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& index_set)
+{
+    int kmer_distribution_samples = 10000;
+    int classification_samples = 50000;
+    const static int MAX_REPEAT_COPIES = 20;
+
+    //double min_probability_for_classification = 0.25;
+    pWriter->String("BranchClassification");
+    pWriter->StartArray();
+
+    for(size_t k = 16; k < 71; k += 5)
+    {
+        // Step 1: Learn k-mer occurrence distribution for this value of k
+        KmerDistribution distribution;
+        for(int i = 0; i < kmer_distribution_samples; ++i)
+        {
+            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+            if(s.size() < k)
+                continue;
+            size_t nk = s.size() - k + 1;    
+            for(size_t j = 0; j < nk; ++j)
+            {
+                std::string kmer = s.substr(j, k);
+                int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+                distribution.add(count);
+            }
+        }
+
+        size_t min_c_for_mode = 3;
+        size_t mode = distribution.getCensoredMode(min_c_for_mode);
+
+        // Do not attempt classification if coverage is too low
+        if(mode < 10)
+            continue;
+
+        size_t num_error_branches = 0;
+        size_t num_variant_branches = 0;
+        size_t num_repeat_branches = 0;
+        size_t num_kmers = 0;
+
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+        for(int i = 0; i < classification_samples; ++i)
+        {
+            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+            if(s.size() < k)
+                continue;
+            
+            size_t nk = s.size() - k + 1;    
+            for(size_t j = 0; j < nk; ++j)
+            {
+                std::string kmer = s.substr(j, k);
+                int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+
+                // TODO: Calculate probabilty that this kmer is single copy
+                // For now just make a threshold
+                if(count < 0.75*mode || count > 1.25*mode)
+                    continue;
+
+//                printf("k: %zu mode: %zu c: %d\n", k, mode, count);
+                AlphaCount64 ac = BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(kmer, index_set.pBWT, ED_SENSE);
+
+                std::vector<size_t> branch_out_counts;
+                for(size_t bi = 0; bi < 4; ++bi)
+                    branch_out_counts.push_back(ac.get("ACGT"[bi]));
+
+                std::sort(branch_out_counts.begin(), branch_out_counts.end());
+
+                
+                // Only use the top two branches for classification
+                // If there are three (or four) possible extensions
+                // we are probably in an error or a very repetitive
+                // region which should get picked up by the model
+                size_t c_1 = branch_out_counts[3];
+                size_t c_2 = branch_out_counts[2];
+                size_t total = c_1 + c_2;
+                double allele_balance = (double)c_1 / total;
+
+                // classify the branch 
+                int classification = -1;
+                if(c_2 > 0)
+                {
+                    // Error model
+                    // P( total | error) = pois(total, mode)
+                    // P( allele_balance | error) = Beta(100,100*error_rate)
+                    double log_p_count_error = SGAStats::logPoisson(total, mode);
+                    double log_p_balance_error = SGAStats::logIntegerBeta(allele_balance, 20, 1);
+
+                    // Variation Model
+                    double log_p_count_variant = log_p_count_error;
+                    double log_p_balance_variant = SGAStats::logIntegerBeta(allele_balance, 2, 2);
+
+                    // Repeat model
+                    const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
+                    double log_p_count_repeat = 0.0f;
+                    int copies_min = 2;
+                    double log_truncation_scale = copies_min > 1 ? log(1.0f / (1.0f - MU)) : 0;
+                    for(int copies = copies_min; copies < MAX_REPEAT_COPIES; ++copies)
+                    {
+                        double log_p_copies = (copies - 1)*log(1.0f - MU) + log(MU) + log_truncation_scale;
+                        double log_count_given_copies = SGAStats::logPoisson(total, copies*mode);
+
+                        if(copies == copies_min)
+                            log_p_count_repeat = log_p_copies + log_count_given_copies;
+                        else
+                            log_p_count_repeat = addLogs(log_p_count_repeat, log_p_copies + log_count_given_copies);
+    //                    printf("\t\t\t c: %d p(c): %.4lf p(tc|c): %.4lf s: %.4lf\n", copies, exp(log_p_copies), exp(log_count_given_copies), exp(log_p_count_repeat));
+
+                    }
+
+                    double log_p_balance_repeat = log_p_balance_variant;
+
+                    // Calculate posterior for each state
+                    double log_prior_repeat = log(1.0f/3);
+                    double log_prior_error = log(1.0f/3);
+                    double log_prior_variant = log(1.0f/3);
+
+                    double ls1 = log_p_count_error + log_p_balance_error + log_prior_error;
+                    double ls2 = log_p_count_variant + log_p_balance_variant + log_prior_variant;
+                    double ls3 = log_p_count_repeat + log_p_balance_repeat + log_prior_repeat;
+
+                    double log_sum = ls1;
+                    log_sum = addLogs(log_sum, ls2);
+                    log_sum = addLogs(log_sum, ls3);
+
+                    /*
+                    double sum = exp(log_p_count_error + log_p_balance_error) * prior_error + 
+                                 exp(log_p_count_variant + log_p_balance_variant) * prior_variant + 
+                                 exp(log_p_count_repeat + log_p_balance_repeat) * prior_repeat;
+                    */
+
+                    double posterior_error = exp(ls1 - log_sum);
+                    double posterior_variant = exp(ls2 - log_sum);
+                    double posterior_repeat = exp(ls3 - log_sum);
+
+                    double max = 0;
+                    if(posterior_error > max)
+                    {
+                        max = posterior_error;
+                        classification = 0;
+                    } 
+
+                    if(posterior_variant > max)
+                    {
+                        max = posterior_variant;
+                        classification = 1;
+                    }
+
+                    if(posterior_repeat > max)
+                    {
+                        max = posterior_repeat;
+                        classification = 2;
+                    }
+
+                    if(c_2 > 0 && false) 
+                    {
+                        printf("\tc_1: %zu c_2: %zu tc: %zu y: %.4lf\n", c_1, c_2, total, allele_balance);
+                        printf("\tlog_sum: %.4lf\n", log_sum);
+                        printf("\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), posterior_error);
+                        printf("\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), posterior_variant);
+                        printf("\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), posterior_repeat);
+                    }
+                }
+
+#if HAVE_OPENMP
+                #pragma omp critical
+#endif
+                {    
+                    num_error_branches += (classification == 0);
+                    num_variant_branches += (classification == 1);
+                    num_repeat_branches += (classification == 2);
+                    num_kmers += 1;
+                }
+
+                // Do not continue with this read if we hit a repeat or variant
+                if(classification == 1 || classification == 2)
+                    break;
+            }
+        }
+
+        pWriter->StartObject();
+        pWriter->String("k");
+        pWriter->Int(k);
+        pWriter->String("num_kmers");
+        pWriter->Int(num_kmers);
+        pWriter->String("num_error_branches");
+        pWriter->Int(num_error_branches);
+        pWriter->String("num_variant_branches");
+        pWriter->Int(num_variant_branches);
+        pWriter->String("num_repeat_branches");
+        pWriter->Int(num_repeat_branches);
+
+        pWriter->String("variant_rate");
+        pWriter->Int((double)num_kmers / num_variant_branches);
+        
+        pWriter->String("repeat_rate");
+        pWriter->Int((double)num_kmers / num_repeat_branches);
+
+        pWriter->EndObject();
+    }
+    pWriter->EndArray();
+}
+
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -967,9 +1174,9 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
+    generate_branch_classification(&writer, index_set);
     generate_genome_size(&writer, index_set);
 
-    /*
     //generate_errors_per_base(&writer, index_set);
     generate_gc_distribution(&writer, index_set);
     generate_quality_stats(&writer, opt::readsFile);
@@ -980,8 +1187,7 @@ int preQCMain(int argc, char** argv)
     generate_unipath_length_data(&writer, index_set);
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
-    generate_local_graph_complexity(&writer, index_set);
-    */
+    //generate_local_graph_complexity(&writer, index_set);
 
     // End document
     writer.EndObject();

@@ -10,6 +10,7 @@
 #include "SGAStats.h"
 #include <math.h>
 #include <iostream>
+#include <assert.h>
 
 //
 // Poisson in log space
@@ -32,3 +33,14 @@ double SGAStats::logFactorial(unsigned int k)
         result += log(k--); //slow
     return result;
 }
+
+double SGAStats::logIntegerBeta(double x, unsigned int a, unsigned int b)
+{
+    assert(x >= 0.0f && x <= 1.0f);
+    assert(a > 0 && b > 0);
+
+    double log_beta_f = logFactorial(a - 1) + logFactorial(b - 1) - logFactorial(a + b - 1);
+    double log_p = (a - 1) * log(x) + (b - 1) * log(1 - x) - log_beta_f;
+    return log_p;
+}
+

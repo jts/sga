@@ -1,8 +1,9 @@
 import sys, os.path
+import matplotlib
+matplotlib.use('Agg')
 import pylab as pl
 import numpy as np
 import json
-import matplotlib
 from collections import namedtuple
 from operator import attrgetter
 from matplotlib.backends.backend_pdf import PdfPages
@@ -14,6 +15,7 @@ PCR_DUPLICATE_NAME = "PCRDuplicates"
 ERRORS_PER_BASE_NAME = "ErrorsPerBase"
 UNIPATH_LENGTH_NAME = "UnipathLength"
 GRAPH_COMPLEXITY_NAME =  "LocalGraphComplexity"
+BRANCH_CLASSIFICATION_NAME =  "BranchClassification"
 RANDOM_WALK_NAME = "RandomWalkLength"
 FRAGMENT_SIZE_NAME = "FragmentSize"
 QUALITY_SCORE_NAME = "QualityScores"
@@ -167,6 +169,39 @@ def plot_graph_complexity(pp, data):
     pl.savefig(pp, format='pdf')
     pl.close()
 
+def plot_branch_classification(pp, data):
+    names = data.keys()
+    out = list()
+
+    data_type = ('variant', 'repeat', 'error')
+
+    # Make a plot for each branch classification
+    for dt in data_type:
+
+        type_key = "num_%s_branches" % dt
+        for name in names:
+
+            kmers = list()
+            branch_rate = list()
+            for t in data[name][BRANCH_CLASSIFICATION_NAME]:
+
+                if t['k'] >= 21:
+                    kmers.append(t['k'])
+                    branch_rate.append(float(t[type_key]) / t['num_kmers'])
+
+            pl.plot(kmers, branch_rate, 'o-')
+
+        pl.yscale('log')
+        pl.xlabel("k")
+
+        ylab = "Frequency of %s branches" % dt
+        title = "Frequency of %s branches in the k-de Bruijn graph" % dt 
+        pl.ylabel(ylab)
+        pl.title(title)
+        pl.legend(names)
+        pl.savefig(pp, format='pdf')
+        pl.close()
+    
 def plot_pcr_duplicates(pp, data):
     names = data.keys()
     out = list()
@@ -298,6 +333,7 @@ matplotlib.rc('ytick', labelsize=14)
 
 pp = PdfPages("test_report.pdf")
 
+
 # Quality/Error rate plots
 plot_quality_scores(pp, data) if any_set_has_key(data, QUALITY_SCORE_NAME) else 0
 plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
@@ -311,6 +347,7 @@ plot_random_walk(pp, data) if any_set_has_key(data, RANDOM_WALK_NAME) else 0
 plot_gc_distribution(pp, data) if any_set_has_key(data, GC_DISTRIBUTION_NAME) else 0
 
 # Graph topology plots
+plot_branch_classification(pp, data) if any_set_has_key(data, BRANCH_CLASSIFICATION_NAME) else 0
 plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
 plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
 
