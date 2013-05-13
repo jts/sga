@@ -946,7 +946,7 @@ void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
     pJSONWriter->String("k");
     pJSONWriter->Int64(estimate_k);
     pJSONWriter->String("size");
-    pJSONWriter->Int(g_size);
+    pJSONWriter->Int64(g_size);
     pJSONWriter->EndObject();
 }
 
@@ -982,7 +982,7 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         size_t mode = distribution.getCensoredMode(min_c_for_mode);
 
         // Do not attempt classification if coverage is too low
-        if(mode < 10)
+        if(mode < 20)
             continue;
 
         size_t num_error_branches = 0;
@@ -1130,19 +1130,16 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                         max = posterior_repeat;
                         classification = 2;
                     }
-                    
-                    /*
-                    if(c_2 > 0)
-                    {
-                        printf("\tm: %zu c_1: %zu c_2: %zu tc: %zu y: %.4lf\n", mode, c_1, c_2, total, allele_balance);
-                        printf("\tcv: %d/%d %d/%d %d/%d %d/%d\n", f_counts[0], r_counts[0], f_counts[1], r_counts[1], f_counts[2], r_counts[2], f_counts[3], r_counts[3]);
-                        printf("\tlog_sum: %.4lf\n", log_sum);
-                        printf("\t\tclass: %d\n", classification);
-                        printf("\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), posterior_error);
-                        printf("\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), posterior_variant);
-                        printf("\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), posterior_repeat);
-                        printf("DF %zu %zu %zu %zu %.4lf %d\n", mode, c_1, c_2, total, allele_balance, classification);
-                    }
+                 
+                    /*   
+                    printf("\tm: %zu c_1: %zu c_2: %zu tc: %zu y: %.4lf\n", mode, c_1, c_2, total, allele_balance);
+                    printf("\tcv: %d/%d %d/%d %d/%d %d/%d\n", f_counts[0], r_counts[0], f_counts[1], r_counts[1], f_counts[2], r_counts[2], f_counts[3], r_counts[3]);
+                    printf("\tlog_sum: %.4lf\n", log_sum);
+                    printf("\t\tclass: %d\n", classification);
+                    printf("\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), posterior_error);
+                    printf("\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), posterior_variant);
+                    printf("\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), posterior_repeat);
+                    printf("DF %zu %zu %zu %zu %.4lf %d\n", mode, c_1, c_2, total, allele_balance, classification);
                     */
                 }
 
@@ -1165,6 +1162,8 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         pWriter->StartObject();
         pWriter->String("k");
         pWriter->Int(k);
+        pWriter->String("mode");
+        pWriter->Int(mode);
         pWriter->String("num_kmers");
         pWriter->Int(num_kmers);
         pWriter->String("num_error_branches");

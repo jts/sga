@@ -54,7 +54,8 @@ double SGAStats::logIntegerBeta(double x, unsigned int a, unsigned int b)
     assert(a > 0 && b > 0);
 
     double log_beta_f = logFactorial(a - 1) + logFactorial(b - 1) - logFactorial(a + b - 1);
-    double log_p = (a - 1) * log(x) + (b - 1) * log(1 - x) - log_beta_f;
+    double n = pow(x, a - 1) * pow(1 - x, b - 1);
+    double log_p = log(n) - log_beta_f;
     return log_p;
 }
 
