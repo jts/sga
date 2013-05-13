@@ -156,6 +156,14 @@ size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWTIn
         return countSequenceOccurrences(w, indices.pBWT);
 }
 
+size_t BWTAlgorithms::countSequenceOccurrencesSingleStrand(const std::string& w, const BWTIndexSet& indices)
+{
+    assert(indices.pBWT != NULL);
+    BWTInterval interval = findInterval(indices.pBWT, w);
+    return interval.isValid() ? interval.size() : 0;
+}
+
+
 // Return the count of all the possible one base extensions of the string w.
 // This returns the number of times the suffix w[i, l]A, w[i, l]C, etc 
 // appears in the FM-index for all i s.t. length(w[i, l]) == overlapLen.

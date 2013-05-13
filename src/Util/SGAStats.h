@@ -18,6 +18,7 @@ namespace SGAStats
 //
 double logPoisson(unsigned int k, double m);
 double logFactorial(unsigned int k);
+double logBinomial(unsigned int k, unsigned int n, double p);
 
 // The logarithm of the Beta distribution pdf for the special case
 // that the shape parameters are positive integers

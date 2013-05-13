@@ -34,6 +34,20 @@ double SGAStats::logFactorial(unsigned int k)
     return result;
 }
 
+// 
+// Log binomial pmf 
+//
+double SGAStats::logBinomial(unsigned int k, unsigned int n, double p)
+{
+    assert(k <= n);
+    double b_coeff = logFactorial(n) - logFactorial(k) - logFactorial(n - k);
+    double lp = k * log(p) + (n - k) * log(1 - p);
+    return b_coeff + lp; 
+}
+
+//
+//
+//
 double SGAStats::logIntegerBeta(double x, unsigned int a, unsigned int b)
 {
     assert(x >= 0.0f && x <= 1.0f);
