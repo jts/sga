@@ -982,7 +982,7 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         size_t mode = distribution.getCensoredMode(min_c_for_mode);
 
         // Do not attempt classification if coverage is too low
-        if(mode < 20)
+        if(mode < 10)
             continue;
 
         size_t num_error_branches = 0;

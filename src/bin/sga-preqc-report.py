@@ -20,6 +20,7 @@ RANDOM_WALK_NAME = "RandomWalkLength"
 FRAGMENT_SIZE_NAME = "FragmentSize"
 QUALITY_SCORE_NAME = "QualityScores"
 GC_DISTRIBUTION_NAME = "GCDistribution"
+GENOME_SIZE_NAME = "GenomeSize"
 
 # Return the N50 of the list of numbers
 def n50(values):
@@ -218,6 +219,22 @@ def plot_pcr_duplicates(pp, data):
     pl.savefig(pp, format='pdf')
     pl.close()
 
+def plot_genome_size(pp, data):
+    names = data.keys()
+    out = list()
+    for name in names:
+        s = data[name][GENOME_SIZE_NAME]['size']
+        out.append(s / 1000000000.)
+    width = 0.35
+    ind = np.arange(len(names))
+    pl.bar(ind, out, width)
+    pl.xticks(ind + width/2, names)
+    pl.title("Genome Size")
+    pl.ylabel("Size (Gbp)")
+    pl.xlabel("Sample")
+    pl.savefig(pp, format='pdf')
+    pl.close()
+
 def plot_gc_distribution(pp, data):
     names = data.keys()
     gc_bin_size = 0.02
@@ -334,6 +351,10 @@ matplotlib.rc('ytick', labelsize=14)
 pp = PdfPages("test_report.pdf")
 
 
+# Genome Characteristics
+plot_genome_size(pp, data) if any_set_has_key(data, GENOME_SIZE_NAME) else 0
+plot_branch_classification(pp, data) if any_set_has_key(data, BRANCH_CLASSIFICATION_NAME) else 0
+
 # Quality/Error rate plots
 plot_quality_scores(pp, data) if any_set_has_key(data, QUALITY_SCORE_NAME) else 0
 plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
@@ -347,7 +368,6 @@ plot_random_walk(pp, data) if any_set_has_key(data, RANDOM_WALK_NAME) else 0
 plot_gc_distribution(pp, data) if any_set_has_key(data, GC_DISTRIBUTION_NAME) else 0
 
 # Graph topology plots
-plot_branch_classification(pp, data) if any_set_has_key(data, BRANCH_CLASSIFICATION_NAME) else 0
 plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
 plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
 
