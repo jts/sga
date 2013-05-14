@@ -32,6 +32,15 @@
 #include <omp.h>
 #endif
 
+// Enums
+enum BranchClassification
+{
+    BC_NO_CALL,
+    BC_ERROR,
+    BC_VARIANT,
+    BC_REPEAT
+};
+
 // Typedefs
 typedef rapidjson::PrettyWriter<rapidjson::FileStream> JSONWriter;
 
@@ -156,6 +165,27 @@ std::string get_valid_dbg_neighbors_coverage_and_ratio(const std::string& kmer,
             out.push_back(b);
     }
     return out;    
+}
+
+void fill_neighbor_count_by_strand(const std::string& kmer, const BWTIndexSet& index_set, int f_counts[4], int r_counts[4])
+{
+    // Count the extensions from this kmer
+    char f_ext[] = "ACGT";
+    char r_ext[] = "TGCA";
+    size_t k = kmer.size();
+    std::string f_mer = kmer.substr(1) + "A";
+    std::string r_mer = "A" + reverseComplement(kmer).substr(0, k - 1);
+    assert(f_mer.size() == k);
+    assert(r_mer.size() == k);
+
+    for(size_t bi = 0; bi < 4; ++bi)
+    {
+        f_mer[f_mer.size() - 1] = f_ext[bi];
+        r_mer[0] = r_ext[bi];
+
+        f_counts[bi] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(f_mer, index_set);
+        r_counts[bi] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(r_mer, index_set);
+    }
 }
 
 //
@@ -950,11 +980,127 @@ void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
     pJSONWriter->EndObject();
 }
 
+
+// Sample k-mers from the read set to learn the modal k-mer count
+size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
+{
+    const static size_t MIN_COUNT = 3;
+    // Step 1: Learn k-mer occurrence distribution for this value of k
+    KmerDistribution distribution;
+    for(size_t i = 0; i < n; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        if(s.size() < k)
+            continue;
+        size_t nk = s.size() - k + 1;    
+        for(size_t j = 0; j < nk; ++j)
+        {
+            std::string kmer = s.substr(j, k);
+            int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+            distribution.add(count);
+        }
+    }
+
+    // If we picked the mode naively we would almost surely
+    // select 1 due to k-mers with errors. We set a min threshold
+    // of 3 to allow the true peak to be selected
+    return distribution.getCensoredMode(MIN_COUNT);
+}
+
+// Run the bayesian classification on a two-edge branch in the de Bruijn graph
+BranchClassification classify_2_branch(size_t mode, size_t higher_count, size_t lower_count)
+{
+    const static int MAX_REPEAT_COPIES = 20;
+    size_t total = higher_count + lower_count;
+    double allele_balance = (double)higher_count / total;
+    
+    // Normalize the allele balance to the range [0, 1]
+    // where 1 is completely balanced between variants
+    double norm_allele_balance = 2 * (1.0f - allele_balance);
+
+    // Error model
+    // P( total | error) = pois(total, mode)
+    // P( allele_balance | error) = Beta(100,100*error_rate)
+    double log_p_count_error = SGAStats::logPoisson(total, mode);
+    double log_p_balance_error = SGAStats::logIntegerBeta(norm_allele_balance, 1, 10);
+
+    // Variation Model
+    double log_p_count_variant = log_p_count_error;
+    double log_p_balance_variant = SGAStats::logIntegerBeta(norm_allele_balance, 10, 1);
+
+    // Repeat model
+    const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
+    double log_p_count_repeat = 0.0f;
+    int copies_min = 2;
+    double log_truncation_scale = copies_min > 1 ? log(1.0f / (1.0f - MU)) : 0;
+    for(int copies = copies_min; copies < MAX_REPEAT_COPIES; ++copies)
+    {
+        double log_p_copies = (copies - 1)*log(1.0f - MU) + log(MU) + log_truncation_scale;
+        double log_count_given_copies = SGAStats::logPoisson(total, copies*mode);
+
+        if(copies == copies_min)
+            log_p_count_repeat = log_p_copies + log_count_given_copies;
+        else
+            log_p_count_repeat = addLogs(log_p_count_repeat, log_p_copies + log_count_given_copies);
+    }
+
+    double log_p_balance_repeat = log_p_balance_variant;
+
+    // priors
+    double log_prior_error = log(.3);
+    double log_prior_variant = log(.3);
+    double log_prior_repeat = log(.3);
+
+    // Calculate posterior for each state
+    double ls1 = log_p_count_error + log_p_balance_error + log_prior_error;
+    double ls2 = log_p_count_variant + log_p_balance_variant + log_prior_variant;
+    double ls3 = log_p_count_repeat + log_p_balance_repeat + log_prior_repeat;
+
+    double log_sum = ls1;
+    log_sum = addLogs(log_sum, ls2);
+    log_sum = addLogs(log_sum, ls3);
+
+    double posterior_error = exp(ls1 - log_sum);
+    double posterior_variant = exp(ls2 - log_sum);
+    double posterior_repeat = exp(ls3 - log_sum);
+
+    double max = 0;
+    BranchClassification classification = BC_NO_CALL;
+    if(posterior_error > max)
+    {
+        max = posterior_error;
+        classification = BC_ERROR;
+    } 
+
+    if(posterior_variant > max)
+    {
+        max = posterior_variant;
+        classification = BC_VARIANT;
+    }
+
+    if(posterior_repeat > max)
+    {
+        max = posterior_repeat;
+        classification = BC_REPEAT;
+    }
+
+    /*   
+         printf("\tm: %zu c_1: %zu c_2: %zu tc: %zu y: %.4lf\n", mode, c_1, c_2, total, allele_balance);
+         printf("\tcv: %d/%d %d/%d %d/%d %d/%d\n", f_counts[0], r_counts[0], f_counts[1], r_counts[1], f_counts[2], r_counts[2], f_counts[3], r_counts[3]);
+         printf("\tlog_sum: %.4lf\n", log_sum);
+         printf("\t\tclass: %d\n", classification);
+         printf("\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), posterior_error);
+         printf("\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), posterior_variant);
+         printf("\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), posterior_repeat);
+         printf("DF %zu %zu %zu %zu %.4lf %d\n", mode, c_1, c_2, total, allele_balance, classification);
+     */
+     return classification;
+}
+
 void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
     int kmer_distribution_samples = 10000;
     int classification_samples = 50000;
-    const static int MAX_REPEAT_COPIES = 20;
 
     //double min_probability_for_classification = 0.25;
     pWriter->String("BranchClassification");
@@ -963,23 +1109,7 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
     for(size_t k = 21; k <= 71; k += 5)
     {
         // Step 1: Learn k-mer occurrence distribution for this value of k
-        KmerDistribution distribution;
-        for(int i = 0; i < kmer_distribution_samples; ++i)
-        {
-            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
-            if(s.size() < k)
-                continue;
-            size_t nk = s.size() - k + 1;    
-            for(size_t j = 0; j < nk; ++j)
-            {
-                std::string kmer = s.substr(j, k);
-                int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
-                distribution.add(count);
-            }
-        }
-
-        size_t min_c_for_mode = 3;
-        size_t mode = distribution.getCensoredMode(min_c_for_mode);
+        size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
 
         // Do not attempt classification if coverage is too low
         if(mode < 10)
@@ -1011,145 +1141,42 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                 if(count < 0.75*mode || count > 1.25*mode)
                     continue;
 
-                // Count the extensions from this kmer to the (k+1)-mer
-                // in the graph
-                char f_ext[] = "ACGT";
-                char r_ext[] = "TGCA";
-                std::string f_mer = kmer.substr(1) + "A";
-                std::string r_mer = "A" + reverseComplement(kmer).substr(0, k-1);
-                assert(f_mer.size() == k);
-                assert(r_mer.size() == k);
-
                 // these vectors are in order ACGT on the forward strand
                 int f_counts[4] = { 0, 0, 0, 0 };
                 int r_counts[4] = { 0, 0, 0, 0 };
-                std::vector<size_t> branch_counts(4);
+
+                fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
                 
+                // Make sure both strands are represented for every branch
+                AlphaCount64 sum_counts;
                 int num_extensions_both_strands = 0;
                 for(size_t bi = 0; bi < 4; ++bi)
                 {
-                    f_mer[f_mer.size() - 1] = f_ext[bi];
-                    r_mer[0] = r_ext[bi];
-
-                    f_counts[bi] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(f_mer, index_set);
-                    r_counts[bi] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(r_mer, index_set);
-                    branch_counts[bi] = f_counts[bi] + r_counts[bi];
-
+                    sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
                     if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
                         num_extensions_both_strands += 1;
                 }
 
-                std::sort(branch_counts.begin(), branch_counts.end());
-                
-                // Only use the top two branches for classification
-                // If there are three (or four) possible extensions
-                // we are probably in an error or a very repetitive
-                // region which should get picked up by the model
-                size_t c_1 = branch_counts[3];
-                size_t c_2 = branch_counts[2];
-                size_t total = c_1 + c_2;
-                double allele_balance = (double)c_1 / total;
-
-                // Normalize the allele balance to the range [0, 1]
-                // where 1 is completely balanced between variants
-                double norm_allele_balance = 2* (1.0f - allele_balance);
-
-                // classify the branch 
-                int classification = -1;
+                // classify the branch
+                BranchClassification classification = BC_NO_CALL;
                 if(num_extensions_both_strands == 2)
                 {
-                    // Error model
-                    // P( total | error) = pois(total, mode)
-                    // P( allele_balance | error) = Beta(100,100*error_rate)
-                    double log_p_count_error = SGAStats::logPoisson(total, mode);
-                    double log_p_balance_error = SGAStats::logIntegerBeta(norm_allele_balance, 1, 10);
+                    char sorted_bases[5] = "ACGT";
+                    sorted_bases[4] = '\0';
+                    sum_counts.getSorted(sorted_bases, 5);
 
-                    // Variation Model
-                    double log_p_count_variant = log_p_count_error;
-                    double log_p_balance_variant = SGAStats::logIntegerBeta(norm_allele_balance, 10, 1);
-
-                    // Repeat model
-                    const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
-                    double log_p_count_repeat = 0.0f;
-                    int copies_min = 2;
-                    double log_truncation_scale = copies_min > 1 ? log(1.0f / (1.0f - MU)) : 0;
-                    for(int copies = copies_min; copies < MAX_REPEAT_COPIES; ++copies)
-                    {
-                        double log_p_copies = (copies - 1)*log(1.0f - MU) + log(MU) + log_truncation_scale;
-                        double log_count_given_copies = SGAStats::logPoisson(total, copies*mode);
-
-                        if(copies == copies_min)
-                            log_p_count_repeat = log_p_copies + log_count_given_copies;
-                        else
-                            log_p_count_repeat = addLogs(log_p_count_repeat, log_p_copies + log_count_given_copies);
-    //                    printf("\t\t\t c: %d p(c): %.4lf p(tc|c): %.4lf s: %.4lf\n", copies, exp(log_p_copies), exp(log_count_given_copies), exp(log_p_count_repeat));
-
-                    }
-
-                    double log_p_balance_repeat = log_p_balance_variant;
-
-                    // priors
-                    double log_prior_error = log(.3);
-                    double log_prior_variant = log(.3);
-                    double log_prior_repeat = log(.3);
-
-                    // Calculate posterior for each state
-                    double ls1 = log_p_count_error + log_p_balance_error + log_prior_error;
-                    double ls2 = log_p_count_variant + log_p_balance_variant + log_prior_variant;
-                    double ls3 = log_p_count_repeat + log_p_balance_repeat + log_prior_repeat;
-
-                    double log_sum = ls1;
-                    log_sum = addLogs(log_sum, ls2);
-                    log_sum = addLogs(log_sum, ls3);
-
-                    /*
-                    double sum = exp(log_p_count_error + log_p_balance_error) * prior_error + 
-                                 exp(log_p_count_variant + log_p_balance_variant) * prior_variant + 
-                                 exp(log_p_count_repeat + log_p_balance_repeat) * prior_repeat;
-                    */
-
-                    double posterior_error = exp(ls1 - log_sum);
-                    double posterior_variant = exp(ls2 - log_sum);
-                    double posterior_repeat = exp(ls3 - log_sum);
-
-                    double max = 0;
-                    if(posterior_error > max)
-                    {
-                        max = posterior_error;
-                        classification = 0;
-                    } 
-
-                    if(posterior_variant > max)
-                    {
-                        max = posterior_variant;
-                        classification = 1;
-                    }
-
-                    if(posterior_repeat > max)
-                    {
-                        max = posterior_repeat;
-                        classification = 2;
-                    }
-                 
-                    /*   
-                    printf("\tm: %zu c_1: %zu c_2: %zu tc: %zu y: %.4lf\n", mode, c_1, c_2, total, allele_balance);
-                    printf("\tcv: %d/%d %d/%d %d/%d %d/%d\n", f_counts[0], r_counts[0], f_counts[1], r_counts[1], f_counts[2], r_counts[2], f_counts[3], r_counts[3]);
-                    printf("\tlog_sum: %.4lf\n", log_sum);
-                    printf("\t\tclass: %d\n", classification);
-                    printf("\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), posterior_error);
-                    printf("\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), posterior_variant);
-                    printf("\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), posterior_repeat);
-                    printf("DF %zu %zu %zu %zu %.4lf %d\n", mode, c_1, c_2, total, allele_balance, classification);
-                    */
+                    size_t c_1 = sum_counts.get(sorted_bases[0]);
+                    size_t c_2 = sum_counts.get(sorted_bases[1]);
+                    classification = classify_2_branch(mode, c_1, c_2);
                 }
 
 #if HAVE_OPENMP
                 #pragma omp critical
 #endif
                 {    
-                    num_error_branches += (classification == 0);
-                    num_variant_branches += (classification == 1);
-                    num_repeat_branches += (classification == 2);
+                    num_error_branches += (classification == BC_ERROR);
+                    num_variant_branches += (classification == BC_VARIANT);
+                    num_repeat_branches += (classification == BC_REPEAT);
                     num_kmers += 1;
                 }
 
