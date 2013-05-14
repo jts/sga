@@ -159,7 +159,9 @@ size_t BWTAlgorithms::countSequenceOccurrences(const std::string& w, const BWTIn
 size_t BWTAlgorithms::countSequenceOccurrencesSingleStrand(const std::string& w, const BWTIndexSet& indices)
 {
     assert(indices.pBWT != NULL);
-    BWTInterval interval = findInterval(indices.pBWT, w);
+    assert(indices.pCache != NULL);
+
+    BWTInterval interval = findIntervalWithCache(indices.pBWT, indices.pCache, w);
     return interval.isValid() ? interval.size() : 0;
 }
 

@@ -1211,6 +1211,121 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
     pWriter->EndArray();
 }
 
+//
+void generate_de_bruijn_simulation(JSONWriter* pWriter,
+                                   const BWTIndexSet& index_set)
+{
+    int kmer_distribution_samples = 10000;
+    int n_samples = 10000;
+    const static size_t MAX_WALK_LENGTH = 30000;
+
+    pWriter->String("SimulateAssembly");
+    pWriter->StartArray();
+
+    for(size_t k = 21; k <= 71; k += 5)
+    {
+        // Step 1: Learn k-mer occurrence distribution for this value of k
+        size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
+
+        pWriter->StartObject();
+        pWriter->String("k");
+        pWriter->Int(k);
+        pWriter->String("mode");
+        pWriter->Int(mode);
+        pWriter->String("walk_lengths");
+        pWriter->StartArray();
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+        for(int i = 0; i < n_samples; ++i)
+        {
+            // Get a random read from the BWT
+            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+
+            // Use the first-kmer of the read to seed the seach
+            if(s.size() < k)
+                continue;
+            
+            HashMap<std::string, bool> loop_check;
+            std::string start_kmer = s.substr(0, k);
+            std::string curr_kmer = start_kmer;
+
+            size_t walk_length = 0;
+            bool done = false;
+            while(!done && walk_length < MAX_WALK_LENGTH)
+            {
+                loop_check[curr_kmer] = true;
+
+                // Get the possible extensions of this kmer
+                int f_counts[4] = { 0, 0, 0, 0 };
+                int r_counts[4] = { 0, 0, 0, 0 };
+
+                fill_neighbor_count_by_strand(curr_kmer, index_set, f_counts, r_counts);
+                
+                // Make sure both strands are represented for every acceptable
+                AlphaCount64 sum_counts;
+                int num_extensions_both_strands = 0;
+                for(size_t bi = 0; bi < 4; ++bi)
+                {
+                    sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
+                    if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+                        num_extensions_both_strands += 1;
+                }
+
+                // Order the bases by the count of the neighbor kmers
+                char sorted_bases[5];
+                sorted_bases[4] = '\0';
+                sum_counts.getSorted(sorted_bases, 5);
+
+                char extension_base = '\0';
+                if(num_extensions_both_strands < 2)
+                {
+                    // No ambiguity, just pick the highest coverage extension as the next node
+                    char best_extension = sorted_bases[0];
+                    if(sum_counts.get(best_extension) > 0)
+                        extension_base = best_extension;
+                } 
+                else if(num_extensions_both_strands == 2) 
+                {
+                    size_t c_1 = sum_counts.get(sorted_bases[0]);
+                    size_t c_2 = sum_counts.get(sorted_bases[1]);
+                    BranchClassification classification = classify_2_branch(mode, c_1, c_2);
+                    if(classification == BC_ERROR || classification == BC_VARIANT)
+                    {
+                        // if this is an error branch, we take the non-error (higher coverage) option
+                        // if this is a variant path we also take the higher coverage option to simulate
+                        // a successfully popped bubble
+                        extension_base = sorted_bases[0];
+                    }
+                } // stop extension if a 3-branch
+
+                if(extension_base != '\0')
+                {
+                    curr_kmer.erase(0, 1);
+                    curr_kmer.append(1, extension_base);
+                    
+                    if(loop_check.find(curr_kmer) == loop_check.end())
+                        walk_length += 1;
+                    else
+                        done = true;
+                }
+                else
+                {
+                    done = true;
+                }
+            }
+#if HAVE_OPENMP
+            #pragma omp critical
+#endif
+            pWriter->Int(walk_length);
+        }
+        pWriter->EndArray();
+        pWriter->EndObject();
+    }
+    pWriter->EndArray();
+}
+
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -1230,20 +1345,18 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
 
+    generate_de_bruijn_simulation(&writer, index_set);
     generate_branch_classification(&writer, index_set);
     generate_genome_size(&writer, index_set);
 
-    //generate_errors_per_base(&writer, index_set);
     generate_gc_distribution(&writer, index_set);
     generate_quality_stats(&writer, opt::readsFile);
     generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
     generate_position_of_first_error(&writer, index_set);
-    //generate_errors_per_base(&writer, index_set);
     generate_unipath_length_data(&writer, index_set);
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
-    //generate_local_graph_complexity(&writer, index_set);
 
     // End document
     writer.EndObject();

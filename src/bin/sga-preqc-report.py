@@ -14,6 +14,7 @@ FIRST_ERROR_NAME = "FirstErrorPosition"
 PCR_DUPLICATE_NAME = "PCRDuplicates"
 ERRORS_PER_BASE_NAME = "ErrorsPerBase"
 UNIPATH_LENGTH_NAME = "UnipathLength"
+DE_BRUIJN_SIMULATION_NAME = "SimulateAssembly"
 GRAPH_COMPLEXITY_NAME =  "LocalGraphComplexity"
 BRANCH_CLASSIFICATION_NAME =  "BranchClassification"
 RANDOM_WALK_NAME = "RandomWalkLength"
@@ -57,6 +58,26 @@ def plot_mean_unipath_lengths(pp, data):
     pl.ylabel("Mean unipath length")
     pl.ylim([0, 10000])
     pl.title("Mean length of unambiguous segments of the k-de Bruijn graph")
+    pl.legend(names)
+    pl.savefig(pp, format='pdf')
+    pl.close()
+
+#
+def plot_de_bruijn_simulation_lengths(pp, data):
+    names = data.keys()
+    
+    for name in names:
+        kmers = list()
+        values = list()
+        for t in data[name][DE_BRUIJN_SIMULATION_NAME]:
+            kmers.append(t['k'])
+            values.append(np.mean(t['walk_lengths']))
+        pl.plot(kmers, values, 'o-')
+
+    pl.xlabel("k")
+    pl.ylabel("Mean simulated contig length")
+    pl.ylim([0, 10000])
+    pl.title("Mean simulated contig length in the k-de Bruijn graph")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
@@ -370,5 +391,6 @@ plot_gc_distribution(pp, data) if any_set_has_key(data, GC_DISTRIBUTION_NAME) el
 # Graph topology plots
 plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
 plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
+plot_de_bruijn_simulation_lengths(pp, data) if any_set_has_key(data, DE_BRUIJN_SIMULATION_NAME) else 0
 
 pp.close()
