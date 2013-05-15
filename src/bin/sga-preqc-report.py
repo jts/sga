@@ -233,6 +233,7 @@ def plot_pcr_duplicates(pp, data):
         out.append(float(n_dups) / n_pairs)
     width = 0.35
     ind = np.arange(len(names))
+    fig = pl.figure(1, [len(names) * 2, 8])
     pl.bar(ind, out, width)
     pl.xticks(ind + width/2, names)
     pl.ylabel("Duplicate Proportion")
@@ -245,13 +246,14 @@ def plot_genome_size(pp, data):
     out = list()
     for name in names:
         s = data[name][GENOME_SIZE_NAME]['size']
-        out.append(s / 1000000000.)
+        out.append(s / 1000000.)
     width = 0.35
     ind = np.arange(len(names))
+    fig = pl.figure(1, [len(names) * 2, 8])
     pl.bar(ind, out, width)
     pl.xticks(ind + width/2, names)
     pl.title("Genome Size")
-    pl.ylabel("Size (Gbp)")
+    pl.ylabel("Size (Mbp)")
     pl.xlabel("Sample")
     pl.savefig(pp, format='pdf')
     pl.close()
@@ -285,9 +287,9 @@ def plot_gc_distribution(pp, data):
         extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
         pl.imshow(hist.T,extent=extent,interpolation='nearest',origin='lower')
         pl.colorbar()
-        pl.title(name + ' Read coverage vs GC content')
+        pl.title(name + ' GC Bias')
         pl.xlabel("GC %")
-        pl.ylabel("Read coverage")
+        pl.ylabel("k-mer coverage")
         pl.savefig(pp, format='pdf')
         pl.close()
 
@@ -366,8 +368,11 @@ for f in sys.argv[1:]:
 
 # Configure the plot
 matplotlib.rcParams['lines.linewidth'] = 1.5
-matplotlib.rc('xtick', labelsize=14)
-matplotlib.rc('ytick', labelsize=14)
+matplotlib.rc('xtick', labelsize=10)
+matplotlib.rc('ytick', labelsize=10)
+matplotlib.rc('legend', fontsize=10)
+matplotlib.rc('axes', titlesize=16)
+matplotlib.rc('axes', labelsize=16)
 
 pp = PdfPages("test_report.pdf")
 
