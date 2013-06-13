@@ -56,7 +56,7 @@ def plot_mean_unipath_lengths(pp, data):
 
     pl.xlabel("k")
     pl.ylabel("Mean unipath length")
-    pl.ylim([0, 10000])
+    pl.ylim([0, 40000])
     pl.title("Mean length of unambiguous segments of the k-de Bruijn graph")
     pl.legend(names)
     pl.savefig(pp, format='pdf')
@@ -71,13 +71,13 @@ def plot_de_bruijn_simulation_lengths(pp, data):
         values = list()
         for t in data[name][DE_BRUIJN_SIMULATION_NAME]:
             kmers.append(t['k'])
-            values.append(np.mean(t['walk_lengths']))
+            values.append(n50(t['walk_lengths']))
         pl.plot(kmers, values, 'o-')
 
     pl.xlabel("k")
-    pl.ylabel("Mean simulated contig length")
-    pl.ylim([0, 10000])
-    pl.title("Mean simulated contig length in the k-de Bruijn graph")
+    pl.ylabel("Simulated contig length N50")
+    pl.title("Simulated contig lengths in the k-de Bruijn graph")
+    pl.ylim([0, 50000])
     pl.legend(names)
     pl.savefig(pp, format='pdf')
     pl.close()
@@ -260,23 +260,6 @@ def plot_genome_size(pp, data):
 
 def plot_gc_distribution(pp, data):
     names = data.keys()
-    gc_bin_size = 0.02
-
-    for name in names:
-
-        bins = data[name][GC_DISTRIBUTION_NAME]['gc_bins']
-        read_data = data[name][GC_DISTRIBUTION_NAME]['read_gc_prop']
-        base_line, = pl.plot(bins, read_data)
-
-        if 'ref_gc_prop' in data[name][GC_DISTRIBUTION_NAME]:
-            ref_data = data[name][GC_DISTRIBUTION_NAME]['ref_gc_prop']
-            pl.plot(bins, ref_data, '--', color="red")
-    pl.xlabel("GC content")
-    pl.ylabel("Proportion")
-    pl.title("GC histogram")
-    pl.legend(names)
-    pl.savefig(pp, format='pdf')
-    pl.close()
 
     # Plot the 2D histogram of coverage vs gc
     for name in names:
@@ -284,8 +267,31 @@ def plot_gc_distribution(pp, data):
         y = data[name][GC_DISTRIBUTION_NAME]['cov_samples']
 
         hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, 100] ])
+
+        # Iterate over the bins and determine the bin within
+        # each column that has the highest number of items. We ignore
+        # low-coverage entries as they likely represent errors
+        max_xs = list()
+        max_ys = list()
+        max_cs = list()
+        for xe in enumerate(hist):
+
+            # Find peak index in this ybin
+            max_c = 0
+            max_i = 0
+            for yi in enumerate(xe[1]):
+                if yi[0] > 2 and yi[1] > max_c:
+                    max_i = yi[0]
+                    max_c = yi[1]
+
+            max_xs.append(xedges[xe[0]] + (xedges[xe[0] + 1] - xedges[xe[0]]) / 2)
+            max_ys.append(yedges[max_i] + (yedges[max_i + 1] - yedges[max_i]) / 2)
+            max_cs.append(max_c)
+
+        # draw the plot
         extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
         pl.imshow(hist.T,extent=extent,interpolation='nearest',origin='lower')
+
         pl.colorbar()
         pl.title(name + ' GC Bias')
         pl.xlabel("GC %")
@@ -296,7 +302,6 @@ def plot_gc_distribution(pp, data):
 def plot_fragment_sizes(pp, data):
 
     # Trim outliers from the histograms
-    DENSITY_CUTOFF = 0.98
     names = data.keys()
     for name in names:
         h = data[name][FRAGMENT_SIZE_NAME]['sizes']
@@ -311,13 +316,13 @@ def plot_fragment_sizes(pp, data):
         y = list()
         sum  = 0
         for i,j in sorted(sizes.items()):
-            if sum < DENSITY_CUTOFF:
-                f = float(j) / n
-                x.append(i)
-                y.append(f)
-                sum += f
+            f = float(j) / n
+            x.append(i)
+            y.append(f)
+            sum += f
         pl.plot(x, y)
 
+    pl.xlim([0, 1000])
     pl.xlabel("Fragment Size (bp)")
     pl.ylabel("Proportion")
     pl.title("Estimated Fragment Size Histogram")
@@ -384,7 +389,7 @@ plot_branch_classification(pp, data) if any_set_has_key(data, BRANCH_CLASSIFICAT
 # Quality/Error rate plots
 plot_quality_scores(pp, data) if any_set_has_key(data, QUALITY_SCORE_NAME) else 0
 plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
-#plot_errors_per_base(pp, data) if any_set_has_key(data, ERRORS_PER_BASE_NAME) else 0
+plot_errors_per_base(pp, data) if any_set_has_key(data, ERRORS_PER_BASE_NAME) else 0
 plot_pcr_duplicates(pp, data) if any_set_has_key(data, PCR_DUPLICATE_NAME) else 0
 plot_fragment_sizes(pp, data) if any_set_has_key(data, FRAGMENT_SIZE_NAME) else 0
 
@@ -395,7 +400,7 @@ plot_gc_distribution(pp, data) if any_set_has_key(data, GC_DISTRIBUTION_NAME) el
 
 # Graph topology plots
 plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
-plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
+#plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
 plot_de_bruijn_simulation_lengths(pp, data) if any_set_has_key(data, DE_BRUIJN_SIMULATION_NAME) else 0
 
 pp.close()

@@ -308,9 +308,8 @@ void generate_position_of_first_error(JSONWriter* pWriter, const BWTIndexSet& in
 //
 void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
-
     int n_samples = 100000;
-    size_t k = 25;
+    size_t k = 31;
 
     double max_error_rate = 0.95;
     size_t min_overlap = 50;
@@ -626,6 +625,10 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
 
         size_t cov = BWTAlgorithms::countSequenceOccurrences(s.substr(0, k), index_set.pBWT);
 
+        // Ignore singletons
+        if(cov == 1)
+            continue;
+
         double gc = 0.f;
         double at = 0.f;
         for(size_t j = 0; j < s.size(); ++j)
@@ -898,6 +901,38 @@ void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename
     pJSONWriter->EndObject();
 }
 
+// Find the single-copy peak of the kmer count distribution
+// Extremely heterozygous diploid genomes might have multiple
+// coverage peaks so we need to take care to not call
+// the half-coverage peak
+size_t findSingleCopyPeak(const KmerDistribution& distribution)
+{
+    size_t MIN_COUNT = 3;
+    size_t MAX_COUNT = 1000;
+
+    // Step 1: find global maxima
+    size_t global_peak_v = 0;
+    size_t global_peak_c = 0;
+    for(size_t i = MIN_COUNT; i < MAX_COUNT; ++i)
+    {
+        size_t c = distribution.getNumberWithCount(i);
+        if(c > global_peak_c)
+        {
+            global_peak_v = i;
+            global_peak_c = c;
+        }
+    }
+
+    // Check whether the 2*n peak is reasonably close to the same height
+    // as the global peak
+    size_t n2_count = distribution.getNumberWithCount(2*global_peak_v);
+    double r = (double)n2_count / (global_peak_c + n2_count);
+    if(r > 0.25)
+        return 2*global_peak_v;
+    else
+        return global_peak_v;
+}
+
 size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set)
 {
     //
@@ -919,8 +954,7 @@ size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set
     }
 
     // find the mode of the distribution, ignoring low-count k-mers that are likely errors
-    size_t mode_start = 3;
-    double mode = kmerDistribution.getCensoredMode(mode_start);
+    double mode = findSingleCopyPeak(kmerDistribution);
 
     size_t total_kmers_in_distribution = kmerDistribution.getTotalKmers();
     double prop_kmers_with_error = 0.0;
@@ -930,7 +964,7 @@ size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set
     double error_rate_prior = 0.01;
     double error_pois_mean = mode * error_rate_prior;
 
-    // we do have zero counts in our distribution so we re-scale the truncated poisson
+    // we do not have zero counts in our distribution so we re-scale the poisson
     double zero_trunc_scale = 1 / (1 - exp(-error_pois_mean));
 
     for(size_t c = 1; c <= 5; ++c) {
@@ -984,7 +1018,6 @@ void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
 // Sample k-mers from the read set to learn the modal k-mer count
 size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
 {
-    const static size_t MIN_COUNT = 3;
     // Step 1: Learn k-mer occurrence distribution for this value of k
     KmerDistribution distribution;
     for(size_t i = 0; i < n; ++i)
@@ -1001,10 +1034,7 @@ size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
         }
     }
 
-    // If we picked the mode naively we would almost surely
-    // select 1 due to k-mers with errors. We set a min threshold
-    // of 3 to allow the true peak to be selected
-    return distribution.getCensoredMode(MIN_COUNT);
+    return findSingleCopyPeak(distribution);
 }
 
 // Run the bayesian classification on a two-edge branch in the de Bruijn graph
@@ -1022,11 +1052,11 @@ BranchClassification classify_2_branch(size_t mode, size_t higher_count, size_t 
     // P( total | error) = pois(total, mode)
     // P( allele_balance | error) = Beta(100,100*error_rate)
     double log_p_count_error = SGAStats::logPoisson(total, mode);
-    double log_p_balance_error = SGAStats::logIntegerBeta(norm_allele_balance, 1, 10);
+    double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
 
     // Variation Model
     double log_p_count_variant = log_p_count_error;
-    double log_p_balance_variant = SGAStats::logIntegerBeta(norm_allele_balance, 10, 1);
+    double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
 
     // Repeat model
     const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
@@ -1047,9 +1077,9 @@ BranchClassification classify_2_branch(size_t mode, size_t higher_count, size_t 
     double log_p_balance_repeat = log_p_balance_variant;
 
     // priors
-    double log_prior_error = log(.3);
-    double log_prior_variant = log(.3);
-    double log_prior_repeat = log(.3);
+    double log_prior_error = log(1.0/3);
+    double log_prior_variant = log(1.0/3);
+    double log_prior_repeat = log(1.0/3);
 
     // Calculate posterior for each state
     double ls1 = log_p_count_error + log_p_balance_error + log_prior_error;
@@ -1217,12 +1247,12 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
 {
     int kmer_distribution_samples = 10000;
     int n_samples = 10000;
-    const static size_t MAX_WALK_LENGTH = 30000;
+    const static size_t MAX_WALK_LENGTH = 50000;
 
     pWriter->String("SimulateAssembly");
     pWriter->StartArray();
 
-    for(size_t k = 21; k <= 71; k += 5)
+    for(size_t k = 21; k <= 91; k += 5)
     {
         // Step 1: Learn k-mer occurrence distribution for this value of k
         size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
@@ -1249,70 +1279,75 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
             
             HashMap<std::string, bool> loop_check;
             std::string start_kmer = s.substr(0, k);
-            std::string curr_kmer = start_kmer;
-
             size_t walk_length = 0;
-            bool done = false;
-            while(!done && walk_length < MAX_WALK_LENGTH)
+
+            // Extend using curr_kmer first, then its reverse complement
+            for(size_t dir = 0; dir <= 1; ++dir)
             {
-                loop_check[curr_kmer] = true;
+                std::string curr_kmer = dir == 0 ? start_kmer : reverseComplement(start_kmer);
 
-                // Get the possible extensions of this kmer
-                int f_counts[4] = { 0, 0, 0, 0 };
-                int r_counts[4] = { 0, 0, 0, 0 };
-
-                fill_neighbor_count_by_strand(curr_kmer, index_set, f_counts, r_counts);
-                
-                // Make sure both strands are represented for every acceptable
-                AlphaCount64 sum_counts;
-                int num_extensions_both_strands = 0;
-                for(size_t bi = 0; bi < 4; ++bi)
+                bool done = false;
+                while(!done && walk_length < MAX_WALK_LENGTH)
                 {
-                    sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
-                    if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
-                        num_extensions_both_strands += 1;
-                }
+                    loop_check[curr_kmer] = true;
 
-                // Order the bases by the count of the neighbor kmers
-                char sorted_bases[5];
-                sorted_bases[4] = '\0';
-                sum_counts.getSorted(sorted_bases, 5);
+                    // Get the possible extensions of this kmer
+                    int f_counts[4] = { 0, 0, 0, 0 };
+                    int r_counts[4] = { 0, 0, 0, 0 };
 
-                char extension_base = '\0';
-                if(num_extensions_both_strands < 2)
-                {
-                    // No ambiguity, just pick the highest coverage extension as the next node
-                    char best_extension = sorted_bases[0];
-                    if(sum_counts.get(best_extension) > 0)
-                        extension_base = best_extension;
-                } 
-                else if(num_extensions_both_strands == 2) 
-                {
-                    size_t c_1 = sum_counts.get(sorted_bases[0]);
-                    size_t c_2 = sum_counts.get(sorted_bases[1]);
-                    BranchClassification classification = classify_2_branch(mode, c_1, c_2);
-                    if(classification == BC_ERROR || classification == BC_VARIANT)
-                    {
-                        // if this is an error branch, we take the non-error (higher coverage) option
-                        // if this is a variant path we also take the higher coverage option to simulate
-                        // a successfully popped bubble
-                        extension_base = sorted_bases[0];
-                    }
-                } // stop extension if a 3-branch
-
-                if(extension_base != '\0')
-                {
-                    curr_kmer.erase(0, 1);
-                    curr_kmer.append(1, extension_base);
+                    fill_neighbor_count_by_strand(curr_kmer, index_set, f_counts, r_counts);
                     
-                    if(loop_check.find(curr_kmer) == loop_check.end())
-                        walk_length += 1;
+                    // Make sure both strands are represented for every acceptable
+                    AlphaCount64 sum_counts;
+                    int num_extensions_both_strands = 0;
+                    for(size_t bi = 0; bi < 4; ++bi)
+                    {
+                        sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
+                        if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+                            num_extensions_both_strands += 1;
+                    }
+
+                    // Order the bases by the count of the neighbor kmers
+                    char sorted_bases[5];
+                    sorted_bases[4] = '\0';
+                    sum_counts.getSorted(sorted_bases, 5);
+
+                    char extension_base = '\0';
+                    if(num_extensions_both_strands < 2)
+                    {
+                        // No ambiguity, just pick the highest coverage extension as the next node
+                        char best_extension = sorted_bases[0];
+                        if(sum_counts.get(best_extension) > 0)
+                            extension_base = best_extension;
+                    } 
+                    else if(num_extensions_both_strands == 2) 
+                    {
+                        size_t c_1 = sum_counts.get(sorted_bases[0]);
+                        size_t c_2 = sum_counts.get(sorted_bases[1]);
+                        BranchClassification classification = classify_2_branch(mode, c_1, c_2);
+                        if(classification == BC_ERROR || classification == BC_VARIANT)
+                        {
+                            // if this is an error branch, we take the non-error (higher coverage) option
+                            // if this is a variant path we also take the higher coverage option to simulate
+                            // a successfully popped bubble
+                            extension_base = sorted_bases[0];
+                        }
+                    } // stop extension if a 3-branch
+
+                    if(extension_base != '\0')
+                    {
+                        curr_kmer.erase(0, 1);
+                        curr_kmer.append(1, extension_base);
+                        
+                        if(loop_check.find(curr_kmer) == loop_check.end())
+                            walk_length += 1;
+                        else
+                            done = true;
+                    }
                     else
+                    {
                         done = true;
-                }
-                else
-                {
-                    done = true;
+                    }
                 }
             }
 #if HAVE_OPENMP
@@ -1342,9 +1377,10 @@ int preQCMain(int argc, char** argv)
     rapidjson::FileStream f(stdout);
     JSONWriter writer(f);
 
+
     // Top-level document
     writer.StartObject();
-
+    
     generate_de_bruijn_simulation(&writer, index_set);
     generate_branch_classification(&writer, index_set);
     generate_genome_size(&writer, index_set);
@@ -1354,10 +1390,11 @@ int preQCMain(int argc, char** argv)
     generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
     generate_position_of_first_error(&writer, index_set);
+    generate_errors_per_base(&writer, index_set);
     generate_unipath_length_data(&writer, index_set);
     generate_duplication_rate(&writer, index_set);
     generate_random_walk_length(&writer, index_set);
-
+    
     // End document
     writer.EndObject();
 

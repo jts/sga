@@ -22,7 +22,10 @@ double logBinomial(unsigned int k, unsigned int n, double p);
 
 // The logarithm of the Beta distribution pdf for the special case
 // that the shape parameters are positive integers
-double logIntegerBeta(double x, unsigned int a, unsigned int b);
+double logIntegerBetaDistribution(double x, unsigned int a, unsigned int b);
+
+// The logarithm of the integer beta function
+double logIntegerBetaFunction(unsigned int a, unsigned int b);
 
 }
 #endif
