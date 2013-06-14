@@ -567,7 +567,7 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
             // Only start a walk from this kmer if is not in the bloom filter and has coverage on both strands
             bool in_filter = bloom_filter->test( (kmer < rc_kmer ? kmer.c_str() : rc_kmer.c_str()), k);
             size_t fc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(kmer, index_set);
-            size_t rc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(kmer, index_set);
+            size_t rc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(rc_kmer, index_set);
             if(in_filter || fc == 0 || rc == 0)
                 continue;
 
