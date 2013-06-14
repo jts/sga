@@ -362,8 +362,6 @@ void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
                 }
             }
 
-            //printf("P: %zu S: %c M: %c MC: %d\n", position, s_symbol, max_symbol, max_count);
-
             // Call an error at this position if the consensus symbol differs from the read
             //    and the support for the read symbol is less than 4 and the consensus symbol
             //    is strongly supported.
@@ -534,27 +532,24 @@ void generate_double_branch(JSONWriter* pWriter, const BWTIndexSet& index_set)
 void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
     int n_samples = 1000;
-    size_t min_coverage = 5;
-    double coverage_cutoff = 0.75f;
     size_t max_length = 30000;
-    
-    // Create a bloom filter to mark
-    // visited kmers. We do not allow a new
-    // walk to start at one of these kmers
-    size_t bf_overcommit = 20;
-    BloomFilter* bloom_filter = new BloomFilter;;
-    bloom_filter->initialize(n_samples * max_length * bf_overcommit, 3);
+    size_t bf_overcommit = 10;
 
     pWriter->String("RandomWalkLength");
     pWriter->StartArray();
 
     for(size_t k = 16; k < 86; k += 5)
     {
+        // Use a bloom filter to skip previously seen kmers
+        BloomFilter* bloom_filter = new BloomFilter;;
+        bloom_filter->initialize(n_samples * max_length * bf_overcommit, 3);
+
         pWriter->StartObject();
         pWriter->String("k");
         pWriter->Int(k);
         pWriter->String("walk_lengths");
         pWriter->StartArray();
+
 #if HAVE_OPENMP
         omp_set_num_threads(opt::numThreads);
         #pragma omp parallel for
@@ -565,20 +560,41 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
             std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
             if(s.size() < k)
                 continue;
+
             std::string kmer = s.substr(0, k);
-            if(bloom_filter->test(kmer.c_str(), k) || BWTAlgorithms::countSequenceOccurrences(kmer, index_set) < min_coverage)
+            std::string rc_kmer = reverseComplement(kmer);
+
+            // Only start a walk from this kmer if is not in the bloom filter and has coverage on both strands
+            bool in_filter = bloom_filter->test( (kmer < rc_kmer ? kmer.c_str() : rc_kmer.c_str()), k);
+            size_t fc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(kmer, index_set);
+            size_t rc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(kmer, index_set);
+            if(in_filter || fc == 0 || rc == 0)
                 continue;
-            bloom_filter->add(kmer.c_str(), k);
 
             while(walk_length < max_length) 
             {
-                std::string extensions = get_valid_dbg_neighbors_ratio(kmer, index_set, coverage_cutoff);
+                bloom_filter->add( (kmer < rc_kmer ? kmer.c_str() : rc_kmer.c_str()), k);
+
+                // Get the possible extensions of this kmer
+                int f_counts[4] = { 0, 0, 0, 0 };
+                int r_counts[4] = { 0, 0, 0, 0 };
+
+                fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
+
+                // Only allow extensions to vertices that have coverage on both strands
+                std::string extensions;
+                for(size_t bi = 0; bi < 4; ++bi)
+                {
+                    if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+                        extensions.append(1, "ACGT"[bi]);
+                }
+
                 if(!extensions.empty())
                 {
                     kmer.erase(0, 1);
                     kmer.append(1, extensions[rand() % extensions.size()]);
+                    rc_kmer = reverseComplement(kmer);
                     walk_length += 1;
-                    bloom_filter->add(kmer.c_str(), k);
                 }
                 else
                 {
@@ -590,12 +606,13 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
 #endif
             pWriter->Int(walk_length);
         }
+
         pWriter->EndArray();
         pWriter->EndObject();
+        delete bloom_filter;
     }
 
     pWriter->EndArray();
-    delete bloom_filter;
 }
 
 void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
@@ -965,7 +982,8 @@ size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set
     double error_pois_mean = mode * error_rate_prior;
 
     // we do not have zero counts in our distribution so we re-scale the poisson
-    double zero_trunc_scale = 1 / (1 - exp(-error_pois_mean));
+    double zero_trunc_scale_error = 1 / (1 - exp(-error_pois_mean));
+    double zero_trunc_scale_real = 1 / (1 - exp(-mode));
 
     for(size_t c = 1; c <= 5; ++c) {
         // Calculate the proportion of k-mers with count c 
@@ -978,8 +996,8 @@ size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set
         //                P(c|error) P(error) + P(c|real)P(real)
         
         // zero-truncated poisson
-        double p_c_error = exp(SGAStats::logPoisson(c, error_pois_mean)) * zero_trunc_scale;
-        double p_c_real = exp(SGAStats::logPoisson(c, mode)) * (1.0f - prior_error);
+        double p_c_error = exp(SGAStats::logPoisson(c, error_pois_mean)) * zero_trunc_scale_error * prior_error;
+        double p_c_real  = exp(SGAStats::logPoisson(c, mode)) * zero_trunc_scale_real * (1.0f - prior_error);
         double p_error = p_c_error / (p_c_error + p_c_real);
 
         // Get the proportion of kmers with count c
@@ -1254,6 +1272,12 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
 
     for(size_t k = 21; k <= 91; k += 5)
     {
+        // Set up a bloom filter to avoid sampling paths multiple times
+        size_t max_expected_kmers = MAX_WALK_LENGTH * n_samples;
+
+        BloomFilter* bf = new BloomFilter;
+        bf->initialize(10 * max_expected_kmers, 3);
+
         // Step 1: Learn k-mer occurrence distribution for this value of k
         size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
 
@@ -1279,6 +1303,21 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
             
             HashMap<std::string, bool> loop_check;
             std::string start_kmer = s.substr(0, k);
+            std::string rc_start_kmer = reverseComplement(start_kmer);
+
+            // To avoid sampling error paths, only use kmers that are seen
+            // on both strands as start points
+            size_t fc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(start_kmer, index_set);
+            size_t rc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(rc_start_kmer, index_set);
+
+            if(fc == 0 || rc == 0)
+                continue;
+            
+            // skip if this kmer has been used in a previous walk
+            bool in_filter = bf->test( (start_kmer < rc_start_kmer ? start_kmer.c_str() : rc_start_kmer.c_str()), k);
+            if(in_filter)
+                continue;
+
             size_t walk_length = 0;
 
             // Extend using curr_kmer first, then its reverse complement
@@ -1289,7 +1328,10 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                 bool done = false;
                 while(!done && walk_length < MAX_WALK_LENGTH)
                 {
+                    // Add the kmer to the loop checker and bloom filter
                     loop_check[curr_kmer] = true;
+                    std::string rc_curr_kmer = reverseComplement(curr_kmer);
+                    bf->add( (curr_kmer < rc_curr_kmer ? curr_kmer.c_str() : rc_curr_kmer.c_str()), k);
 
                     // Get the possible extensions of this kmer
                     int f_counts[4] = { 0, 0, 0, 0 };
@@ -1357,6 +1399,8 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
         }
         pWriter->EndArray();
         pWriter->EndObject();
+
+        delete bf;
     }
     pWriter->EndArray();
 }
