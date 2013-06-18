@@ -1421,7 +1421,6 @@ int preQCMain(int argc, char** argv)
     rapidjson::FileStream f(stdout);
     JSONWriter writer(f);
 
-
     // Top-level document
     writer.StartObject();
     
@@ -1437,7 +1436,7 @@ int preQCMain(int argc, char** argv)
     generate_errors_per_base(&writer, index_set);
     generate_unipath_length_data(&writer, index_set);
     generate_duplication_rate(&writer, index_set);
-    generate_random_walk_length(&writer, index_set);
+    //generate_random_walk_length(&writer, index_set);
     
     // End document
     writer.EndObject();
