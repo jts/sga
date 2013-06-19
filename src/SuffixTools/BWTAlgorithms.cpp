@@ -430,7 +430,7 @@ void _extractRankedPrefixes(const BWT* pBWT, BWTInterval interval, const std::st
     for(int64_t i = interval.lower; i <= interval.upper; ++i)
     {
         // backwards search gives a reversed prefix, fix it
-        RankedPrefix rp = { i, reverse(curr) };
+        RankedPrefix rp = { (size_t)i, reverse(curr) };
         pOutput->push_back(rp);
     }
 }

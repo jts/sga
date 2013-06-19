@@ -630,8 +630,8 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
     std::vector<size_t> coverage_vector;
     std::vector<double> gc_vector;
 
-    read_gc_sum.resize(1.0f / gc_bin_size + 1);
-    ref_gc_sum.resize(1.0f / gc_bin_size + 1);
+    read_gc_sum.resize((size_t)(1.0f / gc_bin_size) + 1);
+    ref_gc_sum.resize((size_t)(1.0f / gc_bin_size) + 1);
 
     // Calculate the gc content of sampled reads
     for(int i = 0; i < n_samples; ++i)
@@ -657,7 +657,7 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
         }
         
         double gc_f = gc / (gc + at);
-        size_t bin_idx = gc_f / gc_bin_size;
+        size_t bin_idx = (size_t)(gc_f / gc_bin_size);
         read_gc_sum[bin_idx] += gc_f;
         read_gc_n += 1;
 
@@ -688,7 +688,7 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
                         at += 1;
                 }
                 double gc_f = gc / (gc + at);
-                size_t bin_idx = gc_f / gc_bin_size;
+                size_t bin_idx = (size_t)(gc_f / gc_bin_size);
                 ref_gc_sum[bin_idx] += gc_f;
                 ref_gc_n += 1;
             }
