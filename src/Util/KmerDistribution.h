@@ -31,8 +31,11 @@ class KmerDistribution
         int findErrorBoundary() const;
         int findErrorBoundaryByRatio(double ratio) const;
 
-        // Get the mean value of the distribution if the first n values are ignored
+        // Get the mode of the distribution if the first n values are ignored
         int getCensoredMode(size_t n) const;
+ 
+        size_t getTotalKmers() const;
+        size_t getNumberWithCount(size_t c) const;
 
         //
         std::vector<int> toCountVector(int max) const;

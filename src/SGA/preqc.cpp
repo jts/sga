@@ -22,6 +22,8 @@
 #include "KmerDistribution.h"
 #include "KmerOverlaps.h"
 #include "BloomFilter.h"
+#include "SGAStats.h"
+#include "DindelRealignWindow.h"
 #include "rapidjson/document.h"
 #include "rapidjson/prettywriter.h"
 #include "rapidjson/filestream.h"
@@ -29,6 +31,15 @@
 #if HAVE_OPENMP
 #include <omp.h>
 #endif
+
+// Enums
+enum BranchClassification
+{
+    BC_NO_CALL,
+    BC_ERROR,
+    BC_VARIANT,
+    BC_REPEAT
+};
 
 // Typedefs
 typedef rapidjson::PrettyWriter<rapidjson::FileStream> JSONWriter;
@@ -156,6 +167,27 @@ std::string get_valid_dbg_neighbors_coverage_and_ratio(const std::string& kmer,
     return out;    
 }
 
+void fill_neighbor_count_by_strand(const std::string& kmer, const BWTIndexSet& index_set, int f_counts[4], int r_counts[4])
+{
+    // Count the extensions from this kmer
+    char f_ext[] = "ACGT";
+    char r_ext[] = "TGCA";
+    size_t k = kmer.size();
+    std::string f_mer = kmer.substr(1) + "A";
+    std::string r_mer = "A" + reverseComplement(kmer).substr(0, k - 1);
+    assert(f_mer.size() == k);
+    assert(r_mer.size() == k);
+
+    for(size_t bi = 0; bi < 4; ++bi)
+    {
+        f_mer[f_mer.size() - 1] = f_ext[bi];
+        r_mer[0] = r_ext[bi];
+
+        f_counts[bi] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(f_mer, index_set);
+        r_counts[bi] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(r_mer, index_set);
+    }
+}
+
 //
 void generate_unipath_length_data(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
@@ -276,9 +308,8 @@ void generate_position_of_first_error(JSONWriter* pWriter, const BWTIndexSet& in
 //
 void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
-
     int n_samples = 100000;
-    size_t k = 25;
+    size_t k = 31;
 
     double max_error_rate = 0.95;
     size_t min_overlap = 50;
@@ -330,8 +361,6 @@ void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
                     max_symbol = scv[k].symbol;
                 }
             }
-
-            //printf("P: %zu S: %c M: %c MC: %d\n", position, s_symbol, max_symbol, max_count);
 
             // Call an error at this position if the consensus symbol differs from the read
             //    and the support for the read symbol is less than 4 and the consensus symbol
@@ -503,27 +532,24 @@ void generate_double_branch(JSONWriter* pWriter, const BWTIndexSet& index_set)
 void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_set)
 {
     int n_samples = 1000;
-    size_t min_coverage = 5;
-    double coverage_cutoff = 0.75f;
     size_t max_length = 30000;
-    
-    // Create a bloom filter to mark
-    // visited kmers. We do not allow a new
-    // walk to start at one of these kmers
-    size_t bf_overcommit = 20;
-    BloomFilter* bloom_filter = new BloomFilter;;
-    bloom_filter->initialize(n_samples * max_length * bf_overcommit, 3);
+    size_t bf_overcommit = 10;
 
     pWriter->String("RandomWalkLength");
     pWriter->StartArray();
 
     for(size_t k = 16; k < 86; k += 5)
     {
+        // Use a bloom filter to skip previously seen kmers
+        BloomFilter* bloom_filter = new BloomFilter;;
+        bloom_filter->initialize(n_samples * max_length * bf_overcommit, 3);
+
         pWriter->StartObject();
         pWriter->String("k");
         pWriter->Int(k);
         pWriter->String("walk_lengths");
         pWriter->StartArray();
+
 #if HAVE_OPENMP
         omp_set_num_threads(opt::numThreads);
         #pragma omp parallel for
@@ -534,20 +560,41 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
             std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
             if(s.size() < k)
                 continue;
+
             std::string kmer = s.substr(0, k);
-            if(bloom_filter->test(kmer.c_str(), k) || BWTAlgorithms::countSequenceOccurrences(kmer, index_set) < min_coverage)
+            std::string rc_kmer = reverseComplement(kmer);
+
+            // Only start a walk from this kmer if is not in the bloom filter and has coverage on both strands
+            bool in_filter = bloom_filter->test( (kmer < rc_kmer ? kmer.c_str() : rc_kmer.c_str()), k);
+            size_t fc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(kmer, index_set);
+            size_t rc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(rc_kmer, index_set);
+            if(in_filter || fc == 0 || rc == 0)
                 continue;
-            bloom_filter->add(kmer.c_str(), k);
 
             while(walk_length < max_length) 
             {
-                std::string extensions = get_valid_dbg_neighbors_ratio(kmer, index_set, coverage_cutoff);
+                bloom_filter->add( (kmer < rc_kmer ? kmer.c_str() : rc_kmer.c_str()), k);
+
+                // Get the possible extensions of this kmer
+                int f_counts[4] = { 0, 0, 0, 0 };
+                int r_counts[4] = { 0, 0, 0, 0 };
+
+                fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
+
+                // Only allow extensions to vertices that have coverage on both strands
+                std::string extensions;
+                for(size_t bi = 0; bi < 4; ++bi)
+                {
+                    if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+                        extensions.append(1, "ACGT"[bi]);
+                }
+
                 if(!extensions.empty())
                 {
                     kmer.erase(0, 1);
                     kmer.append(1, extensions[rand() % extensions.size()]);
+                    rc_kmer = reverseComplement(kmer);
                     walk_length += 1;
-                    bloom_filter->add(kmer.c_str(), k);
                 }
                 else
                 {
@@ -559,12 +606,13 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
 #endif
             pWriter->Int(walk_length);
         }
+
         pWriter->EndArray();
         pWriter->EndObject();
+        delete bloom_filter;
     }
 
     pWriter->EndArray();
-    delete bloom_filter;
 }
 
 void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
@@ -582,8 +630,8 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
     std::vector<size_t> coverage_vector;
     std::vector<double> gc_vector;
 
-    read_gc_sum.resize(1.0f / gc_bin_size + 1);
-    ref_gc_sum.resize(1.0f / gc_bin_size + 1);
+    read_gc_sum.resize((size_t)(1.0f / gc_bin_size) + 1);
+    ref_gc_sum.resize((size_t)(1.0f / gc_bin_size) + 1);
 
     // Calculate the gc content of sampled reads
     for(int i = 0; i < n_samples; ++i)
@@ -593,6 +641,10 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
             continue;
 
         size_t cov = BWTAlgorithms::countSequenceOccurrences(s.substr(0, k), index_set.pBWT);
+
+        // Ignore singletons
+        if(cov == 1)
+            continue;
 
         double gc = 0.f;
         double at = 0.f;
@@ -605,7 +657,7 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
         }
         
         double gc_f = gc / (gc + at);
-        size_t bin_idx = gc_f / gc_bin_size;
+        size_t bin_idx = (size_t)(gc_f / gc_bin_size);
         read_gc_sum[bin_idx] += gc_f;
         read_gc_n += 1;
 
@@ -636,7 +688,7 @@ void generate_gc_distribution(JSONWriter* pJSONWriter, const BWTIndexSet& index_
                         at += 1;
                 }
                 double gc_f = gc / (gc + at);
-                size_t bin_idx = gc_f / gc_bin_size;
+                size_t bin_idx = (size_t)(gc_f / gc_bin_size);
                 ref_gc_sum[bin_idx] += gc_f;
                 ref_gc_n += 1;
             }
@@ -866,6 +918,493 @@ void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename
     pJSONWriter->EndObject();
 }
 
+// Find the single-copy peak of the kmer count distribution
+// Extremely heterozygous diploid genomes might have multiple
+// coverage peaks so we need to take care to not call
+// the half-coverage peak
+size_t findSingleCopyPeak(const KmerDistribution& distribution)
+{
+    size_t MIN_COUNT = 3;
+    size_t MAX_COUNT = 1000;
+
+    // Step 1: find global maxima
+    size_t global_peak_v = 0;
+    size_t global_peak_c = 0;
+    for(size_t i = MIN_COUNT; i < MAX_COUNT; ++i)
+    {
+        size_t c = distribution.getNumberWithCount(i);
+        if(c > global_peak_c)
+        {
+            global_peak_v = i;
+            global_peak_c = c;
+        }
+    }
+
+    // Check whether the 2*n peak is reasonably close to the same height
+    // as the global peak
+    size_t n2_count = distribution.getNumberWithCount(2*global_peak_v);
+    double r = (double)n2_count / (global_peak_c + n2_count);
+    if(r > 0.25)
+        return 2*global_peak_v;
+    else
+        return global_peak_v;
+}
+
+size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set)
+{
+    //
+    size_t n_samples = 20000;
+    size_t sum_read_length = 0;
+    KmerDistribution kmerDistribution;
+    for(size_t i = 0; i < n_samples; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        int n = s.size();
+        int nk = n - k + 1;
+        for(int j = 0; j < nk; ++j)
+        {
+            std::string kmer = s.substr(j, k);
+            int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+            kmerDistribution.add(count);
+        }
+        sum_read_length += s.size();
+    }
+
+    // find the mode of the distribution, ignoring low-count k-mers that are likely errors
+    double mode = findSingleCopyPeak(kmerDistribution);
+
+    size_t total_kmers_in_distribution = kmerDistribution.getTotalKmers();
+    double prop_kmers_with_error = 0.0;
+    double prior_error = 0.1;
+
+    // We fit the error counts using a zero-truncated poisson distribution
+    double error_rate_prior = 0.01;
+    double error_pois_mean = mode * error_rate_prior;
+
+    // we do not have zero counts in our distribution so we re-scale the poisson
+    double zero_trunc_scale_error = 1 / (1 - exp(-error_pois_mean));
+    double zero_trunc_scale_real = 1 / (1 - exp(-mode));
+
+    for(size_t c = 1; c <= 5; ++c) {
+        // Calculate the proportion of k-mers with count c 
+        // that are expected to be true genomic k-mers
+
+        // Calculate the probability that kmers with count c
+        // contain errors
+        // P(error | c) =        P(c | error) P(error)
+        //                --------------------------------------
+        //                P(c|error) P(error) + P(c|real)P(real)
+        
+        // zero-truncated poisson
+        double p_c_error = exp(SGAStats::logPoisson(c, error_pois_mean)) * zero_trunc_scale_error * prior_error;
+        double p_c_real  = exp(SGAStats::logPoisson(c, mode)) * zero_trunc_scale_real * (1.0f - prior_error);
+        double p_error = p_c_error / (p_c_error + p_c_real);
+
+        // Get the proportion of kmers with count c
+        double prop_c = (double)kmerDistribution.getNumberWithCount(c) / total_kmers_in_distribution;
+        prop_kmers_with_error += (prop_c * p_error);
+        //printf("\tc: %zu p_error: %.3lf p_c: %.3lf p_e: %.3lf\n", c, p_error, prop_c, prop_kmers_with_error);
+    }
+    size_t avg_rl = sum_read_length / n_samples;
+    size_t n = index_set.pBWT->getNumStrings();
+    double total_read_kmers = n * (avg_rl - k + 1);
+    double corrected_mode = mode / (1.0f - prop_kmers_with_error);
+    //printf("k: %zu mode: %.2lf c_mode: %.2lf g_m: %.2lf g_cm: %.2lf \n", k, mode, corrected_mode, total_read_kmers / mode, total_read_kmers / corrected_mode);
+    return total_read_kmers / corrected_mode;
+}
+
+void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
+{
+
+    /* Debug 
+    for(size_t k = 16; k < 81; k += 5)
+        estimate_genome_size_from_k_counts(k, index_set);
+    */
+
+    size_t estimate_k = 31;
+    size_t g_size = estimate_genome_size_from_k_counts(estimate_k, index_set);
+    pJSONWriter->String("GenomeSize");
+    pJSONWriter->StartObject();
+    pJSONWriter->String("k");
+    pJSONWriter->Int64(estimate_k);
+    pJSONWriter->String("size");
+    pJSONWriter->Int64(g_size);
+    pJSONWriter->EndObject();
+}
+
+
+// Sample k-mers from the read set to learn the modal k-mer count
+size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
+{
+    // Step 1: Learn k-mer occurrence distribution for this value of k
+    KmerDistribution distribution;
+    for(size_t i = 0; i < n; ++i)
+    {
+        std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        if(s.size() < k)
+            continue;
+        size_t nk = s.size() - k + 1;    
+        for(size_t j = 0; j < nk; ++j)
+        {
+            std::string kmer = s.substr(j, k);
+            int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+            distribution.add(count);
+        }
+    }
+
+    return findSingleCopyPeak(distribution);
+}
+
+// Run the bayesian classification on a two-edge branch in the de Bruijn graph
+BranchClassification classify_2_branch(size_t mode, size_t higher_count, size_t lower_count)
+{
+    const static int MAX_REPEAT_COPIES = 20;
+    size_t total = higher_count + lower_count;
+    double allele_balance = (double)higher_count / total;
+    
+    // Normalize the allele balance to the range [0, 1]
+    // where 1 is completely balanced between variants
+    double norm_allele_balance = 2 * (1.0f - allele_balance);
+
+    // Error model
+    // P( total | error) = pois(total, mode)
+    // P( allele_balance | error) = Beta(100,100*error_rate)
+    double log_p_count_error = SGAStats::logPoisson(total, mode);
+    double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
+
+    // Variation Model
+    double log_p_count_variant = log_p_count_error;
+    double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
+
+    // Repeat model
+    const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
+    double log_p_count_repeat = 0.0f;
+    int copies_min = 2;
+    double log_truncation_scale = copies_min > 1 ? log(1.0f / (1.0f - MU)) : 0;
+    for(int copies = copies_min; copies < MAX_REPEAT_COPIES; ++copies)
+    {
+        double log_p_copies = (copies - 1)*log(1.0f - MU) + log(MU) + log_truncation_scale;
+        double log_count_given_copies = SGAStats::logPoisson(total, copies*mode);
+
+        if(copies == copies_min)
+            log_p_count_repeat = log_p_copies + log_count_given_copies;
+        else
+            log_p_count_repeat = addLogs(log_p_count_repeat, log_p_copies + log_count_given_copies);
+    }
+
+    double log_p_balance_repeat = log_p_balance_variant;
+
+    // priors
+    double log_prior_error = log(1.0/3);
+    double log_prior_variant = log(1.0/3);
+    double log_prior_repeat = log(1.0/3);
+
+    // Calculate posterior for each state
+    double ls1 = log_p_count_error + log_p_balance_error + log_prior_error;
+    double ls2 = log_p_count_variant + log_p_balance_variant + log_prior_variant;
+    double ls3 = log_p_count_repeat + log_p_balance_repeat + log_prior_repeat;
+
+    double log_sum = ls1;
+    log_sum = addLogs(log_sum, ls2);
+    log_sum = addLogs(log_sum, ls3);
+
+    double posterior_error = exp(ls1 - log_sum);
+    double posterior_variant = exp(ls2 - log_sum);
+    double posterior_repeat = exp(ls3 - log_sum);
+
+    double max = 0;
+    BranchClassification classification = BC_NO_CALL;
+    if(posterior_error > max)
+    {
+        max = posterior_error;
+        classification = BC_ERROR;
+    } 
+
+    if(posterior_variant > max)
+    {
+        max = posterior_variant;
+        classification = BC_VARIANT;
+    }
+
+    if(posterior_repeat > max)
+    {
+        max = posterior_repeat;
+        classification = BC_REPEAT;
+    }
+
+    /*   
+         printf("\tm: %zu c_1: %zu c_2: %zu tc: %zu y: %.4lf\n", mode, c_1, c_2, total, allele_balance);
+         printf("\tcv: %d/%d %d/%d %d/%d %d/%d\n", f_counts[0], r_counts[0], f_counts[1], r_counts[1], f_counts[2], r_counts[2], f_counts[3], r_counts[3]);
+         printf("\tlog_sum: %.4lf\n", log_sum);
+         printf("\t\tclass: %d\n", classification);
+         printf("\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), posterior_error);
+         printf("\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), posterior_variant);
+         printf("\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), posterior_repeat);
+         printf("DF %zu %zu %zu %zu %.4lf %d\n", mode, c_1, c_2, total, allele_balance, classification);
+     */
+     return classification;
+}
+
+void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& index_set)
+{
+    int kmer_distribution_samples = 10000;
+    int classification_samples = 50000;
+
+    //double min_probability_for_classification = 0.25;
+    pWriter->String("BranchClassification");
+    pWriter->StartArray();
+
+    for(size_t k = 21; k <= 71; k += 5)
+    {
+        // Step 1: Learn k-mer occurrence distribution for this value of k
+        size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
+
+        // Do not attempt classification if coverage is too low
+        if(mode < 10)
+            continue;
+
+        size_t num_error_branches = 0;
+        size_t num_variant_branches = 0;
+        size_t num_repeat_branches = 0;
+        size_t num_kmers = 0;
+
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+        for(int i = 0; i < classification_samples; ++i)
+        {
+            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+            if(s.size() < k)
+                continue;
+            
+            size_t nk = s.size() - k + 1;    
+            for(size_t j = 0; j < nk; ++j)
+            {
+                std::string kmer = s.substr(j, k);
+                int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+
+                // TODO: Calculate probabilty that this kmer is single copy
+                // For now just make a threshold
+                if(count < 0.75*mode || count > 1.25*mode)
+                    continue;
+
+                // these vectors are in order ACGT on the forward strand
+                int f_counts[4] = { 0, 0, 0, 0 };
+                int r_counts[4] = { 0, 0, 0, 0 };
+
+                fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
+                
+                // Make sure both strands are represented for every branch
+                AlphaCount64 sum_counts;
+                int num_extensions_both_strands = 0;
+                for(size_t bi = 0; bi < 4; ++bi)
+                {
+                    sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
+                    if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+                        num_extensions_both_strands += 1;
+                }
+
+                // classify the branch
+                BranchClassification classification = BC_NO_CALL;
+                if(num_extensions_both_strands == 2)
+                {
+                    char sorted_bases[5] = "ACGT";
+                    sorted_bases[4] = '\0';
+                    sum_counts.getSorted(sorted_bases, 5);
+
+                    size_t c_1 = sum_counts.get(sorted_bases[0]);
+                    size_t c_2 = sum_counts.get(sorted_bases[1]);
+                    classification = classify_2_branch(mode, c_1, c_2);
+                }
+
+#if HAVE_OPENMP
+                #pragma omp critical
+#endif
+                {    
+                    num_error_branches += (classification == BC_ERROR);
+                    num_variant_branches += (classification == BC_VARIANT);
+                    num_repeat_branches += (classification == BC_REPEAT);
+                    num_kmers += 1;
+                }
+
+                // Do not continue with this read if we hit a repeat or variant
+                if(classification == 1 || classification == 2)
+                    break;
+            }
+        }
+
+        pWriter->StartObject();
+        pWriter->String("k");
+        pWriter->Int(k);
+        pWriter->String("mode");
+        pWriter->Int(mode);
+        pWriter->String("num_kmers");
+        pWriter->Int(num_kmers);
+        pWriter->String("num_error_branches");
+        pWriter->Int(num_error_branches);
+        pWriter->String("num_variant_branches");
+        pWriter->Int(num_variant_branches);
+        pWriter->String("num_repeat_branches");
+        pWriter->Int(num_repeat_branches);
+
+        pWriter->String("variant_rate");
+        pWriter->Int((double)num_kmers / num_variant_branches);
+        
+        pWriter->String("repeat_rate");
+        pWriter->Int((double)num_kmers / num_repeat_branches);
+
+        pWriter->EndObject();
+    }
+    pWriter->EndArray();
+}
+
+//
+void generate_de_bruijn_simulation(JSONWriter* pWriter,
+                                   const BWTIndexSet& index_set)
+{
+    int kmer_distribution_samples = 10000;
+    int n_samples = 20000;
+    const static size_t MAX_WALK_LENGTH = 50000;
+
+    pWriter->String("SimulateAssembly");
+    pWriter->StartArray();
+
+    for(size_t k = 21; k <= 91; k += 5)
+    {
+        // Set up a bloom filter to avoid sampling paths multiple times
+        size_t max_expected_kmers = MAX_WALK_LENGTH * n_samples;
+
+        BloomFilter* bf = new BloomFilter;
+        bf->initialize(10 * max_expected_kmers, 3);
+
+        // Step 1: Learn k-mer occurrence distribution for this value of k
+        size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
+
+        pWriter->StartObject();
+        pWriter->String("k");
+        pWriter->Int(k);
+        pWriter->String("mode");
+        pWriter->Int(mode);
+        pWriter->String("walk_lengths");
+        pWriter->StartArray();
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+        for(int i = 0; i < n_samples; ++i)
+        {
+            // Get a random read from the BWT
+            std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+
+            // Use the first-kmer of the read to seed the seach
+            if(s.size() < k)
+                continue;
+            
+            HashMap<std::string, bool> loop_check;
+            std::string start_kmer = s.substr(0, k);
+            std::string rc_start_kmer = reverseComplement(start_kmer);
+
+            // To avoid sampling error paths, only use kmers that are seen
+            // on both strands as start points
+            size_t fc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(start_kmer, index_set);
+            size_t rc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(rc_start_kmer, index_set);
+
+            if(fc == 0 || rc == 0)
+                continue;
+            
+            // skip if this kmer has been used in a previous walk
+            bool in_filter = bf->test( (start_kmer < rc_start_kmer ? start_kmer.c_str() : rc_start_kmer.c_str()), k);
+            if(in_filter)
+                continue;
+
+            size_t walk_length = 0;
+
+            // Extend using curr_kmer first, then its reverse complement
+            for(size_t dir = 0; dir <= 1; ++dir)
+            {
+                std::string curr_kmer = dir == 0 ? start_kmer : reverseComplement(start_kmer);
+
+                bool done = false;
+                while(!done && walk_length < MAX_WALK_LENGTH)
+                {
+                    // Add the kmer to the loop checker and bloom filter
+                    loop_check[curr_kmer] = true;
+                    std::string rc_curr_kmer = reverseComplement(curr_kmer);
+                    bf->add( (curr_kmer < rc_curr_kmer ? curr_kmer.c_str() : rc_curr_kmer.c_str()), k);
+
+                    // Get the possible extensions of this kmer
+                    int f_counts[4] = { 0, 0, 0, 0 };
+                    int r_counts[4] = { 0, 0, 0, 0 };
+
+                    fill_neighbor_count_by_strand(curr_kmer, index_set, f_counts, r_counts);
+                    
+                    // Make sure both strands are represented for every acceptable
+                    AlphaCount64 sum_counts;
+                    int num_extensions_both_strands = 0;
+                    for(size_t bi = 0; bi < 4; ++bi)
+                    {
+                        sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
+                        if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+                            num_extensions_both_strands += 1;
+                    }
+
+                    // Order the bases by the count of the neighbor kmers
+                    char sorted_bases[5];
+                    sorted_bases[4] = '\0';
+                    sum_counts.getSorted(sorted_bases, 5);
+
+                    char extension_base = '\0';
+                    if(num_extensions_both_strands < 2)
+                    {
+                        // No ambiguity, just pick the highest coverage extension as the next node
+                        char best_extension = sorted_bases[0];
+                        if(sum_counts.get(best_extension) > 0)
+                            extension_base = best_extension;
+                    } 
+                    else if(num_extensions_both_strands == 2) 
+                    {
+                        size_t c_1 = sum_counts.get(sorted_bases[0]);
+                        size_t c_2 = sum_counts.get(sorted_bases[1]);
+                        BranchClassification classification = classify_2_branch(mode, c_1, c_2);
+                        if(classification == BC_ERROR || classification == BC_VARIANT)
+                        {
+                            // if this is an error branch, we take the non-error (higher coverage) option
+                            // if this is a variant path we also take the higher coverage option to simulate
+                            // a successfully popped bubble
+                            extension_base = sorted_bases[0];
+                        }
+                    } // stop extension if a 3-branch
+
+                    if(extension_base != '\0')
+                    {
+                        curr_kmer.erase(0, 1);
+                        curr_kmer.append(1, extension_base);
+                        
+                        if(loop_check.find(curr_kmer) == loop_check.end())
+                            walk_length += 1;
+                        else
+                            done = true;
+                    }
+                    else
+                    {
+                        done = true;
+                    }
+                }
+            }
+#if HAVE_OPENMP
+            #pragma omp critical
+#endif
+            pWriter->Int(walk_length);
+        }
+        pWriter->EndArray();
+        pWriter->EndObject();
+
+        delete bf;
+    }
+    pWriter->EndArray();
+}
+
 // Main
 //
 int preQCMain(int argc, char** argv)
@@ -884,19 +1423,21 @@ int preQCMain(int argc, char** argv)
 
     // Top-level document
     writer.StartObject();
+    
+    generate_de_bruijn_simulation(&writer, index_set);
+    generate_branch_classification(&writer, index_set);
+    generate_genome_size(&writer, index_set);
 
-    //generate_errors_per_base(&writer, index_set);
     generate_gc_distribution(&writer, index_set);
     generate_quality_stats(&writer, opt::readsFile);
     generate_pe_fragment_sizes(&writer, index_set);
     generate_kmer_coverage(&writer, index_set);
     generate_position_of_first_error(&writer, index_set);
-    //generate_errors_per_base(&writer, index_set);
+    generate_errors_per_base(&writer, index_set);
     generate_unipath_length_data(&writer, index_set);
     generate_duplication_rate(&writer, index_set);
-    generate_random_walk_length(&writer, index_set);
-    generate_local_graph_complexity(&writer, index_set);
-
+    //generate_random_walk_length(&writer, index_set);
+    
     // End document
     writer.EndObject();
 

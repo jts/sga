@@ -186,6 +186,11 @@ int haplotypeFilterMain(int argc, char** argv)
         assert(line.size() > 0);
         if(line[0] == '#')
         {
+            if(line[1] != '#')
+            {
+                outFile << "##INFO=<ID=LM,Number=1,Type=Float,Description=\"Log-likelihood ratio statistic using diploid segregation model\">" << "\n";
+                outFile << "##INFO=<ID=O,Number=1,Type=Integer,Description=\"Number of reads used in segregation test\">" << "\n";
+            }
             outFile << line << "\n";
             continue;
         }
@@ -248,7 +253,9 @@ int haplotypeFilterMain(int argc, char** argv)
         lmss << ";LM=" << LM << ";";
         lmss << "O=" << total_coverage << ";";
         fields[7] = lmss.str();
-        std::copy(fields.begin(), fields.end(), std::ostream_iterator<std::string>(outFile, "\t"));
+        for(size_t i = 0; i < fields.size()-1; ++i)
+            outFile << fields[i] << "\t";
+        outFile << fields[fields.size()-1];
         outFile << "\n";
     }
     

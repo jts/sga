@@ -53,6 +53,9 @@ size_t countSequenceOccurrences(const std::string& w, const BWT* pBWT);
 size_t countSequenceOccurrencesWithCache(const std::string& w, const BWT* pBWT, const BWTIntervalCache* pIntervalCache);
 size_t countSequenceOccurrences(const std::string& w, const BWTIndexSet& indices);
 
+// Count the occurrences of w, not including the reverse complement
+size_t countSequenceOccurrencesSingleStrand(const std::string& w, const BWTIndexSet& indices);
+
 // Update the given interval using backwards search
 // If the interval corrsponds to string S, it will be updated 
 // for string bS

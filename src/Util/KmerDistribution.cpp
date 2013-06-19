@@ -177,6 +177,24 @@ std::vector<int> KmerDistribution::toCountVector(int max) const
     return out;
 }
 
+size_t KmerDistribution::getTotalKmers() const
+{
+    size_t sum = 0;
+    std::map<int,int>::const_iterator iter = m_data.begin();
+    for(; iter != m_data.end(); ++iter)
+        sum += iter->second;
+    return sum;
+}
+
+size_t KmerDistribution::getNumberWithCount(size_t c) const
+{
+    std::map<int,int>::const_iterator iter = m_data.find(c);
+    if(iter != m_data.end())
+        return iter->second;
+    else
+        return 0;
+}
+
 void KmerDistribution::print(int max) const
 {
     printf("Kmer coverage histogram\n");
