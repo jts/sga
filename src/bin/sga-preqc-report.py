@@ -379,7 +379,7 @@ matplotlib.rc('legend', fontsize=10)
 matplotlib.rc('axes', titlesize=16)
 matplotlib.rc('axes', labelsize=16)
 
-pp = PdfPages("test_report.pdf")
+pp = PdfPages("preqc_report.pdf")
 
 
 # Genome Characteristics

@@ -1264,7 +1264,7 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                                    const BWTIndexSet& index_set)
 {
     int kmer_distribution_samples = 10000;
-    int n_samples = 10000;
+    int n_samples = 20000;
     const static size_t MAX_WALK_LENGTH = 50000;
 
     pWriter->String("SimulateAssembly");
