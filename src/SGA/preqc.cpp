@@ -943,8 +943,8 @@ size_t findSingleCopyPeak(const KmerDistribution& distribution)
     // Check whether the 2*n peak is reasonably close to the same height
     // as the global peak
     size_t n2_count = distribution.getNumberWithCount(2*global_peak_v);
-    double r = (double)n2_count / (global_peak_c + n2_count);
-    if(r > 0.25)
+    const double HEIGHT_FRAC = 0.5;
+    if(HEIGHT_FRAC * global_peak_c < n2_count)
         return 2*global_peak_v;
     else
         return global_peak_v;
