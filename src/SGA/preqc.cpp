@@ -1010,7 +1010,7 @@ size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set
     double total_read_kmers = n * (avg_rl - k + 1);
     double corrected_mode = mode / (1.0f - prop_kmers_with_error);
     //printf("k: %zu mode: %.2lf c_mode: %.2lf g_m: %.2lf g_cm: %.2lf \n", k, mode, corrected_mode, total_read_kmers / mode, total_read_kmers / corrected_mode);
-    return total_read_kmers / corrected_mode;
+    return (size_t)(total_read_kmers / corrected_mode);
 }
 
 void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
@@ -1249,10 +1249,10 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         pWriter->Int(num_repeat_branches);
 
         pWriter->String("variant_rate");
-        pWriter->Int((double)num_kmers / num_variant_branches);
+        pWriter->Double((double)num_kmers / num_variant_branches);
         
         pWriter->String("repeat_rate");
-        pWriter->Int((double)num_kmers / num_repeat_branches);
+        pWriter->Double((double)num_kmers / num_repeat_branches);
 
         pWriter->EndObject();
     }
