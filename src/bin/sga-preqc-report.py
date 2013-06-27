@@ -82,6 +82,33 @@ def plot_de_bruijn_simulation_lengths(pp, data):
     pl.savefig(pp, format='pdf')
     pl.close()
 
+    # Plot simulated contig lengths versus heterozygosity
+    k = 51
+    repeat_xs = list()
+    variant_xs = list()
+    ys = list()
+    for name in names:
+        for t in data[name][BRANCH_CLASSIFICATION_NAME]:
+            if t['k'] == k:
+                repeat_xs.append(float(t['num_repeat_branches']) / t['num_kmers'])
+                variant_xs.append(float(t['num_variant_branches']) / t['num_kmers'])
+
+        for t in data[name][DE_BRUIJN_SIMULATION_NAME]:
+            if t['k'] == k:
+                ys.append(n50(t['walk_lengths']))
+
+    pl.xlabel("Variant branch rate (k=%d)" % k)
+    pl.ylabel("Simulated contig length N50")
+    pl.scatter(variant_xs, ys)
+    pl.savefig(pp, format='pdf')
+    pl.close()
+
+    pl.xlabel("Repeat branch rate (k=%d)" % k)
+    pl.ylabel("Simulated contig length N50")
+    pl.scatter(repeat_xs, ys)
+    pl.savefig(pp, format='pdf')
+    pl.close()
+
 #
 def plot_random_walk(pp, data):
     names = data.keys()
