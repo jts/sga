@@ -84,15 +84,23 @@ def plot_de_bruijn_simulation_lengths(pp, data):
 
     # Plot simulated contig lengths versus heterozygosity
     k = 51
+
     repeat_xs = list()
     variant_xs = list()
     ys = list()
+
+    # Make a list of data sets that have a branch rate estimate for the k-mer
+    valid_names = list()
+    
+    # Build output arrays
     for name in names:
         for t in data[name][BRANCH_CLASSIFICATION_NAME]:
             if t['k'] == k:
                 repeat_xs.append(float(t['num_repeat_branches']) / t['num_kmers'])
                 variant_xs.append(float(t['num_variant_branches']) / t['num_kmers'])
+                valid_names.append(name)
 
+    for name in valid_names:
         for t in data[name][DE_BRUIJN_SIMULATION_NAME]:
             if t['k'] == k:
                 ys.append(n50(t['walk_lengths']))
