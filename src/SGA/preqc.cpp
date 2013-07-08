@@ -924,13 +924,24 @@ void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename
 // the half-coverage peak
 size_t findSingleCopyPeak(const KmerDistribution& distribution)
 {
-    size_t MIN_COUNT = 3;
-    size_t MAX_COUNT = 1000;
+    size_t MAX_COUNT = 10000;
+    
+    // Step 1: find first local minima
+    size_t local_min = 1;
+    size_t local_count = distribution.getNumberWithCount(local_min);
+    while(local_min < MAX_COUNT)
+    {
+        size_t c = distribution.getNumberWithCount(local_min + 1);
+        if(c > local_count)
+            break;
+        local_count = c;
+        local_min += 1;
+    }
 
-    // Step 1: find global maxima
+    // Step 1: find the highest peak at count >= local_count
     size_t global_peak_v = 0;
     size_t global_peak_c = 0;
-    for(size_t i = MIN_COUNT; i < MAX_COUNT; ++i)
+    for(size_t i = local_min; i < MAX_COUNT; ++i)
     {
         size_t c = distribution.getNumberWithCount(i);
         if(c > global_peak_c)
@@ -1437,7 +1448,7 @@ int preQCMain(int argc, char** argv)
     generate_unipath_length_data(&writer, index_set);
     generate_duplication_rate(&writer, index_set);
     //generate_random_walk_length(&writer, index_set);
-    
+
     // End document
     writer.EndObject();
 

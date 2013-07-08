@@ -113,7 +113,7 @@ int KmerDistribution::findErrorBoundary() const
     if(mode == -1)
         return -1;
 
-    std::cout << "Trusted kmer mode: " << mode  << "\n";
+    std::cerr << "Trusted kmer mode: " << mode  << "\n";
     std::vector<int> countVector = toCountVector(1000);
     if(countVector.empty())
         return -1;
@@ -143,7 +143,7 @@ int KmerDistribution::findErrorBoundaryByRatio(double ratio) const
     if(mode == -1)
         return -1;
 
-    std::cout << "Trusted kmer mode: " << mode  << "\n";
+    std::cerr << "Trusted kmer mode: " << mode  << "\n";
     std::vector<int> countVector = toCountVector(1000);
     if(countVector.empty())
         return -1;

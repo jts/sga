@@ -4,6 +4,7 @@ matplotlib.use('Agg')
 import pylab as pl
 import numpy as np
 import json
+import math
 from collections import namedtuple
 from operator import attrgetter
 from matplotlib.backends.backend_pdf import PdfPages
@@ -124,7 +125,7 @@ def plot_kmer_distribution(pp, data):
         for a,b in zip(x,y):
             fb = float(b) / s
             cumulative_sum += fb
-            if a < 80 and cumulative_sum < CUTOFF:
+            if cumulative_sum < CUTOFF:
                 nx.append(a)
                 ny.append(fb)
         pl.plot(nx, ny)
@@ -261,12 +262,26 @@ def plot_genome_size(pp, data):
 def plot_gc_distribution(pp, data):
     names = data.keys()
 
+    # Determine the maximum coverage value using 
+    # all data sets. We do this to show the individual
+    # plots on the same scale.
+    max_y = 0
+    for name in names:
+        y = data[name][GC_DISTRIBUTION_NAME]['cov_samples']
+        m = np.median(y)
+        y_limit = m + 2*m
+
+        # Use the median to determine the range to show and round
+        # to nearest 100 to avoid aliasing artefacts 
+        y_limit = math.ceil( (m + 2*m) / 100) * 100
+        if y_limit > max_y:
+            max_y = y_limit
+
     # Plot the 2D histogram of coverage vs gc
     for name in names:
         x = [ i * 100 for i in data[name][GC_DISTRIBUTION_NAME]['gc_samples'] ]
         y = data[name][GC_DISTRIBUTION_NAME]['cov_samples']
-
-        hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, 100] ])
+        hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, max_y] ])
 
         # Iterate over the bins and determine the bin within
         # each column that has the highest number of items. We ignore
