@@ -938,7 +938,7 @@ size_t findSingleCopyPeak(const KmerDistribution& distribution)
         local_min += 1;
     }
 
-    // Step 1: find the highest peak at count >= local_count
+    // Step 2: find the highest peak at count >= local_count
     size_t global_peak_v = 0;
     size_t global_peak_c = 0;
     for(size_t i = local_min; i < MAX_COUNT; ++i)
