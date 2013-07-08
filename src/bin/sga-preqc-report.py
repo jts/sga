@@ -283,29 +283,9 @@ def plot_gc_distribution(pp, data):
         y = data[name][GC_DISTRIBUTION_NAME]['cov_samples']
         hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, max_y] ])
 
-        # Iterate over the bins and determine the bin within
-        # each column that has the highest number of items. We ignore
-        # low-coverage entries as they likely represent errors
-        max_xs = list()
-        max_ys = list()
-        max_cs = list()
-        for xe in enumerate(hist):
-
-            # Find peak index in this ybin
-            max_c = 0
-            max_i = 0
-            for yi in enumerate(xe[1]):
-                if yi[0] > 2 and yi[1] > max_c:
-                    max_i = yi[0]
-                    max_c = yi[1]
-
-            max_xs.append(xedges[xe[0]] + (xedges[xe[0] + 1] - xedges[xe[0]]) / 2)
-            max_ys.append(yedges[max_i] + (yedges[max_i + 1] - yedges[max_i]) / 2)
-            max_cs.append(max_c)
-
         # draw the plot
         extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
-        pl.imshow(hist.T,extent=extent,interpolation='nearest',origin='lower')
+        pl.imshow(hist.T,extent=extent,interpolation='nearest',origin='lower', aspect='auto')
 
         pl.colorbar()
         pl.title(name + ' GC Bias')
