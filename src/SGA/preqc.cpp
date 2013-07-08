@@ -1260,10 +1260,12 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         pWriter->Int(num_repeat_branches);
 
         pWriter->String("variant_rate");
-        pWriter->Double((double)num_kmers / num_variant_branches);
+        double vr = num_variant_branches > 0 ? (double)num_kmers / num_variant_branches : num_kmers;
+        pWriter->Double(vr);
         
         pWriter->String("repeat_rate");
-        pWriter->Double((double)num_kmers / num_repeat_branches);
+        double rr = num_repeat_branches > 0 ? (double)num_kmers / num_repeat_branches : num_kmers;
+        pWriter->Double(rr);
 
         pWriter->EndObject();
     }
