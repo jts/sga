@@ -43,6 +43,14 @@ def any_set_has_key(data, key):
             return 1
     return 0
 
+# Returns true if all of the data sets has a field
+# with the given key
+def all_sets_have_key(data, key):
+    for n in data:
+        if key not in data[n]:
+            return 0
+    return 1
+
 #
 def plot_mean_unipath_lengths(pp, data):
     names = data.keys()
@@ -378,24 +386,24 @@ pp = PdfPages("preqc_report.pdf")
 
 
 # Genome Characteristics
-plot_genome_size(pp, data) if any_set_has_key(data, GENOME_SIZE_NAME) else 0
-plot_branch_classification(pp, data) if any_set_has_key(data, BRANCH_CLASSIFICATION_NAME) else 0
+plot_genome_size(pp, data) if all_sets_have_key(data, GENOME_SIZE_NAME) else 0
+plot_branch_classification(pp, data) if all_sets_have_key(data, BRANCH_CLASSIFICATION_NAME) else 0
 
 # Quality/Error rate plots
-plot_quality_scores(pp, data) if any_set_has_key(data, QUALITY_SCORE_NAME) else 0
-plot_first_error_position(pp, data) if any_set_has_key(data, FIRST_ERROR_NAME) else 0
-plot_errors_per_base(pp, data) if any_set_has_key(data, ERRORS_PER_BASE_NAME) else 0
-plot_pcr_duplicates(pp, data) if any_set_has_key(data, PCR_DUPLICATE_NAME) else 0
-plot_fragment_sizes(pp, data) if any_set_has_key(data, FRAGMENT_SIZE_NAME) else 0
+plot_quality_scores(pp, data) if all_sets_have_key(data, QUALITY_SCORE_NAME) else 0
+plot_first_error_position(pp, data) if all_sets_have_key(data, FIRST_ERROR_NAME) else 0
+plot_errors_per_base(pp, data) if all_sets_have_key(data, ERRORS_PER_BASE_NAME) else 0
+plot_pcr_duplicates(pp, data) if all_sets_have_key(data, PCR_DUPLICATE_NAME) else 0
+plot_fragment_sizes(pp, data) if all_sets_have_key(data, FRAGMENT_SIZE_NAME) else 0
 
 # Coverage plots
-plot_kmer_distribution(pp, data) if any_set_has_key(data, KMER_DISTRIBUTION_NAME) else 0
-plot_random_walk(pp, data) if any_set_has_key(data, RANDOM_WALK_NAME) else 0
-plot_gc_distribution(pp, data) if any_set_has_key(data, GC_DISTRIBUTION_NAME) else 0
+plot_kmer_distribution(pp, data) if all_sets_have_key(data, KMER_DISTRIBUTION_NAME) else 0
+plot_random_walk(pp, data) if all_sets_have_key(data, RANDOM_WALK_NAME) else 0
+plot_gc_distribution(pp, data) if all_sets_have_key(data, GC_DISTRIBUTION_NAME) else 0
 
 # Graph topology plots
-plot_graph_complexity(pp, data) if any_set_has_key(data, GRAPH_COMPLEXITY_NAME) else 0
-#plot_mean_unipath_lengths(pp, data) if any_set_has_key(data, UNIPATH_LENGTH_NAME) else 0
-plot_de_bruijn_simulation_lengths(pp, data) if any_set_has_key(data, DE_BRUIJN_SIMULATION_NAME) else 0
+plot_graph_complexity(pp, data) if all_sets_have_key(data, GRAPH_COMPLEXITY_NAME) else 0
+#plot_mean_unipath_lengths(pp, data) if all_sets_have_key(data, UNIPATH_LENGTH_NAME) else 0
+plot_de_bruijn_simulation_lengths(pp, data) if all_sets_have_key(data, DE_BRUIJN_SIMULATION_NAME) else 0
 
 pp.close()

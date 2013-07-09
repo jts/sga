@@ -168,8 +168,11 @@ AlphaCount64 calculateDeBruijnExtensionsSingleIndex(const std::string str,
                                                     EdgeDir direction,
                                                     const BWTIntervalCache* pFwdCache = NULL);
 
-// Extract the string at idx from the BWT
+// Extract the complete string starting at idx in the BWT
 std::string extractString(const BWT* pBWT, size_t idx);
+
+// Extract the next len bases of the string starting at idx
+std::string extractString(const BWT* pBWT, size_t idx, size_t len);
 
 // Extract the substring from start, start+length of the sequence starting at position idx
 std::string extractSubstring(const BWT* pBWT, uint64_t idx, size_t start, size_t length = std::string::npos);
@@ -185,6 +188,9 @@ std::string extractUntilInterval(const BWT* pBWT, int64_t start, const BWTInterv
 
 // Returns a randomly chosen string from the BWT
 std::string sampleRandomString(const BWT* pBWT);
+
+// Returns a randomly chosen substring from the BWT 
+std::string sampleRandomSubstring(const BWT* pBWT, size_t len);
 
 };
 

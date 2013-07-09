@@ -377,6 +377,23 @@ std::string BWTAlgorithms::sampleRandomString(const BWT* pBWT)
     return extractString(pBWT, idx);
 }
 
+// Return a random string from the BWT
+std::string BWTAlgorithms::sampleRandomSubstring(const BWT* pBWT, size_t len)
+{
+    assert(RAND_MAX > 0x7FFF);
+    size_t tries = 1000;
+    while(1 && tries-- > 0)
+    {
+        size_t n = pBWT->getBWLen();
+        size_t idx = rand() % n;
+        std::string s = extractString(pBWT, idx, len);
+        if(s.size() == len)
+            return s;
+    }
+    return "";
+}
+
+
 // Return the string from the BWT at idx
 std::string BWTAlgorithms::extractString(const BWT* pBWT, size_t idx)
 {
@@ -406,6 +423,25 @@ std::string BWTAlgorithms::extractSubstring(const BWT* pBWT, uint64_t idx, size_
     std::string s = extractString(pBWT, idx);
     return s.substr(start, length);
 }
+
+// Return the next len bases of the string starting at index idx of the BWT
+std::string BWTAlgorithms::extractString(const BWT* pBWT, size_t idx, size_t len)
+{
+    std::string out;
+    BWTInterval interval(idx, idx);
+    while(out.length() < len)
+    {
+        assert(interval.isValid());
+        char b = pBWT->getChar(interval.lower);
+        if(b == '$')
+            break;
+        else
+            out.push_back(b);
+        updateInterval(interval, b, pBWT);
+    } 
+    return reverse(out);
+}
+
 
 // Recursive traversal to extract all the strings needed for the above function
 void _extractRankedPrefixes(const BWT* pBWT, BWTInterval interval, const std::string& curr, RankedPrefixVector* pOutput)

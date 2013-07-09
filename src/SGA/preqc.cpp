@@ -75,6 +75,8 @@ static const char *PREQC_USAGE_MESSAGE =
 "      -v, --verbose                    display verbose output\n"
 "      -t, --threads=NUM                use NUM threads (default: 1)\n"
 "          --reference=FILE             use the reference FILE to calculate GC plot\n"
+"          --diploid-reference-mode     generate metrics assuming that the input data\n"
+"                                       is a reference genome, not a collection of reads\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -87,23 +89,25 @@ namespace opt
     static std::string prefix;
     static std::string readsFile;
     static std::string referenceFile;
+    static int diploidReferenceMode = 0;
 }
 
 static const char* shortopts = "p:d:t:o:k:n:b:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_DIPLOID };
 
 static const struct option longopts[] = {
-    { "verbose",            no_argument,       NULL, 'v' },
-    { "threads",            required_argument, NULL, 't' },
-    { "prefix",             required_argument, NULL, 'p' },
-    { "sample-rate",        required_argument, NULL, 'd' },
-    { "kmer-size",          required_argument, NULL, 'k' },
-    { "num-reads",          required_argument, NULL, 'n' },
-    { "branch-cutoff",      required_argument, NULL, 'b' },
-    { "reference",          required_argument, NULL, OPT_REFERENCE },
-    { "help",               no_argument,       NULL, OPT_HELP },
-    { "version",            no_argument,       NULL, OPT_VERSION },
+    { "verbose",                no_argument,       NULL, 'v' },
+    { "threads",                required_argument, NULL, 't' },
+    { "prefix",                 required_argument, NULL, 'p' },
+    { "sample-rate",            required_argument, NULL, 'd' },
+    { "kmer-size",              required_argument, NULL, 'k' },
+    { "num-reads",              required_argument, NULL, 'n' },
+    { "branch-cutoff",          required_argument, NULL, 'b' },
+    { "reference",              required_argument, NULL, OPT_REFERENCE },
+    { "diploid-reference-mode", no_argument,       NULL, OPT_DIPLOID },
+    { "help",                   no_argument,       NULL, OPT_HELP },
+    { "version",                no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
 };
 
@@ -1066,13 +1070,21 @@ size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
     return findSingleCopyPeak(distribution);
 }
 
-// Run the bayesian classification on a two-edge branch in the de Bruijn graph
-BranchClassification classify_2_branch(size_t mode, size_t higher_count, size_t lower_count)
+// Run the probablisitic classifier on a two-edge branch in the de Bruijn graph
+BranchClassification classify_2_branch(size_t mode, 
+                                       size_t higher_count, 
+                                       size_t lower_count, 
+                                       size_t lower_forward_count,
+                                       size_t lower_reverse_count)
 {
     const static int MAX_REPEAT_COPIES = 20;
     size_t total = higher_count + lower_count;
     double allele_balance = (double)higher_count / total;
-    
+
+    size_t higher_strand = std::max(lower_forward_count, lower_reverse_count);
+    size_t total_strand = lower_forward_count + lower_reverse_count;
+    //double strand_balance = higher_strand / (double)total_strand;
+
     // Normalize the allele balance to the range [0, 1]
     // where 1 is completely balanced between variants
     double norm_allele_balance = 2 * (1.0f - allele_balance);
@@ -1082,10 +1094,12 @@ BranchClassification classify_2_branch(size_t mode, size_t higher_count, size_t 
     // P( allele_balance | error) = Beta(100,100*error_rate)
     double log_p_count_error = SGAStats::logPoisson(total, mode);
     double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
+    double log_p_strand_error = SGAStats::logBinomial(higher_strand, total_strand, 0.9);
 
     // Variation Model
     double log_p_count_variant = log_p_count_error;
     double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
+    double log_p_strand_variant = SGAStats::logBinomial(higher_strand, total_strand, 0.5);
 
     // Repeat model
     const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
@@ -1104,6 +1118,7 @@ BranchClassification classify_2_branch(size_t mode, size_t higher_count, size_t 
     }
 
     double log_p_balance_repeat = log_p_balance_variant;
+    double log_p_strand_repeat = log_p_strand_variant;
 
     // priors
     double log_prior_error = log(1.0/3);
@@ -1142,18 +1157,18 @@ BranchClassification classify_2_branch(size_t mode, size_t higher_count, size_t 
         max = posterior_repeat;
         classification = BC_REPEAT;
     }
+    
+    // hack hack hack hack
+    if(max < 0.99)
+        classification = BC_NO_CALL;
+//    printf("%zu/%zu SB: %.3lf NSB: %.3lf Class: %d\n", lower_forward_count, lower_reverse_count, strand_balance, norm_strand_balance, classification);
 
-    /*   
-         printf("\tm: %zu c_1: %zu c_2: %zu tc: %zu y: %.4lf\n", mode, c_1, c_2, total, allele_balance);
-         printf("\tcv: %d/%d %d/%d %d/%d %d/%d\n", f_counts[0], r_counts[0], f_counts[1], r_counts[1], f_counts[2], r_counts[2], f_counts[3], r_counts[3]);
-         printf("\tlog_sum: %.4lf\n", log_sum);
-         printf("\t\tclass: %d\n", classification);
-         printf("\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), posterior_error);
-         printf("\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), posterior_variant);
-         printf("\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), posterior_repeat);
-         printf("DF %zu %zu %zu %zu %.4lf %d\n", mode, c_1, c_2, total, allele_balance, classification);
-     */
-     return classification;
+    fprintf(stderr, "\tlog_sum: %.4lf\n", log_sum);
+    fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf s|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), exp(log_p_strand_error), posterior_error);
+    fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf s|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), exp(log_p_strand_variant), posterior_variant);
+    fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf s|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), exp(log_p_strand_repeat), posterior_repeat);
+    fprintf(stderr, "DF %zu %zu %zu %zu %.4lf %zu/%zu %d\n", mode, higher_count, lower_count, total, allele_balance, lower_forward_count, lower_reverse_count, classification);
+    return classification;
 }
 
 void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& index_set)
@@ -1189,6 +1204,8 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
             if(s.size() < k)
                 continue;
             
+            bool stop = false;
+            size_t num_kmers_curr_read = 0;
             size_t nk = s.size() - k + 1;    
             for(size_t j = 0; j < nk; ++j)
             {
@@ -1199,6 +1216,9 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                 // For now just make a threshold
                 if(count < 0.75*mode || count > 1.25*mode)
                     continue;
+
+                // Update the count of valid kmers exampled
+                num_kmers_curr_read += 1;
 
                 // these vectors are in order ACGT on the forward strand
                 int f_counts[4] = { 0, 0, 0, 0 };
@@ -1226,22 +1246,42 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
 
                     size_t c_1 = sum_counts.get(sorted_bases[0]);
                     size_t c_2 = sum_counts.get(sorted_bases[1]);
-                    classification = classify_2_branch(mode, c_1, c_2);
-                }
+                    
+                    size_t bi = DNA_ALPHABET::getBaseRank(sorted_bases[1]);
+                    int f_2  = f_counts[bi];
+                    int r_2  = r_counts[bi];
+                    classification = classify_2_branch(mode, c_1, c_2, f_2, r_2);
 
+                    if(classification != BC_ERROR)
+                        stop = true;
+                    
 #if HAVE_OPENMP
                 #pragma omp critical
 #endif
-                {    
-                    num_error_branches += (classification == BC_ERROR);
-                    num_variant_branches += (classification == BC_VARIANT);
-                    num_repeat_branches += (classification == BC_REPEAT);
-                    num_kmers += 1;
+                    if(classification != BC_NO_CALL)
+                    {
+                        num_error_branches += (classification == BC_ERROR);
+                        num_variant_branches += (classification == BC_VARIANT);
+                        num_repeat_branches += (classification == BC_REPEAT);
+                    }
+                    else
+                    {
+                        // discard all information from this read if we hit a nocall
+                        num_kmers_curr_read = 0;
+                    }
                 }
 
-                // Do not continue with this read if we hit a repeat or variant
-                if(classification == 1 || classification == 2)
+                // Do not continue with this read if we performed a classification
+                // that wasn't BC_ERROR
+                if(stop)
                     break;
+            }
+
+#if HAVE_OPENMP
+            #pragma omp critical
+#endif
+            {
+                num_kmers += num_kmers_curr_read;
             }
         }
 
@@ -1271,6 +1311,123 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
     }
     pWriter->EndArray();
 }
+
+// This is a version of the branch classification code that operates
+// on the de bruijn graph of a diploid reference genome.
+// The probablistic classifier is replaced by a simple
+// counting classifier.
+void generate_reference_branch_classification(JSONWriter* pWriter, const BWTIndexSet& index_set)
+{
+    int classification_samples = 50000;
+
+    //double min_probability_for_classification = 0.25;
+    pWriter->String("BranchClassification");
+    pWriter->StartArray();
+
+    for(size_t k = 21; k <= 71; k += 5)
+    {
+        size_t num_error_branches = 0;
+        size_t num_variant_branches = 0;
+        size_t num_repeat_branches = 0;
+        size_t num_kmers = 0;
+
+#if HAVE_OPENMP
+        omp_set_num_threads(opt::numThreads);
+        #pragma omp parallel for
+#endif
+        for(int i = 0; i < classification_samples; ++i)
+        {
+            std::string s = BWTAlgorithms::sampleRandomSubstring(index_set.pBWT, 100);
+            if(s.size() < k)
+                continue;
+            
+            size_t nk = s.size() - k + 1;
+            for(size_t j = 0; j < nk; ++j)
+            {
+                std::string kmer = s.substr(j, k);
+                int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+                
+                // explicitly assuming diploid
+                if(count != 2)
+                    continue;
+
+                // these vectors are in order ACGT on the forward strand
+                int f_counts[4] = { 0, 0, 0, 0 };
+                int r_counts[4] = { 0, 0, 0, 0 };
+
+                fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
+                
+                // Make sure both strands are represented for every branch
+                AlphaCount64 sum_counts;
+                size_t num_extensions = 0;
+                for(size_t bi = 0; bi < 4; ++bi)
+                {
+                    size_t t = f_counts[bi] + r_counts[bi];
+                    sum_counts.set("ACGT"[bi], t);
+                    if(t > 0)
+                        num_extensions += 1;
+                }
+
+                // classify the branch
+                BranchClassification classification = BC_NO_CALL;
+                if(num_extensions == 2)
+                {
+                    char sorted_bases[5] = "ACGT";
+                    sorted_bases[4] = '\0';
+                    sum_counts.getSorted(sorted_bases, 5);
+
+                    size_t c_1 = sum_counts.get(sorted_bases[0]);
+                    size_t c_2 = sum_counts.get(sorted_bases[1]);
+
+                    if(c_1 == 1 && c_2 == 1)
+                        classification = BC_VARIANT;
+                    else
+                        classification = BC_REPEAT;
+                }
+
+#if HAVE_OPENMP
+                #pragma omp critical
+#endif
+                {    
+                    num_error_branches += (classification == BC_ERROR);
+                    num_variant_branches += (classification == BC_VARIANT);
+                    num_repeat_branches += (classification == BC_REPEAT);
+                    num_kmers += 1;
+                }
+
+                // Do not continue with this read if we hit a repeat or variant
+                if(classification == 1 || classification == 2)
+                    break;
+            }
+        }
+
+        pWriter->StartObject();
+        pWriter->String("k");
+        pWriter->Int(k);
+        pWriter->String("mode");
+        pWriter->Int(2);
+        pWriter->String("num_kmers");
+        pWriter->Int(num_kmers);
+        pWriter->String("num_error_branches");
+        pWriter->Int(num_error_branches);
+        pWriter->String("num_variant_branches");
+        pWriter->Int(num_variant_branches);
+        pWriter->String("num_repeat_branches");
+        pWriter->Int(num_repeat_branches);
+
+        pWriter->String("variant_rate");
+        double vr = num_variant_branches > 0 ? (double)num_kmers / num_variant_branches : num_kmers;
+        pWriter->Double(vr);
+        
+        pWriter->String("repeat_rate");
+        double rr = num_repeat_branches > 0 ? (double)num_kmers / num_repeat_branches : num_kmers;
+        pWriter->Double(rr);
+
+        pWriter->EndObject();
+    }
+    pWriter->EndArray();
+}
+
 
 //
 void generate_de_bruijn_simulation(JSONWriter* pWriter,
@@ -1355,8 +1512,13 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                     // Make sure both strands are represented for every acceptable
                     AlphaCount64 sum_counts;
                     int num_extensions_both_strands = 0;
+                    int total_f = 0;
+                    int total_r = 0;
                     for(size_t bi = 0; bi < 4; ++bi)
                     {
+                        total_f += f_counts[bi];
+                        total_r += r_counts[bi];
+
                         sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
                         if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
                             num_extensions_both_strands += 1;
@@ -1379,7 +1541,12 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                     {
                         size_t c_1 = sum_counts.get(sorted_bases[0]);
                         size_t c_2 = sum_counts.get(sorted_bases[1]);
-                        BranchClassification classification = classify_2_branch(mode, c_1, c_2);
+                        
+                        size_t bi = DNA_ALPHABET::getBaseRank(sorted_bases[1]);
+                        int f_2  = f_counts[bi];
+                        int r_2  = r_counts[bi];
+                        BranchClassification classification = classify_2_branch(mode, c_1, c_2, f_2, r_2);
+
                         if(classification == BC_ERROR || classification == BC_VARIANT)
                         {
                             // if this is an error branch, we take the non-error (higher coverage) option
@@ -1437,20 +1604,28 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
     
-    generate_de_bruijn_simulation(&writer, index_set);
     generate_branch_classification(&writer, index_set);
-    generate_genome_size(&writer, index_set);
+    /*
+    if(!opt::diploidReferenceMode)
+    {
+        generate_de_bruijn_simulation(&writer, index_set);
+        generate_branch_classification(&writer, index_set);
+        generate_genome_size(&writer, index_set);
 
-    generate_gc_distribution(&writer, index_set);
-    generate_quality_stats(&writer, opt::readsFile);
-    generate_pe_fragment_sizes(&writer, index_set);
-    generate_kmer_coverage(&writer, index_set);
-    generate_position_of_first_error(&writer, index_set);
-    generate_errors_per_base(&writer, index_set);
-    generate_unipath_length_data(&writer, index_set);
-    generate_duplication_rate(&writer, index_set);
-    //generate_random_walk_length(&writer, index_set);
-
+        generate_gc_distribution(&writer, index_set);
+        generate_quality_stats(&writer, opt::readsFile);
+        generate_pe_fragment_sizes(&writer, index_set);
+        generate_kmer_coverage(&writer, index_set);
+        generate_position_of_first_error(&writer, index_set);
+        generate_errors_per_base(&writer, index_set);
+        generate_unipath_length_data(&writer, index_set);
+        generate_duplication_rate(&writer, index_set);
+    }
+    else
+    {
+        generate_reference_branch_classification(&writer, index_set);
+    }
+    */
     // End document
     writer.EndObject();
 
@@ -1536,6 +1711,7 @@ void parsePreQCOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_DIPLOID: opt::diploidReferenceMode = true; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
             case OPT_HELP:
                 std::cout << PREQC_USAGE_MESSAGE;
