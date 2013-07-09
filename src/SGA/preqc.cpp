@@ -1083,7 +1083,6 @@ BranchClassification classify_2_branch(size_t mode,
 
     size_t higher_strand = std::max(lower_forward_count, lower_reverse_count);
     size_t total_strand = lower_forward_count + lower_reverse_count;
-    //double strand_balance = higher_strand / (double)total_strand;
 
     // Normalize the allele balance to the range [0, 1]
     // where 1 is completely balanced between variants
@@ -1094,7 +1093,7 @@ BranchClassification classify_2_branch(size_t mode,
     // P( allele_balance | error) = Beta(100,100*error_rate)
     double log_p_count_error = SGAStats::logPoisson(total, mode);
     double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
-    double log_p_strand_error = SGAStats::logBinomial(higher_strand, total_strand, 0.9);
+    double log_p_strand_error = SGAStats::logBinomial(higher_strand, total_strand, 0.95);
 
     // Variation Model
     double log_p_count_variant = log_p_count_error;
@@ -1121,14 +1120,14 @@ BranchClassification classify_2_branch(size_t mode,
     double log_p_strand_repeat = log_p_strand_variant;
 
     // priors
-    double log_prior_error = log(1.0/3);
-    double log_prior_variant = log(1.0/3);
-    double log_prior_repeat = log(1.0/3);
+    double log_prior_error = log(9/10.0);
+    double log_prior_variant = log(0.5/10.0);
+    double log_prior_repeat = log(0.5/10.0);
 
     // Calculate posterior for each state
-    double ls1 = log_p_count_error + log_p_balance_error + log_prior_error;
-    double ls2 = log_p_count_variant + log_p_balance_variant + log_prior_variant;
-    double ls3 = log_p_count_repeat + log_p_balance_repeat + log_prior_repeat;
+    double ls1 = log_p_count_error + log_p_balance_error + log_p_strand_error + log_prior_error;
+    double ls2 = log_p_count_variant + log_p_balance_variant + log_p_strand_variant + log_prior_variant;
+    double ls3 = log_p_count_repeat + log_p_balance_repeat + log_p_strand_repeat + log_prior_repeat;
 
     double log_sum = ls1;
     log_sum = addLogs(log_sum, ls2);
@@ -1158,16 +1157,16 @@ BranchClassification classify_2_branch(size_t mode,
         classification = BC_REPEAT;
     }
     
-    // hack hack hack hack
-    if(max < 0.99)
-        classification = BC_NO_CALL;
-//    printf("%zu/%zu SB: %.3lf NSB: %.3lf Class: %d\n", lower_forward_count, lower_reverse_count, strand_balance, norm_strand_balance, classification);
-
+/*
+    double strand_balance = higher_strand / (double)total_strand;
     fprintf(stderr, "\tlog_sum: %.4lf\n", log_sum);
     fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf s|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), exp(log_p_strand_error), posterior_error);
     fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf s|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), exp(log_p_strand_variant), posterior_variant);
     fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf s|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), exp(log_p_strand_repeat), posterior_repeat);
-    fprintf(stderr, "DF %zu %zu %zu %zu %.4lf %zu/%zu %d\n", mode, higher_count, lower_count, total, allele_balance, lower_forward_count, lower_reverse_count, classification);
+    fprintf(stderr, "DF %zu %zu %zu %zu %.4lf %.4lf %zu/%zu %d\n", mode, higher_count, lower_count, total, allele_balance, strand_balance, lower_forward_count, lower_reverse_count, classification);
+*/
+    (void)log_p_strand_error;
+    (void)log_p_strand_repeat;
     return classification;
 }
 
@@ -1204,8 +1203,6 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
             if(s.size() < k)
                 continue;
             
-            bool stop = false;
-            size_t num_kmers_curr_read = 0;
             size_t nk = s.size() - k + 1;    
             for(size_t j = 0; j < nk; ++j)
             {
@@ -1216,9 +1213,6 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                 // For now just make a threshold
                 if(count < 0.75*mode || count > 1.25*mode)
                     continue;
-
-                // Update the count of valid kmers exampled
-                num_kmers_curr_read += 1;
 
                 // these vectors are in order ACGT on the forward strand
                 int f_counts[4] = { 0, 0, 0, 0 };
@@ -1231,9 +1225,11 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                 int num_extensions_both_strands = 0;
                 for(size_t bi = 0; bi < 4; ++bi)
                 {
-                    sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
                     if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+                    {
+                        sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
                         num_extensions_both_strands += 1;
+                    }
                 }
 
                 // classify the branch
@@ -1248,40 +1244,25 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                     size_t c_2 = sum_counts.get(sorted_bases[1]);
                     
                     size_t bi = DNA_ALPHABET::getBaseRank(sorted_bases[1]);
-                    int f_2  = f_counts[bi];
-                    int r_2  = r_counts[bi];
+                    int f_2 = f_counts[bi];
+                    int r_2 = r_counts[bi];
+                    assert(f_2 > 0 && r_2 > 0);
                     classification = classify_2_branch(mode, c_1, c_2, f_2, r_2);
+                }
 
-                    if(classification != BC_ERROR)
-                        stop = true;
-                    
 #if HAVE_OPENMP
                 #pragma omp critical
 #endif
-                    if(classification != BC_NO_CALL)
                     {
                         num_error_branches += (classification == BC_ERROR);
                         num_variant_branches += (classification == BC_VARIANT);
                         num_repeat_branches += (classification == BC_REPEAT);
+                        num_kmers += 1;
                     }
-                    else
-                    {
-                        // discard all information from this read if we hit a nocall
-                        num_kmers_curr_read = 0;
-                    }
-                }
 
-                // Do not continue with this read if we performed a classification
-                // that wasn't BC_ERROR
-                if(stop)
+
+                if(classification == BC_VARIANT || classification == BC_REPEAT)
                     break;
-            }
-
-#if HAVE_OPENMP
-            #pragma omp critical
-#endif
-            {
-                num_kmers += num_kmers_curr_read;
             }
         }
 
