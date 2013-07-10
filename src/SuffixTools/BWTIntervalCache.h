@@ -41,8 +41,10 @@ class BWTIntervalCache
         inline size_t str2int(const char* w) const
         {
             size_t out = 0;
-            for(size_t k = 0; k < m_kmer; ++k)
+            for(size_t k = 0; k < m_kmer; ++k) {
+                assert(w[k] != '$');
                 out |= DNA_ALPHABET::getBaseRank(w[k]) << 2*(m_kmer - k - 1);
+            }
             return out;
         }
 

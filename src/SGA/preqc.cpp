@@ -171,17 +171,19 @@ std::string get_valid_dbg_neighbors_coverage_and_ratio(const std::string& kmer,
     return out;    
 }
 
-void fill_neighbor_count_by_strand(const std::string& kmer, const BWTIndexSet& index_set, int f_counts[4], int r_counts[4])
+void fill_neighbor_count_by_strand(const std::string& kmer, const BWTIndexSet& index_set, int f_counts[5], int r_counts[5])
 {
     // Count the extensions from this kmer
     char f_ext[] = "ACGT";
     char r_ext[] = "TGCA";
     size_t k = kmer.size();
+
     std::string f_mer = kmer.substr(1) + "A";
     std::string r_mer = "A" + reverseComplement(kmer).substr(0, k - 1);
     assert(f_mer.size() == k);
     assert(r_mer.size() == k);
 
+    // fill in the counts for the 4 dna bases
     for(size_t bi = 0; bi < 4; ++bi)
     {
         f_mer[f_mer.size() - 1] = f_ext[bi];
@@ -190,6 +192,13 @@ void fill_neighbor_count_by_strand(const std::string& kmer, const BWTIndexSet& i
         f_counts[bi] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(f_mer, index_set);
         r_counts[bi] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(r_mer, index_set);
     }
+
+    // fill in the count for the number of reads that terminated with kmer
+    // at the end (or start of the reverse complement
+    f_mer = kmer + "$";
+    r_mer = "$" + reverseComplement(kmer);
+    f_counts[4] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(f_mer, index_set);
+    r_counts[4] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(r_mer, index_set);
 }
 
 //
@@ -580,8 +589,8 @@ void generate_random_walk_length(JSONWriter* pWriter, const BWTIndexSet& index_s
                 bloom_filter->add( (kmer < rc_kmer ? kmer.c_str() : rc_kmer.c_str()), k);
 
                 // Get the possible extensions of this kmer
-                int f_counts[4] = { 0, 0, 0, 0 };
-                int r_counts[4] = { 0, 0, 0, 0 };
+                int f_counts[5] = { 0, 0, 0, 0, 0 };
+                int r_counts[5] = { 0, 0, 0, 0, 0 };
 
                 fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
 
@@ -1075,7 +1084,9 @@ BranchClassification classify_2_branch(size_t mode,
                                        size_t higher_count, 
                                        size_t lower_count, 
                                        size_t lower_forward_count,
-                                       size_t lower_reverse_count)
+                                       size_t lower_reverse_count,
+                                       int delta,
+                                       size_t x_count)
 {
     const static int MAX_REPEAT_COPIES = 20;
     size_t total = higher_count + lower_count;
@@ -1091,29 +1102,39 @@ BranchClassification classify_2_branch(size_t mode,
     // Error model
     // P( total | error) = pois(total, mode)
     // P( allele_balance | error) = Beta(100,100*error_rate)
-    double log_p_count_error = SGAStats::logPoisson(total, mode);
+    //double log_p_count_error = SGAStats::logPoisson(total, mode);
+    double log_p_delta_error = SGAStats::logPoisson(delta, 1);
     double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
     double log_p_strand_error = SGAStats::logBinomial(higher_strand, total_strand, 0.95);
 
     // Variation Model
-    double log_p_count_variant = log_p_count_error;
+    //double log_p_count_variant = log_p_count_error;
+    double log_p_delta_variant = log_p_delta_error;
     double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
     double log_p_strand_variant = SGAStats::logBinomial(higher_strand, total_strand, 0.5);
 
     // Repeat model
     const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
-    double log_p_count_repeat = 0.0f;
+    //double log_p_count_repeat = 0.0f;
+    double log_p_delta_repeat = 0.0f;
     int copies_min = 2;
     double log_truncation_scale = copies_min > 1 ? log(1.0f / (1.0f - MU)) : 0;
     for(int copies = copies_min; copies < MAX_REPEAT_COPIES; ++copies)
     {
         double log_p_copies = (copies - 1)*log(1.0f - MU) + log(MU) + log_truncation_scale;
-        double log_count_given_copies = SGAStats::logPoisson(total, copies*mode);
-
+        //double log_count_given_copies = SGAStats::logPoisson(total, (copies*mode);
+        double log_delta_given_copies = SGAStats::logPoisson(delta, (copies - 1)*mode);
+        
+        /*
         if(copies == copies_min)
             log_p_count_repeat = log_p_copies + log_count_given_copies;
         else
             log_p_count_repeat = addLogs(log_p_count_repeat, log_p_copies + log_count_given_copies);
+        */
+        if(copies == copies_min)
+            log_p_delta_repeat = log_p_copies + log_delta_given_copies;
+        else
+            log_p_delta_repeat = addLogs(log_p_delta_repeat, log_p_copies + log_delta_given_copies);
     }
 
     double log_p_balance_repeat = log_p_balance_variant;
@@ -1125,9 +1146,9 @@ BranchClassification classify_2_branch(size_t mode,
     double log_prior_repeat = log(0.5/10.0);
 
     // Calculate posterior for each state
-    double ls1 = log_p_count_error + log_p_balance_error + log_p_strand_error + log_prior_error;
-    double ls2 = log_p_count_variant + log_p_balance_variant + log_p_strand_variant + log_prior_variant;
-    double ls3 = log_p_count_repeat + log_p_balance_repeat + log_p_strand_repeat + log_prior_repeat;
+    double ls1 = log_p_delta_error + log_p_balance_error + log_p_strand_error + log_prior_error;
+    double ls2 = log_p_delta_variant + log_p_balance_variant + log_p_strand_variant + log_prior_variant;
+    double ls3 = log_p_delta_repeat + log_p_balance_repeat + log_p_strand_repeat + log_prior_repeat;
 
     double log_sum = ls1;
     log_sum = addLogs(log_sum, ls2);
@@ -1158,13 +1179,19 @@ BranchClassification classify_2_branch(size_t mode,
     }
     
 /*
-    double strand_balance = higher_strand / (double)total_strand;
     fprintf(stderr, "\tlog_sum: %.4lf\n", log_sum);
     fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf s|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), exp(log_p_strand_error), posterior_error);
     fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf s|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), exp(log_p_strand_variant), posterior_variant);
     fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf s|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), exp(log_p_strand_repeat), posterior_repeat);
-    fprintf(stderr, "DF %zu %zu %zu %zu %.4lf %.4lf %zu/%zu %d\n", mode, higher_count, lower_count, total, allele_balance, strand_balance, lower_forward_count, lower_reverse_count, classification);
 */
+    double strand_balance = higher_strand / (double)total_strand;
+    fprintf(stderr, "DF %zu %zu %zu %zu %.4lf %.4lf %zu/%zu %zu %.6lf %.6lf %.6lf %d %d\n",
+        mode, higher_count, lower_count, total,
+        allele_balance, strand_balance,
+        lower_forward_count, lower_reverse_count, x_count,
+        posterior_error, posterior_variant, posterior_repeat,
+        classification, delta);
+
     (void)log_p_strand_error;
     (void)log_p_strand_repeat;
     return classification;
@@ -1214,23 +1241,33 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                 if(count < 0.75*mode || count > 1.25*mode)
                     continue;
 
-                // these vectors are in order ACGT on the forward strand
-                int f_counts[4] = { 0, 0, 0, 0 };
-                int r_counts[4] = { 0, 0, 0, 0 };
+                // these vectors are in order ACGT$ on the forward strand
+                int f_counts[5] = { 0, 0, 0, 0, 0 };
+                int r_counts[5] = { 0, 0, 0, 0, 0 };
 
                 fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
                 
                 // Make sure both strands are represented for every branch
+                int next_count = 0;
                 AlphaCount64 sum_counts;
                 int num_extensions_both_strands = 0;
                 for(size_t bi = 0; bi < 4; ++bi)
                 {
+                    next_count += f_counts[bi];
+                    next_count += r_counts[bi];
+
                     if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
                     {
                         sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
                         num_extensions_both_strands += 1;
                     }
                 }
+
+                // Calculate the expected count of the branch by
+                // subtracting off the reads where kmer is the starting/ending kmer
+                int min_next_count = count - f_counts[4] - r_counts[4];
+                assert(next_count >= min_next_count);
+                int delta = next_count - min_next_count;
 
                 // classify the branch
                 BranchClassification classification = BC_NO_CALL;
@@ -1239,7 +1276,7 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                     char sorted_bases[5] = "ACGT";
                     sorted_bases[4] = '\0';
                     sum_counts.getSorted(sorted_bases, 5);
-
+                    
                     size_t c_1 = sum_counts.get(sorted_bases[0]);
                     size_t c_2 = sum_counts.get(sorted_bases[1]);
                     
@@ -1247,7 +1284,7 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                     int f_2 = f_counts[bi];
                     int r_2 = r_counts[bi];
                     assert(f_2 > 0 && r_2 > 0);
-                    classification = classify_2_branch(mode, c_1, c_2, f_2, r_2);
+                    classification = classify_2_branch(mode, c_1, c_2, f_2, r_2, delta, count);
                 }
 
 #if HAVE_OPENMP
@@ -1332,9 +1369,9 @@ void generate_reference_branch_classification(JSONWriter* pWriter, const BWTInde
                 if(count != 2)
                     continue;
 
-                // these vectors are in order ACGT on the forward strand
-                int f_counts[4] = { 0, 0, 0, 0 };
-                int r_counts[4] = { 0, 0, 0, 0 };
+                // these vectors are in order ACGT$ on the forward strand
+                int f_counts[5] = { 0, 0, 0, 0, 0 };
+                int r_counts[5] = { 0, 0, 0, 0, 0 };
 
                 fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
                 
@@ -1485,8 +1522,8 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                     bf->add( (curr_kmer < rc_curr_kmer ? curr_kmer.c_str() : rc_curr_kmer.c_str()), k);
 
                     // Get the possible extensions of this kmer
-                    int f_counts[4] = { 0, 0, 0, 0 };
-                    int r_counts[4] = { 0, 0, 0, 0 };
+                    int f_counts[5] = { 0, 0, 0, 0, 0 };
+                    int r_counts[5] = { 0, 0, 0, 0, 0 };
 
                     fill_neighbor_count_by_strand(curr_kmer, index_set, f_counts, r_counts);
                     
@@ -1526,7 +1563,8 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                         size_t bi = DNA_ALPHABET::getBaseRank(sorted_bases[1]);
                         int f_2  = f_counts[bi];
                         int r_2  = r_counts[bi];
-                        BranchClassification classification = classify_2_branch(mode, c_1, c_2, f_2, r_2);
+                        assert(false);
+                        BranchClassification classification = classify_2_branch(mode, c_1, c_2, f_2, r_2, 0, 0);
 
                         if(classification == BC_ERROR || classification == BC_VARIANT)
                         {

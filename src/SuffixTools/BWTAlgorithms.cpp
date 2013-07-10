@@ -38,10 +38,17 @@ BWTInterval BWTAlgorithms::findIntervalWithCache(const BWT* pBWT, const BWTInter
     size_t cacheLen = pIntervalCache->getCachedLength();
     if(w.size() < cacheLen)
         return findInterval(pBWT, w);
-
+    
     // Compute the interval using the cache for the last k bases
     int len = w.size();
     int j = len - cacheLen;
+
+    // Check whether the input string has a '$' in it.
+    // We don't cache these strings so if it does
+    // we have to do a direct lookup
+    if(index(w.c_str() + j, '$') != NULL)
+        return findInterval(pBWT, w);
+
     BWTInterval interval = pIntervalCache->lookup(w.c_str() + j);
     j -= 1;
     for(;j >= 0; --j)
