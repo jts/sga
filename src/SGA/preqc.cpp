@@ -1102,16 +1102,14 @@ BranchClassification classify_2_branch(size_t mode,
     // Error model
     // P( total | error) = pois(total, mode)
     // P( allele_balance | error) = Beta(100,100*error_rate)
-    //double log_p_count_error = SGAStats::logPoisson(total, mode);
     double log_p_delta_error = SGAStats::logPoisson(delta, 1);
     double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
-    double log_p_strand_error = SGAStats::logBinomial(higher_strand, total_strand, 0.95);
+    double log_p_strand_error = 0.0f;//SGAStats::logBinomial(higher_strand, total_strand, 0.95);
 
     // Variation Model
-    //double log_p_count_variant = log_p_count_error;
     double log_p_delta_variant = log_p_delta_error;
     double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
-    double log_p_strand_variant = SGAStats::logBinomial(higher_strand, total_strand, 0.5);
+    double log_p_strand_variant = 0.0f;//SGAStats::logBinomial(higher_strand, total_strand, 0.5);
 
     // Repeat model
     const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
@@ -1121,16 +1119,12 @@ BranchClassification classify_2_branch(size_t mode,
     double log_truncation_scale = copies_min > 1 ? log(1.0f / (1.0f - MU)) : 0;
     for(int copies = copies_min; copies < MAX_REPEAT_COPIES; ++copies)
     {
-        double log_p_copies = (copies - 1)*log(1.0f - MU) + log(MU) + log_truncation_scale;
-        //double log_count_given_copies = SGAStats::logPoisson(total, (copies*mode);
+        // Calculate the probability of having c copies using our geometric prior
+        double log_p_copies = (copies - 1) * log(1.0f - MU) + log(MU) + log_truncation_scale;
+
+        // Calculate the probability of the increase in read count given this copy count
         double log_delta_given_copies = SGAStats::logPoisson(delta, (copies - 1)*mode);
         
-        /*
-        if(copies == copies_min)
-            log_p_count_repeat = log_p_copies + log_count_given_copies;
-        else
-            log_p_count_repeat = addLogs(log_p_count_repeat, log_p_copies + log_count_given_copies);
-        */
         if(copies == copies_min)
             log_p_delta_repeat = log_p_copies + log_delta_given_copies;
         else
@@ -1141,9 +1135,9 @@ BranchClassification classify_2_branch(size_t mode,
     double log_p_strand_repeat = log_p_strand_variant;
 
     // priors
-    double log_prior_error = log(9/10.0);
-    double log_prior_variant = log(0.5/10.0);
-    double log_prior_repeat = log(0.5/10.0);
+    double log_prior_error = log(1.0/3);
+    double log_prior_variant = log(1.0/3);
+    double log_prior_repeat = log(1.0/3);
 
     // Calculate posterior for each state
     double ls1 = log_p_delta_error + log_p_balance_error + log_p_strand_error + log_prior_error;
@@ -1177,7 +1171,6 @@ BranchClassification classify_2_branch(size_t mode,
         max = posterior_repeat;
         classification = BC_REPEAT;
     }
-    
 /*
     fprintf(stderr, "\tlog_sum: %.4lf\n", log_sum);
     fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf s|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), exp(log_p_strand_error), posterior_error);
@@ -1192,9 +1185,36 @@ BranchClassification classify_2_branch(size_t mode,
         posterior_error, posterior_variant, posterior_repeat,
         classification, delta);
 
-    (void)log_p_strand_error;
-    (void)log_p_strand_repeat;
     return classification;
+}
+
+// Calculate the probability that a kmer seen c times
+// is a kmer that is contained once on each parental chromsome
+// We assume the probability of a kmer appearing twice
+// in one parent and zero times in the other is negligable
+double probability_diploid_copy(size_t mode, size_t c)
+{
+    size_t half_mode = mode / 2;
+
+    double log_prior_haploid = log(1.0/3);
+    double log_prior_diploid = log(1.0/3);
+    double log_prior_repeat = log(1.0/3);
+
+    // log likelihood of a kmer being only contained on one parental chromosome
+    double log_p_haploid = SGAStats::logPoisson(c, 1 * half_mode) + log_prior_haploid;
+
+    // log likelihood of being a kmer contained on both parental chromosomes
+    double log_p_diploid = SGAStats::logPoisson(c, 2 * half_mode) + log_prior_diploid;
+    
+    // log likelihood of a kmer being a two copy repeat
+    double log_p_repeat = SGAStats::logPoisson(c, 4 * half_mode) + log_prior_repeat;
+
+    // Sum over higher copy numbers
+    double log_sum = addLogs(log_p_diploid, log_p_haploid);
+    log_sum = addLogs(log_sum, log_p_repeat);
+
+    double p = exp(log_p_diploid - log_sum);
+    return p;   
 }
 
 void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& index_set)
@@ -1211,14 +1231,22 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         // Step 1: Learn k-mer occurrence distribution for this value of k
         size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
 
-        // Do not attempt classification if coverage is too low
+        // Do not attempt classification if k-mer coverage is too low
         if(mode < 10)
             continue;
 
-        size_t num_error_branches = 0;
-        size_t num_variant_branches = 0;
-        size_t num_repeat_branches = 0;
-        size_t num_kmers = 0;
+        // Cache the estimates that a kmer is diploid-unique for count [0,3m]
+        std::vector<double> p_unique_by_count(3 * mode, 0.0f);
+        
+        // We start at c=4 so that we never use low-count kmers in our model
+        for(size_t c = 4; c < 3 * mode; ++c)
+            p_unique_by_count[c] = probability_diploid_copy(mode, c);
+
+        // Our output counts
+        double num_error_branches = 0;
+        double num_variant_branches = 0;
+        double num_repeat_branches = 0;
+        double num_kmers = 0;
 
 #if HAVE_OPENMP
         omp_set_num_threads(opt::numThreads);
@@ -1234,11 +1262,14 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
             for(size_t j = 0; j < nk; ++j)
             {
                 std::string kmer = s.substr(j, k);
-                int count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+                size_t count = BWTAlgorithms::countSequenceOccurrences(kmer, index_set.pBWT);
+                
+                // deep kmer, ignore
+                if(count >= p_unique_by_count.size())
+                    continue;
 
-                // TODO: Calculate probabilty that this kmer is single copy
-                // For now just make a threshold
-                if(count < 0.75*mode || count > 1.25*mode)
+                double p_single_copy = p_unique_by_count[count];
+                if(p_single_copy < 0.90)
                     continue;
 
                 // these vectors are in order ACGT$ on the forward strand
@@ -1291,12 +1322,17 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                 #pragma omp critical
 #endif
                     {
+                        num_error_branches += p_single_copy * (classification == BC_ERROR);
+                        num_variant_branches += p_single_copy * (classification == BC_VARIANT);
+                        num_repeat_branches += p_single_copy * (classification == BC_REPEAT);
+                        num_kmers += p_single_copy;
+                        /*
                         num_error_branches += (classification == BC_ERROR);
                         num_variant_branches += (classification == BC_VARIANT);
                         num_repeat_branches += (classification == BC_REPEAT);
-                        num_kmers += 1;
+                        num_kmers += p_single_copy;
+                        */
                     }
-
 
                 if(classification == BC_VARIANT || classification == BC_REPEAT)
                     break;
@@ -1309,20 +1345,20 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         pWriter->String("mode");
         pWriter->Int(mode);
         pWriter->String("num_kmers");
-        pWriter->Int(num_kmers);
+        pWriter->Double(num_kmers);
         pWriter->String("num_error_branches");
-        pWriter->Int(num_error_branches);
+        pWriter->Double(num_error_branches);
         pWriter->String("num_variant_branches");
-        pWriter->Int(num_variant_branches);
+        pWriter->Double(num_variant_branches);
         pWriter->String("num_repeat_branches");
-        pWriter->Int(num_repeat_branches);
+        pWriter->Double(num_repeat_branches);
 
         pWriter->String("variant_rate");
-        double vr = num_variant_branches > 0 ? (double)num_kmers / num_variant_branches : num_kmers;
+        double vr = num_variant_branches > 0 ? num_kmers / num_variant_branches : num_kmers;
         pWriter->Double(vr);
         
         pWriter->String("repeat_rate");
-        double rr = num_repeat_branches > 0 ? (double)num_kmers / num_repeat_branches : num_kmers;
+        double rr = num_repeat_branches > 0 ? num_kmers / num_repeat_branches : num_kmers;
         pWriter->Double(rr);
 
         pWriter->EndObject();
@@ -1538,7 +1574,7 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                         total_r += r_counts[bi];
 
                         sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
-                        if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+                        if(f_counts[bi] >= 1 || r_counts[bi] >= 1)
                             num_extensions_both_strands += 1;
                     }
 
@@ -1564,8 +1600,9 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                         int f_2  = f_counts[bi];
                         int r_2  = r_counts[bi];
                         assert(false);
-                        BranchClassification classification = classify_2_branch(mode, c_1, c_2, f_2, r_2, 0, 0);
-
+                        classify_2_branch(mode, c_1, c_2, f_2, r_2, 0, 0);
+                        BranchClassification classification; //= classify_2_branch(mode, c_1, c_2, f_2, r_2, 0, 0);
+                        
                         if(classification == BC_ERROR || classification == BC_VARIANT)
                         {
                             // if this is an error branch, we take the non-error (higher coverage) option
