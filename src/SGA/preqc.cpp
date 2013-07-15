@@ -41,6 +41,22 @@ enum BranchClassification
     BC_REPEAT
 };
 
+// Structs
+struct GenomeEstimates
+{
+    double average_read_length;
+    size_t genome_size;
+    size_t total_reads;
+};
+
+struct ModelParameters
+{
+    double mode;
+    double mean_read_starts;
+    double mean_error_kmer_depth;
+    double error_rate;
+};
+
 // Typedefs
 typedef rapidjson::PrettyWriter<rapidjson::FileStream> JSONWriter;
 
@@ -974,7 +990,7 @@ size_t findSingleCopyPeak(const KmerDistribution& distribution)
         return global_peak_v;
 }
 
-size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set)
+GenomeEstimates estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set)
 {
     //
     size_t n_samples = 20000;
@@ -1034,10 +1050,15 @@ size_t estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set
     double total_read_kmers = n * (avg_rl - k + 1);
     double corrected_mode = mode / (1.0f - prop_kmers_with_error);
     //printf("k: %zu mode: %.2lf c_mode: %.2lf g_m: %.2lf g_cm: %.2lf \n", k, mode, corrected_mode, total_read_kmers / mode, total_read_kmers / corrected_mode);
-    return (size_t)(total_read_kmers / corrected_mode);
+
+    GenomeEstimates out;
+    out.genome_size = total_read_kmers / corrected_mode;
+    out.average_read_length = avg_rl;
+    out.total_reads = n;
+    return out;
 }
 
-void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
+GenomeEstimates generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
 {
 
     /* Debug 
@@ -1046,14 +1067,15 @@ void generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet& index_set)
     */
 
     size_t estimate_k = 31;
-    size_t g_size = estimate_genome_size_from_k_counts(estimate_k, index_set);
+    GenomeEstimates e = estimate_genome_size_from_k_counts(estimate_k, index_set);
     pJSONWriter->String("GenomeSize");
     pJSONWriter->StartObject();
     pJSONWriter->String("k");
     pJSONWriter->Int64(estimate_k);
     pJSONWriter->String("size");
-    pJSONWriter->Int64(g_size);
+    pJSONWriter->Int64((size_t)e.genome_size);
     pJSONWriter->EndObject();
+    return e;
 }
 
 
@@ -1080,7 +1102,7 @@ size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
 }
 
 // Run the probablisitic classifier on a two-edge branch in the de Bruijn graph
-BranchClassification classify_2_branch(size_t mode, 
+BranchClassification classify_2_branch(const ModelParameters& params,
                                        size_t higher_count, 
                                        size_t lower_count, 
                                        size_t lower_forward_count,
@@ -1095,20 +1117,21 @@ BranchClassification classify_2_branch(size_t mode,
     size_t higher_strand = std::max(lower_forward_count, lower_reverse_count);
     size_t total_strand = lower_forward_count + lower_reverse_count;
 
-    // Normalize the allele balance to the range [0, 1]
-    // where 1 is completely balanced between variants
-    double norm_allele_balance = 2 * (1.0f - allele_balance);
+    // Calculate the parameters for the distributions
+
+    // the expected increase in read count for the variant and error models
+    double delta_param_unique = params.mean_read_starts + params.mean_error_kmer_depth;
 
     // Error model
     // P( total | error) = pois(total, mode)
     // P( allele_balance | error) = Beta(100,100*error_rate)
-    double log_p_delta_error = SGAStats::logPoisson(delta, 1);
-    double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
+    double log_p_delta_error = SGAStats::logPoisson(delta, delta_param_unique);
+    double log_p_balance_error = SGAStats::logBinomial(higher_count, total, 1.0 - params.error_rate);
     double log_p_strand_error = 0.0f;//SGAStats::logBinomial(higher_strand, total_strand, 0.95);
 
     // Variation Model
     double log_p_delta_variant = log_p_delta_error;
-    double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
+    double log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
     double log_p_strand_variant = 0.0f;//SGAStats::logBinomial(higher_strand, total_strand, 0.5);
 
     // Repeat model
@@ -1123,7 +1146,7 @@ BranchClassification classify_2_branch(size_t mode,
         double log_p_copies = (copies - 1) * log(1.0f - MU) + log(MU) + log_truncation_scale;
 
         // Calculate the probability of the increase in read count given this copy count
-        double log_delta_given_copies = SGAStats::logPoisson(delta, (copies - 1)*mode);
+        double log_delta_given_copies = SGAStats::logPoisson(delta, (copies - 1)*params.mode);
         
         if(copies == copies_min)
             log_p_delta_repeat = log_p_copies + log_delta_given_copies;
@@ -1178,8 +1201,8 @@ BranchClassification classify_2_branch(size_t mode,
     fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf s|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), exp(log_p_strand_repeat), posterior_repeat);
 */
     double strand_balance = higher_strand / (double)total_strand;
-    fprintf(stderr, "DF %zu %zu %zu %zu %.4lf %.4lf %zu/%zu %zu %.6lf %.6lf %.6lf %d %d\n",
-        mode, higher_count, lower_count, total,
+    fprintf(stderr, "DF %.0lf %zu %zu %zu %.4lf %.4lf %zu/%zu %zu %.6lf %.6lf %.6lf %d %d\n",
+        params.mode, higher_count, lower_count, total,
         allele_balance, strand_balance,
         lower_forward_count, lower_reverse_count, x_count,
         posterior_error, posterior_variant, posterior_repeat,
@@ -1217,30 +1240,45 @@ double probability_diploid_copy(size_t mode, size_t c)
     return p;   
 }
 
-void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& index_set)
+void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimates, const BWTIndexSet& index_set)
 {
     int kmer_distribution_samples = 10000;
     int classification_samples = 50000;
+    double error_rate_prior = 0.01;
 
     //double min_probability_for_classification = 0.25;
     pWriter->String("BranchClassification");
     pWriter->StartArray();
 
-    for(size_t k = 21; k <= 71; k += 5)
+    for(size_t k = 51; k <= 71; k += 5)
     {
-        // Step 1: Learn k-mer occurrence distribution for this value of k
-        size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
+        // Estimate parameters to the model
+        ModelParameters params;
+
+        // learn k-mer occurrence distribution for this value of k
+        params.mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
+
+        // calculate the expected number of reads starting at a given genome position
+        params.mean_read_starts = (double)estimates.total_reads / estimates.genome_size;
+
+        // calculate the expected kmer depth if all reads were perfect
+        double average_num_kmers = (estimates.average_read_length - k + 1);
+        double expected_kmer_depth = estimates.total_reads * average_num_kmers / estimates.genome_size;
+
+        // calculate the expected number of occurrences for a kmer that has an error
+        params.mean_error_kmer_depth = error_rate_prior * expected_kmer_depth;
+        params.error_rate = error_rate_prior;
 
         // Do not attempt classification if k-mer coverage is too low
-        if(mode < 10)
+        if(params.mode < 10)
             continue;
 
         // Cache the estimates that a kmer is diploid-unique for count [0,3m]
-        std::vector<double> p_unique_by_count(3 * mode, 0.0f);
+        std::vector<double> p_unique_by_count(3 * params.mode, 0.0f);
         
         // We start at c=4 so that we never use low-count kmers in our model
-        for(size_t c = 4; c < 3 * mode; ++c)
-            p_unique_by_count[c] = probability_diploid_copy(mode, c);
+        for(size_t c = 4; c < 3 * params.mode; ++c)
+            p_unique_by_count[c] = probability_diploid_copy(params.mode, c);
 
         // Our output counts
         double num_error_branches = 0;
@@ -1315,7 +1353,7 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
                     int f_2 = f_counts[bi];
                     int r_2 = r_counts[bi];
                     assert(f_2 > 0 && r_2 > 0);
-                    classification = classify_2_branch(mode, c_1, c_2, f_2, r_2, delta, count);
+                    classification = classify_2_branch(params, c_1, c_2, f_2, r_2, delta, count);
                 }
 
 #if HAVE_OPENMP
@@ -1343,7 +1381,7 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         pWriter->String("k");
         pWriter->Int(k);
         pWriter->String("mode");
-        pWriter->Int(mode);
+        pWriter->Int((int)params.mode);
         pWriter->String("num_kmers");
         pWriter->Double(num_kmers);
         pWriter->String("num_error_branches");
@@ -1358,7 +1396,7 @@ void generate_branch_classification(JSONWriter* pWriter, const BWTIndexSet& inde
         pWriter->Double(vr);
         
         pWriter->String("repeat_rate");
-        double rr = num_repeat_branches > 0 ? num_kmers / num_repeat_branches : num_kmers;
+        double rr = num_repeat_branches > 0 ? num_kmers / num_repeat_branches : 10e-9;
         pWriter->Double(rr);
 
         pWriter->EndObject();
@@ -1593,14 +1631,16 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                     } 
                     else if(num_extensions_both_strands == 2) 
                     {
+                        /*
                         size_t c_1 = sum_counts.get(sorted_bases[0]);
                         size_t c_2 = sum_counts.get(sorted_bases[1]);
                         
                         size_t bi = DNA_ALPHABET::getBaseRank(sorted_bases[1]);
                         int f_2  = f_counts[bi];
                         int r_2  = r_counts[bi];
+                        */
                         assert(false);
-                        classify_2_branch(mode, c_1, c_2, f_2, r_2, 0, 0);
+
                         BranchClassification classification; //= classify_2_branch(mode, c_1, c_2, f_2, r_2, 0, 0);
                         
                         if(classification == BC_ERROR || classification == BC_VARIANT)
@@ -1660,7 +1700,8 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
     
-    generate_branch_classification(&writer, index_set);
+    GenomeEstimates estimates = generate_genome_size(&writer, index_set);
+    generate_branch_classification(&writer, estimates, index_set);
     /*
     if(!opt::diploidReferenceMode)
     {
