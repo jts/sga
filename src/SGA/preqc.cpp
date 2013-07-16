@@ -61,6 +61,21 @@ struct ModelParameters
     static const double error_rate_prior = 0.02;
 };
 
+// struct to store posterior probabilities calculated
+// by the model
+struct ModelPosteriors
+{
+    ModelPosteriors() : posterior_error(0.0f), 
+                        posterior_variant(0.0f), 
+                        posterior_repeat(0.0f),
+                        classification(BC_NO_CALL) {}
+
+    double posterior_error;
+    double posterior_variant;
+    double posterior_repeat;
+    BranchClassification classification;
+};
+
 // struct to store a description of the neighbors of a vertex in the graph
 struct KmerNeighbors
 {
@@ -1176,10 +1191,10 @@ size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
 }
 
 // Run the probablisitic classifier on a two-edge branch in the de Bruijn graph
-BranchClassification classify_2_branch(const ModelParameters& params,
-                                       size_t higher_count, 
-                                       size_t lower_count, 
-                                       int delta)
+ModelPosteriors classify_2_branch(const ModelParameters& params,
+                                  size_t higher_count, 
+                                  size_t lower_count, 
+                                  int delta)
 {
     const static int MAX_REPEAT_COPIES = 20;
     size_t total = higher_count + lower_count;
@@ -1187,7 +1202,6 @@ BranchClassification classify_2_branch(const ModelParameters& params,
 
     // Normalize the allele balance to the range [0, 1]
     // where 1 is completely balanced between variants
-    //double norm_allele_balance = 2 * (1.0f - allele_balance);
 
     // the expected increase in read count for the variant and error models
     double delta_param_unique = params.mean_read_starts + params.mean_error_kmer_depth;
@@ -1195,7 +1209,7 @@ BranchClassification classify_2_branch(const ModelParameters& params,
     // Error model
     double log_p_delta_error = SGAStats::logPoisson(delta, delta_param_unique);
     //double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
-    double log_p_balance_error = SGAStats::logIntegerBetaBinomialDistribution(higher_count, total, 100, 1);
+    double log_p_balance_error = SGAStats::logIntegerBetaBinomialDistribution(higher_count, total, 50, 1);
 
     // Variation Model
     double log_p_delta_variant = log_p_delta_error;
@@ -1240,40 +1254,42 @@ BranchClassification classify_2_branch(const ModelParameters& params,
     log_sum = addLogs(log_sum, ls2);
     log_sum = addLogs(log_sum, ls3);
 
-    double posterior_error = exp(ls1 - log_sum);
-    double posterior_variant = exp(ls2 - log_sum);
-    double posterior_repeat = exp(ls3 - log_sum);
+    ModelPosteriors out;
+    out.posterior_error = exp(ls1 - log_sum);
+    out.posterior_variant = exp(ls2 - log_sum);
+    out.posterior_repeat = exp(ls3 - log_sum);
 
     double max = 0;
-    BranchClassification classification = BC_NO_CALL;
-    if(posterior_error > max)
+    out.classification = BC_NO_CALL;
+    if(out.posterior_error > max)
     {
-        max = posterior_error;
-        classification = BC_ERROR;
+        max = out.posterior_error;
+        out.classification = BC_ERROR;
     } 
 
-    if(posterior_variant > max)
+    if(out.posterior_variant > max)
     {
-        max = posterior_variant;
-        classification = BC_VARIANT;
+        max = out.posterior_variant;
+        out.classification = BC_VARIANT;
     }
 
-    if(posterior_repeat > max)
+    if(out.posterior_repeat > max)
     {
-        max = posterior_repeat;
-        classification = BC_REPEAT;
+        max = out.posterior_repeat;
+        out.classification = BC_REPEAT;
     }
+
     fprintf(stderr, "\tlog_sum: %.4lf\n", log_sum);
-    fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_delta_error), exp(log_p_balance_error), posterior_error);
-    fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_delta_variant), exp(log_p_balance_variant), posterior_variant);
-    fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_delta_repeat), exp(log_p_balance_repeat), posterior_repeat);
+    fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_delta_error), exp(log_p_balance_error), out.posterior_error);
+    fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_delta_variant), exp(log_p_balance_variant), out.posterior_variant);
+    fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_delta_repeat), exp(log_p_balance_repeat), out.posterior_repeat);
     fprintf(stderr, "DF %.0lf %zu %zu %zu %.4lf %.6lf %.6lf %.6lf %d %d\n",
         params.mode, higher_count, lower_count, total,
         allele_balance,
-        posterior_error, posterior_variant, posterior_repeat,
-        classification, delta);
+        out.posterior_error, out.posterior_variant, out.posterior_repeat,
+        out.classification, delta);
 
-    return classification;
+    return out;
 }
 
 // Calculate parameters for the branch classification model for a given k
@@ -1294,7 +1310,6 @@ ModelParameters calculate_model_parameters(size_t k,
     double average_num_kmers = (estimates.average_read_length - k + 1);
     double expected_kmer_depth = estimates.total_reads * average_num_kmers / estimates.genome_size;
 
-    // calculate the expected number of occurrences for a kmer that has an error
     params.mean_error_kmer_depth = params.error_rate_prior * expected_kmer_depth;
     return params;
 }
@@ -1338,7 +1353,7 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
     pWriter->String("BranchClassification");
     pWriter->StartArray();
 
-    for(size_t k = 61; k <= 71; k += 5)
+    for(size_t k = 26; k <= 71; k += 5)
     {
         // Estimate parameters to the model
         ModelParameters params = calculate_model_parameters(k, 
@@ -1390,8 +1405,8 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
                 KmerNeighbors neighbors = calculate_neighbor_data(kmer, index_set);
 
                 // if the neighbor data indicates a 2-branch, classify it
-                BranchClassification classification = BC_NO_CALL;
-                if(neighbors.extensions_both_strands.size() == 2)
+                ModelPosteriors ret;
+                if(neighbors.extensions_both_strands.size() > 1)
                 {
                     char b_1 = neighbors.sorted_by_count[0];
                     char b_2 = neighbors.sorted_by_count[1];
@@ -1402,26 +1417,20 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
                     // Calculate delta, the increase in coverage for the neighboring kmers
                     int delta = calculate_delta(kmer, neighbors, index_set);
                     assert(delta >= 0);
-                    classification = classify_2_branch(params, c_1, c_2, delta);
+                    ret = classify_2_branch(params, c_1, c_2, delta);
                 }
 
 #if HAVE_OPENMP
                 #pragma omp critical
 #endif
-                    {
-                        num_error_branches += p_single_copy * (classification == BC_ERROR);
-                        num_variant_branches += p_single_copy * (classification == BC_VARIANT);
-                        num_repeat_branches += p_single_copy * (classification == BC_REPEAT);
-                        num_kmers += p_single_copy;
-                        /*
-                        num_error_branches += (classification == BC_ERROR);
-                        num_variant_branches += (classification == BC_VARIANT);
-                        num_repeat_branches += (classification == BC_REPEAT);
-                        num_kmers += p_single_copy;
-                        */
-                    }
+                {
+                    num_error_branches += (p_single_copy * ret.posterior_error);
+                    num_variant_branches += (p_single_copy * ret.posterior_variant);
+                    num_repeat_branches += (p_single_copy * ret.posterior_repeat);
+                    num_kmers += p_single_copy;
+                }
 
-                if(classification == BC_VARIANT || classification == BC_REPEAT)
+                if(ret.classification == BC_VARIANT || ret.classification == BC_REPEAT)
                     break;
             }
         }
@@ -1681,9 +1690,9 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                         // Calculate delta
                         int delta = calculate_delta(curr_kmer, neighbors, index_set);
                         assert(delta >= 0);
-                        BranchClassification classification = classify_2_branch(params, c_1, c_2, delta);
+                        ModelPosteriors ret = classify_2_branch(params, c_1, c_2, delta);
 
-                        if(classification == BC_ERROR || classification == BC_VARIANT)
+                        if(ret.classification == BC_ERROR || ret.classification == BC_VARIANT)
                         {
                             // if this is an error branch, we take the non-error (higher coverage) option
                             // if this is a variant path we also take the higher coverage option to simulate
