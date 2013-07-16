@@ -27,9 +27,9 @@ double logIntegerBetaDistribution(double x, unsigned int a, unsigned int b);
 // The logarithm of the integer beta function
 double logIntegerBetaFunction(unsigned int a, unsigned int b);
 
-// log PMF of the skellam distribution of the difference
-// between two poisson random variables
-double logSkellam(int k, double m1, double m2);
+// The logarithm of the integer beta binomail PMF
+double logIntegerBetaBinomialDistribution(unsigned int k, unsigned int n, 
+                                          unsigned int a, unsigned int b);
 
 }
 #endif

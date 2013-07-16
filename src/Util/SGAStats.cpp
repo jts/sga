@@ -67,3 +67,18 @@ double SGAStats::logIntegerBetaFunction(unsigned int a, unsigned int b)
     assert(a > 0 && b > 0);
     return logFactorial(a - 1) + logFactorial(b - 1) - logFactorial(a + b - 1);
 }
+
+//
+//
+//
+double SGAStats::logIntegerBetaBinomialDistribution(unsigned int k, unsigned int n, 
+                                                    unsigned int a, unsigned int b)
+{
+    assert(a > 0 && b > 0 && k <= n);
+    double b_coeff = logFactorial(n) - logFactorial(k) - logFactorial(n - k);
+
+    return b_coeff + 
+           logIntegerBetaFunction(k + a, n - k + b) -
+           logIntegerBetaFunction(a, b);
+    
+}

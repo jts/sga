@@ -1187,18 +1187,20 @@ BranchClassification classify_2_branch(const ModelParameters& params,
 
     // Normalize the allele balance to the range [0, 1]
     // where 1 is completely balanced between variants
-    double norm_allele_balance = 2 * (1.0f - allele_balance);
+    //double norm_allele_balance = 2 * (1.0f - allele_balance);
 
     // the expected increase in read count for the variant and error models
     double delta_param_unique = params.mean_read_starts + params.mean_error_kmer_depth;
 
     // Error model
     double log_p_delta_error = SGAStats::logPoisson(delta, delta_param_unique);
-    double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
+    //double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
+    double log_p_balance_error = SGAStats::logIntegerBetaBinomialDistribution(higher_count, total, 100, 1);
 
     // Variation Model
     double log_p_delta_variant = log_p_delta_error;
-    double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
+    //double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
+    double log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
 
     // Repeat model
     
@@ -1221,7 +1223,8 @@ BranchClassification classify_2_branch(const ModelParameters& params,
             log_p_delta_repeat = addLogs(log_p_delta_repeat, log_p_copies + log_delta_given_copies);
     }
 
-    double log_p_balance_repeat = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 3, 1);
+    //double log_p_balance_repeat = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 3, 1);
+    double log_p_balance_repeat = SGAStats::logIntegerBetaBinomialDistribution(higher_count, total, 5, 1);
 
     // priors
     double log_prior_error = log(1.0/3);
@@ -1260,19 +1263,15 @@ BranchClassification classify_2_branch(const ModelParameters& params,
         max = posterior_repeat;
         classification = BC_REPEAT;
     }
-/*
     fprintf(stderr, "\tlog_sum: %.4lf\n", log_sum);
-    fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf s|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), exp(log_p_strand_error), posterior_error);
-    fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf s|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), exp(log_p_strand_variant), posterior_variant);
-    fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf s|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), exp(log_p_strand_repeat), posterior_repeat);
-    double strand_balance = higher_strand / (double)total_strand;
-    fprintf(stderr, "DF %.0lf %zu %zu %zu %.4lf %.4lf %zu/%zu %zu %.6lf %.6lf %.6lf %d %d\n",
+    fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_delta_error), exp(log_p_balance_error), posterior_error);
+    fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_delta_variant), exp(log_p_balance_variant), posterior_variant);
+    fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf p(r): %.4lf\n", exp(log_p_delta_repeat), exp(log_p_balance_repeat), posterior_repeat);
+    fprintf(stderr, "DF %.0lf %zu %zu %zu %.4lf %.6lf %.6lf %.6lf %d %d\n",
         params.mode, higher_count, lower_count, total,
-        allele_balance, strand_balance,
-        lower_forward_count, lower_reverse_count, x_count,
+        allele_balance,
         posterior_error, posterior_variant, posterior_repeat,
         classification, delta);
-*/
 
     return classification;
 }
@@ -1339,7 +1338,7 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
     pWriter->String("BranchClassification");
     pWriter->StartArray();
 
-    for(size_t k = 21; k <= 71; k += 5)
+    for(size_t k = 61; k <= 71; k += 5)
     {
         // Estimate parameters to the model
         ModelParameters params = calculate_model_parameters(k, 
@@ -1744,9 +1743,9 @@ int preQCMain(int argc, char** argv)
     if(!opt::diploidReferenceMode)
     {
         GenomeEstimates estimates = generate_genome_size(&writer, index_set);
-        generate_de_bruijn_simulation(&writer, estimates, index_set);
+        //generate_de_bruijn_simulation(&writer, estimates, index_set);
         generate_branch_classification(&writer, estimates, index_set);
-
+        /*
         generate_gc_distribution(&writer, index_set);
         generate_quality_stats(&writer, opt::readsFile);
         generate_pe_fragment_sizes(&writer, index_set);
@@ -1755,6 +1754,7 @@ int preQCMain(int argc, char** argv)
         generate_errors_per_base(&writer, index_set);
         generate_unipath_length_data(&writer, index_set);
         generate_duplication_rate(&writer, index_set);
+        */
     }
     else
     {
