@@ -1221,7 +1221,7 @@ BranchClassification classify_2_branch(const ModelParameters& params,
             log_p_delta_repeat = addLogs(log_p_delta_repeat, log_p_copies + log_delta_given_copies);
     }
 
-    double log_p_balance_repeat = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 2, 2);
+    double log_p_balance_repeat = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 3, 1);
 
     // priors
     double log_prior_error = log(1.0/3);
@@ -1741,11 +1741,6 @@ int preQCMain(int argc, char** argv)
     // Top-level document
     writer.StartObject();
     
-    GenomeEstimates estimates = generate_genome_size(&writer, index_set);
-    generate_branch_classification(&writer, estimates, index_set);
-    generate_de_bruijn_simulation(&writer, estimates, index_set);
-
-    /*
     if(!opt::diploidReferenceMode)
     {
         GenomeEstimates estimates = generate_genome_size(&writer, index_set);
@@ -1765,7 +1760,7 @@ int preQCMain(int argc, char** argv)
     {
         generate_reference_branch_classification(&writer, index_set);
     }
-    */
+
     // End document
     writer.EndObject();
 
