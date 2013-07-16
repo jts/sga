@@ -216,7 +216,7 @@ def plot_branch_classification(pp, data):
             branch_rate = list()
             for t in data[name][BRANCH_CLASSIFICATION_NAME]:
 
-                if t['k'] >= 21:
+                if t['k'] >= 21 and t[type_key] > 0:
                     kmers.append(t['k'])
                     branch_rate.append(float(t[type_key]) / t['num_kmers'])
 

@@ -42,6 +42,8 @@ enum BranchClassification
 };
 
 // Structs
+
+// struct to store some estimated properties of the genome
 struct GenomeEstimates
 {
     double average_read_length;
@@ -49,13 +51,30 @@ struct GenomeEstimates
     size_t total_reads;
 };
 
+// struct to store the parameters used by our classifier
 struct ModelParameters
 {
     double mode;
     double mean_read_starts;
     double mean_error_kmer_depth;
     double error_rate;
+    static const double error_rate_prior = 0.02;
 };
+
+// struct to store a description of the neighbors of a vertex in the graph
+struct KmerNeighbors
+{
+    // This stores the occurrence count for each
+    // neighboring kmer that appears on both strands
+    AlphaCount64 count_both_strands;
+
+    // This stores the bases that have coverage on both strands
+    std::string extensions_both_strands;
+
+    // This stores the extensions in order by count
+    std::string sorted_by_count;
+};
+
 
 // Typedefs
 typedef rapidjson::PrettyWriter<rapidjson::FileStream> JSONWriter;
@@ -215,6 +234,61 @@ void fill_neighbor_count_by_strand(const std::string& kmer, const BWTIndexSet& i
     r_mer = "$" + reverseComplement(kmer);
     f_counts[4] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(f_mer, index_set);
     r_counts[4] = BWTAlgorithms::countSequenceOccurrencesSingleStrand(r_mer, index_set);
+}
+
+// Get a description of the neighbors of the given kmer
+// This is used in the classifier
+KmerNeighbors calculate_neighbor_data(const std::string& kmer, const BWTIndexSet& index_set)
+{
+    KmerNeighbors out;
+
+    // these vectors are in order ACGT$ on the forward strand
+    int f_counts[5] = { 0, 0, 0, 0, 0 };
+    int r_counts[5] = { 0, 0, 0, 0, 0 };
+
+    fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
+
+    // Make sure both strands are represented for every branch
+    for(size_t bi = 0; bi < 4; ++bi)
+    {
+        if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
+        {
+            out.count_both_strands.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
+            out.extensions_both_strands.append(1, "ACGT"[bi]);
+        }
+    }
+
+    char sorted_bases[5] = "ACGT";
+    sorted_bases[4] = '\0';
+    out.count_both_strands.getSorted(sorted_bases, 5);
+    out.sorted_by_count = sorted_bases;
+    return out;
+}
+
+// calculate the delta statistic from the neighboring kmer data
+int calculate_delta(const std::string& kmer, 
+                    const KmerNeighbors nd, 
+                    const BWTIndexSet& index_set)
+{
+    // Calculate the number of reads that have both the 
+    // kmer and the neighbor kmer
+    std::vector<int> double_kmer_counts;
+    for(size_t bi = 0; bi < nd.extensions_both_strands.size(); ++bi)
+    {
+        std::string n_kmer = kmer + nd.extensions_both_strands[bi];
+        double_kmer_counts.push_back(
+                BWTAlgorithms::countSequenceOccurrences(n_kmer, index_set.pBWT));
+    }
+
+    assert(nd.sorted_by_count.size() >= 2);
+    char b_1 = nd.sorted_by_count[0];
+    char b_2 = nd.sorted_by_count[1];
+
+    size_t c_1 = nd.count_both_strands.get(b_1);
+    size_t c_2 = nd.count_both_strands.get(b_2);
+
+    int delta = c_1 + c_2 - double_kmer_counts[0] - double_kmer_counts[1];
+    return delta;
 }
 
 //
@@ -1105,38 +1179,31 @@ size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
 BranchClassification classify_2_branch(const ModelParameters& params,
                                        size_t higher_count, 
                                        size_t lower_count, 
-                                       size_t lower_forward_count,
-                                       size_t lower_reverse_count,
-                                       int delta,
-                                       size_t x_count)
+                                       int delta)
 {
     const static int MAX_REPEAT_COPIES = 20;
     size_t total = higher_count + lower_count;
     double allele_balance = (double)higher_count / total;
 
-    size_t higher_strand = std::max(lower_forward_count, lower_reverse_count);
-    size_t total_strand = lower_forward_count + lower_reverse_count;
-
-    // Calculate the parameters for the distributions
+    // Normalize the allele balance to the range [0, 1]
+    // where 1 is completely balanced between variants
+    double norm_allele_balance = 2 * (1.0f - allele_balance);
 
     // the expected increase in read count for the variant and error models
     double delta_param_unique = params.mean_read_starts + params.mean_error_kmer_depth;
 
     // Error model
-    // P( total | error) = pois(total, mode)
-    // P( allele_balance | error) = Beta(100,100*error_rate)
     double log_p_delta_error = SGAStats::logPoisson(delta, delta_param_unique);
-    double log_p_balance_error = SGAStats::logBinomial(higher_count, total, 1.0 - params.error_rate);
-    double log_p_strand_error = 0.0f;//SGAStats::logBinomial(higher_strand, total_strand, 0.95);
+    double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
 
     // Variation Model
     double log_p_delta_variant = log_p_delta_error;
-    double log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
-    double log_p_strand_variant = 0.0f;//SGAStats::logBinomial(higher_strand, total_strand, 0.5);
+    double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
 
     // Repeat model
-    const static double MU = 0.8; // geometric dist. parameter, from CORTEX (Iqbal et al.)
-    //double log_p_count_repeat = 0.0f;
+    
+    // geometric dist. parameter, from CORTEX (Iqbal et al.)
+    const static double MU = 0.8; 
     double log_p_delta_repeat = 0.0f;
     int copies_min = 2;
     double log_truncation_scale = copies_min > 1 ? log(1.0f / (1.0f - MU)) : 0;
@@ -1154,8 +1221,7 @@ BranchClassification classify_2_branch(const ModelParameters& params,
             log_p_delta_repeat = addLogs(log_p_delta_repeat, log_p_copies + log_delta_given_copies);
     }
 
-    double log_p_balance_repeat = log_p_balance_variant;
-    double log_p_strand_repeat = log_p_strand_variant;
+    double log_p_balance_repeat = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 2, 2);
 
     // priors
     double log_prior_error = log(1.0/3);
@@ -1163,9 +1229,9 @@ BranchClassification classify_2_branch(const ModelParameters& params,
     double log_prior_repeat = log(1.0/3);
 
     // Calculate posterior for each state
-    double ls1 = log_p_delta_error + log_p_balance_error + log_p_strand_error + log_prior_error;
-    double ls2 = log_p_delta_variant + log_p_balance_variant + log_p_strand_variant + log_prior_variant;
-    double ls3 = log_p_delta_repeat + log_p_balance_repeat + log_p_strand_repeat + log_prior_repeat;
+    double ls1 = log_p_delta_error + log_p_balance_error + log_prior_error;
+    double ls2 = log_p_delta_variant + log_p_balance_variant + log_prior_variant;
+    double ls3 = log_p_delta_repeat + log_p_balance_repeat + log_prior_repeat;
 
     double log_sum = ls1;
     log_sum = addLogs(log_sum, ls2);
@@ -1199,7 +1265,6 @@ BranchClassification classify_2_branch(const ModelParameters& params,
     fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf s|e: %.4lf p(e): %.4lf\n", exp(log_p_count_error), exp(log_p_balance_error), exp(log_p_strand_error), posterior_error);
     fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf s|v: %.4lf p(v): %.4lf\n", exp(log_p_count_variant), exp(log_p_balance_variant), exp(log_p_strand_variant), posterior_variant);
     fprintf(stderr, "\t\ttc|r: %.4lf y|r: %.4lf s|r: %.4lf p(r): %.4lf\n", exp(log_p_count_repeat), exp(log_p_balance_repeat), exp(log_p_strand_repeat), posterior_repeat);
-*/
     double strand_balance = higher_strand / (double)total_strand;
     fprintf(stderr, "DF %.0lf %zu %zu %zu %.4lf %.4lf %zu/%zu %zu %.6lf %.6lf %.6lf %d %d\n",
         params.mode, higher_count, lower_count, total,
@@ -1207,8 +1272,32 @@ BranchClassification classify_2_branch(const ModelParameters& params,
         lower_forward_count, lower_reverse_count, x_count,
         posterior_error, posterior_variant, posterior_repeat,
         classification, delta);
+*/
 
     return classification;
+}
+
+// Calculate parameters for the branch classification model for a given k
+ModelParameters calculate_model_parameters(size_t k, 
+                                           size_t samples, 
+                                           const GenomeEstimates& estimates, 
+                                           const BWTIndexSet& index_set)
+{
+    ModelParameters params;
+
+    // learn k-mer occurrence distribution for this value of k
+    params.mode = learnKmerCountMode(k, samples, index_set);
+
+    // calculate the expected number of reads starting at a given genome position
+    params.mean_read_starts = (double)estimates.total_reads / estimates.genome_size;
+
+    // calculate the expected kmer depth if all reads were perfect
+    double average_num_kmers = (estimates.average_read_length - k + 1);
+    double expected_kmer_depth = estimates.total_reads * average_num_kmers / estimates.genome_size;
+
+    // calculate the expected number of occurrences for a kmer that has an error
+    params.mean_error_kmer_depth = params.error_rate_prior * expected_kmer_depth;
+    return params;
 }
 
 // Calculate the probability that a kmer seen c times
@@ -1240,35 +1329,24 @@ double probability_diploid_copy(size_t mode, size_t c)
     return p;   
 }
 
+
 void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimates, const BWTIndexSet& index_set)
 {
     int kmer_distribution_samples = 10000;
     int classification_samples = 50000;
-    double error_rate_prior = 0.01;
 
     //double min_probability_for_classification = 0.25;
     pWriter->String("BranchClassification");
     pWriter->StartArray();
 
-    for(size_t k = 51; k <= 71; k += 5)
+    for(size_t k = 21; k <= 71; k += 5)
     {
         // Estimate parameters to the model
-        ModelParameters params;
-
-        // learn k-mer occurrence distribution for this value of k
-        params.mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
-
-        // calculate the expected number of reads starting at a given genome position
-        params.mean_read_starts = (double)estimates.total_reads / estimates.genome_size;
-
-        // calculate the expected kmer depth if all reads were perfect
-        double average_num_kmers = (estimates.average_read_length - k + 1);
-        double expected_kmer_depth = estimates.total_reads * average_num_kmers / estimates.genome_size;
-
-        // calculate the expected number of occurrences for a kmer that has an error
-        params.mean_error_kmer_depth = error_rate_prior * expected_kmer_depth;
-        params.error_rate = error_rate_prior;
-
+        ModelParameters params = calculate_model_parameters(k, 
+                                                            kmer_distribution_samples, 
+                                                            estimates, 
+                                                            index_set);
+    
         // Do not attempt classification if k-mer coverage is too low
         if(params.mode < 10)
             continue;
@@ -1309,51 +1387,23 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
                 double p_single_copy = p_unique_by_count[count];
                 if(p_single_copy < 0.90)
                     continue;
-
-                // these vectors are in order ACGT$ on the forward strand
-                int f_counts[5] = { 0, 0, 0, 0, 0 };
-                int r_counts[5] = { 0, 0, 0, 0, 0 };
-
-                fill_neighbor_count_by_strand(kmer, index_set, f_counts, r_counts);
                 
-                // Make sure both strands are represented for every branch
-                int next_count = 0;
-                AlphaCount64 sum_counts;
-                int num_extensions_both_strands = 0;
-                for(size_t bi = 0; bi < 4; ++bi)
-                {
-                    next_count += f_counts[bi];
-                    next_count += r_counts[bi];
+                KmerNeighbors neighbors = calculate_neighbor_data(kmer, index_set);
 
-                    if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
-                    {
-                        sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
-                        num_extensions_both_strands += 1;
-                    }
-                }
-
-                // Calculate the expected count of the branch by
-                // subtracting off the reads where kmer is the starting/ending kmer
-                int min_next_count = count - f_counts[4] - r_counts[4];
-                assert(next_count >= min_next_count);
-                int delta = next_count - min_next_count;
-
-                // classify the branch
+                // if the neighbor data indicates a 2-branch, classify it
                 BranchClassification classification = BC_NO_CALL;
-                if(num_extensions_both_strands == 2)
+                if(neighbors.extensions_both_strands.size() == 2)
                 {
-                    char sorted_bases[5] = "ACGT";
-                    sorted_bases[4] = '\0';
-                    sum_counts.getSorted(sorted_bases, 5);
+                    char b_1 = neighbors.sorted_by_count[0];
+                    char b_2 = neighbors.sorted_by_count[1];
+
+                    size_t c_1 = neighbors.count_both_strands.get(b_1);
+                    size_t c_2 = neighbors.count_both_strands.get(b_2);
                     
-                    size_t c_1 = sum_counts.get(sorted_bases[0]);
-                    size_t c_2 = sum_counts.get(sorted_bases[1]);
-                    
-                    size_t bi = DNA_ALPHABET::getBaseRank(sorted_bases[1]);
-                    int f_2 = f_counts[bi];
-                    int r_2 = r_counts[bi];
-                    assert(f_2 > 0 && r_2 > 0);
-                    classification = classify_2_branch(params, c_1, c_2, f_2, r_2, delta, count);
+                    // Calculate delta, the increase in coverage for the neighboring kmers
+                    int delta = calculate_delta(kmer, neighbors, index_set);
+                    assert(delta >= 0);
+                    classification = classify_2_branch(params, c_1, c_2, delta);
                 }
 
 #if HAVE_OPENMP
@@ -1523,6 +1573,7 @@ void generate_reference_branch_classification(JSONWriter* pWriter, const BWTInde
 
 //
 void generate_de_bruijn_simulation(JSONWriter* pWriter,
+                                   GenomeEstimates estimates,
                                    const BWTIndexSet& index_set)
 {
     int kmer_distribution_samples = 10000;
@@ -1540,14 +1591,20 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
         BloomFilter* bf = new BloomFilter;
         bf->initialize(10 * max_expected_kmers, 3);
 
-        // Step 1: Learn k-mer occurrence distribution for this value of k
-        size_t mode = learnKmerCountMode(k, kmer_distribution_samples, index_set);
+        ModelParameters params = calculate_model_parameters(k, kmer_distribution_samples, estimates, index_set);
+
+        // Cache the estimates that a kmer is diploid-unique for count [0,3m]
+        std::vector<double> p_unique_by_count(3 * params.mode, 0.0f);
+        
+        // We start at c=4 so that we never use low-count kmers in our model
+        for(size_t c = 4; c < 3 * params.mode; ++c)
+            p_unique_by_count[c] = probability_diploid_copy(params.mode, c);
 
         pWriter->StartObject();
         pWriter->String("k");
         pWriter->Int(k);
         pWriter->String("mode");
-        pWriter->Int(mode);
+        pWriter->Int(params.mode);
         pWriter->String("walk_lengths");
         pWriter->StartArray();
 #if HAVE_OPENMP
@@ -1556,6 +1613,10 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
 #endif
         for(int i = 0; i < n_samples; ++i)
         {
+            //
+            // Find a new starting point for the walk
+            //
+
             // Get a random read from the BWT
             std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
 
@@ -1563,23 +1624,28 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
             if(s.size() < k)
                 continue;
             
-            HashMap<std::string, bool> loop_check;
             std::string start_kmer = s.substr(0, k);
-            std::string rc_start_kmer = reverseComplement(start_kmer);
 
-            // To avoid sampling error paths, only use kmers that are seen
-            // on both strands as start points
-            size_t fc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(start_kmer, index_set);
-            size_t rc = BWTAlgorithms::countSequenceOccurrencesSingleStrand(rc_start_kmer, index_set);
-
-            if(fc == 0 || rc == 0)
-                continue;
+            size_t count = BWTAlgorithms::countSequenceOccurrences(start_kmer, index_set);
             
+            // Only start walks from paths that are likely to be unique diploid sequence
+            if(count >= 3 * params.mode)
+                continue;
+
+            double p_single_copy = p_unique_by_count[count];
+            if(p_single_copy < 0.90)
+                continue;
+
             // skip if this kmer has been used in a previous walk
+            std::string rc_start_kmer = reverseComplement(start_kmer);
             bool in_filter = bf->test( (start_kmer < rc_start_kmer ? start_kmer.c_str() : rc_start_kmer.c_str()), k);
             if(in_filter)
                 continue;
 
+            //
+            // All checks pass, start a new walk
+            //
+            HashMap<std::string, bool> loop_check;
             size_t walk_length = 0;
 
             // Extend using curr_kmer first, then its reverse complement
@@ -1595,60 +1661,35 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                     std::string rc_curr_kmer = reverseComplement(curr_kmer);
                     bf->add( (curr_kmer < rc_curr_kmer ? curr_kmer.c_str() : rc_curr_kmer.c_str()), k);
 
-                    // Get the possible extensions of this kmer
-                    int f_counts[5] = { 0, 0, 0, 0, 0 };
-                    int r_counts[5] = { 0, 0, 0, 0, 0 };
-
-                    fill_neighbor_count_by_strand(curr_kmer, index_set, f_counts, r_counts);
-                    
-                    // Make sure both strands are represented for every acceptable
-                    AlphaCount64 sum_counts;
-                    int num_extensions_both_strands = 0;
-                    int total_f = 0;
-                    int total_r = 0;
-                    for(size_t bi = 0; bi < 4; ++bi)
-                    {
-                        total_f += f_counts[bi];
-                        total_r += r_counts[bi];
-
-                        sum_counts.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
-                        if(f_counts[bi] >= 1 || r_counts[bi] >= 1)
-                            num_extensions_both_strands += 1;
-                    }
-
-                    // Order the bases by the count of the neighbor kmers
-                    char sorted_bases[5];
-                    sorted_bases[4] = '\0';
-                    sum_counts.getSorted(sorted_bases, 5);
+                    KmerNeighbors neighbors = calculate_neighbor_data(curr_kmer, index_set);
 
                     char extension_base = '\0';
-                    if(num_extensions_both_strands < 2)
+                    if(neighbors.extensions_both_strands.size() < 2)
                     {
                         // No ambiguity, just pick the highest coverage extension as the next node
-                        char best_extension = sorted_bases[0];
-                        if(sum_counts.get(best_extension) > 0)
+                        char best_extension = neighbors.sorted_by_count[0];
+                        if(neighbors.count_both_strands.get(best_extension) > 0)
                             extension_base = best_extension;
                     } 
-                    else if(num_extensions_both_strands == 2) 
+                    else if(neighbors.extensions_both_strands.size() == 2) 
                     {
-                        /*
-                        size_t c_1 = sum_counts.get(sorted_bases[0]);
-                        size_t c_2 = sum_counts.get(sorted_bases[1]);
-                        
-                        size_t bi = DNA_ALPHABET::getBaseRank(sorted_bases[1]);
-                        int f_2  = f_counts[bi];
-                        int r_2  = r_counts[bi];
-                        */
-                        assert(false);
+                        char b_1 = neighbors.sorted_by_count[0];
+                        char b_2 = neighbors.sorted_by_count[1];
 
-                        BranchClassification classification; //= classify_2_branch(mode, c_1, c_2, f_2, r_2, 0, 0);
-                        
+                        size_t c_1 = neighbors.count_both_strands.get(b_1);
+                        size_t c_2 = neighbors.count_both_strands.get(b_2);
+
+                        // Calculate delta
+                        int delta = calculate_delta(curr_kmer, neighbors, index_set);
+                        assert(delta >= 0);
+                        BranchClassification classification = classify_2_branch(params, c_1, c_2, delta);
+
                         if(classification == BC_ERROR || classification == BC_VARIANT)
                         {
                             // if this is an error branch, we take the non-error (higher coverage) option
                             // if this is a variant path we also take the higher coverage option to simulate
                             // a successfully popped bubble
-                            extension_base = sorted_bases[0];
+                            extension_base = neighbors.sorted_by_count[0];
                         }
                     } // stop extension if a 3-branch
 
@@ -1702,12 +1743,14 @@ int preQCMain(int argc, char** argv)
     
     GenomeEstimates estimates = generate_genome_size(&writer, index_set);
     generate_branch_classification(&writer, estimates, index_set);
+    generate_de_bruijn_simulation(&writer, estimates, index_set);
+
     /*
     if(!opt::diploidReferenceMode)
     {
-        generate_de_bruijn_simulation(&writer, index_set);
-        generate_branch_classification(&writer, index_set);
-        generate_genome_size(&writer, index_set);
+        GenomeEstimates estimates = generate_genome_size(&writer, index_set);
+        generate_de_bruijn_simulation(&writer, estimates, index_set);
+        generate_branch_classification(&writer, estimates, index_set);
 
         generate_gc_distribution(&writer, index_set);
         generate_quality_stats(&writer, opt::readsFile);
