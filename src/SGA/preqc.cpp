@@ -1107,8 +1107,8 @@ GenomeEstimates estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& 
     double prior_error = 0.1;
 
     // We fit the error counts using a zero-truncated poisson distribution
-    double error_rate_prior = 0.01;
-    double error_pois_mean = mode * error_rate_prior;
+    ModelParameters params;
+    double error_pois_mean = mode * params.error_rate_prior;
 
     // we do not have zero counts in our distribution so we re-scale the poisson
     double zero_trunc_scale_error = 1 / (1 - exp(-error_pois_mean));
@@ -1353,7 +1353,7 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
     pWriter->String("BranchClassification");
     pWriter->StartArray();
 
-    for(size_t k = 26; k <= 71; k += 5)
+    for(size_t k = 21; k <= 71; k += 5)
     {
         // Estimate parameters to the model
         ModelParameters params = calculate_model_parameters(k, 
@@ -1752,9 +1752,9 @@ int preQCMain(int argc, char** argv)
     if(!opt::diploidReferenceMode)
     {
         GenomeEstimates estimates = generate_genome_size(&writer, index_set);
-        //generate_de_bruijn_simulation(&writer, estimates, index_set);
         generate_branch_classification(&writer, estimates, index_set);
-        /*
+        generate_de_bruijn_simulation(&writer, estimates, index_set);
+        
         generate_gc_distribution(&writer, index_set);
         generate_quality_stats(&writer, opt::readsFile);
         generate_pe_fragment_sizes(&writer, index_set);
@@ -1763,7 +1763,6 @@ int preQCMain(int argc, char** argv)
         generate_errors_per_base(&writer, index_set);
         generate_unipath_length_data(&writer, index_set);
         generate_duplication_rate(&writer, index_set);
-        */
     }
     else
     {
