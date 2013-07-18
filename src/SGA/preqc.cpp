@@ -1198,10 +1198,6 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
 {
     const static int MAX_REPEAT_COPIES = 20;
     size_t total = higher_count + lower_count;
-    double allele_balance = (double)higher_count / total;
-
-    // Normalize the allele balance to the range [0, 1]
-    // where 1 is completely balanced between variants
 
     // the expected increase in read count for the variant and error models
     double delta_param_unique = params.mean_read_starts + params.mean_error_kmer_depth;
@@ -1279,6 +1275,8 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
         out.classification = BC_REPEAT;
     }
 
+    /*
+    double allele_balance = (double)higher_count / total;
     fprintf(stderr, "\tlog_sum: %.4lf\n", log_sum);
     fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_delta_error), exp(log_p_balance_error), out.posterior_error);
     fprintf(stderr, "\t\ttc|v: %.4lf y|v: %.4lf p(v): %.4lf\n", exp(log_p_delta_variant), exp(log_p_balance_variant), out.posterior_variant);
@@ -1288,7 +1286,7 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
         allele_balance,
         out.posterior_error, out.posterior_variant, out.posterior_repeat,
         out.classification, delta);
-
+    */
     return out;
 }
 
