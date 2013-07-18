@@ -114,16 +114,17 @@ def plot_random_walk(pp, data):
     pl.close()
 
 def plot_kmer_distribution(pp, data):
-    CUTOFF = 0.99
+    CUTOFF = 0.90
+    MIN_DELTA = 0.01
     names = data.keys()
     for name in names:
         k = data[name][KMER_DISTRIBUTION_NAME]['k']
         x = list()
         y = list()
+        m = list()
         for t in data[name][KMER_DISTRIBUTION_NAME]['distribution']:
             x.append(t['kmer-depth'])
             y.append(t['count'])
-
         s = sum(y)
         # Normalize y and apply a cutoff
         nx = list()
@@ -133,9 +134,12 @@ def plot_kmer_distribution(pp, data):
         for a,b in zip(x,y):
             fb = float(b) / s
             cumulative_sum += fb
-            if cumulative_sum < CUTOFF:
+
+            # These checks cut off the long tail of the distribution
+            if cumulative_sum < CUTOFF or fb > MIN_DELTA:
                 nx.append(a)
                 ny.append(fb)
+
         pl.plot(nx, ny)
     
     pl.xlabel(str(k) + "-mer count")
@@ -216,7 +220,11 @@ def plot_branch_classification(pp, data):
             branch_rate = list()
             for t in data[name][BRANCH_CLASSIFICATION_NAME]:
 
-                if t['k'] >= 21 and t[type_key] > 0:
+                # We require at least 2 branches to be classified
+                # in this type to plot this k-mer. This is to prevent
+                # super small rates (like when classifying corrected data)
+                # making the scale huge
+                if t['k'] >= 21 and t[type_key] > 2:
                     kmers.append(t['k'])
                     branch_rate.append(float(t[type_key]) / t['num_kmers'])
 
@@ -270,26 +278,17 @@ def plot_genome_size(pp, data):
 def plot_gc_distribution(pp, data):
     names = data.keys()
 
-    # Determine the maximum coverage value using 
-    # all data sets. We do this to show the individual
-    # plots on the same scale.
-    max_y = 0
-    for name in names:
-        y = data[name][GC_DISTRIBUTION_NAME]['cov_samples']
-        m = np.median(y)
-        y_limit = m + 2*m
-
-        # Use the median to determine the range to show and round
-        # to nearest 100 to avoid aliasing artefacts 
-        y_limit = math.ceil( (m + 2*m) / 100) * 100
-        if y_limit > max_y:
-            max_y = y_limit
-
     # Plot the 2D histogram of coverage vs gc
     for name in names:
         x = [ i * 100 for i in data[name][GC_DISTRIBUTION_NAME]['gc_samples'] ]
         y = data[name][GC_DISTRIBUTION_NAME]['cov_samples']
-        hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, max_y] ])
+        
+
+        # Use the median to determine the range to show and round
+        # to nearest 100 to avoid aliasing artefacts 
+        m = np.median(y)
+        y_limit = math.ceil( 2*m / 100) * 100
+        hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, y_limit] ])
 
         # draw the plot
         extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
