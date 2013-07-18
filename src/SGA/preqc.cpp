@@ -1043,7 +1043,7 @@ void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename
 size_t findSingleCopyPeak(const KmerDistribution& distribution)
 {
     size_t MAX_COUNT = 10000;
-    
+   
     // Step 1: find first local minima
     size_t local_min = 1;
     size_t local_count = distribution.getNumberWithCount(local_min);
@@ -1067,6 +1067,16 @@ size_t findSingleCopyPeak(const KmerDistribution& distribution)
             global_peak_v = i;
             global_peak_c = c;
         }
+    }
+
+    if(opt::verbose)
+    {
+        // print the kmer distribution to stderr
+        fprintf(stderr, "findSingleCopyPeak -- KmerDistribution:\n");
+        distribution.print(stderr, MAX_COUNT);
+
+        fprintf(stderr, "Local min: %zu\n", local_min);
+        fprintf(stderr, "Global peak: %zu\n", global_peak_v);
     }
 
     // Check whether the 2*n peak is reasonably close to the same height

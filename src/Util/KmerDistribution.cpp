@@ -195,20 +195,26 @@ size_t KmerDistribution::getNumberWithCount(size_t c) const
         return 0;
 }
 
+// for compatibility with old code
 void KmerDistribution::print(int max) const
 {
-    printf("Kmer coverage histogram\n");
-    printf("cov\tcount\n");
+    print(stdout, max);
+}
+
+void KmerDistribution::print(FILE* fp, int max) const
+{
+    fprintf(fp, "Kmer coverage histogram\n");
+    fprintf(fp, "cov\tcount\n");
 
     int maxCount = 0;
     std::map<int,int>::const_iterator iter = m_data.begin();
     for(; iter != m_data.end(); ++iter)
     {
         if(iter->first <= max)
-            printf("%d\t%d\n", iter->first, iter->second);
+            fprintf(fp, "%d\t%d\n", iter->first, iter->second);
         else
             maxCount += iter->second;
     }
-    printf(">%d\t%d\n", max, maxCount);
+    fprintf(fp, ">%d\t%d\n", max, maxCount);
 
 }

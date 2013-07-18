@@ -12,6 +12,7 @@
 #include <vector>
 #include <map>
 #include <cstddef>
+#include <stdio.h>
 
 class KmerDistribution
 {
@@ -44,6 +45,7 @@ class KmerDistribution
         int findFirstLocalMinimum() const;
         void add(int count);
         void print(int max) const; 
+        void print(FILE* file, int max) const; 
 
     private:
 
