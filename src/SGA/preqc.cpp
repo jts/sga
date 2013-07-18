@@ -136,6 +136,7 @@ static const char *PREQC_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -t, --threads=NUM                use NUM threads (default: 1)\n"
+"          --max-contig-length=N        stop contig extension at N bp (default: 50000)\n"
 "          --reference=FILE             use the reference FILE to calculate GC plot\n"
 "          --diploid-reference-mode     generate metrics assuming that the input data\n"
 "                                       is a reference genome, not a collection of reads\n"
@@ -148,6 +149,7 @@ namespace opt
 {
     static unsigned int verbose;
     static int numThreads = 1;
+    static size_t maxContigLength = 50000;
     static std::string prefix;
     static std::string readsFile;
     static std::string referenceFile;
@@ -156,7 +158,7 @@ namespace opt
 
 static const char* shortopts = "p:d:t:o:k:n:b:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_DIPLOID };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_MAX_CONTIG, OPT_DIPLOID };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -166,6 +168,7 @@ static const struct option longopts[] = {
     { "kmer-size",              required_argument, NULL, 'k' },
     { "num-reads",              required_argument, NULL, 'n' },
     { "branch-cutoff",          required_argument, NULL, 'b' },
+    { "max-contig-length",      required_argument, NULL, OPT_MAX_CONTIG },
     { "reference",              required_argument, NULL, OPT_REFERENCE },
     { "diploid-reference-mode", no_argument,       NULL, OPT_DIPLOID },
     { "help",                   no_argument,       NULL, OPT_HELP },
@@ -1606,7 +1609,6 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
 {
     int kmer_distribution_samples = 10000;
     int n_samples = 20000;
-    const static size_t MAX_WALK_LENGTH = 50000;
 
     pWriter->String("SimulateAssembly");
     pWriter->StartArray();
@@ -1614,10 +1616,10 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
     for(size_t k = 21; k <= 91; k += 5)
     {
         // Set up a bloom filter to avoid sampling paths multiple times
-        size_t max_expected_kmers = MAX_WALK_LENGTH * n_samples;
+        size_t max_expected_kmers = opt::maxContigLength * n_samples;
 
         BloomFilter* bf = new BloomFilter;
-        bf->initialize(10 * max_expected_kmers, 3);
+        bf->initialize(5 * max_expected_kmers, 3);
 
         ModelParameters params = calculate_model_parameters(k, kmer_distribution_samples, estimates, index_set);
 
@@ -1673,22 +1675,16 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
             //
             // All checks pass, start a new walk
             //
-            HashMap<std::string, bool> loop_check;
-            size_t walk_length = 0;
+            std::set<std::string> kmer_set;
 
-            // Extend using curr_kmer first, then its reverse complement
             for(size_t dir = 0; dir <= 1; ++dir)
             {
                 std::string curr_kmer = dir == 0 ? start_kmer : reverseComplement(start_kmer);
+                kmer_set.insert(curr_kmer);
 
                 bool done = false;
-                while(!done && walk_length < MAX_WALK_LENGTH)
+                while(!done && kmer_set.size() < opt::maxContigLength)
                 {
-                    // Add the kmer to the loop checker and bloom filter
-                    loop_check[curr_kmer] = true;
-                    std::string rc_curr_kmer = reverseComplement(curr_kmer);
-                    bf->add( (curr_kmer < rc_curr_kmer ? curr_kmer.c_str() : rc_curr_kmer.c_str()), k);
-
                     KmerNeighbors neighbors = calculate_neighbor_data(curr_kmer, index_set);
 
                     char extension_base = '\0';
@@ -1710,7 +1706,7 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                         size_t c_1 = neighbors.count_both_strands.get(b_1);
                         size_t c_2 = neighbors.count_both_strands.get(b_2);
 
-                        // Calculate delta
+                        // Calculate delta and classify the branch
                         int delta = calculate_delta(curr_kmer, neighbors, index_set);
                         assert(delta >= 0);
                         ModelPosteriors ret = classify_2_branch(params, c_1, c_2, delta);
@@ -1729,9 +1725,9 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                         curr_kmer.erase(0, 1);
                         curr_kmer.append(1, extension_base);
                         
-                        if(loop_check.find(curr_kmer) == loop_check.end())
-                            walk_length += 1;
-                        else
+                        // the insert call returns true in the second
+                        // element of the pair if it succeeds
+                        if(!kmer_set.insert(curr_kmer).second)
                             done = true;
                     }
                     else
@@ -1740,14 +1736,39 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                     }
                 }
             }
+
 #if HAVE_OPENMP
             #pragma omp critical
 #endif
-            pWriter->Int(walk_length);
+            {
+                // For small genomes there is a very real possibility that multiple threads
+                // found the same path simultaneously. We do this update section within
+                // a lock to detect this case using the bloom filter. If more than p percentage 
+                // kmers in the walk are already in the filter, we reject the path
+                size_t total_kmers = kmer_set.size();
+                size_t kmers_in_filter = 0;
+                for(std::set<std::string>::iterator iter = kmer_set.begin();
+                        iter != kmer_set.end(); ++iter)
+                {
+                    std::string rc_curr = reverseComplement(*iter);
+                    const char* bf_key = *iter < rc_curr ? iter->c_str() : rc_curr.c_str();
+                    if(bf->test(bf_key, k))
+                        kmers_in_filter += 1;
+                    else
+                        bf->add(bf_key, k);
+                }
+                
+                // Put a threshold on the number of kmers that can
+                // already be in the filter to reject the path.
+                // This threshold should be way above the false positive
+                // rate of the filter
+                double f_rate = (double)kmers_in_filter / total_kmers;
+                if(f_rate < 0.2)
+                    pWriter->Int(total_kmers);
+            }
         }
         pWriter->EndArray();
         pWriter->EndObject();
-
         delete bf;
     }
     pWriter->EndArray();
@@ -1877,6 +1898,7 @@ void parsePreQCOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_MAX_CONTIG: arg >> opt::maxContigLength; break;
             case OPT_DIPLOID: opt::diploidReferenceMode = true; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
             case OPT_HELP:
