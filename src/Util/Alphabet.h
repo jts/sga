@@ -346,7 +346,7 @@ class AlphaCount
 
         // Sort the DNA bases into count order and
         // write them to pOut. This does not include the '$' symbol
-        inline void getSorted(char* pOut, size_t len)
+        inline void getSorted(char* pOut, size_t len) const
         {
             assert(len >= ALPHABET_SIZE);
             (void)len;
@@ -449,7 +449,7 @@ class AlphaCount
 
         struct AlphaCountCompareDesc
         {
-            AlphaCountCompareDesc(AlphaCount* p) : pAC(p) {}
+            AlphaCountCompareDesc(const AlphaCount* p) : pAC(p) {}
             bool operator()(char a, char b)
             {
                 return pAC->get(a) > pAC->get(b);

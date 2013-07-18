@@ -79,15 +79,27 @@ struct ModelPosteriors
 // struct to store a description of the neighbors of a vertex in the graph
 struct KmerNeighbors
 {
-    // This stores the occurrence count for each
-    // neighboring kmer that appears on both strands
+    // This stores the occurrence count for each neighbor
+    // including both strands.
+    AlphaCount64 total_count;
+
+    // Same as above but restricted to the kmers that have
+    // coverage on both strands
     AlphaCount64 count_both_strands;
 
     // This stores the bases that have coverage on both strands
     std::string extensions_both_strands;
 
-    // This stores the extensions in order by count
-    std::string sorted_by_count;
+    // Return an ordering of the 4 possible extensions by their count
+    // For instance A:2 C:5 G:8 T:0 will return "GCAT"
+    static std::string getExtensionsFromCount(const AlphaCount64& a)
+    {
+        char sorted_bases[5] = "ACGT";
+        sorted_bases[4] = '\0';
+        a.getSorted(sorted_bases, 5);
+        std::string r(sorted_bases);
+        return r;
+    }
 };
 
 
@@ -266,6 +278,7 @@ KmerNeighbors calculate_neighbor_data(const std::string& kmer, const BWTIndexSet
     // Make sure both strands are represented for every branch
     for(size_t bi = 0; bi < 4; ++bi)
     {
+        out.total_count.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
         if(f_counts[bi] >= 1 && r_counts[bi] >= 1)
         {
             out.count_both_strands.set("ACGT"[bi], f_counts[bi] + r_counts[bi]);
@@ -273,10 +286,6 @@ KmerNeighbors calculate_neighbor_data(const std::string& kmer, const BWTIndexSet
         }
     }
 
-    char sorted_bases[5] = "ACGT";
-    sorted_bases[4] = '\0';
-    out.count_both_strands.getSorted(sorted_bases, 5);
-    out.sorted_by_count = sorted_bases;
     return out;
 }
 
@@ -295,9 +304,11 @@ int calculate_delta(const std::string& kmer,
                 BWTAlgorithms::countSequenceOccurrences(n_kmer, index_set.pBWT));
     }
 
-    assert(nd.sorted_by_count.size() >= 2);
-    char b_1 = nd.sorted_by_count[0];
-    char b_2 = nd.sorted_by_count[1];
+    std::string sorted = KmerNeighbors::getExtensionsFromCount(nd.count_both_strands);
+    assert(sorted.size() >= 2);
+
+    char b_1 = sorted[0];
+    char b_2 = sorted[1];
 
     size_t c_1 = nd.count_both_strands.get(b_1);
     size_t c_2 = nd.count_both_strands.get(b_2);
@@ -1412,12 +1423,13 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
                 
                 KmerNeighbors neighbors = calculate_neighbor_data(kmer, index_set);
 
-                // if the neighbor data indicates a 2-branch, classify it
+                // if the neighbor data indicates a branch, classify it
                 ModelPosteriors ret;
                 if(neighbors.extensions_both_strands.size() > 1)
                 {
-                    char b_1 = neighbors.sorted_by_count[0];
-                    char b_2 = neighbors.sorted_by_count[1];
+                    std::string sorted = KmerNeighbors::getExtensionsFromCount(neighbors.count_both_strands);
+                    char b_1 = sorted[0];
+                    char b_2 = sorted[1];
 
                     size_t c_1 = neighbors.count_both_strands.get(b_1);
                     size_t c_2 = neighbors.count_both_strands.get(b_2);
@@ -1649,7 +1661,7 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                 continue;
 
             double p_single_copy = p_unique_by_count[count];
-            if(p_single_copy < 0.90)
+            if(p_single_copy < 0.50)
                 continue;
 
             // skip if this kmer has been used in a previous walk
@@ -1683,14 +1695,17 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                     if(neighbors.extensions_both_strands.size() < 2)
                     {
                         // No ambiguity, just pick the highest coverage extension as the next node
-                        char best_extension = neighbors.sorted_by_count[0];
-                        if(neighbors.count_both_strands.get(best_extension) > 0)
+                        // In this case we do not require the picked node to have coverage on both strands
+                        std::string sorted = KmerNeighbors::getExtensionsFromCount(neighbors.total_count);
+                        char best_extension = sorted[0];
+                        if(neighbors.total_count.get(best_extension) > 0)
                             extension_base = best_extension;
                     } 
-                    else if(neighbors.extensions_both_strands.size() == 2) 
+                    else
                     {
-                        char b_1 = neighbors.sorted_by_count[0];
-                        char b_2 = neighbors.sorted_by_count[1];
+                        std::string sorted = KmerNeighbors::getExtensionsFromCount(neighbors.count_both_strands);
+                        char b_1 = sorted[0];
+                        char b_2 = sorted[1];
 
                         size_t c_1 = neighbors.count_both_strands.get(b_1);
                         size_t c_2 = neighbors.count_both_strands.get(b_2);
@@ -1705,9 +1720,9 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                             // if this is an error branch, we take the non-error (higher coverage) option
                             // if this is a variant path we also take the higher coverage option to simulate
                             // a successfully popped bubble
-                            extension_base = neighbors.sorted_by_count[0];
+                            extension_base = sorted[0];
                         }
-                    } // stop extension if a 3-branch
+                    }
 
                     if(extension_base != '\0')
                     {
