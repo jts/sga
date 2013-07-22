@@ -115,7 +115,7 @@ def plot_random_walk(pp, data):
 
 def plot_kmer_distribution(pp, data):
     CUTOFF = 0.90
-    MIN_DELTA = 0.01
+    MIN_DELTA = 0.001
     names = data.keys()
     for name in names:
         k = data[name][KMER_DISTRIBUTION_NAME]['k']
@@ -125,8 +125,9 @@ def plot_kmer_distribution(pp, data):
         for t in data[name][KMER_DISTRIBUTION_NAME]['distribution']:
             x.append(t['kmer-depth'])
             y.append(t['count'])
-        s = sum(y)
+
         # Normalize y and apply a cutoff
+        s = sum(y)
         nx = list()
         ny = list()
         cumulative_sum = 0
