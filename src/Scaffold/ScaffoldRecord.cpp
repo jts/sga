@@ -286,8 +286,6 @@ bool ScaffoldRecord::overlapResolve(const ResolveParams& params, const std::stri
     else
         upperBound = params.maxOverlap;
     
-    printf("Searching for overlap of length %d\n", upperBound);
-
     // Calculate the best match
     Match match;
     bool overlapFound = OverlapTools::boundedOverlapDP(s1, s2, params.minOverlap, upperBound, params.maxErrorRate, match);
