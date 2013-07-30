@@ -95,7 +95,6 @@ int scaffoldMain(int argc, char** argv)
 {
     parseScaffoldOptions(argc, argv);
 
-    int maxOverlap = 100;
 
     ScaffoldGraph graph;
     
@@ -146,6 +145,7 @@ int scaffoldMain(int argc, char** argv)
     else
     {
         // Remove polymorphic nodes from the graph
+        int maxOverlap = 100;
         ScaffoldPolymorphismVisitor polyVisitor(maxOverlap);
         while(graph.visit(polyVisitor)) {}
 

@@ -29,17 +29,19 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 "Copyright 2010 Wellcome Trust Sanger Institute\n";
 
 static const char *SCAFFOLD2FASTA_USAGE_MESSAGE =
-"Usage: " SUBPROGRAM " [OPTION] ... [-f CONTIGSFILE | -a ASQGFILE] SCAFFOLDFILE\n"
+"Usage: " SUBPROGRAM " [OPTION] ... [-f CONTIGSFILE | -a ASQGFILE] -r READ_LENGTH SCAFFOLDFILE\n"
 "Write out a fasta file for the scaffolds indicated in SCAFFOLDFILE\n"
 "One of -f CONTIGSFILE or -a ASQGFILE must be provided. If an asqg file is provided,\n"
 "the program can attempt to determine the sequence linking the scaffold components by\n"
-"walking the graph/\n"
+"walking the graph\n"
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+"\nInput options:\n"
 "      -f, --contig-file=FILE           read the contig sequences from FILE\n"
 "      -a, --asqg-file=FILE             read the contig string graph from FILE. This supercedes --contig-file\n"
 "                                       this is usually the output from the sga-assemble step\n"
+"\nOutput options:\n"
 "          --no-singletons              do not output scaffolds that consist of a single contig\n"
 "      -o, --outfile=FILE               write the scaffolds to FILE (default: scaffolds.fa)\n"
 "      -m, --min-length=N               only output scaffolds longer than N bases\n"
@@ -47,6 +49,9 @@ static const char *SCAFFOLD2FASTA_USAGE_MESSAGE =
 "          --write-names                write the name of contigs contained in the scaffold in the FASTA header\n"
 "          --min-gap-length=N           separate contigs by at least N bases. All predicted gaps less\n"
 "                                       than N will be extended to N (default: 25)\n"
+"\nParameters:\n"
+"      -r, --read-length=N              the length of the reads used to assemble contigs\n"
+"                                       if the read length is not uniform, set this to the longest read length\n"
 "          --use-overlap                attempt to merge contigs using predicted overlaps.\n"
 "                                       This can help close gaps in the scaffolds but comes\n"
 "                                       with a small risk of collapsing tandem repeats.\n"
@@ -75,7 +80,7 @@ namespace opt
     static std::string scafFile;
     static int minGapLength = 25;
     static int minOverlap = 20;
-    static int maxOverlap = 100;
+    static int maxOverlap = -1;
     static int resolveMask = RESOLVE_GRAPH_UNIQUE;
     static double maxErrorRate = 0.05f;
     static bool bNoSingletons = false;
@@ -85,9 +90,15 @@ namespace opt
     static float distanceFactor = 3.0f;
 }
 
-static const char* shortopts = "vm:o:f:a:g:d:";
+static const char* shortopts = "vm:o:f:a:g:d:r:";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_NOSINGLETON, OPT_USEOVERLAP, OPT_MINGAPLENGTH, OPT_WRITEUNPLACED, OPT_WRITENAMES };
+enum { OPT_HELP = 1, 
+       OPT_VERSION, 
+       OPT_NOSINGLETON, 
+       OPT_USEOVERLAP, 
+       OPT_MINGAPLENGTH, 
+       OPT_WRITEUNPLACED, 
+       OPT_WRITENAMES };
 
 static const struct option longopts[] = {
     { "verbose",        no_argument,       NULL, 'v' },
@@ -97,6 +108,7 @@ static const struct option longopts[] = {
     { "asqg-file",      required_argument, NULL, 'a' },
     { "graph-resolve",  required_argument, NULL, 'g' },
     { "distanceFactor", required_argument, NULL, 'd' },
+    { "read-length",    required_argument, NULL, 'r' },
     { "min-gap-length", required_argument, NULL, OPT_MINGAPLENGTH },
     { "write-unplaced", no_argument,       NULL, OPT_WRITEUNPLACED },
     { "write-names",    no_argument,       NULL, OPT_WRITENAMES },
@@ -206,6 +218,7 @@ void parseScaffold2fastaOptions(int argc, char** argv)
             case 'o': arg >> opt::outFile; break;
             case 'g': arg >> modeStr; break;
             case 'd': arg >> opt::distanceFactor; break;
+            case 'r': arg >> opt::maxOverlap; break;
             case OPT_WRITEUNPLACED: opt::bWriteUnplaced = true; break;
             case OPT_WRITENAMES: opt::bWriteNames = true; break;
             case OPT_MINGAPLENGTH: arg >> opt::minGapLength; break;
@@ -228,6 +241,12 @@ void parseScaffold2fastaOptions(int argc, char** argv)
     else if (argc - optind > 2) 
     {
         std::cerr << SUBPROGRAM ": too many arguments\n";
+        die = true;
+    }
+
+    if(opt::maxOverlap == -1)
+    {
+        std::cerr << SUBPROGRAM ": error -r/--read-length option was not provided\n";
         die = true;
     }
 
