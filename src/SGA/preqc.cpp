@@ -1165,7 +1165,7 @@ GenomeEstimates estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& 
     //printf("k: %zu mode: %.2lf c_mode: %.2lf g_m: %.2lf g_cm: %.2lf \n", k, mode, corrected_mode, total_read_kmers / mode, total_read_kmers / corrected_mode);
 
     GenomeEstimates out;
-    out.genome_size = total_read_kmers / corrected_mode;
+    out.genome_size = static_cast<size_t>(total_read_kmers / corrected_mode);
     out.average_read_length = avg_rl;
     out.total_reads = n;
     return out;
@@ -1388,10 +1388,11 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
             continue;
 
         // Cache the estimates that a kmer is diploid-unique for count [0,3m]
-        std::vector<double> p_unique_by_count(3 * params.mode, 0.0f);
+        size_t max_count = static_cast<size_t>(3 * params.mode);
+        std::vector<double> p_unique_by_count(max_count, 0.0f);
         
         // We start at c=4 so that we never use low-count kmers in our model
-        for(size_t c = 4; c < 3 * params.mode; ++c)
+        for(size_t c = 4; c < max_count; ++c)
             p_unique_by_count[c] = probability_diploid_copy(params.mode, c);
 
         // Our output counts
@@ -1624,17 +1625,18 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
         ModelParameters params = calculate_model_parameters(k, kmer_distribution_samples, estimates, index_set);
 
         // Cache the estimates that a kmer is diploid-unique for count [0,3m]
-        std::vector<double> p_unique_by_count(3 * params.mode, 0.0f);
+        size_t max_count = static_cast<size_t>(3 * params.mode);
+        std::vector<double> p_unique_by_count(max_count, 0.0f);
         
         // We start at c=4 so that we never use low-count kmers in our model
-        for(size_t c = 4; c < 3 * params.mode; ++c)
+        for(size_t c = 4; c < max_count; ++c)
             p_unique_by_count[c] = probability_diploid_copy(params.mode, c);
 
         pWriter->StartObject();
         pWriter->String("k");
         pWriter->Int(k);
         pWriter->String("mode");
-        pWriter->Int(params.mode);
+        pWriter->Int(static_cast<int>(params.mode));
         pWriter->String("walk_lengths");
         pWriter->StartArray();
 #if HAVE_OPENMP
