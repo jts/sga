@@ -1393,7 +1393,7 @@ void generate_branch_classification(JSONWriter* pWriter, GenomeEstimates estimat
         
         // We start at c=4 so that we never use low-count kmers in our model
         for(size_t c = 4; c < max_count; ++c)
-            p_unique_by_count[c] = probability_diploid_copy(params.mode, c);
+            p_unique_by_count[c] = probability_diploid_copy(static_cast<size_t>(params.mode), c);
 
         // Our output counts
         double num_error_branches = 0;
@@ -1630,7 +1630,7 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
         
         // We start at c=4 so that we never use low-count kmers in our model
         for(size_t c = 4; c < max_count; ++c)
-            p_unique_by_count[c] = probability_diploid_copy(params.mode, c);
+            p_unique_by_count[c] = probability_diploid_copy(static_cast<size_t>(params.mode), c);
 
         pWriter->StartObject();
         pWriter->String("k");
