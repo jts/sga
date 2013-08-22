@@ -268,7 +268,6 @@ size_t processWorkParallelOpenMP(Generator& generator,
     // Helpful typedefs
     typedef std::vector<Input> InputVector;
     typedef std::vector<Output> OutputVector;
-    typedef std::vector<sem_t*> SemaphorePtrVector;
 
     InputVector inputBuffer;
     OutputVector outputBuffer;
