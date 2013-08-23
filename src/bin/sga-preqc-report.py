@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 import sys, os.path
 import matplotlib
 matplotlib.use('Agg')
