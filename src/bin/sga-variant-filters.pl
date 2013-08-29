@@ -101,10 +101,10 @@ sub load_nondbsnp_sites
     # sort, bgzip and tabix the file
     system("cat $in | vcf-sort > $in.tmp.sorted.vcf");
     system("bgzip -f $in.tmp.sorted.vcf");
-    system("vcf tabix -f -p vcf $in.tmp.sorted.vcf.gz");
+    system("htscmd tabix -f -p vcf $in.tmp.sorted.vcf.gz");
     
     # find the non-dbsnp sites
-    open(SITES, "vcf isec -C $in.tmp.sorted.vcf.gz $path |");
+    open(SITES, "htscmd vcfisec -C $in.tmp.sorted.vcf.gz $path |");
     while(<SITES>) {
         chomp;
         my @fields = split;
