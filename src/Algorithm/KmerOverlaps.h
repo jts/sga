@@ -18,6 +18,7 @@
 struct SequenceOverlapPair
 {
     std::string sequence[2];
+    int match_idx;
     bool is_reversed;
     SequenceOverlap overlap;
 

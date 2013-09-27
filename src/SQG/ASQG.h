@@ -92,12 +92,19 @@ namespace ASQG
 
             const Overlap& getOverlap() const { return m_overlap; }
 
+            void setCigarTag(const std::string& cigar) { m_cigarTag.set(cigar); }
+            void setPercentIdentityTag(const float f) { m_percentIdentityTag.set(f); }
+
             void write(std::ostream& out);
             void parse(const std::string& record);
 
         private:
         
             Overlap m_overlap;
+
+            // Optional tags
+            SQG::FloatTag m_percentIdentityTag;
+            SQG::StringTag m_cigarTag;
     };
 
     // Parsing functions

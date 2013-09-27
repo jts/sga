@@ -33,6 +33,10 @@ static char TRANSITIVE_TAG[] = "TE"; // 1 if the graph has transitive edges
 // Vertex tags
 static char SUBSTRING_TAG[] = "SS";
 
+// Edge tags
+static char CIGAR_TAG[] = "CG";
+static char PERCENT_IDENTITY_TAG[] = "PI";
+
 //
 // Header Record
 //
@@ -251,6 +255,13 @@ void EdgeRecord::write(std::ostream& out)
     std::stringstream ss;
     ss << m_overlap;
     fields.push_back(ss.str());
+
+    if(m_cigarTag.isInitialized())
+        fields.push_back(m_cigarTag.toTagString(CIGAR_TAG));
+    
+    if(m_percentIdentityTag.isInitialized())
+        fields.push_back(m_percentIdentityTag.toTagString(PERCENT_IDENTITY_TAG));
+
     writeFields(out, fields);
 }
 

@@ -10,6 +10,7 @@
 #include <iostream>
 #include "index.h" 
 #include "overlap.h"
+#include "overlap-long.h"
 #include "assemble.h"
 #include "oview.h"
 #include "rmdup.h"
@@ -122,6 +123,8 @@ int main(int argc, char** argv)
             FMMergeMain(argc - 1, argv + 1);
         else if(command == "overlap")
             overlapMain(argc - 1, argv + 1);
+        else if(command == "overlap-long")
+            overlapLongMain(argc - 1, argv + 1);
         else if(command == "correct")
             correctMain(argc - 1, argv + 1);
         else if(command == "assemble")

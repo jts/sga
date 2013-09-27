@@ -283,6 +283,8 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
                 kmerCache.insert(std::make_pair(kmer, count));
             }
 
+            printf("%d %s %d\n", i, kmer.c_str(), count);
+
             // Get the phred score for the last base of the kmer
             int phred = minPhredVector[i];
             countVector[i] = count;
@@ -296,7 +298,7 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
                     solidVector[j] = 1;
             }
         }
-
+        printf("\n");
         allSolid = true;
         for(int i = 0; i < n; ++i)
         {

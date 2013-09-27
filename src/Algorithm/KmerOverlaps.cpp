@@ -82,6 +82,8 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
 
     int64_t max_interval_size = 200;
     SequenceOverlapPairVector overlap_vector;
+    if(query.size() < k)
+        return overlap_vector;
 
     // Use the FM-index to look up intervals for each kmer of the read. Each index
     // in the interval is stored individually in the KmerMatchMap. We then
@@ -162,7 +164,14 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
     // Use the overlaps that meet the thresholds to build a multiple alignment
     for(KmerMatchSet::iterator iter = matches.begin(); iter != matches.end(); ++iter)
     {
-        std::string match_sequence = BWTAlgorithms::extractString(indices.pBWT, iter->index);
+        // If a read table is available in the index, use it to get the match sequence
+        // Otherwise get it from the BWT, which is slower
+        std::string match_sequence;
+        if(indices.pReadTable != NULL)
+            match_sequence = indices.pReadTable->getRead(iter->index).seq.toString();
+        else
+            match_sequence = BWTAlgorithms::extractString(indices.pBWT, iter->index);
+
         if(iter->is_reverse)
             match_sequence = reverseComplement(match_sequence);
         
@@ -197,6 +206,7 @@ SequenceOverlapPairVector KmerOverlaps::retrieveMatches(const std::string& query
             SequenceOverlapPair op;
             op.sequence[0] = query;
             op.sequence[1] = match_sequence;
+            op.match_idx = iter->index;
             op.overlap = overlap;
             op.is_reversed = iter->is_reverse;
             overlap_vector.push_back(op);
@@ -436,6 +446,7 @@ void _approximateSeededMatch(const std::string& in_query,
                 SequenceOverlapPair op;
                 op.sequence[0] = in_query;
                 op.sequence[1] = match_sequence;
+                op.match_idx = start_index_of_read;
                 op.overlap = overlap;
                 op.is_reversed = do_reverse;
                 out_vector.push_back(op);

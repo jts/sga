@@ -24,7 +24,7 @@
 struct BWTIndexSet
 {
     // Constructor
-    BWTIndexSet() : pBWT(NULL), pRBWT(NULL), pCache(NULL), pSSA(NULL), pPopIdx(NULL), pQualityTable(NULL) {}
+    BWTIndexSet() : pBWT(NULL), pRBWT(NULL), pCache(NULL), pSSA(NULL), pPopIdx(NULL), pQualityTable(NULL), pReadTable(NULL) {}
 
     // Data
     const BWT* pBWT;
@@ -33,6 +33,7 @@ struct BWTIndexSet
     const SampledSuffixArray* pSSA;
     const PopulationIndex* pPopIdx;
     const QualityTable* pQualityTable;
+    const ReadTable* pReadTable;
 };
 
 #endif

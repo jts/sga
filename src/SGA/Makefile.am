@@ -53,6 +53,7 @@ sga_SOURCES = sga.cpp \
               graph-concordance.h graph-concordance.cpp \
               gapfill.h gapfill.cpp \
               preqc.h preqc.cpp \
+              overlap-long.h overlap-long.cpp \
               variant-detectability.h variant-detectability.cpp \
               rewrite-evidence-bam.h rewrite-evidence-bam.cpp \
               somatic-variant-filters-bam.h somatic-variant-filters.cpp \
