@@ -100,8 +100,11 @@ class Bigraph
 
         // Return all the path of nodes that can be linearally reached from this node
         // The path expands in both directions so the first node in the path is not necessarily the source
-        Path constructLinearPath(VertexID id);
+        Path constructLinearPath(VertexID id) const;
 
+        // print out the lengths of all simple paths in the graph
+        void printContigLengths();
+        
         // Reverse a path
         static Path reversePath(const Path& path);
 
@@ -182,7 +185,7 @@ class Bigraph
         // Simplify the graph by compacting edges in the given direction
         void simplify(EdgeDir dir);
 
-        void followLinear(VertexID id, EdgeDir dir, Path& outPath);
+        void followLinear(VertexID id, EdgeDir dir, Path& outPath) const;
 
         //
         // data

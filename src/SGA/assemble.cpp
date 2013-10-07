@@ -159,8 +159,8 @@ void assemble()
     }
     
     std::cout << "[Stats] After removing transitive edges:\n";
-    pGraph->visit(statsVisit);    
-    pGraph->writeASQG("processed.asqg.gz");
+    pGraph->visit(statsVisit);
+//    pGraph->writeASQG("processed.asqg.gz");
 
 
     // Compact together unbranched chains of vertices
@@ -182,6 +182,7 @@ void assemble()
         std::cout << "\n[Stats] Graph after trimming:\n";
         pGraph->visit(statsVisit);
     }
+    pGraph->printContigLengths();
 
     // Resolve small repeats
     if(opt::resolveSmallRepeatLen > 0)

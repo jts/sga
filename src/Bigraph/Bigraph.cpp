@@ -240,7 +240,52 @@ int Bigraph::sweepEdges(GraphColor c)
     return numRemoved;
 }
 
-//    Simplify the graph by compacting singular edges
+// Output the contig lengths for simple paths in the graph
+void Bigraph::printContigLengths()
+{
+    setColors(GC_WHITE); // unvisited
+
+    size_t sum = 0;
+    VertexPtrMapIter iter = m_vertices.begin();
+    while(iter != m_vertices.end())
+    {
+        Vertex* x = iter->second;
+        if(x->getColor() == GC_BLACK)
+        {
+            iter++;
+            continue;
+        }
+
+        Path path = constructLinearPath(x->getID());
+        size_t contig_length = 0;
+        size_t n_reads = 1;
+
+        if(!path.empty())
+        {
+            path[0]->getStart()->setColor(GC_BLACK);
+            contig_length = path[0]->getStart()->getSeqLen();
+            
+            for(size_t i = 0; i < path.size(); ++i)
+            {
+                path[i]->getEnd()->setColor(GC_BLACK);
+                contig_length += path[i]->getSeqLen();
+                n_reads += 1;
+            }
+        }
+        else
+        {
+            x->setColor(GC_BLACK);
+            contig_length = x->getSeqLen();
+        }
+
+        printf("CL=%zu\tREADS=%zu\tSUM=%zu\n", contig_length, n_reads, sum);
+        sum += contig_length;
+
+    }
+    setColors(GC_WHITE);
+}
+
+// Simplify the graph by compacting singular edges
 void Bigraph::simplify()
 {
     assert(!hasContainment());
@@ -423,7 +468,7 @@ PathVector Bigraph::getLinearComponents()
 // Return all the path of nodes that can be linearally reached from this node
 // The path expands in both directions so the first node in the path is not necessarily the source
 //
-Path Bigraph::constructLinearPath(VertexID id)
+Path Bigraph::constructLinearPath(VertexID id) const
 {
     Path sensePath;
     Path antisensePath;
@@ -440,7 +485,7 @@ Path Bigraph::constructLinearPath(VertexID id)
 // Recursively follow the graph in the specified direction without branching
 // outPath is an out-parameter of the edges that were followed
 //
-void Bigraph::followLinear(VertexID id, EdgeDir dir, Path& outPath)
+void Bigraph::followLinear(VertexID id, EdgeDir dir, Path& outPath) const
 {
     Vertex* pVertex = getVertex(id);
     EdgePtrVec edges = pVertex->getEdges(dir);
@@ -457,7 +502,8 @@ void Bigraph::followLinear(VertexID id, EdgeDir dir, Path& outPath)
         EdgeDir corrected_dir = correctDir(pSingle->getDir(), pSingle->getComp());
 
         // Recurse
-        followLinear(pSingle->getEndID(), corrected_dir, outPath);
+        if(pSingle->getEnd()->getColor() != GC_BLACK)
+            followLinear(pSingle->getEndID(), corrected_dir, outPath);
     }
 }
 
