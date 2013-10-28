@@ -54,10 +54,25 @@ struct GenomeEstimates
 // struct to store the parameters used by our classifier
 struct ModelParameters
 {
+    int k;
+
+    // the modal k-mer depth inferred from the count distribution
     double mode;
+
+    // the mean number of reads starting at a given reference position
     double mean_read_starts;
+
+    // the mean number of occurences of a k-mer that contains an error
     double mean_error_kmer_depth;
-    double error_rate;
+
+    // the main model is a mixture of poissons representing
+    // the copy number of a k-mer. this vector gives the mixture
+    // proportions:
+    // [ error_proportion, het_proportion, diploid_prop, 1-repeat, 2-repeat, ...]
+    static const size_t NUM_MIXTURE_STATES = 10;
+    double mixture_proportions[NUM_MIXTURE_STATES];
+
+    // prior on the per-base error rate
     static const double error_rate_prior = 0.02;
 };
 
@@ -1191,11 +1206,9 @@ GenomeEstimates generate_genome_size(JSONWriter* pJSONWriter, const BWTIndexSet&
     return e;
 }
 
-
-// Sample k-mers from the read set to learn the modal k-mer count
-size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
+KmerDistribution sampleKmerCounts(size_t k, size_t n, const BWTIndexSet& index_set)
 {
-    // Step 1: Learn k-mer occurrence distribution for this value of k
+    // Learn k-mer occurrence distribution for this value of k
     KmerDistribution distribution;
     for(size_t i = 0; i < n; ++i)
     {
@@ -1211,7 +1224,110 @@ size_t learnKmerCountMode(size_t k, size_t n, const BWTIndexSet& index_set)
         }
     }
 
-    return findSingleCopyPeak(distribution);
+    return distribution;
+}
+
+// Learn the parameters for the mixture count model
+void learnMixtureParameters(const KmerDistribution& distribution, ModelParameters& params)
+{
+    distribution.print(100);
+    size_t lambda_hat = params.mode;
+    printf("\nLearning mixture\n");
+
+    assert(ModelParameters::NUM_MIXTURE_STATES > 3);
+
+    // this array stores the lambda parameter for each poisson
+    double mixture_means[ModelParameters::NUM_MIXTURE_STATES];
+    mixture_means[0] = lambda_hat * params.error_rate_prior; // errors
+    mixture_means[1] = lambda_hat / 2.f; // hets
+    mixture_means[2] = lambda_hat; // homs
+    for(size_t i = 3; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+        mixture_means[i] = (i - 1) * lambda_hat; // repeats
+
+    // initialize mixture proportions
+    for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+    {
+        printf("c(%d): %d\n", (int)mixture_means[i], (int)distribution.getNumberWithCount(mixture_means[i]));
+        params.mixture_proportions[i] = 1.0f / ModelParameters::NUM_MIXTURE_STATES;
+    }
+
+    // this vector stores the number of k-mers that have been softly
+    // classified as each state for the current iteration
+    double mixture_counts[ModelParameters::NUM_MIXTURE_STATES];
+
+    // Calculate the likelihood using the current parameters
+    int max = 200;//distribution.getCutoffForProportion(1.0f);
+    std::vector<int> count_vector = distribution.toCountVector(max);
+    
+    double error_sum = 0;
+    double error_n = 0;
+
+    int iterations = 10;
+    
+    while(iterations-- > 0) 
+    {
+        for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+            mixture_counts[i] = 0;
+
+        for(size_t c = 1; c < count_vector.size(); ++c)
+        {
+            int n_c = count_vector[c];
+
+            // Calculate P(c) and P(c|m_i)P(m_i) by summing over all mixture states
+            double mixture_probability[ModelParameters::NUM_MIXTURE_STATES];
+            double p_c = 0.0f;
+            for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+            {
+                // Calculate the zero-truncation term
+                double zero_trunc = 1 / (1 - exp(-mixture_means[i]));
+
+                // P(c| m_i) * P(m_i)
+                mixture_probability[i] = exp(SGAStats::logPoisson(c, mixture_means[i])) * zero_trunc * params.mixture_proportions[i];
+                p_c += mixture_probability[i];
+            }
+
+            //printf("c: %2zu n_c: %6d\n", c, n_c);
+            // Calculate P(m_i|c)
+            for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+            {
+                mixture_probability[i] /= p_c;
+                //double zero_trunc = 1 / (1 - exp(-mixture_means[i]));
+                //double tp = exp(SGAStats::logPoisson(c, mixture_means[i])) * zero_trunc;
+                mixture_counts[i] += mixture_probability[i] * n_c;
+                //printf("\tp(m_%zu|c): %.3lf lambda: %.1lf p(c): %.3lf count: %.3lf\n", i, mixture_probability[i], mixture_means[i], p_c, mixture_counts[i]);
+            }
+
+            error_sum += c * n_c * mixture_probability[0];
+            error_n += n_c * mixture_probability[0];
+        }
+
+        // Recalculate mixture proportions
+        double sum = 0;
+        for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+            sum += mixture_counts[i];
+        
+        printf("prop\t(");
+        for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+        {
+            params.mixture_proportions[i] = mixture_counts[i] / sum;
+            printf("%.3lf, ", params.mixture_proportions[i]);
+        }
+        printf(")\n");
+
+        // Recalculate lambda for the error state
+        mixture_means[0] = error_sum / error_n;
+
+        printf("counts\t(");
+        for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+            printf("%.3lf, ", mixture_counts[i]);
+        printf("]\n");
+
+
+        printf("means\t(");
+        for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+            printf("%.3lf, ", mixture_means[i]);
+        printf(")\n");
+    }
 }
 
 // Run the probablisitic classifier on a two-edge branch in the de Bruijn graph
@@ -1322,8 +1438,12 @@ ModelParameters calculate_model_parameters(size_t k,
 {
     ModelParameters params;
 
-    // learn k-mer occurrence distribution for this value of k
-    params.mode = learnKmerCountMode(k, samples, index_set);
+    KmerDistribution distribution = sampleKmerCounts(k, samples, index_set);
+
+    params.k = k;
+
+    // learn k-mer mode
+    params.mode = findSingleCopyPeak(distribution);
 
     // calculate the expected number of reads starting at a given genome position
     params.mean_read_starts = (double)estimates.total_reads / estimates.genome_size;
@@ -1331,6 +1451,9 @@ ModelParameters calculate_model_parameters(size_t k,
     // calculate the expected kmer depth if all reads were perfect
     double average_num_kmers = (estimates.average_read_length - k + 1);
     double expected_kmer_depth = estimates.total_reads * average_num_kmers / estimates.genome_size;
+
+    // learn the mixture proportions
+    learnMixtureParameters(distribution, params);
 
     params.mean_error_kmer_depth = params.error_rate_prior * expected_kmer_depth;
     return params;
