@@ -71,6 +71,7 @@ struct ModelParameters
     // [ error_proportion, het_proportion, diploid_prop, 1-repeat, 2-repeat, ...]
     static const size_t NUM_MIXTURE_STATES = 10;
     double mixture_proportions[NUM_MIXTURE_STATES];
+    double mixture_means[NUM_MIXTURE_STATES];
 
     // prior on the per-base error rate
     static const double error_rate_prior = 0.02;
@@ -419,12 +420,11 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
     assert(ModelParameters::NUM_MIXTURE_STATES > 3);
 
     // this array stores the lambda parameter for each poisson
-    double mixture_means[ModelParameters::NUM_MIXTURE_STATES];
-    mixture_means[0] = (double)lambda_hat * params.error_rate_prior; // errors
-    mixture_means[1] = lambda_hat / 2.f; // hets
-    mixture_means[2] = lambda_hat; // homs
+    params.mixture_means[0] = (double)lambda_hat * params.error_rate_prior; // errors
+    params.mixture_means[1] = lambda_hat / 2.f; // hets
+    params.mixture_means[2] = lambda_hat; // homs
     for(size_t i = 3; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
-        mixture_means[i] = (i - 1) * lambda_hat; // repeats
+        params.mixture_means[i] = (i - 1) * lambda_hat; // repeats
 
     // initialize mixture proportions
     for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
@@ -461,11 +461,11 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
             for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
             {
                 // Calculate the zero-truncation term
-                double log_zero_trunc = log(1 / (1 - exp(-mixture_means[i])));
+                double log_zero_trunc = log(1 / (1 - exp(-params.mixture_means[i])));
 
                 // P(c| m_i) * P(m_i)
                 mixture_log_p[i] = 
-                    SGAStats::logPoisson(c, mixture_means[i]) + log_zero_trunc + log(params.mixture_proportions[i]);
+                    SGAStats::logPoisson(c, params.mixture_means[i]) + log_zero_trunc + log(params.mixture_proportions[i]);
 
                 if(i == 0)
                     log_p_c = mixture_log_p[i];
@@ -478,9 +478,9 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
             for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
             {
                 mixture_log_p[i] -= log_p_c;
+                mixture_counts[i] += exp(mixture_log_p[i]) * n_c;
                 //double zero_trunc = 1 / (1 - exp(-mixture_means[i]));
                 //double tp = exp(SGAStats::logPoisson(c, mixture_means[i])) * zero_trunc;
-                mixture_counts[i] += exp(mixture_log_p[i]) * n_c;
                 //printf("\tp(m_%zu|c): %.3lf lambda: %.1lf p(c): %.3lf count: %.3lf\n", i, mixture_probability[i], mixture_means[i], p_c, mixture_counts[i]);
             }
 
@@ -497,31 +497,27 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
             params.mixture_proportions[i] = mixture_counts[i] / sum;
 
         // Recalculate lambda for the error state
-        mixture_means[0] = error_sum / error_n;
-        
-        /*
-        printf("prop\t(");
-        for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
-        {
-            params.mixture_proportions[i] = mixture_counts[i] / sum;
-            printf("%.3lf, ", params.mixture_proportions[i]);
-        }
-        printf(")\n");
-
-        printf("counts\t(");
-        for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
-            printf("%.3lf, ", mixture_counts[i]);
-        printf("]\n");
-
-
-        printf("means\t(");
-        for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
-            printf("%.3lf, ", mixture_means[i]);
-        printf(")\n");
-        */
+        params.mixture_means[0] = error_sum / error_n;
     }
 
-    params.mean_error_kmer_depth = mixture_means[0];
+    printf("\nprop\t(");
+    for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+        printf("%10.4lf, ", params.mixture_proportions[i]);
+    printf(")\n");
+
+    printf("counts\t(");
+    for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+        printf("%10.4lf, ", mixture_counts[i]);
+    printf("]\n");
+
+
+    printf("means\t(");
+    for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+        printf("%10.3lf, ", params.mixture_means[i]);
+    printf(")\n");
+    
+
+    params.mean_error_kmer_depth = params.mixture_means[0];
 }
 
 // Calculate parameters for the k-mer count model for the given distribution
@@ -1356,7 +1352,8 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
     size_t total = higher_count + lower_count;
 
     // the expected increase in read count for the variant and error models
-    double delta_param_unique = genome.mean_read_starts + params.mean_error_kmer_depth;
+    double delta_param_unique = genome.mean_read_starts + params.mixture_means[0] * params.mixture_proportions[0];
+    //double delta_param_unique = genome.mean_read_starts + 0.02 * (double)params.mode;
 
     // Error model
     double log_p_delta_error = SGAStats::logPoisson(delta, delta_param_unique);
@@ -1451,9 +1448,9 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
 // is a kmer that is contained once on each parental chromsome
 // We assume the probability of a kmer appearing twice
 // in one parent and zero times in the other is negligable
-double probability_diploid_copy(size_t mode, size_t c)
+double probability_diploid_copy(const ModelParameters& params, size_t c)
 {
-    size_t half_mode = mode / 2;
+    size_t half_mode = params.mode / 2;
 
     double log_prior_haploid = log(1.0/3);
     double log_prior_diploid = log(1.0/3);
@@ -1473,17 +1470,48 @@ double probability_diploid_copy(size_t mode, size_t c)
     log_sum = addLogs(log_sum, log_p_repeat);
 
     double p = exp(log_p_diploid - log_sum);
-    return p;   
+    return p;
 }
 
+// Calculate the probability that a kmer seen c times
+// is a kmer that is contained once on each parental chromsome
+// We assume the probability of a kmer appearing twice
+// in one parent and zero times in the other is negligable
+double probability_diploid_copy_new(const ModelParameters& params, size_t c)
+{
+    double mixture_log_p[ModelParameters::NUM_MIXTURE_STATES];
+    double log_p_c = 0.0f;
+    double flat_mixture = 1.0f / ModelParameters::NUM_MIXTURE_STATES;
+    (void)flat_mixture;
+    for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+    {
+        // Calculate the zero-truncation term
+        double log_zero_trunc = log(1 / (1 - exp(-params.mixture_means[i])));
 
+        // P(c| m_i) * P(m_i)
+        mixture_log_p[i] = 
+            SGAStats::logPoisson(c, params.mixture_means[i]) + 
+            log_zero_trunc + 
+            log(flat_mixture);
+            //log(params.mixture_proportions[i]);
+
+        if(i == 0)
+            log_p_c = mixture_log_p[i];
+        else
+            log_p_c = addLogs(log_p_c, mixture_log_p[i]);
+    }
+
+    return exp(mixture_log_p[2] - log_p_c);
+}
+
+//
 void generate_branch_classification(JSONWriter* pWriter, 
                                     GenomeEstimates estimates, 
                                     const BWTIndexSet& index_set)
 {
     (void)estimates;
-    int kmer_distribution_samples = 10000;
-    int classification_samples = 50000;
+    int kmer_distribution_samples = 50000;
+    int classification_samples = 200000;
 
     //double min_probability_for_classification = 0.25;
     pWriter->String("BranchClassification");
@@ -1500,19 +1528,25 @@ void generate_branch_classification(JSONWriter* pWriter,
         if(params.mode < 10)
             continue;
 
+        printf("DELTA PARAM: %.2lf OLD: %.2lf\n", 
+            estimates.mean_read_starts + params.mixture_means[0] * params.mixture_proportions[0], 
+            0.02 * (double)params.mode);
+
         // Cache the estimates that a kmer is diploid-unique for count [0,3m]
         size_t max_count = static_cast<size_t>(3 * params.mode);
         std::vector<double> p_unique_by_count(max_count, 0.0f);
         
         // We start at c=4 so that we never use low-count kmers in our model
         for(size_t c = 4; c < max_count; ++c)
-            p_unique_by_count[c] = probability_diploid_copy(static_cast<size_t>(params.mode), c);
+            p_unique_by_count[c] = probability_diploid_copy(params, c);
 
         // Our output counts
         double num_error_branches = 0;
         double num_variant_branches = 0;
         double num_repeat_branches = 0;
         double num_kmers = 0;
+        double mean_count = 0;
+        size_t n_tests = 0;
 
 #if HAVE_OPENMP
         omp_set_num_threads(opt::numThreads);
@@ -1535,9 +1569,10 @@ void generate_branch_classification(JSONWriter* pWriter,
                     continue;
 
                 double p_single_copy = p_unique_by_count[count];
+                //printf("c: %zu p_single: %lf\n", count, p_single_copy);
                 if(p_single_copy < 0.90)
                     continue;
-                
+
                 KmerNeighbors neighbors = calculate_neighbor_data(kmer, index_set);
 
                 // if the neighbor data indicates a branch, classify it
@@ -1565,12 +1600,20 @@ void generate_branch_classification(JSONWriter* pWriter,
                     num_variant_branches += (p_single_copy * ret.posterior_variant);
                     num_repeat_branches += (p_single_copy * ret.posterior_repeat);
                     num_kmers += p_single_copy;
+                    mean_count += count;
+                    n_tests += 1;
                 }
 
                 if(ret.classification == BC_VARIANT || ret.classification == BC_REPEAT)
                     break;
             }
         }
+
+        printf("MC: %.2lf NT: %zu NK: %.2lf MP: %.3lf\n", 
+            mean_count / n_tests, 
+            n_tests, 
+            num_kmers,
+            num_kmers / n_tests);
 
         pWriter->StartObject();
         pWriter->String("k");
@@ -1745,7 +1788,7 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
         
         // We start at c=4 so that we never use low-count kmers in our model
         for(size_t c = 4; c < max_count; ++c)
-            p_unique_by_count[c] = probability_diploid_copy(static_cast<size_t>(params.mode), c);
+            p_unique_by_count[c] = probability_diploid_copy(params, c);
 
         pWriter->StartObject();
         pWriter->String("k");
@@ -1914,6 +1957,7 @@ int preQCMain(int argc, char** argv)
     {
         GenomeEstimates estimates = generate_genome_size(&writer, index_set);
         generate_branch_classification(&writer, estimates, index_set);
+        /*
         generate_de_bruijn_simulation(&writer, estimates, index_set);
         
         generate_gc_distribution(&writer, index_set);
@@ -1924,6 +1968,7 @@ int preQCMain(int argc, char** argv)
         generate_errors_per_base(&writer, index_set);
         generate_unipath_length_data(&writer, index_set);
         generate_duplication_rate(&writer, index_set);
+        */
     }
     else
     {
