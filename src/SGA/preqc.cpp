@@ -62,16 +62,21 @@ struct ModelParameters
     // the modal k-mer depth inferred from the count distribution
     double mode;
 
-    // the mean number of occurences of a k-mer that contains an error
-    double mean_error_kmer_depth;
-
-    // the main model is a mixture of poissons representing
+    // the kmer count model is a mixture of poissons representing
     // the copy number of a k-mer. this vector gives the mixture
     // proportions:
     // [ error_proportion, het_proportion, diploid_prop, 1-repeat, 2-repeat, ...]
     static const size_t NUM_MIXTURE_STATES = 10;
+    static const size_t MAX_REPEAT_COPY = NUM_MIXTURE_STATES - 1;
+
     double mixture_proportions[NUM_MIXTURE_STATES];
     double mixture_means[NUM_MIXTURE_STATES];
+
+    // This vector contains normalized proportions
+    // for the repeat states. The indexing is the same
+    // as the above arrays - for non-repeat states the
+    // value will be 0.
+    double repeat_mixture_normalized[NUM_MIXTURE_STATES];
 
     // prior on the per-base error rate
     static const double error_rate_prior = 0.02;
@@ -438,7 +443,9 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
     double mixture_counts[ModelParameters::NUM_MIXTURE_STATES];
 
     // Calculate the likelihood using the current parameters
-    int max = distribution.getCutoffForProportion(1.0f);
+
+    // The model only fits counts up to a this copy number
+    int max = params.mode * ModelParameters::MAX_REPEAT_COPY;
     std::vector<int> count_vector = distribution.toCountVector(max);
     
     double error_sum = 0;
@@ -500,6 +507,15 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
         params.mixture_means[0] = error_sum / error_n;
     }
 
+    // Calculate the repeat-normalized proportions
+    double sum_repeat = 0.0;
+    for(size_t r = 3; r < ModelParameters::NUM_MIXTURE_STATES; ++r)
+        sum_repeat += params.mixture_proportions[r];
+
+    for(size_t r = 3; r < ModelParameters::NUM_MIXTURE_STATES; ++r)
+        params.repeat_mixture_normalized[r] = params.mixture_proportions[r] / sum_repeat;
+
+    /*
     printf("\nprop\t(");
     for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
         printf("%10.4lf, ", params.mixture_proportions[i]);
@@ -510,14 +526,16 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
         printf("%10.4lf, ", mixture_counts[i]);
     printf("]\n");
 
-
     printf("means\t(");
     for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
         printf("%10.3lf, ", params.mixture_means[i]);
     printf(")\n");
-    
 
-    params.mean_error_kmer_depth = params.mixture_means[0];
+    printf("repeats\t(");
+    for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+        printf("%10.3lf, ", params.repeat_mixture_normalized[i]);
+    printf(")\n");
+    */
 }
 
 // Calculate parameters for the k-mer count model for the given distribution
@@ -1348,7 +1366,6 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
                                   size_t lower_count, 
                                   int delta)
 {
-    const static int MAX_REPEAT_COPIES = 20;
     size_t total = higher_count + lower_count;
 
     // the expected increase in read count for the variant and error models
@@ -1366,21 +1383,22 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
     double log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
 
     // Repeat model
-    
-    // geometric dist. parameter, from CORTEX (Iqbal et al.)
-    const static double MU = 0.8; 
+    // This is explicitly diploid where 2 copies is the normal state for the genome
+    // The repeat models (1...n) extra genomic copies
     double log_p_delta_repeat = 0.0f;
-    int copies_min = 2;
-    double log_truncation_scale = copies_min > 1 ? log(1.0f / (1.0f - MU)) : 0;
-    for(int copies = copies_min; copies < MAX_REPEAT_COPIES; ++copies)
+    int extra_copies_min = 1;
+    int extra_copies_max = ModelParameters::MAX_REPEAT_COPY - 2;
+
+    for(int r = extra_copies_min; r < extra_copies_max; ++r)
     {
         // Calculate the probability of having c copies using our geometric prior
-        double log_p_copies = (copies - 1) * log(1.0f - MU) + log(MU) + log_truncation_scale;
+        // The first repeat state in the below array starts at entry 3, hence the offset
+        double log_p_copies = params.repeat_mixture_normalized[r + 2];
 
-        // Calculate the probability of the increase in read count given this copy count
-        double log_delta_given_copies = SGAStats::logPoisson(delta, (copies - 1)*params.mode);
+        // Calculate the probability of the increase in read count given the number of extra copies
+        double log_delta_given_copies = SGAStats::logPoisson(delta, r * params.mode);
         
-        if(copies == copies_min)
+        if(r == extra_copies_min)
             log_p_delta_repeat = log_p_copies + log_delta_given_copies;
         else
             log_p_delta_repeat = addLogs(log_p_delta_repeat, log_p_copies + log_delta_given_copies);
@@ -1448,7 +1466,7 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
 // is a kmer that is contained once on each parental chromsome
 // We assume the probability of a kmer appearing twice
 // in one parent and zero times in the other is negligable
-double probability_diploid_copy(const ModelParameters& params, size_t c)
+double probability_diploid_copy_old(const ModelParameters& params, size_t c)
 {
     size_t half_mode = params.mode / 2;
 
@@ -1477,7 +1495,7 @@ double probability_diploid_copy(const ModelParameters& params, size_t c)
 // is a kmer that is contained once on each parental chromsome
 // We assume the probability of a kmer appearing twice
 // in one parent and zero times in the other is negligable
-double probability_diploid_copy_new(const ModelParameters& params, size_t c)
+double probability_diploid_copy(const ModelParameters& params, size_t c)
 {
     double mixture_log_p[ModelParameters::NUM_MIXTURE_STATES];
     double log_p_c = 0.0f;
@@ -1492,8 +1510,8 @@ double probability_diploid_copy_new(const ModelParameters& params, size_t c)
         mixture_log_p[i] = 
             SGAStats::logPoisson(c, params.mixture_means[i]) + 
             log_zero_trunc + 
-            log(flat_mixture);
-            //log(params.mixture_proportions[i]);
+            //log(flat_mixture);
+            log(params.mixture_proportions[i]);
 
         if(i == 0)
             log_p_c = mixture_log_p[i];
@@ -1511,7 +1529,7 @@ void generate_branch_classification(JSONWriter* pWriter,
 {
     (void)estimates;
     int kmer_distribution_samples = 50000;
-    int classification_samples = 200000;
+    int classification_samples = 1000000;
 
     //double min_probability_for_classification = 0.25;
     pWriter->String("BranchClassification");
@@ -1525,12 +1543,8 @@ void generate_branch_classification(JSONWriter* pWriter,
                                                             index_set);
     
         // Do not attempt classification if k-mer coverage is too low
-        if(params.mode < 10)
+        if(params.mode < 15)
             continue;
-
-        printf("DELTA PARAM: %.2lf OLD: %.2lf\n", 
-            estimates.mean_read_starts + params.mixture_means[0] * params.mixture_proportions[0], 
-            0.02 * (double)params.mode);
 
         // Cache the estimates that a kmer is diploid-unique for count [0,3m]
         size_t max_count = static_cast<size_t>(3 * params.mode);
@@ -1569,7 +1583,6 @@ void generate_branch_classification(JSONWriter* pWriter,
                     continue;
 
                 double p_single_copy = p_unique_by_count[count];
-                //printf("c: %zu p_single: %lf\n", count, p_single_copy);
                 if(p_single_copy < 0.90)
                     continue;
 
@@ -1608,12 +1621,6 @@ void generate_branch_classification(JSONWriter* pWriter,
                     break;
             }
         }
-
-        printf("MC: %.2lf NT: %zu NK: %.2lf MP: %.3lf\n", 
-            mean_count / n_tests, 
-            n_tests, 
-            num_kmers,
-            num_kmers / n_tests);
 
         pWriter->StartObject();
         pWriter->String("k");
@@ -1957,9 +1964,7 @@ int preQCMain(int argc, char** argv)
     {
         GenomeEstimates estimates = generate_genome_size(&writer, index_set);
         generate_branch_classification(&writer, estimates, index_set);
-        /*
         generate_de_bruijn_simulation(&writer, estimates, index_set);
-        
         generate_gc_distribution(&writer, index_set);
         generate_quality_stats(&writer, opt::readsFile);
         generate_pe_fragment_sizes(&writer, index_set);
@@ -1968,7 +1973,6 @@ int preQCMain(int argc, char** argv)
         generate_errors_per_base(&writer, index_set);
         generate_unipath_length_data(&writer, index_set);
         generate_duplication_rate(&writer, index_set);
-        */
     }
     else
     {
