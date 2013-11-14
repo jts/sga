@@ -2,6 +2,7 @@
 
 import sys, os.path
 import matplotlib
+import argparse
 matplotlib.use('Agg')
 import pylab as pl
 import numpy as np
@@ -25,6 +26,10 @@ FRAGMENT_SIZE_NAME = "FragmentSize"
 QUALITY_SCORE_NAME = "QualityScores"
 GC_DISTRIBUTION_NAME = "GCDistribution"
 GENOME_SIZE_NAME = "GenomeSize"
+
+parser = argparse.ArgumentParser(description='Generate pdf report for sga-preqc.')
+parser.add_argument('-o', '--output', metavar='OUTPUT_PFX', default='preqc_report', help='report output prefix. (Default: preqc_report)')
+parser.add_argument('preqc_file', metavar='PREQC_FILE', nargs='+', help='preqc file(s) used to generate pdf report')
 
 # Return the N50 of the list of numbers
 def n50(values):
@@ -369,43 +374,53 @@ def plot_quality_scores(pp, data):
 #
 # Start of program
 #
+def make_report(output_pfx, preqc_files):
+    data = {}
+    for f in preqc_files:
+        if os.path.getsize(f) > 0:
+            name = os.path.splitext(os.path.basename(f))[0]
+            data[name] = json.load(open(f, 'r'))
 
-data = {}
-for f in sys.argv[1:]:
-    if os.path.getsize(f) > 0:
-        name = os.path.splitext(os.path.basename(f))[0]
-        data[name] = json.load(open(f, 'r'))
+    # Configure the plot
+    matplotlib.rcParams['lines.linewidth'] = 1.5
+    matplotlib.rc('xtick', labelsize=10)
+    matplotlib.rc('ytick', labelsize=10)
+    matplotlib.rc('legend', fontsize=10)
+    matplotlib.rc('axes', titlesize=16)
+    matplotlib.rc('axes', labelsize=16)
 
-# Configure the plot
-matplotlib.rcParams['lines.linewidth'] = 1.5
-matplotlib.rc('xtick', labelsize=10)
-matplotlib.rc('ytick', labelsize=10)
-matplotlib.rc('legend', fontsize=10)
-matplotlib.rc('axes', titlesize=16)
-matplotlib.rc('axes', labelsize=16)
-
-pp = PdfPages("preqc_report.pdf")
+    output_file = '%s.pdf'%output_pfx
+    pp = PdfPages(output_file)
 
 
-# Genome Characteristics
-plot_genome_size(pp, data) if all_sets_have_key(data, GENOME_SIZE_NAME) else 0
-plot_branch_classification(pp, data) if all_sets_have_key(data, BRANCH_CLASSIFICATION_NAME) else 0
+    # Genome Characteristics
+    plot_genome_size(pp, data) if all_sets_have_key(data, GENOME_SIZE_NAME) else 0
+    plot_branch_classification(pp, data) if all_sets_have_key(data, BRANCH_CLASSIFICATION_NAME) else 0
 
-# Quality/Error rate plots
-plot_quality_scores(pp, data) if all_sets_have_key(data, QUALITY_SCORE_NAME) else 0
-plot_first_error_position(pp, data) if all_sets_have_key(data, FIRST_ERROR_NAME) else 0
-plot_errors_per_base(pp, data) if all_sets_have_key(data, ERRORS_PER_BASE_NAME) else 0
-plot_pcr_duplicates(pp, data) if all_sets_have_key(data, PCR_DUPLICATE_NAME) else 0
-plot_fragment_sizes(pp, data) if all_sets_have_key(data, FRAGMENT_SIZE_NAME) else 0
+    # Quality/Error rate plots
+    plot_quality_scores(pp, data) if all_sets_have_key(data, QUALITY_SCORE_NAME) else 0
+    plot_first_error_position(pp, data) if all_sets_have_key(data, FIRST_ERROR_NAME) else 0
+    plot_errors_per_base(pp, data) if all_sets_have_key(data, ERRORS_PER_BASE_NAME) else 0
+    plot_pcr_duplicates(pp, data) if all_sets_have_key(data, PCR_DUPLICATE_NAME) else 0
+    plot_fragment_sizes(pp, data) if all_sets_have_key(data, FRAGMENT_SIZE_NAME) else 0
 
-# Coverage plots
-plot_kmer_distribution(pp, data) if all_sets_have_key(data, KMER_DISTRIBUTION_NAME) else 0
-plot_random_walk(pp, data) if all_sets_have_key(data, RANDOM_WALK_NAME) else 0
-plot_gc_distribution(pp, data) if all_sets_have_key(data, GC_DISTRIBUTION_NAME) else 0
+    # Coverage plots
+    plot_kmer_distribution(pp, data) if all_sets_have_key(data, KMER_DISTRIBUTION_NAME) else 0
+    plot_random_walk(pp, data) if all_sets_have_key(data, RANDOM_WALK_NAME) else 0
+    plot_gc_distribution(pp, data) if all_sets_have_key(data, GC_DISTRIBUTION_NAME) else 0
 
-# Graph topology plots
-plot_graph_complexity(pp, data) if all_sets_have_key(data, GRAPH_COMPLEXITY_NAME) else 0
-#plot_mean_unipath_lengths(pp, data) if all_sets_have_key(data, UNIPATH_LENGTH_NAME) else 0
-plot_de_bruijn_simulation_lengths(pp, data) if all_sets_have_key(data, DE_BRUIJN_SIMULATION_NAME) else 0
+    # Graph topology plots
+    plot_graph_complexity(pp, data) if all_sets_have_key(data, GRAPH_COMPLEXITY_NAME) else 0
+    #plot_mean_unipath_lengths(pp, data) if all_sets_have_key(data, UNIPATH_LENGTH_NAME) else 0
+    plot_de_bruijn_simulation_lengths(pp, data) if all_sets_have_key(data, DE_BRUIJN_SIMULATION_NAME) else 0
 
-pp.close()
+    pp.close()
+
+if __name__ == '__main__':
+   args = parser.parse_args()
+   output_pfx = args.output
+   preqc_files = args.preqc_file
+   print 'output_pfx: ', output_pfx
+   print 'preqc_files:'
+   print '\t' + '\n\t'.join(preqc_files)
+   make_report(output_pfx, preqc_files)
