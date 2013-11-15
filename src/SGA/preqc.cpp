@@ -450,10 +450,11 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
     
     double error_sum = 0;
     double error_n = 0;
+    double prev_ll = -std::numeric_limits<double>::max();
 
-    int iterations = 10;
-    
-    while(iterations-- > 0) 
+    int max_iterations = 10;
+    int iteration = 0;
+    while(iteration++ < max_iterations) 
     {
         for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
             mixture_counts[i] = 0;
@@ -505,6 +506,45 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
 
         // Recalculate lambda for the error state
         params.mixture_means[0] = error_sum / error_n;
+
+        // Calculate the log-likelihood of the new parameters to see if we should stop
+        double sum_ll = 0.0f;
+        for(size_t c = 1; c < count_vector.size(); ++c)
+        {
+            int n_c = count_vector[c];
+            
+            double partial_ll = 0.0f;
+            for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
+            {
+                // Calculate the zero-truncation term
+                double log_zero_trunc = log(1 / (1 - exp(-params.mixture_means[i])));
+                double ll = SGAStats::logPoisson(c, params.mixture_means[i]) + log_zero_trunc + log(params.mixture_proportions[i]);
+
+                if(i == 0)
+                    partial_ll = ll;
+                else
+                    partial_ll = addLogs(partial_ll, ll);
+            }
+            
+            partial_ll *= n_c;
+            sum_ll += partial_ll;
+        }        
+    
+        double diff = sum_ll - prev_ll;
+        double ll_improvement = diff / abs(sum_ll);
+
+        if(iteration > 1 && opt::verbose > 1)
+            fprintf(stderr, "PREV: %lf NOW: %lf DIFF: %lf I: %lf\n", prev_ll, sum_ll, diff, ll_improvement);
+
+        if(ll_improvement < 0.00001)
+            break;
+        prev_ll = sum_ll;
+    }
+
+    if(iteration == max_iterations)
+    {
+        std::cerr << "Error: model failed to converge\n";
+        exit(EXIT_FAILURE);
     }
 
     // Calculate the repeat-normalized proportions
@@ -514,6 +554,7 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
 
     for(size_t r = 3; r < ModelParameters::NUM_MIXTURE_STATES; ++r)
         params.repeat_mixture_normalized[r] = params.mixture_proportions[r] / sum_repeat;
+
 
     /*
     printf("\nprop\t(");
