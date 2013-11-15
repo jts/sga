@@ -452,7 +452,7 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
     double error_n = 0;
     double prev_ll = -std::numeric_limits<double>::max();
 
-    int max_iterations = 10;
+    int max_iterations = 30;
     int iteration = 0;
     while(iteration++ < max_iterations) 
     {
@@ -1582,7 +1582,7 @@ void generate_branch_classification(JSONWriter* pWriter,
         ModelParameters params = calculate_model_parameters(k, 
                                                             kmer_distribution_samples, 
                                                             index_set);
-    
+
         // Do not attempt classification if k-mer coverage is too low
         if(params.mode < 15)
             continue;
