@@ -1411,16 +1411,13 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
 
     // the expected increase in read count for the variant and error models
     double delta_param_unique = genome.mean_read_starts + params.mixture_means[0] * params.mixture_proportions[0];
-    //double delta_param_unique = genome.mean_read_starts + 0.02 * (double)params.mode;
 
     // Error model
     double log_p_delta_error = SGAStats::logPoisson(delta, delta_param_unique);
-    //double log_p_balance_error = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 1, 10);
     double log_p_balance_error = SGAStats::logIntegerBetaBinomialDistribution(higher_count, total, 50, 1);
 
     // Variation Model
     double log_p_delta_variant = log_p_delta_error;
-    //double log_p_balance_variant = SGAStats::logIntegerBetaDistribution(norm_allele_balance, 10, 1);
     double log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
 
     // Repeat model
@@ -1502,36 +1499,6 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
     return out;
 }
 
-
-// Calculate the probability that a kmer seen c times
-// is a kmer that is contained once on each parental chromsome
-// We assume the probability of a kmer appearing twice
-// in one parent and zero times in the other is negligable
-double probability_diploid_copy_old(const ModelParameters& params, size_t c)
-{
-    size_t half_mode = params.mode / 2;
-
-    double log_prior_haploid = log(1.0/3);
-    double log_prior_diploid = log(1.0/3);
-    double log_prior_repeat = log(1.0/3);
-
-    // log likelihood of a kmer being only contained on one parental chromosome
-    double log_p_haploid = SGAStats::logPoisson(c, 1 * half_mode) + log_prior_haploid;
-
-    // log likelihood of being a kmer contained on both parental chromosomes
-    double log_p_diploid = SGAStats::logPoisson(c, 2 * half_mode) + log_prior_diploid;
-    
-    // log likelihood of a kmer being a two copy repeat
-    double log_p_repeat = SGAStats::logPoisson(c, 4 * half_mode) + log_prior_repeat;
-
-    // Sum over higher copy numbers
-    double log_sum = addLogs(log_p_diploid, log_p_haploid);
-    log_sum = addLogs(log_sum, log_p_repeat);
-
-    double p = exp(log_p_diploid - log_sum);
-    return p;
-}
-
 // Calculate the probability that a kmer seen c times
 // is a kmer that is contained once on each parental chromsome
 // We assume the probability of a kmer appearing twice
@@ -1540,8 +1507,6 @@ double probability_diploid_copy(const ModelParameters& params, size_t c)
 {
     double mixture_log_p[ModelParameters::NUM_MIXTURE_STATES];
     double log_p_c = 0.0f;
-    double flat_mixture = 1.0f / ModelParameters::NUM_MIXTURE_STATES;
-    (void)flat_mixture;
     for(size_t i = 0; i < ModelParameters::NUM_MIXTURE_STATES; ++i)
     {
         // Calculate the zero-truncation term
@@ -1551,7 +1516,6 @@ double probability_diploid_copy(const ModelParameters& params, size_t c)
         mixture_log_p[i] = 
             SGAStats::logPoisson(c, params.mixture_means[i]) + 
             log_zero_trunc + 
-            //log(flat_mixture);
             log(params.mixture_proportions[i]);
 
         if(i == 0)
