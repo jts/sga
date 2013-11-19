@@ -171,6 +171,7 @@ namespace opt
     static unsigned int verbose;
     static int numThreads = 1;
     static size_t maxContigLength = 50000;
+    static size_t kmerDistributionSamples = 50000;
     static std::string prefix;
     static std::string readsFile;
     static std::string referenceFile;
@@ -1341,11 +1342,10 @@ void generate_quality_stats(JSONWriter* pJSONWriter, const std::string& filename
 GenomeEstimates estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set)
 {
     //
-    size_t n_samples = 20000;
     size_t sum_read_length = 0;
     
     KmerDistribution kmerDistribution;
-    for(size_t i = 0; i < n_samples; ++i)
+    for(size_t i = 0; i < opt::kmerDistributionSamples; ++i)
     {
         std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
         int n = s.size();
@@ -1365,7 +1365,7 @@ GenomeEstimates estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& 
 
     double prop_kmers_with_error = params.mixture_proportions[0];
 
-    size_t avg_rl = sum_read_length / n_samples;
+    size_t avg_rl = sum_read_length / opt::kmerDistributionSamples;
     size_t n = index_set.pBWT->getNumStrings();
     double total_read_kmers = n * (avg_rl - k + 1);
     double corrected_mode = params.mode / (1.0f - prop_kmers_with_error);
@@ -1568,8 +1568,6 @@ void generate_branch_classification(JSONWriter* pWriter,
                                     GenomeEstimates estimates, 
                                     const BWTIndexSet& index_set)
 {
-    (void)estimates;
-    int kmer_distribution_samples = 50000;
     int classification_samples = 1000000;
 
     //double min_probability_for_classification = 0.25;
@@ -1580,7 +1578,7 @@ void generate_branch_classification(JSONWriter* pWriter,
     {
         // Estimate parameters to the model
         ModelParameters params = calculate_model_parameters(k, 
-                                                            kmer_distribution_samples, 
+                                                            opt::kmerDistributionSamples, 
                                                             index_set);
 
         // Do not attempt classification if k-mer coverage is too low
@@ -1812,8 +1810,6 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                                    GenomeEstimates estimates,
                                    const BWTIndexSet& index_set)
 {
-    (void)estimates;
-    int kmer_distribution_samples = 10000;
     int n_samples = 20000;
 
     pWriter->String("SimulateAssembly");
@@ -1828,7 +1824,7 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
         bf->initialize(5 * max_expected_kmers, 3);
 
         ModelParameters params = 
-            calculate_model_parameters(k, kmer_distribution_samples, index_set);
+            calculate_model_parameters(k, opt::kmerDistributionSamples, index_set);
 
         // Cache the estimates that a kmer is diploid-unique for count [0,3m]
         size_t max_count = static_cast<size_t>(3 * params.mode);
