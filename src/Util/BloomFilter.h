@@ -12,6 +12,8 @@
 #include <limits>
 #include "BitVector.h"
 
+//#define TRACK_OCCUPANCY 1
+
 class BloomFilter
 {
     public:
@@ -63,7 +65,9 @@ class BloomFilter
         std::vector<uint32_t> m_hashes;
         size_t m_width;
         size_t m_occupancy;
+#if TRACK_OCCUPANCY
         mutable size_t m_test_counter;
+#endif
 };
 
 #endif
