@@ -161,6 +161,9 @@ static const char *PREQC_USAGE_MESSAGE =
 "          --reference=FILE             use the reference FILE to calculate GC plot\n"
 "          --diploid-reference-mode     generate metrics assuming that the input data\n"
 "                                       is a reference genome, not a collection of reads\n"
+"          --force-EM                   force preqc to proceed even if the coverage model\n"
+"                                       does not converge. This allows the rest of the program to continue\n"
+"                                       but the branch and genome size estimates may be misleading\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 static const char* PROGRAM_IDENT =
@@ -176,11 +179,12 @@ namespace opt
     static std::string readsFile;
     static std::string referenceFile;
     static int diploidReferenceMode = 0;
+    static bool forceEM = false;
 }
 
 static const char* shortopts = "p:d:t:o:k:n:b:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_MAX_CONTIG, OPT_DIPLOID };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_MAX_CONTIG, OPT_DIPLOID, OPT_FORCE_EM };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -192,6 +196,7 @@ static const struct option longopts[] = {
     { "branch-cutoff",          required_argument, NULL, 'b' },
     { "max-contig-length",      required_argument, NULL, OPT_MAX_CONTIG },
     { "reference",              required_argument, NULL, OPT_REFERENCE },
+    { "force-EM",               no_argument,       NULL, OPT_FORCE_EM },
     { "diploid-reference-mode", no_argument,       NULL, OPT_DIPLOID },
     { "help",                   no_argument,       NULL, OPT_HELP },
     { "version",                no_argument,       NULL, OPT_VERSION },
@@ -542,10 +547,16 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
         prev_ll = sum_ll;
     }
 
-    if(iteration == max_iterations)
+    if(iteration == max_iterations && !opt::forceEM)
     {
-        std::cerr << "Error: model failed to converge\n";
+        std::cerr << "\nError: coverage model failed to converge\n";
+        std::cerr << "You can disable this error with the --force-EM flag but the\n";
+        std::cerr << "branch classification and genome size results may be erroneous\n";
         exit(EXIT_FAILURE);
+    }
+    else
+    {
+        std::cerr << "\nWarning: coverage model failed to converge\n";
     }
 
     // Calculate the repeat-normalized proportions
@@ -1429,7 +1440,7 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
 
     for(int r = extra_copies_min; r < extra_copies_max; ++r)
     {
-        // Calculate the probability of having c copies using our geometric prior
+        // Calculate the probability of having c copies using our mixture model
         // The first repeat state in the below array starts at entry 3, hence the offset
         double log_p_copies = params.repeat_mixture_normalized[r + 2];
 
@@ -1534,7 +1545,6 @@ void generate_branch_classification(JSONWriter* pWriter,
 {
     int classification_samples = 1000000;
 
-    //double min_probability_for_classification = 0.25;
     pWriter->String("BranchClassification");
     pWriter->StartArray();
 
@@ -2068,6 +2078,7 @@ void parsePreQCOptions(int argc, char** argv)
             case OPT_MAX_CONTIG: arg >> opt::maxContigLength; break;
             case OPT_DIPLOID: opt::diploidReferenceMode = true; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
+            case OPT_FORCE_EM: opt::forceEM = true; break;
             case OPT_HELP:
                 std::cout << PREQC_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
