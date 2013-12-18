@@ -79,8 +79,9 @@ struct ModelParameters
     double repeat_mixture_normalized[NUM_MIXTURE_STATES];
 
     // prior on the per-base error rate
-    static const double error_rate_prior = 0.02;
+    static const double error_rate_prior;
 };
+const double ModelParameters::error_rate_prior = 0.02;
 
 // struct to store posterior probabilities calculated
 // by the model

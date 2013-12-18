@@ -83,8 +83,13 @@ else
   AC_MSG_RESULT(you are not using osx so multi-threading should work.);
 fi
 
+# Clang adds numerous warnings, so do not do -Werror for now 
+if test "$CXX" != clang++; then
+    fail_on_warning="-Werror"
+fi
+
 # Set compiler flags.
-AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror -Wno-unknown-pragmas")
+AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra $fail_on_warning -Wno-unknown-pragmas")
 AC_SUBST(CXXFLAGS, "-O3")
 AC_SUBST(CFLAGS, "-O3")
 AC_SUBST(CPPFLAGS, "$CPPFLAGS $openmp_cppflags $sparsehash_include $bamtools_include")

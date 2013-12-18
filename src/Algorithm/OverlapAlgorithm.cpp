@@ -5,7 +5,6 @@
 //-----------------------------------------------
 #include "OverlapAlgorithm.h"
 #include "ASQG.h"
-#include <tr1/unordered_set>
 #include <math.h>
 
 // Collect the complete set of overlaps in pOBOut
