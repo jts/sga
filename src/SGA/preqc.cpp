@@ -548,16 +548,19 @@ void learn_mixture_parameters(const KmerDistribution& distribution, ModelParamet
         prev_ll = sum_ll;
     }
 
-    if(iteration == max_iterations && !opt::forceEM)
+    if(iteration == max_iterations)
     {
-        std::cerr << "\nError: coverage model failed to converge\n";
-        std::cerr << "You can disable this error with the --force-EM flag but the\n";
-        std::cerr << "branch classification and genome size results may be erroneous\n";
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        std::cerr << "\nWarning: coverage model failed to converge\n";
+        if(!opt::forceEM)
+        {
+            std::cerr << "\nError: coverage model failed to converge\n";
+            std::cerr << "you can disable this error with the --force-em flag but the\n";
+            std::cerr << "branch classification and genome size results may be erroneous\n";
+            exit(EXIT_FAILURE);
+        }
+        else
+        {
+            std::cerr << "\nwarning: coverage model failed to converge\n";
+        }
     }
 
     // Calculate the repeat-normalized proportions
