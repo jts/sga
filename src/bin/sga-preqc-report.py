@@ -1,10 +1,11 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
 """Generate a readable report from preqc output.
 """
 
 import sys, os.path
 import matplotlib as MPL
 import argparse
+MPL.use('Agg') # this needs to be changed if using --show
 import pylab as pl
 import numpy as np
 import json
@@ -13,9 +14,7 @@ from collections import namedtuple
 from operator import attrgetter
 import matplotlib.transforms as transforms
 from matplotlib.backends.backend_pdf import PdfPages
-#matplotlib.use('Agg')
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 
 # String constants
 KMER_DISTRIBUTION_NAME = "KmerDistribution"
@@ -56,7 +55,8 @@ def main(argv=None):
                         help='Report output prefix. (Default: preqc_report)')
     parser.add_argument('--png', help="Output a png file per figure",
                         action="store_true")
-    parser.add_argument('--show', help="Show (interactive) figures using pylab/matplotlib",
+    # @TCC '--show' option causes difficulties with non-graphical terminals
+    parser.add_argument('--show', help="Probably won't work; Show (interactive) figures using pylab",
                         action="store_true")
     # modes
     parser.add_argument('-p', '--page_per_plot', help="One plot per page/figure",
