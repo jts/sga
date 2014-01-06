@@ -83,8 +83,10 @@ else
   AC_MSG_RESULT(you are not using osx so multi-threading should work.);
 fi
 
-# Clang adds numerous warnings, so do not do -Werror for now 
-if test "$CXX" != clang++; then
+# Only fail on warnings when the --enable-development flag is passed into configure
+AC_ARG_ENABLE(development, AS_HELP_STRING([--enable-development],
+	[Turn on development options, like failing compilation on warnings]))
+if test "$enable_development"; then
     fail_on_warning="-Werror"
 fi
 
