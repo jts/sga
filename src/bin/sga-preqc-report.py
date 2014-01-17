@@ -528,6 +528,7 @@ def plot_pcr_duplicates(ax, data, is_legend=False):
 
 
 def plot_fragment_sizes(ax, data, legend_loc=0, use_markers=False):
+    max_threshold_x = 0
     # Trim outliers from the histograms
     min_freq = 1.0e-5 # clips distribution tail below min_freq
     names = []
@@ -545,7 +546,6 @@ def plot_fragment_sizes(ax, data, legend_loc=0, use_markers=False):
             n = len(h)
             x = list()
             y = list()
-            max_threshold_x = 0
             for i,j in sorted(sizes.items()):
                 f = float(j) / float(n)
                 x.append(i)
@@ -586,6 +586,7 @@ def plot_first_error_position(ax, data, legend_loc=0, use_markers=False):
 
 
 def plot_kmer_distribution(ax, data, legend_loc=0, use_markers=False):
+    k = 'k'
     CUTOFF = 0.90
     MIN_DELTA = 0.001
     names = []
@@ -650,25 +651,29 @@ def plotsample_gc_distribution(ax, d):
     """
     # @TCC make check for missing data
     # Plot the 2D histogram of coverage vs gc
-    x = [ i * 100 for i in d[GC_DISTRIBUTION_NAME]['gc_samples'] ]
-    y = d[GC_DISTRIBUTION_NAME]['cov_samples']
-    # Use the median to determine the range to show and round
-    # to nearest 100 to avoid aliasing artefacts
-    m = np.median(y)
-    y_limit = np.ceil( 2*m / 100.) * 100.
-    hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, y_limit] ])
-    # draw the plot
-    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
-    im = ax.imshow(hist.T,extent=extent,interpolation='nearest',origin='lower', aspect='auto')
-    # colormap, colorbar, labels, ect.
-    im.set_cmap('gist_heat_r')
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", "5%", pad="3%")
-    ax.figure.colorbar(im, cax=cax)
-    ax.set_title(d['name'] + ' GC Bias')
-    ax.set_xlabel("GC %")
-    ax.set_ylabel("k-mer coverage")
-    return True
+    if GC_DISTRIBUTION_NAME in d:
+        x = [ i * 100 for i in d[GC_DISTRIBUTION_NAME]['gc_samples'] ]
+        y = d[GC_DISTRIBUTION_NAME]['cov_samples']
+        # Use the median to determine the range to show and round
+        # to nearest 100 to avoid aliasing artefacts
+        m = np.median(y)
+        y_limit = np.ceil( 2*m / 100.) * 100.
+        hist,xedges,yedges = np.histogram2d(x,y, bins=[20, 50], range=[ [0, 100.0], [0, y_limit] ])
+        # draw the plot
+        extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
+        im = ax.imshow(hist.T,extent=extent,interpolation='nearest',origin='lower', aspect='auto')
+        # colormap, colorbar, labels, ect.
+        im.set_cmap('gist_heat_r')
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", "5%", pad="3%")
+        ax.figure.colorbar(im, cax=cax)
+        ax.set_title(d['name'] + ' GC Bias')
+        ax.set_xlabel("GC %")
+        ax.set_ylabel("k-mer coverage")
+        return True 
+    else:
+        # no data, draw an empty plot
+        return _finish_plot(ax, [], 0, 'No GC data for %s' % d['name'])
 
 
 ## creating the figures and saving them ##
@@ -728,9 +733,9 @@ def make_report_with_subplots(output_pfx, data, save_png=False, pylab_show=False
     # Genome Characteristics
     plot_genome_size(subplots[0][0], data, is_legend=True) # doubles as legend
     # Graph topology plots
-    plot_graph_complexity(subplots[0][2], data, legend_loc=None) # @TCC untested due to lack of data
+    #plot_graph_complexity(subplots[0][2], data, legend_loc=None) # @TCC untested due to lack of data
     #plot_mean_unipath_lengths(subplots[0][2], data, legend_loc=None)
-    plot_de_bruijn_simulation_lengths(subplots[0][4], data, legend_loc=None)
+    plot_de_bruijn_simulation_lengths(subplots[0][2], data, legend_loc=None)
     # de-Bruijn graph branches info
     plot_branch_classification_variant(subplots[0][1], data, legend_loc=None)
     plot_branch_classification_repeat(subplots[0][3], data, legend_loc=None)
@@ -749,7 +754,7 @@ def make_report_with_subplots(output_pfx, data, save_png=False, pylab_show=False
     plot_legend(subplots[2][0], data)
     # Coverage plots
     plot_kmer_distribution(subplots[2][2], data, use_markers=False, legend_loc=None)
-    plot_random_walk(subplots[2][4], data, use_markers=False, legend_loc=None)
+    #plot_random_walk(subplots[2][4], data, use_markers=False, legend_loc=None) #@jts deprecated 
 
     # use the rest of the subplots for gc
     gc_subplots = []
