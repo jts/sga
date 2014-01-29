@@ -31,6 +31,7 @@
 void runVCFTester(GraphCompareParameters& parameters);
 void runGraphDiff(GraphCompareParameters& parameters);
 void runDebug(GraphCompareParameters& parameters);
+void runInteractive(GraphCompareParameters& parameters);
 void preloadBloomFilter(const ReadTable* pReadTable, size_t k, BloomFilter* pBloomFilter);
 
 // Defines to clarify awful template function calls
@@ -104,6 +105,7 @@ namespace opt
     static bool lowCoverage = false;
     static bool referenceMode = false;
     static bool useQualityScores = false;
+    static bool interactiveMode = false;
 
     // I/O
     static std::string outPrefix = "sgavariants";
@@ -129,7 +131,8 @@ enum { OPT_HELP = 1,
        OPT_LOWCOVERAGE, 
        OPT_QUALSCORES,
        OPT_BLOOM_GENOME,
-       OPT_PRECACHE_REFERENCE };
+       OPT_PRECACHE_REFERENCE,
+       OPT_INTERACTIVE };
 
 static const struct option longopts[] = {
     { "verbose",              no_argument,       NULL, 'v' },
@@ -145,6 +148,7 @@ static const struct option longopts[] = {
     { "paired-debruijn",      no_argument,       NULL, OPT_PAIRED_DEBRUIJN },
     { "low-coverage",         no_argument,       NULL, OPT_LOWCOVERAGE },
     { "use-quality-scores",   no_argument,       NULL, OPT_QUALSCORES},
+    { "interactive",          no_argument,       NULL, OPT_INTERACTIVE},
     { "index",                required_argument, NULL, OPT_INDEX },
     { "min-dbg-count",        required_argument, NULL, OPT_MIN_DBG_COUNT },
     { "debug",                required_argument, NULL, OPT_DEBUG },
@@ -277,6 +281,10 @@ int graphDiffMain(int argc, char** argv)
     if(!opt::debugFile.empty())
     {
         runDebug(sharedParameters);
+    }
+    else if(opt::interactiveMode)
+    {
+        runInteractive(sharedParameters);
     }
     else
     {
@@ -445,6 +453,48 @@ void runDebug(GraphCompareParameters& parameters)
     graphCompare.testKmersFromFile(opt::debugFile);
 }
 
+// Run interactively, parse a sequence from cin, process it then wait
+void runInteractive(GraphCompareParameters& parameters)
+{
+    // Initialize a bloom filter
+    size_t expected_bits = 0;
+    if(opt::bloomGenomeSize == -1)
+    {
+        // Calculate the expected bits using the number of bases in the reference
+        for(size_t i = 0; i < parameters.pRefTable->getCount(); ++i)
+            expected_bits += parameters.pRefTable->getReadLength(i);
+    }
+    else 
+    {
+        expected_bits = opt::bloomGenomeSize;
+    }
+
+    size_t occupancy_factor = 20;
+    size_t bloom_size = occupancy_factor * expected_bits;
+
+    BloomFilter* pBloomFilter = new BloomFilter(bloom_size, 5);
+    parameters.pBloomFilter = pBloomFilter;
+    preloadBloomFilter(parameters.pRefTable, parameters.kmer, pBloomFilter);
+    
+    GraphCompare graphCompare(parameters); 
+    while(1) 
+    {
+        std::string sequence;
+        std::cout << "Input a sequence: ";
+        std::cin >> sequence;
+
+        if(sequence == "done")
+            break;
+        SequenceWorkItem item;
+        item.read.seq = sequence;
+        item.read.id = "input";
+
+        std::cout << "processing: " << sequence << "\n";
+
+        graphCompare.process(item);
+    }
+}
+
 // 
 // Handle command line arguments
 //
@@ -477,6 +527,7 @@ void parseGraphDiffOptions(int argc, char** argv)
             case OPT_TESTVCF: arg >> opt::inputVCFFile; break;
             case OPT_INDEX: arg >> opt::indexPrefix; break;
             case OPT_QUALSCORES:  opt::useQualityScores = true; break;
+            case OPT_INTERACTIVE:  opt::interactiveMode = true; break;
             case OPT_HELP:
                 std::cout << GRAPH_DIFF_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

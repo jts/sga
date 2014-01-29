@@ -114,7 +114,6 @@ GraphCompareResult GraphCompare::process(const SequenceWorkItem& item) const
     GraphCompareResult result;
     SeqRecord currRead = item.read;
     std::string w = item.read.seq.toString();
-    
     int len = w.size();
     int num_kmers = len - m_parameters.kmer + 1;
 
