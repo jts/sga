@@ -12,11 +12,15 @@ my $strand_cutoff = 2.0;
 my $hplen_cutoff = 7;
 my $depth_cutoff = 0;
 my $passed_only = 0;
+my $tumor_bam = "";
+my $normal_bam = "";
 
-GetOptions("dbsnp=s" => \$dbsnp_path,
-           "sga=s" => \$sga_file,
-           "min-depth=i" => \$depth_cutoff,
-           "passed-only" => \$passed_only);
+GetOptions("dbsnp=s"      => \$dbsnp_path,
+           "sga=s"        => \$sga_file,
+           "min-depth=i"  => \$depth_cutoff,
+           "passed-only"  => \$passed_only,
+           "tumor_bam=s"  => \$tumor_bam,
+           "normal_bam=s" => \$normal_bam);
 
 die("The --sga option is mandatory") if($sga_file eq "");
 my %non_dbsnp_sites;
@@ -26,9 +30,9 @@ if($dbsnp_path ne "") {
     load_nondbsnp_sites($sga_file, $dbsnp_path);
 }
 
-filter_annotations($sga_file);
+perform_filter($sga_file);
 
-sub filter_annotations
+sub perform_filter
 {
     my($in) = @_;
     my $base = basename($in, ".vcf");
@@ -76,6 +80,11 @@ sub filter_annotations
             push @filter_reason, "dbSNP";
         }
 
+        if($tumor_bam ne "" && $normal_bam ne "") {
+            my @bam_filters = filter_bam($_);
+            push @filter_reason, @bam_filters;
+        }
+
         if(scalar(@filter_reason) > 0) {
             $f[6] = join(";", @filter_reason);
         } else {
@@ -90,6 +99,67 @@ sub filter_annotations
 
     print "$total_out calls passed all filters\n";
     return $outname;
+}
+
+sub filter_bam
+{
+    my($line) = $_;
+    my @f = split(' ', $line);
+
+    my $is_snv = length($f[3]) == 1 && length($f[4]) == 1;
+
+    # Call mpileup
+    my $cmd = sprintf("samtools mpileup -r %s:%d-%d %s %s", $f[0], $f[1], $f[1], $tumor_bam, $normal_bam);
+    my $mpl = `$cmd`;
+    chomp $mpl;
+    
+    my @g = split(' ', $mpl);
+    
+    my $t_depth = $g[3];
+    my $t_bases = $g[4];
+    my $t_qual = $g[5];
+
+    my $n_depth = $g[6];
+    my $n_bases = $g[7];
+    my $n_qual = $g[8];
+
+    my @filters;
+    push @filters, "LowNormalDepth" if($n_depth < 5);
+
+    if($is_snv) {
+        # Count the number of times the alt allele shows up in the normal reads
+        my $alt_normal_count = 0;
+        foreach my $b (split '', $n_bases) {
+            ++$alt_normal_count if(uc($b) eq $f[4]);
+        }
+        print "$f[3] $f[4] $t_bases $n_bases $alt_normal_count\n";
+        push @filters, "NormalEvidence" if $alt_normal_count > 2;
+
+        print "$t_bases $t_qual " . length($t_bases) . " " . length($t_qual) . "\n";
+
+        my @base_array = split('', $t_bases);
+        my @qual_array = split('', $t_qual);
+
+        my $bi = 0;
+        my $qi = 0;
+        my @alt_quals;
+        for(;$bi < scalar(@base_array); $bi++) {
+            my $u_base = uc($base_array[$bi]);
+
+            if($u_base eq $f[4]) {
+                push(@alt_quals, ord($qual_array[$qi]) - 33);
+            }
+
+            $qi++ if($u_base eq 'A' || $u_base eq 'C' || $u_base eq 'G' || $u_base eq 'T');
+        }
+        my @sorted_quals = sort { $a <=> $b } @alt_quals;
+        my $mi = scalar(@sorted_quals) / 2;
+        my $median = $sorted_quals[$mi];
+        print join(',', @sorted_quals) . "\n"; 
+        print "Median: $median\n";
+        push @filters, "LowQuality" if($median <= 15);
+    }
+    return @filters;
 }
 
 # Build a hash of calls that are NOT present in dbsnp
