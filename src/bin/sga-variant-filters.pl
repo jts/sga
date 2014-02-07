@@ -12,15 +12,19 @@ my $strand_cutoff = 2.0;
 my $hplen_cutoff = 7;
 my $depth_cutoff = 0;
 my $passed_only = 0;
+my $min_af = 0;
 my $tumor_bam = "";
 my $normal_bam = "";
+my $outname = "";
 
 GetOptions("dbsnp=s"      => \$dbsnp_path,
            "sga=s"        => \$sga_file,
            "min-depth=i"  => \$depth_cutoff,
+           "min-af=f"     => \$min_af,
            "passed-only"  => \$passed_only,
            "tumor_bam=s"  => \$tumor_bam,
-           "normal_bam=s" => \$normal_bam);
+           "normal_bam=s" => \$normal_bam,
+           "outname=s"    => \$outname);
 
 die("The --sga option is mandatory") if($sga_file eq "");
 my %non_dbsnp_sites;
@@ -36,7 +40,8 @@ sub perform_filter
 {
     my($in) = @_;
     my $base = basename($in, ".vcf");
-    my $outname = "$base.filters.vcf";
+    $outname = "$base.filters.vcf" if $outname eq "";
+
     open(OUT, ">$outname") || die("Cannot open $outname");
     open(IN, $in) || die("Cannot open $in");
     my $total_out = 0;
@@ -64,6 +69,11 @@ sub perform_filter
         my ($dust) = (/Dust=(\d+\.\d+)/);
         if($dust > $dust_cutoff) {
             push @filter_reason, "LowComplexity";
+        }
+
+        my ($af) = (/AF=(\d+\.\d+)/);
+        if($af < $min_af) {
+            push @filter_reason, "LowAlleleFreq";
         }
 
         my ($strand) = (/SB=(\d+\.\d+)/);
@@ -133,7 +143,7 @@ sub filter_bam
             ++$alt_normal_count if(uc($b) eq $f[4]);
         }
         print "$f[3] $f[4] $t_bases $n_bases $alt_normal_count\n";
-        push @filters, "NormalEvidence" if $alt_normal_count > 2;
+        push @filters, "NormalEvidence" if $alt_normal_count >= 2;
 
         print "$t_bases $t_qual " . length($t_bases) . " " . length($t_qual) . "\n";
 
@@ -152,9 +162,17 @@ sub filter_bam
 
             $qi++ if($u_base eq 'A' || $u_base eq 'C' || $u_base eq 'G' || $u_base eq 'T');
         }
+        
+        push @filters, "NoAltEvidence" if(scalar(@alt_quals) == 0);
+
         my @sorted_quals = sort { $a <=> $b } @alt_quals;
         my $mi = scalar(@sorted_quals) / 2;
         my $median = $sorted_quals[$mi];
+        if (scalar(@sorted_quals) % 2) {
+                $median = $sorted_quals[ $mi ];
+        } else {
+                $median = ($sorted_quals[$mi-1] + $sorted_quals[$mi]) / 2;
+        }
         print join(',', @sorted_quals) . "\n"; 
         print "Median: $median\n";
         push @filters, "LowQuality" if($median <= 15);
