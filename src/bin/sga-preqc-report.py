@@ -683,6 +683,7 @@ def load_preqc_datafiles(preqc_files):
         also assign colors and markers"""
     # load the data
     data = []
+    deserial_fail = []
     for f in preqc_files:
         f = os.path.abspath(f)
         if( os.path.getsize(f) <= 0 ):
@@ -691,7 +692,12 @@ def load_preqc_datafiles(preqc_files):
         if( f in [d['file'] for d in data] ):
             print "Warning: duplicate file '%s' ... skipping"%f
             continue
-        data.append(json.load(open(f, 'r')))
+        try:
+            deserial = json.load(open(f, 'r'))
+        except ValueError:
+            deserial_fail.append(f)            
+            continue
+        data.append(deserial)
         data[-1]['file'] = f
     # create unique names for each entry
     names = unique_names_from_filenames([d['file'] for d in data], splitext=True)
@@ -701,6 +707,8 @@ def load_preqc_datafiles(preqc_files):
         data[i]['name'] = names[i]
         data[i]['plot_color'] = plot_colors[i%len(plot_colors)]
         data[i]['plot_marker'] = PLOT_MARKERS[i%len(PLOT_MARKERS)]
+    for failed in deserial_fail:
+        print "Warning: failed to de-serialize file:", failed
     return data
 
 
