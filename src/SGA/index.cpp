@@ -321,6 +321,12 @@ void parseIndexOptions(int argc, char** argv)
         die = true;
     }
 
+    if(opt::algorithm == "ropebwt" && opt::bDiskAlgo)
+    {
+        std::cerr << SUBPROGRAM ": the options -a ropebwt and -d are not compatible, please only use one.\n";
+        die = true;
+    }
+
     if (die) 
     {
         std::cout << "\n" << INDEX_USAGE_MESSAGE;
