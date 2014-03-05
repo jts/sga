@@ -158,6 +158,7 @@ static const char *PREQC_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
 "      -t, --threads=NUM                use NUM threads (default: 1)\n"
+"          --simple                     only compute the metrics that do not need the FM-index\n"
 "          --max-contig-length=N        stop contig extension at N bp (default: 50000)\n"
 "          --reference=FILE             use the reference FILE to calculate GC plot\n"
 "          --diploid-reference-mode     generate metrics assuming that the input data\n"
@@ -181,11 +182,12 @@ namespace opt
     static std::string referenceFile;
     static int diploidReferenceMode = 0;
     static bool forceEM = false;
+    static bool simple = false;
 }
 
 static const char* shortopts = "p:d:t:o:k:n:b:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_MAX_CONTIG, OPT_DIPLOID, OPT_FORCE_EM };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_REFERENCE, OPT_MAX_CONTIG, OPT_DIPLOID, OPT_FORCE_EM, OPT_SIMPLE };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -197,6 +199,7 @@ static const struct option longopts[] = {
     { "branch-cutoff",          required_argument, NULL, 'b' },
     { "max-contig-length",      required_argument, NULL, OPT_MAX_CONTIG },
     { "reference",              required_argument, NULL, OPT_REFERENCE },
+    { "simple",                 no_argument,       NULL, OPT_SIMPLE },
     { "force-EM",               no_argument,       NULL, OPT_FORCE_EM },
     { "diploid-reference-mode", no_argument,       NULL, OPT_DIPLOID },
     { "help",                   no_argument,       NULL, OPT_HELP },
@@ -1963,43 +1966,50 @@ int preQCMain(int argc, char** argv)
     parsePreQCOptions(argc, argv);
     Timer* pTimer = new Timer(PROGRAM_IDENT);
 
-    fprintf(stderr, "Loading FM-index of %s\n", opt::readsFile.c_str());
-    BWTIndexSet index_set;
-    index_set.pBWT = new BWT(opt::prefix + BWT_EXT);
-    index_set.pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
-    index_set.pCache = new BWTIntervalCache(10, index_set.pBWT);
-    
     rapidjson::FileStream f(stdout);
     JSONWriter writer(f);
 
     // Top-level document
     writer.StartObject();
     
-    if(!opt::diploidReferenceMode)
+    // In simple mode we only compute metrics that do not need the FM-index
+    generate_quality_stats(&writer, opt::readsFile);
+
+    // Load the FM-index and compute the rest of the metrics if requested
+    if(!opt::simple)
     {
-        GenomeEstimates estimates = generate_genome_size(&writer, index_set);
-        generate_branch_classification(&writer, estimates, index_set);
-        generate_de_bruijn_simulation(&writer, estimates, index_set);
-        generate_gc_distribution(&writer, index_set);
-        generate_quality_stats(&writer, opt::readsFile);
-        generate_pe_fragment_sizes(&writer, index_set);
-        generate_kmer_coverage(&writer, index_set);
-        generate_position_of_first_error(&writer, index_set);
-        generate_errors_per_base(&writer, index_set);
-        generate_unipath_length_data(&writer, index_set);
-        generate_duplication_rate(&writer, index_set);
-    }
-    else
-    {
-        generate_reference_branch_classification(&writer, index_set);
+        BWTIndexSet index_set;
+        fprintf(stderr, "Loading FM-index of %s\n", opt::readsFile.c_str());
+        index_set.pBWT = new BWT(opt::prefix + BWT_EXT);
+        index_set.pSSA = new SampledSuffixArray(opt::prefix + SAI_EXT, SSA_FT_SAI);
+        index_set.pCache = new BWTIntervalCache(10, index_set.pBWT);
+
+        if(!opt::diploidReferenceMode)
+        {
+            GenomeEstimates estimates = generate_genome_size(&writer, index_set);
+            generate_branch_classification(&writer, estimates, index_set);
+            generate_de_bruijn_simulation(&writer, estimates, index_set);
+            generate_gc_distribution(&writer, index_set);
+            generate_pe_fragment_sizes(&writer, index_set);
+            generate_kmer_coverage(&writer, index_set);
+            generate_position_of_first_error(&writer, index_set);
+            generate_errors_per_base(&writer, index_set);
+            generate_unipath_length_data(&writer, index_set);
+            generate_duplication_rate(&writer, index_set);
+        }
+        else
+        {
+            generate_reference_branch_classification(&writer, index_set);
+        }
+
+        delete index_set.pBWT;
+        delete index_set.pSSA;
+        delete index_set.pCache;
     }
 
     // End document
     writer.EndObject();
 
-    delete index_set.pBWT;
-    delete index_set.pSSA;
-    delete index_set.pCache;
     delete pTimer;
     return 0;
 }
@@ -2079,6 +2089,7 @@ void parsePreQCOptions(int argc, char** argv)
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
+            case OPT_SIMPLE: opt::simple = true; break;
             case OPT_MAX_CONTIG: arg >> opt::maxContigLength; break;
             case OPT_DIPLOID: opt::diploidReferenceMode = true; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
