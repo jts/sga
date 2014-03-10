@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 AC_PREREQ(2.59)
-AC_INIT(sga, 0.10.10, js18@sanger.ac.uk)
+AC_INIT(sga, 0.10.13, js18@sanger.ac.uk)
 AM_INIT_AUTOMAKE(foreign)
 AC_CONFIG_SRCDIR([SGA/sga.cpp])
 AC_CONFIG_HEADER([config.h])
@@ -83,8 +83,15 @@ else
   AC_MSG_RESULT(you are not using osx so multi-threading should work.);
 fi
 
+# Only fail on warnings when the --enable-development flag is passed into configure
+AC_ARG_ENABLE(development, AS_HELP_STRING([--enable-development],
+	[Turn on development options, like failing compilation on warnings]))
+if test "$enable_development"; then
+    fail_on_warning="-Werror"
+fi
+
 # Set compiler flags.
-AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra -Werror -Wno-unknown-pragmas")
+AC_SUBST(AM_CXXFLAGS, "-Wall -Wextra $fail_on_warning -Wno-unknown-pragmas")
 AC_SUBST(CXXFLAGS, "-O3")
 AC_SUBST(CFLAGS, "-O3")
 AC_SUBST(CPPFLAGS, "$CPPFLAGS $openmp_cppflags $sparsehash_include $bamtools_include")
