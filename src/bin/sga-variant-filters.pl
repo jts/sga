@@ -10,9 +10,13 @@ my $sga_file = "";
 my $dust_cutoff = 2.0;
 my $strand_cutoff = 2.0;
 my $hplen_cutoff = 7;
+my $depth_cutoff = 0;
+my $passed_only = 0;
 
 GetOptions("dbsnp=s" => \$dbsnp_path,
-           "sga=s" => \$sga_file);
+           "sga=s" => \$sga_file,
+           "min-depth=i" => \$depth_cutoff,
+           "passed-only" => \$passed_only);
 
 die("The --sga option is mandatory") if($sga_file eq "");
 my %non_dbsnp_sites;
@@ -77,7 +81,8 @@ sub filter_annotations
         } else {
             $total_out++;
         }
-        print OUT join("\t", @f) . "\n";
+
+        print OUT join("\t", @f) . "\n" if(!$passed_only || scalar(@filter_reason) == 0);
     }
     
     close(IN);
