@@ -12,3 +12,12 @@ build*
 *.o
 *.a
 Makefile
+
+config.h
+config.log
+config.status
+stamp-h1
+compile
+.deps
+
+SGA/sga
