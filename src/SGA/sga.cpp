@@ -35,6 +35,7 @@
 #include "rewrite-evidence-bam.h"
 #include "preqc.h"
 #include "haplotype-filter.h"
+#include "graph-concordance.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -69,6 +70,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           gapfill               fill intra-scaffold gaps\n"
 "\n\nVariant Calling Commands:\n"
 "           graph-diff            compare reads to find sequence variants\n"
+"           graph-concordance     check called variants for representation in the assembly graph\n"
 "           rewrite-evidence-bam  fill in sequence and quality information for a variant evidence BAM\n"
 "           haplotype-filter      filter out low-quality haplotypes\n"
 "\n\nExperimental commands:\n"
@@ -154,6 +156,8 @@ int main(int argc, char** argv)
             preQCMain(argc - 1, argv + 1);
         else if(command == "haplotype-filter")
             haplotypeFilterMain(argc - 1, argv + 1);
+        else if(command == "graph-concordance")
+            graphConcordanceMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

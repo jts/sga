@@ -10,6 +10,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <iterator>
+#include <sstream>
 #include "VCFUtil.h"
 #include "StdAlnTools.h"
 #include "MultiAlignment.h"
@@ -21,6 +22,47 @@ VCFRecord::VCFRecord()
 {
     passStr = "PASS";
     quality = 20.0f;
+}
+
+// parse from a line
+VCFRecord::VCFRecord(const std::string& line)
+{
+    std::stringstream parser(line);
+
+    parser >> refName;
+    parser >> refPosition;
+    parser >> id;
+    parser >> refStr;
+    parser >> varStr;
+
+    // Non-conformant VCF might represent unknown qualities with '.'
+    std::string quality_str;
+    parser >> quality_str;
+    if(quality_str == ".")
+    {
+        quality = 255;
+    }
+    else
+    {
+        std::stringstream qparser(quality_str);
+        qparser >> quality;
+    }
+
+    parser >> passStr;
+    
+    std::string tmp;
+    parser >> tmp;
+
+    // Split the comments on the semicolon delimiter
+    comments = split(tmp, ';');
+    
+    parser >> formatStr;
+    if(!formatStr.empty())
+    {
+        // parse genotypes
+        while(parser >> tmp)
+            sampleStr.push_back(tmp);
+    }
 }
 
 void VCFRecord::addComment(const std::string& key, const std::string& value)
