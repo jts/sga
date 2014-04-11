@@ -1,7 +1,7 @@
 //-----------------------------------------------
 // Copyright 2009 Wellcome Trust Sanger Institute
 // Written by Jared Simpson (js18@sanger.ac.uk)
-// Released under the GPL license
+// Released under the GPL
 //-----------------------------------------------
 //
 // SeqReader - Reads fasta or fastq sequence files

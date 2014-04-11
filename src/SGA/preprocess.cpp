@@ -244,6 +244,13 @@ int preprocessMain(int argc, char** argv)
                 // Read from separate files
                 std::string filename1 = argv[optind++];
                 std::string filename2 = argv[optind++];
+                
+                if(filename1 == "-" || filename2 == "-")
+                {
+                    std::cerr << "Reading from stdin is not supported in --pe-mode 1\n";
+                    std::cerr << "Maybe you meant --pe-mode 2 (interleaved pairs?)\n";
+                    exit(EXIT_FAILURE);
+                }
 
                 pReader1 = new SeqReader(filename1, SRF_NO_VALIDATION);
                 pReader2 = new SeqReader(filename2, SRF_NO_VALIDATION);
@@ -321,7 +328,6 @@ int preprocessMain(int argc, char** argv)
             }
             delete pReader1;
             pReader1 = NULL;
-
         }
 
     }
