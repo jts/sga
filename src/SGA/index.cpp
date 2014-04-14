@@ -157,16 +157,16 @@ void indexInMemoryRopebwt()
         std::string bwt_filename = opt::prefix + BWT_EXT;
         std::string sai_filename = opt::prefix + SAI_EXT;
         BWTCA::runRopebwt(opt::readsFile, bwt_filename, use_threads, false);
-        std::cout << "\t done bwt construction, generating .sai file\n";
 
-        BWT* pBWT = new BWT(bwt_filename);
         if(opt::bBuildSAI)
         {
+            std::cout << "\t done bwt construction, generating .sai file\n";
+            BWT* pBWT = new BWT(bwt_filename);
             SampledSuffixArray ssa;
             ssa.buildLexicoIndex(pBWT, opt::numThreads);
             ssa.writeLexicoIndex(sai_filename);
+            delete pBWT;
         }
-        delete pBWT;
     }
 
     if(opt::bBuildReverse)
@@ -175,15 +175,15 @@ void indexInMemoryRopebwt()
         std::string rsai_filename = opt::prefix + RSAI_EXT;
         BWTCA::runRopebwt(opt::readsFile, rbwt_filename, use_threads, true);
 
-        std::cout << "\t done rbwt construction, generating .rsai file\n";
-        BWT* pRBWT = new BWT(rbwt_filename);
         if(opt::bBuildSAI)
         {
+            std::cout << "\t done rbwt construction, generating .rsai file\n";
+            BWT* pRBWT = new BWT(rbwt_filename);
             SampledSuffixArray ssa;
             ssa.buildLexicoIndex(pRBWT, opt::numThreads);
             ssa.writeLexicoIndex(rsai_filename);
+            delete pRBWT;
         }
-        delete pRBWT;
     }
 }
 
