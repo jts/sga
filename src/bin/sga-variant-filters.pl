@@ -22,8 +22,8 @@ GetOptions("dbsnp=s"      => \$dbsnp_path,
            "min-depth=i"  => \$depth_cutoff,
            "min-af=f"     => \$min_af,
            "passed-only"  => \$passed_only,
-           "tumor_bam=s"  => \$tumor_bam,
-           "normal_bam=s" => \$normal_bam,
+           "tumor-bam=s"  => \$tumor_bam,
+           "normal-bam=s" => \$normal_bam,
            "outname=s"    => \$outname);
 
 die("The --sga option is mandatory") if($sga_file eq "");
