@@ -22,7 +22,7 @@
 #include "SGAStats.h"
 #include "HashMap.h"
 #include "DindelRealignWindow.h"
-#include "VCFIndex.h"
+#include "VariantIndex.h"
 #include "HapgenUtil.h"
 
 //
@@ -196,7 +196,7 @@ StringVector extractSomaticKmers(const std::string& haplotype,
 }
 
 std::string reconstructHaplotype(const VCFRecord& somatic_record, 
-                                 const VCFRecordVector nearby_germline, 
+                                 const VariantRecordVector nearby_germline, 
                                  const ReadTable& refTable,
                                  const BWTIndexSet& variantIndex,
                                  size_t flanking_size)
@@ -240,9 +240,9 @@ std::string reconstructHaplotype(const VCFRecord& somatic_record,
             {
                 std::string new_haplotype = 
                     applyVariant(haplotype, 
-                                 nearby_germline[var_id].refPosition - 1,
-                                 nearby_germline[var_id].refStr, 
-                                 nearby_germline[var_id].varStr,
+                                 nearby_germline[var_id].position - 1,
+                                 nearby_germline[var_id].ref_sequence, 
+                                 nearby_germline[var_id].alt_sequence,
                                  haplotype_coordinates, 
                                  true, 
                                  GERMLINE_TAG);
@@ -301,21 +301,22 @@ int graphConcordanceMain(int argc, char** argv)
     refTable.indexReadsByID();
 
     // Index the germline variants so we can make germline haplotypes
-    VCFIndex germlineIndex(opt::germlineFile, refTable);
+    std::cerr << "Loading germline variant index... " << std::flush;
+    VariantIndex germlineIndex(opt::germlineFile, refTable);
 
     // Load FM-index of the reads
+    BWTIndexSet variantIndex;
     std::cerr << "Loading variant read index... " << std::flush;
     std::string variantPrefix = stripGzippedExtension(opt::variantFile);
-    BWTIndexSet variantIndex;
-    variantIndex.pBWT = new BWT(variantPrefix + BWT_EXT);
+    variantIndex.pBWT = new BWT(variantPrefix + BWT_EXT, 256);
     variantIndex.pCache = new BWTIntervalCache(11, variantIndex.pBWT);
     std::cerr << "done\n";
-
+    
+    //
+    BWTIndexSet baseIndex;
     std::cerr << "Loading base read index index... " << std::flush;
     std::string basePrefix = stripGzippedExtension(opt::baseFile);
-
-    BWTIndexSet baseIndex;
-    baseIndex.pBWT = new BWT(basePrefix + BWT_EXT);
+    baseIndex.pBWT = new BWT(basePrefix + BWT_EXT, 256);
     baseIndex.pCache = new BWTIntervalCache(11, baseIndex.pBWT);
     std::cerr << "done\n";
 
@@ -342,7 +343,9 @@ int graphConcordanceMain(int argc, char** argv)
 
         // Grab nearby variants
         size_t flanking_size = opt::k;
-        VCFRecordVector nearby_vector = germlineIndex.getNearVariants(record, flanking_size);
+        VariantRecordVector nearby_vector = germlineIndex.getNearVariants(record.refName, 
+                                                                          record.refPosition, 
+                                                                          flanking_size);
         
         std::cerr << "\n\n Variant: " << record << "\n";
         std::cerr << "Nearby: " << nearby_vector.size() << "\n";

@@ -31,7 +31,7 @@ libutil_a_SOURCES = \
         VCFUtil.h VCFUtil.cpp \
         QualityTable.h QualityTable.cpp \
         BloomFilter.h BloomFilter.cpp \
-        VCFIndex.h VCFIndex.cpp \
+        VariantIndex.h VariantIndex.cpp \
         Verbosity.h \
         Timer.h \
         EncodedString.h \
