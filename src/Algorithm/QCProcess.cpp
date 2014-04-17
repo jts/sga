@@ -13,19 +13,14 @@
 //
 struct KmerWindow
 {
-    int64_t getCount() const
+    int64_t getCount(bool bothStrand) const
     {
-        int64_t count = 0;
-        if(fwdIntervals.interval[0].isValid())
-        {
-            count += fwdIntervals.interval[0].size();
-        }
-        
-        if(rcIntervals.interval[0].isValid())
-        {
-            count += rcIntervals.interval[0].size();
-        }
-        return count;
+        int64_t fwdCount = (fwdIntervals.interval[0].isValid())?fwdIntervals.interval[0].size():0;
+	int64_t rcCount = (rcIntervals.interval[0].isValid())?rcIntervals.interval[0].size():0;
+	if (bothStrand)
+	  return std::min(fwdCount,rcCount);
+	else
+	  return fwdCount + rcCount;
     }
 
     int start;
@@ -144,7 +139,7 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
             if(window.rcIntervals.interval[1].isValid())
                 BWTAlgorithms::updateBothR(window.rcIntervals, cb, m_params.pBWT);
 
-            int64_t count = window.getCount();
+            int64_t count = window.getCount(m_params.kmerBothStrand);
             if(count <= threshold)
             {
                 // The extended kmer didn't meet the threshold
@@ -186,7 +181,7 @@ bool QCProcess::performKmerCheck(const SequenceWorkItem& workItem)
         }
 
         // Check the count of this interval
-        int64_t count = window.getCount();
+        int64_t count = window.getCount(m_params.kmerBothStrand);
             
         if(count <= threshold)
         {
