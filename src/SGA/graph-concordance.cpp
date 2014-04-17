@@ -301,8 +301,9 @@ int graphConcordanceMain(int argc, char** argv)
     refTable.indexReadsByID();
 
     // Index the germline variants so we can make germline haplotypes
-    std::cerr << "Loading germline variant index... " << std::flush;
+    std::cerr << "Loading germline variant index..." << std::flush;
     VariantIndex germlineIndex(opt::germlineFile, refTable);
+    std::cerr << "done\n";
 
     // Load FM-index of the reads
     BWTIndexSet variantIndex;
