@@ -26,6 +26,7 @@ struct QCParameters
     {
         checkDuplicates = true;
         checkKmer = true;
+	kmerBothStrand = false;
         checkHPRuns = true;
         checkDegenerate = true;
         verbose = 0;
@@ -53,6 +54,7 @@ struct QCParameters
     // Control parameters
     bool checkDuplicates;
     bool checkKmer;
+    bool kmerBothStrand;
     bool checkHPRuns;
     bool checkDegenerate;
     bool substringOnly;

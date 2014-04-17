@@ -61,6 +61,7 @@ static const char *FILTER_USAGE_MESSAGE =
 "      --no-duplicate-check             turn off duplicate removal\n"
 "      --substring-only                 when removing duplicates, only remove substring sequences, not full-length matches\n"
 "      --no-kmer-check                  turn off the kmer check\n"
+"      --kmer-both-strand               mimimum kmer coverage is required for both strand\n"
 "      --homopolymer-check              check reads for hompolymer run length sequencing errors\n"
 "      --low-complexity-check           filter out low complexity reads\n"
 "\nK-mer filter options:\n"
@@ -84,6 +85,7 @@ namespace opt
     static bool dupCheck = true;
     static bool substringOnly = false;
     static bool kmerCheck = true;
+    static bool kmerBothStrand = false;
     static bool hpCheck = false;
     static bool lowComplexityCheck = false;
 
@@ -93,7 +95,7 @@ namespace opt
 
 static const char* shortopts = "p:d:t:o:k:x:v";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_SUBSTRING_ONLY, OPT_NO_RMDUP, OPT_NO_KMER, OPT_CHECK_HPRUNS, OPT_CHECK_COMPLEXITY };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_SUBSTRING_ONLY, OPT_NO_RMDUP, OPT_NO_KMER, OPT_KMER_BOTH_STRAND, OPT_CHECK_HPRUNS, OPT_CHECK_COMPLEXITY };
 
 static const struct option longopts[] = {
     { "verbose",               no_argument,       NULL, 'v' },
@@ -107,6 +109,7 @@ static const struct option longopts[] = {
     { "version",               no_argument,       NULL, OPT_VERSION },
     { "no-duplicate-check",    no_argument,       NULL, OPT_NO_RMDUP },
     { "no-kmer-check",         no_argument,       NULL, OPT_NO_KMER },
+    { "kmer-both-strand",      no_argument,       NULL, OPT_KMER_BOTH_STRAND },
     { "homopolymer-check",     no_argument,       NULL, OPT_CHECK_HPRUNS },
     { "low-complexity-check",  no_argument,       NULL, OPT_CHECK_COMPLEXITY },
     { "substring-only",        no_argument,       NULL, OPT_SUBSTRING_ONLY },
@@ -145,6 +148,7 @@ int filterMain(int argc, char** argv)
     params.checkDuplicates = opt::dupCheck;
     params.substringOnly = opt::substringOnly;
     params.checkKmer = opt::kmerCheck;
+    params.kmerBothStrand = opt::kmerBothStrand;
     params.checkHPRuns = opt::hpCheck;
     params.checkDegenerate = opt::lowComplexityCheck;
 
