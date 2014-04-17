@@ -227,6 +227,7 @@ void parseFilterOptions(int argc, char** argv)
             case 'x': arg >> opt::kmerThreshold; break;
             case OPT_NO_RMDUP: opt::dupCheck = false; break;
             case OPT_NO_KMER: opt::kmerCheck = false; break;
+            case OPT_KMER_BOTH_STRAND: opt::kmerBothStrand = true; break;
             case OPT_CHECK_HPRUNS: opt::hpCheck = true; break;
             case OPT_CHECK_COMPLEXITY: opt::lowComplexityCheck = true; break;
             case OPT_SUBSTRING_ONLY: opt::substringOnly = true; break;
