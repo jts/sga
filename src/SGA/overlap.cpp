@@ -63,6 +63,7 @@ static const char *OVERLAP_USAGE_MESSAGE =
 "      -t, --threads=NUM                use NUM worker threads to compute the overlaps (default: no threading)\n"
 "      -e, --error-rate                 the maximum error rate allowed to consider two sequences aligned (default: exact matches only)\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads (default: 45)\n"
+"      -p, --prefix=PREFIX              use PREFIX for the names of the index files (default: prefix of the input file)\n"
 "      -f, --target-file=FILE           perform the overlap queries against the reads in FILE\n"
 "      -x, --exhaustive                 output all overlaps, including transitive edges\n"
 "          --exact                      force the use of the exact-mode irreducible block algorithm. This is faster\n"
@@ -88,7 +89,8 @@ namespace opt
     static std::string readsFile;
     static std::string targetFile;
     static std::string outFile;
-    
+    static std::string prefix;
+  
     static double errorRate = 0.0f;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
     static int seedLength = 0;
@@ -98,7 +100,7 @@ namespace opt
     static bool bExactIrreducible = false;
 }
 
-static const char* shortopts = "m:d:e:t:l:s:o:f:vix";
+static const char* shortopts = "m:d:e:t:l:s:o:f:p:vix";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_EXACT };
 
@@ -148,11 +150,15 @@ int overlapMain(int argc, char** argv)
     // Determine which index files to use. If a target file was provided,
     // use the index of the target reads
     std::string indexPrefix;
-    if(!opt::targetFile.empty())
-        indexPrefix = stripFilename(opt::targetFile);
+    if(!opt::prefix.empty())
+      indexPrefix = opt::prefix;
     else
+    {
+      if(!opt::targetFile.empty())
+        indexPrefix = stripFilename(opt::targetFile);
+      else
         indexPrefix = stripFilename(opt::readsFile);
-
+    }
     BWT* pBWT = new BWT(indexPrefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = new BWT(indexPrefix + RBWT_EXT, opt::sampleRate);
     OverlapAlgorithm* pOverlapper = new OverlapAlgorithm(pBWT, pRBWT, 
@@ -325,6 +331,7 @@ void parseOverlapOptions(int argc, char** argv)
         {
             case 'm': arg >> opt::minOverlap; break;
             case 'o': arg >> opt::outFile; break;
+            case 'p': arg >> opt::prefix; break;
             case 'e': arg >> opt::errorRate; break;
             case 't': arg >> opt::numThreads; break;
             case 'l': arg >> opt::seedLength; break;

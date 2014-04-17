@@ -13,12 +13,16 @@
 
 SeqReader::SeqReader(std::string filename, uint32_t flags) : m_flags(flags)
 {
-    m_pHandle = createReader(filename);
+    if(filename == "-")
+        m_pHandle = &std::cin;
+    else
+        m_pHandle = createReader(filename);
 }
     
 SeqReader::~SeqReader()
 {
-    delete m_pHandle;
+    if(m_pHandle != &std::cin)
+        delete m_pHandle;
 }
 
 // Extract an element from the file
