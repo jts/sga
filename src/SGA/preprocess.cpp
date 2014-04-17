@@ -45,6 +45,7 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "          --pe-orphans=FILE            if one half of a read pair fails filtering, write the passed half to FILE\n"
 "\nConversions/Filtering:\n"
 "          --phred64                    convert quality values from phred-64 to phred-33.\n"
+"          --discard-quality            do not output quality scores\n"
 "      -q, --quality-trim=INT           perform Heng Li's BWA quality trim algorithm. \n"
 "                                       Reads are trimmed according to the formula:\n"
 "                                       argmax_x{\\sum_{i=x+1}^l(INT-q_i)} if q_l<INT\n"
@@ -89,6 +90,7 @@ namespace opt
     static double sampleFreq = 1.0f;
 
     static bool bDiscardAmbiguous = true;
+    static bool bDiscardQuality = false;
     static QualityScaling qualityScale = QS_SANGER;
 
     static bool bFilterGC = false;
@@ -106,8 +108,11 @@ namespace opt
 
 static const char* shortopts = "o:q:m:h:p:r:c:s:f:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, OPT_QSCALE, OPT_MINGC, OPT_MAXGC, 
-       OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, OPT_PHRED64, OPT_OUTPUTORPHANS, OPT_DISABLE_PRIMER };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, 
+       OPT_QSCALE, OPT_MINGC, OPT_MAXGC, 
+       OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, 
+       OPT_PHRED64, OPT_OUTPUTORPHANS, OPT_DISABLE_PRIMER,
+       OPT_DISCARD_QUALITY };
 
 static const struct option longopts[] = {
     { "verbose",                no_argument,       NULL, 'v' },
@@ -130,6 +135,7 @@ static const struct option longopts[] = {
     { "help",                   no_argument,       NULL, OPT_HELP },
     { "version",                no_argument,       NULL, OPT_VERSION },
     { "permute-ambiguous",      no_argument,       NULL, OPT_PERMUTE },
+    { "discard-quality",        no_argument,       NULL, OPT_DISCARD_QUALITY },
     { "no-primer-check",        no_argument,       NULL, OPT_DISABLE_PRIMER },
     { NULL, 0, NULL, 0 }
 };
@@ -169,6 +175,8 @@ int preprocessMain(int argc, char** argv)
     std::cerr << "Orphan file: " << (opt::orphanFile.empty() ? "none" : opt::orphanFile) << "\n";
     if(opt::bDiscardAmbiguous)
         std::cerr << "Discarding sequences with ambiguous bases\n";
+    if(opt::bDiscardQuality)
+        std::cerr << "Discarding quality scores\n";
     if(opt::bDustFilter)
         std::cerr << "Dust threshold: " << opt::dustThreshold << "\n";
     if(!opt::suffix.empty())
@@ -506,7 +514,11 @@ bool processRead(SeqRecord& record)
     }
 
     record.seq = seqStr;
-    record.qual = qualStr;
+
+    if(opt::bDiscardQuality)
+        record.qual.clear();
+    else
+        record.qual = qualStr;
 
     if(record.seq.length() == 0 || record.seq.length() < opt::minLength)
         return false;
@@ -617,6 +629,7 @@ void parsePreprocessOptions(int argc, char** argv)
             case OPT_PERMUTE: opt::bDiscardAmbiguous = false; break;
             case OPT_DUST: opt::bDustFilter = true; break;
             case OPT_DISABLE_PRIMER: opt::bDisablePrimerCheck = true; break;
+            case OPT_DISCARD_QUALITY: opt::bDiscardQuality = true; break;
             case OPT_HELP:
                 std::cout << PREPROCESS_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
