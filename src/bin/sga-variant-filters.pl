@@ -120,7 +120,8 @@ sub filter_bam
 
     # Call mpileup
     my $cmd = sprintf("samtools mpileup -r %s:%d-%d %s %s", $f[0], $f[1], $f[1], $tumor_bam, $normal_bam);
-    my $mpl = `$cmd`;
+    open(S, "$cmd|") || die("mpileup failed");
+    my $mpl = <S>; # A single line is returned
     chomp $mpl;
     
     my @g = split(' ', $mpl);
