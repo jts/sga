@@ -4,6 +4,7 @@
 use strict;
 use Getopt::Long;
 use File::Basename;
+use IPC::Cmd qw[can_run];
 
 my $dbsnp_path = ""; # Filter variants against dbSNP at the given directory
 my $sga_file = "";
@@ -16,17 +17,32 @@ my $min_af = 0;
 my $tumor_bam = "";
 my $normal_bam = "";
 my $outname = "";
+my $extra_dir = ""; # where all the dependencies live
 
-GetOptions("dbsnp=s"      => \$dbsnp_path,
-           "sga=s"        => \$sga_file,
-           "min-depth=i"  => \$depth_cutoff,
-           "min-af=f"     => \$min_af,
-           "passed-only"  => \$passed_only,
-           "tumor-bam=s"  => \$tumor_bam,
-           "normal-bam=s" => \$normal_bam,
-           "outname=s"    => \$outname);
+GetOptions("dbsnp=s"       => \$dbsnp_path,
+           "sga=s"         => \$sga_file,
+           "extra-dir=s"   => \$extra_dir,
+           "min-depth=i"   => \$depth_cutoff,
+           "min-af=f"      => \$min_af,
+           "passed-only"   => \$passed_only,
+           "tumor-bam=s"   => \$tumor_bam,
+           "normal-bam=s"  => \$normal_bam,
+           "outname=s"     => \$outname);
 
 die("The --sga option is mandatory") if($sga_file eq "");
+
+# Set paths to dependencies
+my $samtools_bin = "$extra_dir/samtools/samtools";
+my $vcfsort_bin = "$extra_dir/vcflib/bin/vcfsort";
+my $bgzip_bin = "$extra_dir/htslib/bgzip";
+my $bcftools_bin = "$extra_dir/bcftools/bcftools";
+
+# check dependencies
+check_prerequisites($samtools_bin,
+                    $vcfsort_bin,
+                    $bgzip_bin,
+                    $bcftools_bin);
+
 my %non_dbsnp_sites;
 my $using_dbsnp = 0;
 if($dbsnp_path ne "") {
@@ -119,7 +135,7 @@ sub filter_bam
     my $is_snv = length($f[3]) == 1 && length($f[4]) == 1;
 
     # Call mpileup
-    my $cmd = sprintf("samtools mpileup -r %s:%d-%d %s %s", $f[0], $f[1], $f[1], $tumor_bam, $normal_bam);
+    my $cmd = sprintf("$samtools_bin mpileup -r %s:%d-%d %s %s", $f[0], $f[1], $f[1], $tumor_bam, $normal_bam);
     open(S, "$cmd|") || die("mpileup failed");
     my $mpl = <S>; # A single line is returned
     chomp $mpl;
@@ -188,12 +204,12 @@ sub load_nondbsnp_sites
     my $out = "$in.dbsnp_filtered.vcf";
     
     # sort, bgzip and tabix the file
-    system("cat $in | vcf-sort > $in.tmp.sorted.vcf");
-    system("bgzip -f $in.tmp.sorted.vcf");
-    system("htscmd tabix -f -p vcf $in.tmp.sorted.vcf.gz");
+    system("$vcfsort_bin $in > $in.tmp.sorted.vcf");
+    system("$bgzip_bin -f $in.tmp.sorted.vcf");
+    system("$bcftools_bin index -f $in.tmp.sorted.vcf.gz");
     
     # find the non-dbsnp sites
-    open(SITES, "htscmd vcfisec -C $in.tmp.sorted.vcf.gz $path |");
+    open(SITES, "$bcftools_bin isec -C $in.tmp.sorted.vcf.gz $path |");
     while(<SITES>) {
         chomp;
         my @fields = split;
@@ -206,4 +222,18 @@ sub load_nondbsnp_sites
     unlink("$in.tmp.sorted.vcf");
     unlink("$in.tmp.sorted.vcf.gz");
     unlink("$in.tmp.sorted.vcf.gz.tbi");
+}
+
+# check that each program can be run
+sub check_prerequisites
+{
+    my (@programs) = @_;
+
+    foreach my $program (@programs) {
+        if(!can_run($program)) {
+            print STDERR "Error: could not find program $program.\n";
+            print STDERR "Please set the --extra option to the sga-extra directory.\n";
+            exit(1);
+        }
+    }
 }
