@@ -116,7 +116,11 @@ std::string applyVariant(const std::string& in, int pos,
     */
 
     // Ensure that the reference string at the variant matches the expected
-    assert(out.substr(idx, ref.length()) == ref);
+    if(out.substr(idx, ref.length()) != ref)
+    {
+        std::cerr << "Warning: REF does not match reference\n";
+        return "";
+    }
 
     // Replace the reference sequence with the alternative
     out.replace(idx, ref.length(), alt);
