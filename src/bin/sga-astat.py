@@ -75,9 +75,9 @@ contigData = list()
 # Read the contig names and lengths from the bam
 bamFile = pysam.Samfile(bamFilename, "rb")
 
-for (name, len) in zip(bamFile.references, bamFile.lengths):
-    t = name, len, 0
-    contigData.append(ContigData(name, len))
+for (name, length) in zip(bamFile.references, bamFile.lengths):
+    t = name, length, 0
+    contigData.append(ContigData(name, length))
     #print 'Name: ' + name
     #print 'Length: ' + str(len)
 
@@ -126,7 +126,7 @@ bootstrapLen = 0;
 bootstrapReads = 0;
 
 if genomeSize == 0:
-    for i in range(0, numContigsForInitialEstimate):
+    for i in range(0, min(numContigsForInitialEstimate, len(contigData))):
         cd = contigData[i]
         bootstrapLen += cd.nlen
         bootstrapReads += cd.n
