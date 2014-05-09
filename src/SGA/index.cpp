@@ -51,6 +51,7 @@ static const char *INDEX_USAGE_MESSAGE =
 "      --no-reverse                     suppress construction of the reverse BWT. Use this option when building the index\n"
 "                                       for reads that will be error corrected using the k-mer corrector, which only needs the forward index\n"
 "      --no-forward                     suppress construction of the forward BWT. Use this option when building the forward and reverse index separately\n"
+"      --no-sai                         suppress construction of the SAI file. This option only applies to -a ropebwt\n"
 "  -g, --gap-array=N                    use N bits of storage for each element of the gap array. Acceptable values are 4,8,16 or 32. Lower\n"
 "                                       values can substantially reduce the amount of memory required at the cost of less predictable memory usage.\n"
 "                                       When this value is set to 32, the memory requirement is essentially deterministic and requires ~5N bytes where\n"
@@ -69,13 +70,14 @@ namespace opt
     static bool bDiskAlgo = false;
     static bool bBuildReverse = true;
     static bool bBuildForward = true;
+    static bool bBuildSAI = true;
     static bool validate;
     static int gapArrayStorage = 4;
 }
 
 static const char* shortopts = "p:a:m:t:d:g:cv";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_NO_REVERSE,OPT_NO_FWD };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_NO_REVERSE, OPT_NO_FWD, OPT_NO_SAI };
 
 static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
@@ -87,6 +89,7 @@ static const struct option longopts[] = {
     { "algorithm",   required_argument, NULL, 'a' },
     { "no-reverse",  no_argument,       NULL, OPT_NO_REVERSE },
     { "no-forward",  no_argument,       NULL, OPT_NO_FWD },
+    { "no-sai",      no_argument,       NULL, OPT_NO_SAI },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -154,13 +157,16 @@ void indexInMemoryRopebwt()
         std::string bwt_filename = opt::prefix + BWT_EXT;
         std::string sai_filename = opt::prefix + SAI_EXT;
         BWTCA::runRopebwt(opt::readsFile, bwt_filename, use_threads, false);
-        std::cout << "\t done bwt construction, generating .sai file\n";
 
-        BWT* pBWT = new BWT(bwt_filename);
-        SampledSuffixArray ssa;
-        ssa.buildLexicoIndex(pBWT, opt::numThreads);
-        ssa.writeLexicoIndex(sai_filename);
-        delete pBWT;
+        if(opt::bBuildSAI)
+        {
+            std::cout << "\t done bwt construction, generating .sai file\n";
+            BWT* pBWT = new BWT(bwt_filename);
+            SampledSuffixArray ssa;
+            ssa.buildLexicoIndex(pBWT, opt::numThreads);
+            ssa.writeLexicoIndex(sai_filename);
+            delete pBWT;
+        }
     }
 
     if(opt::bBuildReverse)
@@ -169,12 +175,15 @@ void indexInMemoryRopebwt()
         std::string rsai_filename = opt::prefix + RSAI_EXT;
         BWTCA::runRopebwt(opt::readsFile, rbwt_filename, use_threads, true);
 
-        std::cout << "\t done rbwt construction, generating .rsai file\n";
-        BWT* pRBWT = new BWT(rbwt_filename);
-        SampledSuffixArray ssa;
-        ssa.buildLexicoIndex(pRBWT, opt::numThreads);
-        ssa.writeLexicoIndex(rsai_filename);
-        delete pRBWT;
+        if(opt::bBuildSAI)
+        {
+            std::cout << "\t done rbwt construction, generating .rsai file\n";
+            BWT* pRBWT = new BWT(rbwt_filename);
+            SampledSuffixArray ssa;
+            ssa.buildLexicoIndex(pRBWT, opt::numThreads);
+            ssa.writeLexicoIndex(rsai_filename);
+            delete pRBWT;
+        }
     }
 }
 
@@ -279,6 +288,7 @@ void parseIndexOptions(int argc, char** argv)
             case 'v': opt::verbose++; break;
             case OPT_NO_REVERSE: opt::bBuildReverse = false; break;
             case OPT_NO_FWD: opt::bBuildForward = false; break;
+            case OPT_NO_SAI: opt::bBuildSAI = false; break;
             case OPT_HELP:
                 std::cout << INDEX_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

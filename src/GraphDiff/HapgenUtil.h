@@ -20,8 +20,14 @@
 struct HapgenAlignment
 {
     //
-    HapgenAlignment() : referenceID(-1), position(-1), length(0), score(-1), isRC(false) {}
-    HapgenAlignment(const int& id, int p, int l, int s, bool rc) : referenceID(id), position(p), length(l), score(s), isRC(rc) {}
+    HapgenAlignment() : referenceID(-1), position(-1), length(0), score(-1), numEvents(0), isRC(false), isSNP(false) {}
+    HapgenAlignment(const int& id, int p, int l, int s, int ne, bool rc, bool snp) : referenceID(id), 
+                                                                                     position(p), 
+                                                                                     length(l), 
+                                                                                     score(s),
+                                                                                     numEvents(ne), 
+                                                                                     isRC(rc), 
+                                                                                     isSNP(snp) {}
 
     // Sort
     // Kees: added sorting on alignment score
@@ -51,26 +57,23 @@ struct HapgenAlignment
     int position;
     int length; // alignment length
     int score;
+    int numEvents;
     bool isRC;
+    bool isSNP;
 };
 typedef std::vector<HapgenAlignment> HapgenAlignmentVector;
 
 //
 namespace HapgenUtil
 {
-
-
-    // Align the haplotype to the reference genome represented by the BWT/SSA pair
-    void alignHaplotypeToReferenceBWASW(const std::string& haplotype,
-                                        const BWTIndexSet& referenceIndex,
-                                        HapgenAlignmentVector& outAlignments);
-
     //
     void alignHaplotypeToReferenceKmer(size_t k,
                                        const std::string& haplotype,
                                        const BWTIndexSet& referenceIndex,
                                        const ReadTable* pReferenceTable,
                                        HapgenAlignmentVector& outAlignments);
+
+    
 
 
     // Coalesce a set of alignments into distinct locations
@@ -132,6 +135,15 @@ namespace HapgenUtil
     // Check that all the strings in the vector align to the same coordinates
     // of the passed in sequence
     bool checkAlignmentsAreConsistent(const std::string& refString, const StringVector& queries);
+
+    // Return the count of the most frequent string within one-edit distance of the given string 
+    size_t getMaximumOneEdit(const std::string& str, const BWTIndexSet& indices);
+    
+    // Calculate the largest k such that every k-mer in the sequence is present at least min_depth times in the BWT
+    size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices);
+
+    // Count the number of times each k-mer of str is in the BWT
+    std::vector<int> makeCountProfile(const std::string& str, size_t k, int max, const BWTIndexSet& indices);
 
     // Print an alignment to a reference
     void printAlignment(const std::string& query, const HapgenAlignment& aln, const ReadTable* pRefTable);

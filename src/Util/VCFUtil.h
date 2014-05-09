@@ -39,7 +39,13 @@ enum VCFReturnCode
 struct VCFRecord
 {
     // functions
+
+    // initialize an empty record
     VCFRecord();
+
+    // parse a record from a tab-delimited string
+    VCFRecord(const std::string& line);
+
     void addComment(const std::string& key, const std::string& value);
     void addComment(const std::string& key, const int& value);
     void addComment(const std::string& key, const double& value);
@@ -58,6 +64,8 @@ struct VCFRecord
         else
             return a.refPosition < b.refPosition;
     }
+
+    bool isMultiAllelic() const { return varStr.find(",") != std::string::npos; }
 
     // data
     std::string refName;

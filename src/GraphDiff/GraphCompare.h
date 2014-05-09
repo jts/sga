@@ -173,9 +173,6 @@ class GraphCompare
         // Mark all the kmers in str as being visited
         void markVariantSequenceKmers(const std::string& str) const;
         
-        // Calculate the largest k such that every k-mer in the sequence is present at least min_depth times in the BWT
-        size_t calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices) const;
-
         // Calculate the number of high coverage branches off a haplotype path through the de Bruijn graph
         size_t calculateHaplotypeBranches(const std::string& sequence, size_t k, size_t min_branch_depth, const BWTIndexSet& indices);
 
@@ -184,7 +181,6 @@ class GraphCompare
         
         // Debug functions
         bool transformVariantString(const std::string& inStr, std::string& outStr);
-        IntVector makeCountProfile(const std::string& str, size_t k, const BWT* pBWT, int max);
         void showMappingLocations(const std::string& str);
 
         //

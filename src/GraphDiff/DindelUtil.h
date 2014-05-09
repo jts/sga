@@ -51,13 +51,6 @@ namespace DindelUtil
     void doMultipleReadHaplotypeAlignment(const std::vector<DindelRead> & dReads,
                                           const StringVector & haplotypes);
 
-    // Compute the best alignment 
-    DindelReturnCode computeBestAlignment(const StringVector& inHaplotypes, 
-                                          const SeqItemVector& variantMates,
-                                          const SeqItemVector& variantRCMates,
-                                          const GraphCompareParameters& parameters,
-                                          HapgenAlignment& bestAlignment);
-
     // Convert a read-haplotype alignment to a reference alignment in BAM format
     void readHaplotypeAlignmentToBAM(const std::string& readID,
                                      const std::string& readSequence,

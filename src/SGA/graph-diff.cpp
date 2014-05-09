@@ -77,8 +77,7 @@ static const char *GRAPH_DIFF_USAGE_MESSAGE =
 "Algorithm options:\n"
 "      -k, --kmer=K                     use K-mers to discover variants\n"
 "      -x, --min-discovery-count=T      require a variant k-mer to be seen at least T times\n"
-"          --debruijn                   use the de Bruijn graph assembly algorithm (default: string graph)\n"
-"          --paired-debruijn            use the de Bruijn graph assembly algorithm with paired-end constraints(default: string graph)\n"
+"      -a, --algorithm=STR              select the assembly algorithm to use from: debruijn, string\n"
 "      -m, --min-overlap=N              require at least N bp overlap when assembling using a string graph\n" 
 "          --min-dbg-count=T            only use k-mers seen T times when assembling using a de Bruijn graph\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
@@ -100,8 +99,7 @@ namespace opt
     static int minDBGCount = 2;
 
     // Calling modes
-    static bool deBruijnMode = false;
-    static bool deBruijnPairedMode = false;
+    static GraphCompareAlgorithm algorithm = GCA_DEBRUIJN_GRAPH;
     static bool lowCoverage = false;
     static bool referenceMode = false;
     static bool useQualityScores = false;
@@ -117,7 +115,7 @@ namespace opt
     static std::string inputVCFFile;
 }
 
-static const char* shortopts = "b:r:o:k:d:t:x:y:p:m:v";
+static const char* shortopts = "b:r:o:k:d:t:x:y:p:m:a:v";
 
 enum { OPT_HELP = 1, 
        OPT_VERSION, 
@@ -126,8 +124,6 @@ enum { OPT_HELP = 1,
        OPT_DEBUG, 
        OPT_MIN_DBG_COUNT, 
        OPT_INDEX, 
-       OPT_DEBRUIJN, 
-       OPT_PAIRED_DEBRUIJN, 
        OPT_LOWCOVERAGE, 
        OPT_QUALSCORES,
        OPT_BLOOM_GENOME,
@@ -144,8 +140,7 @@ static const struct option longopts[] = {
     { "sample-rate",          required_argument, NULL, 'd' },
     { "prefix",               required_argument, NULL, 'p' },
     { "min-overlap",          required_argument, NULL, 'm' },
-    { "debruijn",             no_argument,       NULL, OPT_DEBRUIJN },
-    { "paired-debruijn",      no_argument,       NULL, OPT_PAIRED_DEBRUIJN },
+    { "algorithm",            required_argument, NULL, 'a' },
     { "low-coverage",         no_argument,       NULL, OPT_LOWCOVERAGE },
     { "use-quality-scores",   no_argument,       NULL, OPT_QUALSCORES},
     { "interactive",          no_argument,       NULL, OPT_INTERACTIVE},
@@ -252,14 +247,7 @@ int graphDiffMain(int argc, char** argv)
     sharedParameters.referenceIndex = referenceIndex;
     sharedParameters.pRefTable = &refTable;
     sharedParameters.bReferenceMode = opt::referenceMode;
-
-    if(opt::deBruijnPairedMode)
-        sharedParameters.algorithm = GCA_PAIRED_DEBRUIJN_GRAPH;
-    else if(opt::deBruijnMode)
-        sharedParameters.algorithm = GCA_DEBRUIJN_GRAPH;
-    else
-        sharedParameters.algorithm = GCA_STRING_GRAPH;
-
+    sharedParameters.algorithm = opt::algorithm;
     sharedParameters.kmer = opt::kmer;
     sharedParameters.minDiscoveryCount = opt::minDiscoveryCount;
     sharedParameters.minDBGCount = opt::minDBGCount;
@@ -500,6 +488,7 @@ void runInteractive(GraphCompareParameters& parameters)
 //
 void parseGraphDiffOptions(int argc, char** argv)
 {
+    std::string algorithmString;
     bool die = false;
     for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
     {
@@ -514,11 +503,10 @@ void parseGraphDiffOptions(int argc, char** argv)
             case 'd': arg >> opt::sampleRate; break;
             case 'p': arg >> opt::outPrefix; break;
             case 'm': arg >> opt::minOverlap; break;
+            case 'a': arg >> algorithmString; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_REFERENCE: arg >> opt::referenceFile; break;
-            case OPT_DEBRUIJN: opt::deBruijnMode = true; break;
-            case OPT_PAIRED_DEBRUIJN: opt::deBruijnPairedMode = true; break;
             case OPT_LOWCOVERAGE: opt::lowCoverage = true; break;
             case OPT_MIN_DBG_COUNT: arg >> opt::minDBGCount; break;
             case OPT_BLOOM_GENOME: arg >> opt::bloomGenomeSize; break;
@@ -558,6 +546,17 @@ void parseGraphDiffOptions(int argc, char** argv)
 
     if(opt::baseFile.empty())
         opt::referenceMode = true;
+
+    if(algorithmString == "paired") {
+        opt::algorithm = GCA_PAIRED_DEBRUIJN_GRAPH;
+    } else if(algorithmString == "debruijn") {
+        opt::algorithm = GCA_DEBRUIJN_GRAPH;
+    } else if(algorithmString == "string") {
+        opt::algorithm = GCA_STRING_GRAPH;
+    } else {
+        std::cerr << "Error: unrecognized algorithm string: " << algorithmString << "\n";
+        die = true;
+    }
 
     if(opt::referenceFile.empty())
     {

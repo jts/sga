@@ -39,6 +39,7 @@ static const char *GENSSA_USAGE_MESSAGE =
 "      --help                           display this help and exit\n"
 "  -t, --threads=NUM                    use NUM threads to construct the index (default: 1)\n"
 "  -c, --check                          validate that the suffix array/bwt is correct\n"
+"  -s, --sai-only                       only build the lexicographic index\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 namespace opt
@@ -48,17 +49,19 @@ namespace opt
     static std::string prefix;
     static int numThreads = 1;
     static int sampleRate = 32;
+    static bool saiOnly = false;
     static bool validate = false;
 }
 
-static const char* shortopts = "t:cv";
+static const char* shortopts = "t:cvs";
 
-enum { OPT_HELP = 1, OPT_VERSION };
+enum { OPT_HELP = 1, OPT_VERSION, OPT_SAI_ONLY };
 
 static const struct option longopts[] = {
     { "verbose",     no_argument,       NULL, 'v' },
     { "check",       no_argument,       NULL, 'c' },
     { "threads",     required_argument, NULL, 't' },
+    { "sai-only",    no_argument,       NULL, OPT_SAI_ONLY },
     { "help",        no_argument,       NULL, OPT_HELP },
     { "version",     no_argument,       NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -70,19 +73,27 @@ int genSSAMain(int argc, char** argv)
     parseGenSSAOptions(argc, argv);
     
     BWT* pBWT = new BWT(opt::prefix + BWT_EXT);
-    ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pBWT->getNumStrings(), RIO_NUMERICID);
     pBWT->printInfo();
 
     SampledSuffixArray* pSSA = new SampledSuffixArray();
-    pSSA->build(pBWT, pRIT, opt::sampleRate);
+    if(opt::saiOnly)
+    {
+        pSSA->buildLexicoIndex(pBWT, opt::numThreads);
+        pSSA->writeLexicoIndex(opt::prefix + SAI_EXT);
+    }
+    else
+    {
+        ReadInfoTable* pRIT = new ReadInfoTable(opt::readsFile, pBWT->getNumStrings(), RIO_NUMERICID);
+        pSSA->build(pBWT, pRIT, opt::sampleRate);
+        pSSA->writeSSA(opt::prefix + SSA_EXT);
+        delete pRIT;
+    }
     pSSA->printInfo();
-    pSSA->writeSSA(opt::prefix + SSA_EXT);
 
     if(opt::validate)
         pSSA->validate(opt::readsFile, pBWT);
 
     delete pBWT;
-    delete pRIT;
     delete pSSA;
 
     return 0;
@@ -103,6 +114,7 @@ void parseGenSSAOptions(int argc, char** argv)
             case 'c': opt::validate = true; break;
             case 't': arg >> opt::numThreads; break;
             case 'v': opt::verbose++; break;
+            case OPT_SAI_ONLY: opt::saiOnly = true; break;
             case OPT_HELP:
                 std::cout << GENSSA_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);

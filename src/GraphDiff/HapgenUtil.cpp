@@ -16,37 +16,6 @@
 #include "Verbosity.h"
 #include "overlapper.h"
 
-// Align the haplotype to the reference genome represented by the BWT/SSA pair
-void HapgenUtil::alignHaplotypeToReferenceBWASW(const std::string& haplotype,
-                                                const BWTIndexSet& referenceIndex,
-                                                HapgenAlignmentVector& outAlignments)
-{
-    PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceBWASW")
-    LRAlignment::LRParams params;
-
-    params.zBest = 20;
-
-    for(size_t i = 0; i <= 1; ++i)
-    {
-        LRAlignment::LRHitVector hits;
-        std::string query = (i == 0) ? haplotype : reverseComplement(haplotype);
-        LRAlignment::bwaswAlignment(query, referenceIndex.pBWT, referenceIndex.pSSA, params, hits);
-
-        // Convert the hits into alignments
-        for(size_t j = 0; j < hits.size(); ++j)
-        {
-            int q_alignment_length = hits[j].q_end - hits[j].q_start;
-
-            // Skip non-complete alignments
-            if((int)haplotype.length() == q_alignment_length)
-            {
-                HapgenAlignment aln(hits[j].targetID, hits[j].t_start, hits[j].length, hits[j].G, i == 1);
-                outAlignments.push_back(aln);
-            }
-        }
-    }
-}
-
 struct CandidateKmerAlignment
 {
     size_t query_index;
@@ -144,6 +113,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             int alignment_length = alignment_end - alignment_start + 1;
 
             // Crude count of the number of distinct variation events
+            bool has_indel = false;
             int num_events = overlap.edit_distance;
             std::stringstream c_parser(overlap.cigar);
             int len;
@@ -154,7 +124,10 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 
                 // Only count one event per insertion/deletion
                 if(t == 'D' || t == 'I')
+                {
                     num_events -= (len - 1);
+                    has_indel = true;
+                }
             }
 
             // Skip poor alignments
@@ -169,7 +142,16 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
                 continue;
             }
 
-            HapgenAlignment aln(candidates[j].target_sequence_id, alignment_start, alignment_length, overlap.score, is_reverse);
+            bool is_snp = !has_indel && overlap.edit_distance == 1;
+
+            HapgenAlignment aln(candidates[j].target_sequence_id, 
+                                alignment_start, 
+                                alignment_length, 
+                                overlap.score, 
+                                num_events,
+                                is_reverse, 
+                                is_snp);
+
             tmp_alignments.push_back(aln);
             event_count_vector.push_back(num_events);
             if(Verbosity::Instance().getPrintLevel() > 4)
@@ -534,6 +516,79 @@ LocalAlignmentResultVector HapgenUtil::alignReadsLocally(const std::string& targ
     }
     return results;
 }
+
+//
+size_t HapgenUtil::getMaximumOneEdit(const std::string& str, const BWTIndexSet& indices)
+{
+    size_t max = 0;
+    std::string t = str;
+
+    //
+    for(size_t i = 0; i < str.size(); ++i)
+    {
+        char tmp = t[i];
+        for(int bi = 0; bi < DNA_ALPHABET::size; ++bi)
+        {
+            char b = DNA_ALPHABET::getBase(bi);
+            if(b != tmp)
+            {
+                t[i] = b;
+                size_t count = BWTAlgorithms::countSequenceOccurrences(t, indices);
+                if(count > max)
+                    max = count;
+            }
+        }
+        t[i] = tmp;
+    }
+
+    printf("MaxOneEdit %zu\n", max);
+    return max;
+}
+
+// Calculate the largest k such that every k-mer in the sequence is present at least min_depth times in the BWT
+size_t HapgenUtil::calculateMaxCoveringK(const std::string& sequence, int min_depth, const BWTIndexSet& indices)
+{
+    size_t min_k = 15;
+    for(size_t k = 99; k >= min_k; --k)
+    {
+        if(sequence.size() < k)
+            continue;
+        bool covered = true;
+        size_t nk = sequence.size() - k + 1;
+        for(size_t i = 0; i < nk; ++i)
+        {
+            std::string kmer = sequence.substr(i, k);
+            int c = BWTAlgorithms::countSequenceOccurrences(kmer, indices);
+
+            if(c < min_depth)
+            {
+                covered = false;
+                break;
+            }
+        }
+
+        if(covered)
+            return k;
+    }
+
+    return 0;
+}
+
+//
+std::vector<int> HapgenUtil::makeCountProfile(const std::string& str, size_t k, int max, const BWTIndexSet& indices)
+{
+    std::vector<int> out;
+    if(str.size() < k)
+        return out;
+
+    for(size_t i = 0; i < str.size() - k + 1; ++i)
+    {
+        int count = BWTAlgorithms::countSequenceOccurrences(str.substr(i, k), indices);
+        out.push_back(count > max ? max : count);
+    }
+    return out;
+}
+
 
 // Print an alignment to a reference
 void HapgenUtil::printAlignment(const std::string& query, const HapgenAlignment& aln, const ReadTable* pRefTable)
