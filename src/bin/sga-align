@@ -28,7 +28,10 @@ def runBWAIndex(inFile):
 
 def runBWAAln(inFiles, contigsFile, outFile):
     assert len(inFiles) == 2
-    
+    if inFiles[0] == inFiles[1]:
+        print 'Error: the two reads files are the same'
+        sys.exit(1)
+
     contigsBasename = getBasename(contigsFile)
     tempSAI = map(lambda x : getBasename(x) + "." + contigsBasename + ".bwsai", inFiles)
 
