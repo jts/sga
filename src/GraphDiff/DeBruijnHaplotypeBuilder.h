@@ -46,10 +46,6 @@ class DeBruijnHaplotypeBuilder
 
     private:
 
-        // Remove tips from the graph that consist of non-join vertices
-        void removeNonJoinTips(StringGraph* pGraph, std::vector<Vertex*>& antisense_joins, std::vector<Vertex*>& sense_joins);
-        void _checkNonJoinForTrim(Vertex* x, EdgeDir direction);
-        
         // Remove join vertices that lie on the unipath to some other join vertex
         void cullRedundantJoinVertices(std::vector<Vertex*>& join_vertices, StringGraph* pGraph, EdgeDir direction);
 

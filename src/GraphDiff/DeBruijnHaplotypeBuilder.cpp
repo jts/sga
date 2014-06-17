@@ -86,7 +86,8 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
         AlphaCount64 extensionCounts = 
             BWTAlgorithms::calculateDeBruijnExtensionsSingleIndex(vertStr, m_parameters.variantIndex.pBWT, curr.direction);
 
-        std::string extensionsUsed;
+        // Count valid extensions
+        std::string extensions;
         for(size_t i = 0; i < DNA_ALPHABET::size; ++i)
         {
             char b = DNA_ALPHABET::getBase(i);
@@ -95,7 +96,16 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
             if(!acceptExt)
                 continue;
 
-            extensionsUsed.push_back(b);
+            extensions.push_back(b);
+        }
+
+        // Do not allow join vertices to branch
+        if(curr.pVertex->getColor() == GC_RED && extensions.size() > 1)
+            continue;
+
+        for(size_t i = 0; i < extensions.size(); ++i)
+        {
+            char b = extensions[i];
             std::string newStr = VariationBuilderCommon::makeDeBruijnVertex(vertStr, b, curr.direction);
 
             // Create the new vertex and edge in the graph
@@ -121,6 +131,7 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
                     sense_join_vector.push_back(pVertex);
                 else
                     antisense_join_vector.push_back(pVertex);
+                pVertex->setColor(GC_RED);
             }
 
             // Add the vertex to the extension queue
@@ -130,18 +141,13 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
         }
         
         // Update the total number of times we branches the search
-        if(!extensionsUsed.empty())
-            total_branches += extensionsUsed.size() - 1;
+        if(!extensions.empty())
+            total_branches += extensions.size() - 1;
     }
-
-    printf("AS: %zu S: %zu\n", antisense_join_vector.size(), sense_join_vector.size());
-
-    removeNonJoinTips(pGraph, antisense_join_vector, sense_join_vector);
+    pGraph->setColors(GC_BLACK);
  
     cullRedundantJoinVertices(antisense_join_vector, pGraph, !ED_ANTISENSE);
     cullRedundantJoinVertices(sense_join_vector, pGraph, !ED_SENSE);
-
-    printf("AS: %zu S: %zu\n", antisense_join_vector.size(), sense_join_vector.size());
 
     // If the graph construction was successful, walk the graph
     // between the endpoints to make a string
@@ -164,56 +170,6 @@ HaplotypeBuilderReturnCode DeBruijnHaplotypeBuilder::run(StringVector& out_haplo
     
     delete pGraph;
     return HBRC_OK;
-}
-
-// This algorithm removes tip branches that consist of non-join (tumor-only) vertices
-void DeBruijnHaplotypeBuilder::removeNonJoinTips(StringGraph* pGraph, std::vector<Vertex*>& antisense_joins, std::vector<Vertex*>& sense_joins)
-{
-    pGraph->setColors(GC_WHITE);
-
-    // Mark all join vertices as RED. These are ignored in the subsequent algorithm
-    for(size_t i = 0; i < antisense_joins.size(); ++i)
-        antisense_joins[i]->setColor(GC_RED);
-    for(size_t i = 0; i < sense_joins.size(); ++i)
-        sense_joins[i]->setColor(GC_RED);
-
-    VertexPtrVec vertices = pGraph->getAllVertices();
-    for(size_t i = 0; i < vertices.size(); ++i)
-    {
-        Vertex* x = vertices[i];
-        _checkNonJoinForTrim(x, ED_SENSE);
-        _checkNonJoinForTrim(x, ED_ANTISENSE);
-    }
-
-    pGraph->sweepVertices(GC_BLACK);
-    pGraph->setColors(GC_BLACK);
-}
-
-// Recursive call to trim non-join tip vertices from the graph
-void DeBruijnHaplotypeBuilder::_checkNonJoinForTrim(Vertex* x, EdgeDir direction)
-{
-    // join vertices (red) and previous visited (black) are ignored
-    if(x->getColor() == GC_RED || x->getColor() == GC_BLACK)
-        return;
-
-    // Check whether there are any edges in this direction
-    // Vertices that are marked for deletion (BLACK) are ignored
-    EdgePtrVec edges = x->getEdges(direction);
-
-    size_t n_edges = edges.size();
-    size_t n_trimmed_edges = 0;
-    for(size_t i = 0; i < edges.size(); ++i)
-        n_trimmed_edges += (edges[i]->getEnd()->getColor() == GC_BLACK);
-
-    if(n_edges == n_trimmed_edges)
-    {
-        // this vertex is a tip, remove it
-        x->setColor(GC_BLACK);
-        printf("Marking for deletion\n");
-        // Recurse to neighbors
-        for(size_t i = 0; i < edges.size(); ++i)
-            _checkNonJoinForTrim(edges[i]->getEnd(), direction);
-    }
 }
 
 void DeBruijnHaplotypeBuilder::cullRedundantJoinVertices(std::vector<Vertex*>& join_vertices, StringGraph* pGraph, EdgeDir direction)
