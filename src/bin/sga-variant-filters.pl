@@ -11,7 +11,7 @@ my $sga_file = "";
 my $dust_cutoff = 2.0;
 my $strand_cutoff = 2.0;
 my $hplen_cutoff = 7;
-my $depth_cutoff = 0;
+my $min_depth_cutoff = 0;
 my $passed_only = 0;
 my $min_af = 0;
 my $tumor_bam = "";
@@ -22,7 +22,7 @@ my $extra_dir = ""; # where all the dependencies live
 GetOptions("dbsnp=s"       => \$dbsnp_path,
            "sga=s"         => \$sga_file,
            "extra-dir=s"   => \$extra_dir,
-           "min-depth=i"   => \$depth_cutoff,
+           "min-depth=i"   => \$min_depth_cutoff,
            "min-af=f"      => \$min_af,
            "passed-only"   => \$passed_only,
            "tumor-bam=s"   => \$tumor_bam,
@@ -181,6 +181,7 @@ sub filter_bam
         }
         
         push @filters, "NoAltEvidence" if(scalar(@alt_quals) == 0);
+        push @filters, "LowAltEvidence" if(scalar(@alt_quals) > 0 && scalar(@alt_quals) < $min_depth_cutoff);
 
         my @sorted_quals = sort { $a <=> $b } @alt_quals;
         my $mi = scalar(@sorted_quals) / 2;

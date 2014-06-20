@@ -54,6 +54,7 @@ sga_SOURCES = sga.cpp \
               preqc.h preqc.cpp \
               variant-detectability.h variant-detectability.cpp \
               rewrite-evidence-bam.h rewrite-evidence-bam.cpp \
+              somatic-variant-filters-bam.h somatic-variant-filters.cpp \
               haplotype-filter.h haplotype-filter.cpp \
               OverlapCommon.h OverlapCommon.cpp \
               SGACommon.h 
