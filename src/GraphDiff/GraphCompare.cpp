@@ -338,8 +338,8 @@ void GraphCompare::qcVariantHaplotypes(bool bReferenceMode, StringVector& varian
             for(size_t j = 0; j < n; j++)
                 num_uncovered_bases += covered_bases.test(j) ? 0 : 1;
 
-            if(max_d < k / 2)
-                haplotype = "";
+            //if(max_d < k / 2)
+            //    haplotype = "";
 
             if(Verbosity::Instance().getPrintLevel() > 2)
             {

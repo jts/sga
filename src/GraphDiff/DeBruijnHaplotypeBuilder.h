@@ -39,7 +39,15 @@ class DeBruijnHaplotypeBuilder
         // Returns true if the graph was successfully built between the two sequences
         HaplotypeBuilderReturnCode run(StringVector& out_haplotypes);
         
+        // Extend the graph along the unipath that pStart lies on
+        Vertex* extendUnambiguously(Vertex* pStart, StringGraph* pGraph, 
+                                    EdgeDir dir, size_t max_distance, size_t min_target_count);
+
+
     private:
+
+        // Remove join vertices that lie on the unipath to some other join vertex
+        void cullRedundantJoinVertices(std::vector<Vertex*>& join_vertices, StringGraph* pGraph, EdgeDir direction);
 
         //
         // Data
