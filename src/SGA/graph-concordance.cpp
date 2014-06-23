@@ -352,8 +352,11 @@ int graphConcordanceMain(int argc, char** argv)
                                                                           record.refPosition, 
                                                                           flanking_size);
         
-        std::cerr << "\n\n Variant: " << record << "\n";
-        std::cerr << "Nearby: " << nearby_vector.size() << "\n";
+        if(opt::verbose > 0)
+        {
+            std::cerr << "\n\n Variant: " << record << "\n";
+            std::cerr << "Nearby: " << nearby_vector.size() << "\n";
+        }
 
         std::string classification = "UNKNOWN";
 
@@ -369,15 +372,6 @@ int graphConcordanceMain(int argc, char** argv)
             IntVector v_cp = HapgenUtil::makeCountProfile(haplotype, opt::k, 9, variantIndex);
             IntVector b_cp = HapgenUtil::makeCountProfile(haplotype, opt::k, 9, baseIndex);
             
-            std::cerr << "k-mer profile somatic (variant):  ";
-            for(size_t j = 0; j < v_cp.size(); ++j)
-                std::cerr << v_cp[j];
-            std::cerr << "\n";
-
-            std::cerr << "k-mer profile somatic (base):     ";
-            for(size_t j = 0; j < b_cp.size(); ++j)
-                std::cerr << b_cp[j];
-            std::cerr << "\n";
         
             size_t unique_variant_kmers = 0;
             for(size_t i = 0; i < v_cp.size(); ++i)
@@ -388,7 +382,21 @@ int graphConcordanceMain(int argc, char** argv)
 
             if(unique_variant_kmers > max_unique_variant_kmers)
                 max_unique_variant_kmers = unique_variant_kmers;
-            fprintf(stderr, "unique variant kmers: %zu\n\n", unique_variant_kmers);
+            
+            if(opt::verbose > 0)
+            {
+                std::cerr << "k-mer profile somatic (variant):  ";
+                for(size_t j = 0; j < v_cp.size(); ++j)
+                    std::cerr << v_cp[j];
+                std::cerr << "\n";
+
+                std::cerr << "k-mer profile somatic (base):     ";
+                for(size_t j = 0; j < b_cp.size(); ++j)
+                    std::cerr << b_cp[j];
+                std::cerr << "\n";
+                fprintf(stderr, "unique variant kmers: %zu\n\n", unique_variant_kmers);
+                fprintf(stderr, "max unique variant kmers: %zu\n\n", max_unique_variant_kmers);
+            }
         }
         else
         {
@@ -399,7 +407,6 @@ int graphConcordanceMain(int argc, char** argv)
             classification = "SOMATIC";
         else
             classification = "GERMLINE";
-        fprintf(stderr, "max unique variant kmers: %zu\n\n", max_unique_variant_kmers);
         
         // write out the record
         record.addComment("MaxUniqueVariantKmers", (int)max_unique_variant_kmers);
