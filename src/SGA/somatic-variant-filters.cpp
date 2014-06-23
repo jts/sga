@@ -460,7 +460,7 @@ int somaticVariantFiltersMain(int argc, char** argv)
 
         if(!fail_reasons.empty())
         {
-            if(record.passStr != "PASS")
+            if(record.passStr != "PASS" || record.passStr != ".")
                 fail_reasons.insert(fail_reasons.begin(), record.passStr);
 
             std::stringstream strss;

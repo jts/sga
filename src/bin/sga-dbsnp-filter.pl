@@ -72,7 +72,7 @@ sub perform_filter
 
         if(!defined($non_dbsnp_sites{$key})) { 
             my $ft = "dbSNP";
-            if($f[6] eq "PASS") {
+            if($f[6] eq "PASS" || $f[6] eq ".") {
                 $f[6] = $ft;
             } else {
                 $f[6] .= ";$ft";
