@@ -1276,22 +1276,9 @@ void DindelRealignWindowResult::Inference::outputAsVCF(const DindelVariant & var
     hps.insert(var.getHPLen());
     int hp = *hps.rbegin();
 
-    // calculate the dust score around a 100bp window centered at the start of the variant
-    // 64-bp is the window size used in the SDUST paper
-    int dw_size = 64;
-    int dw_start = var.getPos() - dw_size/2;
-    dw_start = std::max(0, dw_start); // clamp to 0
-
-    int dw_end = var.getPos() + dw_size/2;
-    const DNAString& chromosome = pRefTable->getRead(var.getChrom()).seq;
-    dw_end = std::min(dw_end, (int)chromosome.length());
-
-    double dust_score = 0.0f;
-    if(dw_end - dw_start == dw_size)
-    {
-        std::string ref_dust_window = chromosome.substr(dw_start, dw_end - dw_start);
-        dust_score = calculateDustScore(ref_dust_window);
-    }
+    double dust_score = HapgenUtil::calculateDustScoreAtPosition(var.getChrom(),
+                                                                 var.getPos(),
+                                                                 pRefTable);
 
     // Apply filters
     std::string filter="NoCall";

@@ -136,6 +136,12 @@ namespace HapgenUtil
     // of the passed in sequence
     bool checkAlignmentsAreConsistent(const std::string& refString, const StringVector& queries);
 
+    // Calculate the dust score around a reference position
+    double calculateDustScoreAtPosition(const std::string& name, 
+                                        int position, 
+                                        const ReadTable* pRefTable,
+                                        int window_size = 64);
+
     // Return the count of the most frequent string within one-edit distance of the given string 
     size_t getMaximumOneEdit(const std::string& str, const BWTIndexSet& indices);
     

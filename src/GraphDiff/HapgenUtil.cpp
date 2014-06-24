@@ -518,6 +518,28 @@ LocalAlignmentResultVector HapgenUtil::alignReadsLocally(const std::string& targ
 }
 
 //
+double HapgenUtil::calculateDustScoreAtPosition(const std::string& name, 
+                                                int position, 
+                                                const ReadTable* pRefTable,
+                                                int window_size)
+{
+    int dw_start = position - window_size / 2;
+    dw_start = std::max(0, dw_start); // clamp to 0
+
+    int dw_end = position + window_size / 2;
+    const DNAString& chromosome = pRefTable->getRead(name).seq;
+    dw_end = std::min(dw_end, (int)chromosome.length());
+
+    double dust_score = 0.0f;
+    if(dw_end - dw_start == window_size)
+    {
+        std::string ref_dust_window = chromosome.substr(dw_start, dw_end - dw_start);
+        dust_score = calculateDustScore(ref_dust_window);
+    }
+    return dust_score;
+}
+
+//
 size_t HapgenUtil::getMaximumOneEdit(const std::string& str, const BWTIndexSet& indices)
 {
     size_t max = 0;

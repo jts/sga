@@ -24,6 +24,7 @@
 #include "DindelRealignWindow.h"
 #include "VariantIndex.h"
 #include "HapgenUtil.h"
+#include "MultiAlignment.h"
 #include "api/BamReader.h"
 
 // Types
@@ -334,6 +335,78 @@ std::string makeVariantKey(const VCFRecord& record)
     return ss.str(); 
 }
 
+// Calculate Homopolymer lengths at the variant position
+int calculateHomopolymerLength(const VCFRecord& record, const ReadTable* refTable)
+{
+    static const int flankingSize = 100;
+
+    // Grab the reference haplotype
+    int eventLength = record.varStr.length();
+    int zeroBasedPos = record.refPosition - 1;
+    int start = zeroBasedPos - flankingSize - 1;
+    if(start < 0)
+        start = 0;
+
+    int end = zeroBasedPos + eventLength + 2 * flankingSize;
+    const SeqItem& chr = refTable->getRead(record.refName);
+    if(end > (int)chr.seq.length())
+        end = (int)chr.seq.length();
+
+    std::string reference_haplotype = chr.seq.substr(start, end - start);
+
+    // we use the MA class for the homopolymer counting code
+    MAlignDataVector mav;
+    MultiAlignment ma(reference_haplotype, mav);
+
+
+    // Count run lengths of nucleotides
+    std::vector<size_t> run_lengths;
+
+    // Count runs
+    char curr_char = reference_haplotype[0];
+    size_t curr_run = 1;
+    for(size_t i = 1; i < reference_haplotype.size(); ++i)
+    {
+        if(reference_haplotype[i] != curr_char)
+        {
+            run_lengths.push_back(curr_run);
+            curr_run = 1;
+            curr_char = reference_haplotype[i];
+        }
+        else
+        {
+            curr_run++;
+        }
+    }
+    run_lengths.push_back(curr_run); // last run
+
+    // set up a map from the reference base to the run length its in
+    std::vector<size_t> index_to_run_lengths(reference_haplotype.size());
+    size_t j = 0;
+    for(size_t i = 0; i < run_lengths.size(); ++i)
+    {
+        size_t stop = j + run_lengths[i];
+        while(j < stop)
+        {
+            index_to_run_lengths[j] = i;
+            j++;
+        }
+    }
+    assert(j == reference_haplotype.size());
+
+    // Calculate the maximum homopolymer run as the max over the variant reference region
+    size_t eventStart = zeroBasedPos - start;
+    size_t eventEnd = eventStart + record.refStr.size();
+    size_t maxhp = 0;
+    for(size_t i = eventStart; i <= eventEnd; ++i)
+    {
+        size_t idx = index_to_run_lengths[i];
+        if(run_lengths[idx] > maxhp)
+            maxhp = run_lengths[idx];
+    }
+    return maxhp;
+}
+
 //
 // Main
 //
@@ -403,12 +476,19 @@ int somaticVariantFiltersMain(int argc, char** argv)
 
         StringVector fail_reasons;
 
-        int hplen;
-        if(getTagValue(tagHash, "HPLen", hplen) && hplen > opt::maxHPLen)
+        int hplen = 0;
+        if(!getTagValue(tagHash, "HPLen", hplen))
+            hplen = calculateHomopolymerLength(record, &refTable);
+        if(hplen > opt::maxHPLen)
             fail_reasons.push_back("Homopolymer");
 
-        double dust;
-        if(getTagValue(tagHash, "Dust", dust) && dust > opt::maxDust)
+        double dust = 0.0f;
+        if(!getTagValue(tagHash, "Dust", dust))
+            dust = HapgenUtil::calculateDustScoreAtPosition(record.refName, 
+                                                            record.refPosition, 
+                                                            &refTable);
+
+        if(dust > opt::maxDust)
             fail_reasons.push_back("LowComplexity");
         
         double af;
