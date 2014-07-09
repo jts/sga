@@ -37,6 +37,7 @@
 #include "haplotype-filter.h"
 #include "graph-concordance.h"
 #include "somatic-variant-filters.h"
+#include "kmer-count.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -76,10 +77,11 @@ static const char *SGA_USAGE_MESSAGE =
 "           haplotype-filter         filter out low-quality haplotypes\n"
 "           somatic-variant-filters  filter out low-quality haplotypes\n"
 "\n\nExperimental commands:\n"
-"           preqc                    perform pre-assembly quality checks on a set of reads\n"
-"           stats                    print summary statistics about a read set\n"
-"           filterBAM                filter out contaminating mate-pair data in a BAM file\n"
-"           cluster                  find clusters of reads belonging to the same connected component in an assembly graph\n"
+"           preqc                 perform pre-assembly quality checks on a set of reads\n"
+"           stats                 print summary statistics about a read set\n"
+"           filterBAM             filter out contaminating mate-pair data in a BAM file\n"
+"           cluster               find clusters of reads belonging to the same connected component in an assembly graph\n"
+"           kmer-count            extract all kmers from a BWT file\n"
 //"           connect         resolve the complete sequence of a paired-end fragment\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -162,6 +164,8 @@ int main(int argc, char** argv)
             graphConcordanceMain(argc - 1, argv + 1);
         else if(command == "somatic-variant-filters")
             somaticVariantFiltersMain(argc - 1, argv + 1);
+        else if(command == "kmer-count")
+            kmerCountMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

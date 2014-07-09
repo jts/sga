@@ -692,6 +692,9 @@ void generate_position_of_first_error(JSONWriter* pWriter, const BWTIndexSet& in
     for(size_t i = 0; i < n_samples; ++i)
     {
         std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        if(s.length() < k)
+            continue;
+
         size_t nk = s.size() - k + 1;
         size_t first_kmer_count = 
             BWTAlgorithms::countSequenceOccurrences(s.substr(0, k), index_set.pBWT);
@@ -763,6 +766,9 @@ void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
     for(int i = 0; i < n_samples; ++i)
     {
         std::string s = BWTAlgorithms::sampleRandomString(index_set.pBWT);
+        if(s.length() < k)
+            continue;
+
         KmerOverlaps::retrieveMatches(s, k, min_overlap, max_error_rate, 2, index_set);
         //KmerOverlaps::approximateMatch(s, min_overlap, max_error_rate, 2, 200, index_set);
 
@@ -1987,6 +1993,7 @@ int preQCMain(int argc, char** argv)
         if(!opt::diploidReferenceMode)
         {
             GenomeEstimates estimates = generate_genome_size(&writer, index_set);
+
             generate_branch_classification(&writer, estimates, index_set);
             generate_de_bruijn_simulation(&writer, estimates, index_set);
             generate_gc_distribution(&writer, index_set);
