@@ -75,7 +75,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           graph-concordance        check called variants for representation in the assembly graph\n"
 "           rewrite-evidence-bam     fill in sequence and quality information for a variant evidence BAM\n"
 "           haplotype-filter         filter out low-quality haplotypes\n"
-"           somatic-variant-filters  filter out low-quality haplotypes\n"
+"           somatic-variant-filters  filter out low-quality variants\n"
 "\n\nExperimental commands:\n"
 "           preqc                 perform pre-assembly quality checks on a set of reads\n"
 "           stats                 print summary statistics about a read set\n"
