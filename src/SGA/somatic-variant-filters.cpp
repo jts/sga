@@ -79,6 +79,7 @@ namespace opt
     static size_t maxNormalReads = 1;
     static size_t minNormalDepth = 5;
     static int minMedianQuality = 15;
+    static size_t capAlignments = 200;
 }
 
 static const char* shortopts = "t:v";
@@ -114,11 +115,27 @@ static const struct option longopts[] = {
     { NULL, 0, NULL, 0 }
 };
 
+// Calculate the median value of the vector
+template<typename T>
+double median(const std::vector<T> v)
+{
+    std::vector<T> c = v;
+    std::sort(c.begin(), c.end());
+    double r = 0.0f;
+    int m = c.size() / 2;
+    if(c.size() % 2 == 1)
+        r = c[m];
+    else
+        r = (c[m - 1] + c[m]) / 2.0f;
+    return r;
+}
+
 struct CoverageStats
 {
     CoverageStats() : n_total_reads(0), n_evidence_reads(0) {} 
     size_t n_total_reads;
     size_t n_evidence_reads;
+    double median_mapping_quality;
     std::vector<int> snv_evidence_quals;
 };
 
@@ -243,10 +260,27 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
     int refStart = record.refPosition;
     int refEnd = record.refPosition;
     pReader->SetRegion(refID, refStart, refID, refEnd);
-    BamTools::BamAlignment alignment;
+    BamTools::BamAlignment aln;
 
-    while(pReader->GetNextAlignment(alignment)) {
-        
+    std::vector<double> mapping_quality;
+    std::vector<BamTools::BamAlignment> alignments;
+    while(pReader->GetNextAlignment(aln)) {
+        if(aln.MapQuality > 0)
+            alignments.push_back(aln);
+        mapping_quality.push_back(aln.MapQuality);
+    }
+
+    if(!mapping_quality.empty())
+        stats.median_mapping_quality = median(mapping_quality);
+    else
+        stats.median_mapping_quality = 60;
+
+    // Shuffle and take the first 200 alignments only
+    std::random_shuffle(alignments.begin(), alignments.end());
+
+    for(size_t i = 0; i < alignments.size() && i < opt::capAlignments; ++i) {
+        BamTools::BamAlignment alignment = alignments[i];
+
         VariantReadSegments segments = splitReadAtVariant(alignment, record);
 
         if(opt::verbose > 1)
@@ -267,38 +301,33 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
             fprintf(stderr, "PosQual: %s\n",  segments.postQual.c_str());
         }
 
-        if( (segments.preSegment.size() > 0 || segments.postSegment.size() > 0) &&
-            segments.variantSegment.size() > 0)
-        {
-            stats.n_total_reads += 1;
-            
-            // Align the read to the reference and variant haplotype
-            SequenceOverlap ref_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, reference_haplotype);
-            SequenceOverlap var_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, variant_haplotype);
-            
-            /*
-            std::cout << "OverlapRef: \n";
-            ref_overlap.printAlignment(alignment.QueryBases, reference_haplotype);
-            std::cout << "OverlapVar: \n"; 
-            var_overlap.printAlignment(alignment.QueryBases, variant_haplotype);
-            */
-            
-            bool quality_alignment = (ref_overlap.getPercentIdentity() >= minPercentIdentity || 
-                                     var_overlap.getPercentIdentity() >= minPercentIdentity);
+        bool aligned_at_variant = segments.variantSegment.size() > 0 && 
+                                  (segments.preSegment.size() > 0 || segments.postSegment.size() > 0);
 
-            bool is_evidence_read = quality_alignment && var_overlap.score > ref_overlap.score;
-            if(is_evidence_read)
+        if(!aligned_at_variant)
+            continue;
+                                        
+        stats.n_total_reads += 1;
+        
+        if(segments.variantSegment == record.refStr)
+            continue; // not an evidence read
+
+        // Align the read to the reference and variant haplotype
+        SequenceOverlap ref_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, reference_haplotype);
+        SequenceOverlap var_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, variant_haplotype);
+        
+        bool quality_alignment = (ref_overlap.getPercentIdentity() >= minPercentIdentity || 
+                                 var_overlap.getPercentIdentity() >= minPercentIdentity);
+
+        bool is_evidence_read = quality_alignment && var_overlap.score > ref_overlap.score;
+        if(is_evidence_read)
+        {
+            stats.n_evidence_reads += 1;
+            if(is_snv && segments.variantQual.size() == 1)
             {
-                stats.n_evidence_reads += 1;
-                if(is_snv)
-                {
-                    if(segments.variantQual.size() == 1)
-                    {
-                        char qb = segments.variantQual[0];
-                        int q = Quality::char2phred(qb);
-                        stats.snv_evidence_quals.push_back(q);
-                    }
-                }
+                char qb = segments.variantQual[0];
+                int q = Quality::char2phred(qb);
+                stats.snv_evidence_quals.push_back(q);
             }
         }
     }
@@ -315,6 +344,7 @@ void makeTagHash(const VCFRecord& record, StringStringHash& tagHash)
         tagHash[kv[0]] = kv[1];
     }
 }
+
 
 template<typename T>
 bool getTagValue(StringStringHash& tagHash, const std::string& key, T& out)
@@ -520,23 +550,13 @@ int somaticVariantFiltersMain(int argc, char** argv)
 
         if(!tumor_stats.snv_evidence_quals.empty())
         {
-            std::sort(tumor_stats.snv_evidence_quals.begin(), tumor_stats.snv_evidence_quals.end());
-
-            double median_quality = 0.0f;
-            if(tumor_stats.snv_evidence_quals.size() % 2 == 1)
-            {
-                int m = tumor_stats.snv_evidence_quals.size() / 2;
-                median_quality = tumor_stats.snv_evidence_quals[m];
-            }
-            else
-            {
-                int m = tumor_stats.snv_evidence_quals.size() / 2;
-                median_quality = (tumor_stats.snv_evidence_quals[m - 1] + tumor_stats.snv_evidence_quals[m]) / 2.0f;
-            }
-        
+            double median_quality = median(tumor_stats.snv_evidence_quals);
             if(median_quality < opt::minMedianQuality)
                 fail_reasons.push_back("LowQuality");
         }
+
+        if(tumor_stats.median_mapping_quality < opt::minMedianQuality)
+            fail_reasons.push_back("LowMappingQuality");
 
         if(!fail_reasons.empty())
         {
