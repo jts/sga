@@ -230,6 +230,7 @@ DuplicateCheckResult QCProcess::performDuplicateCheck(const SequenceWorkItem& wo
 
     // Calculate the canonical index for this string - the lowest
     // value in the two lexicographic index
+    assert(fwdIntervals.interval[0].isValid() || rcIntervals.interval[0].isValid());
     int64_t fi = fwdIntervals.interval[0].isValid() ? fwdIntervals.interval[0].lower : std::numeric_limits<int64_t>::max();
     int64_t ri = rcIntervals.interval[0].isValid() ? rcIntervals.interval[0].lower : std::numeric_limits<int64_t>::max();
     int64_t canonicalIdx = std::min(fi, ri);
