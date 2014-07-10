@@ -15,12 +15,12 @@ struct KmerWindow
 {
     int64_t getCount(bool bothStrand) const
     {
-        int64_t fwdCount = (fwdIntervals.interval[0].isValid())?fwdIntervals.interval[0].size():0;
-	int64_t rcCount = (rcIntervals.interval[0].isValid())?rcIntervals.interval[0].size():0;
-	if (bothStrand)
-	  return std::min(fwdCount,rcCount);
-	else
-	  return fwdCount + rcCount;
+        int64_t fwdCount = (fwdIntervals.interval[0].isValid()) ? fwdIntervals.interval[0].size() : 0;
+        int64_t rcCount = (rcIntervals.interval[0].isValid()) ? rcIntervals.interval[0].size() : 0;
+        if (bothStrand)
+            return std::min(fwdCount,rcCount);
+        else
+            return fwdCount + rcCount;
     }
 
     int start;
