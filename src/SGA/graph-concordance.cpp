@@ -208,9 +208,12 @@ std::string reconstructHaplotype(const VCFRecord& somatic_record,
     // Extract the reference haplotype
     int eventLength = somatic_record.varStr.length();
     int zeroBasedPos = somatic_record.refPosition - 1;
-    int start = zeroBasedPos - flanking_size- 1;
+    int start = zeroBasedPos - flanking_size - 1;
     int end = zeroBasedPos + eventLength + 2 * flanking_size;
     const SeqItem& chr = refTable.getRead(somatic_record.refName);
+    if(end > chr.seq.length())
+        return "";
+
     std::string reference_haplotype = chr.seq.substr(start, end - start);
     
     // Set up a vector mapping positions on the current haplotype
