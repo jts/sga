@@ -46,6 +46,7 @@ static const char *SOMATIC_VARIANT_FILTERS_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+"      -t, --threads=NUM                use NUM threads to compute the overlaps (default: 1)\n"
 "          --reference=STR              load the reference genome from FILE\n"
 "          --tumor-bam=STR              load the aligned tumor reads from FILE\n"
 "          --normal-bam=STR             load the aligned normal reads from FILE\n"
@@ -71,7 +72,9 @@ namespace opt
     static std::string tumorBamFile;
     static std::string normalBamFile;
 
+    static int numThreads = 1;
     static double minAF = 0.0f;
+    static double errorBound = 0.02;
     static int minVarDP = 0;
     static double maxStrandBias = 2.0f;
     static int maxHPLen = 7;
@@ -79,7 +82,7 @@ namespace opt
     static size_t maxNormalReads = 1;
     static size_t minNormalDepth = 5;
     static int minMedianQuality = 15;
-    static size_t capAlignments = 200;
+    static size_t maximumAlignments = 500;
 }
 
 static const char* shortopts = "t:v";
@@ -132,11 +135,12 @@ double median(const std::vector<T> v)
 
 struct CoverageStats
 {
-    CoverageStats() : n_total_reads(0), n_evidence_reads(0) {} 
+    CoverageStats() : n_total_reads(0), n_evidence_reads(0), too_many_alignments(false) {} 
     size_t n_total_reads;
     size_t n_evidence_reads;
     double median_mapping_quality;
     std::vector<int> snv_evidence_quals;
+    bool too_many_alignments;
 };
 
 // This struct holds segments
@@ -201,7 +205,6 @@ VariantReadSegments splitReadAtVariant(const BamTools::BamAlignment& alignment,
         if(reference_positions[i] != -1 && reference_positions[i] >= variant_end && i < leftmost_after_variant)
             leftmost_after_variant = i;
     }
-    //fprintf(stderr, "rightmost: %d leftmost_after_variant: %d\n", rightmost_before_variant, leftmost_after_variant);
 
     VariantReadSegments ret;
     ret.preSegment = alignment.QueryBases.substr(0, rightmost_before_variant + 1);
@@ -268,6 +271,12 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
         if(aln.MapQuality > 0)
             alignments.push_back(aln);
         mapping_quality.push_back(aln.MapQuality);
+
+        if(alignments.size() > opt::maximumAlignments)
+        {
+            stats.too_many_alignments = true;
+            return stats;
+        }
     }
 
     if(!mapping_quality.empty())
@@ -275,10 +284,11 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
     else
         stats.median_mapping_quality = 60;
 
-    // Shuffle and take the first 200 alignments only
+    // Shuffle and take the first N alignments only
     std::random_shuffle(alignments.begin(), alignments.end());
 
-    for(size_t i = 0; i < alignments.size() && i < opt::capAlignments; ++i) {
+    #pragma omp parallel for
+    for(size_t i = 0; i < alignments.size(); ++i) {
         BamTools::BamAlignment alignment = alignments[i];
 
         VariantReadSegments segments = splitReadAtVariant(alignment, record);
@@ -306,28 +316,40 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
 
         if(!aligned_at_variant)
             continue;
-                                        
-        stats.n_total_reads += 1;
         
-        if(segments.variantSegment == record.refStr)
-            continue; // not an evidence read
-
-        // Align the read to the reference and variant haplotype
-        SequenceOverlap ref_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, reference_haplotype);
-        SequenceOverlap var_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, variant_haplotype);
-        
-        bool quality_alignment = (ref_overlap.getPercentIdentity() >= minPercentIdentity || 
-                                 var_overlap.getPercentIdentity() >= minPercentIdentity);
-
-        bool is_evidence_read = quality_alignment && var_overlap.score > ref_overlap.score;
-        if(is_evidence_read)
+        bool is_evidence_read = false;
+        if(segments.variantSegment != record.refStr)
         {
-            stats.n_evidence_reads += 1;
-            if(is_snv && segments.variantQual.size() == 1)
+            if(segments.variantSegment == record.varStr)
             {
-                char qb = segments.variantQual[0];
-                int q = Quality::char2phred(qb);
-                stats.snv_evidence_quals.push_back(q);
+                // Evidence read via the current alignment
+                is_evidence_read = true;
+            }
+            else
+            {
+                // Check for evidence via realignment to the variant haplotype
+                SequenceOverlap ref_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, reference_haplotype);
+                SequenceOverlap var_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, variant_haplotype);
+                
+                bool quality_alignment = (ref_overlap.getPercentIdentity() >= minPercentIdentity || 
+                                          var_overlap.getPercentIdentity() >= minPercentIdentity);
+
+                is_evidence_read = quality_alignment && var_overlap.score > ref_overlap.score;
+            }
+        }
+
+        #pragma omp critical
+        {
+            stats.n_total_reads += 1;
+            if(is_evidence_read)
+            {
+                stats.n_evidence_reads += 1;
+                if(is_snv && segments.variantQual.size() == 1)
+                {
+                    char qb = segments.variantQual[0];
+                    int q = Quality::char2phred(qb);
+                    stats.snv_evidence_quals.push_back(q);
+                }
             }
         }
     }
@@ -446,6 +468,8 @@ int somaticVariantFiltersMain(int argc, char** argv)
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
     
+    omp_set_num_threads(opt::numThreads);
+    
     // Load Reference
     ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
     refTable.indexReadsByID();
@@ -542,21 +566,40 @@ int somaticVariantFiltersMain(int argc, char** argv)
             fprintf(stderr, "Normal: [%zu %zu]\n", normal_stats.n_total_reads, normal_stats.n_evidence_reads);
         }
 
-        if(normal_stats.n_evidence_reads > opt::maxNormalReads)
-            fail_reasons.push_back("NormalEvidence");
-        
-        if(normal_stats.n_total_reads < opt::minNormalDepth)
-            fail_reasons.push_back("LowNormalDepth");
-
-        if(!tumor_stats.snv_evidence_quals.empty())
+        if(!tumor_stats.too_many_alignments && !normal_stats.too_many_alignments)
         {
-            double median_quality = median(tumor_stats.snv_evidence_quals);
-            if(median_quality < opt::minMedianQuality)
-                fail_reasons.push_back("LowQuality");
-        }
+            // Check that there is not evidence for the variant in the normal sample
+            if(normal_stats.n_evidence_reads > opt::maxNormalReads)
+                fail_reasons.push_back("NormalEvidence");
+            
+            // If the normal is poorly covered in this region, we may call a germline variant as a variant
+            if(normal_stats.n_total_reads < opt::minNormalDepth)
+                fail_reasons.push_back("LowNormalDepth");
 
-        if(tumor_stats.median_mapping_quality < opt::minMedianQuality)
-            fail_reasons.push_back("LowMappingQuality");
+            if(!tumor_stats.snv_evidence_quals.empty())
+            {
+                // Check that the base scores of SNVs are reasonably high
+                double median_quality = median(tumor_stats.snv_evidence_quals);
+                if(median_quality < opt::minMedianQuality)
+                    fail_reasons.push_back("LowQuality");
+
+                // For very deep regions, errors can be mistaken for SNVs
+                // Check if the variant frequency is very low. This check is not performed
+                // for indels and MNPs as they might not be aligned to this region.
+                double vf_estimate = tumor_stats.n_evidence_reads / (double)tumor_stats.n_total_reads;
+                if(vf_estimate < opt::errorBound)
+                    fail_reasons.push_back("PossibleError");
+            }
+            
+            // Check that the mapping quality of reads in the region is reasonable
+            if(tumor_stats.median_mapping_quality < opt::minMedianQuality)
+                fail_reasons.push_back("LowMappingQuality");
+        }
+        else 
+        {
+            // If the depth in the region is excessively high, the statistical models may break down
+            fail_reasons.push_back("DepthLimitReached");
+        }
 
         if(!fail_reasons.empty())
         {
@@ -602,6 +645,7 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
             case OPT_MAX_DUST: arg >> opt::maxDust; break;
             case OPT_MAX_NORMAL_READS: arg >> opt::maxNormalReads; break;
             case OPT_MIN_NORMAL_DEPTH: arg >> opt::minNormalDepth; break;
+            case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case OPT_HELP:
@@ -621,6 +665,12 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
     else if (argc - optind > 1) 
     {
         std::cerr << SUBPROGRAM ": too many arguments\n";
+        die = true;
+    }
+
+    if(opt::numThreads <= 0)
+    {
+        std::cerr << SUBPROGRAM ": invalid number of threads: " << opt::numThreads << "\n";
         die = true;
     }
 
