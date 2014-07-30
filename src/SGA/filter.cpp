@@ -293,7 +293,7 @@ void parseFilterOptions(int argc, char** argv)
     else
     {
         if(isGzip(opt::outFile))
-            opt::discardFile = stripFilename(opt::outFile) + ".discard.fa.gz";
+            opt::discardFile = stripFilename(opt::outFile) + ".discard.fa" + GZIP_EXT;
         else
             opt::discardFile = stripFilename(opt::outFile) + ".discard.fa";
     }
