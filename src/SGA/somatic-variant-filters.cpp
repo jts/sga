@@ -482,6 +482,34 @@ int calculateHomopolymerLength(const VCFRecord& record, const ReadTable* refTabl
     return maxhp;
 }
 
+// Get the 3-mer preceding and following the variant
+void getVariantContext(const VCFRecord& record, const ReadTable* refTable,
+                       std::string& prefix, std::string& suffix)
+{
+    static const int flankingSize = 100;
+
+    // Grab the reference haplotype
+    int eventLength = record.varStr.length();
+    int zeroBasedPos = record.refPosition - 1;
+    int start = zeroBasedPos - flankingSize - 1;
+    if(start < 0)
+        start = 0;
+
+    int end = zeroBasedPos + eventLength + 2 * flankingSize;
+    const SeqItem& chr = refTable->getRead(record.refName);
+    if(end > (int)chr.seq.length())
+        end = (int)chr.seq.length();
+
+    std::string reference_haplotype = chr.seq.substr(start, end - start);
+
+    // Calculate the maximum homopolymer run as the max over the variant reference region
+    size_t eventStart = zeroBasedPos - start;
+    size_t eventEnd = eventStart + record.refStr.size();
+    static const size_t k = 3;
+    prefix = reference_haplotype.substr(eventStart - k, k);
+    suffix = reference_haplotype.substr(eventEnd, k);
+}
+
 //
 // Main
 //
@@ -511,10 +539,10 @@ int somaticVariantFiltersMain(int argc, char** argv)
     // Track duplicated variants
     HashSet<std::string> duplicateHash;
 
-    std::ifstream input(opt::vcfFile.c_str());
+    std::istream* pInput = createReader(opt::vcfFile.c_str());
     std::string line;
 
-    while(getline(input, line))
+    while(getline(*pInput, line))
     {
         if(line.empty())
             continue;
@@ -583,8 +611,8 @@ int somaticVariantFiltersMain(int argc, char** argv)
         if(getTagValue(tagHash, "SB", strandBias) && strandBias >= opt::maxStrandBias)
             fail_reasons.push_back("StrandBias");
 
-        CoverageStats tumor_stats = getVariantCoverage(pTumorBamReader, record, &refTable);
-        CoverageStats normal_stats = getVariantCoverage(pNormalBamReader, record, &refTable);
+        CoverageStats tumor_stats;// = getVariantCoverage(pTumorBamReader, record, &refTable);
+        CoverageStats normal_stats;// = getVariantCoverage(pNormalBamReader, record, &refTable);
 
         if(opt::verbose > 0)
         {
@@ -644,18 +672,25 @@ int somaticVariantFiltersMain(int argc, char** argv)
             double tumor_vf = tumor_stats.calculateVAF();
             double normal_vf = normal_stats.calculateVAF();
 
+            std::string prefix;
+            std::string suffix;
+            getVariantContext(record, &refTable, prefix, suffix);
+
             record.addComment("TumorVAF", tumor_vf);
             record.addComment("NormalVAF", normal_vf);
             record.addComment("TumorVarDepth", (int)tumor_stats.n_evidence_reads);
             record.addComment("TumorTotalDepth", (int)tumor_stats.n_total_reads);
             record.addComment("NormalVarDepth", (int)normal_stats.n_evidence_reads);
             record.addComment("NormalTotalDepth", (int)normal_stats.n_total_reads);
+            record.addComment("5pContext", prefix);
+            record.addComment("3pContext", suffix);
         }
 
         std::cout << record << "\n";
     }
     
     // Cleanup
+    delete pInput;
     delete pTumorBamReader;
     delete pNormalBamReader;
     delete pTimer;
