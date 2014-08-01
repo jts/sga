@@ -382,8 +382,11 @@ void makeTagHash(const VCFRecord& record, StringStringHash& tagHash)
     for(size_t i = 0; i < record.comments.size(); i++)
     {
         StringVector kv = split(record.comments[i], '=');
-        assert(kv.size() == 2);
-        tagHash[kv[0]] = kv[1];
+        assert(kv.size() == 2 || kv.size() == 1);
+        if(kv.size() == 2)
+            tagHash[kv[0]] = kv[1];
+        else
+            tagHash[kv[0]] = "true";
     }
 }
 
@@ -498,7 +501,6 @@ int somaticVariantFiltersMain(int argc, char** argv)
     BamTools::BamReader* pTumorBamReader = new BamTools::BamReader;
     pTumorBamReader->Open(opt::tumorBamFile);
     pTumorBamReader->LocateIndex();
-
     assert(pTumorBamReader->HasIndex());
 
     BamTools::BamReader* pNormalBamReader = new BamTools::BamReader;
