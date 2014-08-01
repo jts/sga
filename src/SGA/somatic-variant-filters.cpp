@@ -50,6 +50,7 @@ static const char *SOMATIC_VARIANT_FILTERS_USAGE_MESSAGE =
 "          --reference=STR              load the reference genome from FILE\n"
 "          --tumor-bam=STR              load the aligned tumor reads from FILE\n"
 "          --normal-bam=STR             load the aligned normal reads from FILE\n"
+"          --annotate-only              only annotate with INFO tags, rather than filter\n"
 "\n"
 "Filtering cutoffs:\n"
 "          --min-af=FLOAT               minimum allele frequency (AF tag)\n"
@@ -83,6 +84,8 @@ namespace opt
     static size_t minNormalDepth = 5;
     static int minMedianQuality = 15;
     static size_t maximumAlignments = 500;
+    static double minHaplotypeLength = 125.0f;
+    static bool annotateOnly = false;
 }
 
 static const char* shortopts = "t:v";
@@ -92,6 +95,7 @@ enum { OPT_HELP = 1,
        OPT_REFERENCE, 
        OPT_TUMOR_BAM, 
        OPT_NORMAL_BAM,
+       OPT_ANNOTATE,
        OPT_MIN_AF,
        OPT_MIN_VARDP,
        OPT_MAX_SB,
@@ -102,6 +106,7 @@ enum { OPT_HELP = 1,
 
 static const struct option longopts[] = {
     { "verbose",               no_argument,       NULL, 'v' },
+    { "annotate-only",         no_argument,       NULL, OPT_ANNOTATE },
     { "threads",               required_argument, NULL, 't' },
     { "reference",             required_argument, NULL, OPT_REFERENCE },
     { "tumor-bam",             required_argument, NULL, OPT_TUMOR_BAM },
@@ -136,6 +141,15 @@ double median(const std::vector<T> v)
 struct CoverageStats
 {
     CoverageStats() : n_total_reads(0), n_evidence_reads(0), too_many_alignments(false) {} 
+
+    // functions
+    double calculateVAF() const
+    {
+        return n_total_reads > 0 ? 
+            n_evidence_reads / (double)n_total_reads : 0.0f;
+    }
+
+    //
     size_t n_total_reads;
     size_t n_evidence_reads;
     double median_mapping_quality;
@@ -252,7 +266,11 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
     std::string variant_haplotype = reference_haplotype;
     
     // Ensure that the reference string at the variant matches the expected
-    assert(variant_haplotype.substr(translatedPos, record.refStr.length()) == record.refStr);
+    if(variant_haplotype.substr(translatedPos, record.refStr.length()) != record.refStr)
+    {
+        std::cerr << "Warning, reference base does not match VCF record.\n";
+        std::cerr << record << "\n";
+    }
     variant_haplotype.replace(translatedPos, record.refStr.length(), record.varStr);
 
     // Grab all reads in reference region
@@ -328,8 +346,10 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
             else
             {
                 // Check for evidence via realignment to the variant haplotype
-                SequenceOverlap ref_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, reference_haplotype);
-                SequenceOverlap var_overlap = Overlapper::computeOverlapAffine(alignment.QueryBases, variant_haplotype);
+                SequenceOverlap ref_overlap = 
+                    Overlapper::computeOverlapAffine(alignment.QueryBases, reference_haplotype);
+                SequenceOverlap var_overlap = 
+                    Overlapper::computeOverlapAffine(alignment.QueryBases, variant_haplotype);
                 
                 bool quality_alignment = (ref_overlap.getPercentIdentity() >= minPercentIdentity || 
                                           var_overlap.getPercentIdentity() >= minPercentIdentity);
@@ -552,6 +572,10 @@ int somaticVariantFiltersMain(int argc, char** argv)
         int varDP;
         if(getTagValue(tagHash, "VarDP", varDP) && varDP < opt::minVarDP)
             fail_reasons.push_back("LowVarDP");
+        
+        double avgHapLen;
+        if(getTagValue(tagHash, "AvgHapLen", avgHapLen) && avgHapLen < opt::minHaplotypeLength)
+            fail_reasons.push_back("ShortHaplotype");
 
         double strandBias;
         if(getTagValue(tagHash, "SB", strandBias) && strandBias >= opt::maxStrandBias)
@@ -601,7 +625,7 @@ int somaticVariantFiltersMain(int argc, char** argv)
             fail_reasons.push_back("DepthLimitReached");
         }
 
-        if(!fail_reasons.empty())
+        if(!fail_reasons.empty() && !opt::annotateOnly)
         {
             if(record.passStr != "PASS" && record.passStr != ".")
                 fail_reasons.insert(fail_reasons.begin(), record.passStr);
@@ -610,6 +634,20 @@ int somaticVariantFiltersMain(int argc, char** argv)
             std::copy(fail_reasons.begin(), fail_reasons.end(), std::ostream_iterator<std::string>(strss, ";"));
             record.passStr = strss.str();
             record.passStr.erase(record.passStr.size() - 1); // erase trailing ;
+        }
+        
+        // Add INFO tags indicating allele coverage
+        if(opt::annotateOnly)
+        {
+            double tumor_vf = tumor_stats.calculateVAF();
+            double normal_vf = normal_stats.calculateVAF();
+
+            record.addComment("TumorVAF", tumor_vf);
+            record.addComment("NormalVAF", normal_vf);
+            record.addComment("TumorVarDepth", (int)tumor_stats.n_evidence_reads);
+            record.addComment("TumorTotalDepth", (int)tumor_stats.n_total_reads);
+            record.addComment("NormalVarDepth", (int)normal_stats.n_evidence_reads);
+            record.addComment("NormalTotalDepth", (int)normal_stats.n_total_reads);
         }
 
         std::cout << record << "\n";
@@ -645,6 +683,7 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
             case OPT_MAX_DUST: arg >> opt::maxDust; break;
             case OPT_MAX_NORMAL_READS: arg >> opt::maxNormalReads; break;
             case OPT_MIN_NORMAL_DEPTH: arg >> opt::minNormalDepth; break;
+            case OPT_ANNOTATE: opt::annotateOnly = true; break;
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;

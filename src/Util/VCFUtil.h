@@ -55,7 +55,7 @@ struct VCFRecord
 
     void printVerbose() const;
     VCFClassification classify() const;
-    friend std::ostream& operator<<(std::ostream& o, VCFRecord& record);
+    friend std::ostream& operator<<(std::ostream& o, const VCFRecord& record);
 
     static bool sort(const VCFRecord& a, const VCFRecord& b) 
     { 

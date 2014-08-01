@@ -109,7 +109,7 @@ void VCFRecord::printVerbose() const
 }
 
 // Write the VCF record to the stream
-std::ostream& operator<<(std::ostream& o, VCFRecord& record)
+std::ostream& operator<<(std::ostream& o, const VCFRecord& record)
 {
     o.precision(5);
     o.setf(std::ios::fixed,std::ios::floatfield);
