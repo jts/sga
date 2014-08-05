@@ -305,7 +305,9 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
     // Shuffle and take the first N alignments only
     std::random_shuffle(alignments.begin(), alignments.end());
 
+#if HAVE_OPENMP
     #pragma omp parallel for
+#endif    
     for(size_t i = 0; i < alignments.size(); ++i) {
         BamTools::BamAlignment alignment = alignments[i];
 
@@ -518,9 +520,10 @@ int somaticVariantFiltersMain(int argc, char** argv)
     parseSomaticVariantFiltersOptions(argc, argv);
 
     Timer* pTimer = new Timer(PROGRAM_IDENT);
-    
+
+#if HAVE_OPENMP
     omp_set_num_threads(opt::numThreads);
-    
+#endif 
     // Load Reference
     ReadTable refTable(opt::referenceFile, SRF_NO_VALIDATION);
     refTable.indexReadsByID();
