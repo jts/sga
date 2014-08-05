@@ -9,7 +9,7 @@
 //
 
 #ifndef SGASTATS_H
-#define STATS_H
+#define SGASTATS_H
 
 namespace SGAStats
 {
