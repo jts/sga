@@ -249,13 +249,12 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
     bool is_snv = record.refStr.size() == 1 && record.varStr.size() == 1;
 
     // Grab the reference haplotype
-    int eventLength = record.varStr.length();
     int zeroBasedPos = record.refPosition - 1;
     int start = zeroBasedPos - flankingSize - 1;
     if(start < 0)
         start = 0;
 
-    int end = zeroBasedPos + eventLength + 2 * flankingSize;
+    int end = zeroBasedPos + record.refStr.length() + 2 * flankingSize;
     const SeqItem& chr = refTable->getRead(record.refName);
     if(end > (int)chr.seq.length())
         end = (int)chr.seq.length();
@@ -416,13 +415,12 @@ int calculateHomopolymerLength(const VCFRecord& record, const ReadTable* refTabl
     static const int flankingSize = 100;
 
     // Grab the reference haplotype
-    int eventLength = record.varStr.length();
     int zeroBasedPos = record.refPosition - 1;
     int start = zeroBasedPos - flankingSize - 1;
     if(start < 0)
         start = 0;
 
-    int end = zeroBasedPos + eventLength + 2 * flankingSize;
+    int end = zeroBasedPos + record.refStr.length() + 2 * flankingSize;
     const SeqItem& chr = refTable->getRead(record.refName);
     if(end > (int)chr.seq.length())
         end = (int)chr.seq.length();
@@ -489,13 +487,12 @@ void getVariantContext(const VCFRecord& record, const ReadTable* refTable,
     static const int flankingSize = 100;
 
     // Grab the reference haplotype
-    int eventLength = record.varStr.length();
     int zeroBasedPos = record.refPosition - 1;
     int start = zeroBasedPos - flankingSize - 1;
     if(start < 0)
         start = 0;
 
-    int end = zeroBasedPos + eventLength + 2 * flankingSize;
+    int end = zeroBasedPos + record.refStr.length() + 2 * flankingSize;
     const SeqItem& chr = refTable->getRead(record.refName);
     if(end > (int)chr.seq.length())
         end = (int)chr.seq.length();
@@ -611,8 +608,8 @@ int somaticVariantFiltersMain(int argc, char** argv)
         if(getTagValue(tagHash, "SB", strandBias) && strandBias >= opt::maxStrandBias)
             fail_reasons.push_back("StrandBias");
 
-        CoverageStats tumor_stats;// = getVariantCoverage(pTumorBamReader, record, &refTable);
-        CoverageStats normal_stats;// = getVariantCoverage(pNormalBamReader, record, &refTable);
+        CoverageStats tumor_stats = getVariantCoverage(pTumorBamReader, record, &refTable);
+        CoverageStats normal_stats = getVariantCoverage(pNormalBamReader, record, &refTable);
 
         if(opt::verbose > 0)
         {
