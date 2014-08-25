@@ -67,7 +67,8 @@ typedef std::vector<HapgenAlignment> HapgenAlignmentVector;
 namespace HapgenUtil
 {
     //
-    void alignHaplotypeToReferenceKmer(size_t k,
+    void alignHaplotypeToReferenceKmer(size_t align_k,
+                                       size_t assemble_k,
                                        const std::string& haplotype,
                                        const BWTIndexSet& referenceIndex,
                                        const ReadTable* pReferenceTable,

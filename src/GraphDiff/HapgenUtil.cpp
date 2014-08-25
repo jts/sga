@@ -31,7 +31,8 @@ struct CandidateKmerAlignment
 typedef std::vector<CandidateKmerAlignment> CandidateVector;
 
 // Align the haplotype to the reference genome represented by the BWT/SSA pair
-void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
+void HapgenUtil::alignHaplotypeToReferenceKmer(size_t align_k,
+                                               size_t assemble_k,
                                                const std::string& haplotype,
                                                const BWTIndexSet& referenceIndex,
                                                const ReadTable* pReferenceTable,
@@ -40,7 +41,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
     PROFILE_FUNC("HapgenUtil::alignHaplotypesToReferenceKmer")
     int64_t max_interval_size = 4;
 
-    if(haplotype.size() < k)
+    if(haplotype.size() < align_k)
         return;
 
     std::vector<int> event_count_vector;
@@ -56,10 +57,10 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
         // Find shared kmers between the haplotype and the reference
         CandidateVector candidates;
 
-        size_t nqk = query.size() - k + 1;
+        size_t nqk = query.size() - align_k + 1;
         for(size_t j = 0; j < nqk; ++j)
         {
-            std::string kmer = query.substr(j, k);
+            std::string kmer = query.substr(j, align_k);
 
             // Find the interval of this kmer in the reference
             BWTInterval interval = BWTAlgorithms::findInterval(referenceIndex, kmer);
@@ -90,7 +91,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
         for(size_t j = 0; j < candidates.size(); ++j)
         {
             // Extract window around reference
-            size_t window_size = 200;
+            size_t window_size = 500;
             int ref_start = candidates[j].target_extrapolated_start - window_size;
             int ref_end = candidates[j].target_extrapolated_end + window_size;
             const SeqItem& ref_record = pReferenceTable->getRead(candidates[j].target_sequence_id);
@@ -103,8 +104,23 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 
             std::string ref_substring = ref_sequence.substr(ref_start, ref_end - ref_start);
 
+            // Trim reference string so that it has flanking k-mer matches with the haplotype
+            std::string start_kmer = query.substr(0, assemble_k);
+            std::string end_kmer = query.substr(haplotype.size() - assemble_k, assemble_k);
+
+            size_t kidx_0 = ref_substring.find(start_kmer);
+            size_t kidx_1 = ref_substring.find(end_kmer);
+            
+            // Trim haplotype to flanking k-mers, if they match reference
+            if(kidx_0 != std::string::npos && kidx_1 != std::string::npos && kidx_1 > kidx_0)
+            {
+                ref_substring = ref_substring.substr(kidx_0, kidx_1 - kidx_0 + assemble_k);
+                ref_start += kidx_0;
+            }
+
             // Align haplotype to the reference
             SequenceOverlap overlap = alignHaplotypeToReference(ref_substring, query);
+
             if(overlap.score < 0 || !overlap.isValid())
                 continue;
 
@@ -131,13 +147,13 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             }
 
             // Skip poor alignments
-            double mismatch_rate = 1.0f - (overlap.getPercentIdentity() / 100.f);
-            if(mismatch_rate > 0.05f || overlap.total_columns < 50)
+            double event_rate = (double)num_events / overlap.total_columns;
+            if(event_rate > 0.05f || overlap.total_columns < 50)
             {
                 if(Verbosity::Instance().getPrintLevel() > 4)
                 {
                     printf("Haplotype Alignment - Ignoring low quality alignment (%.3lf, %dbp, %d events) to %s:%d\n", 
-                        1.0f - mismatch_rate, overlap.total_columns, num_events, ref_record.id.c_str(), ref_start);
+                        1.0f - event_rate, overlap.total_columns, num_events, ref_record.id.c_str(), ref_start);
                 }
                 continue;
             }
@@ -157,7 +173,7 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
             if(Verbosity::Instance().getPrintLevel() > 4)
             {
                 printf("Haplotype Alignment - Accepting alignment (%.3lf, %dbp, %d events) to %s:%d\n", 
-                    1.0f - mismatch_rate, overlap.total_columns, num_events, ref_record.id.c_str(), ref_start);
+                    1.0f - event_rate, overlap.total_columns, num_events, ref_record.id.c_str(), ref_start);
             }            
             // Record the best edit distance
             if(num_events < min_events) 
@@ -183,7 +199,10 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t k,
 SequenceOverlap HapgenUtil::alignHaplotypeToReference(const std::string& reference,
                                                       const std::string& haplotype)
 {
-    SequenceOverlap overlap = Overlapper::computeOverlapAffine(reference, haplotype);
+    OverlapperParams params = affine_default_params;
+    params.gap_ext_penalty = 0;
+    params.type = ALT_CONTAINMENT;
+    SequenceOverlap overlap = Overlapper::computeAlignmentAffine(reference, haplotype, params);
     return overlap;
 }
 
@@ -207,7 +226,7 @@ void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
     outAlignments.push_back(alignments[alignments.size()-1]);
 
     // Kees: start from back because alignments are sorted in order of increasing score
-    for(size_t i = alignments.size()-1; i-- > 0;)
+    for(size_t i = alignments.size() - 1; i-- > 0;)
     {
         // Check this alignment against the last alignment added to the output set
         HapgenAlignment& prevAlign = outAlignments.back();

@@ -46,6 +46,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     {
         HapgenAlignmentVector thisCandidateAlignments;
         HapgenUtil::alignHaplotypeToReferenceKmer(align_kmer,
+                                                  parameters.kmer,
                                                   inHaplotypes[i],
                                                   parameters.referenceIndex,
                                                   parameters.pRefTable,

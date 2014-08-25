@@ -127,16 +127,26 @@ struct SequenceOverlap
 
 };
 
+enum AffineAlignmentType
+{
+    ALT_OVERLAP,
+    ALT_GLOBAL,
+    ALT_CONTAINMENT
+};
+
 struct OverlapperParams
 {
     int match_score;
     int gap_penalty;
     int mismatch_penalty;
+    int gap_ext_penalty;
+    AffineAlignmentType type;
 };
 
 // Global variables
-extern OverlapperParams default_params; // { 2, -5, -3 };
-extern OverlapperParams ungapped_params; // { 2, -10000, -3 };
+extern OverlapperParams default_params; // { 2, -6, -3, -2 };
+extern OverlapperParams ungapped_params; // { 2, -10000, -3, -2 };
+extern OverlapperParams affine_default_params; // { 2, -5, -3, -2 }; 
 
 //
 namespace Overlapper
@@ -153,7 +163,9 @@ SequenceOverlap computeOverlap(const std::string& s1, const std::string& s2, con
 SequenceOverlap extendMatch(const std::string& s1, const std::string& s2, int start_1, int start_2, int bandwidth);
 
 // Perform an alignment using affine gap penalties
-SequenceOverlap computeOverlapAffine(const std::string& s1, const std::string& s2, const OverlapperParams params = default_params);
+// This can perform either "overlap" type alignments (suffix to prefix)
+// or global type alignments (end-to-end).
+SequenceOverlap computeAlignmentAffine(const std::string& s1, const std::string& s2, const OverlapperParams params = affine_default_params);
 
 // Compact an expanded CIGAR string into a regular cigar string
 std::string compactCigar(const std::string& ecigar);

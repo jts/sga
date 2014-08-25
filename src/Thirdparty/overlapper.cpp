@@ -31,18 +31,17 @@
 #include <sstream>
 #include <limits>
 #include <stdio.h>
+#include <inttypes.h>
 
-OverlapperParams default_params = { 2, -6, -3 };
-OverlapperParams ungapped_params = { 2, -10000, -3 };
-
-
-
+// 
+OverlapperParams default_params = { 2, -6, -3, -2, ALT_OVERLAP };
+OverlapperParams ungapped_params = { 2, -10000, -3, -2, ALT_OVERLAP };
+OverlapperParams affine_default_params = { 2, -5, -3, -2, ALT_OVERLAP };
 
 //
 #define max3(x,y,z) std::max(std::max(x,y), z)
 //#define DEBUG_OVERLAPPER 1
 //#define DEBUG_EXTEND 1
-
 
 // 
 SequenceInterval::SequenceInterval() : start(0), end(-1)
@@ -627,7 +626,11 @@ SequenceOverlap Overlapper::extendMatch(const std::string& s1, const std::string
     return output;
 }
 
-// The score for this cell coming from a match, deletion and insertion
+static const uint8_t FROM_DIAG = 0;
+static const uint8_t FROM_LEFT = 1;
+static const uint8_t FROM_UP = 2;
+
+// The score for this cell coming from a match, deletion and insertion and its direction
 struct AffineCell
 {
     AffineCell() : G(0), I(-std::numeric_limits<int>::max()), D(-std::numeric_limits<int>::max()) {}
@@ -636,17 +639,21 @@ struct AffineCell
     int G;
     int I;
     int D;
+    
+    uint8_t Gt;
+    uint8_t It;
+    uint8_t Dt;
 };
 
 typedef std::vector<AffineCell> AffineCells;
 typedef std::vector<AffineCells> AffineMatrix;
 
-SequenceOverlap Overlapper::computeOverlapAffine(const std::string& s1, const std::string& s2, const OverlapperParams params)
+SequenceOverlap Overlapper::computeAlignmentAffine(const std::string& s1, const std::string& s2, const OverlapperParams params)
 {
     // Exit with invalid intervals if either string is zero length
     SequenceOverlap output;
     if(s1.empty() || s2.empty()) {
-        std::cerr << "Overlapper::computeOverlap error: empty input sequence\n";
+        std::cerr << "Overlapper::computeAlignmentAffine error: empty input sequence\n";
         exit(EXIT_FAILURE);
     }
 
@@ -654,13 +661,38 @@ SequenceOverlap Overlapper::computeOverlapAffine(const std::string& s1, const st
     size_t num_columns = s1.size() + 1;
     size_t num_rows = s2.size() + 1;
 
-    int gap_open = 5;
-    int gap_ext = 2;
+    int gap_open = -params.gap_penalty;
+    int gap_ext = -params.gap_ext_penalty;
 
     AffineMatrix score_matrix;
     score_matrix.resize(num_columns);
     for(size_t i = 0; i < score_matrix.size(); ++i)
         score_matrix[i].resize(num_rows);
+
+    // initialze first row and column
+
+    // in GLOBAL mode, we add gap penalties to all cells 
+    // in the first row and column except for (0,0).
+    // in CONTAINMENT mode, we add gap penalties in the first row only
+    // in OVERLAP mode, we do not add gap penalties
+    // this logic is implemented by the c constant, which is 0 or 1
+    // to turn off/on the penalty as needed
+
+    // first row, add penalties if global mode
+    int c = params.type == ALT_GLOBAL ? 1 : 0;
+    for(size_t i = 1; i < num_columns; ++i) {
+        int v = -(gap_open + i * gap_ext) * c;
+        score_matrix[i][0].D = v;
+        score_matrix[i][0].G = v;
+    }
+
+    // first column, add penalities in global or containment mode
+    c = params.type == ALT_GLOBAL || params.type == ALT_CONTAINMENT ? 1 : 0;
+    for(size_t j = 1; j < num_rows; ++j) {
+        int v = -(gap_open + j * gap_ext) * c;
+        score_matrix[0][j].I = v;
+        score_matrix[0][j].G = v;
+    }
 
     // Calculate scores
     for(size_t i = 1; i < num_columns; ++i) {
@@ -672,23 +704,36 @@ SequenceOverlap Overlapper::computeOverlapAffine(const std::string& s1, const st
 
             int diagonal = score_matrix[i-1][j-1].G + (s1[idx_1] == s2[idx_2] ? params.match_score : params.mismatch_penalty);
 
+            AffineCell& curr = score_matrix[i][j];
+            AffineCell& up = score_matrix[i][j-1];
+            AffineCell& left = score_matrix[i-1][j];
+
             // When computing the score starting from the left/right cells, we have to determine
             // whether to extend an existing gap or start a new one.
-            AffineCell& curr = score_matrix[i][j];
-
-            AffineCell& up = score_matrix[i][j-1];
-            if(up.I > up.G - gap_open)
+            if(up.I > up.G - gap_open) {
                 curr.I = up.I - gap_ext;
-            else
+                curr.It = FROM_UP;
+            } else {
                 curr.I = up.G - (gap_open + gap_ext);
+                curr.It = FROM_DIAG;
+            }
 
-            AffineCell& left = score_matrix[i-1][j];
-            if(left.D > left.G - gap_open)
+            if(left.D > left.G - gap_open) {
                 curr.D = left.D - gap_ext;
-            else
+                curr.Dt = FROM_LEFT;
+            } else {
                 curr.D = left.G - (gap_open + gap_ext);
-            
+                curr.Dt = FROM_DIAG;
+            }
+
             curr.G = max3(curr.D, curr.I, diagonal);
+
+            if(curr.G == curr.I)
+                curr.Gt = FROM_UP;
+            else if(curr.G == curr.D)
+                curr.Gt = FROM_LEFT;
+            else
+                curr.Gt = FROM_DIAG;
         }
     }
  
@@ -724,14 +769,22 @@ SequenceOverlap Overlapper::computeOverlapAffine(const std::string& s1, const st
     size_t i;
     size_t j;
 
-    if(max_column_value > max_row_value) {
+    // In GLOBAL alignment mode we start backtracking from the last cell
+    // In OVERLAP mode we backtrack from the best scoring cell in the last row or column.
+    // In CONTAINMENT mode we backtrack from the best scoring cell in the last row
+    if(params.type == ALT_GLOBAL) {
         i = num_columns - 1;
-        j = max_column_index;
-        output.score = max_column_value;
-    } else {
+        j = num_rows - 1;
+        output.score = score_matrix[i][j].G;
+    } else if(max_row_value >= max_column_value || params.type == ALT_CONTAINMENT) {
         i = max_row_index;
         j = num_rows - 1;
         output.score = max_row_value;
+    } else {
+        assert(max_column_value > max_row_value && params.type == ALT_OVERLAP);
+        i = num_columns - 1;
+        j = max_column_index;
+        output.score = max_column_value;
     }
 
     // Set the alignment endpoints to be the index of the last aligned base
@@ -739,6 +792,9 @@ SequenceOverlap Overlapper::computeOverlapAffine(const std::string& s1, const st
     output.match[1].end = j - 1;
     output.length[0] = s1.length();
     output.length[1] = s2.length();
+
+    uint8_t direction = score_matrix[i][j].Gt;
+
 #ifdef DEBUG_OVERLAPPER
     printf("Endpoints selected: (%d %d) with score %d\n", output.match[0].end, output.match[1].end, output.score);
 #endif
@@ -746,43 +802,39 @@ SequenceOverlap Overlapper::computeOverlapAffine(const std::string& s1, const st
     output.edit_distance = 0;
     output.total_columns = 0;
 
+    AffineCell null_cell;
+    null_cell.G = null_cell.I = null_cell.D = -std::numeric_limits<int>::max();
+
     std::string cigar;
-    while(i > 0 && j > 0) {
-        // Compute the possible previous locations of the path
-        int idx_1 = i - 1;
-        int idx_2 = j - 1;
 
-        bool is_match = s1[idx_1] == s2[idx_2];
-        int diagonal = score_matrix[i - 1][j - 1].G + (is_match ? params.match_score : params.mismatch_penalty);
-        int up1 = score_matrix[i][j-1].G - (gap_open + gap_ext);
-        int up2 = score_matrix[i][j-1].I - gap_ext;
+    // In global alignment mode we iterate until we have arrived at (0,0)
+    // In overlap mode we iterate until we have arrived at (x,0) or (0,x) for any x.
+    while((params.type == ALT_GLOBAL && (i > 0 || j > 0))  ||
+          (params.type == ALT_OVERLAP && (i > 0 && j > 0)) ||
+          (params.type == ALT_CONTAINMENT && (j > 0))) {
 
-        int left1 = score_matrix[i-1][j].G - (gap_open + gap_ext);
-        int left2 = score_matrix[i-1][j].D - gap_ext;
-
-        int curr = score_matrix[i][j].G;
-
-        // If there are multiple possible paths to this cell
-        // we break ties in order of insertion,deletion,match
-        // this helps left-justify matches for homopolymer runs
-        // of unequal lengths
-        if(curr == up1 || curr == up2) {
+        if(direction == FROM_UP) {
             cigar.push_back('I');
+            direction = score_matrix[i][j].It;
             j -= 1;
             output.edit_distance += 1;
-        } else if(curr == left1 || curr == left2) {
+        } else if(direction == FROM_LEFT) {
             cigar.push_back('D');
+            direction = score_matrix[i][j].Dt;
             i -= 1;
             output.edit_distance += 1;
         } else {
-            assert(curr == diagonal);
+            // Compute the possible previous locations of the path
+            bool is_match = i > 0 && j > 0 && s1[i - 1] == s2[j - 1];
+
             if(!is_match)
                 output.edit_distance += 1;
             cigar.push_back('M');
+            direction = score_matrix[i][j].Gt;
             i -= 1;
             j -= 1;
         }
-
+        
         output.total_columns += 1;
     }
 

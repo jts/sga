@@ -348,9 +348,9 @@ CoverageStats getVariantCoverage(BamTools::BamReader* pReader, const VCFRecord& 
             {
                 // Check for evidence via realignment to the variant haplotype
                 SequenceOverlap ref_overlap = 
-                    Overlapper::computeOverlapAffine(alignment.QueryBases, reference_haplotype);
+                    Overlapper::computeAlignmentAffine(alignment.QueryBases, reference_haplotype);
                 SequenceOverlap var_overlap = 
-                    Overlapper::computeOverlapAffine(alignment.QueryBases, variant_haplotype);
+                    Overlapper::computeAlignmentAffine(alignment.QueryBases, variant_haplotype);
                 
                 bool quality_alignment = (ref_overlap.getPercentIdentity() >= minPercentIdentity || 
                                           var_overlap.getPercentIdentity() >= minPercentIdentity);
