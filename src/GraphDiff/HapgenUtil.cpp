@@ -201,7 +201,6 @@ SequenceOverlap HapgenUtil::alignHaplotypeToReference(const std::string& referen
 {
     OverlapperParams params = affine_default_params;
     params.gap_ext_penalty = 0;
-    params.type = ALT_CONTAINMENT;
     SequenceOverlap overlap = Overlapper::computeAlignmentAffine(reference, haplotype, params);
     return overlap;
 }
