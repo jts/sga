@@ -280,6 +280,16 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             pPreviousResult = pThisResult;
     }
 
+    // Add additional tags to each VCF record
+    double average_hap_length = 0.0f;
+    for(size_t i = 0; i < variant_haplotypes.size(); ++i)
+        average_hap_length += variant_haplotypes[i].size();
+    average_hap_length /= variant_haplotypes.size();
+    
+    for(size_t i = 0; i <= 1; ++i)
+        for(size_t j = 0; j < vcfCollections[i].records.size(); ++j)
+            vcfCollections[i].records[j].addComment("AvgHapLen", average_hap_length);
+
     // Copy raw VCFRecords to output
     for(size_t i = 0; i <= 1; ++i)
     {
