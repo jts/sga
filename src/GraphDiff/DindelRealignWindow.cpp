@@ -40,7 +40,6 @@
 
 const int DINDEL_DEBUG=0;
 const int QUIET=1;
-const int ADDSNPS=0;
 const int ALWAYS_REALIGN=1;
 const int DEBUG_CALLINDEL=0;
 const int REPOSITION_INDEL_WINDOW=1000;
@@ -148,17 +147,18 @@ SequenceOverlap localAlignmentToSequenceOverlap(const LocalAlignmentResult& loca
     return overlap;
 }
 
-SequenceOverlap computeHaplotypeAlignment(const std::string& base_sequence, const std::string& haplotype)
+SequenceOverlap computeHaplotypeAlignment(size_t k, const std::string& base_sequence, const std::string& haplotype)
 {
-    return HapgenUtil::alignHaplotypeToReference(base_sequence, haplotype);
+    return HapgenUtil::alignHaplotypeToReference(k, base_sequence, haplotype);
 }
 
 void addHaplotypeToMultipleAlignment(MultipleAlignment* pMA,
                                      const std::string& base_sequence, 
                                      const std::string& incoming_name, 
-                                     const std::string& incoming_sequence)
+                                     const std::string& incoming_sequence,
+                                     size_t k)
 {
-    SequenceOverlap overlap = computeHaplotypeAlignment(base_sequence, incoming_sequence);
+    SequenceOverlap overlap = computeHaplotypeAlignment(k, base_sequence, incoming_sequence);
     pMA->addOverlap(incoming_name, incoming_sequence, "", overlap);
 }
 
@@ -371,8 +371,10 @@ void DindelVariant::write(std::ostream & out) const
 
 void DindelHaplotype::alignHaplotype()
 {
-    // semi-globally align haplotypes to the first haplotype (arbitrary)
+    // align haplotypes to the reference
     const std::string& rootSequence = m_refMapping.refSeq;
+
+    // Change haplotype to the reference strand
     std::string alignSeq;
     if(m_refMapping.isRC)
         alignSeq = reverseComplement(m_seq);
@@ -385,7 +387,7 @@ void DindelHaplotype::alignHaplotype()
 
     m_pMA = new MultipleAlignment();
     m_pMA->addBaseSequence(ref_ss.str(), rootSequence, "");
-    SequenceOverlap hap_overlap = computeHaplotypeAlignment(rootSequence, alignSeq);
+    SequenceOverlap hap_overlap = computeHaplotypeAlignment(m_assembly_k, rootSequence, alignSeq);
     m_pMA->addOverlap("haplotype", alignSeq, "", hap_overlap);
     m_firstAlignedBase = hap_overlap.match[1].start;
 
@@ -393,7 +395,6 @@ void DindelHaplotype::alignHaplotype()
     {
         std::cout << "DindelHaplotype::alignHaplotype:\n";
         m_pMA->print(500);
-        //std::cout << "DindelHaplotype::DindelHaplotype globalAlignmentCigar " << alignSeq << " vs root: " << _ma.expandedCigar << std::endl;
     }
 }
 
@@ -409,7 +410,6 @@ void DindelHaplotype::extractVariants()
     // position of haplotype base on reference.
     m_refPos = std::vector<int>(m_seq.size(), 0);
     m_isReference = false;
-
 
     // Compute a mapping from a haplotype base to its aligned position on the reference sequence
     int first_aligned_column = m_pMA->getFirstAlignedBaseColumn(refRow, varRow);
@@ -663,13 +663,15 @@ void DindelHaplotype::extractVariants()
     }
 }
 
-DindelHaplotype::DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping)
+DindelHaplotype::DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping, size_t assembly_k)
 {
     // initialize
     m_pMA = NULL;
     m_seq = haplotypeSequence;
     m_refMapping = refMapping;
     m_firstAlignedBase = 0;
+    m_assembly_k = assembly_k;
+
 #ifdef DEBUG_NEW
     std::cout << "refMapping " << m_refMapping.refName << " " 
               << m_refMapping.refStart 
@@ -707,6 +709,7 @@ void DindelHaplotype::copy(const DindelHaplotype & haplotype, int copyOptions)
    m_refMapping = haplotype.m_refMapping;
    m_isReference = haplotype.m_isReference;
    m_firstAlignedBase = haplotype.m_firstAlignedBase;
+   m_assembly_k = haplotype.m_assembly_k;
 
    if(haplotype.m_pMA != NULL)
        m_pMA = new MultipleAlignment(*haplotype.m_pMA);
@@ -824,7 +827,9 @@ int DindelHaplotype::getClosestDistance(const DindelVariant& variant, int hapPos
         std::cout << " haplotype variants: "; for (it = m_variant_to_pos.begin();it != m_variant_to_pos.end();it++) std::cout << " " << it->first; std::cout << std::endl;
         std::cout << " h2 variants:        "; for (size_t x=0;x<m_variants.size();x++) std::cout << " " << m_variants[x].getID(); std::cout << std::endl;
         return -1;
-    } else {
+    } 
+    else 
+    {
         int s = it->second.first;
         int e = it->second.second;
 
@@ -839,6 +844,7 @@ int DindelHaplotype::getClosestDistance(const DindelVariant& variant, int hapPos
             hapPos2 = t;
             */
         }
+
         // overlaps with variant?
         if (hapPosStartRead<=e && hapPosEndRead>=s)
         {
@@ -918,7 +924,9 @@ int DindelHaplotype::getHapBase(int refPos) const
 
  */
 
-DindelMultiHaplotype::DindelMultiHaplotype(const std::vector< DindelReferenceMapping > & referenceMappings, const std::string & haplotypeSequence)
+DindelMultiHaplotype::DindelMultiHaplotype(const std::vector< DindelReferenceMapping > & referenceMappings, 
+                                           const std::string & haplotypeSequence,
+                                           size_t assembly_k)
 {
 #ifdef DEBUG_NEW
     std::cout << "There are " << referenceMappings.size() << " reference mappings.\n";
@@ -926,7 +934,7 @@ DindelMultiHaplotype::DindelMultiHaplotype(const std::vector< DindelReferenceMap
     m_referenceMappings = referenceMappings;
     
     for (size_t i = 0; i < m_referenceMappings.size(); ++i)
-        m_haplotypes.push_back(DindelHaplotype(haplotypeSequence, m_referenceMappings[i]));
+        m_haplotypes.push_back(DindelHaplotype(haplotypeSequence, m_referenceMappings[i], assembly_k));
 
     m_seq = haplotypeSequence;
 
@@ -1062,17 +1070,18 @@ void DindelSequenceHash::makeHash(const std::string & sequence)
  *
  */
 DindelWindow::DindelWindow(const std::vector<std::string> & haplotypeSequences,
-                           const std::vector<DindelReferenceMapping>  & referenceMappings)
+                           const std::vector<DindelReferenceMapping>  &referenceMappings,
+                           size_t assembly_k)
 {
 
     m_pHaplotype_ma = NULL;
     m_referenceMappings = referenceMappings;
     
     // filter out duplicate haplotype sequences.
-    initHaplotypes(haplotypeSequences, referenceMappings);
+    initHaplotypes(haplotypeSequences, referenceMappings, assembly_k);
 
     // do multiple alignment of all haplotypes to each other.
-    doMultipleHaplotypeAlignment();
+    doMultipleHaplotypeAlignment(assembly_k);
 }
 
 DindelWindow::DindelWindow(const DindelWindow & window)
@@ -1083,7 +1092,6 @@ DindelWindow::DindelWindow(const DindelWindow & window)
 void DindelWindow::copy(const DindelWindow & window)
 {
     m_haplotypes = window.m_haplotypes;
-    m_hashAltHaps = window.m_hashAltHaps;
     m_candHapAlgorithm = window.m_candHapAlgorithm;
     m_referenceMappings = window.m_referenceMappings;
 
@@ -1095,23 +1103,24 @@ void DindelWindow::copy(const DindelWindow & window)
 }
 
 void DindelWindow::initHaplotypes(const std::vector<std::string> & haplotypeSequences,
-                                  const std::vector<DindelReferenceMapping>  & referenceMappings)
+                                  const std::vector<DindelReferenceMapping>  & referenceMappings,
+                                  size_t assembly_k)
 {
     for(size_t i = 0; i < haplotypeSequences.size(); ++i)
     {
-        if(m_hashAltHaps.find(haplotypeSequences[i]) == m_hashAltHaps.end())
-        {
-            if (DINDEL_DEBUG_3)
-                std::cout << "DindelWindow::MultiHaplotype " << m_haplotypes.size() << "\n";
-            m_haplotypes.push_back(DindelMultiHaplotype(referenceMappings, haplotypeSequences[i]));
-        }
+        if (DINDEL_DEBUG_3)
+            std::cout << "DindelWindow::MultiHaplotype " << m_haplotypes.size() << "\n";
+        m_haplotypes.push_back(DindelMultiHaplotype(referenceMappings, haplotypeSequences[i], assembly_k));
     }
 }
 
-void DindelWindow::doMultipleHaplotypeAlignment()
+void DindelWindow::doMultipleHaplotypeAlignment(size_t assembly_k)
 {
-    // globally align haplotypes to the first haplotype (arbitrary)
+    // align haplotypes to the first haplotype, which is the reference sequence
     std::vector<MAlignData> maVector;
+
+    // ensure that the first haplotype is the reference
+    assert(m_referenceMappings.front().refSeq.size() == m_haplotypes.front().getSequence().size());
 
     assert(m_haplotypes.size() >= 1);
 
@@ -1123,14 +1132,13 @@ void DindelWindow::doMultipleHaplotypeAlignment()
     {
         std::stringstream ss; 
         ss << "haplotype-" << h;
-        addHaplotypeToMultipleAlignment(m_pHaplotype_ma, rootSequence, ss.str(), m_haplotypes[h].getSequence());
+        addHaplotypeToMultipleAlignment(m_pHaplotype_ma, rootSequence, ss.str(), m_haplotypes[h].getSequence(), assembly_k);
     }
 
     if (DINDEL_DEBUG_3)
     {
         std::cout << "DindelWindow::doMultipleHaplotypeAlignment:\n";
         m_pHaplotype_ma->print(500);
-
     }
 }
 
@@ -1564,21 +1572,22 @@ ReadHaplotypeAlignment DindelRealignWindow::computeReadHaplotypeAlignment(size_t
 
     const int DRHA=0;
 
-    if (DINDEL_DEBUG &&DRHA) std::cout << std::endl <<  "====> START 1 DindelRealignWindow::computeReadHaplotypeAlignment " << read.getID() << std::endl;
+    if (DINDEL_DEBUG && DRHA) 
+        std::cout << std::endl <<  "====> START 1 DindelRealignWindow::computeReadHaplotypeAlignment " << read.getID() << std::endl;
     // scenarios
     /* Capital R's are matches, r's are mismatches
-    1. The seeds are too long to detect the possible gapped alignment of read to haplotype
-           HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
-                     rrrrrrrRRRRRRRRRRRRRRRRRRRRRRRRRRR
-        which should be
-           HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
-                  RRR   rrrrRRRRRRRRRRRRRRRRRRRRRRRRRRR
+       1. The seeds are too long to detect the possible gapped alignment of read to haplotype
+       HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+       rrrrrrrRRRRRRRRRRRRRRRRRRRRRRRRRRR
+       which should be
+       HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+       RRR   rrrrRRRRRRRRRRRRRRRRRRRRRRRRRRR
 
 
-    2. Deletion in read
-           HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
-                   RRRRRRR      RRRRRRRRRRRRRRRRRRRRRRRR
-    */
+       2. Deletion in read
+       HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+       RRRRRRR      RRRRRRRRRRRRRRRRRRRRRRRR
+     */
 
     // start and end are inclusive
     // start may be <0, and end may be > haplotype length
@@ -1591,20 +1600,21 @@ ReadHaplotypeAlignment DindelRealignWindow::computeReadHaplotypeAlignment(size_t
 
     if (DINDEL_DEBUG && DRHA)
     {
-	    std::cout << std::endl;
-	    std::cout << "HAPLOTYPE: " << haplotype.getSequence() << " isREF " << haplotype.isReference() << std::endl;
-	    std::string pad;
-	    std::string rseq = read.getSequence();
-	    if (start>=0)
-	    {
-		    pad = std::string(start, ' ');
-	    }
-	    else {
-		   rseq = read.getSequence().substr(-start, read.length());
-	    }
+        std::cout << std::endl;
+        std::cout << "HAPLOTYPE: " << haplotype.getSequence() << " isREF " << haplotype.isReference() << std::endl;
+        std::string pad;
+        std::string rseq = read.getSequence();
+        if (start>=0)
+        {
+            pad = std::string(start, ' ');
+        }
+        else 
+        {
+            rseq = read.getSequence().substr(-start, read.length());
+        }
 
-	    std::cout << "READ:      " << pad << rseq << std::endl;
-	    std::cout << "DLEN: " << dlen << " RLEN: " << rlen << " hlen: " << hlen << " start: " << start << " end: " << end << " read_index: " << readIndex << " " << read.getID() <<  std::endl;
+        std::cout << "READ:      " << pad << rseq << std::endl;
+        std::cout << "DLEN: " << dlen << " RLEN: " << rlen << " hlen: " << hlen << " start: " << start << " end: " << end << " read_index: " << readIndex << " " << read.getID() <<  std::endl;
     }
 
     int nmm=-1; // number of mismatches between read and candidate haplotype
@@ -1619,57 +1629,62 @@ ReadHaplotypeAlignment DindelRealignWindow::computeReadHaplotypeAlignment(size_t
 
         double ll=0.0;
         int b=0;
-    	double all_match = 0.0;
-	    nmm=0;
-        if (!rcReadSeq) {
-	    for (int x=start;x<=end;x++,b++)
+        double all_match = 0.0;
+        nmm=0;
+        if (!rcReadSeq) 
+        {
+            for (int x=start;x<=end;x++,b++)
             {
-		bool match = true;
-		if (x>=0 && x<=hlen-1)
-		{
-			match = (read.getBase(b) == haplotype.getSequence()[x])?true:false;
-		}
-		if (match) ll += lpCorrect[b]; else {
-		    if (DINDEL_DEBUG) std::cout << " mm " << b << " lpError: " << lpError[b] << std::endl;
-                    ll += lpError[b]; nmm++;
-                    if (countMismatch && lpCorrect[b]>minLpCorrect) mismatches.push_back(Mismatch(x, read.getBase(b)));
+                bool match = true;
+                if (x>=0 && x<=hlen-1)
+                {
+                    match = (read.getBase(b) == haplotype.getSequence()[x])?true:false;
                 }
-		all_match += lpCorrect[b];
-	    }
-	} else {
-	    for (int x=start;x<=end;x++,b++)
-	    {
-	        bool match = true;
-	        if (x>=0 && x<=hlen-1)
-		{
-			match = (_complement(read.getBase(rlen-1-b)) == haplotype.getSequence()[x])?true:false;
-		}
-	        if (match) ll += lpCorrect[rlen-1-b]; else {
-                    ll += lpError[rlen-1-b]; nmm++;
-                    if (countMismatch && lpCorrect[rlen-b-1]>minLpCorrect) mismatches.push_back(Mismatch(x, _complement(read.getBase(rlen-1-b))));
+                if (match) 
+                    ll += lpCorrect[b]; 
+                else 
+                {
+                    if (DINDEL_DEBUG) 
+                        std::cout << " mm " << b << " lpError: " << lpError[b] << std::endl;
+                    ll += lpError[b]; 
+                    nmm++;
+                    if (countMismatch && lpCorrect[b]>minLpCorrect) 
+                        mismatches.push_back(Mismatch(x, read.getBase(b)));
                 }
-	    }
-	}
+                all_match += lpCorrect[b];
+            }
+        } 
+        else 
+        {
+            for (int x=start;x<=end;x++,b++)
+            {
+                bool match = true;
+                if (x>=0 && x<=hlen-1)
+                {
+                    match = (_complement(read.getBase(rlen-1-b)) == haplotype.getSequence()[x])?true:false;
+                }
 
-        if (ADDSNPS && nmm<=realignParameters.addSNPMaxMismatches) {
-            for (std::list<Mismatch>::const_iterator iter = mismatches.begin(); iter != mismatches.end(); iter++) 
-	    {
-                // FIXME Need to add wrt haplotype multiple alignment column
-		assert(1==0);    
-		/*
-		int refPos = haplotype.getRefBase(iter->first);
-		if (refPos>0)
-		{
-                    m_posToCandidateSNP.addSNP(readIndex, refPos, haplotype.getSequence()[iter->first], iter->second); // pos, ref, alt resp.
-		}
-		*/
+                if (match) 
+                {
+                    ll += lpCorrect[rlen-1-b];
+                }
+                else 
+                {
+                    ll += lpError[rlen-1-b]; 
+                    nmm++;
+                    if (countMismatch && lpCorrect[rlen-b-1]>minLpCorrect)
+                         mismatches.push_back(Mismatch(x, _complement(read.getBase(rlen-1-b))));
+                }
             }
         }
-	logLik = ll;
-	isUngapped = true;
-    }
-    else { assert(1==0); }
 
+        logLik = ll;
+        isUngapped = true;
+    }
+    else 
+    { 
+        assert(1==0); 
+    }
 
     assert(!std::isnan(logLik));
     assert(logLik<0.0);
@@ -1681,60 +1696,12 @@ ReadHaplotypeAlignment DindelRealignWindow::computeReadHaplotypeAlignment(size_t
 
     if (DINDEL_DEBUG && DRHA)
     {
-	std::cout << "LOGLIK: " << logLik << std::endl;
+	    std::cout << "LOGLIK: " << logLik << std::endl;
     }
-    if (DINDEL_DEBUG &&DRHA) std::cout << std::endl <<  "====> END DindelRealignWindow::computeReadHaplotypeAlignment" << std::endl;
+    if (DINDEL_DEBUG && DRHA)
+         std::cout << std::endl <<  "====> END DindelRealignWindow::computeReadHaplotypeAlignment" << std::endl;
     return ReadHaplotypeAlignment(logLik, nmm, isUngapped);
 }
-
-void DindelRealignWindow::addSNPsToHaplotypes()
-{
-    typedef std::map<size_t, std::vector<DindelVariant> > FreqCandidates;
-    FreqCandidates freqCandidates;
-    throw std::string("IMPLEMENT ME");
-
-    for (MaPosToCandidateSNP::const_iterator iter = m_maPosToCandidateSNP.begin(); iter != m_maPosToCandidateSNP.end(); iter++)
-    {
-        for (size_t baseIdx=0;baseIdx<4;baseIdx++)
-        {
-            if (iter->second.baseToReads[baseIdx].size()>=realignParameters.addSNPMinCount)
-            {
-                // FIXME 
-                /*
-                std::string ref; ref+=iter->second.m_refBase;
-                std::string alt; alt+=iter->second.getBase(baseIdx);
-                DindelVariant snp(m_dindelWindow.getChrom(), ref, alt, iter->first);
-                snp.setPriorProb(realignParameters.variantPriors.getDefaultProbVariant(snp.getType()));
-                freqCandidates[iter->second.baseToReads[baseIdx].size()].push_back(snp);
-                if(!QUIET) std::cout << "DindelRealignWindow::addSNPsToHaplotypes adding SNP " << m_dindelWindow.getChrom() << " " << ref << " "  <<  alt << " " <<  iter->first << std::endl;
-
-                 */
-            }
-        }
-    }
-
-    // add snps until maximum is reached.
-    int numAdded=0;
-    for (FreqCandidates::const_reverse_iterator iter=freqCandidates.rbegin();iter!=freqCandidates.rend();iter++)
-    {
-        bool stop=false;
-        for(size_t x=0;x<iter->second.size();x++)
-        {
-            m_dindelWindow.addVariant(iter->second[x], true);
-            numAdded++;
-            if (numAdded == realignParameters.addSNPMaxSNPs)
-            {
-                stop =true;
-                break;
-            }
-
-        }
-        if (stop) break;
-    }
-
-}
-
-
 
 void DindelRealignWindow::algorithm_hmm(VCFCollection& out, 
                                         DindelReadReferenceAlignmentVector* pOutAlignments, 
@@ -1750,15 +1717,6 @@ void DindelRealignWindow::algorithm_hmm(VCFCollection& out,
 
     // process the user-defined haplotypes
     computeReadHaplotypeAlignmentsUsingHMM(0, numHaps-1);
-
-    // now add SNPs identified by the high quality ungapped alignments
-    if (ADDSNPS && realignParameters.addSNPMaxSNPs>0)
-    {
-        addSNPsToHaplotypes();
-
-        // compute the likelihoods for the additional haplotypes
-        computeReadHaplotypeAlignmentsUsingHMM(numHaps, m_dindelWindow.getHaplotypes().size()-1);
-    }
 
     DindelRealignWindowResult & result = *pThisResult;
 

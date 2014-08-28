@@ -397,7 +397,7 @@ class DindelHaplotype
     public:
 
         // Constructors
-        DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping);
+        DindelHaplotype(const std::string & haplotypeSequence, const DindelReferenceMapping & refMapping, size_t assembly_k);
         DindelHaplotype(const DindelHaplotype & haplotype, int copyOptions);
         DindelHaplotype(const DindelHaplotype & haplotype);
         ~DindelHaplotype();
@@ -457,6 +457,7 @@ class DindelHaplotype
         std::vector<int> m_hplen; // gives the homopolymer run length for any base in the haplotype sequence going left and right.
         std::vector<int> m_refPos; // position of haplotype base on reference.
         int m_firstAlignedBase;
+        size_t m_assembly_k;
 
         // list of VCF4 style variants contained in haplotype
         std::vector<DindelVariant> m_variants;
@@ -475,7 +476,7 @@ class DindelHaplotype
 class DindelMultiHaplotype
 {
 public:
-    DindelMultiHaplotype(const std::vector< DindelReferenceMapping > & referenceMappings, const std::string & haplotypeSequence  );
+    DindelMultiHaplotype(const std::vector< DindelReferenceMapping > & referenceMappings, const std::string & haplotypeSequence, size_t assembly_k );
     const std::string & getSequence() const { return m_seq; }
     const std::vector<DindelVariant> & getVariants(int refIdx) const { return m_haplotypes[refIdx].getVariants(); }
     int getNumReferenceMappings() const { return int(m_referenceMappings.size()); }
@@ -512,7 +513,10 @@ class DindelWindow
         
         // Create window from a set of haplotypes and a reference sequence.
         // Uses MultipleAlignment to annotate the variations in the haplotypes with respect to the reference sequence.
-        DindelWindow(const std::vector<std::string> & haplotypeSequences, const std::vector<DindelReferenceMapping>  & referenceMappings);
+        DindelWindow(const std::vector<std::string> & haplotypeSequences, 
+                     const std::vector<DindelReferenceMapping>& referenceMappings,
+                     size_t assembly_k);
+
         DindelWindow(const DindelWindow & window);
         ~DindelWindow();
 
@@ -523,8 +527,11 @@ class DindelWindow
     private:
         
         //
-        void initHaplotypes(const std::vector<std::string> & haplotypeSequences, const std::vector<DindelReferenceMapping> & referenceMappings);
-        void doMultipleHaplotypeAlignment();
+        void initHaplotypes(const std::vector<std::string>& haplotypeSequences, 
+                            const std::vector<DindelReferenceMapping>& referenceMappings,
+                            size_t assembly_k);
+
+        void doMultipleHaplotypeAlignment(size_t assembly_k);
         void copy(const DindelWindow & window);
 
         // Data
@@ -534,7 +541,6 @@ class DindelWindow
         
         // candidate haplotypes
         std::vector<DindelMultiHaplotype> m_haplotypes;
-        std::map<std::string, int> m_hashAltHaps;
         std::vector< DindelReferenceMapping > m_referenceMappings;
 
         MultipleAlignment *m_pHaplotype_ma;
@@ -946,7 +952,6 @@ class DindelRealignWindow
 
         // Functions
         void filterHaplotypes();
-        void addSNPsToHaplotypes();
         void processHaplotypes(size_t firstHapIdx, size_t lastHapIdx);
 
         // convert seed positions into a likelihood given the candidate haplotype

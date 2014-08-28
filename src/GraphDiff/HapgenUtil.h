@@ -100,7 +100,8 @@ namespace HapgenUtil
                                 int flanking,
                                 const StringVector& inHaplotypes,
                                 StringVector& outFlankingHaplotypes,
-                                StringVector& outHaplotypes);
+                                StringVector& outHaplotypes,
+                                StringVector& outFlankingReferenceHaplotypes);
 
 
     // Extract reads from an FM-index that have a k-mer match to any given haplotypes
@@ -125,10 +126,25 @@ namespace HapgenUtil
                                        SeqRecordVector* pOutReads, 
                                        SeqRecordVector* pOutMates);
 
+    // Get the index of the first and last k-mers of the haplotype
+    // in the reference sequence
+    void getFlankingKmerMatch(size_t k,
+                              const std::string& reference,
+                              const std::string& haplotype,
+                              size_t& start_idx,
+                              size_t& end_idx);
     
     // Perform an alignment between a haplotype sequence and a reference sequence
-    SequenceOverlap alignHaplotypeToReference(const std::string& reference,
+    // This function assumes the sequences share the first/last k bases
+    SequenceOverlap alignHaplotypeToReference(size_t k,
+                                              const std::string& reference,
                                               const std::string& haplotype);
+
+    // Returns true if the start/end kmer for all haplotypes occur in the reference string
+    bool checkHaplotypeKmersMatchReference(size_t k,
+                                           const std::string& reference,
+                                           const StringVector& inHaplotypes);
+
 
     // Compute the best local alignment for each read in the array to the given sequence
     LocalAlignmentResultVector alignReadsLocally(const std::string& target, const SeqItemVector& reads);

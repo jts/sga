@@ -69,7 +69,7 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
             has_complex_variant = true;
     }
 
-    size_t MAX_ALIGNMENTS = 10;
+    size_t MAX_ALIGNMENTS = 1;
     if(candidateAlignments.size() > MAX_ALIGNMENTS)
         return DRC_AMBIGUOUS_ALIGNMENT;
 
@@ -78,11 +78,17 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     int FLANKING_SIZE = 0;
     if (parameters.dindelRealignParameters.realignMatePairs)
         FLANKING_SIZE = 1000;
+    
+    // all haplotypes, assembled and reference with the extra flanking sequence added
     StringVector flankingHaplotypes;
+    
+    // only the reference sequences, not the assembled haplotypes
+    StringVector referenceFlankingHaplotypes; 
 
-    // This vector contains the internal portion of the haplotypes, without the flanking sequence
+    // The internal portion of the haplotypes, without the flanking sequence.
     // It is used to extract reads
     StringVector candidateHaplotypes;
+
     for(size_t i = 0; i < candidateAlignments.size(); ++i)
     {
         HapgenUtil::makeFlankingHaplotypes(candidateAlignments[i],
@@ -90,9 +96,29 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
                                            FLANKING_SIZE,
                                            inHaplotypes,
                                            flankingHaplotypes,
-                                           candidateHaplotypes);
+                                           candidateHaplotypes,
+                                           referenceFlankingHaplotypes);
     
     }
+
+
+    // There should be at least two flanking haplotypes, one that was assembled
+    // and one reference sequence found by alignment
+    if(flankingHaplotypes.size() < 2)
+        return DRC_NO_ALIGNMENT;
+
+    // Ensure the reference haplotype is a non-empty string
+    if(flankingHaplotypes[0].size() == 0)
+        return DRC_NO_ALIGNMENT;
+
+    // JS 26/08/14
+    // We now require the assembled haplotype to match uniquely to the reference
+    // and we require that the starting/ending k-mers of the haplotypes exactly
+    // match the reference. Enforce these checks now.
+    assert(referenceFlankingHaplotypes.size() == 1);
+
+    if(!HapgenUtil::checkHaplotypeKmersMatchReference(parameters.kmer, referenceFlankingHaplotypes.front(), inHaplotypes))
+        return DRC_AMBIGUOUS_ALIGNMENT;
 
     if(Verbosity::Instance().getPrintLevel() > 3)
         printf("runDindel -- made %zu flanking haplotypes\n", candidateHaplotypes.size());
@@ -158,17 +184,6 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
     if (total_reads == 0)
         return DRC_UNDER_DEPTH;
 
-    // Generate the input haplotypes for dindel
-    // We need at least 2 haplotypes (one is the reference)
-    size_t totFlankingHaplotypes = flankingHaplotypes.size();
-
-    if(totFlankingHaplotypes < 2)
-        return DRC_NO_ALIGNMENT;
-
-    // Ensure the reference haplotype is a non-empty string
-    if(flankingHaplotypes[0].size() == 0)
-        return DRC_NO_ALIGNMENT;
-
     // Make Dindel referenceMappings
     StringVector dindelHaplotypes;
     std::set<DindelReferenceMapping> refMappings;
@@ -212,16 +227,27 @@ DindelReturnCode DindelUtil::runDindelPairMatePair(const std::string& id,
         it->referenceAlignmentScore = 1000;
     
     // make flankingHaplotypes unique
-    std::set< std::string > setFlanking(flankingHaplotypes.begin(), flankingHaplotypes.end());
-
-    for(std::set< std::string >::const_iterator it = setFlanking.begin(); it != setFlanking.end(); it++)
+    // JS 27/08/14: After changing the alignment code to require
+    // k-mer matches between the reference and haplotype, the order
+    // that the haplotypes are sent to dindel matters. The following
+    // code was changed so that the unique reference haplotype is presented
+    // to dindel first.
+    std::set<std::string> setFlanking;
+    
+    for(size_t fi = 0; fi < flankingHaplotypes.size(); ++fi)
     {
-        dindelHaplotypes.push_back(*it);
-        //dindelRefMappings[i] = std::vector<DindelReferenceMapping>(refMappings.begin(),refMappings.end());
+        std::string& curr_haplotype = flankingHaplotypes[fi];
+        if(setFlanking.find(curr_haplotype) == setFlanking.end())
+        {
+            dindelHaplotypes.push_back(curr_haplotype);
+            setFlanking.insert(curr_haplotype);
+        }
     }
 
     std::vector<DindelReferenceMapping> dRefMappings(refMappings.begin(),refMappings.end());
-    DindelWindow dWindow(dindelHaplotypes, dRefMappings);
+    
+    // Initialize DindelWindow
+    DindelWindow dWindow(dindelHaplotypes, dRefMappings, parameters.kmer);
 
     //
     // Run Dindel

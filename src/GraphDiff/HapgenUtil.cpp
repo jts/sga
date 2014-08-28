@@ -30,6 +30,11 @@ struct CandidateKmerAlignment
 };
 typedef std::vector<CandidateKmerAlignment> CandidateVector;
 
+bool isValidFlankingKmerPair(size_t kidx_0, size_t kidx_1)
+{
+    return kidx_0 != std::string::npos && kidx_1 != std::string::npos && kidx_1 > kidx_0;
+}
+
 // Align the haplotype to the reference genome represented by the BWT/SSA pair
 void HapgenUtil::alignHaplotypeToReferenceKmer(size_t align_k,
                                                size_t assemble_k,
@@ -104,22 +109,15 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t align_k,
 
             std::string ref_substring = ref_sequence.substr(ref_start, ref_end - ref_start);
 
-            // Trim reference string so that it has flanking k-mer matches with the haplotype
-            std::string start_kmer = query.substr(0, assemble_k);
-            std::string end_kmer = query.substr(haplotype.size() - assemble_k, assemble_k);
+            // Ensure that this alignment location is valid by checking for the presence of both unique flanking kmers
+            size_t kidx_0, kidx_1;
+            getFlankingKmerMatch(assemble_k, ref_substring, query, kidx_0, kidx_1);
 
-            size_t kidx_0 = ref_substring.find(start_kmer);
-            size_t kidx_1 = ref_substring.find(end_kmer);
-            
-            // Trim haplotype to flanking k-mers, if they match reference
-            if(kidx_0 != std::string::npos && kidx_1 != std::string::npos && kidx_1 > kidx_0)
-            {
-                ref_substring = ref_substring.substr(kidx_0, kidx_1 - kidx_0 + assemble_k);
-                ref_start += kidx_0;
-            }
+            if(!isValidFlankingKmerPair(kidx_0, kidx_1))
+                continue;
 
             // Align haplotype to the reference
-            SequenceOverlap overlap = alignHaplotypeToReference(ref_substring, query);
+            SequenceOverlap overlap = alignHaplotypeToReference(assemble_k, ref_substring, query);
 
             if(overlap.score < 0 || !overlap.isValid())
                 continue;
@@ -196,15 +194,85 @@ void HapgenUtil::alignHaplotypeToReferenceKmer(size_t align_k,
     }
 }
 
-SequenceOverlap HapgenUtil::alignHaplotypeToReference(const std::string& reference,
+// Get the index of the first and last k-mers of the haplotype
+// in the reference sequence
+//
+// ----------==========-----------------============------  reference
+//           ==========-----------------===========         haplotype
+//           ^ start_idx                ^ end_idx
+// These will be std::string::npos if the kmers are not on the reference
+void HapgenUtil::getFlankingKmerMatch(size_t k,
+                                      const std::string& reference,
+                                      const std::string& haplotype,
+                                      size_t& start_idx,
+                                      size_t& end_idx)
+{
+    // Trim reference string so that it has flanking k-mer matches with the haplotype
+    std::string start_kmer = haplotype.substr(0, k);
+    std::string end_kmer = haplotype.substr(haplotype.size() - k, k);
+    
+    start_idx = reference.find(start_kmer);
+    end_idx = reference.find(end_kmer);
+}
+
+//
+SequenceOverlap HapgenUtil::alignHaplotypeToReference(size_t k,
+                                                      const std::string& reference,
                                                       const std::string& haplotype)
 {
+
+    // Get position of flanking k-mer matches
+    size_t kidx_0, kidx_1;
+    getFlankingKmerMatch(k, reference, haplotype, kidx_0, kidx_1);
+    
+    if(Verbosity::Instance().getPrintLevel() > 5)
+    {
+        printf("R: %s\n", reference.c_str());
+        printf("H: %s\n", haplotype.c_str());
+        printf("K: %zu\n", k);
+        printf("KI0: %zu KI1: %zu\n", kidx_0, kidx_1);
+    }
+    
+    // This function assumes that the flanking k-mers are in both strings
+    assert(isValidFlankingKmerPair(kidx_0, kidx_1));
+
+    // trim reference string so we can perform global alignment
+    std::string reference_substring = reference.substr(kidx_0, kidx_1 - kidx_0 + k);
+
+    // set up scoring scheme
     OverlapperParams params = affine_default_params;
+    params.type = ALT_GLOBAL;
     params.gap_ext_penalty = 0;
-    SequenceOverlap overlap = Overlapper::computeAlignmentAffine(reference, haplotype, params);
+
+    //
+    SequenceOverlap overlap = Overlapper::computeAlignmentAffine(reference_substring, haplotype, params);
+    
+    // Offset alignment location by the location of the first kmer in the reference haplotype
+    overlap.match[0].start += kidx_0;
+    overlap.match[0].end += kidx_0;
+    
+    if(Verbosity::Instance().getPrintLevel() > 5)
+    {
+        overlap.printAlignment(reference, haplotype);
+    }
     return overlap;
 }
 
+// Returns true if the start/end kmer for all haplotypes occur in the reference string
+bool HapgenUtil::checkHaplotypeKmersMatchReference(size_t k,
+                                                   const std::string& reference,
+                                                   const StringVector& inHaplotypes)
+{
+    for(size_t i = 0; i < inHaplotypes.size(); ++i)
+    {
+        size_t kidx_0, kidx_1;
+        getFlankingKmerMatch(k, reference, inHaplotypes[i], kidx_0, kidx_1);
+
+        if(!isValidFlankingKmerPair(kidx_0, kidx_1))
+            return false;
+    }
+    return true;
+}
 
 // Coalesce a set of alignments into distinct locations
 void HapgenUtil::coalesceAlignments(HapgenAlignmentVector& alignments)
@@ -305,7 +373,8 @@ bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln,
                                         int flanking,
                                         const StringVector& inHaplotypes,
                                         StringVector& outFlankingHaplotypes,
-                                        StringVector& outHaplotypes)
+                                        StringVector& outHaplotypes,
+                                        StringVector& outFlankingReferenceHaplotypes)
 {
     std::string upstream;
     std::string referenceHaplotype;
@@ -329,6 +398,7 @@ bool HapgenUtil::makeFlankingHaplotypes(const HapgenAlignment& aln,
     std::string referenceFlanking = upstream + referenceHaplotype + downstream;
     outFlankingHaplotypes.push_back(referenceFlanking);
     outHaplotypes.push_back(referenceHaplotype);
+    outFlankingReferenceHaplotypes.push_back(referenceFlanking);
 
     // Check that all sequences match the reference haplotype properly
     /*
