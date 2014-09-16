@@ -411,28 +411,45 @@ std::string makeVariantKey(const VCFRecord& record)
     return ss.str(); 
 }
 
+// Get coordinates of the reference haplotype for this
+// variant, plus some flanking sequence
+void getReferenceInterval(const VCFRecord& record,
+                          int flankingSize,
+                          int& zeroBasedPos,
+                          int& flankStart,
+                          int& flankEnd)
+{
+    zeroBasedPos = record.refPosition - 1;
+    flankStart = zeroBasedPos - flankingSize - 1;
+    flankEnd = zeroBasedPos + record.refStr.length() + 2 * flankingSize;
+}
+
+// Modify the reference coordinates to avoid going over the ends
+void clampReferenceInterval(const SeqItem& chr, int& start, int&end)
+{
+    if(start < 0)
+        start = 0;
+ 
+    if(end > (int)chr.seq.length())
+        end = (int)chr.seq.length();
+}
+
 // Calculate Homopolymer lengths at the variant position
 int calculateHomopolymerLength(const VCFRecord& record, const ReadTable* refTable)
 {
     static const int flankingSize = 100;
 
-    // Grab the reference haplotype
-    int zeroBasedPos = record.refPosition - 1;
-    int start = zeroBasedPos - flankingSize - 1;
-    if(start < 0)
-        start = 0;
-
-    int end = zeroBasedPos + record.refStr.length() + 2 * flankingSize;
+    // Get coordinates of reference haplotype
+    int zeroBasedPos, start, end;
+    getReferenceInterval(record, flankingSize, zeroBasedPos, start, end);
     const SeqItem& chr = refTable->getRead(record.refName);
-    if(end > (int)chr.seq.length())
-        end = (int)chr.seq.length();
 
+    clampReferenceInterval(chr, start, end);
     std::string reference_haplotype = chr.seq.substr(start, end - start);
 
     // we use the MA class for the homopolymer counting code
     MAlignDataVector mav;
     MultiAlignment ma(reference_haplotype, mav);
-
 
     // Count run lengths of nucleotides
     std::vector<size_t> run_lengths;
@@ -482,6 +499,120 @@ int calculateHomopolymerLength(const VCFRecord& record, const ReadTable* refTabl
     return maxhp;
 }
 
+// Calculate l-nucleotide repeat lengths in the given sequence
+// For example mono-nucleotide (l=1), di-nucleotide (l=2) and so on.
+// This calculates the length of l-nucleotide run starting from
+// every position of the input sequence.
+std::vector<int> calculateRepeatLengths(const std::string& input, int l)
+{
+    std::vector<int> runs;
+
+    for(size_t i = 0; i < input.size() - l + 1; ++i)
+    {
+        std::string mer = input.substr(i, l);
+        int rl = 1;
+        while(input.compare(i + l * rl, l, mer) == 0)
+            rl++;
+        runs.push_back(rl);
+    }
+    
+    return runs;
+}
+
+struct RepeatCounts
+{
+    std::string unit;
+    size_t numRefUnits;
+};
+
+RepeatCounts getRepeatCounts(const VCFRecord& record, const ReadTable* refTable)
+{
+    // Get coordinates of reference haplotype
+    int zeroBasedPos, start, end;
+    getReferenceInterval(record, 100, zeroBasedPos, start, end);
+    const SeqItem& chr = refTable->getRead(record.refName);
+
+    clampReferenceInterval(chr, start, end);
+    std::string reference_haplotype = chr.seq.substr(start, end - start);
+
+    // VCF encodes indels as TAC -> T
+    // Calculate the inserted deleted (or substituted) sequence
+    // without including the matching reference base 
+    std::string repeat_unit;
+    if(record.varStr[0] == record.refStr[0])
+    {
+        // indel
+        if(record.varStr.size() > record.refStr.size())
+            repeat_unit = record.varStr.substr(1);
+        else
+            repeat_unit = record.refStr.substr(1);
+    }
+    else
+    {
+        repeat_unit = record.varStr;
+    }
+    
+    size_t repeat_len = repeat_unit.size();
+    size_t event_start = zeroBasedPos - start;
+    size_t event_end = event_start + record.refStr.size();
+
+    // Get the first position of the repeat unit near the variant
+    size_t first_pos = reference_haplotype.find(repeat_unit, event_start);
+
+    size_t num_units = 0;
+
+    if(first_pos <= event_end)
+    {
+        // Count forwards
+        int p = (int)first_pos;
+        while(p < (int)reference_haplotype.size() && reference_haplotype.compare(p, repeat_len, repeat_unit) == 0)
+            p += repeat_len;
+        num_units = (p - first_pos) / repeat_len;
+
+        // Count backwards
+        p = first_pos - repeat_len;
+        while(p >= 0 && reference_haplotype.compare(p, repeat_len, repeat_unit) == 0)
+            p -= repeat_len;
+        num_units += ((first_pos - p) / repeat_len) - 1;
+    }
+
+    RepeatCounts out;
+    out.unit = repeat_unit;
+    out.numRefUnits = num_units;
+    return out;
+
+    /*
+    std::vector<int> out;
+
+    std::cout << "VAR: " << record << "\n";
+    std::cout << "REF: " << reference_haplotype << "\n";
+    std::cout << "REPEAT: " << repeat_unit << "\n";
+    std::cout << "REPEAT UNITS: " << num_units << "\n";
+    for(size_t rl = 1; rl <= 6; rl++)
+    {
+        std::vector<int> runs = calculateRepeatLengths(reference_haplotype, rl);
+
+        // Find the maximum run that is within the variant region
+        int max_run = 1;
+        for(size_t i = 0; i < runs.size(); ++i)
+        {
+            size_t run_start = i;
+            size_t run_end = run_start + runs[i] * rl;
+            
+            if( (event_start >= run_start && event_start <= run_end) ||
+                (event_end >= run_start && event_end <= run_end))
+            {
+                if(max_run < runs[i])
+                    max_run = runs[i];
+            }
+        }
+        out.push_back(max_run);
+        printf("RL: %zu MAX: %d\n", rl, max_run);
+    }
+    return out;
+    */
+}
+
 // Get the 3-mer preceding and following the variant
 void getVariantContext(const VCFRecord& record, const ReadTable* refTable,
                        std::string& prefix, std::string& suffix)
@@ -501,7 +632,6 @@ void getVariantContext(const VCFRecord& record, const ReadTable* refTable,
 
     std::string reference_haplotype = chr.seq.substr(start, end - start);
 
-    // Calculate the maximum homopolymer run as the max over the variant reference region
     size_t eventStart = zeroBasedPos - start;
     size_t eventEnd = eventStart + record.refStr.size();
     static const size_t k = 3;
@@ -579,10 +709,12 @@ int somaticVariantFiltersMain(int argc, char** argv)
         makeTagHash(record, tagHash);
 
         StringVector fail_reasons;
+        
 
         int hplen = 0;
         if(!getTagValue(tagHash, "HPLen", hplen))
             hplen = calculateHomopolymerLength(record, &refTable);
+
         if(hplen > opt::maxHPLen)
             fail_reasons.push_back("Homopolymer");
 
@@ -610,7 +742,11 @@ int somaticVariantFiltersMain(int argc, char** argv)
         double strandBias;
         if(getTagValue(tagHash, "SB", strandBias) && strandBias >= opt::maxStrandBias)
             fail_reasons.push_back("StrandBias");
+        
+        // Count the number of copies of the inserted/deleted sequence in the reference
+        RepeatCounts repeatCounts = getRepeatCounts(record, &refTable);
 
+        // Realignment-based stats
         CoverageStats tumor_stats = getVariantCoverage(pTumorBamReader, record, &refTable);
         CoverageStats normal_stats = getVariantCoverage(pNormalBamReader, record, &refTable);
 
@@ -684,6 +820,8 @@ int somaticVariantFiltersMain(int argc, char** argv)
             record.addComment("NormalTotalDepth", (int)normal_stats.n_total_reads);
             record.addComment("5pContext", prefix);
             record.addComment("3pContext", suffix);
+            record.addComment("RepeatUnit", repeatCounts.unit);
+            record.addComment("RepeatRefCount", (int)repeatCounts.numRefUnits);
         }
 
         std::cout << record << "\n";
