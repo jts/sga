@@ -499,26 +499,6 @@ int calculateHomopolymerLength(const VCFRecord& record, const ReadTable* refTabl
     return maxhp;
 }
 
-// Calculate l-nucleotide repeat lengths in the given sequence
-// For example mono-nucleotide (l=1), di-nucleotide (l=2) and so on.
-// This calculates the length of l-nucleotide run starting from
-// every position of the input sequence.
-std::vector<int> calculateRepeatLengths(const std::string& input, int l)
-{
-    std::vector<int> runs;
-
-    for(size_t i = 0; i < input.size() - l + 1; ++i)
-    {
-        std::string mer = input.substr(i, l);
-        int rl = 1;
-        while(input.compare(i + l * rl, l, mer) == 0)
-            rl++;
-        runs.push_back(rl);
-    }
-    
-    return runs;
-}
-
 struct RepeatCounts
 {
     std::string unit;
@@ -580,37 +560,6 @@ RepeatCounts getRepeatCounts(const VCFRecord& record, const ReadTable* refTable)
     out.unit = repeat_unit;
     out.numRefUnits = num_units;
     return out;
-
-    /*
-    std::vector<int> out;
-
-    std::cout << "VAR: " << record << "\n";
-    std::cout << "REF: " << reference_haplotype << "\n";
-    std::cout << "REPEAT: " << repeat_unit << "\n";
-    std::cout << "REPEAT UNITS: " << num_units << "\n";
-    for(size_t rl = 1; rl <= 6; rl++)
-    {
-        std::vector<int> runs = calculateRepeatLengths(reference_haplotype, rl);
-
-        // Find the maximum run that is within the variant region
-        int max_run = 1;
-        for(size_t i = 0; i < runs.size(); ++i)
-        {
-            size_t run_start = i;
-            size_t run_end = run_start + runs[i] * rl;
-            
-            if( (event_start >= run_start && event_start <= run_end) ||
-                (event_end >= run_start && event_end <= run_end))
-            {
-                if(max_run < runs[i])
-                    max_run = runs[i];
-            }
-        }
-        out.push_back(max_run);
-        printf("RL: %zu MAX: %d\n", rl, max_run);
-    }
-    return out;
-    */
 }
 
 // Get the 3-mer preceding and following the variant
@@ -709,7 +658,6 @@ int somaticVariantFiltersMain(int argc, char** argv)
         makeTagHash(record, tagHash);
 
         StringVector fail_reasons;
-        
 
         int hplen = 0;
         if(!getTagValue(tagHash, "HPLen", hplen))
