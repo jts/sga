@@ -36,11 +36,11 @@
 // 
 OverlapperParams default_params = { 2, -6, -3, -2, ALT_OVERLAP };
 OverlapperParams ungapped_params = { 2, -10000, -3, -2, ALT_OVERLAP };
-OverlapperParams affine_default_params = { 2, -5, -3, -2, ALT_OVERLAP };
+OverlapperParams affine_default_params = { 2, -5, -3, -2, ALT_OVERLAP, true, true, true, true, true };
 
 //
 #define max3(x,y,z) std::max(std::max(x,y), z)
-//#define DEBUG_OVERLAPPER 1
+#define DEBUG_OVERLAPPER 1
 //#define DEBUG_EXTEND 1
 
 // 
@@ -169,7 +169,10 @@ int SequenceOverlap::calculateTotalColumns() const
 //
 void SequenceOverlap::printAlignment(const std::string& s1, const std::string& s2) const
 {
-    assert(isValid());
+    if(!isValid()) {
+        std::cerr << "Alignment is not valid\n";
+        return;
+    }
 
     std::string out_1;
     std::string out_2;
@@ -198,7 +201,7 @@ void SequenceOverlap::printAlignment(const std::string& s1, const std::string& s
     char code;
     while(cigar_parser >> length >> code) {
         assert(length > 0);
-        if(code == 'M') {
+        if(code == 'M' || code == 'X' || code == '=') {
             out_1.append(s1.substr(current_1, length));
             out_2.append(s2.substr(current_2, length));
             current_1 += length;
@@ -629,6 +632,7 @@ SequenceOverlap Overlapper::extendMatch(const std::string& s1, const std::string
 static const uint8_t FROM_DIAG = 0;
 static const uint8_t FROM_LEFT = 1;
 static const uint8_t FROM_UP = 2;
+static const uint8_t FROM_INVALID = 3;
 
 // The score for this cell coming from a match, deletion and insertion and its direction
 struct AffineCell
@@ -657,77 +661,118 @@ SequenceOverlap Overlapper::computeAlignmentAffine(const std::string& s1, const 
         exit(EXIT_FAILURE);
     }
 
+    bool gap_s1_start;
+    bool gap_s1_end;
+    bool gap_s2_start;
+    bool gap_s2_end;
+    
+    // Set the bools for the explicit alignment types
+    if (params.type == ALT_GLOBAL)
+    {
+        gap_s1_start = false;
+        gap_s1_end = false;
+        gap_s2_start = false;
+        gap_s2_end = false;
+    }
+    else if (params.type == ALT_OVERLAP)
+    {
+        gap_s1_start = true;
+        gap_s1_end = true;
+        gap_s2_start = true;
+        gap_s2_end = true;
+    }
+    else if (params.type == ALT_CONTAINMENT)
+    {
+        gap_s1_start = true;
+        gap_s1_end = true;
+        gap_s2_start = false;
+        gap_s2_end = false;
+    }
+    else if (params.type == ALT_CUSTOM)
+    {
+        gap_s1_start = params.gap_s1_start;
+        gap_s1_end = params.gap_s1_end;
+        gap_s2_start = params.gap_s2_start;
+        gap_s2_end = params.gap_s2_end;
+    }
+    else
+    {
+        // Unknown alignment type
+        abort();
+    }
+
     // Initialize the scoring matrix
     size_t num_columns = s1.size() + 1;
     size_t num_rows = s2.size() + 1;
-
     int gap_open = -params.gap_penalty;
     int gap_ext = -params.gap_ext_penalty;
-
+    
     AffineMatrix score_matrix;
     score_matrix.resize(num_columns);
+    
     for(size_t i = 0; i < score_matrix.size(); ++i)
         score_matrix[i].resize(num_rows);
-
-    // initialze first row and column
-
-    // in GLOBAL mode, we add gap penalties to all cells 
-    // in the first row and column except for (0,0).
-    // in CONTAINMENT mode, we add gap penalties in the first row only
-    // in OVERLAP mode, we do not add gap penalties
-    // this logic is implemented by the c constant, which is 0 or 1
-    // to turn off/on the penalty as needed
-
-    // first row, add penalties if global mode
-    int c = params.type == ALT_GLOBAL ? 1 : 0;
+    
+    // Initialze first row and column
+    // Penalties in first row iff gap_s1_start==false
+    int c = (gap_s1_start == false ? 1 : 0);
     for(size_t i = 1; i < num_columns; ++i) {
         int v = -(gap_open + i * gap_ext) * c;
         score_matrix[i][0].D = v;
+        score_matrix[i][0].Dt = (i == 1? FROM_DIAG : FROM_LEFT);
         score_matrix[i][0].G = v;
+        score_matrix[i][0].Gt = FROM_LEFT;
     }
 
-    // first column, add penalities in global or containment mode
-    c = params.type == ALT_GLOBAL || params.type == ALT_CONTAINMENT ? 1 : 0;
+    // Penalties in first column iff gap_s2_start==false
+    c = (gap_s2_start == false ? 1 : 0);
     for(size_t j = 1; j < num_rows; ++j) {
         int v = -(gap_open + j * gap_ext) * c;
         score_matrix[0][j].I = v;
+        score_matrix[0][j].It = (j == 1? FROM_DIAG : FROM_UP);
         score_matrix[0][j].G = v;
+        score_matrix[0][j].Gt = FROM_UP;
     }
 
     // Calculate scores
     for(size_t i = 1; i < num_columns; ++i) {
         for(size_t j = 1; j < num_rows; ++j) {
-
+            
             // Calculate the score for entry (i,j)
             int idx_1 = i - 1;
             int idx_2 = j - 1;
-
             int diagonal = score_matrix[i-1][j-1].G + (s1[idx_1] == s2[idx_2] ? params.match_score : params.mismatch_penalty);
-
+            
             AffineCell& curr = score_matrix[i][j];
             AffineCell& up = score_matrix[i][j-1];
             AffineCell& left = score_matrix[i-1][j];
-
+            
             // When computing the score starting from the left/right cells, we have to determine
             // whether to extend an existing gap or start a new one.
-            if(up.I > up.G - gap_open) {
-                curr.I = up.I - gap_ext;
+            // In the last column, insertion costs are controlled by gap_s2_end
+            int ins_open = (i < num_columns - 1 or not gap_s2_end? gap_open : 0);
+            int ins_ext = (i < num_columns - 1 or not gap_s2_end? gap_ext : 0);
+            
+            // In the last row, deletion costs are controlled by gap_s1_end
+            int del_open = (j < num_rows - 1 or not gap_s1_end? gap_open : 0);
+            int del_ext = (j < num_rows - 1 or not gap_s1_end? gap_ext : 0);
+            
+            if(up.I > up.G - ins_open) {
+                curr.I = up.I - ins_ext;
                 curr.It = FROM_UP;
             } else {
-                curr.I = up.G - (gap_open + gap_ext);
+                curr.I = up.G - (ins_open + ins_ext);
                 curr.It = FROM_DIAG;
             }
-
-            if(left.D > left.G - gap_open) {
-                curr.D = left.D - gap_ext;
+            if(left.D > left.G - del_open) {
+                curr.D = left.D - del_ext;
                 curr.Dt = FROM_LEFT;
             } else {
-                curr.D = left.G - (gap_open + gap_ext);
+                curr.D = left.G - (del_open + del_ext);
                 curr.Dt = FROM_DIAG;
             }
-
+            
             curr.G = max3(curr.D, curr.I, diagonal);
-
             if(curr.G == curr.I)
                 curr.Gt = FROM_UP;
             else if(curr.G == curr.D)
@@ -736,55 +781,35 @@ SequenceOverlap Overlapper::computeAlignmentAffine(const std::string& s1, const 
                 curr.Gt = FROM_DIAG;
         }
     }
- 
-    // The location of the highest scoring match in the
-    // last row or last column is the maximum scoring overlap
-    // for the pair of strings. We start the backtracking from
-    // that cell
-    int max_row_value = std::numeric_limits<int>::min();
-    int max_column_value = std::numeric_limits<int>::min();
-    size_t max_row_index = 0;
-    size_t max_column_index = 0;
-
-    // Check every column of the last row
-    // The first column is skipped to avoid empty alignments
-    for(size_t i = 1; i < num_columns; ++i) {
-        int v = score_matrix[i][num_rows - 1].G;
-        if(v > max_row_value) {
-            max_row_value = v;
-            max_row_index = i;
+    
+    // With the new scores, the max score is always in the bottom right cell
+    size_t i = num_columns - 1;
+    size_t j = num_rows - 1;
+    
+    output.score = score_matrix[i][j].G;
+    uint8_t direction = score_matrix[i][j].Gt;
+    
+    // However, the alignment might contain free end gaps which we now remove
+    if (gap_s2_end)
+    {
+        while (j >= 1 and direction == FROM_UP)
+        {
+            direction = score_matrix[i][j].It;
+            --j;
+            if (direction == FROM_DIAG)
+                direction = score_matrix[i][j].Gt;
         }
     }
 
-    // Check every row of the last column
-    for(size_t j = 1; j < num_rows; ++j) {
-        int v = score_matrix[num_columns - 1][j].G;
-        if(v > max_column_value) {
-            max_column_value = v;
-            max_column_index = j;
+    if (gap_s1_end and j == num_rows - 1)
+    {
+        while (i >= 1 and direction == FROM_LEFT)
+        {
+            direction = score_matrix[i][j].Dt;
+            --i;
+            if (direction == FROM_DIAG)
+                direction = score_matrix[i][j].Gt;
         }
-    }
-
-    // Compute the location at which to start the backtrack
-    size_t i;
-    size_t j;
-
-    // In GLOBAL alignment mode we start backtracking from the last cell
-    // In OVERLAP mode we backtrack from the best scoring cell in the last row or column.
-    // In CONTAINMENT mode we backtrack from the best scoring cell in the last row
-    if(params.type == ALT_GLOBAL) {
-        i = num_columns - 1;
-        j = num_rows - 1;
-        output.score = score_matrix[i][j].G;
-    } else if(max_row_value >= max_column_value || params.type == ALT_CONTAINMENT) {
-        i = max_row_index;
-        j = num_rows - 1;
-        output.score = max_row_value;
-    } else {
-        assert(max_column_value > max_row_value && params.type == ALT_OVERLAP);
-        i = num_columns - 1;
-        j = max_column_index;
-        output.score = max_column_value;
     }
 
     // Set the alignment endpoints to be the index of the last aligned base
@@ -793,59 +818,69 @@ SequenceOverlap Overlapper::computeAlignmentAffine(const std::string& s1, const 
     output.length[0] = s1.length();
     output.length[1] = s2.length();
 
-    uint8_t direction = score_matrix[i][j].Gt;
-
 #ifdef DEBUG_OVERLAPPER
     printf("Endpoints selected: (%d %d) with score %d\n", output.match[0].end, output.match[1].end, output.score);
 #endif
-
+    
     output.edit_distance = 0;
     output.total_columns = 0;
-
-    AffineCell null_cell;
-    null_cell.G = null_cell.I = null_cell.D = -std::numeric_limits<int>::max();
-
     std::string cigar;
-
-    // In global alignment mode we iterate until we have arrived at (0,0)
-    // In overlap mode we iterate until we have arrived at (x,0) or (0,x) for any x.
-    while((params.type == ALT_GLOBAL && (i > 0 || j > 0))  ||
-          (params.type == ALT_OVERLAP && (i > 0 && j > 0)) ||
-          (params.type == ALT_CONTAINMENT && (j > 0))) {
-
-        if(direction == FROM_UP) {
+    
+    // We stop when we hit an edge along which gaps are free
+    while (not (i == 0 and j == 0) // absolute stop, regardless of free gaps
+            and not (i == 0 and gap_s2_start) // stop at left edge if s2 start gaps are free
+            and not (j == 0 and gap_s1_start)) // stop at top edge if s1 start gaps are free
+    {
+        if (direction == FROM_UP)
+        {
             cigar.push_back('I');
+            ++output.edit_distance;
             direction = score_matrix[i][j].It;
-            j -= 1;
-            output.edit_distance += 1;
-        } else if(direction == FROM_LEFT) {
-            cigar.push_back('D');
-            direction = score_matrix[i][j].Dt;
-            i -= 1;
-            output.edit_distance += 1;
-        } else {
-            // Compute the possible previous locations of the path
-            bool is_match = i > 0 && j > 0 && s1[i - 1] == s2[j - 1];
+            --j;
 
-            if(!is_match)
-                output.edit_distance += 1;
-            cigar.push_back('M');
-            direction = score_matrix[i][j].Gt;
-            i -= 1;
-            j -= 1;
+            if (direction == FROM_DIAG)
+                direction = score_matrix[i][j].Gt;
         }
-        
-        output.total_columns += 1;
+        else if (direction == FROM_LEFT)
+        {
+            cigar.push_back('D');
+            ++output.edit_distance;
+            direction = score_matrix[i][j].Dt;
+            --i;
+         
+            if (direction == FROM_DIAG)
+                direction = score_matrix[i][j].Gt;
+        }
+        else
+        {
+            assert(direction == FROM_DIAG);
+            assert(i > 0);
+            assert(j > 0);
+            
+            bool is_match = s1[i - 1] == s2[j - 1];
+            
+            if (is_match)
+            {
+                cigar.push_back(params.use_m_ops? 'M' : '=');
+            }
+            else
+            {
+                cigar.push_back(params.use_m_ops? 'M' : 'X');
+                ++output.edit_distance;
+            }
+            --i;
+            --j;
+            direction = score_matrix[i][j].Gt;
+        }
+        ++output.total_columns;
     }
-
+    
     // Set the alignment startpoints
     output.match[0].start = i;
     output.match[1].start = j;
-
     // Compact the expanded cigar string into the canonical run length encoding
     // The backtracking produces a cigar string in reversed order, flip it
     std::reverse(cigar.begin(), cigar.end());
-    assert(!cigar.empty());
     output.cigar = compactCigar(cigar);
     return output;
 }

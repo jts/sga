@@ -131,7 +131,8 @@ enum AffineAlignmentType
 {
     ALT_OVERLAP,
     ALT_GLOBAL,
-    ALT_CONTAINMENT
+    ALT_CONTAINMENT,
+    ALT_CUSTOM
 };
 
 struct OverlapperParams
@@ -141,6 +142,19 @@ struct OverlapperParams
     int mismatch_penalty;
     int gap_ext_penalty;
     AffineAlignmentType type;
+    // The following 4 bools indicate whether it is free to align the respective positions to gaps.
+    // The existing alignment types are a subset of the 16 possible settings, as follows:
+    // ALT_GLOBAL: all false (no free gaps)
+    // ALT_OVERLAP: all true
+    // ALT_CONTAINMENT: s1 gaps are free, but not s2
+    bool gap_s1_start;
+    bool gap_s1_end;
+    bool gap_s2_start;
+    bool gap_s2_end;
+    // The following controls the cigar op used for matches and mismatches
+    // if true: use 'M' for both matches and mismatches (default)
+    // if false: use '=' for matches, 'X' for mismatches
+    bool use_m_ops;
 };
 
 // Global variables
@@ -166,6 +180,7 @@ SequenceOverlap extendMatch(const std::string& s1, const std::string& s2, int st
 // This can perform either "overlap" type alignments (suffix to prefix)
 // or global type alignments (end-to-end).
 SequenceOverlap computeAlignmentAffine(const std::string& s1, const std::string& s2, const OverlapperParams params = affine_default_params);
+SequenceOverlap computeAlignmentAffine2(const std::string& s1, const std::string& s2, const OverlapperParams params);
 
 // Compact an expanded CIGAR string into a regular cigar string
 std::string compactCigar(const std::string& ecigar);
