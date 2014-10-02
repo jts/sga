@@ -40,7 +40,7 @@ OverlapperParams affine_default_params = { 2, -5, -3, -2, ALT_OVERLAP, true, tru
 
 //
 #define max3(x,y,z) std::max(std::max(x,y), z)
-#define DEBUG_OVERLAPPER 1
+//#define DEBUG_OVERLAPPER 1
 //#define DEBUG_EXTEND 1
 
 // 
