@@ -195,7 +195,7 @@ int filterMain(int argc, char** argv)
         delete pSharedBV;
 
     // Rebuild the FM-index without the discarded reads
-    std::string out_prefix = stripFilename(opt::outFile);
+    std::string out_prefix = stripExtension(opt::outFile);
     removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, BWT_EXT, SAI_EXT, false, opt::numThreads);
     removeReadsFromIndices(opt::prefix, opt::discardFile, out_prefix, RBWT_EXT, RSAI_EXT, true, opt::numThreads);
 
@@ -282,7 +282,7 @@ void parseFilterOptions(int argc, char** argv)
 
     if(opt::prefix.empty())
     {
-        opt::prefix = stripFilename(opt::readsFile);
+        opt::prefix = stripExtension(opt::readsFile);
     }
 
     if(opt::outFile.empty())
@@ -293,8 +293,8 @@ void parseFilterOptions(int argc, char** argv)
     else
     {
         if(isGzip(opt::outFile))
-            opt::discardFile = stripFilename(opt::outFile) + ".discard.fa" + GZIP_EXT;
+            opt::discardFile = stripExtension(opt::outFile) + ".discard.fa" + GZIP_EXT;
         else
-            opt::discardFile = stripFilename(opt::outFile) + ".discard.fa";
+            opt::discardFile = stripExtension(opt::outFile) + ".discard.fa";
     }
 }

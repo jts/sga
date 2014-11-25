@@ -155,9 +155,9 @@ int overlapMain(int argc, char** argv)
     else
     {
       if(!opt::targetFile.empty())
-        indexPrefix = stripFilename(opt::targetFile);
+        indexPrefix = stripExtension(opt::targetFile);
       else
-        indexPrefix = stripFilename(opt::readsFile);
+        indexPrefix = stripExtension(opt::readsFile);
     }
     BWT* pBWT = new BWT(indexPrefix + BWT_EXT, opt::sampleRate);
     BWT* pRBWT = new BWT(indexPrefix + RBWT_EXT, opt::sampleRate);
