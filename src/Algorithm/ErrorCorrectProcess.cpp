@@ -386,7 +386,7 @@ bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t m
 #if KMER_TESTING
         printf("%c %zu\n", currBase, count);
 #endif
-        if(count > bestCount && count >= minCount)
+        if(count >= minCount)
         {
             // Multiple corrections exist, do not correct
             if(bestBase != '$')
