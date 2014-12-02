@@ -554,8 +554,8 @@ bool SGSmoothingVisitor::visit(StringGraph* pGraph, Vertex* pVertex)
 
         //std::cout << "Smoothing " << pVertex->getID() << "\n";
 
-        const int MAX_WALKS = 10;
-        const int MAX_DISTANCE = 5000;
+        const int MAX_WALKS = 50;
+        const int MAX_DISTANCE = 20000;
         bool bIsDegenerate = false;
         bool bFailGapCheck = false;
         bool bFailDivergenceCheck = false;

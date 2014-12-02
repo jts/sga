@@ -1442,7 +1442,8 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
 
     // Variation Model
     double log_p_delta_variant = log_p_delta_error;
-    double log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
+    double log_p_balance_variant = SGAStats::logIntegerBetaBinomialDistribution(higher_count, total, 50, 10);
+    //double log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
 
     // Repeat model
     // This is explicitly diploid where 2 copies is the normal state for the genome
@@ -1508,7 +1509,6 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
         out.classification = BC_REPEAT;
     }
 
-    /*
     double allele_balance = (double)higher_count / total;
     fprintf(stderr, "\tlog_sum: %.4lf\n", log_sum);
     fprintf(stderr, "\t\ttc|e: %.4lf y|e: %.4lf p(e): %.4lf\n", exp(log_p_delta_error), exp(log_p_balance_error), out.posterior_error);
@@ -1519,7 +1519,6 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
         allele_balance,
         out.posterior_error, out.posterior_variant, out.posterior_repeat,
         out.classification, delta);
-    */
     return out;
 }
 
