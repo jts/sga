@@ -418,7 +418,7 @@ std::string reconstructHaplotype(const VCFRecord& somatic_record,
                 read_kmers += 1;
         }
 
-        if(read_kmers > best_haplotype_kmers || best_haplotype_kmers == 0)
+        if(read_kmers == kmers.size() && (read_kmers > best_haplotype_kmers || best_haplotype_kmers == 0))
         {
             best_haplotype = somatic_haplotype;
             best_haplotype_kmers = read_kmers;
@@ -623,8 +623,8 @@ int graphConcordanceMain(int argc, char** argv)
             }
         }
 
-        double p_left_error = 0.9;
-        double p_right_error = 0.9;
+        double p_left_error = 0.99;
+        double p_right_error = 0.99;
         if(!left_x.empty() && !left_y.empty())
         {
             p_left_error = apply_branch_model(left_x, left_y, left_z,
