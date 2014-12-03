@@ -1429,7 +1429,8 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
                                   const GenomeEstimates& genome,
                                   size_t higher_count, 
                                   size_t lower_count, 
-                                  int delta)
+                                  int delta,
+                                  bool is_somatic)
 {
     size_t total = higher_count + lower_count;
 
@@ -1442,8 +1443,11 @@ ModelPosteriors classify_2_branch(const ModelParameters& params,
 
     // Variation Model
     double log_p_delta_variant = log_p_delta_error;
-    double log_p_balance_variant = SGAStats::logIntegerBetaBinomialDistribution(higher_count, total, 50, 10);
-    //double log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
+    double log_p_balance_variant;
+    if(is_somatic)
+        log_p_balance_variant = SGAStats::logIntegerBetaBinomialDistribution(higher_count, total, 50, 10);
+    else
+        log_p_balance_variant = SGAStats::logBinomial(higher_count, total, 0.5);
 
     // Repeat model
     // This is explicitly diploid where 2 copies is the normal state for the genome
@@ -1627,7 +1631,7 @@ void generate_branch_classification(JSONWriter* pWriter,
                     // Calculate delta, the increase in coverage for the neighboring kmers
                     int delta = calculate_delta(kmer, neighbors, index_set);
                     assert(delta >= 0);
-                    ret = classify_2_branch(params, estimates, c_1, c_2, delta);
+                    ret = classify_2_branch(params, estimates, c_1, c_2, delta, false);
                 }
 
 #if HAVE_OPENMP
@@ -1899,7 +1903,7 @@ void generate_de_bruijn_simulation(JSONWriter* pWriter,
                         // Calculate delta and classify the branch
                         int delta = calculate_delta(curr_kmer, neighbors, index_set);
                         assert(delta >= 0);
-                        ModelPosteriors ret = classify_2_branch(params, estimates, c_1, c_2, delta);
+                        ModelPosteriors ret = classify_2_branch(params, estimates, c_1, c_2, delta, false);
 
                         if(ret.classification == BC_ERROR || ret.classification == BC_VARIANT)
                         {

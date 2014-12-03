@@ -153,7 +153,8 @@ extern ModelPosteriors classify_2_branch(const ModelParameters& params,
                                   const GenomeEstimates& genome,
                                   size_t higher_count, 
                                   size_t lower_count, 
-                                  int delta);
+                                  int delta,
+                                  bool is_somatic);
 
 // struct to store a description of the neighbors of a vertex in the graph
 struct KmerNeighbors
@@ -269,22 +270,26 @@ std::string applyVariant(const std::string& in, int pos,
     return out;
 }
 
-struct BranchKmers
+struct ReconstructedHaplotype
 {
-    std::string branch_from;
-    std::string branch_to;
+    std::string haplotype;
+
+    std::string left_base_kmer;
+    std::string left_somatic_kmer;
+    
+    std::string right_base_kmer;
+    std::string right_somatic_kmer;
 };
 
 // Extract somatic k-mers from the haplotype accordining to the tagged
 // entries in the coordinate map
-StringVector extractSomaticKmers(const std::string& haplotype,
+StringVector extractSomaticKmers(ReconstructedHaplotype& rc,
                                  const std::vector<int> coordinate_map,
-                                 int somatic_tag,
-                                 BranchKmers& branch)
+                                 int somatic_tag)
 {
     StringVector kmers;
 
-    assert(haplotype.size() == coordinate_map.size());
+    assert(rc.haplotype.size() == coordinate_map.size());
 
     // Get the index in the vector of the first somatic variant
     int first_idx = 0;
@@ -310,14 +315,20 @@ StringVector extractSomaticKmers(const std::string& haplotype,
 
     if(first_idx >= 1)
     {
-        branch.branch_from = haplotype.substr(first_idx - 1, opt::k);
-        branch.branch_to = haplotype.substr(first_idx, opt::k);
+        rc.left_base_kmer = rc.haplotype.substr(first_idx - 1, opt::k);
+        rc.left_somatic_kmer = rc.haplotype.substr(first_idx, opt::k);
+    }
+
+    if(last_idx + 1 + opt::k <= (int)rc.haplotype.size())
+    {
+        rc.right_base_kmer = rc.haplotype.substr(last_idx + 1, opt::k);
+        rc.right_somatic_kmer = rc.haplotype.substr(last_idx, opt::k);
     }
 
 
     for(size_t i = first_idx; i <= (size_t)last_idx; ++i)
     {
-        std::string t = haplotype.substr(i, opt::k);
+        std::string t = rc.haplotype.substr(i, opt::k);
         if(t.size() == (size_t)opt::k)
             kmers.push_back(t);
     }
@@ -325,13 +336,13 @@ StringVector extractSomaticKmers(const std::string& haplotype,
     return kmers;
 }
 
-std::string reconstructHaplotype(const VCFRecord& somatic_record, 
-                                 const VariantRecordVector nearby_germline, 
-                                 const ReadTable& refTable,
-                                 const BWTIndexSet& variantIndex,
-                                 size_t flanking_size)
+ReconstructedHaplotype reconstructHaplotype(const VCFRecord& somatic_record, 
+                                            const VariantRecordVector nearby_germline, 
+                                            const ReadTable& refTable,
+                                            const BWTIndexSet& variantIndex,
+                                            size_t flanking_size)
 {
-    BranchKmers best_branch_kmers;
+    ReconstructedHaplotype out;
 
     // Extract the reference haplotype
     int eventLength = somatic_record.varStr.length();
@@ -340,7 +351,7 @@ std::string reconstructHaplotype(const VCFRecord& somatic_record,
     int end = zeroBasedPos + eventLength + 2 * flanking_size;
     const SeqItem& chr = refTable.getRead(somatic_record.refName);
     if(end > (int)chr.seq.length())
-        return "";
+        return out;
 
     std::string reference_haplotype = chr.seq.substr(start, end - start);
     
@@ -354,7 +365,7 @@ std::string reconstructHaplotype(const VCFRecord& somatic_record,
 
     // Do not attempt haplotype reconstruction if there are too many variants
     if(nearby_germline.size() > 4)
-        return "";
+        return out;
     
     int SOMATIC_TAG = -2;
     int GERMLINE_TAG = -3;
@@ -394,8 +405,10 @@ std::string reconstructHaplotype(const VCFRecord& somatic_record,
         if(haplotype.empty())
             continue;
 
+        ReconstructedHaplotype current;
+
         // Apply the somatic variant to this haplotype
-        std::string somatic_haplotype = 
+        current.haplotype = 
             applyVariant(haplotype, 
                          somatic_record.refPosition - 1,
                          somatic_record.refStr, 
@@ -404,12 +417,12 @@ std::string reconstructHaplotype(const VCFRecord& somatic_record,
                          true, 
                          SOMATIC_TAG);
     
-        if(somatic_haplotype.empty())
+        if(current.haplotype.empty())
             continue;
         
-        BranchKmers branch_kmers;
-        StringVector kmers = extractSomaticKmers(somatic_haplotype, haplotype_coordinates, SOMATIC_TAG, branch_kmers);
+        StringVector kmers = extractSomaticKmers(current, haplotype_coordinates, SOMATIC_TAG);
         
+        /*
         // Count the number of somatic kmers that are present in the variant reads
         size_t read_kmers = 0;
         for(size_t ki = 0; ki < kmers.size(); ++ki)
@@ -417,16 +430,19 @@ std::string reconstructHaplotype(const VCFRecord& somatic_record,
             if(BWTAlgorithms::countSequenceOccurrences(kmers[ki], variantIndex) > 0)
                 read_kmers += 1;
         }
+        */
 
-        if(read_kmers == kmers.size() && (read_kmers > best_haplotype_kmers || best_haplotype_kmers == 0))
+        size_t read_kmers = BWTAlgorithms::countSequenceOccurrences(current.left_somatic_kmer, variantIndex) +
+                     BWTAlgorithms::countSequenceOccurrences(current.right_somatic_kmer, variantIndex);
+
+        if(read_kmers > best_haplotype_kmers || best_haplotype_kmers == 0)
         {
-            best_haplotype = somatic_haplotype;
+            out = current;
             best_haplotype_kmers = read_kmers;
-            best_branch_kmers = branch_kmers;
         }
     }
 
-    return best_haplotype;
+    return out;
 }
 
 std::string get_neighbor(const std::string& x, EdgeDir dir, BWTIndexSet indexSet)
@@ -455,31 +471,54 @@ std::string get_neighbor(const std::string& x, EdgeDir dir, BWTIndexSet indexSet
     return best;
 }
 
+int new_delta_calculation(const std::string& x,
+                          const std::string& y,
+                          const std::string& z,
+                          BWTIndexSet index,
+                          EdgeDir dir)
+{
+    int delta = BWTAlgorithms::countSequenceOccurrences(y, index) +
+                BWTAlgorithms::countSequenceOccurrences(z, index);
+    
+    std::string lmer = x;
+    if(dir == ED_SENSE)
+    {
+        std::string xy = x + y[y.size() - 1];
+        std::string xz = x + z[z.size() - 1];
+        delta -= (BWTAlgorithms::countSequenceOccurrences(xy, index) +
+                  BWTAlgorithms::countSequenceOccurrences(xz, index));
+
+    } 
+    else
+    {
+        std::string yx = y[0] + x;
+        std::string zx = z[0] + x;
+        delta -= (BWTAlgorithms::countSequenceOccurrences(yx, index) +
+                  BWTAlgorithms::countSequenceOccurrences(zx, index));
+    }
+    assert(delta >= 0);
+    return delta;
+}
+
 double apply_branch_model(const std::string& x,
                           const std::string& y,
                           const std::string& z,
-                          const BWTIndexSet& variantIndex,
-                          const BWTIndexSet& baseIndex,
+                          const BWTIndexSet& index,
                           const ModelParameters& params,
-                          const GenomeEstimates& genome)
+                          const GenomeEstimates& genome,
+                          bool is_somatic)
 {
-    int c_v_x = BWTAlgorithms::countSequenceOccurrences(x, variantIndex);
-    int c_v_y = BWTAlgorithms::countSequenceOccurrences(y, variantIndex);
-    int c_v_z = BWTAlgorithms::countSequenceOccurrences(z, variantIndex);
-    fprintf(stderr, "Var -- x: %d y: %d z: %d\n", c_v_x, c_v_y, c_v_z);
+    int c_x = BWTAlgorithms::countSequenceOccurrences(x, index);
+    int c_y = BWTAlgorithms::countSequenceOccurrences(y, index);
+    int c_z = BWTAlgorithms::countSequenceOccurrences(z, index);
+    fprintf(stderr, "Counts: x: %d y: %d z: %d\n", c_x, c_y, c_z);
     
-    int c_b_x = BWTAlgorithms::countSequenceOccurrences(x, baseIndex);
-    int c_b_y = BWTAlgorithms::countSequenceOccurrences(y, baseIndex);
-    int c_b_z = BWTAlgorithms::countSequenceOccurrences(z, baseIndex);
-    fprintf(stderr, "Bse -- x: %d y: %d z: %d\n", c_b_x, c_b_y, c_b_z);
-    
-    KmerNeighbors v_neighbors = calculate_neighbor_data(x, variantIndex);
-    int v_delta = 0; //calculate_delta(x, v_neighbors, variantIndex);
-    int c_v_min = std::min(c_v_y, c_v_z);
-    int c_v_max = std::max(c_v_y, c_v_z);
+    int delta = 0; //calculate_delta(x, v_neighbors, variantIndex);
+    int c_min = std::min(c_y, c_z);
+    int c_max = std::max(c_y, c_z);
 
-    ModelPosteriors variant_ret = classify_2_branch(params, genome, c_v_max, c_v_min, v_delta);
-    return variant_ret.posterior_error;
+    ModelPosteriors ret = classify_2_branch(params, genome, c_max, c_min, delta, is_somatic);
+    return ret.posterior_error;
 }
 
 //
@@ -564,11 +603,12 @@ int graphConcordanceMain(int argc, char** argv)
 
         std::string classification = "UNKNOWN";
 
-        std::string haplotype;
+        ReconstructedHaplotype rc;
         if(nearby_vector.size() <= 4)
-            haplotype = reconstructHaplotype(record, nearby_vector, refTable, variantIndex, flanking_size);
+            rc = reconstructHaplotype(record, nearby_vector, refTable, variantIndex, flanking_size);
         else
             classification = "TOO_COMPLEX";
+        /*
 
         // Find the strongest branch point of the haplotype
         std::string left_x;
@@ -622,28 +662,60 @@ int graphConcordanceMain(int argc, char** argv)
                 break;
             }
         }
+        */
+        
+        std::string left_x = rc.left_base_kmer;
+        std::string left_y = rc.left_somatic_kmer;
+        std::string left_z = get_neighbor(left_y, ED_SENSE, variantIndex);
+        
+        std::string right_x = rc.right_base_kmer;
+        std::string right_y = rc.right_somatic_kmer;
+        std::string right_z = get_neighbor(right_y, ED_ANTISENSE, variantIndex);
 
-        double p_left_error = 0.99;
-        double p_right_error = 0.99;
+
+        double p_left_error_variant = 0.99;
+        double p_right_error_variant = 0.99;
+        
+        double p_left_error_base = 0.99;
+        double p_right_error_base = 0.99;
+
         if(!left_x.empty() && !left_y.empty())
         {
-            p_left_error = apply_branch_model(left_x, left_y, left_z,
-                                              variantIndex, baseIndex, 
-                                              variant_params, variant_genome);
+            p_left_error_variant = apply_branch_model(left_x, left_y, left_z,
+                                                      variantIndex, variant_params, variant_genome, true);
 
+            p_left_error_base = apply_branch_model(left_x, left_y, left_z,
+                                                   baseIndex, base_params, base_genome, false);
         }
 
         if(!right_x.empty() && !right_y.empty())
         {
-            p_right_error = apply_branch_model(right_x, right_y, right_z,
-                                               variantIndex, baseIndex, 
-                                               variant_params, variant_genome);
+            p_right_error_variant = apply_branch_model(right_x, right_y, right_z,
+                                                       variantIndex, variant_params, variant_genome, true);
 
+            p_right_error_base = apply_branch_model(right_x, right_y, right_z,
+                                                    baseIndex, base_params, base_genome, false);
         }
         
-        double p_error = p_left_error * p_right_error;
+        double p_error_variant = p_left_error_variant * p_right_error_variant;
+        double p_error_base = p_left_error_base * p_right_error_base;
+        double p_somatic = (1.0 - p_error_variant) * p_error_base;
+
         
-        double qual = -10.0 * log(p_error) / log(10);
+        double qual_variant = -10.0 * log(p_error_variant) / log(10);
+        double qual = 0.0;
+        if(BWTAlgorithms::countSequenceOccurrences(left_y, baseIndex) +
+           BWTAlgorithms::countSequenceOccurrences(right_y, baseIndex) < 1)
+            qual = qual_variant;
+        //double qual_base_not_error = -10.0 * log(1 - p_error_base) / log(10);
+        //double qual = std::min(qual_variant, qual_base_not_error);
+
+        fprintf(stderr, "p_e_v: %.3lf\n", p_error_variant);
+        fprintf(stderr, "p_e_b: %.3lf\n", p_error_base);
+        fprintf(stderr, "p_somatic: %.3lf\n", p_somatic);
+
+
+        //double qual = -10.0 * log(1 - p_somatic) / log(10);
         record.setQuality(std::min(qual, record.quality));
         fprintf(stderr, "Qual: %.1lf\n", qual);
 
