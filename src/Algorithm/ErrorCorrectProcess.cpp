@@ -182,9 +182,9 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
         
         bool last_round = (round == num_rounds - 1);
         if(last_round)
-            consensus = multiple_alignment.calculateBaseConsensus(10000, 0);
+	  consensus = multiple_alignment.calculateBaseConsensusMinCoverage(10000, 0, 3);
         else
-            current_sequence = multiple_alignment.calculateBaseConsensus(10000, 0);
+	  current_sequence = multiple_alignment.calculateBaseConsensusMinCoverage(10000, 0, 3);
 
         if(m_params.printOverlaps)
             multiple_alignment.print(200);

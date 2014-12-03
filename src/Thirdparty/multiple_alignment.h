@@ -204,6 +204,13 @@ class MultipleAlignment
         // min_trim_coverage depth at the ends of the base sequence.
         std::string calculateBaseConsensus(int min_call_coverage, int min_trim_coverage);
 
+        // Calculate a new consensus sequence for the base sequence of the multiple alignment
+        // A base call is changed only if it has been seen in less than min_call_coverage sequences
+        // Leading/trailing bases are trimmed from the consensus sequence if there is less than
+        // min_trim_coverage depth at the ends of the base sequence.
+        // Also require a minimum count for the consensus base (min_count_base_overlap+1) and only one frequent base
+        std::string calculateBaseConsensusMinCoverage(int min_call_coverage, int min_trim_coverage, int min_count_base_overlap);
+    
         // Calculate consensus sequence of the base element that maximizes the likelihood of the multiple alignment
         void calculateBaseConsensusLikelihood(std::string* consensus_sequence, std::string* consensus_quality);
         

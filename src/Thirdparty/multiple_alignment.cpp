@@ -512,6 +512,85 @@ std::string MultipleAlignment::calculateCigarBetweenRows(size_t row0, size_t row
     return Overlapper::compactCigar(cigar);
 }
 
+// MH: function based on calculateBaseConsensus but require a minimum count for the consensus base (min_count_base_overlap+1) and only one frequent base
+std::string MultipleAlignment::calculateBaseConsensusMinCoverage(int min_call_coverage, int min_trim_coverage, int min_count_base_overlap)
+{
+    assert(!m_sequences.empty());
+    std::string consensus_sequence;
+    MultipleAlignmentElement& base_element = m_sequences.front();
+    size_t start_column = base_element.getStartColumn();
+    size_t end_column = base_element.getEndColumn();
+    
+    // This index records the last base in the consensus that had coverage greater than
+    // min_trim_coverage. After the consensus calculation the read is trimmed back to this position
+    int last_good_base = -1;
+    
+    for(size_t c = start_column; c <= end_column; ++c) {
+        std::vector<int> counts = getColumnBaseCounts(c);
+        
+        char max_symbol = '\0';
+        int max_count = -1;
+        int total_depth = 0;
+        size_t noPossibleCorrections = 0;
+
+#ifdef MA_DEBUG_CONSENSUS
+        printf("%zu\t", c);
+#endif
+        for(size_t a = 0; a < m_alphabet_size; ++a) {
+            char symbol = m_alphabet[a];
+            total_depth += counts[a];
+            
+            if(symbol != 'N' && counts[a] >= min_count_base_overlap) {
+                noPossibleCorrections ++;
+            }
+            if(symbol != 'N' && counts[a] > max_count) {
+                max_symbol = symbol;
+                max_count = counts[a];
+            }
+#ifdef MA_DEBUG_CONSENSUS
+            printf("%c:%d ", symbol, counts[a]);
+#endif
+        }
+        
+        char base_symbol = base_element.getColumnSymbol(c);
+        int base_count = counts[symbol2index(base_symbol)];
+        
+        // Choose a consensus base for this column. Only change a base
+        // if has been seen less than min_call_coverage times and the max
+        // base in the column has been seen more times than the base symbol
+        char consensus_symbol;
+        // MH: Now we require in addition that the most frequent base is seen more than min_count_base_overlap times to avoid low coverage multiple alignments
+        // and we implement that there is only one frequent base
+        if(max_count > base_count && base_count < min_call_coverage && max_count > min_count_base_overlap && noPossibleCorrections == 1)
+            consensus_symbol = max_symbol;
+        else
+            consensus_symbol = base_symbol;
+        
+        // Output a symbol to the consensus. Skip padding symbols and leading
+        // bases that are less than the minimum required depth to avoid trimming
+        if(consensus_symbol != '-' &&
+           (!consensus_sequence.empty() || total_depth >= min_trim_coverage))
+            consensus_sequence.push_back(consensus_symbol);
+        
+        // Record the position of the last good base
+        if(total_depth >= min_trim_coverage) {
+            int consensus_index = consensus_sequence.size() - 1;
+            if(consensus_index > last_good_base)
+                last_good_base = consensus_index;
+        }
+#ifdef MA_DEBUG_CONSENSUS
+        printf("CALL: %c\n", consensus_symbol);
+#endif 
+    }
+    
+    if(last_good_base != -1)
+        consensus_sequence.erase(last_good_base + 1);
+    else
+        consensus_sequence.clear();
+    
+    return consensus_sequence;
+}
+
 std::string MultipleAlignment::calculateBaseConsensus(int min_call_coverage, int min_trim_coverage)
 {
     assert(!m_sequences.empty());
