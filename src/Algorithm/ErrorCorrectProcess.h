@@ -47,6 +47,8 @@ struct ErrorCorrectParameters
 
     // Overlap-based corrector params
     int minOverlap;
+    int min_count_max_base;
+    int base_threshold;
     int numOverlapRounds;
     double minIdentity;
     int conflictCutoff;

@@ -15,6 +15,7 @@
 #include "StringThreader.h"
 
 //#define KMER_TESTING 1
+//#define OVERLAPCORRECTION_VERBOSE 1
 
 //
 //
@@ -179,12 +180,19 @@ ErrorCorrectResult ErrorCorrectProcess::overlapCorrectionNew(const SequenceWorkI
                                                                                     m_params.indices);
 
         multiple_alignment.filterByCount(m_params.conflictCutoff);
-        
+#ifdef OVERLAPCORRECTION_VERBOSE
+        printf("---> MAF after conflict\n");
+        multiple_alignment.print(200);
+        printf("---> PILEUP\n");
+        multiple_alignment.printPileup();
+        printf("---> DONE\n\n");
+#endif
+
         bool last_round = (round == num_rounds - 1);
         if(last_round)
-	  consensus = multiple_alignment.calculateBaseConsensusMinCoverage(10000, 0, 3);
+	  consensus = multiple_alignment.calculateBaseConsensusMinCoverage(m_params.base_threshold, 0, m_params.min_count_max_base);
         else
-	  current_sequence = multiple_alignment.calculateBaseConsensusMinCoverage(10000, 0, 3);
+	  current_sequence = multiple_alignment.calculateBaseConsensusMinCoverage(m_params.base_threshold, 0, m_params.min_count_max_base);
 
         if(m_params.printOverlaps)
             multiple_alignment.print(200);

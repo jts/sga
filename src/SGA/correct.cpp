@@ -30,6 +30,8 @@
 // Functions
 int learnKmerParameters(const BWT* pBWT);
 
+//#define OVERLAPCORRECTION_VERBOSE 1
+
 //
 // Getopt
 //
@@ -62,6 +64,10 @@ static const char *CORRECT_USAGE_MESSAGE =
 "\nOverlap correction parameters:\n"
 "      -e, --error-rate                 the maximum error rate allowed between two sequences to consider them overlapped (default: 0.04)\n"
 "      -m, --min-overlap=LEN            minimum overlap required between two reads (default: 45)\n"
+"      -M, --min-count-max-base=INT     minimum count of the base that has the highest count in overlap correction.\n"
+"                                       The base of the read is only corrected if the maximum base has at least this count.\n"
+"                                       Should avoid mis-corrections in low coverage regions (default: 4)\n"
+"      -X, --base-threshold=N           Attempt to correct bases in a read that are seen less than N times (default: 2)\n"
 "      -c, --conflict=INT               use INT as the threshold to detect a conflicted base in the multi-overlap (default: 5)\n"
 "      -l, --seed-length=LEN            force the seed length to be LEN. By default, the seed length in the overlap step\n"
 "                                       is calculated to guarantee all overlaps with --error-rate differences are found.\n"
@@ -92,12 +98,14 @@ namespace opt
     
     static double errorRate = 0.04;
     static unsigned int minOverlap = DEFAULT_MIN_OVERLAP;
+    static unsigned int min_count_max_base = DEFAULT_MIN_COUNT_MAX_BASE;
     static int seedLength = 0;
     static int seedStride = 0;
     static int conflictCutoff = 5;
     static int branchCutoff = -1;
 
     static int kmerLength = 31;
+    static int base_threshold = 2;
     static int kmerThreshold = 3;
     static int numKmerRounds = 10;
     static bool bLearnKmerParams = false;
@@ -106,7 +114,7 @@ namespace opt
     static ErrorCorrectAlgorithm algorithm = ECA_KMER;
 }
 
-static const char* shortopts = "p:m:d:e:t:l:s:o:r:b:a:c:k:x:i:v";
+static const char* shortopts = "p:m:M:d:e:t:l:s:o:r:b:a:c:k:x:X:i:v";
 
 enum { OPT_HELP = 1, OPT_VERSION, OPT_METRICS, OPT_DISCARD, OPT_LEARN };
 
@@ -114,6 +122,7 @@ static const struct option longopts[] = {
     { "verbose",       no_argument,       NULL, 'v' },
     { "threads",       required_argument, NULL, 't' },
     { "min-overlap",   required_argument, NULL, 'm' },
+    { "min-count-max-base",   required_argument, NULL, 'M' },
     { "rounds",        required_argument, NULL, 'r' },
     { "outfile",       required_argument, NULL, 'o' },
     { "prefix",        required_argument, NULL, 'p' },
@@ -126,6 +135,7 @@ static const struct option longopts[] = {
     { "branch-cutoff", required_argument, NULL, 'b' },
     { "kmer-size",     required_argument, NULL, 'k' },
     { "kmer-threshold",required_argument, NULL, 'x' },
+    { "base-threshold",required_argument, NULL, 'X' },
     { "kmer-rounds",   required_argument, NULL, 'i' },
     { "learn",         no_argument,       NULL, OPT_LEARN },
     { "discard",       no_argument,       NULL, OPT_DISCARD },
@@ -181,6 +191,8 @@ int correctMain(int argc, char** argv)
     ecParams.algorithm = opt::algorithm;
 
     ecParams.minOverlap = opt::minOverlap;
+    ecParams.min_count_max_base = opt::min_count_max_base;
+    ecParams.base_threshold = opt::base_threshold;
     ecParams.numOverlapRounds = opt::numOverlapRounds;
     ecParams.minIdentity = 1.0f - opt::errorRate;
     ecParams.conflictCutoff = opt::conflictCutoff;
@@ -188,6 +200,9 @@ int correctMain(int argc, char** argv)
     ecParams.numKmerRounds = opt::numKmerRounds;
     ecParams.kmerLength = opt::kmerLength;
     ecParams.printOverlaps = opt::verbose > 0;
+
+	 printf("ecParams.min_count_max_base = %d\n",ecParams.min_count_max_base);
+	 printf("ecParams.base_threshold = %d\n",ecParams.base_threshold);
 
     // Setup post-processor
     bool bCollectMetrics = !opt::metricsFile.empty();
@@ -313,6 +328,7 @@ void parseCorrectOptions(int argc, char** argv)
         switch (c) 
         {
             case 'm': arg >> opt::minOverlap; break;
+            case 'M': arg >> opt::min_count_max_base; break;
             case 'p': arg >> opt::prefix; break;
             case 'o': arg >> opt::outFile; break;
             case 'e': arg >> opt::errorRate; break;
@@ -325,6 +341,7 @@ void parseCorrectOptions(int argc, char** argv)
             case 'c': arg >> opt::conflictCutoff; break;
             case 'k': arg >> opt::kmerLength; break;
             case 'x': arg >> opt::kmerThreshold; break;
+            case 'X': arg >> opt::base_threshold; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
             case 'b': arg >> opt::branchCutoff; break;
@@ -379,6 +396,18 @@ void parseCorrectOptions(int argc, char** argv)
     if(opt::kmerThreshold <= 0)
     {
         std::cerr << SUBPROGRAM ": invalid kmer threshold: " << opt::kmerThreshold << ", must be greater than zero\n";
+        die = true;
+    }
+
+    if(opt::base_threshold <= 0)
+    {
+        std::cerr << SUBPROGRAM ": invalid base threshold: " << opt::base_threshold << ", must be greater than zero\n";
+        die = true;
+    }
+
+    if(opt::min_count_max_base <= 0)
+    {
+        std::cerr << SUBPROGRAM ": invalid min_count_max_base: " << opt::min_count_max_base << ", must be greater than zero\n";
         die = true;
     }
 
