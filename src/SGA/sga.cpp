@@ -38,6 +38,7 @@
 #include "graph-concordance.h"
 #include "somatic-variant-filters.h"
 #include "kmer-count.h"
+#include "kmer-plot.h"
 
 #define PROGRAM_BIN "sga"
 #define AUTHOR "Jared Simpson"
@@ -82,6 +83,7 @@ static const char *SGA_USAGE_MESSAGE =
 "           filterBAM             filter out contaminating mate-pair data in a BAM file\n"
 "           cluster               find clusters of reads belonging to the same connected component in an assembly graph\n"
 "           kmer-count            extract all kmers from a BWT file\n"
+"           kmer-plot             plot kmer counts for a given sequence\n"
 //"           connect         resolve the complete sequence of a paired-end fragment\n"
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
@@ -166,6 +168,8 @@ int main(int argc, char** argv)
             somaticVariantFiltersMain(argc - 1, argv + 1);
         else if(command == "kmer-count")
             kmerCountMain(argc - 1, argv + 1);
+        else if(command == "kmer-plot")
+            kmerPlotMain(argc - 1, argv + 1);
         else
         {
             std::cerr << "Unrecognized command: " << command << "\n";

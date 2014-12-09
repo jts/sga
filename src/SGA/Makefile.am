@@ -42,6 +42,7 @@ sga_SOURCES = sga.cpp \
               walk.cpp walk.h \
               filter.cpp filter.h \
               kmer-count.cpp kmer-count.h \
+              kmer-plot.cpp kmer-plot.h \
               stats.cpp stats.h \
               fm-merge.cpp fm-merge.h \
               gmap.h gmap.cpp \
