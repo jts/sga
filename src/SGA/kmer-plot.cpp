@@ -17,8 +17,8 @@
 static const char *KMERPLOT_VERSION_MESSAGE = SUBPROGRAM " Version " PACKAGE_VERSION "\n";
 static const char *KMERPLOT_USAGE_MESSAGE =
 "Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] in.fa test1.bwt [test2.bwt]\n"
-"Generate a table of the k-mers in src.bwt, and optionaly count the number of time they appears in testX.bwt.\n"
-"Output on stdout the canonical kmers and their counts on forward and reverse strand\n"
+"Generate a table of the k-mers in in.fa, and optionaly count the number of time they appears in testX.bwt.\n"
+"Output on stdout kmers and their counts on forward and reverse strand\n"
 "\n"
 "      --help                           display this help and exit\n"
 "      --version                        display program version\n"
@@ -28,11 +28,11 @@ static const char *KMERPLOT_USAGE_MESSAGE =
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 
-
 namespace opt {
-    static std::vector<std::string> bwtFiles;
-    static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
-    static int kmerLength = 27;
+  static std::string inputSequenceFile;
+  static std::vector<std::string> bwtFiles;
+  static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
+  static int kmerLength = 27;
 }
 
 static const char* shortopts = "d:k:x:";
@@ -71,6 +71,14 @@ void parseKmerPlotOptions(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
+    if(optind >= argc){
+      std::cerr << SUBPROGRAM ": missing input sequence file" << std::endl;
+      std::cout << "\n" << KMERPLOT_USAGE_MESSAGE;
+      exit(EXIT_FAILURE);
+    }
+    
+    opt::inputSequenceFile = argv[optind++];
+    
     for(;optind<argc;++optind) {
         opt::bwtFiles.push_back(argv[optind]);
     }
@@ -85,115 +93,43 @@ void parseKmerPlotOptions(int argc, char** argv) {
 }
 
 
-
-//
-// BWT Traversal algorithm
-//
-
-// Stack structure used in the depth first search of kmers
-struct stack_elt_t
-{
-    size_t str_sz;
-    char bp;
-    BWTInterval range;
-    stack_elt_t(size_t strsz,char bp):str_sz(strsz),bp(bp){}
-    stack_elt_t(size_t strsz,char bp,const BWTInterval& range):str_sz(strsz),bp(bp),range(range){}
-};
-
-
-
-// extract all canonical kmers of a bwt by performing a backward depth-first-search
-void traverse_kmer(size_t n, const BWT** pBWTs, unsigned int k)
-{
-    std::stack< stack_elt_t > stack;
-    std::string str; // string storing the current path
-
-    // Intitialize the search with root elements
-    for(size_t i = 0; i < DNA_ALPHABET_SIZE; ++i)
-    {
-        stack_elt_t e(str.size(),ALPHABET[i]);
-        BWTAlgorithms::initInterval(e.range,e.bp,pBWTs[0]);
-        if (e.range.isValid()) stack.push(e);
-    }
-
-    // Perform the kmer search
-    while(!stack.empty())
-    {
-        // pop an element from the stack, and update the string path accordingly
-        stack_elt_t top = stack.top();
-        stack.pop();
-        str.resize(top.str_sz);
-        str.push_back(top.bp);
-        if (str.length()>=k) {
-            // we found a kmer, retreive the number of occurence
-            std::string seq(reverse(str));
-            int64_t seq_count = top.range.size();
-
-            // look for the count of its reverse complement
-            std::string seq_rc(complement(str));
-            BWTInterval range_rc = BWTAlgorithms::findInterval(pBWTs[0],seq_rc);
-            int64_t seq_rc_count = range_rc.isValid()?range_rc.size():0;
-
-            // print the current kmer if canonical
-            if (seq<seq_rc) {
-                std::cout << seq << '\t' << seq_count << '\t' << seq_rc_count;
-                for(size_t i=1;i<n;i++) {
-                    std::cout << '\t' << std::max<int64_t>(BWTAlgorithms::findInterval(pBWTs[i],seq).size(),0) << '\t' << std::max<int64_t>(BWTAlgorithms::findInterval(pBWTs[i],seq_rc).size(),0);
-                }
-                std::cout << std::endl;
-            } else if (seq_rc_count<=0) {
-                // the current kmer is not canonical, but the reverse complement doesn't exists
-                // so print it now as it will never be traversed by the searching algorithm
-                std::cout << seq_rc << '\t' << seq_rc_count << '\t' << seq_count;
-                for(size_t i=1;i<n;i++) {
-                    std::cout << '\t' << std::max<int64_t>(BWTAlgorithms::findInterval(pBWTs[i],seq_rc).size(),0) << '\t' << std::max<int64_t>(BWTAlgorithms::findInterval(pBWTs[i],seq).size(),0);
-                }
-                std::cout << std::endl;
-            }
-        } else
-        {
-            // not yet a suffix of size k, push next candidates
-            for(size_t i = 0; i < DNA_ALPHABET_SIZE; ++i)
-            {
-                stack_elt_t e(str.size(),ALPHABET[i],top.range);
-                BWTAlgorithms::updateInterval(e.range,e.bp,pBWTs[0]);
-                if (e.range.isValid()) stack.push(e);
-            }
-        }
-    }
-}
-
-
-
-
 //
 // Main
 //
 
 int kmerPlotMain(int argc, char** argv)
 {
+
     // parse command line arguments
-    parseKmerCountOptions(argc,argv);
+    parseKmerPlotOptions(argc,argv);
 
     // allocate BWT objects
-    const BWT** pBWTs = new const BWT*[opt::bwtFiles.size()];
-    for(size_t i=1;i<opt::bwtFiles.size();++i)
+     const BWT** pBWTs = new const BWT*[opt::bwtFiles.size()];
+    for(size_t i=0;i<opt::bwtFiles.size();++i)
     {
-        pBWTs[i] = new BWT(opt::bwtFiles[i],opt::sampleRate);
+      std::cerr << "Loading " << opt::bwtFiles[i] << std::endl;
+      pBWTs[i] = new BWT(opt::bwtFiles[i],opt::sampleRate);
     }
 
-    std::string filename = opt::bwtFiles[0];
-
-    SeqReader reader(filename, SRF_NO_VALIDATION);
+    SeqReader reader(opt::inputSequenceFile, SRF_NO_VALIDATION);
     SeqRecord record;
-    std::cerr << "Processing " << filename << std::endl;
+    std::string kmer, kmer_rc;
+    std::cerr << "Processing " << opt::inputSequenceFile << std::endl;
     while(reader.get(record)){
-      std::cout << record.name << record.seq << std::endl;
+      for(size_t i=0; i<record.seq.length()-opt::kmerLength+1; ++i){
+        kmer = record.seq.substr(i, opt::kmerLength);
+        kmer_rc = complement(kmer);
+
+        std::cout << record.id << "\t" << i << "\t" << kmer;
+          
+        //print out kmer count for all the bwts
+        for(size_t j=0;j<opt::bwtFiles.size();j++) {
+          std::cout << '\t' << std::max<int64_t>(BWTAlgorithms::findInterval(pBWTs[j],kmer).size(),0);
+          std::cout << '\t' << std::max<int64_t>(BWTAlgorithms::findInterval(pBWTs[j],kmer_rc).size(),0);
+        }
+        std::cout << std::endl;
+      }
     }
-
-    // run kmer search
-    //traverse_kmer(opt::bwtFiles.size(),pBWTs,opt::kmerLength);
-
 
     // clean memory
     for(size_t i=0;i<opt::bwtFiles.size();++i)
