@@ -1,3 +1,11 @@
+//-----------------------------------------------
+// Copyright 2009 Wellcome Trust Sanger Institute
+// Written by James Gurtowski (gurtowsk@cshl.edu)
+// Released under the GPL
+//-----------------------------------------------
+//
+// kmer-plot - Print kmer counts from one or more bwt's along a given input sequence
+//
 
 #include <kmer-count.h>
 #include <iostream>
@@ -28,11 +36,13 @@ static const char *KMERPLOT_USAGE_MESSAGE =
 "\nReport bugs to " PACKAGE_BUGREPORT "\n\n";
 
 
-namespace opt {
+namespace opt 
+{
   static std::string inputSequenceFile;
   static std::vector<std::string> bwtFiles;
   static int sampleRate = BWT::DEFAULT_SAMPLE_RATE_SMALL;
   static int kmerLength = 27;
+  static int intervalCacheLength = 10;
 }
 
 static const char* shortopts = "d:k:x:";
@@ -46,7 +56,8 @@ static const struct option longopts[] = {
 };
 
 
-void parseKmerPlotOptions(int argc, char** argv) {
+void parseKmerPlotOptions(int argc, char** argv) 
+{
 
     for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;)
     {
@@ -71,7 +82,8 @@ void parseKmerPlotOptions(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    if(optind >= argc){
+    if(optind >= argc)
+    {
       std::cerr << SUBPROGRAM ": missing input sequence file" << std::endl;
       std::cout << "\n" << KMERPLOT_USAGE_MESSAGE;
       exit(EXIT_FAILURE);
@@ -79,7 +91,8 @@ void parseKmerPlotOptions(int argc, char** argv) {
     
     opt::inputSequenceFile = argv[optind++];
     
-    for(;optind<argc;++optind) {
+    for(;optind<argc;++optind)
+    {
         opt::bwtFiles.push_back(argv[optind]);
     }
 
@@ -104,39 +117,66 @@ int kmerPlotMain(int argc, char** argv)
     parseKmerPlotOptions(argc,argv);
 
     // allocate BWT objects
-     const BWT** pBWTs = new const BWT*[opt::bwtFiles.size()];
-    for(size_t i=0;i<opt::bwtFiles.size();++i)
+    std::vector<BWTIndexSet> bwtIndicies;
+    BWTIndexSet tmpIdx;
+
+    for(std::vector<std::string>::iterator it = opt::bwtFiles.begin();
+        it != opt::bwtFiles.end(); ++it)
     {
-      std::cerr << "Loading " << opt::bwtFiles[i] << std::endl;
-      pBWTs[i] = new BWT(opt::bwtFiles[i],opt::sampleRate);
+      std::cerr << "Loading " << *it << std::endl;
+
+      tmpIdx.pBWT = new BWT(*it, opt::sampleRate);
+      tmpIdx.pCache = new BWTIntervalCache(opt::intervalCacheLength, tmpIdx.pBWT);
+      
+      bwtIndicies.push_back(tmpIdx);
     }
 
+
+
+    //Init sequence reader
     SeqReader reader(opt::inputSequenceFile, SRF_NO_VALIDATION);
     SeqRecord record;
     std::string kmer, kmer_rc;
     std::cerr << "Processing " << opt::inputSequenceFile << std::endl;
-    while(reader.get(record)){
-      for(size_t i=0; i<record.seq.length()-opt::kmerLength+1; ++i){
-        kmer = record.seq.substr(i, opt::kmerLength);
-        kmer_rc = complement(kmer);
 
-        std::cout << record.id << "\t" << i << "\t" << kmer;
+
+    size_t kmer_idx;
+    std::vector<BWTIndexSet>::iterator indexset_it;
+
+    //read the sequences from the file and split into kmers
+    while(reader.get(record))
+    {
+      for(kmer_idx=0; kmer_idx < record.seq.length()-opt::kmerLength+1; ++kmer_idx)
+      {
+        kmer = record.seq.substr(kmer_idx, opt::kmerLength);
+        kmer_rc = reverseComplement(kmer);
+
+        std::cout << record.id << "\t" << kmer_idx << "\t" << kmer;
           
         //print out kmer count for all the bwts
-        for(size_t j=0;j<opt::bwtFiles.size();j++) {
-          std::cout << '\t' << std::max<int64_t>(BWTAlgorithms::findInterval(pBWTs[j],kmer).size(),0);
-          std::cout << '\t' << std::max<int64_t>(BWTAlgorithms::findInterval(pBWTs[j],kmer_rc).size(),0);
+        for(indexset_it = bwtIndicies.begin(); 
+            indexset_it != bwtIndicies.end(); 
+            ++indexset_it)
+        {
+          std::cout << '\t' << BWTAlgorithms::countSequenceOccurrencesSingleStrand(kmer, *indexset_it);
+          std::cout << '\t' << BWTAlgorithms::countSequenceOccurrencesSingleStrand(kmer_rc, *indexset_it);
         }
+        
         std::cout << std::endl;
+
       }
     }
 
     // clean memory
-    for(size_t i=0;i<opt::bwtFiles.size();++i)
+    for(indexset_it = bwtIndicies.begin(); 
+        indexset_it != bwtIndicies.end();
+        ++indexset_it)
     {
-        delete pBWTs[i];
+      delete (*indexset_it).pBWT;
+      delete (*indexset_it).pCache;
     }
-    delete[] pBWTs;
+
+
     return 0;
 }
 
