@@ -4,7 +4,7 @@
 // Released under the GPL
 //-----------------------------------------------
 //
-// Kmer-count - Correct sequencing errors in reads using the FM-index
+// Kmer-count - Counting kmers in BWT or Sequence Files
 //
 
 #include <kmer-count.h>
