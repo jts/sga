@@ -408,6 +408,8 @@ ReconstructedHaplotype reconstructHaplotype(const VCFRecord& somatic_record,
     int eventLength = somatic_record.varStr.length();
     int zeroBasedPos = somatic_record.refPosition - 1;
     int start = zeroBasedPos - flanking_size - 1;
+    if (start < 0) 
+        start = 0;
     int end = zeroBasedPos + eventLength + 2 * flanking_size;
     const SeqItem& chr = refTable.getRead(somatic_record.refName);
     if(end > (int)chr.seq.length())
@@ -669,206 +671,211 @@ int graphConcordanceMain(int argc, char** argv)
         std::string classification = "UNKNOWN";
 
         ReconstructedHaplotype rc;
-        if(nearby_vector.size() <= 4)
-            rc = reconstructHaplotype(record, nearby_vector, refTable, variantIndex, baseIndex, flanking_size);
-        else
+        if(nearby_vector.size() > 4) 
+        {
+            record.setQuality(0);
             classification = "TOO_COMPLEX";
-        
-        std::string left_x = rc.left_base_kmer;
-        std::string left_y = rc.left_somatic_kmer;
-        std::string left_z = get_neighbor(left_y, ED_SENSE, variantIndex);
-        
-        std::string right_x = rc.right_base_kmer;
-        std::string right_y = rc.right_somatic_kmer;
-        std::string right_z = get_neighbor(right_y, ED_ANTISENSE, variantIndex);
-
-        // Generate various output statistics
-        
-        record.addComment("OrigQual", record.quality);
-        record.addComment("HapUniqueKmers", (int)rc.unique_kmers);
-
-        //
-        // Number of ALT reads from freebayes
-        //
-        if(!record.sampleStr.empty())
+        }
+        else
         {
-            StringVector gt_fields = split(record.sampleStr[0], ':');
-            if(gt_fields.size() >= 6)
+            rc = reconstructHaplotype(record, nearby_vector, refTable, variantIndex, baseIndex, flanking_size);
+            
+            std::string left_x = rc.left_base_kmer;
+            std::string left_y = rc.left_somatic_kmer;
+            std::string left_z = get_neighbor(left_y, ED_SENSE, variantIndex);
+            
+            std::string right_x = rc.right_base_kmer;
+            std::string right_y = rc.right_somatic_kmer;
+            std::string right_z = get_neighbor(right_y, ED_ANTISENSE, variantIndex);
+
+            // Generate various output statistics
+            
+            record.addComment("OrigQual", record.quality);
+            record.addComment("HapUniqueKmers", (int)rc.unique_kmers);
+
+            //
+            // Number of ALT reads from freebayes
+            //
+            if(!record.sampleStr.empty())
             {
-                std::stringstream parser(gt_fields[5]);
-                int freebayes_alt_reads = 0;
-                parser >> freebayes_alt_reads;
-                record.addComment("MappedAlt", freebayes_alt_reads);
+                StringVector gt_fields = split(record.sampleStr[0], ':');
+                if(gt_fields.size() >= 6)
+                {
+                    std::stringstream parser(gt_fields[5]);
+                    int freebayes_alt_reads = 0;
+                    parser >> freebayes_alt_reads;
+                    record.addComment("MappedAlt", freebayes_alt_reads);
+                    
+                    int freebayes_total_reads = 0;
+                    std::stringstream parser2(gt_fields[2]);
+                    parser2 >> freebayes_total_reads;
+                    record.addComment("MappedTotal", freebayes_total_reads);
+                }
+            }
+
+            // Number of reads with a unique somatic kmer
+            size_t n_somatic_reads = estimateHaplotypeKmerDepth(rc.haplotype, variantIndex, baseIndex);
+            record.addComment("ExtractedReads", (int)n_somatic_reads);
+
+            //
+            // Probability model
+            //
+            double p_left_error_variant = 0.99;
+            double p_right_error_variant = 0.99;
+            
+            double p_left_error_base = 0.99;
+            double p_right_error_base = 0.99;
+
+            if(!left_x.empty() && !left_y.empty())
+            {
+                p_left_error_variant = apply_branch_model(left_x, left_y, left_z,
+                                                          variantIndex, variant_params, variant_genome, true);
+
+                p_left_error_base = apply_branch_model(left_x, left_y, left_z,
+                                                       baseIndex, base_params, base_genome, false);
+            }
+
+            if(!right_x.empty() && !right_y.empty())
+            {
+                p_right_error_variant = apply_branch_model(right_x, right_y, right_z,
+                                                           variantIndex, variant_params, variant_genome, true);
+
+                p_right_error_base = apply_branch_model(right_x, right_y, right_z,
+                                                        baseIndex, base_params, base_genome, false);
+            }
+            
+            double p_error_variant = p_left_error_variant * p_right_error_variant;
+            double p_error_base = p_left_error_base * p_right_error_base;
+            double p_somatic = (1.0 - p_error_variant) * p_error_base;
+
+            // Max depth model
+
+            /*
+            int c_x = kmerCount(left_x, variantIndex) + kmerCount(right_x, variantIndex);;
+            int c_y = n_somatic_reads;
+            int c_z = c_x - n_somatic_reads;
+            double p_error_variant = 1.0;
+            if(c_z >= 0)
+            {
+                int c_min = std::min(c_y, c_z);
+                int c_max = std::max(c_y, c_z);
+
+                ModelPosteriors ret = classify_2_branch(variant_params, variant_genome, c_max, c_min, 0, true);
+                p_error_variant = ret.posterior_error;
+            }
+
+            */       
+
+            double model_qual = -10.0 * log(p_error_variant) / log(10);
+            record.addComment("ModelQual", model_qual);
+
+            //
+            // Simple k-mer counts
+            //
+            int sum_y = kmerCount(left_y, variantIndex) + kmerCount(right_y, variantIndex);
+            int sum_z = kmerCount(left_z, variantIndex) + kmerCount(right_z, variantIndex);
+            
+            double prior_error = 0.01;
+            double log_p_error_variant = SGAStats::logBinomial(sum_y, sum_y + sum_z, prior_error);
+            double binomial_qual = -10.0 * log_p_error_variant / log(10);
+            record.addComment("KmerAlt", sum_y);
+            record.addComment("KmerTotal", sum_y + sum_z);
+            record.addComment("BinomialQual", binomial_qual);
+
+            // QC
+            int sum_y_ss = kmerCount(left_y, variantIndex) + 
+                           kmerCount(right_y, variantIndex);
+            bool is_balanced = sum_y_ss < sum_y && sum_y_ss > 0;
+
+            //
+            // Set VCF Qual
+            //
+            double qual = 0.0;
+            
+            int left_y_base = kmerCount(left_y, baseIndex);
+            int right_y_base = kmerCount(right_y, baseIndex);
+            
+            int left_y_variant  = kmerCount(left_y, variantIndex);
+            int right_y_variant = kmerCount(right_y, variantIndex);
+
+            record.addComment("YLeftBase", left_y_base);
+            record.addComment("YRightBase", right_y_base);
+            
+            record.addComment("YLeftVariant", left_y_variant);
+            record.addComment("YRightVariant", right_y_variant);
+
+            // Homopolymer length
+            int hplen = calculateHomopolymerLength(record, &refTable);
+            record.addComment("HPLen", hplen);
+
+            // Dust
+            double dust = HapgenUtil::calculateDustScoreAtPosition(record.refName, 
+                                                                   record.refPosition, 
+                                                                   &refTable);
+
+            int sum_y_base = left_y_base + right_y_base;
+            if(sum_y_base < 1 && hplen <= 7 && dust <= 2.0)
+                qual = model_qual;
+
+            //double qual_base_not_error = -10.0 * log(1 - p_error_base) / log(10);
+            //double qual = std::min(qual_variant, qual_base_not_error);
+
+            fprintf(stderr, "p_e_v: %.3lf\n", exp(log_p_error_variant));
+            //fprintf(stderr, "p_e_b: %.3lf\n", p_error_base);
+            //fprintf(stderr, "p_somatic: %.3lf\n", p_somatic);
+
+
+            //double qual = -10.0 * log(1 - p_somatic) / log(10);
+            record.setQuality(qual);
+            fprintf(stderr, "Qual: %.1lf\n", qual);
+
+            /*
+            size_t max_unique_variant_kmers = 0;
+            if(!haplotype.empty())
+            {    
+                IntVector v_cp = HapgenUtil::makeCountProfile(haplotype, opt::k, 9, variantIndex);
+                IntVector b_cp = HapgenUtil::makeCountProfile(haplotype, opt::k, 9, baseIndex);
                 
-                int freebayes_total_reads = 0;
-                std::stringstream parser2(gt_fields[2]);
-                parser2 >> freebayes_total_reads;
-                record.addComment("MappedTotal", freebayes_total_reads);
-            }
-        }
-
-        // Number of reads with a unique somatic kmer
-        size_t n_somatic_reads = estimateHaplotypeKmerDepth(rc.haplotype, variantIndex, baseIndex);
-        record.addComment("ExtractedReads", (int)n_somatic_reads);
-
-        //
-        // Probability model
-        //
-        double p_left_error_variant = 0.99;
-        double p_right_error_variant = 0.99;
-        
-        double p_left_error_base = 0.99;
-        double p_right_error_base = 0.99;
-
-        if(!left_x.empty() && !left_y.empty())
-        {
-            p_left_error_variant = apply_branch_model(left_x, left_y, left_z,
-                                                      variantIndex, variant_params, variant_genome, true);
-
-            p_left_error_base = apply_branch_model(left_x, left_y, left_z,
-                                                   baseIndex, base_params, base_genome, false);
-        }
-
-        if(!right_x.empty() && !right_y.empty())
-        {
-            p_right_error_variant = apply_branch_model(right_x, right_y, right_z,
-                                                       variantIndex, variant_params, variant_genome, true);
-
-            p_right_error_base = apply_branch_model(right_x, right_y, right_z,
-                                                    baseIndex, base_params, base_genome, false);
-        }
-        
-        double p_error_variant = p_left_error_variant * p_right_error_variant;
-        double p_error_base = p_left_error_base * p_right_error_base;
-        double p_somatic = (1.0 - p_error_variant) * p_error_base;
-
-        // Max depth model
-
-        /*
-        int c_x = kmerCount(left_x, variantIndex) + kmerCount(right_x, variantIndex);;
-        int c_y = n_somatic_reads;
-        int c_z = c_x - n_somatic_reads;
-        double p_error_variant = 1.0;
-        if(c_z >= 0)
-        {
-            int c_min = std::min(c_y, c_z);
-            int c_max = std::max(c_y, c_z);
-
-            ModelPosteriors ret = classify_2_branch(variant_params, variant_genome, c_max, c_min, 0, true);
-            p_error_variant = ret.posterior_error;
-        }
-
-        */       
-
-        double model_qual = -10.0 * log(p_error_variant) / log(10);
-        record.addComment("ModelQual", model_qual);
-
-        //
-        // Simple k-mer counts
-        //
-        int sum_y = kmerCount(left_y, variantIndex) + kmerCount(right_y, variantIndex);
-        int sum_z = kmerCount(left_z, variantIndex) + kmerCount(right_z, variantIndex);
-        
-        double prior_error = 0.01;
-        double log_p_error_variant = SGAStats::logBinomial(sum_y, sum_y + sum_z, prior_error);
-        double binomial_qual = -10.0 * log_p_error_variant / log(10);
-        record.addComment("KmerAlt", sum_y);
-        record.addComment("KmerTotal", sum_y + sum_z);
-        record.addComment("BinomialQual", binomial_qual);
-
-        // QC
-        int sum_y_ss = kmerCount(left_y, variantIndex) + 
-                       kmerCount(right_y, variantIndex);
-        bool is_balanced = sum_y_ss < sum_y && sum_y_ss > 0;
-
-        //
-        // Set VCF Qual
-        //
-        double qual = 0.0;
-        
-        int left_y_base = kmerCount(left_y, baseIndex);
-        int right_y_base = kmerCount(right_y, baseIndex);
-        
-        int left_y_variant  = kmerCount(left_y, variantIndex);
-        int right_y_variant = kmerCount(right_y, variantIndex);
-
-        record.addComment("YLeftBase", left_y_base);
-        record.addComment("YRightBase", right_y_base);
-        
-        record.addComment("YLeftVariant", left_y_variant);
-        record.addComment("YRightVariant", right_y_variant);
-
-        // Homopolymer length
-        int hplen = calculateHomopolymerLength(record, &refTable);
-        record.addComment("HPLen", hplen);
-
-        // Dust
-        double dust = HapgenUtil::calculateDustScoreAtPosition(record.refName, 
-                                                               record.refPosition, 
-                                                               &refTable);
-
-        int sum_y_base = left_y_base + right_y_base;
-        if(sum_y_base < 1 && hplen <= 7 && dust <= 2.0)
-            qual = model_qual;
-
-        //double qual_base_not_error = -10.0 * log(1 - p_error_base) / log(10);
-        //double qual = std::min(qual_variant, qual_base_not_error);
-
-        fprintf(stderr, "p_e_v: %.3lf\n", exp(log_p_error_variant));
-        //fprintf(stderr, "p_e_b: %.3lf\n", p_error_base);
-        //fprintf(stderr, "p_somatic: %.3lf\n", p_somatic);
-
-
-        //double qual = -10.0 * log(1 - p_somatic) / log(10);
-        record.setQuality(qual);
-        fprintf(stderr, "Qual: %.1lf\n", qual);
-
-        /*
-        size_t max_unique_variant_kmers = 0;
-        if(!haplotype.empty())
-        {    
-            IntVector v_cp = HapgenUtil::makeCountProfile(haplotype, opt::k, 9, variantIndex);
-            IntVector b_cp = HapgenUtil::makeCountProfile(haplotype, opt::k, 9, baseIndex);
             
-        
-            size_t unique_variant_kmers = 0;
-            for(size_t i = 0; i < v_cp.size(); ++i)
+                size_t unique_variant_kmers = 0;
+                for(size_t i = 0; i < v_cp.size(); ++i)
+                {
+                    if(v_cp[i] > 0 && b_cp[i] == 0)
+                        unique_variant_kmers++;
+                }
+
+                if(unique_variant_kmers > max_unique_variant_kmers)
+                    max_unique_variant_kmers = unique_variant_kmers;
+                
+                if(opt::verbose > 0)
+                {
+                    std::cerr << "k-mer profile somatic (variant):  ";
+                    for(size_t j = 0; j < v_cp.size(); ++j)
+                        std::cerr << v_cp[j];
+                    std::cerr << "\n";
+
+                    std::cerr << "k-mer profile somatic (base):     ";
+                    for(size_t j = 0; j < b_cp.size(); ++j)
+                        std::cerr << b_cp[j];
+                    std::cerr << "\n";
+                    fprintf(stderr, "unique variant kmers: %zu\n\n", unique_variant_kmers);
+                    fprintf(stderr, "max unique variant kmers: %zu\n\n", max_unique_variant_kmers);
+                }
+            }
+            else
             {
-                if(v_cp[i] > 0 && b_cp[i] == 0)
-                    unique_variant_kmers++;
+                classification = "CANNOT_RECONSTRUCT";
             }
 
-            if(unique_variant_kmers > max_unique_variant_kmers)
-                max_unique_variant_kmers = unique_variant_kmers;
+            if(max_unique_variant_kmers > 5)
+                classification = "SOMATIC";
+            else
+                classification = "GERMLINE";
+            */
             
-            if(opt::verbose > 0)
-            {
-                std::cerr << "k-mer profile somatic (variant):  ";
-                for(size_t j = 0; j < v_cp.size(); ++j)
-                    std::cerr << v_cp[j];
-                std::cerr << "\n";
-
-                std::cerr << "k-mer profile somatic (base):     ";
-                for(size_t j = 0; j < b_cp.size(); ++j)
-                    std::cerr << b_cp[j];
-                std::cerr << "\n";
-                fprintf(stderr, "unique variant kmers: %zu\n\n", unique_variant_kmers);
-                fprintf(stderr, "max unique variant kmers: %zu\n\n", max_unique_variant_kmers);
-            }
+            // write out the record
+            //record.addComment("MaxUniqueVariantKmers", (int)max_unique_variant_kmers);
         }
-        else
-        {
-            classification = "CANNOT_RECONSTRUCT";
-        }
-
-        if(max_unique_variant_kmers > 5)
-            classification = "SOMATIC";
-        else
-            classification = "GERMLINE";
-        */
-        
-        // write out the record
-        //record.addComment("MaxUniqueVariantKmers", (int)max_unique_variant_kmers);
         record.addComment("KmerClassification", classification);
         std::cout << record << "\n";
     }
