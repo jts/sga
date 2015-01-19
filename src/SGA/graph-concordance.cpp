@@ -198,7 +198,10 @@ extern GenomeEstimates estimate_genome_size_from_k_counts(size_t k, const BWTInd
 
 size_t kmerCount(const std::string& x, const BWTIndexSet& index_set)
 {
-    return BWTAlgorithms::countSequenceOccurrences(x, index_set);
+    if ( x.empty() )
+        return 0;
+    else
+        return BWTAlgorithms::countSequenceOccurrences(x, index_set);
 }
 
 size_t kmerCountWithOneOff(const std::string& x, const BWTIndexSet& index_set)
