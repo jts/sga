@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <iterator>
+#include <list>
 #include "Util.h"
 #include "graph-concordance.h"
 #include "BWTAlgorithms.h"
@@ -196,15 +197,132 @@ extern ModelParameters calculate_model_parameters(size_t k, KmerDistribution& di
 extern ModelParameters calculate_model_parameters(size_t k, size_t samples, const BWTIndexSet& index_set);
 extern GenomeEstimates estimate_genome_size_from_k_counts(size_t k, const BWTIndexSet& index_set);
 
-size_t kmerCount(const std::string& x, const BWTIndexSet& index_set)
-{
-    if ( x.empty() )
-        return 0;
-    else
-        return BWTAlgorithms::countSequenceOccurrences(x, index_set);
+bool operator==(const BWTIndexSet&bw1, const BWTIndexSet&bw2) {
+    return bw1.pBWT == bw2.pBWT;
 }
 
-size_t kmerCountWithOneOff(const std::string& x, const BWTIndexSet& index_set)
+struct LRU {
+    typedef std::pair<std::string,BWTIndexSet> keytype;
+
+    struct keyCompare
+    {
+          bool operator() (const keytype& lhs, const keytype& rhs)
+          {
+              // sort by string first, using BWT index pointers to break ties
+              if (lhs.first == rhs.first)
+                  return lhs.second.pBWT < rhs.second.pBWT;
+              else
+                  return lhs.first < rhs.first;
+          }
+    };
+
+    typedef std::list< keytype > timestamplisttype;
+    typedef size_t valtype;
+    typedef std::pair< valtype, timestamplisttype::iterator > valpairtype;
+
+    static const size_t maxcount = 1000;
+
+    typedef std::map< keytype, valpairtype, keyCompare> maptype ;
+
+    maptype cache;
+    timestamplisttype timestamplist;
+
+    maptype::iterator locate( const std::string &s, const BWTIndexSet& index_set ) {
+        keytype key( s, index_set );
+        return cache.find( key );
+    }
+
+    void updateTimestamp( maptype::iterator& it ) {
+        timestamplisttype::iterator lit = (it->second).second;
+        keytype key = *lit;
+        timestamplist.erase(lit);
+        timestamplist.push_front(key);
+        it->second.second = timestamplist.begin();
+    }
+
+    int evictlast() {
+        if (timestamplist.size() == 0)
+            return 1;
+        keytype key = timestamplist.back();
+        timestamplist.pop_back();
+        maptype::iterator it = cache.find( key );
+        cache.erase( it );
+        return 0;
+    }
+
+    int findval( const std::string &s, const BWTIndexSet& index_set, valtype& value ) {
+        std::map< keytype, valpairtype>::iterator it = locate( s, index_set );
+        if ( it == cache.end() )
+            return 1;
+        else {
+            updateTimestamp(it);
+            value = (it->second).first;
+            return 0;
+        }
+    }
+
+    void add( const std::string &s, const BWTIndexSet& index_set, valtype& value ) {
+        maptype::iterator it = locate( s, index_set );
+        if ( it != cache.end() ) {
+            updateTimestamp( it );
+            (it->second).first = value;
+        } else {
+            if ( timestamplist.size() == maxcount ) 
+                evictlast();
+            keytype key(s, index_set);
+            timestamplist.push_front( key );
+            valpairtype val( value, timestamplist.begin() );
+            cache[key] = val;
+        }
+    }
+
+    void validateStructure() {
+        if ( cache.size() != timestamplist.size() )
+            std::cerr << "map size = " << cache.size() << " list size = " << timestamplist.size() << std::endl;
+
+        for (maptype::iterator it = cache.begin(); it != cache.end(); ++it ) {
+            keytype key = it->first;
+            keytype foundkey = *((it->second).second);
+            if (key != foundkey) {
+                std::cerr << "map/list inconsistency: string = " << key.first << std::endl;
+            }
+        }
+    }
+
+};
+
+size_t kmerCount(const std::string& x, const BWTIndexSet& index_set )
+{
+    static LRU memos;
+    static size_t nlookups=0;
+
+    if ( x.empty() )
+        return 0;
+    else {
+        nlookups++;
+        if (nlookups % 1000 == 0)
+            std::cerr << " kmerCount - nlookups = " << nlookups << std::endl;
+
+        size_t count;
+        if ( !memos.findval(x, index_set, count) ) {
+            size_t count2 = BWTAlgorithms::countSequenceOccurrences(x, index_set);
+            if (count != count2) {
+                std::cerr << "Inconsistency in cache - input " << x << std::endl;
+                std::cerr << "Got " << count << " real answer " << count2 << std::endl;
+                count = count2;
+            }
+            memos.validateStructure();
+            return count;
+        } else {
+            count = BWTAlgorithms::countSequenceOccurrences(x, index_set);
+            memos.add(x, index_set, count);
+            memos.validateStructure();
+            return count;
+        }
+    }
+}
+
+size_t kmerCountWithOneOff(const std::string& x, const BWTIndexSet& index_set )
 {
     if(x.empty())
         return 0;
@@ -224,7 +342,7 @@ size_t kmerCountWithOneOff(const std::string& x, const BWTIndexSet& index_set)
             if(b != tmp)
             {
                 t[i] = b;
-                size_t count = BWTAlgorithms::countSequenceOccurrences(t, index_set);
+                size_t count = kmerCount(x, index_set);
                 oneoff += count;
             }
         }
@@ -233,40 +351,6 @@ size_t kmerCountWithOneOff(const std::string& x, const BWTIndexSet& index_set)
     return direct + oneoff;
 }
 
-size_t estimateHaplotypeKmerDepth(const std::string& haplotype,
-                                  const BWTIndexSet& variantIndex,
-                                  const BWTIndexSet& baseIndex)
-{
-    std::vector<std::string> kmers;
-
-    for(size_t i = 0; i < haplotype.size() - opt::k + 1; ++i)
-    {
-        std::string kmer = haplotype.substr(i, opt::k);
-        size_t vc = kmerCount(kmer, variantIndex);
-        size_t bc = kmerCount(kmer, baseIndex);
-
-        if(vc > 0 && bc == 0)
-            kmers.push_back(kmer);
-    }
-    
-    if(kmers.empty())
-        return 0;
-
-    SeqRecordVector reads;
-
-    // forward strand
-    HapgenUtil::extractHaplotypeReads(kmers, variantIndex, opt::k, false,
-                                      200, 200, &reads, NULL);
-    
-    // reverse strand
-    HapgenUtil::extractHaplotypeReads(kmers, variantIndex, opt::k, true,
-                                      200, 200, &reads, NULL);
-
-
-    // number of reads with a unique kmer
-    return reads.size();
-}
-                                 
 
 std::string applyVariant(const std::string& in, int pos,
                          const std::string& ref, const std::string& alt,
