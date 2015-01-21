@@ -295,28 +295,30 @@ size_t kmerCount(const std::string& x, const BWTIndexSet& index_set )
 {
     static LRU memos;
     static size_t nlookups=0;
+    static size_t nhits=0;
 
     if ( x.empty() )
         return 0;
     else {
         nlookups++;
         if (nlookups % 1000 == 0)
-            std::cerr << " kmerCount - nlookups = " << nlookups << std::endl;
+            std::cerr << " kmerCount - nlookups = " << nlookups << " hit ratio = " << 0.1*nhits/nlookups << std::endl;
 
         size_t count;
         if ( !memos.findval(x, index_set, count) ) {
-            size_t count2 = BWTAlgorithms::countSequenceOccurrences(x, index_set);
-            if (count != count2) {
-                std::cerr << "Inconsistency in cache - input " << x << std::endl;
-                std::cerr << "Got " << count << " real answer " << count2 << std::endl;
-                count = count2;
-            }
-            memos.validateStructure();
+            //size_t count2 = BWTAlgorithms::countSequenceOccurrences(x, index_set);
+            //if (count != count2) {
+            //    std::cerr << "Inconsistency in cache - input " << x << std::endl;
+            //    std::cerr << "Got " << count << " real answer " << count2 << std::endl;
+            //    count = count2;
+            //}
+            //memos.validateStructure();
+            nhits++;
             return count;
         } else {
             count = BWTAlgorithms::countSequenceOccurrences(x, index_set);
             memos.add(x, index_set, count);
-            memos.validateStructure();
+            //memos.validateStructure();
             return count;
         }
     }
@@ -327,7 +329,7 @@ size_t kmerCountWithOneOff(const std::string& x, const BWTIndexSet& index_set )
     if(x.empty())
         return 0;
 
-    size_t direct = BWTAlgorithms::countSequenceOccurrences(x, index_set);
+    size_t direct = kmerCount(x, index_set);
 
     // One-offs, except for the terminal bases
     size_t oneoff = 0;
@@ -571,6 +573,7 @@ int reconstructHaplotype(const VCFRecord& somatic_record,
         StringVector kmers = extractSomaticKmers(haplotype, flanking_size, current);
         
         // Count the number of somatic kmers that are present in the variant reads
+        #ifdef printcounts
         for(size_t ki = 0; ki < kmers.size(); ++ki)
         {
             int cv = kmerCount(kmers[ki], variantIndex);
@@ -582,9 +585,10 @@ int reconstructHaplotype(const VCFRecord& somatic_record,
             //if(BWTAlgorithms::countSequenceOccurrences(kmers[ki], variantIndex) > 0)
             //    read_kmers += 1;
         }
+        #endif
 
-        size_t read_kmers = BWTAlgorithms::countSequenceOccurrences(current.left_somatic_kmer, variantIndex) +
-                            BWTAlgorithms::countSequenceOccurrences(current.right_somatic_kmer, variantIndex);
+        size_t read_kmers = kmerCount(current.left_somatic_kmer, variantIndex) +
+                            kmerCount(current.right_somatic_kmer, variantIndex);
 
         if(read_kmers > best_haplotype_kmers || best_haplotype_kmers == 0)
         {
@@ -612,7 +616,7 @@ std::string get_neighbor(const std::string& x, EdgeDir dir, BWTIndexSet indexSet
         if(tmp == x)
             continue;
         
-        int count = BWTAlgorithms::countSequenceOccurrences(tmp, indexSet);
+        int count = kmerCount(tmp, indexSet);
         if(count >= best_count)
         {
             best_count = count;
@@ -683,24 +687,24 @@ int new_delta_calculation(const std::string& x,
                           BWTIndexSet index,
                           EdgeDir dir)
 {
-    int delta = BWTAlgorithms::countSequenceOccurrences(y, index) +
-                BWTAlgorithms::countSequenceOccurrences(z, index);
+    int delta = kmerCount(y, index) +
+                kmerCount(z, index);
     
     std::string lmer = x;
     if(dir == ED_SENSE)
     {
         std::string xy = x + y[y.size() - 1];
         std::string xz = x + z[z.size() - 1];
-        delta -= (BWTAlgorithms::countSequenceOccurrences(xy, index) +
-                  BWTAlgorithms::countSequenceOccurrences(xz, index));
+        delta -= (kmerCount(xy, index) +
+                  kmerCount(xz, index));
 
     } 
     else
     {
         std::string yx = y[0] + x;
         std::string zx = z[0] + x;
-        delta -= (BWTAlgorithms::countSequenceOccurrences(yx, index) +
-                  BWTAlgorithms::countSequenceOccurrences(zx, index));
+        delta -= (kmerCount(yx, index) +
+                  kmerCount(zx, index));
     }
     assert(delta >= 0);
     return delta;
