@@ -36,6 +36,7 @@ static const char *PREPROCESS_USAGE_MESSAGE =
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
+"          --seed                       set random seed\n"
 "\nInput/Output options:\n"
 "      -o, --out=FILE                   write the reads to FILE (default: stdout)\n"
 "      -p, --pe-mode=INT                0 - do not treat reads as paired (default)\n"
@@ -81,6 +82,7 @@ enum QualityScaling
 namespace opt
 {
     static unsigned int verbose;
+    static unsigned int seed = 0;
     static std::string outFile;
     static unsigned int qualityTrim = 0;
     static unsigned int hardClip = 0;
@@ -108,9 +110,9 @@ namespace opt
 
 static const char* shortopts = "o:q:m:h:p:r:c:s:f:vi";
 
-enum { OPT_HELP = 1, OPT_VERSION, OPT_PERMUTE, 
-       OPT_QSCALE, OPT_MINGC, OPT_MAXGC, 
-       OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX, 
+enum { OPT_HELP = 1, OPT_SEED, OPT_VERSION, OPT_PERMUTE,
+       OPT_QSCALE, OPT_MINGC, OPT_MAXGC,
+       OPT_DUST, OPT_DUST_THRESHOLD, OPT_SUFFIX,
        OPT_PHRED64, OPT_OUTPUTORPHANS, OPT_DISABLE_PRIMER,
        OPT_DISCARD_QUALITY };
 
@@ -137,6 +139,7 @@ static const struct option longopts[] = {
     { "permute-ambiguous",      no_argument,       NULL, OPT_PERMUTE },
     { "discard-quality",        no_argument,       NULL, OPT_DISCARD_QUALITY },
     { "no-primer-check",        no_argument,       NULL, OPT_DISABLE_PRIMER },
+    { "seed",                   required_argument, NULL, OPT_SEED },
     { NULL, 0, NULL, 0 }
 };
 
@@ -155,6 +158,12 @@ int preprocessMain(int argc, char** argv)
 {
     Timer* pTimer = new Timer("sga preprocess");
     parsePreprocessOptions(argc, argv);
+
+    // set random seed
+    if (opt::seed == 0)
+    {
+        opt::seed = time(NULL);
+    }
 
     std::cerr << "Parameters:\n";
     std::cerr << "QualTrim: " << opt::qualityTrim << "\n";
@@ -187,9 +196,10 @@ int preprocessMain(int argc, char** argv)
         std::cerr << "Adapter sequence fwd: " << opt::adapterF << "\n";
         std::cerr << "Adapter sequence rev: " << opt::adapterR << "\n";
     }
+    std::cerr << "Seed: " << opt::seed << "\n";
 
     // Seed the RNG
-    srand(time(NULL));
+    srand(opt::seed);
 
     std::ostream* pWriter;
     if(opt::outFile.empty())
@@ -630,6 +640,7 @@ void parsePreprocessOptions(int argc, char** argv)
             case OPT_DUST: opt::bDustFilter = true; break;
             case OPT_DISABLE_PRIMER: opt::bDisablePrimerCheck = true; break;
             case OPT_DISCARD_QUALITY: opt::bDiscardQuality = true; break;
+            case OPT_SEED: arg >> opt::seed; break;
             case OPT_HELP:
                 std::cout << PREPROCESS_USAGE_MESSAGE;
                 exit(EXIT_SUCCESS);
