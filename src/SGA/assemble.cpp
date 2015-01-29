@@ -144,7 +144,7 @@ void assemble()
 
     // Remove containments from the graph
     std::cout << "Removing contained vertices from graph\n";
-    //while(pGraph->hasContainment())
+    while(pGraph->hasContainment())
         pGraph->visit(containVisit);
 
     // Pre-assembly graph stats
@@ -157,14 +157,9 @@ void assemble()
         std::cout << "Removing transitive edges\n";
         pGraph->visit(trVisit);
     }
-    
-    std::cout << "[Stats] After removing transitive edges:\n";
-    pGraph->visit(statsVisit);
-//    pGraph->writeASQG("processed.asqg.gz");
-
 
     // Compact together unbranched chains of vertices
-    //pGraph->simplify();
+    pGraph->simplify();
     
     if(opt::bValidate)
     {
@@ -182,7 +177,6 @@ void assemble()
         std::cout << "\n[Stats] Graph after trimming:\n";
         pGraph->visit(statsVisit);
     }
-    pGraph->printContigLengths();
 
     // Resolve small repeats
     if(opt::resolveSmallRepeatLen > 0)
