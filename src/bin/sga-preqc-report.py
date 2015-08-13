@@ -2,6 +2,8 @@
 """Generate a readable report from preqc output.
 """
 
+from __future__ import print_function, division
+
 import sys, os.path
 import matplotlib as MPL
 import argparse
@@ -73,17 +75,17 @@ def main(argv=None):
     # misc: listing available plots
     if( args.list_plots ):
         plot_funcs, plotsample_funcs = _get_available_plot_functions()
-        print "Available plots:"
-        print '\n'.join(['\t'+k for k in sorted(plot_funcs)])
-        print "Available per-sample plots:"
-        print '\n'.join(['\t'+k for k in sorted(plotsample_funcs)])
+        print("Available plots:")
+        print('\n'.join(['\t'+k for k in sorted(plot_funcs)]))
+        print("Available per-sample plots:")
+        print('\n'.join(['\t'+k for k in sorted(plotsample_funcs)]))
         sys.exit(0)
     # main mode
     output_pfx = args.output
     preqc_files = args.preqc_file
-    print 'output_pfx: ', output_pfx
-    print 'preqc_files:'
-    print '\t' + '\n\t'.join(preqc_files)
+    print('output_pfx: ', output_pfx)
+    print('preqc_files:')
+    print('\t' + '\n\t'.join(preqc_files))
     # load data
     data = load_preqc_datafiles(preqc_files)
     # make the report
@@ -670,7 +672,7 @@ def plotsample_gc_distribution(ax, d):
         ax.set_title(d['name'] + ' GC Bias')
         ax.set_xlabel("GC %")
         ax.set_ylabel("k-mer coverage")
-        return True 
+        return True
     else:
         # no data, draw an empty plot
         return _finish_plot(ax, [], 0, 'No GC data for %s' % d['name'])
@@ -687,15 +689,15 @@ def load_preqc_datafiles(preqc_files):
     for f in preqc_files:
         f = os.path.abspath(f)
         if( os.path.getsize(f) <= 0 ):
-            print "Warning: empty file '%s' ... skipping"%f
+            print("Warning: empty file '%s' ... skipping"%f)
             continue
         if( f in [d['file'] for d in data] ):
-            print "Warning: duplicate file '%s' ... skipping"%f
+            print("Warning: duplicate file '%s' ... skipping"%f)
             continue
         try:
             deserial = json.load(open(f, 'r'))
         except ValueError:
-            deserial_fail.append(f)            
+            deserial_fail.append(f)
             continue
         data.append(deserial)
         data[-1]['file'] = f
@@ -708,7 +710,7 @@ def load_preqc_datafiles(preqc_files):
         data[i]['plot_color'] = plot_colors[i%len(plot_colors)]
         data[i]['plot_marker'] = PLOT_MARKERS[i%len(PLOT_MARKERS)]
     for failed in deserial_fail:
-        print "Warning: failed to de-serialize file:", failed
+        print("Warning: failed to de-serialize file:", failed)
     return data
 
 
@@ -762,7 +764,7 @@ def make_report_with_subplots(output_pfx, data, save_png=False, pylab_show=False
     plot_legend(subplots[2][0], data)
     # Coverage plots
     plot_kmer_distribution(subplots[2][2], data, use_markers=False, legend_loc=None)
-    #plot_random_walk(subplots[2][4], data, use_markers=False, legend_loc=None) #@jts deprecated 
+    #plot_random_walk(subplots[2][4], data, use_markers=False, legend_loc=None) #@jts deprecated
 
     # use the rest of the subplots for gc
     gc_subplots = []
@@ -829,7 +831,8 @@ def make_report_plot_per_page(plots, output_pfx, data, save_png=False, pylab_sho
             func = plotsample_funcs[plotname]
             data_list = data
         else: # unrecogized, skip
-            print >>sys.stderr, "Warning: plot name '"+plotname+"' not recognized ... skipping"
+            print("Warning: plot name '"+plotname+"' not recognized ... skipping",
+                  file=sys.stderr)
             continue
 
         # loop over each sample if needed, else d == data (data_list=[data])
@@ -839,7 +842,7 @@ def make_report_plot_per_page(plots, output_pfx, data, save_png=False, pylab_sho
             if( len(data_list) > 1 ):
                 figname += '_'+d['name'].replace('/','_').replace('\\','_')
             # make the fig
-            print 'plotting:',figname
+            print('plotting:',figname)
             fig, subplots = _create_fig_and_subplots(figname, 1, 1)
             # plot
             rv = func(subplots[0], d)
