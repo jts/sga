@@ -57,6 +57,7 @@ struct ErrorCorrectParameters
     // k-mer based corrector params
     int numKmerRounds;
     int kmerLength;
+    int countOffset;
 
     // output options
     bool printOverlaps;

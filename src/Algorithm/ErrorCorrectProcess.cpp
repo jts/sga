@@ -334,13 +334,13 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
                 int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
 
                 int left_k_idx = (i + 1 >= m_params.kmerLength ? i + 1 - m_params.kmerLength : 0);
-                corrected = attemptKmerCorrection(i, left_k_idx, std::max(countVector[left_k_idx], threshold), readSequence);
+                corrected = attemptKmerCorrection(i, left_k_idx, std::max(countVector[left_k_idx] + m_params.countOffset, threshold), readSequence);
                 if(corrected)
                     break;
 
                 // base was not corrected, try using the rightmost covering kmer
                 size_t right_k_idx = std::min(i, n - m_params.kmerLength);
-                corrected = attemptKmerCorrection(i, right_k_idx, std::max(countVector[right_k_idx], threshold), readSequence);
+                corrected = attemptKmerCorrection(i, right_k_idx, std::max(countVector[right_k_idx] + m_params.countOffset, threshold), readSequence);
                 if(corrected)
                     break;
             }
