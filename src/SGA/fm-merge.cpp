@@ -39,7 +39,7 @@ SUBPROGRAM " Version " PACKAGE_VERSION "\n"
 static const char *FMMERGE_USAGE_MESSAGE =
 "Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] ... READSFILE\n"
 "Merge unambiguously sequences from the READSFILE using the FM-index.\n"
-"This program requires rmdup to be run before it.\n"
+"This program requires filter to be run before it and rmdup to be run after.\n"
 "\n"
 "      --help                           display this help and exit\n"
 "      -v, --verbose                    display verbose output\n"
