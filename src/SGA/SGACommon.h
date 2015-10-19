@@ -30,5 +30,6 @@
 // Default values
 #define DEFAULT_MIN_OVERLAP 45
 #define DEFAULT_EXTRACT_LEN 100
-
+#define DEFAULT_MIN_COUNT_MAX_BASE 4
+#define DEFAULT_COUNT_OFFSET 1
 #endif

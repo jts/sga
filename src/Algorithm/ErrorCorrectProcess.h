@@ -47,6 +47,8 @@ struct ErrorCorrectParameters
 
     // Overlap-based corrector params
     int minOverlap;
+    int min_count_max_base;
+    int base_threshold;
     int numOverlapRounds;
     double minIdentity;
     int conflictCutoff;
@@ -55,6 +57,7 @@ struct ErrorCorrectParameters
     // k-mer based corrector params
     int numKmerRounds;
     int kmerLength;
+    int countOffset;
 
     // output options
     bool printOverlaps;

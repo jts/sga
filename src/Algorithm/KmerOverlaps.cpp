@@ -14,6 +14,8 @@
 #include "Timer.h"
 #include "Verbosity.h"
 
+//#define OVERLAPCORRECTION_VERBOSE 1
+
 //
 MultipleAlignment KmerOverlaps::buildMultipleAlignment(const std::string& query, 
                                                        size_t k,
@@ -22,11 +24,29 @@ MultipleAlignment KmerOverlaps::buildMultipleAlignment(const std::string& query,
                                                        int bandwidth,
                                                        const BWTIndexSet& indices)
 {
+#ifdef OVERLAPCORRECTION_VERBOSE
+    printf("---> buildMultipleAlignment for query: %s\n",query.c_str());
+    printf("---> parameters: min_overlap %d minID %f   k %d\n",min_overlap, min_identity, k);
+#endif
+
     SequenceOverlapPairVector overlap_vector = retrieveMatches(query, k, min_overlap, min_identity, bandwidth, indices);
     MultipleAlignment multiple_alignment;
     multiple_alignment.addBaseSequence("query", query, "");
-    for(size_t i = 0; i < overlap_vector.size(); ++i)
+    for(size_t i = 0; i < overlap_vector.size(); ++i) {
         multiple_alignment.addOverlap("null", overlap_vector[i].sequence[1], "", overlap_vector[i].overlap);
+#ifdef OVERLAPCORRECTION_VERBOSE
+        printf("---> \tadd to maf: sequence %s  \n", overlap_vector[i].sequence[1].c_str());
+#endif
+	  }
+
+#ifdef OVERLAPCORRECTION_VERBOSE
+    printf("---> MAF\n");
+    multiple_alignment.print(200);
+    printf("---> PILEUP\n");
+    multiple_alignment.printPileup();
+    printf("---> DONE\n\//n");
+#endif
+
     return multiple_alignment;
 }
 
