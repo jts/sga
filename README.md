@@ -8,4 +8,4 @@ For installation and usage instructions see [src/README](src/#readme)
 
 For running examples see src/examples and the [sga wiki](https://github.com/jts/sga/wiki)
 
-For questions or support contact jared.simpson --at-- sanger.ac.uk
+For questions or support contact jared.simpson --at-- oicr.on.ca
