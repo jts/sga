@@ -330,7 +330,7 @@ def plot_legend(ax, data):
                 linestyle='-', marker=d['plot_marker'],
                 color=d['plot_color']))
         names.append(d['name'])
-    ax.legend(proxy_arts, names, 2, bbox_to_anchor=(0,1), borderaxespad=0.)
+    ax.legend(proxy_arts, names, loc=2, bbox_to_anchor=(0,1), borderaxespad=0.)
     ax.set_frame_on(False)
     ax.tick_params(axis='x', which='both', bottom='off', top='off', labelbottom='off')
     ax.tick_params(axis='y', which='both', left='off', right='off', labelleft='off')
