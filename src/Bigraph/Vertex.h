@@ -61,7 +61,8 @@ class Vertex
                                                     m_seq(s), 
                                                     m_color(GC_WHITE),
                                                     m_coverage(1),
-                                                    m_isContained(false) {}
+                                                    m_isContained(false),
+                                                    m_isSuperRepeat(false) {}
         ~Vertex();
 
         // High-level modification functions
