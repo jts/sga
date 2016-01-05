@@ -16,6 +16,10 @@
 #        --tumor-bam=/data/tumor.bam --normal-bam=/data/normal.bam \
 #        --reference=/data/reference.fa /data/input.vcf
 #
+# You can also invoke other sga scripts, such as sga-preqc-report:
+#   docker run -v /path/of/sga/repo:/data/ \
+#       --entrypoint /src/sga-0.10.14/src/bin/sga-preqc-report.py \
+#       sga-docker /data/src/examples/preqc/{bird,fish,human,oyster,snake,yeast}.preqc
 #
 FROM ubuntu:14.04
 MAINTAINER Jonathan Dursi <Jonathan.Dursi@oicr.on.ca> 
@@ -24,6 +28,7 @@ VOLUME /data
 WORKDIR /data
 
 # get ubuntu packages
+# incl python matplotlib for preqc
 RUN apt-get update && \
     apt-get install -y \
         automake \
@@ -35,6 +40,7 @@ RUN apt-get update && \
         libjemalloc-dev \
         libsparsehash-dev \
         libz-dev \
+        python-matplotlib \
         wget \
         zlib1g-dev 
 
