@@ -8,18 +8,20 @@
 # To build:
 #    docker build -t sga-docker [path containing DOCKERFILE]
 # if the Dockerfile is local, otherwise:
-#    docker build github.com/jts/sga
+#    docker build -t sga-docker github.com/jts/sga
 #    
 # Once built, you can invoke sga-docker as you would sga, eg:
 #    docker run -v /path/to/local/data/data/:/data/ \
-#       sga-docker somatic-variant-filters --annotate-only --threads=N \
+#       sga-docker somatic-variant-filters --annotate-only --threads=2 \
 #        --tumor-bam=/data/tumor.bam --normal-bam=/data/normal.bam \
-#        --reference=/data/reference.fa input.vcf
+#        --reference=/data/reference.fa /data/input.vcf
 #
 #
 FROM ubuntu:14.04
 MAINTAINER Jonathan Dursi <Jonathan.Dursi@oicr.on.ca> 
 LABEL Description="Runs SGA variant annotation on candidate indels against tumour and normal bams" Vendor="OICR" Version="0.1"
+VOLUME /data
+WORKDIR /data
 
 # get ubuntu packages
 RUN apt-get update && \
