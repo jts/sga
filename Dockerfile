@@ -30,7 +30,6 @@ RUN apt-get update && \
         autotools-dev \
         build-essential \
         cmake \
-        git \
         libhts-dev \
         libhts0 \
         libjemalloc-dev \
