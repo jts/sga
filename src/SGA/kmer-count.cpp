@@ -24,7 +24,7 @@
 static const char *KMERCOUNT_VERSION_MESSAGE = SUBPROGRAM " Version " PACKAGE_VERSION "\n";
 static const char *KMERCOUNT_USAGE_MESSAGE =
 "Usage: " PACKAGE_NAME " " SUBPROGRAM " [OPTION] src.{bwt,fa,fq} [test1.bwt] [test2.bwt]\n"
-"Generate a table of the k-mers in src.{bwt,fa,fq}, and optionaly count the number of time they appears in testX.bwt.\n"
+"Generate a table of the k-mers in src.{bwt,fa,fq}, and optionally count the number of time they appears in testX.bwt.\n"
 "Output on stdout the canonical kmers and their counts on forward and reverse strand if input is .bwt\n"
 "If src is a sequence file output forward and reverse counts for each kmer in the file\n"
 "\n"

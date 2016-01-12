@@ -144,7 +144,7 @@ void Bigraph::mergeVertices(VertexID id1, VertexID id2)
 
     if(edgesTo.size() > 1)
     {
-        std::cerr << "mergeVertces: cannot merge because of ambigious edges\n";
+        std::cerr << "mergeVertces: cannot merge because of ambiguous edges\n";
         return;
     }
 
