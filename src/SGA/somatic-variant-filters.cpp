@@ -7,6 +7,8 @@
 // variant-filtering - apply various filters
 // to a somatic VCF file
 //
+#include <locale>
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -51,6 +53,7 @@ static const char *SOMATIC_VARIANT_FILTERS_USAGE_MESSAGE =
 "          --tumor-bam=STR              load the aligned tumor reads from FILE\n"
 "          --normal-bam=STR             load the aligned normal reads from FILE\n"
 "          --annotate-only              only annotate with INFO tags, rather than filter\n"
+"          --variant-type=STR           only filter or annotate calls of type INDEL, SNV, SV, or ALL\n"
 "\n"
 "Filtering cutoffs:\n"
 "          --min-af=FLOAT               minimum allele frequency (AF tag)\n"
@@ -72,6 +75,7 @@ namespace opt
     static std::string referenceFile;
     static std::string tumorBamFile;
     static std::string normalBamFile;
+    static std::string variantType;
 
     static int numThreads = 1;
     static double minAF = 0.0f;
@@ -102,7 +106,8 @@ enum { OPT_HELP = 1,
        OPT_MAX_HP,
        OPT_MAX_DUST,
        OPT_MAX_NORMAL_READS,
-       OPT_MIN_NORMAL_DEPTH };
+       OPT_MIN_NORMAL_DEPTH,
+       OPT_VARIANT_TYPE};
 
 static const struct option longopts[] = {
     { "verbose",               no_argument,       NULL, 'v' },
@@ -118,6 +123,7 @@ static const struct option longopts[] = {
     { "max-dust",              required_argument, NULL, OPT_MAX_DUST },
     { "max-normal-reads",      required_argument, NULL, OPT_MAX_NORMAL_READS },
     { "min-normal-depth",      required_argument, NULL, OPT_MIN_NORMAL_DEPTH },
+    { "variant-type",          required_argument, NULL, OPT_VARIANT_TYPE },
     { "help",                  required_argument, NULL, OPT_HELP },
     { "version",               required_argument, NULL, OPT_VERSION },
     { NULL, 0, NULL, 0 }
@@ -654,6 +660,19 @@ int somaticVariantFiltersMain(int argc, char** argv)
             fprintf(stderr, "===============================================\n%s", ss.str().c_str());
         }
 
+        // If we are only filtering or annotating particular types,
+        // and this isn't one of those, just let the record pass untouched
+        VCFClassification variant_type = record.classify();
+        if ( (opt::variantType == "SNV" && variant_type != VCF_SUB) ||
+             (opt::variantType == "INDEL" && variant_type != VCF_INS && variant_type != VCF_DEL) ||
+             (opt::variantType == "SV" && variant_type != VCF_STRUCTURAL) ) 
+        {
+            std::cout << line << std::endl;    
+            continue;
+        }
+
+        // otherwise process normally
+
         StringStringHash tagHash;
         makeTagHash(record, tagHash);
 
@@ -791,6 +810,11 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
 {
     std::string algo_str;
     bool die = false;
+
+    std::string valids[] = {"SNV", "INDEL", "SV", "ALL"};
+    std::set<std::string> validTypes(valids, valids+4);
+    opt::variantType = "ALL";
+
     for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
     {
         std::istringstream arg(optarg != NULL ? optarg : "");
@@ -807,6 +831,7 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
             case OPT_MAX_NORMAL_READS: arg >> opt::maxNormalReads; break;
             case OPT_MIN_NORMAL_DEPTH: arg >> opt::minNormalDepth; break;
             case OPT_ANNOTATE: opt::annotateOnly = true; break;
+            case OPT_VARIANT_TYPE: arg >> opt::variantType; break;
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
@@ -854,7 +879,24 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
         die = true;
     }
 
-    opt::vcfFile = argv[optind++];
+    // process variantType; (1) make all uppercase
+    std::transform(opt::variantType.begin(), opt::variantType.end(), opt::variantType.begin(), ::toupper);
+    // (2) make sure in set
+    if (validTypes.find(opt::variantType) == validTypes.end()) {
+        std::cerr << SUBPROGRAM ": Invalid variant type specified " << opt::variantType << std::endl;
+        std::cerr << " Valid types are:" << std::endl;
+        for (std::set<std::string>::iterator it = validTypes.begin(); it != validTypes.end(); ++it)
+        {
+            std::cerr << "  " << *it << std::endl;
+        }
+        die = true;
+    }
+
+    if (optind < argc) {
+        opt::vcfFile = argv[optind++];
+    } else {
+        die = true;
+    }
 
     if (die) 
     {
