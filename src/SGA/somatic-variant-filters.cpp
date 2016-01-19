@@ -923,8 +923,8 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
         if (found_invalid_type) {
             std::cerr << SUBPROGRAM ": Invalid variant type specified in line " << variant_type_line << std::endl;
             std::cerr << " Valid types are: SNV, INDEL, COMPLEX, SV, ALL" << std::endl;
+            die = true;
         }
-        die = true;
     }
 
     if (optind < argc) {
