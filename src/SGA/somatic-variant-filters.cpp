@@ -53,7 +53,7 @@ static const char *SOMATIC_VARIANT_FILTERS_USAGE_MESSAGE =
 "          --tumor-bam=STR              load the aligned tumor reads from FILE\n"
 "          --normal-bam=STR             load the aligned normal reads from FILE\n"
 "          --annotate-only              only annotate with INFO tags, rather than filter\n"
-"          --variant-type=STR           only filter or annotate calls of type INDEL, SNV, SV, or ALL\n"
+"          --variant-type=STR           only filter or annotate calls of type INDEL, SNV, SV, COMPLEX, or ALL\n"
 "\n"
 "Filtering cutoffs:\n"
 "          --min-af=FLOAT               minimum allele frequency (AF tag)\n"
@@ -665,6 +665,7 @@ int somaticVariantFiltersMain(int argc, char** argv)
         VCFClassification variant_type = record.classify();
         if ( (opt::variantType == "SNV" && variant_type != VCF_SUB) ||
              (opt::variantType == "INDEL" && variant_type != VCF_INS && variant_type != VCF_DEL) ||
+             (opt::variantType == "COMPLEX" && variant_type != VCF_COMPLEX) ||
              (opt::variantType == "SV" && variant_type != VCF_STRUCTURAL) ) 
         {
             std::cout << line << std::endl;    
@@ -811,7 +812,7 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
     std::string algo_str;
     bool die = false;
 
-    std::string valids[] = {"SNV", "INDEL", "SV", "ALL"};
+    std::string valids[] = {"SNV", "INDEL", "SV", "COMPLEX", "ALL"};
     std::set<std::string> validTypes(valids, valids+4);
     opt::variantType = "ALL";
 
