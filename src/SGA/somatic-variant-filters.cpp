@@ -53,7 +53,7 @@ static const char *SOMATIC_VARIANT_FILTERS_USAGE_MESSAGE =
 "          --tumor-bam=STR              load the aligned tumor reads from FILE\n"
 "          --normal-bam=STR             load the aligned normal reads from FILE\n"
 "          --annotate-only              only annotate with INFO tags, rather than filter\n"
-"          --variant-type=STR           only filter or annotate calls of type INDEL, SNV, SV, COMPLEX, or ALL\n"
+"          --variant-type=STR,STR       only filter or annotate calls of type INDEL, SNV, SV, COMPLEX, or ALL\n"
 "\n"
 "Filtering cutoffs:\n"
 "          --min-af=FLOAT               minimum allele frequency (AF tag)\n"
@@ -75,7 +75,7 @@ namespace opt
     static std::string referenceFile;
     static std::string tumorBamFile;
     static std::string normalBamFile;
-    static std::string variantType;
+    static std::map<VCFClassification,bool> processType;
 
     static int numThreads = 1;
     static double minAF = 0.0f;
@@ -663,10 +663,7 @@ int somaticVariantFiltersMain(int argc, char** argv)
         // If we are only filtering or annotating particular types,
         // and this isn't one of those, just let the record pass untouched
         VCFClassification variant_type = record.classify();
-        if ( (opt::variantType == "SNV" && variant_type != VCF_SUB) ||
-             (opt::variantType == "INDEL" && variant_type != VCF_INS && variant_type != VCF_DEL) ||
-             (opt::variantType == "COMPLEX" && variant_type != VCF_COMPLEX) ||
-             (opt::variantType == "SV" && variant_type != VCF_STRUCTURAL) ) 
+        if (!opt::processType[variant_type]) 
         {
             std::cout << line << std::endl;    
             continue;
@@ -812,9 +809,7 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
     std::string algo_str;
     bool die = false;
 
-    std::string valids[] = {"SNV", "INDEL", "SV", "COMPLEX", "ALL"};
-    std::set<std::string> validTypes(valids, valids+4);
-    opt::variantType = "ALL";
+    std::string variant_type_line="ALL";
 
     for (char c; (c = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1;) 
     {
@@ -832,7 +827,7 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
             case OPT_MAX_NORMAL_READS: arg >> opt::maxNormalReads; break;
             case OPT_MIN_NORMAL_DEPTH: arg >> opt::minNormalDepth; break;
             case OPT_ANNOTATE: opt::annotateOnly = true; break;
-            case OPT_VARIANT_TYPE: arg >> opt::variantType; break;
+            case OPT_VARIANT_TYPE: arg >> variant_type_line; break;
             case 't': arg >> opt::numThreads; break;
             case '?': die = true; break;
             case 'v': opt::verbose++; break;
@@ -880,15 +875,54 @@ void parseSomaticVariantFiltersOptions(int argc, char** argv)
         die = true;
     }
 
-    // process variantType; (1) make all uppercase
-    std::transform(opt::variantType.begin(), opt::variantType.end(), opt::variantType.begin(), ::toupper);
-    // (2) make sure in set
-    if (validTypes.find(opt::variantType) == validTypes.end()) {
-        std::cerr << SUBPROGRAM ": Invalid variant type specified " << opt::variantType << std::endl;
-        std::cerr << " Valid types are:" << std::endl;
-        for (std::set<std::string>::iterator it = validTypes.begin(); it != validTypes.end(); ++it)
+    if (variant_type_line.empty())
+        variant_type_line == "ALL";
+
+    // process variant type line; (1) make all uppercase
+    std::transform(variant_type_line.begin(), variant_type_line.end(), variant_type_line.begin(), ::toupper);
+    // (2) parse comma-delimited-list
+    // this is much cleaner with sregex_token_iterator, which isn't implemented in gcc until 4.9
+    // start code block to keep all these variables local
+    if (!variant_type_line.empty()) 
+    {
+        for (size_t v = 0; v<(size_t)VCF_NUM_CLASSIFICATIONS; v++)
+            opt::processType[(VCFClassification)v] = false;
+    
+        size_t start = variant_type_line.find_first_not_of(","), end=start;
+        bool found_invalid_type=false;
+        while (start != std::string::npos) 
         {
-            std::cerr << "  " << *it << std::endl;
+            end = variant_type_line.find(",", start);
+            std::string found_type = variant_type_line.substr(start, end-start);
+            bool goodtype = false;
+
+            if (found_type == "SNV" || found_type == "ALL") {
+                opt::processType[VCF_SUB] = true;
+                goodtype = true;
+            }
+            if (found_type == "INDEL" || found_type == "ALL") {
+                opt::processType[VCF_DEL] = true;
+                opt::processType[VCF_INS] = true;
+                goodtype = true;
+            }
+            if (found_type == "COMPLEX" || found_type == "ALL") {
+                opt::processType[VCF_COMPLEX] = true;
+                goodtype = true;
+            }
+            if (found_type == "SV" || found_type == "ALL") {
+                opt::processType[VCF_STRUCTURAL] = true;
+                goodtype = true;
+            }
+
+            if (!goodtype)
+                found_invalid_type = true;
+
+            start = variant_type_line.find_first_not_of(",", end);
+        }
+
+        if (found_invalid_type) {
+            std::cerr << SUBPROGRAM ": Invalid variant type specified in line " << variant_type_line << std::endl;
+            std::cerr << " Valid types are: SNV, INDEL, COMPLEX, SV, ALL" << std::endl;
         }
         die = true;
     }
