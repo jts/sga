@@ -62,7 +62,8 @@ runCmd($cmd);
 runCmd("awk \'\$2 >= $hist_min\' $prefix.tmp.hist > $prefix.hist");
 
 # sort 
-$cmd = "samtools sort $prefix.diffcontigs.bam $prefix.diffcontigs.sorted";
+#$cmd = "samtools sort $prefix.diffcontigs.bam $prefix.diffcontigs.sorted";
+$cmd = "samtools sort -o $prefix.diffcontigs.sorted.bam -T $prefix.diffcontigs $prefix.diffcontigs.bam";
 runCmd($cmd);
 
 # distance est
