@@ -232,7 +232,7 @@ std::string parseDupHits(const StringVector& hitsFilenames, const std::string& o
     while(!done)
     {
         // Parse a line from the current file
-        bool valid = getline(*reader_vec[currReaderIdx], line);
+        bool valid = static_cast<bool>(getline(*reader_vec[currReaderIdx], line));
         ++numRead;
         // Deal with switching the active reader and the end of files
         if(!valid || numRead == buffer_size)
