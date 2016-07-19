@@ -21,7 +21,6 @@ BWA_BIN=bwa
 SAMTOOLS_BIN=samtools
 BAM2DE_BIN=sga-bam2de.pl
 ASTAT_BIN=sga-astat.py
-DISTANCE_EST=DistanceEst
 
 # The number of threads to use
 CPU=8
@@ -50,7 +49,7 @@ MIN_PAIRS=10
 #
 
 # Check the required programs are installed and executable
-prog_list="$SGA_BIN $BWA_BIN $SAMTOOLS_BIN $BAM2DE_BIN $DISTANCE_EST $ASTAT_BIN"
+prog_list="$SGA_BIN $BWA_BIN $SAMTOOLS_BIN $BAM2DE_BIN $ASTAT_BIN"
 for prog in $prog_list; do
     hash $prog 2>/dev/null || { echo "Error $prog not found. Please place $prog on your PATH or update the *_BIN variables in this script"; exit 1; }
 done 
