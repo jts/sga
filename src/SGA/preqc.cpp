@@ -754,7 +754,7 @@ void generate_errors_per_base(JSONWriter* pWriter, const BWTIndexSet& index_set)
 
     double max_error_rate = 0.95;
     size_t min_overlap = 50;
-    
+
     std::vector<size_t> position_count;
     std::vector<size_t> error_count;
 
