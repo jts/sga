@@ -143,6 +143,15 @@ std::ostream& operator<<(std::ostream& o, const VCFRecord& record)
 //
 VCFClassification VCFRecord::classify() const
 {
+    // symbolic SV call, as in <INS>
+    if (varStr.find('<') != std::string::npos)
+        return VCF_STRUCTURAL;
+
+    // breakend SV call, as in [chr1:12345[N
+    if ( (varStr.find('[') != std::string::npos) || 
+         (varStr.find(']') != std::string::npos) )
+        return VCF_STRUCTURAL;
+
     if(refStr.size() == varStr.size())
         return VCF_SUB;
     

@@ -20,6 +20,7 @@ enum VCFClassification
     VCF_DEL,
     VCF_INS,
     VCF_COMPLEX,
+    VCF_STRUCTURAL,
     VCF_NUM_CLASSIFICATIONS
 };
 
