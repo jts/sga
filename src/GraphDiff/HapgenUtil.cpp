@@ -651,7 +651,6 @@ size_t HapgenUtil::getMaximumOneEdit(const std::string& str, const BWTIndexSet& 
         t[i] = tmp;
     }
 
-    printf("MaxOneEdit %zu\n", max);
     return max;
 }
 

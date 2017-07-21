@@ -36,6 +36,9 @@ enum ECFlag
     ECF_DUPLICATE
 };
 
+// typedefs
+typedef std::map<std::string, int> KmerCountMap;
+
 // Parameter object for the error corrector
 struct ErrorCorrectParameters
 {
@@ -92,7 +95,23 @@ class ErrorCorrectProcess
     
     private:
 
+        // Atttempt to correct the kmer at the given position of the read
         bool attemptKmerCorrection(size_t i, size_t k_idx, size_t minCount, std::string& readSequence);
+
+        // Look up the count of the given kmer using the cache
+        int getKmerCountWithCache(const std::string& kmer, KmerCountMap& cache);
+        
+        // Update kmer state vectors
+        void updateKmerVectors(const std::string& kmer,
+                               int kmerIndex,
+                               const std::vector<int>& minPhredVector,
+                               std::vector<int>& countVector,
+                               std::vector<int>& solidBaseVector,
+                               KmerCountMap& kmerCache);
+        
+        // Check if all of the entries in the vector between [start, end)
+        // are marked as solid
+        bool allBasesSolid(const std::vector<int>& solidVector, int start, int stop);
 
         OverlapBlockList m_blockList;
         ErrorCorrectParameters m_params;

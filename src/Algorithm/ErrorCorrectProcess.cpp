@@ -213,7 +213,6 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
 
     ErrorCorrectResult result;
 
-    typedef std::map<std::string, int> KmerCountMap;
     KmerCountMap kmerCache;
 
     SeqRecord currRead = workItem.read;
@@ -261,40 +260,20 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
         // Compute the kmer counts across the read
         // and determine the positions in the read that are not covered by any solid kmers
         // These are the candidate incorrect bases
-        std::vector<int> countVector(nk, 0);
+        std::vector<int> countVector(nk, -1);
         std::vector<int> solidVector(n, 0);
 
+        // Pass one, check k-mers tiling across the read to determine solid bases
+        for(int i = 0; i < nk; i += m_params.kmerLength)
+            updateKmerVectors(readSequence, i, minPhredVector, countVector, solidVector, kmerCache);
+
+        // Pass two, directly check kmers that cover non-solid bases
         for(int i = 0; i < nk; ++i)
         {
-            std::string kmer = readSequence.substr(i, m_params.kmerLength);
-
-            // First check if this kmer is in the cache
-            // If its not, find its count from the fm-index and cache it
-            int count = 0;
-            KmerCountMap::iterator iter = kmerCache.find(kmer);
-
-            if(iter != kmerCache.end())
-            {
-                count = iter->second;
-            }
-            else
-            {
-                count = BWTAlgorithms::countSequenceOccurrences(kmer, m_params.indices);
-                kmerCache.insert(std::make_pair(kmer, count));
-            }
-
-            // Get the phred score for the last base of the kmer
-            int phred = minPhredVector[i];
-            countVector[i] = count;
-//            std::cout << i << "\t" << phred << "\t" << count << "\n";
-
-            // Determine whether the base is solid or not based on phred scores
-            int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
-            if(count >= threshold)
-            {
-                for(int j = i; j < i + m_params.kmerLength; ++j)
-                    solidVector[j] = 1;
-            }
+            bool needs_check = !allBasesSolid(solidVector, i, i + m_params.kmerLength);
+            if(!needs_check)
+                continue;
+            updateKmerVectors(readSequence, i, minPhredVector, countVector, solidVector, kmerCache);
         }
 
         allSolid = true;
@@ -326,12 +305,14 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
                 int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
 
                 int left_k_idx = (i + 1 >= m_params.kmerLength ? i + 1 - m_params.kmerLength : 0);
+                assert(countVector[left_k_idx] >= 0);
                 corrected = attemptKmerCorrection(i, left_k_idx, std::max(countVector[left_k_idx], threshold), readSequence);
                 if(corrected)
                     break;
 
                 // base was not corrected, try using the rightmost covering kmer
                 size_t right_k_idx = std::min(i, n - m_params.kmerLength);
+                assert(countVector[right_k_idx] >= 0);
                 corrected = attemptKmerCorrection(i, right_k_idx, std::max(countVector[right_k_idx], threshold), readSequence);
                 if(corrected)
                     break;
@@ -359,6 +340,61 @@ ErrorCorrectResult ErrorCorrectProcess::kmerCorrection(const SequenceWorkItem& w
     return result;
 }
 
+int ErrorCorrectProcess::getKmerCountWithCache(const std::string& kmer, KmerCountMap& cache)
+{
+    int count = 0;
+    KmerCountMap::iterator iter = cache.find(kmer);
+    if(iter != cache.end())
+    {
+        count = iter->second;
+    }
+    else
+    {
+        count = BWTAlgorithms::countSequenceOccurrences(kmer, m_params.indices);
+        cache.insert(std::make_pair(kmer, count));
+    }
+    return count;
+}
+
+// Update the kmer count and solid base vectors
+// after looking up the count of the given kmer string
+void ErrorCorrectProcess::updateKmerVectors(const std::string& sequence,
+                                            int kmerIndex,
+                                            const std::vector<int>& minPhredVector,
+                                            std::vector<int>& countVector,
+                                            std::vector<int>& solidBaseVector,
+                                            KmerCountMap& kmerCache)
+{
+    std::string kmer = sequence.substr(kmerIndex, m_params.kmerLength);
+
+    // First check if this kmer is in the cache
+    // If its not, find its count from the fm-index and cache it
+    int count = getKmerCountWithCache(kmer, kmerCache);
+
+    // Get the phred score for the last base of the kmer
+    int phred = minPhredVector[kmerIndex];
+    countVector[kmerIndex] = count;
+
+    // Determine whether the base is solid or not based on phred scores
+    int threshold = CorrectionThresholds::Instance().getRequiredSupport(phred);
+    if(count >= threshold)
+    {
+        for(int j = kmerIndex; j < kmerIndex + m_params.kmerLength; ++j)
+            solidBaseVector[j] = 1;
+    }    
+}
+
+// Check whether every position in the given range
+// is marked as solid in the vector
+bool ErrorCorrectProcess::allBasesSolid(const std::vector<int>& solidVector, int start, int stop)
+{
+    for(int i = start; i < stop; ++i)
+    {
+        if(!solidVector[i])
+            return false;
+    }
+    return true;
+}
 
 // Attempt to correct the base at position idx in readSequence. Returns true if a correction was made
 // The correction is made only if the count of the corrected kmer is at least minCount
@@ -386,7 +422,7 @@ bool ErrorCorrectProcess::attemptKmerCorrection(size_t i, size_t k_idx, size_t m
 #if KMER_TESTING
         printf("%c %zu\n", currBase, count);
 #endif
-        if(count > bestCount && count >= minCount)
+        if(count >= minCount)
         {
             // Multiple corrections exist, do not correct
             if(bestBase != '$')
