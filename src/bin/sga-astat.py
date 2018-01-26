@@ -30,8 +30,8 @@ genomeSize = 0
 arrivalRate = 0
 
 def usage():
-    print 'usage: sga-astat.py in.bam'
-    print 'Compute Myers\' a-statistic for a set of contigs using the read alignments in in.bam'
+    print 'usage: sga-astat.py [OPTIONS] *.bam'
+    print 'Compute Myers\' a-statistic for a set of contigs using the read alignments from at least one SAM/BAM file'
     print 'Options:'
     print '    -m=INT          only compute a-stat for contigs at least INT bases in length'
     print '    -b=INT          use the longest INT contigs to perform the initial estimate'
@@ -62,53 +62,63 @@ for (oflag, oarg) in opts:
             usage()
             sys.exit(1)
 
-if len(args) == 0:
-    print 'Error: a BAM file must be provided\n'
+if not args:
+    print 'Error: at least one SAM/BAM file must be provided\n'
     usage()
     sys.exit(2)
 
-bamFilename = args[0]
-
-sys.stderr.write('Reading alignments from ' + bamFilename + '\n')
 contigData = list()
-
-# Read the contig names and lengths from the bam
-bamFile = pysam.Samfile(bamFilename, "rb")
-
-for (name, length) in zip(bamFile.references, bamFile.lengths):
-    t = name, length, 0
-    contigData.append(ContigData(name, length))
-    #print 'Name: ' + name
-    #print 'Length: ' + str(len)
-
-# Read the alignments and populate the counts
 totalReads = 0
 sumReadLength = 0
-
 last_ref_idx = -1
 last_pos = -1
+firstbamalreadydone = False
 
-for alignment in bamFile:
+for bamFilename in args:
+    sys.stderr.write('Reading alignments from ' + bamFilename + '\n')
 
-    if alignment.is_unmapped:
-        continue
+    # Read the contig names and lengths from the bam
+    bamFile = pysam.Samfile(bamFilename, "rb")
+    refnr = 0
 
-    ref_idx = alignment.rname
-    ref_name = bamFile.getrname(ref_idx)
+    for (name, length) in zip(bamFile.references, bamFile.lengths):
+        #t = name, length, 0
+        if firstbamalreadydone:
+            if contigData[refnr].name == name and contigData[refnr].len == length:
+                pass
+            else:
+                raise RuntimeError, "All input SAM/BAM files should be mapped against same reference and coordinate-sorted"
+        else:
+            contigData.append(ContigData(name, length))
+        #print 'Name: ' + name
+        #print 'Length: ' + str(len)
+        refnr += 1
 
-    pos = alignment.pos
+    # Read the alignments and populate the counts
+    for alignment in bamFile:
 
-    if ref_idx == last_ref_idx and pos == last_pos and not bKeepDuplicates:
-        continue
+        if alignment.is_unmapped:
+            continue
 
-    # Update the count
-    cd = contigData[ref_idx]
-    cd.n += 1
-    totalReads += 1
-    sumReadLength += alignment.rlen
-    assert(cd.name == ref_name)
-    last_ref_idx = ref_idx
-    last_pos = pos
+        ref_idx = alignment.rname
+        ref_name = bamFile.getrname(ref_idx)
+
+        pos = alignment.pos
+
+        if ref_idx == last_ref_idx and pos == last_pos and not bKeepDuplicates:
+            continue
+
+        # Update the count
+        cd = contigData[ref_idx]
+        cd.n += 1
+        totalReads += 1
+        sumReadLength += alignment.rlen
+        assert(cd.name == ref_name)
+        last_ref_idx = ref_idx
+        last_pos = pos
+
+    bamFile.close()
+    firstbamalreadydone = True
 
 avgReadLen = sumReadLength / totalReads
 contigData.sort(key=lambda c : c.len, reverse=True)
