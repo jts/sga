@@ -233,7 +233,7 @@ GapFillReturnCode GapFillProcess::selectGapSequence(int estimatedSize, const Str
 
     for(size_t i = 0; i < sequences.size(); ++i)
     {
-        int diff = abs(sequences[i].size() - estimatedSize);
+        int diff = abs((int)sequences[i].size() - estimatedSize);
         //printf("ES: %d S: %zu D: %d\n", estimatedSize, sequences[i].size(), diff);
 
         if(diff < selectedSizeDiff)
