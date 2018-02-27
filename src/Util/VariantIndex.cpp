@@ -86,7 +86,7 @@ VariantRecordVector VariantIndex::getNearVariants(const std::string& reference,
         for(size_t vi = 0; vi < bucket.size(); ++vi)
         {
             const VariantRecord& record = m_records[bucket[vi]];
-            if(abs(record.position - position) < distance)
+            if(abs((int)record.position - position) < distance)
                 out.push_back(record);
         }
     }
