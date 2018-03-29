@@ -51,7 +51,7 @@ def runMerge(inFiles, outFile):
 def runSort(inFile, outFile):
 
     (outPrefix, fileExtension) = os.path.splitext(outFile)
-    cmd = "samtools sort %s %s" % (inFile, outPrefix)
+    cmd = "samtools sort %s -o %s.bam" % (inFile, outPrefix)
     runCmd(cmd)
     
     #cmd = "samtools index %s" % (outFile)
