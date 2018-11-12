@@ -12,7 +12,7 @@ http://bioinformatics.oxfordjournals.org/cgi/content/abstract/26/12/i367
 Compiling SGA
 
 SGA dependencies:
-    -google sparse hash library (http://code.google.com/p/google-sparsehash/)
+    -google sparse hash library (https://github.com/sparsehash/sparsehash)
     -the bamtools library (https://github.com/pezmaster31/bamtools)
     -zlib (http://www.zlib.net/)
     -(optional but suggested) the jemalloc memory allocator (http://www.canonware.com/jemalloc/download.html)
