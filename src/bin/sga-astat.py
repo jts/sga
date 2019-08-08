@@ -150,6 +150,8 @@ if genomeSize == 0:
                 bootstrapReads += cd.n
 
         # Estimate arrival rate based on unique contigs
+        if bootstrapLen == 0 or bootstrapReads == 0:
+            continue  # failed 
         arrivalRate = float(bootstrapReads) / float(bootstrapLen)
         genomeSize = int(totalReads / arrivalRate)
         sys.stderr.write('Iteration ' + str(i) + ' arrival rate: ' + str(arrivalRate) + '\n');
@@ -181,4 +183,3 @@ for cd in contigData:
 
 sys.stderr.write('Sum unique bases in contigs >= %d bp in length: %d\n' % (minLength, sumUnique))
 sys.stderr.write('Sum repeat bases in contigs >= %d bp in length: %d\n' % (minLength, sumRepeat))
-
