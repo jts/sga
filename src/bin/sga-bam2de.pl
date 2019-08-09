@@ -54,7 +54,24 @@ if($bFail)
 my $cmd;
 
 # fix-mate info
-$cmd = "abyss-fixmate -h $prefix.tmp.hist $bamFile | samtools view -Sb - > $prefix.diffcontigs.bam";
+# use reformat.sh from BBmap bundle to convert from v1.4 CIGAR strings into v1.3, alternatively one could have used RTG-CORE (unlike RTG-TOOLS which is the stripped version lacking sammerge feature)
+my $mypath = `which reformat.sh`;
+my $cigar_convertor_cmd = "";
+my $rtg_core_distdir = "";
+if ($mypath ne '')
+{
+    $cigar_convertor_cmd = "reformat.sh sam=1.3 in=stdin.sam out=stdout.sam |";
+}
+else
+{
+    $mypath = `which rtg`;
+    if ($mypath ne '')
+    {
+        $rtg_core_distdir = `dirname $mypath`;
+        $cigar_convertor_cmd = "java -Djava.library.path=${rtg_core_distdir} -XX:ErrorFile=./hs_err_pid'$$'.log -Dreferences.dir=${rtg_core_distdir}/references -Dmodels.dir=${rtg_core_distdir}/models -Dtalkback=false -Xmx38g -jar ${rtg_core_distdir}/RTG.jar sammerge ${bamFile} --legacy-cigars --exclude-duplicates --exclude-unmapped --exclude-unplaced --output=- --no-gzip |";
+    }
+}
+$cmd = "samtools view -h -F 0x800 -F 0x200 -F 0x400 -F 0x100 $bamFile | $cigar_convertor_cmd abyss-fixmate -h $prefix.tmp.hist | samtools view -h -Sb -o $prefix.diffcontigs.bam";
 runCmd($cmd);
 
 # DistanceEst is very slow when the learned insert size distribution is very wide
@@ -88,7 +105,7 @@ sub runCmd
 {
     my($c) = @_;
     print "$c\n";
-    system($c);
+    system($c) and warn "Error: ", chomp($c), " failed with: $!\n" and die;
 }
 
 # Check whether the programs are found and executable
@@ -97,7 +114,7 @@ sub checkDependency
     while(my $program = shift) {
         my $ret = system("/bin/bash -c \"hash $program\"");
         if($ret != 0) {
-            print STDERR "Could not find program $program. Please install it or update your PATH.\n";
+            print STDERR "Could not find program $program: $!. Please install it or update your PATH.\n";
             print STDERR "Return: $ret\n";
             exit(1);
         }
